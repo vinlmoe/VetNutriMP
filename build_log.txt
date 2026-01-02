@@ -16,7 +16,22 @@ Type-safe project accessors is an incubating feature.
 > Task :composeApp:copyRoomSchemas NO-SOURCE
 
 > Task :composeApp:compileKotlinDesktop FAILED
-e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/AnimalDetailView.kt:721:74 Unresolved reference 'DELETE_CONFIRM_MESSAGE'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:54:66 Unresolved reference 'RationKeys'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1164:46 Unresolved reference 'LocalizationKeys'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1207:42 Unresolved reference 'LocalizationKeys'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1295:76 Too many arguments for 'fun String.translate(): String'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1340:74 Unresolved reference 'LocalizationKeys'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1412:76 Too many arguments for 'fun String.translate(): String'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1439:115 Unresolved reference 'it'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1439:115 Too many arguments for 'fun String.translate(): String'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1450:74 Unresolved reference 'LocalizationKeys'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1481:49 Unresolved reference 'REF_GENERAL_DIALOG_TITLE'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1502:94 Too many arguments for 'fun String.translate(): String'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1584:126 Too many arguments for 'fun String.translate(): String'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1601:79 Unresolved reference 'LocalizationKeys'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1656:103 Too many arguments for 'fun String.translate(): String'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1725:126 Too many arguments for 'fun String.translate(): String'.
+e: file:///Users/slefebvre/VetNutriMP/composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/View/ConsultationFullScreenEditView.kt:1742:90 Unresolved reference 'LocalizationKeys'.
 
 [Incubating] Problems report is available at: file:///Users/slefebvre/VetNutriMP/build/reports/problems/problems-report.html
 
@@ -39,5 +54,5 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.14/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD FAILED in 12s
+BUILD FAILED in 13s
 9 actionable tasks: 2 executed, 7 up-to-date

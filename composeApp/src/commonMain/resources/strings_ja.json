@@ -149,6 +149,7 @@
         "enum.Espece.ALL": "すべての種",
         "enum.FoodKind.all": "すべての種類",
         "enum.GroupAlim.all": "すべてのグループ",
-        "enum.AlimIndic.All": "すべての適応症"
+        "enum.AlimIndic.All": "すべての適応症",
+        "ration.currentName": "現在の給餌"
     }
 }

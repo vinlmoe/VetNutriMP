@@ -21,6 +21,8 @@ import fr.vetbrain.vetnutri_mp.Components.NutrientSection
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
@@ -69,7 +71,10 @@ fun FoodEditView(
 
         // État pour les onglets
         var selectedTabIndex by remember { mutableStateOf(0) }
-        val tabTitles = listOf("Informations générales", "Composition nutritionnelle")
+        val tabTitles = listOf(
+                translate(LocalizationKeys.FoodEdit.TAB_GENERAL),
+                translate(LocalizationKeys.FoodEdit.TAB_NUTRITION)
+        )
 
         // Fonction de validation des nutriments
         fun validateNutrients(): Boolean {
@@ -137,8 +142,8 @@ fun FoodEditView(
                 topBar = {
                         TopBar(
                                 title =
-                                        if (aliment.uuid.isBlank()) "Ajouter un aliment"
-                                        else "Modifier l'aliment",
+                                        if (aliment.uuid.isBlank()) translate(LocalizationKeys.FoodEdit.TITLE_ADD)
+                                        else translate(LocalizationKeys.FoodEdit.TITLE_EDIT),
                                 onBackClick = onNavigateBack,
                                 onSettingsClick = onNavigateToSettings
                         )
@@ -150,11 +155,11 @@ fun FoodEditView(
                                                 if (showErrorMessage) {
                                                         scope.launch {
                                                                 showSnackbar(
-                                                                        message = errorMessage,
-                                                                        actionLabel = "OK",
-                                                                        duration =
-                                                                                SnackbarDuration
-                                                                                        .Short
+                                                                         message = errorMessage,
+                                                                         actionLabel = translate(LocalizationKeys.General.OK),
+                                                                         duration =
+                                                                                 SnackbarDuration
+                                                                                         .Short
                                                                 )
                                                                 showErrorMessage = false
                                                         }
@@ -162,12 +167,12 @@ fun FoodEditView(
                                                 if (showSuccessMessage) {
                                                         scope.launch {
                                                                 showSnackbar(
-                                                                        message =
-                                                                                "Aliment enregistré avec succès",
-                                                                        actionLabel = "OK",
-                                                                        duration =
-                                                                                SnackbarDuration
-                                                                                        .Short
+                                                                         message =
+                                                                                 translate(LocalizationKeys.FoodEdit.SUCCESS_SAVE),
+                                                                         actionLabel = translate(LocalizationKeys.General.OK),
+                                                                         duration =
+                                                                                 SnackbarDuration
+                                                                                         .Short
                                                                 )
                                                                 showSuccessMessage = false
                                                         }
@@ -182,25 +187,25 @@ fun FoodEditView(
                                 onClick = {
                                         scope.launch {
                                                 // Validation des champs obligatoires
-                                                if (nomState.value.isBlank()) {
-                                                        errorMessage =
-                                                                "Le nom de l'aliment est obligatoire"
-                                                        showErrorMessage = true
-                                                        return@launch
-                                                }
+                                                 if (nomState.value.isBlank()) {
+                                                         errorMessage =
+                                                                 translate(LocalizationKeys.FoodEdit.ERROR_NAME_REQUIRED)
+                                                         showErrorMessage = true
+                                                         return@launch
+                                                 }
 
-                                                if (selectedEspecesState.value.isEmpty()) {
-                                                        errorMessage =
-                                                                "Sélectionnez au moins une espèce"
-                                                        showErrorMessage = true
-                                                        return@launch
-                                                }
+                                                 if (selectedEspecesState.value.isEmpty()) {
+                                                         errorMessage =
+                                                                 translate(LocalizationKeys.FoodEdit.ERROR_SPECIES_REQUIRED)
+                                                         showErrorMessage = true
+                                                         return@launch
+                                                 }
 
                                                 // Validation des nutriments
-                                                if (!validateNutrients()) {
-                                                        errorMessage =
-                                                                "Certaines valeurs nutritionnelles sont invalides"
-                                                        showErrorMessage = true
+                                                 if (!validateNutrients()) {
+                                                         errorMessage =
+                                                                 translate(LocalizationKeys.FoodEdit.ERROR_NUTRIENTS_INVALID)
+                                                         showErrorMessage = true
                                                         selectedTabIndex =
                                                                 1 // Basculer sur l'onglet des
                                                         // nutriments
@@ -361,24 +366,24 @@ fun FoodEditView(
                                                                 )
                                                                 showSuccessMessage = true
                                                                 onNavigateBack()
-                                                        } catch (e: Exception) {
-                                                                e.printStackTrace()
-                                                                errorMessage =
-                                                                        "Erreur lors de la sauvegarde: ${e.message}"
-                                                                showErrorMessage = true
-                                                        }
-                                                } catch (e: Exception) {
-                                                        errorMessage =
-                                                                "Erreur lors de l'enregistrement: ${e.message}"
-                                                        showErrorMessage = true
-                                                }
+                                                         } catch (e: Exception) {
+                                                                 e.printStackTrace()
+                                                                 errorMessage =
+                                                                         translate(LocalizationKeys.FoodEdit.ERROR_SAVE_FAILED, e.message ?: "")
+                                                                 showErrorMessage = true
+                                                         }
+                                                 } catch (e: Exception) {
+                                                         errorMessage =
+                                                                 translate(LocalizationKeys.FoodEdit.ERROR_SAVE_FAILED, e.message ?: "")
+                                                         showErrorMessage = true
+                                                 }
                                         }
                                 },
                                 modifier = Modifier.fillMaxWidth().padding(16.dp)
                         ) {
-                                Icon(Icons.Default.Check, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Enregistrer")
+                                 Icon(Icons.Default.Check, contentDescription = null)
+                                 Spacer(modifier = Modifier.width(8.dp))
+                                 Text(translate(LocalizationKeys.General.SAVE))
                         }
 
                         // Onglets
@@ -475,14 +480,14 @@ private fun GeneralInfoTab(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                                 Text(
-                                        text = "Informations générales",
+                                        text = translate(LocalizationKeys.FoodEdit.TAB_GENERAL),
                                         style = MaterialTheme.typography.h6
                                 )
 
                                 OutlinedTextField(
                                         value = nomState.value,
                                         onValueChange = { nomState.value = it },
-                                        label = { Text("Nom de l'aliment") },
+                                        label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_NAME)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors =
                                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -494,7 +499,7 @@ private fun GeneralInfoTab(
                                 OutlinedTextField(
                                         value = brandState.value,
                                         onValueChange = { brandState.value = it },
-                                        label = { Text("Marque") },
+                                        label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_BRAND)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors =
                                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -506,7 +511,7 @@ private fun GeneralInfoTab(
                                 OutlinedTextField(
                                         value = gammeState.value,
                                         onValueChange = { gammeState.value = it },
-                                        label = { Text("Gamme") },
+                                        label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_GAMME)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors =
                                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -516,7 +521,7 @@ private fun GeneralInfoTab(
                                 )
 
                                 DropdownField(
-                                        label = "Base de données",
+                                        label = translate(LocalizationKeys.FoodEdit.FIELD_DATABASE),
                                         selectedValue = dataBState.value.ifBlank { "" },
                                         options =
                                                 buildList {
@@ -540,7 +545,7 @@ private fun GeneralInfoTab(
                                                 },
                                         onValueChange = { dataBState.value = it },
                                         valueToString = {
-                                                if (it.isBlank()) "Sélectionner..."
+                                                if (it.isBlank()) translate(LocalizationKeys.General.SELECT_PLACEHOLDER)
                                                 else DataBMapping.getDisplayName(it)
                                         },
                                         modifier = Modifier.fillMaxWidth(),
@@ -557,7 +562,7 @@ private fun GeneralInfoTab(
                                         OutlinedTextField(
                                                 value = priceState.value,
                                                 onValueChange = { priceState.value = it },
-                                                label = { Text("Prix") },
+                                                label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_PRICE)) },
                                                 modifier = Modifier.weight(1f),
                                                 colors =
                                                         TextFieldDefaults.outlinedTextFieldColors(
@@ -570,7 +575,7 @@ private fun GeneralInfoTab(
                                         OutlinedTextField(
                                                 value = categPriceState.value,
                                                 onValueChange = { categPriceState.value = it },
-                                                label = { Text("Catégorie de prix") },
+                                                label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_PRICE_CATEGORY)) },
                                                 modifier = Modifier.weight(1f),
                                                 colors =
                                                         TextFieldDefaults.outlinedTextFieldColors(
@@ -588,7 +593,7 @@ private fun GeneralInfoTab(
                                         OutlinedTextField(
                                                 value = quantIntState.value,
                                                 onValueChange = { quantIntState.value = it },
-                                                label = { Text("Quantité") },
+                                                label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_QUANTITY)) },
                                                 modifier = Modifier.weight(1f),
                                                 colors =
                                                         TextFieldDefaults.outlinedTextFieldColors(
@@ -620,7 +625,7 @@ private fun GeneralInfoTab(
                                                         )
                                         )
 
-                                        Text("Aliment consistant")
+                                        Text(translate(LocalizationKeys.FoodEdit.FIELD_CONSISTENT))
                                 }
                         }
                 }
@@ -632,7 +637,7 @@ private fun GeneralInfoTab(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                                 Text(
-                                        text = "Type et classification",
+                                        text = translate(LocalizationKeys.FoodEdit.FIELD_TYPE_CLASS),
                                         style = MaterialTheme.typography.h6
                                 )
 
@@ -660,12 +665,12 @@ private fun GeneralInfoTab(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                                Text(text = "Ingrédients", style = MaterialTheme.typography.h6)
+                                Text(text = translate(LocalizationKeys.FoodEdit.FIELD_INGREDIENTS), style = MaterialTheme.typography.h6)
 
                                 OutlinedTextField(
                                         value = ingredientsState.value,
                                         onValueChange = { ingredientsState.value = it },
-                                        label = { Text("Liste des ingrédients") },
+                                        label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_INGREDIENTS_LIST)) },
                                         modifier = Modifier.fillMaxWidth().height(120.dp),
                                         colors =
                                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -678,22 +683,22 @@ private fun GeneralInfoTab(
 
                 // Section Espèces - Utilise le composant réutilisable MultiSelectionCard
                 MultiSelectionCard(
-                        titre = "Espèces compatibles",
+                        titre = translate(LocalizationKeys.FoodEdit.FIELD_COMPATIBLE_SPECIES),
                         elementsDisponibles = Espece.entries,
                         elementsSelectionnes = selectedEspecesState.value,
                         onSelectionChange = onSelectEspece,
-                        getLabel = { it.label },
+                        getLabel = { it.translateEnum() },
                         getIdentifiant = { it.name },
                         couleurArrierePlan = VetNutriColors.Secondary
                 )
 
                 // Section Indications - Utilise le composant réutilisable MultiSelectionCard
                 MultiSelectionCard(
-                        titre = "Indications",
+                        titre = translate(LocalizationKeys.FoodEdit.FIELD_INDICATIONS),
                         elementsDisponibles = AlimIndic.valuesExcept(),
                         elementsSelectionnes = selectedIndications.value,
                         onSelectionChange = onSelectIndication,
-                        getLabel = { it.label },
+                        getLabel = { it.translateEnum() },
                         getIdentifiant = { it.name },
                         couleurArrierePlan = VetNutriColors.Primary
                 )
@@ -730,7 +735,7 @@ private fun NutritionInfoTab(
                 // Section Principaux nutriments
                 if (mainNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Nutriments principaux",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_MAIN_NUTRIENTS),
                                 nutriments = mainNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -741,7 +746,7 @@ private fun NutritionInfoTab(
                 // Section Lipides
                 if (lipidNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Lipides",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_LIPIDS),
                                 nutriments = lipidNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -752,7 +757,7 @@ private fun NutritionInfoTab(
                 // Section Macronutriments
                 if (macroNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Macronutriments",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_MACRONUTRIENTS),
                                 nutriments = macroNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -763,7 +768,7 @@ private fun NutritionInfoTab(
                 // Section Minéraux
                 if (minNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Minéraux",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_MINERALS),
                                 nutriments = minNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -774,7 +779,7 @@ private fun NutritionInfoTab(
                 // Section Vitamines
                 if (vitamNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Vitamines",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_VITAMINS),
                                 nutriments = vitamNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -785,7 +790,7 @@ private fun NutritionInfoTab(
                 // Section Acides aminés
                 if (acidesAminesNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Acides aminés",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_AMINO_ACIDS),
                                 nutriments = acidesAminesNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -796,7 +801,7 @@ private fun NutritionInfoTab(
                 // Section Autres nutriments
                 if (otherNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Autres nutriments",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_OTHER_NUTRIENTS),
                                 nutriments = otherNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -820,7 +825,7 @@ fun FoodTypeDropdown(
 
         Box(modifier = modifier) {
                 OutlinedTextField(
-                        value = selectedFoodType?.translateEnum() ?: "Sélectionner un type d'aliment",
+                        value = selectedFoodType?.translateEnum() ?: translate(LocalizationKeys.FoodEdit.HINT_SELECT_TYPE),
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
@@ -828,7 +833,7 @@ fun FoodTypeDropdown(
                                         onClick = { expanded = !expanded },
                                         imageVector = Icons.Default.ArrowDropDown,
                                         contentDescription = null,
-                                        tooltip = "Sélectionner un type d'aliment"
+                                         tooltip = translate(LocalizationKeys.FoodEdit.HINT_SELECT_TYPE)
                                 )
                         },
                         colors =
@@ -868,7 +873,7 @@ fun FoodGroupDropdown(
 
         Box(modifier = modifier) {
                 OutlinedTextField(
-                        value = selectedFoodGroup?.toString() ?: "Sélectionner un groupe d'aliment",
+                        value = selectedFoodGroup?.translateEnum() ?: translate(LocalizationKeys.FoodEdit.HINT_SELECT_GROUP),
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
@@ -876,7 +881,7 @@ fun FoodGroupDropdown(
                                         onClick = { expanded = !expanded },
                                         imageVector = Icons.Default.ArrowDropDown,
                                         contentDescription = null,
-                                        tooltip = "Sélectionner un groupe d'aliment"
+                                         tooltip = translate(LocalizationKeys.FoodEdit.HINT_SELECT_GROUP)
                                 )
                         },
                         colors =
@@ -894,11 +899,11 @@ fun FoodGroupDropdown(
                 ) {
                         availableFoodGroups.forEach { foodGroup ->
                                 DropdownMenuItem(
-                                        onClick = {
+                                         onClick = {
                                                 onFoodGroupSelected(foodGroup)
                                                 expanded = false
                                         }
-                                ) { Text(foodGroup.toString()) }
+                                ) { Text(foodGroup.translateEnum()) }
                         }
                 }
         }
@@ -916,16 +921,16 @@ private fun ContDropdown(
 
         Box(modifier = modifier) {
                 OutlinedTextField(
-                        value = selectedCont?.label ?: "Sélectionner un contenant",
+                        value = selectedCont?.translateEnum() ?: translate(LocalizationKeys.FoodEdit.HINT_SELECT_CONT),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Contenant") },
+                        label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_CONT)) },
                         trailingIcon = {
                                 IconButtonWithTooltip(
                                         onClick = { expanded = !expanded },
                                         imageVector = Icons.Default.ArrowDropDown,
                                         contentDescription = null,
-                                        tooltip = "Sélectionner un contenant"
+                                         tooltip = translate(LocalizationKeys.FoodEdit.HINT_SELECT_CONT)
                                 )
                         },
                         colors =
@@ -943,11 +948,11 @@ private fun ContDropdown(
                 ) {
                         availableConts.forEach { cont ->
                                 DropdownMenuItem(
-                                        onClick = {
+                                         onClick = {
                                                 onContSelected(cont)
                                                 expanded = false
                                         }
-                                ) { Text(cont.label) }
+                                ) { Text(cont.translateEnum()) }
                         }
                 }
         }

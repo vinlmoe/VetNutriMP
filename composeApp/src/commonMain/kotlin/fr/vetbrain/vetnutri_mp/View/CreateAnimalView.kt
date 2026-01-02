@@ -38,6 +38,7 @@ import kotlinx.datetime.toLocalDateTime
 fun CreateAnimalView(
         viewModel: CreateAnimalViewModel,
         onNavigateBack: () -> Unit,
+        onAnimalCreated: (fr.vetbrain.vetnutri_mp.Data.AnimalEv) -> Unit,
         isEditing: Boolean = false,
         modifier: Modifier = Modifier
 ) {
@@ -65,9 +66,11 @@ fun CreateAnimalView(
                 if (saveSuccess) {
                         viewModel.resetSaveStatus()
                         if (!isEditing) {
+                                onAnimalCreated(animal)
                                 viewModel.resetAnimal()
+                        } else {
+                                onNavigateBack()
                         }
-                        onNavigateBack()
                 }
         }
 
@@ -76,7 +79,6 @@ fun CreateAnimalView(
                         FloatingActionButton(
                                 onClick = {
                                         viewModel.saveAnimal()
-                                        onNavigateBack()
                                 },
                                 backgroundColor = VetNutriColors.Primary
                         ) {
