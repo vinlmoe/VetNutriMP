@@ -1148,28 +1148,16 @@ suspend fun calculerAjustement(
 
                         nutrimentsTraites.add(nutrientLabel)
                 }
-          // Synchroniser les quantités ajustées avec la ration originale AVANT l'ajustement énergétique
-                for (i in adjustedAliments.indices) {
-                        val alimentRation = adjustedAliments[i]
-                        val alimentRationOriginal = ration.alimentMutableList.find {
-                                it.uuid == alimentRation.uuid
-                        }
-                        if (alimentRationOriginal != null) {
-                                val index = ration.alimentMutableList.indexOf(alimentRationOriginal)
-                                if (index >= 0) {
-                                        ration.alimentMutableList[index] = alimentRationOriginal.copy(
-                                                quantite = alimentRation.quantite
-                                        )
-                                }
-                        }
-                }
-
                 // DEUXIÈME ÉTAPE : Ajuster l'énergie en recalculant l'apport total de la ration
                 // finale
                 if (processingOrder.contains("ENERGIE")) {
 
                         // Créer une ration temporaire avec les ajustements effectués
-                        val rationTemp = ration.copy()
+                        val rationTemp =
+                                ration.copy(
+                                        alimentMutableList =
+                                                adjustedAliments.map { it.copy() }.toMutableList()
+                                )
                         for (i in adjustedAliments.indices) {
                                 val alimentRation = adjustedAliments[i]
                                 val alimentRationTemp =
@@ -1413,21 +1401,6 @@ suspend fun calculerAjustement(
                                 }
                         }
                         
-                        // Synchroniser les quantités ajustées avec la ration originale
-                        for (i in adjustedAliments.indices) {
-                                val alimentRation = adjustedAliments[i]
-                                val alimentRationOriginal = ration.alimentMutableList.find {
-                                        it.uuid == alimentRation.uuid
-                                }
-                                if (alimentRationOriginal != null) {
-                                        val index = ration.alimentMutableList.indexOf(alimentRationOriginal)
-                                        if (index >= 0) {
-                                                ration.alimentMutableList[index] = alimentRationOriginal.copy(
-                                                        quantite = alimentRation.quantite
-                                                )
-                                        }
-                                }
-                        }
                 }
 
                 // Arrondi final selon règles métier
