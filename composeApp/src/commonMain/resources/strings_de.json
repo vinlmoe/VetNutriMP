@@ -149,6 +149,7 @@
         "enum.Espece.ALL": "Alle Arten",
         "enum.FoodKind.all": "Alle Typen",
         "enum.GroupAlim.all": "Alle Gruppen",
-        "enum.AlimIndic.All": "Alle Indikationen"
+        "enum.AlimIndic.All": "Alle Indikationen",
+        "ration.currentName": "Aktuelle Ration"
     }
 }

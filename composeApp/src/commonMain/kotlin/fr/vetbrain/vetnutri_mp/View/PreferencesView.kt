@@ -28,6 +28,9 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientOther
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -66,7 +69,7 @@ fun PreferencesView(
         Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
                 // En-tête
                 Text(
-                        text = "Préférencese",
+                        text = LocalizationKeys.Preferences.TITLE.translate(),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -79,7 +82,7 @@ fun PreferencesView(
                 ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                        text = "Espèce sélectionnée youpla",
+                                        text = LocalizationKeys.Preferences.SELECTED_SPECIES.translate(),
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.Medium,
                                         modifier = Modifier.padding(bottom = 8.dp)
@@ -93,7 +96,7 @@ fun PreferencesView(
                                                 value = selectedSpecies?.label ?: "",
                                                 onValueChange = {},
                                                 readOnly = true,
-                                                label = { Text("Choisir une espèce") },
+                                                label = { Text(LocalizationKeys.Preferences.CHOOSE_SPECIES.translate()) },
                                                 modifier =
                                                         Modifier.fillMaxWidth().clickable {
                                                                 expanded = true
@@ -127,7 +130,7 @@ fun PreferencesView(
                                                                         // currentPreferences =
                                                                         // preferencesRepository.getPreferencesForSpecies(species)
                                                                 }
-                                                        ) { Text(species.label) }
+                                                        ) { Text(species.translateEnum()) }
                                                 }
                                         }
                                 }
@@ -141,7 +144,7 @@ fun PreferencesView(
                 ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                        text = "Espèces disponibles",
+                                        text = LocalizationKeys.Preferences.AVAILABLE_SPECIES.translate(),
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.Medium,
                                         modifier = Modifier.padding(bottom = 8.dp)
@@ -163,7 +166,7 @@ fun PreferencesView(
                                                                 Alignment.CenterVertically
                                                 ) {
                                                         Text(
-                                                                text = species.label,
+                                                                text = species.translateEnum(),
                                                                 modifier = Modifier.weight(1f)
                                                         )
 
@@ -190,27 +193,32 @@ fun PreferencesView(
                         ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                         Text(
-                                                text =
-                                                        "Préférenceses pour ${preferences.getEspeceEnum().label}",
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                modifier = Modifier.padding(bottom = 8.dp)
+                                                LocalizationKeys.Preferences.PREFERENCES_FOR.translate(
+                                                        preferences.getEspeceEnum().translateEnum()
+                                                ),
+                                                style = MaterialTheme.typography.h5,
+                                                fontWeight = FontWeight.Bold,
+                                                color = VetNutriColors.Primary
                                         )
-
+                                        Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                                text =
-                                                        "Expression des besoins: ${preferences.getTypeExpressionBesoinEnum().displayName}",
-                                                modifier = Modifier.padding(bottom = 4.dp)
+                                                LocalizationKeys.Preferences.ENERGY_EXPRESSION.translate(
+                                                        preferences
+                                                                .getTypeExpressionBesoinEnum()
+                                                                .translateEnum()
+                                                ),
+                                                style = MaterialTheme.typography.subtitle1
                                         )
-
                                         val selectedNutrientsCount =
                                                 preferences.nutrimentsSelectionnes.values.sumOf {
                                                         it.size
                                                 }
                                         Text(
-                                                text =
-                                                        "Nutriments sélectionnés: $selectedNutrientsCount",
-                                                modifier = Modifier.padding(bottom = 4.dp)
+                                                LocalizationKeys.Preferences.SELECTED_NUTRIENTS_COUNT.translate(
+                                                        selectedNutrientsCount.toString()
+                                                ),
+                                                style = MaterialTheme.typography.body2,
+                                                color = Color.Gray
                                         )
                                 }
                         }
@@ -223,17 +231,22 @@ fun PreferencesView(
                 ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                        text = "Équations pour nutriments complémentaires",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier.padding(bottom = 8.dp)
+                                        LocalizationKeys.Preferences.COMPLEMENTARY_EQUATIONS.translate(),
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight = FontWeight.Bold
                                 )
-
+                                Spacer(
+                                        modifier =
+                                                Modifier.height(4.dp)
+                                )
                                 if (complementaryEquations.isEmpty()) {
                                         Text(
-                                                text = "Aucune équation complémentaire disponible",
-                                                color = Color.Gray,
-                                                modifier = Modifier.padding(bottom = 8.dp)
+                                                LocalizationKeys.Preferences.NO_COMPLEMENTARY_EQUATIONS.translate(),
+                                                style =
+                                                        MaterialTheme
+                                                                .typography
+                                                                .body2,
+                                                color = Color.Gray
                                         )
                                 } else {
                                         // Liste des nutriments avec leurs équations associées
@@ -264,7 +277,7 @@ fun PreferencesView(
                                                                         Alignment.CenterVertically
                                                         ) {
                                                                 Text(
-                                                                        text = nutrient.label,
+                                                                        text = nutrient.translateEnum(),
                                                                         modifier =
                                                                                 Modifier.weight(1f),
                                                                         fontWeight =
@@ -282,12 +295,12 @@ fun PreferencesView(
                                                                                 value =
                                                                                         selectedEquation
                                                                                                 ?.name
-                                                                                                ?: "Aucune équation",
+                                                                                                ?: LocalizationKeys.Preferences.NO_EQUATION.translate(),
                                                                                 onValueChange = {},
                                                                                 readOnly = true,
                                                                                 label = {
                                                                                         Text(
-                                                                                                "Équation"
+                                                                                                LocalizationKeys.Preferences.EQUATION.translate()
                                                                                         )
                                                                                 },
                                                                                 modifier =
@@ -342,7 +355,7 @@ fun PreferencesView(
                                                                                         }
                                                                                 ) {
                                                                                         Text(
-                                                                                                "Aucune équation"
+                                                                                                LocalizationKeys.Preferences.NO_EQUATION.translate()
                                                                                         )
                                                                                 }
 
@@ -392,13 +405,13 @@ fun PreferencesView(
                                         ButtonDefaults.buttonColors(
                                                 backgroundColor = VetNutriColors.Primary
                                         )
-                        ) { Text("Sauvegarder") }
+                        ) { Text(LocalizationKeys.General.SAVE.translate()) }
 
                         OutlinedButton(
                                 onClick = {
                                         // Réinitialiser les préférences
                                 }
-                        ) { Text("Réinitialiser") }
+                        ) { Text(LocalizationKeys.General.RESET.translate()) }
                 }
         }
 }

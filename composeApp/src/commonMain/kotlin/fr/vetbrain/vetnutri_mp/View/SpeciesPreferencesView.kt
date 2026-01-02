@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
@@ -57,7 +58,7 @@ fun SpeciesPreferencesView(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 CircularProgressIndicator(color = VetNutriColors.Primary)
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Text("preferences.title".translate() + "...")
+                                Text("${LocalizationKeys.Preferences.TITLE.translate()}...")
                         }
                 }
         } else {
@@ -87,7 +88,7 @@ fun SpeciesPreferencesView(
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
                                                         text =
-                                                                "Personnalisez l'expression des besoins et les nutriments à afficher pour cette espèce",
+                                                                LocalizationKeys.Preferences.CUSTOMIZE_DESC.translate(),
                                                         style = MaterialTheme.typography.body2,
                                                         color = Color.Gray
                                                 )
@@ -110,12 +111,12 @@ fun SpeciesPreferencesView(
                                                         Icon(
                                                                 imageVector = Icons.Default.Info,
                                                                 contentDescription =
-                                                                        "Expression des besoins",
+                                                                        LocalizationKeys.Preferences.ENERGY_EXPRESSION_SECTION.translate(),
                                                                 tint = VetNutriColors.Primary
                                                         )
                                                         Spacer(modifier = Modifier.width(8.dp))
                                                         Text(
-                                                                text = "Expression des besoins",
+                                                                text = LocalizationKeys.Preferences.ENERGY_EXPRESSION_SECTION.translate(),
                                                                 style = MaterialTheme.typography.h6,
                                                                 fontWeight = FontWeight.Bold
                                                         )
@@ -125,7 +126,7 @@ fun SpeciesPreferencesView(
 
                                                 Text(
                                                         text =
-                                                                "Sélection actuelle: ${currentExpressionType.displayName}",
+                                                                LocalizationKeys.Preferences.CURRENT_SELECTION.translate(currentExpressionType.translateEnum()),
                                                         style = MaterialTheme.typography.subtitle1,
                                                         color = VetNutriColors.Primary,
                                                         fontWeight = FontWeight.Medium
@@ -213,7 +214,7 @@ fun SpeciesPreferencesView(
                                                                 ) {
                                                                         Text(
                                                                                 text =
-                                                                                        type.displayName,
+                                                                                        type.translateEnum(),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -246,7 +247,7 @@ fun SpeciesPreferencesView(
                                                                         )
                                                                         Text(
                                                                                 text =
-                                                                                        "Unité: ${type.unitReqEnum.translateEnum()}",
+                                                                                        LocalizationKeys.Preferences.UNIT_LABEL.translate(type.unitReqEnum.translateEnum()),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -318,13 +319,13 @@ fun SpeciesPreferencesView(
                                                         Icon(
                                                                 imageVector = Icons.Default.Info,
                                                                 contentDescription =
-                                                                        "Équations complémentaires",
+                                                                        LocalizationKeys.Preferences.COMPLEMENTARY_EQUATIONS.translate(),
                                                                 tint = VetNutriColors.Primary
                                                         )
                                                         Spacer(modifier = Modifier.width(8.dp))
                                                         Text(
                                                                 text =
-                                                                        "Équations de nutriments complémentaires",
+                                                                        LocalizationKeys.Preferences.COMPLEMENTARY_EQUATIONS_TITLE.translate(),
                                                                 style = MaterialTheme.typography.h6,
                                                                 fontWeight = FontWeight.Bold
                                                         )
@@ -334,7 +335,7 @@ fun SpeciesPreferencesView(
 
                                                 Text(
                                                         text =
-                                                                "Sélectionnez les équations pour calculer les nutriments complémentaires pour cette espèce",
+                                                                LocalizationKeys.Preferences.SELECT_EQUATIONS_DESC.translate(),
                                                         style = MaterialTheme.typography.body2,
                                                         color = Color.Gray
                                                 )
@@ -426,7 +427,7 @@ fun SpeciesPreferencesView(
                                                         )
                                                         Spacer(modifier = Modifier.width(8.dp))
                                                         Text(
-                                                                text = "Sauvegarde automatique",
+                                                                text = LocalizationKeys.Preferences.AUTO_SAVE.translate(),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .subtitle2,
@@ -437,7 +438,7 @@ fun SpeciesPreferencesView(
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
                                                         text =
-                                                                "Toutes les modifications sont automatiquement sauvegardées et seront restaurées au prochain démarrage.",
+                                                                LocalizationKeys.Preferences.AUTO_SAVE_DESC.translate(),
                                                         style = MaterialTheme.typography.body2,
                                                         color = Color.Gray
                                                 )
@@ -631,7 +632,7 @@ private fun NutrientCategoryCard(
                                                         if (expanded) Icons.Default.ExpandLess
                                                         else Icons.Default.ExpandMore,
                                                 contentDescription =
-                                                        if (expanded) "Réduire" else "Développer"
+                                                        if (expanded) LocalizationKeys.General.REDUCE.translate() else LocalizationKeys.General.EXPAND.translate()
                                         )
                                 }
                         }
@@ -706,7 +707,7 @@ private fun NutrientCategoryCard(
                                                                         else Color.Black
                                                         )
                                                         Text(
-                                                                text = "Unité: ${nutrient.unite}",
+                                                                text = LocalizationKeys.Preferences.UNIT_LABEL.translate(nutrient.unite),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,
@@ -728,7 +729,10 @@ private fun NutrientCategoryCard(
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                         text =
-                                                "$selectedCount/${nutrients.size} nutriments sélectionnés",
+                                                LocalizationKeys.Preferences.NUTRIENTS_SELECTED_FORMAT.translate(
+                                                        selectedCount.toString(),
+                                                        nutrients.size.toString()
+                                                ),
                                         style = MaterialTheme.typography.caption,
                                         color = VetNutriColors.Primary,
                                         fontWeight = FontWeight.Medium

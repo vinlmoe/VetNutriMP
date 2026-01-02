@@ -57,7 +57,9 @@ expect fun createFileService(): FileService
 @Composable
 fun App(appDatabase: AppDatabase) {
     // Initialisation de la localisation
-    LocalizationManager.initialize()
+    LaunchedEffect(Unit) {
+        LocalizationManager.loadLocale()
+    }
 
     // Création des repositories avec la base de données
     val animalRepository = remember {
@@ -434,6 +436,12 @@ fun App(appDatabase: AppDatabase) {
                                             isEditing = false
                                             selectedAnimal = null
                                             currentScreen = Screen.List
+                                        },
+                                        onAnimalCreated = { animal ->
+                                            isEditing = false
+                                            selectedAnimal = animal
+                                            animalDetailViewModel.setAnimal(animal)
+                                            currentScreen = Screen.Detail
                                         },
                                         isEditing = isEditing,
                                         modifier = Modifier.fillMaxWidth().weight(1f)

@@ -28,6 +28,8 @@ import fr.vetbrain.vetnutri_mp.Utils.UpdateChecker
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel.ImportResult
 import fr.vetbrain.vetnutri_mp.Enumer.TextConstant
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.getPlatform
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -475,6 +477,53 @@ fun StartupScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                         ) {
+                                // Sélecteur de langue
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = translate(LocalizationKeys.Settings.LANGUAGE) + ": ",
+                                        style = MaterialTheme.typography.caption,
+                                        color = VetNutriColors.Secondary
+                                    )
+                                    Text(
+                                        text = translate(LocalizationKeys.Settings.FRENCH),
+                                        modifier = Modifier
+                                            .clickable { fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.setLocale("fr") }
+                                            .padding(8.dp),
+                                        color = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate("welcome") == "Bienvenue") VetNutriColors.Primary else VetNutriColors.Secondary,
+                                        fontWeight = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate("welcome") == "Bienvenue") FontWeight.Bold else FontWeight.Normal
+                                    )
+                                    Text(
+                                        text = "|",
+                                        modifier = Modifier.padding(horizontal = 4.dp),
+                                        color = VetNutriColors.Secondary.copy(alpha = 0.5f)
+                                    )
+                                    Text(
+                                        text = translate(LocalizationKeys.Settings.ENGLISH),
+                                        modifier = Modifier
+                                            .clickable { fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.setLocale("en") }
+                                            .padding(8.dp),
+                                        color = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate("welcome") == "Welcome") VetNutriColors.Primary else VetNutriColors.Secondary,
+                                        fontWeight = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate("welcome") == "Welcome") FontWeight.Bold else FontWeight.Normal
+                                    )
+                                    Text(
+                                        text = "|",
+                                        modifier = Modifier.padding(horizontal = 4.dp),
+                                        color = VetNutriColors.Secondary.copy(alpha = 0.5f)
+                                    )
+                                    Text(
+                                        text = translate(LocalizationKeys.Settings.CHINESE),
+                                        modifier = Modifier
+                                            .clickable { fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.setLocale("zh") }
+                                            .padding(8.dp),
+                                        color = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate("welcome") == "欢迎") VetNutriColors.Primary else VetNutriColors.Secondary,
+                                        fontWeight = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate("welcome") == "欢迎") FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+
                                 // Logo et titre
                                 Icon(
                                         imageVector = Icons.Default.Storage,
@@ -486,21 +535,21 @@ fun StartupScreen(
                                 Spacer(modifier = Modifier.height(24.dp))
 
                                 Text(
-                                        text = "VetNutri MP",
+                                        text = translate(LocalizationKeys.General.APP_NAME),
                                         style = MaterialTheme.typography.h4,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Primary
                                 )
 
                                 Text(
-                                        text = "Gestionnaire de Nutrition Vétérinaire",
+                                                                                text = translate(LocalizationKeys.Startup.SUBTITLE),
                                         style = MaterialTheme.typography.subtitle1,
                                         color = VetNutriColors.Secondary,
                                         textAlign = TextAlign.Center
                                 )
 
                                 Text(
-                                        text = "Version ${TextConstant.VERSION.value}",
+                                                                                text = translate(LocalizationKeys.Startup.VERSION, TextConstant.VERSION.value),
                                         style = MaterialTheme.typography.caption,
                                         color = VetNutriColors.Secondary.copy(alpha = 0.7f),
                                         textAlign = TextAlign.Center,
@@ -520,30 +569,30 @@ fun StartupScreen(
                                                 horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
                                                 Text(
-                                                        text = "Développé par",
+                                                                                        text = translate(LocalizationKeys.Startup.DEVELOPED_BY),
                                                         style = MaterialTheme.typography.caption,
                                                         color = VetNutriColors.Secondary
                                                 )
                                                 Text(
-                                                        text = "S. Lefebvre",
+                                                                                        text = translate(LocalizationKeys.Startup.AUTHOR_NAME),
                                                         style = MaterialTheme.typography.h6,
                                                         fontWeight = FontWeight.Bold,
                                                         color = VetNutriColors.Primary
                                                 )
                                                 Text(
-                                                        text = "Dr Vétérinaire, PhD, HDR",
+                                                                                        text = translate(LocalizationKeys.Startup.AUTHOR_DETAILS),
                                                         style = MaterialTheme.typography.body2,
                                                         color = VetNutriColors.Secondary,
                                                         textAlign = TextAlign.Center
                                                 )
                                                 Text(
-                                                        text = "Maître de conférence en nutrition",
+                                                                                        text = translate(LocalizationKeys.Startup.AUTHOR_POSITION),
                                                         style = MaterialTheme.typography.body2,
                                                         color = VetNutriColors.Secondary,
                                                         textAlign = TextAlign.Center
                                                 )
                                                 Text(
-                                                        text = "VetAgro Sup",
+                                                                                        text = translate(LocalizationKeys.Startup.AUTHOR_INSTITUTE),
                                                         style = MaterialTheme.typography.body2,
                                                         fontWeight = FontWeight.Medium,
                                                         color = VetNutriColors.Primary,
@@ -566,12 +615,12 @@ fun StartupScreen(
                                                 horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
                                                 Text(
-                                                        text = "Remerciements",
+                                                                                        text = translate(LocalizationKeys.Startup.THANKS_TITLE),
                                                         style = MaterialTheme.typography.caption,
                                                         color = VetNutriColors.Secondary
                                                 )
                                                 Text(
-                                                        text = "À tous ceux qui ont contribué par leurs retours à la création de cet outil, et notamment aux étudiants trop nombreux pour être listés",
+                                                                                        text = translate(LocalizationKeys.Startup.THANKS_TEXT),
                                                         style = MaterialTheme.typography.body1,
                                                         fontWeight = FontWeight.Bold,
                                                         color = VetNutriColors.Secondary,
@@ -580,7 +629,7 @@ fun StartupScreen(
                                                
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
-                                                        text = "(Cliquez pour voir la liste)",
+                                                                                        text = translate(LocalizationKeys.Startup.THANKS_CLICK_LIST),
                                                         style = MaterialTheme.typography.caption,
                                                         color = VetNutriColors.Secondary.copy(alpha = 0.7f),
                                                         textAlign = TextAlign.Center
@@ -600,7 +649,7 @@ fun StartupScreen(
                                         Spacer(modifier = Modifier.height(16.dp))
 
                                         Text(
-                                                text = "Vérification de la base de données...",
+                                                                                                text = translate(LocalizationKeys.Database.CHECKING_DB),
                                                 style = MaterialTheme.typography.body1,
                                                 textAlign = TextAlign.Center
                                         )
@@ -622,7 +671,7 @@ fun StartupScreen(
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 
                                                 Text(
-                                                        text = "Vérification des mises à jour...",
+                                                                                                        text = translate(LocalizationKeys.Startup.CHECKING_UPDATES),
                                                         style = MaterialTheme.typography.body2,
                                                         color = VetNutriColors.Secondary,
                                                         textAlign = TextAlign.Center
@@ -650,7 +699,7 @@ fun StartupScreen(
                                                                 ) {
                                                                         Text(
                                                                                 text =
-                                                                                        "Versions des données",
+                                                                                                                                                                                 translate(LocalizationKeys.Startup.DATA_VERSIONS),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -676,7 +725,7 @@ fun StartupScreen(
                                                                         ) {
                                                                                 Text(
                                                                                         text =
-                                                                                                "Version actuelle : ${databaseVersionManager.formatVersion(currentJsonVersion!!)}",
+                                                                                                                                                                                                 translate(LocalizationKeys.Startup.VERSION_CURRENT, databaseVersionManager.formatVersion(currentJsonVersion!!)),
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -685,7 +734,7 @@ fun StartupScreen(
                                                                         } else {
                                                                                 Text(
                                                                                         text =
-                                                                                                "Aucune version importée",
+                                                                                                                                                                                                 translate(LocalizationKeys.Startup.VERSION_NONE),
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -707,7 +756,7 @@ fun StartupScreen(
                                                                         ) {
                                                                                 Text(
                                                                                         text =
-                                                                                                "Version intégrée : ${databaseVersionManager.formatVersion(embeddedJsonVersion!!)}",
+                                                                                                                                                                                                 translate(LocalizationKeys.Startup.VERSION_EMBEDDED, databaseVersionManager.formatVersion(embeddedJsonVersion!!)),
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -754,7 +803,7 @@ fun StartupScreen(
                                                                                         )
                                                                                         Text(
                                                                                                 text =
-                                                                                                        "Nouvelle version disponible",
+                                                                                                                                                                                                                 translate(LocalizationKeys.Startup.NEW_VERSION_AVAILABLE),
                                                                                                 style =
                                                                                                         MaterialTheme
                                                                                                                 .typography
@@ -789,7 +838,7 @@ fun StartupScreen(
                                                                 )
                                                                 Spacer(modifier = Modifier.width(16.dp))
                                                                 Text(
-                                                                        text = "Mise à jour en cours...",
+                                                                                                                                                 text = translate(LocalizationKeys.Startup.UPDATING_IN_PROGRESS),
                                                                         style = MaterialTheme.typography.body1,
                                                                         color = VetNutriColors.Primary,
                                                                         fontWeight = FontWeight.Medium
@@ -835,11 +884,7 @@ fun StartupScreen(
                                                                 )
                                                                 Text(
                                                                         text =
-                                                                                if (jsonUpdateAvailable
-                                                                                )
-                                                                                        "Mettre à jour les données"
-                                                                                else
-                                                                                        "Mettre à jour la base de données",
+                                                                                                                                                                if (jsonUpdateAvailable) translate(LocalizationKeys.Startup.UPDATE_DATA) else translate(LocalizationKeys.Startup.UPDATE_DB),
                                                                         fontSize = 16.sp
                                                                 )
                                                         }
@@ -871,7 +916,7 @@ fun StartupScreen(
                                                                                         )
                                                                 ) {
                                                                         Text(
-                                                                                if (isUpdatingDatabase) "Continuer en arrière-plan" else "Continuer sans mise à jour"
+                                                                                                                                                                 if (isUpdatingDatabase) translate(LocalizationKeys.Startup.CONTINUE_BG) else translate(LocalizationKeys.Startup.CONTINUE_NO_UPDATE)
                                                                         )
                                                                 }
 
@@ -918,7 +963,7 @@ fun StartupScreen(
                                                                                         )
                                                                         )
                                                                         Text(
-                                                                                "Restaurer une sauvegarde"
+                                                                                                                                                                 translate(LocalizationKeys.Startup.RESTORE_BACKUP)
                                                                         )
                                                                 }
                                                         }
@@ -955,7 +1000,7 @@ fun StartupScreen(
                                                                                         )
                                                                 ) {
                                                                         Text(
-                                                                                text = "Continuer",
+                                                                                                                                                                 text = translate(LocalizationKeys.Startup.CONTINUE),
                                                                                 fontSize = 16.sp
                                                                         )
                                                                 }
@@ -1426,8 +1471,8 @@ private fun DatabaseStatusCard(status: DatabaseStatus, modifier: Modifier = Modi
 
                                 Text(
                                         text =
-                                                if (status.needsUpdate) "Base de données incomplète"
-                                                else "Base de données prête",
+                                                                                                if (status.needsUpdate) translate(LocalizationKeys.Database.INCOMPLETE_TITLE)
+                                                else translate(LocalizationKeys.Database.COMPLETE_TITLE),
                                         style = MaterialTheme.typography.h6,
                                         fontWeight = FontWeight.Bold,
                                         color =
@@ -1444,7 +1489,7 @@ private fun DatabaseStatusCard(status: DatabaseStatus, modifier: Modifier = Modi
                                 horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                                 StatisticItem(
-                                        label = "Aliments",
+                                                                                 label = translate(LocalizationKeys.Database.STAT_FOODS),
                                         value = status.foodCount.toString(),
                                         color =
                                                 if (status.foodCount > 0) VetNutriColors.Primary
@@ -1452,7 +1497,7 @@ private fun DatabaseStatusCard(status: DatabaseStatus, modifier: Modifier = Modi
                                 )
 
                                 StatisticItem(
-                                        label = "Références",
+                                                                                 label = translate(LocalizationKeys.Database.STAT_REFERENCES),
                                         value = status.referenceCount.toString(),
                                         color =
                                                 if (status.referenceCount > 0)
@@ -1461,7 +1506,7 @@ private fun DatabaseStatusCard(status: DatabaseStatus, modifier: Modifier = Modi
                                 )
 
                                 StatisticItem(
-                                        label = "Conseils",
+                                                                                 label = translate(LocalizationKeys.Database.STAT_CONSEILS),
                                         value = status.conseilsCount.toString(),
                                         color = VetNutriColors.Primary
                                 )
@@ -1485,7 +1530,7 @@ private fun DatabaseStatusCard(status: DatabaseStatus, modifier: Modifier = Modi
 
                                 Text(
                                         text =
-                                                "Il est recommandé de mettre à jour la base de données pour avoir accès à toutes les fonctionnalités.",
+                                                                                                 translate(LocalizationKeys.Database.RECOMMENDED_UPDATE),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                                         textAlign = TextAlign.Center
@@ -1539,7 +1584,7 @@ private fun JsonUpdateDialog(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                        text = "Nouvelle version des données disponible",
+                                                                                text = translate(LocalizationKeys.Update.DATA_CONFIRM_TITLE),
                                         style = MaterialTheme.typography.h6
                                 )
                         }
@@ -1548,7 +1593,7 @@ private fun JsonUpdateDialog(
                         Column {
                                 Text(
                                         text =
-                                                "Une nouvelle version du fichier de données a été détectée dans l'application :",
+                                                                                                translate(LocalizationKeys.Update.DETECTION_MSG),
                                         style = MaterialTheme.typography.body1,
                                         modifier = Modifier.padding(bottom = 12.dp)
                                 )
@@ -1561,7 +1606,7 @@ private fun JsonUpdateDialog(
                                 ) {
                                         Column(modifier = Modifier.padding(12.dp)) {
                                                 Text(
-                                                        text = "Versions :",
+                                                                                                                text = translate(LocalizationKeys.Update.VERSIONS),
                                                         style = MaterialTheme.typography.subtitle2,
                                                         fontWeight = FontWeight.Bold
                                                 )
@@ -1573,14 +1618,14 @@ private fun JsonUpdateDialog(
                                                                 Arrangement.SpaceBetween
                                                 ) {
                                                         Text(
-                                                                text = "Actuelle :",
+                                                                                                                                text = translate(LocalizationKeys.Update.ACTUAL),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2
                                                         )
                                                         Text(
                                                                 text = currentJsonVersion
-                                                                                ?: "Aucune",
+                                                                                                                                                                ?: translate(LocalizationKeys.General.NONE),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,
@@ -1594,14 +1639,14 @@ private fun JsonUpdateDialog(
                                                                 Arrangement.SpaceBetween
                                                 ) {
                                                         Text(
-                                                                text = "Nouvelle :",
+                                                                                                                                text = translate(LocalizationKeys.Update.NEW),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,
                                                                 color = MaterialTheme.colors.primary
                                                         )
                                                         Text(
-                                                                text = newJsonVersion ?: "Inconnue",
+                                                                                                                                text = newJsonVersion ?: translate(LocalizationKeys.General.NONE),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,
@@ -1616,7 +1661,7 @@ private fun JsonUpdateDialog(
 
                                 Text(
                                         text =
-                                                "Cette mise à jour inclut les dernières données (aliments, références nutritionnelles, etc.) et améliore les fonctionnalités de l'application.",
+                                                                                                translate(LocalizationKeys.Update.INCLUDES_MSG),
                                         style = MaterialTheme.typography.body2
                                 )
 
@@ -1624,7 +1669,7 @@ private fun JsonUpdateDialog(
 
                                 Text(
                                         text =
-                                                "Voulez-vous installer cette mise à jour maintenant ?",
+                                                                                                translate(LocalizationKeys.Update.WANT_TO_INSTALL),
                                         style = MaterialTheme.typography.body2,
                                         fontWeight = FontWeight.Medium
                                 )
@@ -1660,19 +1705,13 @@ private fun UpdateConfirmationDialog(
         currentJsonVersion: String? = null,
         newJsonVersion: String? = null
 ) {
-        val title =
-                if (isJsonUpdate) "Mise à jour des données" else "Mise à jour de la base de données"
+                val title =
+                if (isJsonUpdate) translate(LocalizationKeys.Update.DATA_CONFIRM_TITLE) else translate(LocalizationKeys.Update.CONFIRM_TITLE)
         val message =
                 if (isJsonUpdate) {
-                        "Une nouvelle version des données est disponible :\n" +
-                                "• Version actuelle : ${currentJsonVersion ?: "Aucune"}\n" +
-                                "• Nouvelle version : ${newJsonVersion ?: "Inconnue"}\n\n" +
-                                "Cette action va importer la nouvelle version des données. Cela peut prendre quelques instants.\n\n" +
-                                "Voulez-vous continuer ?"
+                        translate(LocalizationKeys.Update.DATA_CONFIRM_MSG, currentJsonVersion ?: translate(LocalizationKeys.General.NONE), newJsonVersion ?: translate(LocalizationKeys.General.NONE))
                 } else {
-                        "Cette action va importer les données de base (aliments et références nutritionnelles) " +
-                                "depuis le fichier de ressources. Cela peut prendre quelques instants.\n\n" +
-                                "Voulez-vous continuer ?"
+                        translate(LocalizationKeys.Update.DB_CONFIRM_MSG)
                 }
 
         AlertDialog(
@@ -1686,9 +1725,9 @@ private fun UpdateConfirmationDialog(
                                         ButtonDefaults.buttonColors(
                                                 backgroundColor = VetNutriColors.Primary
                                         )
-                        ) { Text("Confirmer") }
+                        ) { Text(translate(LocalizationKeys.General.CONFIRM)) }
                 },
-                dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuler") } }
+                dismissButton = { OutlinedButton(onClick = onDismiss) { Text(translate(LocalizationKeys.General.CANCEL)) } }
         )
 }
 
@@ -1699,7 +1738,7 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
                 onDismissRequest = onDismiss,
                 title = {
                         Text(
-                                text = "Conditions Générales d'Utilisation",
+                                                                text = translate(LocalizationKeys.Terms.FULL_TITLE),
                                 style = MaterialTheme.typography.h6,
                                 fontWeight = FontWeight.Bold
                         )
@@ -1708,7 +1747,7 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
                         Column {
                                 Text(
                                         text =
-                                                "VetNutri MP - Gestionnaire de Nutrition Vétérinaire",
+                                                                                                translate(LocalizationKeys.Terms.SUBTITLE),
                                         style = MaterialTheme.typography.subtitle1,
                                         fontWeight = FontWeight.Medium,
                                         modifier = Modifier.padding(bottom = 8.dp)
@@ -1716,7 +1755,7 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
 
                                 Text(
                                         text =
-                                                "⚠️ IMPORTANT : Logiciel Gratuit - Pas de garantie de fonctionnement",
+                                                                                                translate(LocalizationKeys.Terms.WARNING),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.error,
                                         fontWeight = FontWeight.Bold,
@@ -1725,39 +1764,39 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
 
                                 Text(
                                         text =
-                                                "En utilisant ce logiciel, vous acceptez les conditions suivantes :",
+                                                                                                translate(LocalizationKeys.Terms.ACCEPT_HEADER),
                                         style = MaterialTheme.typography.body1,
                                         modifier = Modifier.padding(bottom = 16.dp)
                                 )
 
                                 Text(
                                         text =
-                                                "• Ce logiciel est destiné aux professionnels de santé vétérinaire",
+                                                                                                translate(LocalizationKeys.Terms.POINT_VETS),
                                         style = MaterialTheme.typography.body2,
                                         modifier = Modifier.padding(bottom = 4.dp)
                                 )
                                 Text(
                                         text =
-                                                "• Les calculs et recommandations sont fournis à titre informatif",
+                                                translate(LocalizationKeys.Terms.POINT_INFORMATIVE),
                                         style = MaterialTheme.typography.body2,
                                         modifier = Modifier.padding(bottom = 4.dp)
                                 )
                                 Text(
                                         text =
-                                                "• La responsabilité de l'utilisateur reste entière il doit vérifier les calculs et recommandations avant de les appliquer",
+                                                translate(LocalizationKeys.Terms.POINT_RESPONSIBILITY),
                                         style = MaterialTheme.typography.body2,
                                         modifier = Modifier.padding(bottom = 4.dp)
                                 )
                                 Text(
                                         text =
-                                                "• Les données saisies restent confidentielles et locales",
+                                                translate(LocalizationKeys.Terms.POINT_CONFIDENTIAL),
                                         style = MaterialTheme.typography.body2,
                                         modifier = Modifier.padding(bottom = 16.dp)
                                 )
-
+ 
                                 Text(
                                         text =
-                                                "Développé par S. Lefebvre, Dr Vétérinaire, PhD, HDR, Maître de conférence en nutrition à VetAgro Sup.",
+                                                translate(LocalizationKeys.Terms.AUTHOR_FOOTER),
                                         style = MaterialTheme.typography.caption,
                                         color = VetNutriColors.Secondary,
                                         textAlign = TextAlign.Center
@@ -1771,9 +1810,9 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
                                         ButtonDefaults.buttonColors(
                                                 backgroundColor = VetNutriColors.Primary
                                         )
-                        ) { Text("J'accepte les conditions") }
+                        ) { Text(translate(LocalizationKeys.Terms.ACCEPT_BUTTON)) }
                 },
-                dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Fermer") } }  
+                dismissButton = { OutlinedButton(onClick = onDismiss) { Text(translate(LocalizationKeys.General.CLOSE)) } }  
         )
 }
 
@@ -1791,7 +1830,7 @@ private fun TestersDialog(onDismiss: () -> Unit) {
                 onDismissRequest = onDismiss,
                 title = {
                         Text(
-                                text = "Testeurs",
+                                                                text = translate(LocalizationKeys.Testers.TITLE),
                                 style = MaterialTheme.typography.h6,
                                 fontWeight = FontWeight.Bold
                         )
@@ -1803,7 +1842,7 @@ private fun TestersDialog(onDismiss: () -> Unit) {
                                         .verticalScroll(rememberScrollState())
                         ) {
                                 Text(
-                                        text = "Un grand merci aux testeurs pour leur aide précieuse :",
+                                                                                text = translate(LocalizationKeys.Testers.THANKS_MESSAGE),
                                         style = MaterialTheme.typography.body2,
                                         modifier = Modifier.padding(bottom = 16.dp)
                                 )
@@ -1824,7 +1863,7 @@ private fun TestersDialog(onDismiss: () -> Unit) {
                                         backgroundColor = VetNutriColors.Primary
                                 )
                         ) {
-                                Text("Fermer")
+                                                                Text(translate(LocalizationKeys.General.CLOSE))
                         }
                 }
         )

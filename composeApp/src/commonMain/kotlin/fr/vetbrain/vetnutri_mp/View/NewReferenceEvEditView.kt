@@ -62,6 +62,9 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
 import kotlinx.coroutines.delay
@@ -117,15 +120,18 @@ fun NewReferenceEvEditView(
         }
 
         // Définir les onglets
-        val tabs =
-                listOf("Informations", "Nutriments", "Équations", "Complémentaires", "Coefficients")
+                        val tabs = listOf(
+                                translate(LocalizationKeys.NewReference.TAB_INFO),
+                                translate(LocalizationKeys.NewReference.TAB_NUTRIENTS),
+                                translate(LocalizationKeys.NewReference.TAB_EQUATIONS),
+                                translate(LocalizationKeys.NewReference.TAB_COMPLEMENTARY),
+                                translate(LocalizationKeys.NewReference.TAB_COEFFICIENTS)
+                        )
 
         Scaffold(
                 topBar = {
                         TopBarSimple(
-                                title =
-                                        if (isEditMode) "Modifier la référence"
-                                        else "Nouvelle référence",
+                                title = if (isEditMode) translate(LocalizationKeys.NewReference.TITLE_EDIT) else translate(LocalizationKeys.NewReference.TITLE_NEW),
                                 onNavigateBack = {
                                         // Sauvegarde automatique avant navigation
                                         if (viewModel.hasUnsavedChanges()) {
@@ -202,7 +208,7 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                 OutlinedTextField(
                         value = currentReference.nom,
                         onValueChange = { viewModel.updateReferenceProperty("nom", it) },
-                        label = { Text("Nom de la référence") },
+                        label = { Text(translate(LocalizationKeys.NewReference.FIELD_NAME)) },
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                 )
 
@@ -210,14 +216,14 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                 OutlinedTextField(
                         value = currentReference.description,
                         onValueChange = { viewModel.updateReferenceProperty("description", it) },
-                        label = { Text("Description") },
+                        label = { Text(translate(LocalizationKeys.NewReference.FIELD_DESCRIPTION)) },
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                         minLines = 3
                 )
 
                 // Sélection de l'espèce
                 Text(
-                        text = "Espèce",
+                        text = translate(LocalizationKeys.NewReference.FIELD_SPECIES),
                         style = MaterialTheme.typography.subtitle1,
                         modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                 )
@@ -229,7 +235,7 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                         OutlinedButton(
                                 onClick = { especeExpanded = true },
                                 modifier = Modifier.fillMaxWidth()
-                        ) { Text(currentReference.espece.label) }
+                        ) { Text(currentReference.espece.translateEnum()) }
 
                         DropdownMenu(
                                 expanded = especeExpanded,
@@ -245,14 +251,14 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                                                         )
                                                         especeExpanded = false
                                                 }
-                                        ) { Text(espece.label) }
+                                        ) { Text(espece.translateEnum()) }
                                 }
                         }
                 }
 
                 // Sélection du stade physiologique
                 Text(
-                        text = "Stade physiologique",
+                        text = translate(LocalizationKeys.NewReference.FIELD_PHYSIO_STAGE),
                         style = MaterialTheme.typography.subtitle1,
                         modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                 )
@@ -264,7 +270,7 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                         OutlinedButton(
                                 onClick = { stadePhysioExpanded = true },
                                 modifier = Modifier.fillMaxWidth()
-                        ) { Text(currentReference.stadePhysio.label) }
+                        ) { Text(currentReference.stadePhysio.translateEnum()) }
 
                         DropdownMenu(
                                 expanded = stadePhysioExpanded,
@@ -280,7 +286,7 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                                                         )
                                                         stadePhysioExpanded = false
                                                 }
-                                        ) { Text(stade.label) }
+                                        ) { Text(stade.translateEnum()) }
                                 }
                         }
                 }
@@ -297,7 +303,7 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                                 }
                         )
                         Text(
-                                text = "Est une référence complémentaire",
+                                text = translate(LocalizationKeys.NewReference.FIELD_IS_COMPLEMENTARY),
                                 modifier = Modifier.padding(start = 8.dp)
                         )
                 }
@@ -309,7 +315,7 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                                 onValueChange = {
                                         viewModel.updateReferenceProperty("nomMaladie", it)
                                 },
-                                label = { Text("Nom du besoin complémentaire") },
+                                label = { Text(translate(LocalizationKeys.NewReference.FIELD_COMPLEMENTARY_NEED)) },
                                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                         )
                 }
@@ -318,13 +324,13 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                 OutlinedTextField(
                         value = currentReference.nomEnergie,
                         onValueChange = { viewModel.updateReferenceProperty("nomEnergie", it) },
-                        label = { Text("Nom de l'énergie") },
+                        label = { Text(translate(LocalizationKeys.NewReference.FIELD_ENERGY_NAME)) },
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                 )
 
                 // Slider pour la consistance
                 Text(
-                        text = "Consistance: ${currentReference.consistent}",
+                        text = translate(LocalizationKeys.NewReference.FIELD_CONSISTENCY, currentReference.consistent.toString()),
                         style = MaterialTheme.typography.subtitle1,
                         modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                 )
@@ -343,7 +349,7 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                 Button(
                         onClick = { viewModel.saveReference() },
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-                ) { Text("Enregistrer") }
+                ) { Text(translate(LocalizationKeys.General.SAVE)) }
         }
 }
 
@@ -376,14 +382,14 @@ fun ReferenceEvNutrientsTab(viewModel: NewReferenceEvViewModel, currentReference
                                 // Liste des types de nutriments disponibles
                                 val nutrientTypes =
                                         listOf(
-                                                "Macronutriments",
-                                                "Minéraux principaux",
-                                                "Oligo-éléments",
-                                                "Vitamines",
-                                                "Lipides",
-                                                "Acides aminés",
-                                                "Autres nutriments",
-                                                "Analyses calculées"
+                                                translate(LocalizationKeys.NewReference.NUTRIENT_CATEGORY_MACRO),
+                                                translate(LocalizationKeys.NewReference.NUTRIENT_CATEGORY_MINERALS),
+                                                translate(LocalizationKeys.NewReference.NUTRIENT_CATEGORY_OLIGO),
+                                                translate(LocalizationKeys.NewReference.NUTRIENT_CATEGORY_VITAMINS),
+                                                translate(LocalizationKeys.NewReference.NUTRIENT_CATEGORY_LIPIDS),
+                                                translate(LocalizationKeys.NewReference.NUTRIENT_CATEGORY_AA),
+                                                translate(LocalizationKeys.NewReference.NUTRIENT_CATEGORY_OTHERS),
+                                                translate(LocalizationKeys.NewReference.NUTRIENT_CATEGORY_ANALYSIS)
                                         )
 
                                 TabRow(
@@ -578,16 +584,15 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                 backgroundColor = MaterialTheme.colors.secondary.copy(alpha = 0.1f)
                         ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(
-                                                text = "Référence pour maladie",
-                                                style = MaterialTheme.typography.subtitle1,
+                                         Text(
+                                                text = translate(LocalizationKeys.NewReference.MALADIE_WARNING_TITLE),
+                                                style = MaterialTheme.typography.h6,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colors.secondary
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                                text =
-                                                        "Les équations d'énergie, de densité énergétique et de poids métabolique ne sont pas applicables pour les références liées à une maladie.",
+                                                text = translate(LocalizationKeys.NewReference.MALADIE_WARNING_DESC),
                                                 style = MaterialTheme.typography.body2,
                                                 color =
                                                         MaterialTheme.colors.onSurface.copy(
@@ -606,8 +611,8 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
 
                         Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(
-                                                text = "Équation ENERCOMP (besoin complémentaire)",
+                                         Text(
+                                                text = translate(LocalizationKeys.NewReference.EQ_ENERCOMP_TITLE),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold
                                         )
@@ -626,9 +631,9 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                         onClick = { expanded = true },
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
-                                                        Text(
+                                                         Text(
                                                                 selectedEnercomp?.name
-                                                                        ?: "Sélectionner une équation"
+                                                                        ?: translate(LocalizationKeys.NewReference.SELECT_EQUATION)
                                                         )
                                                 }
                                                 DropdownMenu(
@@ -646,7 +651,7 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                                         }
                                                                         expanded = false
                                                                 }
-                                                        ) { Text("Aucune") }
+                                                         ) { Text(translate(LocalizationKeys.NewReference.EQ_NONE)) }
 
                                                         enercompEquations.forEach { eq ->
                                                                 DropdownMenuItem(
@@ -676,8 +681,8 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                         // Équation Poids corporel (BW)
                         Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(
-                                                text = "Équation pour le Poids métabolique",
+                                         Text(
+                                                text = translate(LocalizationKeys.NewReference.EQ_METABOLIC_WEIGHT),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold
                                         )
@@ -688,9 +693,9 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                         onClick = { expandedBW = true },
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
-                                                        Text(
+                                                         Text(
                                                                 selectedEquationBW?.name
-                                                                        ?: "Sélectionner une équation"
+                                                                        ?: translate(LocalizationKeys.NewReference.SELECT_EQUATION)
                                                         )
                                                 }
 
@@ -733,9 +738,8 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                         // Équation Besoin Énergétique de Base (BEE)
                         Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(
-                                                text =
-                                                        "Équation pour le Besoin Énergétique de Base",
+                                         Text(
+                                                text = translate(LocalizationKeys.NewReference.EQ_BEE),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold
                                         )
@@ -746,9 +750,9 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                         onClick = { expandedBEE = true },
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
-                                                        Text(
+                                                         Text(
                                                                 selectedEquationBEE?.name
-                                                                        ?: "Sélectionner une équation"
+                                                                        ?: translate(LocalizationKeys.NewReference.SELECT_EQUATION)
                                                         )
                                                 }
 
@@ -791,9 +795,8 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                         // Équation pour l'Énergie Digestible des Aliments Composés (DEcom)
                         Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(
-                                                text =
-                                                        "Équation pour l'Énergie Digestible des Aliments Composés",
+                                         Text(
+                                                text = translate(LocalizationKeys.NewReference.EQ_DECOM),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold
                                         )
@@ -804,9 +807,9 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                         onClick = { expandedDEcom = true },
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
-                                                        Text(
+                                                         Text(
                                                                 selectedEquationDEcom?.name
-                                                                        ?: "Sélectionner une équation"
+                                                                        ?: translate(LocalizationKeys.NewReference.SELECT_EQUATION)
                                                         )
                                                 }
 
@@ -853,9 +856,8 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                         // Équation pour l'Énergie Digestible des Aliments Bruts (DEraw)
                         Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(
-                                                text =
-                                                        "Équation pour l'Énergie Digestible des Aliments Bruts",
+                                         Text(
+                                                text = translate(LocalizationKeys.NewReference.EQ_DERAW),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold
                                         )
@@ -866,9 +868,9 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                         onClick = { expandedDEraw = true },
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
-                                                        Text(
+                                                         Text(
                                                                 selectedEquationDEraw?.name
-                                                                        ?: "Sélectionner une équation"
+                                                                        ?: translate(LocalizationKeys.NewReference.SELECT_EQUATION)
                                                         )
                                                 }
 
@@ -943,15 +945,14 @@ fun ReferenceEvComplementaryTab(viewModel: NewReferenceEvViewModel) {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
                 Text(
-                        text = "Équations de nutriments complémentaires",
+                        text = translate(LocalizationKeys.NewReference.COMPLEMENTARY_EQ_TITLE),
                         style = MaterialTheme.typography.h6,
                         fontWeight = FontWeight.Bold
                 )
 
                 if (complementary.isEmpty()) {
                         Text(
-                                text =
-                                        "Aucune équation complémentaire disponible pour ${currentReference.espece.label}.",
+                                text = translate(LocalizationKeys.NewReference.COMPLEMENTARY_EQ_NONE, currentReference.espece.translateEnum()),
                                 style = MaterialTheme.typography.body2,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
@@ -1034,8 +1035,18 @@ fun ReferenceEvComplementaryTab(viewModel: NewReferenceEvViewModel) {
                                                                         )
                                                         ) {
                                                                 Text(
-                                                                        if (isSelected) "Retirer"
-                                                                        else "Associer"
+                                                                        if (isSelected)
+                                                                                translate(
+                                                                                        LocalizationKeys
+                                                                                                .NewReference
+                                                                                                .REMOVE_ASSOCIATION
+                                                                                )
+                                                                        else
+                                                                                translate(
+                                                                                        LocalizationKeys
+                                                                                                .NewReference
+                                                                                                .ADD_ASSOCIATION
+                                                                                )
                                                                 )
                                                         }
                                                 }
@@ -1066,7 +1077,10 @@ fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentRefere
         var editingCoefficientIndex by remember { mutableStateOf(-1) }
 
         // Définir les groupes de coefficients
-        val groupNames = listOf("Groupe K1", "Groupe K2", "Groupe K3", "Groupe K4", "Groupe K5")
+        val groupNames =
+                (1..5).map { index ->
+                        translate(LocalizationKeys.NewReference.COEFF_GROUP_PREFIX, "K$index")
+                }
 
         Column(
                 modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -1082,7 +1096,12 @@ fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentRefere
                         ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                         Text(
-                                                text = "Référence pour maladie",
+                                                text =
+                                                        translate(
+                                                                LocalizationKeys
+                                                                        .NewReference
+                                                                        .MALADIE_WARNING_TITLE
+                                                        ),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colors.secondary
@@ -1090,7 +1109,11 @@ fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentRefere
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
                                                 text =
-                                                        "Les coefficients ne sont pas applicables pour les références liées à une maladie.",
+                                                        translate(
+                                                                LocalizationKeys
+                                                                        .NewReference
+                                                                        .MALADIE_COEFF_WARNING
+                                                        ),
                                                 style = MaterialTheme.typography.body2,
                                                 color =
                                                         MaterialTheme.colors.onSurface.copy(
@@ -1978,7 +2001,7 @@ fun NutrientEditDialog(
 
                                         // Optimum Max
                                         NutrientLevelRow(
-                                                label = "Opt Max",
+                                                label = translate(LocalizationKeys.RefLevels.OPTIMAX),
                                                 value = optMaxValue,
                                                 onValueChange = { optMaxValue = it },
                                                 selectedUnitEnum = selectedUnitEnumOptMax,
@@ -2098,9 +2121,9 @@ fun NutrientEditDialog(
 
                                         onDismiss()
                                 }
-                        ) { Text("Sauvegarder") }
+                        ) { Text(translate(LocalizationKeys.General.SAVE)) }
                 },
-                dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } }
+                dismissButton = { TextButton(onClick = onDismiss) { Text(translate(LocalizationKeys.General.CANCEL)) } }
         )
 }
 
@@ -2218,7 +2241,7 @@ private fun NutrientLevelRow(
                                         Text(
                                                 if (selectedBiblio.uuid.isNotEmpty())
                                                         "${selectedBiblio.firstAuthor} (${selectedBiblio.year})"
-                                                else "Biblio",
+                                                else translate(LocalizationKeys.NewReference.BIBLIO_PLACEHOLDER),
                                                 style = MaterialTheme.typography.caption,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
@@ -2280,7 +2303,7 @@ fun CoefficientGroupView(
                                 OutlinedTextField(
                                         value = editingGroupName,
                                         onValueChange = { editingGroupName = it },
-                                        label = { Text("Nom du groupe") },
+                                        label = { Text(translate(LocalizationKeys.NewReference.GROUP_NAME_LABEL)) },
                                         modifier = Modifier.weight(1f),
                                         keyboardOptions =
                                                 KeyboardOptions(imeAction = ImeAction.Done),
@@ -2304,7 +2327,7 @@ fun CoefficientGroupView(
                                                 )
                                                 isEditingGroupName = false
                                         }
-                                ) { Text("Valider") }
+                                ) { Text(translate(LocalizationKeys.General.OK)) }
                         } else {
                                 val groupName =
                                         groupNames.getOrElse(groupIndex) {
@@ -2324,7 +2347,7 @@ fun CoefficientGroupView(
                                                 editingGroupName = groupName
                                                 isEditingGroupName = true
                                         }
-                                ) { Icon(Icons.Default.Edit, contentDescription = "Éditer le nom") }
+                                ) { Icon(Icons.Default.Edit, contentDescription = translate(LocalizationKeys.NewReference.EDIT_GROUP_NAME)) }
                         }
                 }
 
@@ -2332,7 +2355,7 @@ fun CoefficientGroupView(
                 OutlinedButton(onClick = onAddCoefficient, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Ajouter un coefficient")
+                        Text(translate(LocalizationKeys.NewReference.ADD_COEF))
                 }
 
                 // Liste des coefficients
@@ -2375,12 +2398,12 @@ fun CoefficientCard(
                         // Informations du coefficient
                         Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                        text = coefficient.description ?: "Sans nom",
+                                        text = coefficient.description ?: translate(LocalizationKeys.NewReference.COEF_UNNAMED),
                                         style = MaterialTheme.typography.subtitle2,
                                         fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                        text = "Coefficient: ${coefficient.coef ?: 1.0}",
+                                        text = translate(LocalizationKeys.NewReference.COEF_VALUE_LABEL, (coefficient.coef ?: 1.0).toString()),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -2441,7 +2464,7 @@ fun AddCoefficientDialog(onDismiss: () -> Unit, onConfirm: (String, Double) -> U
 
         AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text(text = "Ajouter un coefficient") },
+                title = { Text(text = translate(LocalizationKeys.NewReference.ADD_COEF_TITLE)) },
                 text = {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedTextField(
@@ -2450,7 +2473,7 @@ fun AddCoefficientDialog(onDismiss: () -> Unit, onConfirm: (String, Double) -> U
                                                 description = it
                                                 showError = false
                                         },
-                                        label = { Text("Description") },
+                                        label = { Text(translate(LocalizationKeys.NewReference.FIELD_DESCRIPTION)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         isError = showError && description.isBlank()
                                 )
@@ -2569,7 +2592,7 @@ fun EditCoefficientDialog(
                                                         description = it
                                                         showError = false
                                                 },
-                                                label = { Text("Description") },
+                                                label = { Text(translate(LocalizationKeys.NewReference.FIELD_DESCRIPTION)) },
                                                 modifier = Modifier.fillMaxWidth(),
                                                 isError = showError && description.isBlank()
                                         )

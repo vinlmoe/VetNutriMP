@@ -14,6 +14,8 @@ import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
@@ -889,7 +891,17 @@ class AnimalDetailViewModel(
                         date = date,
                         idAnim = _animal.value?.uuid ?: ""
                 )
+        val currentRation =
+                Ration(
+                        idConsult = newConsultation.uuid,
+                        name = translate(RationKeys.CURRENT_NAME),
+                        actual = true,
+                        number = 1,
+                        alimentMutableList = mutableListOf()
+                )
+        newConsultation.rations.add(currentRation)
         _selectedConsultation.value = newConsultation
+        selectRation(currentRation)
     }
 
     /**
