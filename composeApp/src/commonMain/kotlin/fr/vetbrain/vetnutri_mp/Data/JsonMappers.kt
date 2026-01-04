@@ -356,7 +356,8 @@ fun ConsultationEv.toJson(): ConsultationEvJson {
             k5value = this.k5Value ?: 1.0,
             rationList = this.rations.associateBy({ it.uuid }, { it.toJson() }),
             diseaseRef = listOf(), // Non présent dans ConsultationEv
-            svp = this.suppVarp.map { it.toJson() }
+            svp = this.suppVarp.map { it.toJson() },
+            keywords = this.keywordIds
     )
 }
 
@@ -380,7 +381,8 @@ fun ConsultationEvJson.toData(): ConsultationEv {
             k4Value = this.k4value,
             k5Value = this.k5value,
             suppVarp = this.svp.map { it.toData() }.toMutableList(),
-            rations = this.rationList.values.map { it.toData() }.toMutableList()
+            rations = this.rationList.values.map { it.toData() }.toMutableList(),
+            keywordIds = this.keywords.toMutableList()
     )
 }
 

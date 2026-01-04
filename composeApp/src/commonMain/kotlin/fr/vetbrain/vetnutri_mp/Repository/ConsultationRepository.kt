@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.DataBase.ConsultationDao
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toData
@@ -15,6 +16,8 @@ interface ConsultationRepository {
     suspend fun getConsultationById(id: String): ConsultationEv?
     suspend fun deleteConsultation(consultation: ConsultationEv)
     suspend fun applyRecipeToRation(recipe: Ration, rationId: String)
+    suspend fun getAllKeywords(): List<ConsultationKeyword>
+    suspend fun saveKeyword(keyword: ConsultationKeyword)
 }
 
 class DatabaseConsultationRepository(
@@ -212,6 +215,18 @@ class DatabaseConsultationRepository(
             // Puis supprimer la consultation elle-même
             val entity = consultation.toEntity()
             consultationDao.delete(entity)
+        }
+    }
+
+    override suspend fun getAllKeywords(): List<ConsultationKeyword> {
+        return withContext(AppDispatchers.IO) {
+            consultationDao.getAllConsultationKeywords().map { it.toData() }
+        }
+    }
+
+    override suspend fun saveKeyword(keyword: ConsultationKeyword) {
+        withContext(AppDispatchers.IO) {
+            consultationDao.insertConsultationKeyword(keyword.toEntity())
         }
     }
 }

@@ -83,7 +83,8 @@ data class ConsultationEvJson(
         val previousRation: RationJson? = null,
         val ky: Double = 0.0,
         val newBE: Double = 0.0,
-        val newRation: List<RationJson> = listOf()
+        val newRation: List<RationJson> = listOf(),
+        val keywords: List<String> = listOf()
 )
 
 /** Structure JSON pour BiblioRef */

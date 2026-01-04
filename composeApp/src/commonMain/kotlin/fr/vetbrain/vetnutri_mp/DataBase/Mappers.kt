@@ -102,6 +102,7 @@ object Mappers {
                                 // Nouveaux champs pour les références nutritionnelles
                                 referenceGeneraleId = this.referenceGeneraleId,
                                 referencesMaladiesJson = this.referencesMaladies.joinToString(","),
+                                keywordsJson = this.keywordIds.joinToString(","),
                                 coefficientAjustement = this.coefficientAjustement
                         )
                         .apply {
@@ -174,7 +175,24 @@ object Mappers {
                                 } else {
                                         mutableListOf()
                                 },
+                        keywordIds =
+                                if (!this.keywordsJson.isNullOrBlank()) {
+                                        this.keywordsJson.split(",").toMutableList()
+                                } else {
+                                        mutableListOf()
+                                },
                         coefficientAjustement = this.coefficientAjustement
+                )
+        }
+
+        fun fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword.toEntity(): ConsultationKeywordEntity {
+                return ConsultationKeywordEntity(uuid = this.uuid, label = this.label)
+        }
+
+        fun ConsultationKeywordEntity.toData(): fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword {
+                return fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword(
+                        uuid = this.uuid,
+                        label = this.label
                 )
         }
 
