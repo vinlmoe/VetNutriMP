@@ -8,6 +8,7 @@ import fr.vetbrain.vetnutri_mp.Data.AnalyseResultat
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ComparaisonNutriment
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
@@ -195,6 +196,9 @@ class AnimalDetailViewModel(
 
     private val _isLoadingReferences = MutableStateFlow(false)
     val isLoadingReferences: StateFlow<Boolean> = _isLoadingReferences.asStateFlow()
+
+    private val _availableKeywords = MutableStateFlow<List<ConsultationKeyword>>(emptyList())
+    val availableKeywords: StateFlow<List<ConsultationKeyword>> = _availableKeywords.asStateFlow()
 
     // StateFlow pour gérer l'affichage de la vue plein écran de consultation
     private val _showFullScreenEdit = MutableStateFlow(false)
@@ -1231,6 +1235,35 @@ class AnimalDetailViewModel(
                 _availableReferences.value = emptyList()
             } finally {
                 _isLoadingReferences.value = false
+            }
+        }
+    }
+
+    fun chargerMotsClesConsultation() {
+        viewModelScope.launch {
+            try {
+                _availableKeywords.value = consultationRepository.getAllKeywords()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _availableKeywords.value = emptyList()
+            }
+        }
+    }
+
+    fun ajouterMotCleConsultation(keyword: ConsultationKeyword) {
+        viewModelScope.launch {
+            try {
+                val existing =
+                        _availableKeywords.value.firstOrNull {
+                            it.label.equals(keyword.label, ignoreCase = true)
+                        }
+                if (existing != null) {
+                    return@launch
+                }
+                consultationRepository.saveKeyword(keyword)
+                _availableKeywords.value = consultationRepository.getAllKeywords()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

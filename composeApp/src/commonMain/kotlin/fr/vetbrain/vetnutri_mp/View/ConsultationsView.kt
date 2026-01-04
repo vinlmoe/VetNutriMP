@@ -53,6 +53,7 @@ fun ConsultationsView(
     // Affichage conditionnel : vue plein écran ou vue normale
     if (showFullScreenEdit) {
         val availableReferences by viewModel.availableReferences.collectAsState()
+        val availableKeywords by viewModel.availableKeywords.collectAsState()
         var showNoReferenceDialog by remember { mutableStateOf(false) }
 
         ConsultationFullScreenEditView(
@@ -60,6 +61,7 @@ fun ConsultationsView(
                 animalName = animal?.nom ?: "",
                 animalEspece = animal?.getEspece(),
                 availableReferences = availableReferences,
+                availableKeywords = availableKeywords,
                 onBackPressed = { consultation -> viewModel.saveFromFullScreen(consultation) },
                 onCancel = {
                     // Annuler la création si la consultation venait d'être créée (uuid vide)
@@ -68,7 +70,9 @@ fun ConsultationsView(
                     }
                     viewModel.closeFullScreenEdit()
                 },
-                onLoadReferences = { viewModel.chargerReferencesDisponibles() }
+                onLoadReferences = { viewModel.chargerReferencesDisponibles() },
+                onLoadKeywords = { viewModel.chargerMotsClesConsultation() },
+                onCreateKeyword = { keyword -> viewModel.ajouterMotCleConsultation(keyword) }
         )
 
         // Dialog uniquement après clic sur Valider: on le pilote ici via la sélection

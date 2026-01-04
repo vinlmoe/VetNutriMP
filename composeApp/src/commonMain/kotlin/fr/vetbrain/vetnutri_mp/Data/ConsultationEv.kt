@@ -41,6 +41,7 @@ data class ConsultationEv(
         var rations: MutableList<Ration> = mutableListOf(),
         var referenceGeneraleId: String? = null,
         var referencesMaladies: MutableList<String> = mutableListOf(),
+        var keywordIds: MutableList<String> = mutableListOf(),
         var coefficientAjustement: Double = 1.0
 ) {
 
@@ -92,5 +93,19 @@ data class ConsultationEv(
                 referenceGeneraleId?.let { toutesReferences.add(it) }
                 toutesReferences.addAll(referencesMaladies)
                 return toutesReferences
+        }
+
+        fun ajouterMotCle(keywordId: String) {
+                if (!keywordIds.contains(keywordId)) {
+                        keywordIds.add(keywordId)
+                }
+        }
+
+        fun supprimerMotCle(keywordId: String) {
+                keywordIds.remove(keywordId)
+        }
+
+        fun contientMotCle(keywordId: String): Boolean {
+                return keywordIds.contains(keywordId)
         }
 }

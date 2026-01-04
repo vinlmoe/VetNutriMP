@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Utils
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Utils.RaceCodeMapper
 import kotlin.collections.mutableListOf
 import kotlin.collections.mutableMapOf
 import kotlin.collections.set
@@ -1065,6 +1066,21 @@ object ImportUtils {
                             } catch (e: Exception) {
                                 result["espece"] = JsonPrimitive("1") // Par défaut CHIEN (ID 1)
                             }
+                        }
+                    }
+                }
+
+                if (result.containsKey("race")) {
+                    val raceValue = result["race"]
+                    val especeValue = result["espece"]
+                    if (raceValue is JsonPrimitive && especeValue is JsonPrimitive) {
+                        val mapped =
+                                RaceCodeMapper.resolveRaceCode(
+                                        especeValue.content,
+                                        raceValue.content
+                                )
+                        if (mapped != null) {
+                            result["race"] = JsonPrimitive(mapped)
                         }
                     }
                 }

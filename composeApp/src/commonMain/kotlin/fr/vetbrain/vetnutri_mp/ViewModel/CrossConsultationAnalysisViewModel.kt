@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.CrossConsultationAnalysis
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
@@ -46,7 +49,8 @@ class CrossConsultationAnalysisViewModel(
             val totalRationQuantity: Double,
             val rations: List<RationSummary>,
             val espece: Espece,
-            val rawDate: LocalDate?
+            val rawDate: LocalDate?,
+            val keywordIds: List<String>
     )
 
     data class RationSummary(
@@ -84,17 +88,21 @@ class CrossConsultationAnalysisViewModel(
     private val _items = MutableStateFlow<List<ConsultationItem>>(emptyList())
     private val _searchQuery = MutableStateFlow("")
     private val _speciesFilter = MutableStateFlow<Espece?>(null)
+    private val _keywordFilter = MutableStateFlow<Set<String>>(emptySet())
     private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
     private val _isLoading = MutableStateFlow(false)
+    private val _availableKeywords = MutableStateFlow<List<ConsultationKeyword>>(emptyList())
     private val rationAnalyzer = RationAnalyzer()
 
     val isLoading: StateFlow<Boolean> = _isLoading
     val searchQuery: StateFlow<String> = _searchQuery
     val speciesFilter: StateFlow<Espece?> = _speciesFilter
+    val keywordFilter: StateFlow<Set<String>> = _keywordFilter
     val selectedIds: StateFlow<Set<String>> = _selectedIds
+    val availableKeywords: StateFlow<List<ConsultationKeyword>> = _availableKeywords
 
     val consultations: StateFlow<List<ConsultationItem>> =
-            combine(_items, _searchQuery, _speciesFilter) { items, query, specie ->
+            combine(_items, _searchQuery, _speciesFilter, _keywordFilter) { items, query, specie, keywords ->
                 val q = query.trim().lowercase()
                 items.filter { item ->
                     val matchText =
@@ -104,7 +112,9 @@ class CrossConsultationAnalysisViewModel(
                                     item.objective.lowercase().contains(q) ||
                                     (item.referenceLabel?.lowercase()?.contains(q) == true)
                     val matchSpecies = specie == null || item.espece == specie
-                    matchText && matchSpecies
+                    val matchKeywords =
+                            keywords.isEmpty() || item.keywordIds.any { keywords.contains(it) }
+                    matchText && matchSpecies && matchKeywords
                 }
             }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -130,6 +140,19 @@ class CrossConsultationAnalysisViewModel(
 
     fun setSpeciesFilter(espece: Espece?) {
         _speciesFilter.value = espece
+    }
+
+    fun toggleKeywordFilter(keywordId: String) {
+        _keywordFilter.value =
+                if (_keywordFilter.value.contains(keywordId)) {
+                    _keywordFilter.value - keywordId
+                } else {
+                    _keywordFilter.value + keywordId
+                }
+    }
+
+    fun clearKeywordFilter() {
+        _keywordFilter.value = emptySet()
     }
 
     fun toggleSelection(id: String) {
@@ -174,6 +197,7 @@ class CrossConsultationAnalysisViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             try {
+                _availableKeywords.value = consultationRepository.getAllKeywords()
                 val animals: List<AnimalEv> = animalRepository.getAllAnimals()
                 val items =
                         animals.flatMap { animal ->
@@ -204,7 +228,7 @@ class CrossConsultationAnalysisViewModel(
                     consultationId = item.consultationId,
                     animalName = item.animalName,
                     referenceLabel = item.referenceLabel,
-                    nutrientLabel = "Énergie (placeholder)",
+                    nutrientLabel = CrossConsultationAnalysis.ENERGY_PLACEHOLDER.translate(),
                     value = item.rationCount.toDouble() // placeholder pour démonstration
             )
         }
@@ -223,7 +247,9 @@ class CrossConsultationAnalysisViewModel(
                     referenceEvRepository.getReferenceEvById(it)
                 }
         val beeKcal = computeBeeKcal(consultation, referenceEv)
-        val dateLabel = consultation.date?.toString() ?: "Date inconnue"
+        val dateLabel =
+                consultation.date?.toString()
+                        ?: CrossConsultationAnalysis.DATE_UNKNOWN.translate()
         val rationSummaries =
                 consultation.rations.map { ration ->
                     val analyse = rationAnalyzer.analyserRation(ration, consultation)
@@ -247,7 +273,10 @@ class CrossConsultationAnalysisViewModel(
 
                     RationSummary(
                             rationId = ration.uuid,
-                            name = ration.name.ifBlank { "Ration" },
+                            name =
+                                    ration.name.ifBlank {
+                                        CrossConsultationAnalysis.RATION_FALLBACK.translate()
+                                    },
                             actual = ration.actual,
                             quantity = ration.getQuantiteTotale(),
                             energyDensity = energyDensity,
@@ -266,8 +295,14 @@ class CrossConsultationAnalysisViewModel(
         return ConsultationItem(
                 consultationId = consultation.uuid,
                 animalId = animal.uuid,
-                animalName = animal.nom.ifBlank { "Animal sans nom" },
-                objective = consultation.objectConsult.ifBlank { "Sans objectif" },
+                animalName =
+                        animal.nom.ifBlank {
+                            CrossConsultationAnalysis.ANIMAL_NO_NAME.translate()
+                        },
+                objective =
+                        consultation.objectConsult.ifBlank {
+                            CrossConsultationAnalysis.OBJECTIVE_NONE.translate()
+                        },
                 dateLabel = dateLabel,
                 referenceLabel = refLabel,
                 speciesLabel = animal.getEspece().label,
@@ -275,7 +310,8 @@ class CrossConsultationAnalysisViewModel(
                 totalRationQuantity = totalQuantity,
                 rations = rationSummaries,
                 espece = animal.getEspece(),
-                rawDate = consultation.date
+                rawDate = consultation.date,
+                keywordIds = consultation.keywordIds.toList()
         )
     }
 
@@ -306,4 +342,3 @@ class CrossConsultationAnalysisViewModel(
         return bee
     }
 }
-

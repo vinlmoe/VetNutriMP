@@ -129,7 +129,18 @@ data class ConsultationEntity(
         val MCS: Int = 0,
         val referenceGeneraleId: String? = null,
         val referencesMaladiesJson: String? = null,
+        val keywordsJson: String? = null,
         val coefficientAjustement: Double = 1.0
+)
+
+@Serializable
+@Entity(
+        tableName = "CONSULTATION_KEYWORDS",
+        indices = [Index(value = ["label"], unique = true)]
+)
+data class ConsultationKeywordEntity(
+        @PrimaryKey val uuid: String,
+        val label: String
 )
 
 @Serializable

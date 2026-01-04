@@ -31,13 +31,14 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         NutrientValueEntity::class,
                         BiblioRefEntity::class,
                         EquationEntity::class,
+                        ConsultationKeywordEntity::class,
                         ReferenceEvEntity::class,
                         ReferenceEvEquationEntity::class,
                         ReferenceEvCoefficientEntity::class,
                         ReferenceEvNutrientEntity::class,
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class],
-        version = 25,
+        version = 26,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -94,7 +95,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         // HTML_SECTION_LIBRARIES
                         createMigration23to24(),
                         // Migration 24→25 : Ajout du champ jsonbinId à la table ANIMALS
-                        createMigration24to25()
+                        createMigration24to25(),
+                        // Migration 25→26 : Ajout des mots-clés pour les consultations
+                        createMigration25to26()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -419,6 +422,40 @@ fun createMigration24to25(): Migration {
                     "ALTER TABLE ANIMALS ADD COLUMN jsonbinId TEXT"
                 ).use { statement -> 
                     statement.step() 
+                }
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 25 → 26 : Ajout des mots-clés pour les consultations */
+fun createMigration25to26(): Migration {
+    return object : Migration(25, 26) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                connection.prepare(
+                    "ALTER TABLE CONSULTATIONS ADD COLUMN keywordsJson TEXT"
+                ).use { statement ->
+                    statement.step()
+                }
+
+                connection.prepare(
+                    """
+                    CREATE TABLE CONSULTATION_KEYWORDS (
+                        uuid TEXT NOT NULL PRIMARY KEY,
+                        label TEXT NOT NULL
+                    )
+                    """
+                ).use { statement ->
+                    statement.step()
+                }
+
+                connection.prepare(
+                    "CREATE UNIQUE INDEX index_CONSULTATION_KEYWORDS_label ON CONSULTATION_KEYWORDS(label)"
+                ).use { statement ->
+                    statement.step()
                 }
             } catch (e: Exception) {
                 throw e

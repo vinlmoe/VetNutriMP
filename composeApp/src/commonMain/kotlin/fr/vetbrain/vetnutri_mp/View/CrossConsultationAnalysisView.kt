@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -40,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.CrossConsultationAnalysis
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CrossConsultationAnalysisViewModel
@@ -60,6 +63,8 @@ fun CrossConsultationAnalysisView(
     val selectedIds by viewModel.selectedIds.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val speciesFilter by viewModel.speciesFilter.collectAsState()
+    val keywordFilter by viewModel.keywordFilter.collectAsState()
+    val availableKeywords by viewModel.availableKeywords.collectAsState()
     val scope = rememberCoroutineScope()
     var aggregatesText by remember { mutableStateOf<String?>(null) }
     val summary by viewModel.summary.collectAsState()
@@ -67,16 +72,19 @@ fun CrossConsultationAnalysisView(
     LaunchedEffect(Unit) { viewModel.loadConsultations() }
 
     Column(modifier = modifier.fillMaxSize()) {
-        TopBarSimple(title = "Analyses croisées", onNavigateBack = onNavigateBack) {
+        TopBarSimple(
+                title = CrossConsultationAnalysis.TITLE.translate(),
+                onNavigateBack = onNavigateBack
+        ) {
             Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
                 OutlinedButton(
                         onClick = { viewModel.clearSelection() },
                         enabled = selectedIds.isNotEmpty()
-                ) { Text("Réinitialiser") }
+                ) { Text(CrossConsultationAnalysis.RESET.translate()) }
                 OutlinedButton(
                         onClick = { viewModel.selectAllVisible(consultations.map { it.consultationId }) },
                         enabled = consultations.isNotEmpty()
-                ) { Text("Tout sélectionner") }
+                ) { Text(CrossConsultationAnalysis.SELECT_ALL.translate()) }
             }
         }
 
@@ -95,7 +103,7 @@ fun CrossConsultationAnalysisView(
                         value = searchQuery,
                         onValueChange = { viewModel.setSearchQuery(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Rechercher (animal, consultation)") },
+                        label = { Text(CrossConsultationAnalysis.SEARCH_LABEL.translate()) },
                         leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = null) },
                         singleLine = true
                 )
@@ -108,7 +116,7 @@ fun CrossConsultationAnalysisView(
                     FilterChip(
                             selected = speciesFilter == null,
                             onClick = { viewModel.setSpeciesFilter(null) },
-                            label = { Text("Toutes") }
+                            label = { Text(CrossConsultationAnalysis.SPECIES_ALL.translate()) }
                     )
                     Espece.entries.forEach { e ->
                         FilterChip(
@@ -116,6 +124,38 @@ fun CrossConsultationAnalysisView(
                                 onClick = { viewModel.setSpeciesFilter(e) },
                                 label = { Text(e.label) }
                         )
+                    }
+                }
+
+                Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(CrossConsultationAnalysis.KEYWORDS_LABEL.translate())
+                    if (availableKeywords.isEmpty()) {
+                        Text(
+                                CrossConsultationAnalysis.KEYWORDS_EMPTY.translate(),
+                                style = androidx.compose.material.MaterialTheme.typography.caption,
+                                color = androidx.compose.ui.graphics.Color.Gray
+                        )
+                    } else {
+                        Row(
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            FilterChip(
+                                    selected = keywordFilter.isEmpty(),
+                                    onClick = { viewModel.clearKeywordFilter() },
+                                    label = { Text(CrossConsultationAnalysis.KEYWORDS_ALL.translate()) }
+                            )
+                            availableKeywords.forEach { keyword ->
+                                FilterChip(
+                                        selected = keywordFilter.contains(keyword.uuid),
+                                        onClick = { viewModel.toggleKeywordFilter(keyword.uuid) },
+                                        label = { Text(keyword.label) }
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -137,7 +177,7 @@ fun CrossConsultationAnalysisView(
                                     contentDescription = null,
                                     tint = VetNutriColors.Primary
                             )
-                            Text("Aucune consultation trouvée")
+                            Text(CrossConsultationAnalysis.EMPTY.translate())
                         }
                     }
                 } else {
@@ -157,9 +197,15 @@ fun CrossConsultationAnalysisView(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(item.animalName, style = androidx.compose.material.MaterialTheme.typography.subtitle1)
-                                        Text("${item.dateLabel} • ${item.objective}", style = androidx.compose.material.MaterialTheme.typography.body2)
                                         Text(
-                                                "Réf: ${item.referenceLabel ?: "Aucune"} | Espèce: ${item.speciesLabel} | Rations: ${item.rationCount}",
+                                                "${item.dateLabel} • ${item.objective}",
+                                                style = androidx.compose.material.MaterialTheme.typography.body2
+                                        )
+                                        val refLabel =
+                                                item.referenceLabel
+                                                        ?: CrossConsultationAnalysis.REF_NONE.translate()
+                                        Text(
+                                                "${CrossConsultationAnalysis.REF_LABEL.translate()}: $refLabel | ${CrossConsultationAnalysis.SPECIES_LABEL.translate()}: ${item.speciesLabel} | ${CrossConsultationAnalysis.RATIONS_LABEL.translate()}: ${item.rationCount}",
                                                 style = androidx.compose.material.MaterialTheme.typography.caption
                                         )
                                     }
@@ -170,9 +216,9 @@ fun CrossConsultationAnalysisView(
                                         if (selected) {
                                             Icon(Icons.Default.CheckCircle, contentDescription = null)
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Retirer")
+                                            Text(CrossConsultationAnalysis.REMOVE.translate())
                                         } else {
-                                            Text("Sélectionner")
+                                            Text(CrossConsultationAnalysis.SELECT.translate())
                                         }
                                     }
                                 }
@@ -190,13 +236,36 @@ fun CrossConsultationAnalysisView(
                                     .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
             ) {
-                Text("Résumé", style = androidx.compose.material.MaterialTheme.typography.h6)
+                Text(
+                        CrossConsultationAnalysis.SUMMARY_TITLE.translate(),
+                        style = androidx.compose.material.MaterialTheme.typography.h6
+                )
                 Divider()
-                Text("Consultations visibles : ${consultations.size}")
-                Text("Sélections : ${summary.selectedCount}")
-                Text("Animaux distincts : ${summary.distinctAnimals}")
-                Text("Références distinctes : ${summary.distinctReferences}")
-                Text("Total rations : ${summary.totalRations}")
+                Text(
+                        CrossConsultationAnalysis.VISIBLE_COUNT.translate(
+                                consultations.size.toString()
+                        )
+                )
+                Text(
+                        CrossConsultationAnalysis.SELECTED_COUNT.translate(
+                                summary.selectedCount.toString()
+                        )
+                )
+                Text(
+                        CrossConsultationAnalysis.DISTINCT_ANIMALS.translate(
+                                summary.distinctAnimals.toString()
+                        )
+                )
+                Text(
+                        CrossConsultationAnalysis.DISTINCT_REFERENCES.translate(
+                                summary.distinctReferences.toString()
+                        )
+                )
+                Text(
+                        CrossConsultationAnalysis.TOTAL_RATIONS.translate(
+                                summary.totalRations.toString()
+                        )
+                )
 
                 Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                 OutlinedButton(
@@ -210,11 +279,14 @@ fun CrossConsultationAnalysisView(
                             }
                         },
                         enabled = selectedIds.isNotEmpty()
-                ) { Text("Calcul rapide (énergie placeholder)") }
+                ) { Text(CrossConsultationAnalysis.QUICK_CALC.translate()) }
 
                 aggregatesText?.let { text ->
                     Divider()
-                    Text("Aperçu calculs :", style = androidx.compose.material.MaterialTheme.typography.subtitle1)
+                    Text(
+                            CrossConsultationAnalysis.CALC_PREVIEW_TITLE.translate(),
+                            style = androidx.compose.material.MaterialTheme.typography.subtitle1
+                    )
                     Text(text, style = androidx.compose.material.MaterialTheme.typography.body2)
                 }
 
@@ -222,9 +294,8 @@ fun CrossConsultationAnalysisView(
                 OutlinedButton(
                         onClick = onOpenResults,
                         enabled = selectedIds.isNotEmpty()
-                ) { Text("Ouvrir l'analyse") }
+                ) { Text(CrossConsultationAnalysis.OPEN_ANALYSIS.translate()) }
             }
         }
     }
 }
-

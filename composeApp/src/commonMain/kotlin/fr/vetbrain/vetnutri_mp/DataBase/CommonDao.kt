@@ -90,6 +90,15 @@ interface ConsultationDao {
 
         @Query("DELETE FROM SUPPLEMENTAL_VARIABLES WHERE idConsult = :consultationId")
         suspend fun deleteSupplementalVariablesForConsultation(consultationId: String)
+
+        @Query("SELECT * FROM CONSULTATION_KEYWORDS ORDER BY label")
+        suspend fun getAllConsultationKeywords(): List<ConsultationKeywordEntity>
+
+        @Query("SELECT * FROM CONSULTATION_KEYWORDS WHERE label = :label LIMIT 1")
+        suspend fun getConsultationKeywordByLabel(label: String): ConsultationKeywordEntity?
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertConsultationKeyword(keyword: ConsultationKeywordEntity)
 }
 
 @Dao

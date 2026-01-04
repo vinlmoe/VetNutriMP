@@ -20,6 +20,7 @@ import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
 import fr.vetbrain.vetnutri_mp.Components.AppTextField
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
@@ -39,9 +40,12 @@ fun ConsultationFullScreenEditView(
         animalName: String = "",
         animalEspece: fr.vetbrain.vetnutri_mp.Enumer.Espece? = null,
         availableReferences: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> = emptyList(),
+        availableKeywords: List<ConsultationKeyword> = emptyList(),
         onBackPressed: (ConsultationEv) -> Unit,
         onCancel: () -> Unit,
-        onLoadReferences: () -> Unit = {}
+        onLoadReferences: () -> Unit = {},
+        onLoadKeywords: () -> Unit = {},
+        onCreateKeyword: (ConsultationKeyword) -> Unit = {}
 ) {
         var editedConsultation by
                 remember(consultation) {
@@ -82,6 +86,7 @@ fun ConsultationFullScreenEditView(
         // États pour les dialogues de sélection de références
         var showReferenceGeneraleDialog by remember(consultation) { mutableStateOf(false) }
         var showReferenceMaladieDialog by remember(consultation) { mutableStateOf(false) }
+        var showKeywordDialog by remember(consultation) { mutableStateOf(false) }
 
         // États pour les dialogues de coefficients
         var showK1Dialog by remember { mutableStateOf(false) }
@@ -122,8 +127,14 @@ fun ConsultationFullScreenEditView(
                         }
                 }
 
-        // Charger les références au démarrage
-        LaunchedEffect(Unit) { onLoadReferences() }
+        val keywordsById =
+                remember(availableKeywords) { availableKeywords.associateBy { it.uuid } }
+
+        // Charger les références et mots-clés au démarrage
+        LaunchedEffect(Unit) {
+                onLoadReferences()
+                onLoadKeywords()
+        }
 
         // Fonction pour sauvegarder et retourner
         val saveAndGoBack = {
@@ -811,6 +822,139 @@ fun ConsultationFullScreenEditView(
                                 }
                         }
 
+                        // Section Mots-clés
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = AppSizes.elevationSmall,
+                                backgroundColor = VetNutriColors.Surface
+                        ) {
+                                Column(
+                                        modifier = Modifier.padding(AppSizes.paddingLarge),
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingMedium)
+                                ) {
+                                        Text(
+                                                text = ConsultationEdit.KEYWORDS_SECTION_TITLE.translate(),
+                                                style = MaterialTheme.typography.h6,
+                                                color = VetNutriColors.Primary
+                                        )
+
+                                        Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
+
+                                        if (editedConsultation.keywordIds.isNotEmpty()) {
+                                                Column(
+                                                        verticalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                ) {
+                                                        editedConsultation.keywordIds.forEach {
+                                                                keywordId ->
+                                                                val keywordLabel =
+                                                                        keywordsById[keywordId]
+                                                                                ?.label
+                                                                                ?: ConsultationEdit.KEYWORDS_UNKNOWN.translate()
+
+                                                                Card(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Surface
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.7f
+                                                                                        ),
+                                                                        elevation = 2.dp
+                                                                ) {
+                                                                        Row(
+                                                                                modifier =
+                                                                                        Modifier.padding(
+                                                                                                AppSizes.paddingMedium
+                                                                                        ),
+                                                                                horizontalArrangement =
+                                                                                        Arrangement
+                                                                                                .SpaceBetween,
+                                                                                verticalAlignment =
+                                                                                        Alignment
+                                                                                                .CenterVertically
+                                                                        ) {
+                                                                                Text(
+                                                                                        text = keywordLabel,
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .body1,
+                                                                                        fontWeight =
+                                                                                                FontWeight
+                                                                                                        .Bold,
+                                                                                        modifier =
+                                                                                                Modifier.weight(
+                                                                                                        1f
+                                                                                                )
+                                                                                )
+                                                                                IconButtonWithTooltip(
+                                                                                        onClick = {
+                                                                                                val updatedKeywords =
+                                                                                                        editedConsultation
+                                                                                                                .keywordIds
+                                                                                                                .toMutableList()
+                                                                                                updatedKeywords.remove(
+                                                                                                        keywordId
+                                                                                                )
+                                                                                                editedConsultation =
+                                                                                                        editedConsultation
+                                                                                                                .copy(
+                                                                                                                        keywordIds =
+                                                                                                                                updatedKeywords
+                                                                                                                )
+                                                                                        },
+                                                                                        imageVector = AppIcons.Delete,
+                                                                                        contentDescription = ConsultationEdit.KEYWORDS_DELETE_TOOLTIP.translate(),
+                                                                                        tooltip = ConsultationEdit.KEYWORDS_DELETE_TOOLTIP.translate(),
+                                                                                        tint = Color.Red
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        } else {
+                                                Text(
+                                                        text = ConsultationEdit.KEYWORDS_NONE.translate(),
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = Color.Gray
+                                                )
+                                        }
+
+                                        OutlinedButton(
+                                                onClick = { showKeywordDialog = true },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors =
+                                                        ButtonDefaults.outlinedButtonColors(
+                                                                contentColor =
+                                                                        VetNutriColors.Primary
+                                                        )
+                                        ) {
+                                                Icon(
+                                                        AppIcons.Add,
+                                                        contentDescription =
+                                                                ConsultationEdit.KEYWORDS_ADD.translate(),
+                                                        modifier =
+                                                                Modifier.size(
+                                                                        AppSizes.iconSizeSmall
+                                                                )
+                                                )
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.width(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                )
+                                                Text(ConsultationEdit.KEYWORDS_ADD.translate())
+                                        }
+                                }
+                        }
+
                         // Section Variables Supplémentaires
         val variablesRequises =
                 remember(referenceGeneraleSelectionnee, editedConsultation.referencesMaladies, referencesMaladies) {
@@ -1131,6 +1275,32 @@ fun ConsultationFullScreenEditView(
                                                 referencesMaladies = referenceId.toMutableList()
                                         )
                                 showReferenceMaladieDialog = false
+                        }
+                )
+        }
+
+        if (showKeywordDialog) {
+                ConsultationKeywordDialog(
+                        selectedKeywordIds = editedConsultation.keywordIds,
+                        availableKeywords = availableKeywords,
+                        onKeywordsSelected = { keywordIds ->
+                                editedConsultation =
+                                        editedConsultation.copy(
+                                                keywordIds = keywordIds.toMutableList()
+                                        )
+                                showKeywordDialog = false
+                        },
+                        onKeywordCreated = { keyword ->
+                                onCreateKeyword(keyword)
+                                editedConsultation =
+                                        editedConsultation.copy(
+                                                keywordIds =
+                                                        (editedConsultation.keywordIds +
+                                                                        keyword.uuid)
+                                                                .distinct()
+                                                                .toMutableList()
+                                        )
+                                showKeywordDialog = false
                         }
                 )
         }
@@ -1742,6 +1912,203 @@ private fun ReferenceMaladieDialog(
                 },
                 confirmButton = {
                         TextButton(onClick = { onReferenceSelected(references) }) { Text(LocalizationKeys.General.CLOSE.translate()) }
+                }
+        )
+}
+
+@Composable
+private fun ConsultationKeywordDialog(
+        selectedKeywordIds: List<String>,
+        availableKeywords: List<ConsultationKeyword>,
+        onKeywordsSelected: (List<String>) -> Unit,
+        onKeywordCreated: (ConsultationKeyword) -> Unit
+) {
+        var searchText by remember { mutableStateOf("") }
+        val trimmedSearch = searchText.trim()
+
+        val filteredKeywords =
+                remember(availableKeywords, searchText) {
+                        if (searchText.isBlank()) {
+                                availableKeywords
+                        } else {
+                                availableKeywords.filter { keyword ->
+                                        keyword.label.contains(searchText, ignoreCase = true)
+                                }
+                        }
+                }
+
+        val existingKeyword =
+                remember(availableKeywords, trimmedSearch) {
+                        if (trimmedSearch.isBlank()) {
+                                null
+                        } else {
+                                availableKeywords.firstOrNull {
+                                        it.label.equals(trimmedSearch, ignoreCase = true)
+                                }
+                        }
+                }
+
+        AlertDialog(
+                onDismissRequest = { onKeywordsSelected(selectedKeywordIds) },
+                title = { Text(ConsultationEdit.KEYWORDS_DIALOG_TITLE.translate()) },
+                text = {
+                        Column(modifier = Modifier.width(500.dp).height(420.dp)) {
+                                OutlinedTextField(
+                                        value = searchText,
+                                        onValueChange = { searchText = it },
+                                        label = { Text(ConsultationEdit.KEYWORDS_SEARCH_LABEL.translate()) },
+                                        leadingIcon = {
+                                                Icon(
+                                                        AppIcons.Search,
+                                                        contentDescription = ConsultationEdit.KEYWORDS_SEARCH_TOOLTIP.translate()
+                                                )
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true
+                                )
+
+                                if (trimmedSearch.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        if (existingKeyword == null) {
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                val newKeyword =
+                                                                        ConsultationKeyword(
+                                                                                label = trimmedSearch
+                                                                        )
+                                                                onKeywordCreated(newKeyword)
+                                                        },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        colors =
+                                                                ButtonDefaults.outlinedButtonColors(
+                                                                        contentColor =
+                                                                                VetNutriColors.Primary
+                                                                )
+                                                ) {
+                                                        Icon(
+                                                                AppIcons.Add,
+                                                                contentDescription =
+                                                                        ConsultationEdit.KEYWORDS_ADD_NEW.translate(
+                                                                                trimmedSearch
+                                                                        ),
+                                                                modifier =
+                                                                        Modifier.size(
+                                                                                AppSizes.iconSizeSmall
+                                                                        )
+                                                        )
+                                                        Spacer(
+                                                                modifier =
+                                                                        Modifier.width(
+                                                                                AppSizes.paddingSmall
+                                                                        )
+                                                        )
+                                                        Text(
+                                                                ConsultationEdit.KEYWORDS_ADD_NEW.translate(
+                                                                        trimmedSearch
+                                                                )
+                                                        )
+                                                }
+                                        } else {
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                onKeywordsSelected(
+                                                                        (selectedKeywordIds +
+                                                                                        existingKeyword.uuid)
+                                                                                .distinct()
+                                                                )
+                                                        },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        colors =
+                                                                ButtonDefaults.outlinedButtonColors(
+                                                                        contentColor =
+                                                                                VetNutriColors.Primary
+                                                                )
+                                                ) {
+                                                        Icon(
+                                                                AppIcons.Add,
+                                                                contentDescription =
+                                                                        ConsultationEdit.KEYWORDS_ADD_EXISTING.translate(
+                                                                                existingKeyword.label
+                                                                        ),
+                                                                modifier =
+                                                                        Modifier.size(
+                                                                                AppSizes.iconSizeSmall
+                                                                        )
+                                                        )
+                                                        Spacer(
+                                                                modifier =
+                                                                        Modifier.width(
+                                                                                AppSizes.paddingSmall
+                                                                        )
+                                                        )
+                                                        Text(
+                                                                ConsultationEdit.KEYWORDS_ADD_EXISTING.translate(
+                                                                        existingKeyword.label
+                                                                )
+                                                        )
+                                                }
+                                        }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                        text =
+                                                ConsultationEdit.KEYWORDS_SEARCH_RESULTS.translate(
+                                                        filteredKeywords.size.toString()
+                                                ),
+                                        style = MaterialTheme.typography.caption,
+                                        color = Color.Gray
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                                        items(filteredKeywords) { keyword ->
+                                                val isSelected =
+                                                        selectedKeywordIds.contains(keyword.uuid)
+
+                                                Row(
+                                                        modifier =
+                                                                Modifier.fillMaxWidth()
+                                                                        .padding(4.dp),
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        Checkbox(
+                                                                checked = isSelected,
+                                                                onCheckedChange = { checked ->
+                                                                        val updatedKeywords =
+                                                                                if (checked) {
+                                                                                        selectedKeywordIds +
+                                                                                                keyword
+                                                                                                        .uuid
+                                                                                } else {
+                                                                                        selectedKeywordIds -
+                                                                                                keyword
+                                                                                                        .uuid
+                                                                                }
+                                                                        onKeywordsSelected(
+                                                                                updatedKeywords
+                                                                        )
+                                                                }
+                                                        )
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
+                                                                text = keyword.label,
+                                                                style = MaterialTheme.typography.body1,
+                                                                fontWeight = FontWeight.Medium
+                                                        )
+                                                }
+                                                Divider(color = Color.LightGray.copy(alpha = 0.3f))
+                                        }
+                                }
+                        }
+                },
+                confirmButton = {
+                        TextButton(onClick = { onKeywordsSelected(selectedKeywordIds) }) {
+                                Text(LocalizationKeys.General.CLOSE.translate())
+                        }
                 }
         )
 }
