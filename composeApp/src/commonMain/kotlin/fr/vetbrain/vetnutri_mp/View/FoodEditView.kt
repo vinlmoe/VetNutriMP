@@ -28,6 +28,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodEditViewModel
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -846,7 +847,11 @@ fun FoodTypeDropdown(
 
                 DropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false },
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                expanded = false 
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
                         availableFoodTypes.forEach { foodType ->
@@ -894,7 +899,11 @@ fun FoodGroupDropdown(
 
                 DropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false },
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                expanded = false 
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
                         availableFoodGroups.forEach { foodGroup ->
@@ -943,7 +952,11 @@ private fun ContDropdown(
 
                 DropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false },
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                expanded = false 
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
                         availableConts.forEach { cont ->

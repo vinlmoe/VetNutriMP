@@ -18,6 +18,7 @@ import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Vue à onglets pour gérer les différents aspects d'une référence nutritionnelle.
@@ -276,7 +277,11 @@ fun EquationDropdown(
 
         DropdownMenu(
                 expanded = expanded,
-                onDismissRequest = { expanded = false },
+                onDismissRequest = {
+                    if (!isIosPlatform) {
+                        expanded = false 
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(0.9f)
         ) {
             // Option pour aucune équation

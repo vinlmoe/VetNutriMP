@@ -69,6 +69,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Vue pour l'édition des références nutritionnelles avec système d'onglets.
@@ -239,7 +240,11 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
 
                         DropdownMenu(
                                 expanded = especeExpanded,
-                                onDismissRequest = { especeExpanded = false },
+                                onDismissRequest = {
+                                    if (!isIosPlatform) {
+                                        especeExpanded = false 
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth(0.9f)
                         ) {
                                 especeOptions.forEach { espece ->
@@ -274,7 +279,11 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
 
                         DropdownMenu(
                                 expanded = stadePhysioExpanded,
-                                onDismissRequest = { stadePhysioExpanded = false },
+                                onDismissRequest = {
+                                    if (!isIosPlatform) {
+                                        stadePhysioExpanded = false 
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth(0.9f)
                         ) {
                                 stadePhysioOptions.forEach { stade ->
@@ -638,7 +647,11 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                 }
                                                 DropdownMenu(
                                                         expanded = expanded,
-                                                        onDismissRequest = { expanded = false },
+                                                        onDismissRequest = {
+                                                            if (!isIosPlatform) {
+                                                                expanded = false 
+                                                            }
+                                                        },
                                                         modifier = Modifier.fillMaxWidth(0.9f)
                                                 ) {
                                                         // Option Aucune
@@ -701,7 +714,11 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
 
                                                 DropdownMenu(
                                                         expanded = expandedBW,
-                                                        onDismissRequest = { expandedBW = false },
+                                                        onDismissRequest = {
+                                                            if (!isIosPlatform) {
+                                                                expandedBW = false 
+                                                            }
+                                                        },
                                                         modifier = Modifier.fillMaxWidth(0.9f)
                                                 ) {
                                                         // Option "Aucune équation"
@@ -758,7 +775,11 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
 
                                                 DropdownMenu(
                                                         expanded = expandedBEE,
-                                                        onDismissRequest = { expandedBEE = false },
+                                                        onDismissRequest = {
+                                                            if (!isIosPlatform) {
+                                                                expandedBEE = false 
+                                                            }
+                                                        },
                                                         modifier = Modifier.fillMaxWidth(0.9f)
                                                 ) {
                                                         // Option "Aucune équation"
@@ -816,7 +837,11 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                 DropdownMenu(
                                                         expanded = expandedDEcom,
                                                         onDismissRequest = {
+                                                            if (!isIosPlatform) {
+
                                                                 expandedDEcom = false
+
+                                                            }
                                                         },
                                                         modifier = Modifier.fillMaxWidth(0.9f)
                                                 ) {
@@ -877,7 +902,11 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                 DropdownMenu(
                                                         expanded = expandedDEraw,
                                                         onDismissRequest = {
+                                                            if (!isIosPlatform) {
+
                                                                 expandedDEraw = false
+
+                                                            }
                                                         },
                                                         modifier = Modifier.fillMaxWidth(0.9f)
                                                 ) {
@@ -2188,7 +2217,11 @@ private fun NutrientLevelRow(
 
                                 DropdownMenu(
                                         expanded = unitEnumExpanded,
-                                        onDismissRequest = { unitEnumExpanded = false }
+                                        onDismissRequest = {
+                                            if (!isIosPlatform) {
+                                                unitEnumExpanded = false 
+                                            }
+                                        }
                                 ) {
                                         availableUnitEnums.forEach { unitEnum ->
                                                 DropdownMenuItem(
@@ -2218,7 +2251,11 @@ private fun NutrientLevelRow(
 
                                         DropdownMenu(
                                                 expanded = unitReqExpanded,
-                                                onDismissRequest = { unitReqExpanded = false }
+                                                onDismissRequest = {
+                                                    if (!isIosPlatform) {
+                                                        unitReqExpanded = false 
+                                                    }
+                                                }
                                         ) {
                                                 unitReqOptions.forEach { unit ->
                                                         DropdownMenuItem(
@@ -2250,7 +2287,11 @@ private fun NutrientLevelRow(
 
                                 DropdownMenu(
                                         expanded = biblioExpanded,
-                                        onDismissRequest = { biblioExpanded = false }
+                                        onDismissRequest = {
+                                            if (!isIosPlatform) {
+                                                biblioExpanded = false 
+                                            }
+                                        }
                                 ) {
                                         biblioRefs.forEach { biblio ->
                                                 DropdownMenuItem(

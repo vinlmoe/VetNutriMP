@@ -235,7 +235,11 @@ fun EvolutionPoidsChart(
                                 }
                                 DropdownMenu(
                                         expanded = expanded,
-                                        onDismissRequest = { expanded = false }
+                                        onDismissRequest = {
+                                            if (!isIosPlatform) {
+                                                expanded = false 
+                                            }
+                                        }
                                 ) {
                                         courbesDisponibles.forEachIndexed { index, courbe ->
                                                 DropdownMenuItem(

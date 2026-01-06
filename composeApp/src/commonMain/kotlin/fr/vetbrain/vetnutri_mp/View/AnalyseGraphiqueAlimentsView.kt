@@ -58,6 +58,7 @@ import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.Point
 import io.github.koalaplot.core.xygraph.XYGraph
 import kotlinx.coroutines.runBlocking
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /** Données calculées pour un aliment avec sa densité énergétique et pourcentages */
 data class AlimentAnalyseData(
@@ -639,7 +640,14 @@ private fun NutrimentSelector(
             Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Déplier")
         }
 
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = {
+                    if (!isIosPlatform) {
+                        expanded = false
+                    }
+                }
+        ) {
             NUTRIMENT_OPTIONS.forEach { option ->
                 DropdownMenuItem(
                         onClick = {

@@ -610,23 +610,23 @@ fun ConsultationFullScreenEditView(
                                                 descriptions =
                                                         mapOf(
                                                                 1 to
-                                                                        "Très maigre - Côtes, vertèbres et os du bassin très saillants",
+                                                                        ConsultationEdit.BCS_DESC_1.translate(),
                                                                 2 to
-                                                                        "Maigre - Côtes facilement palpables, faible couverture graisseuse",
+                                                                        ConsultationEdit.BCS_DESC_2.translate(),
                                                                 3 to
-                                                                        "Mince - Côtes palpables avec légère couverture graisseuse",
+                                                                        ConsultationEdit.BCS_DESC_3.translate(),
                                                                 4 to
-                                                                        "Idéal inférieur - Côtes facilement palpables, taille visible",
+                                                                        ConsultationEdit.BCS_DESC_4.translate(),
                                                                 5 to
-                                                                        "Idéal - Côtes palpables sans excès de graisse, taille bien définie",
+                                                                        ConsultationEdit.BCS_DESC_5.translate(),
                                                                 6 to
-                                                                        "Idéal supérieur - Côtes palpables avec légère couverture graisseuse",
+                                                                        ConsultationEdit.BCS_DESC_6.translate(),
                                                                 7 to
-                                                                        "Surpoids - Côtes difficiles à palper, dépôts graisseux visibles",
+                                                                        ConsultationEdit.BCS_DESC_7.translate(),
                                                                 8 to
-                                                                        "Obèse - Côtes très difficiles à palper, importante couverture graisseuse",
+                                                                        ConsultationEdit.BCS_DESC_8.translate(),
                                                                 9 to
-                                                                        "Très obèse - Côtes non palpables, dépôts graisseux massifs"
+                                                                        ConsultationEdit.BCS_DESC_9.translate()
                                                         )
                                         )
                                 }

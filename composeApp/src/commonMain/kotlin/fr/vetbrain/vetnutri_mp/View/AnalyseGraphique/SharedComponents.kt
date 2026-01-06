@@ -24,6 +24,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 @Composable
 fun GraphCard(titre: String, sousTitre: String? = null, content: @Composable () -> Unit) {
@@ -55,7 +56,11 @@ fun GraphCard(titre: String, sousTitre: String? = null, content: @Composable () 
 }
 
 @Composable
-fun GraphiqueHeader(selectedChart: ChartType, onChartSelected: (ChartType) -> Unit) {
+fun GraphiqueHeader(
+        selectedChart: ChartType,
+        onChartSelected: (ChartType) -> Unit,
+        isCompact: Boolean = false
+) {
         Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationSmall) {
                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                         Row(
@@ -77,36 +82,87 @@ fun GraphiqueHeader(selectedChart: ChartType, onChartSelected: (ChartType) -> Un
 
                         Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
 
-                        // Sélecteur de type de graphique avec Row normale
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                        ) {
-                                ChartType.values().forEach { chartType ->
-                                        Button(
-                                                onClick = { onChartSelected(chartType) },
-                                                colors =
-                                                        ButtonDefaults.buttonColors(
-                                                                backgroundColor =
+                        // Sélecteur de type de graphique avec layout adapté aux écrans étroits
+                        if (isCompact) {
+                                Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingSmall)
+                                ) {
+                                        ChartType.values().forEach { chartType ->
+                                                Button(
+                                                        onClick = { onChartSelected(chartType) },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                if (selectedChart ==
+                                                                                                chartType
+                                                                                )
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                                else
+                                                                                        MaterialTheme
+                                                                                                .colors
+                                                                                                .surface
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                text = chartType.displayName,
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .caption,
+                                                                color =
                                                                         if (selectedChart ==
                                                                                         chartType
                                                                         )
-                                                                                VetNutriColors
-                                                                                        .Primary
+                                                                                Color.White
                                                                         else
                                                                                 MaterialTheme.colors
-                                                                                        .surface
-                                                        ),
-                                                modifier = Modifier.weight(1f)
-                                        ) {
-                                                Text(
-                                                        text = chartType.displayName,
-                                                        style = MaterialTheme.typography.caption,
-                                                        color =
-                                                                if (selectedChart == chartType)
-                                                                        Color.White
-                                                                else MaterialTheme.colors.onSurface
-                                                )
+                                                                                        .onSurface
+                                                        )
+                                                }
+                                        }
+                                }
+                        } else {
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingSmall)
+                                ) {
+                                        ChartType.values().forEach { chartType ->
+                                                Button(
+                                                        onClick = { onChartSelected(chartType) },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                if (selectedChart ==
+                                                                                                chartType
+                                                                                )
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                                else
+                                                                                        MaterialTheme
+                                                                                                .colors
+                                                                                                .surface
+                                                                ),
+                                                        modifier = Modifier.weight(1f)
+                                                ) {
+                                                        Text(
+                                                                text = chartType.displayName,
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .caption,
+                                                                color =
+                                                                        if (selectedChart ==
+                                                                                        chartType
+                                                                        )
+                                                                                Color.White
+                                                                        else
+                                                                                MaterialTheme.colors
+                                                                                        .onSurface
+                                                        )
+                                                }
                                         }
                                 }
                         }
@@ -299,7 +355,14 @@ fun NutrimentSelector(
                                 contentDescription = translate(LocalizationKeys.General.EXPAND)
                         )
                 }
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                expanded = false
+                            }
+                        }
+                ) {
                         VIEW_NUTRIMENT_OPTIONS.forEach { option ->
                                 DropdownMenuItem(
                                         onClick = {
@@ -316,4 +379,3 @@ fun NutrimentSelector(
                 }
         }
 }
-

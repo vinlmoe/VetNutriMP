@@ -22,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Écran de gestion des équations pour une référence nutritionnelle
@@ -710,7 +711,11 @@ private fun EquationDropdown(
 
                 DropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false },
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                expanded = false 
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
                         // Option pour ne sélectionner aucune équation

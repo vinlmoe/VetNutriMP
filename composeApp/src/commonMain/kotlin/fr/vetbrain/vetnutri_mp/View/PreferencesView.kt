@@ -34,6 +34,7 @@ import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /** Vue des préférences de l'application */
 @Composable
@@ -111,7 +112,11 @@ fun PreferencesView(
 
                                         DropdownMenu(
                                                 expanded = expanded,
-                                                onDismissRequest = { expanded = false },
+                                                onDismissRequest = {
+                                                    if (!isIosPlatform) {
+                                                        expanded = false 
+                                                    }
+                                                },
                                                 modifier =
                                                         Modifier.background(VetNutriColors.Surface)
                                                                 .border(
@@ -325,8 +330,12 @@ fun PreferencesView(
                                                                         DropdownMenu(
                                                                                 expanded = expanded,
                                                                                 onDismissRequest = {
+                                                                                    if (!isIosPlatform) {
+
                                                                                         expanded =
                                                                                                 false
+
+                                                                                    }
                                                                                 },
                                                                                 modifier =
                                                                                         Modifier.background(

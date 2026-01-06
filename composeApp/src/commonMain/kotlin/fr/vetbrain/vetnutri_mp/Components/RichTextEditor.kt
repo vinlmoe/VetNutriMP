@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Export.*
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /** Éditeur de texte enrichi pour créer des sections HTML réutilisables */
 @Composable
@@ -357,7 +358,14 @@ private fun ColorPickerButton(currentColor: String?, onColorSelected: (String?) 
             )
         }
 
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = {
+                    if (!isIosPlatform) {
+                        expanded = false
+                    }
+                }
+        ) {
             // Option pour aucune couleur
             DropdownMenuItem(
                     onClick = {
@@ -404,7 +412,14 @@ private fun FontSizeSelector(currentSize: Int?, onSizeSelected: (Int?) -> Unit) 
             )
         }
 
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = {
+                    if (!isIosPlatform) {
+                        expanded = false
+                    }
+                }
+        ) {
             // Option taille par défaut
             DropdownMenuItem(
                     onClick = {

@@ -88,7 +88,7 @@ fun AlimentItem(
         // Synchroniser quantityText avec aliment.quantite quand on n'est pas en mode édition
         LaunchedEffect(aliment.uuid, aliment.quantite, isEditing) {
                 if (!isEditing) {
-                        quantityText = aliment.quantite.toString()
+                        quantityText = aliment.quantite.coerceAtLeast(0.0).toString()
                 }
         }
         
@@ -243,7 +243,7 @@ fun AlimentItem(
                                                         val nouvelleQuantite: Double =
                                                                 texteNormalise.toDoubleOrNull()
                                                                         ?: aliment.quantite
-                                                        onQuantityChange(nouvelleQuantite)
+                                                        onQuantityChange(nouvelleQuantite.coerceAtLeast(0.0))
                                                         onFinishEditing()
                                                 }
 
@@ -318,7 +318,7 @@ fun AlimentItem(
                                         } else {
                                                 // Mode affichage
                                                 Text(
-                                                        text = "${aliment.quantite} g",
+                                                        text = "${aliment.quantite.coerceAtLeast(0.0)} g",
                                                         style =
                                                                 MaterialTheme.typography
                                                                         .caption, // texte réduit
