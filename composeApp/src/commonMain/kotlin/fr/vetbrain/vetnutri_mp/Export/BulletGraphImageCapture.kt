@@ -25,10 +25,6 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.View.AnalNut.ReferenceBulletGraph
 import kotlinx.coroutines.runBlocking
-import okio.FileSystem
-import okio.Path.Companion.toPath
-import okio.buffer
-import okio.use
 
 /**
  * Service pour générer des images de bullet graphs en utilisant directement les composables KoalaPlot
@@ -622,27 +618,10 @@ object BulletGraphImageCapture {
      * Sauvegarde un ByteArray d'image dans un fichier temporaire
      */
     fun saveImageToTempFile(imageBytes: ByteArray, prefix: String): String {
-        // Utiliser okio pour la gestion des fichiers multiplatform
         val timestamp = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
         val randomId = (1000..9999).random() // ID aléatoire pour éviter les collisions
         val tempFileName = "${prefix}_bullet_graph_${timestamp}_${randomId}.png"
-        
-        // Utiliser le répertoire temporaire multiplatform
-        val tempDir = getTempDirectory()
-        val tempPath = tempDir.resolve(tempFileName)
-        
-        FileSystem.SYSTEM.write(tempPath) {
-            write(imageBytes)
-        }
-        
-        return tempPath.toString()
-    }
-    
-    /**
-     * Obtient le répertoire temporaire de manière multiplatform
-     */
-    private fun getTempDirectory(): okio.Path {
-        return FileSystem.SYSTEM_TEMPORARY_DIRECTORY
+        return writeTempImageFile(tempFileName, imageBytes)
     }
     
     

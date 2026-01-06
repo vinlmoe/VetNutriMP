@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Utils
 import android.app.Activity
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.WindowInsetsCompat
 
 /**
  * Gestionnaire pour la configuration plein écran de l'application Android.
@@ -26,8 +27,8 @@ object FullscreenManager {
         
         // Masque les barres de statut et de navigation
         windowInsetsController.hide(
-            android.view.WindowInsets.Type.statusBars() or
-            android.view.WindowInsets.Type.navigationBars()
+            WindowInsetsCompat.Type.statusBars() or
+            WindowInsetsCompat.Type.navigationBars()
         )
         
         // Configure le comportement des barres système pour qu'elles apparaissent temporairement au swipe
@@ -71,8 +72,8 @@ object FullscreenManager {
         val window = activity.window
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         windowInsetsController.show(
-            android.view.WindowInsets.Type.statusBars() or
-            android.view.WindowInsets.Type.navigationBars()
+            WindowInsetsCompat.Type.statusBars() or
+            WindowInsetsCompat.Type.navigationBars()
         )
     }
     
@@ -85,8 +86,8 @@ object FullscreenManager {
         val window = activity.window
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         windowInsetsController.hide(
-            android.view.WindowInsets.Type.statusBars() or
-            android.view.WindowInsets.Type.navigationBars()
+            WindowInsetsCompat.Type.statusBars() or
+            WindowInsetsCompat.Type.navigationBars()
         )
     }
 }

@@ -39,7 +39,9 @@ import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Data.convertirPreferencesVersLabelsNutriments
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnalNut
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.ConsultationEdit
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -63,6 +65,7 @@ import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionValeursMetaboliques
 import fr.vetbrain.vetnutri_mp.View.Components.RecipeDialog
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 // Suppression du calcul local de DE : on utilisera EquationEvaluator avec nutriments
 // complémentaires
@@ -339,7 +342,7 @@ fun RationsView(
                                                                         )
                                                                 } catch (err: Exception) {
                                                                         showSnackbar(
-                                                                                "${translate(General.ERROR)}: ${err.message ?: "création recette"}"
+                                                                                "${translate(General.ERROR)}: ${err.message ?: translate(RationKeys.RECIPE_CREATE_ERROR_FALLBACK)}"
                                                                         )
                                                                 } finally {
                                                                         showSaveRecipeDialog = false
@@ -445,7 +448,7 @@ fun RationsView(
                                                 )
                                         } else {
                                                 showSnackbar(
-                                                        "Erreur : aliment non trouvé dans la base complète"
+                                                        translate(RationKeys.FOOD_NOT_FOUND_ERROR)
                                                 )
                                         }
                                         // Ne pas fermer la vue pour permettre l'ajout multiple
@@ -617,7 +620,7 @@ fun RationsView(
                                                                                                 Icons.Filled
                                                                                                         .Add,
                                                                                         contentDescription =
-                                                                                                translate(General.ADD) + " ration",
+                                                                                                translate(AnalNut.ADD_RATION),
                                                                                         tint =
                                                                                                 VetNutriColors
                                                                                                         .Primary,
@@ -946,7 +949,7 @@ fun RationsView(
                                                                                         contentAlignment = Alignment.Center
                                                                                 ) {
                                                                                         Text(
-                                                                                                "Sélectionner une référence dans la consultation pour permettre l'analyse",
+                                                                                                translate(AnalNut.SELECT_REFERENCE_FOR_ANALYSIS),
                                                                                                 style = MaterialTheme.typography.body1,
                                                                                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                                                                         )
@@ -961,7 +964,7 @@ fun RationsView(
                                                                 modifier = Modifier.fillMaxSize(),
                                                                 contentAlignment = Alignment.Center
                                                         ) { 
-                                                                Text("Sélectionnez une consultation pour voir les rations") 
+                                                                Text(translate(Consultation.SELECT_HINT))
                                                         }
                                                 } else {
                                                         Row(
@@ -1077,7 +1080,7 @@ fun RationsView(
                                                                         // Card en-tête)
                                                                         Text(
                                                                                 text =
-                                                                                        "Rations de la consultation",
+                                                                                        translate(RationKeys.CONSULTATION_RATIONS),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -1095,7 +1098,7 @@ fun RationsView(
                                                                                         Icons.Filled
                                                                                                 .Add,
                                                                                 contentDescription =
-                                                                                        "Ajouter une ration",
+                                                                                        translate(AnalNut.ADD_RATION),
                                                                                 tint =
                                                                                         VetNutriColors
                                                                                                 .Primary,
@@ -1121,7 +1124,7 @@ fun RationsView(
                                                                 ) {
                                                                         CenteredMessage(
                                                                                 message =
-                                                                                        "Aucune ration disponible",
+                                                                                        translate(RationKeys.NO_RATION_AVAILABLE),
                                                                                 modifier =
                                                                                         Modifier.weight(
                                                                                                 1f
@@ -1169,7 +1172,7 @@ fun RationsView(
                                                                                                                         ration
                                                                                                                 )
                                                                                                         showSnackbar(
-                                                                                                                "Ration '${ration.name}' dupliquée"
+                                                                                                                "${translate(RationKeys.DUPLICATED)} '${ration.name}'"
                                                                                                         )
                                                                                                 },
                                                                                                 onDelete = {
@@ -1229,7 +1232,7 @@ fun RationsView(
                                                                         contentAlignment = Alignment.Center
                                                                 ) {
                                                                         Text(
-                                                                                "Sélectionnez une ration pour voir les aliments",
+                                                                                translate(RationKeys.SELECT_RATION_HINT),
                                                                                 style = MaterialTheme.typography.body1,
                                                                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                                                         )
@@ -1372,7 +1375,7 @@ fun RationsView(
                                                                                         Alignment.Center
                                                                         ) {
                                                                                 Text(
-                                                                                        "Sélectionner une référence dans la consultation pour permettre l'analyse",
+                                                                                        translate(AnalNut.SELECT_REFERENCE_FOR_ANALYSIS),
                                                                                         style = MaterialTheme.typography.body1,
                                                                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                                                                 )
@@ -1391,7 +1394,7 @@ fun RationsView(
                                                                                 Alignment.Center
                                                                 ) {
                                                                         Text(
-                                                                                "Sélectionnez une ration pour voir l'analyse nutritionnelle"
+                                                                                translate(AnalNut.SELECT_RATION_FOR_ANALYSIS)
                                                                         )
                                                                 }
                                                         }
@@ -1457,7 +1460,10 @@ fun RationsView(
                                                                 viewModel.selectRation(newRation)
 
                                                                 showSnackbar(
-                                                                        "Ration '${newRation.name}' créée"
+                                                                        translate(
+                                                                                RationKeys.CREATED,
+                                                                                newRation.name
+                                                                        )
                                                                 )
                                                         }
                                                 } else {
@@ -1465,7 +1471,10 @@ fun RationsView(
                                                         // existante
                                                         viewModel.updateRation(updatedRation)
                                                         showSnackbar(
-                                                                "Ration '${updatedRation.name}' mise à jour"
+                                                                translate(
+                                                                        RationKeys.UPDATED,
+                                                                        updatedRation.name
+                                                                )
                                                         )
                                                 }
 
@@ -1551,7 +1560,9 @@ fun RationsView(
                                                         }
                                                 }
                                         } else {
-                                                showSnackbar("Erreur: ${result.message}")
+                                                showSnackbar(
+                                                        "${translate(General.ERROR)}: ${result.message}"
+                                                )
                                         }
                                         showMultiNutrientAdjustmentDialog = false
                                 },
@@ -1570,14 +1581,17 @@ fun RationsView(
                                         },
                                         title = {
                                                 Text(
-                                                        "Confirmer la suppression",
+                                                        translate(RationKeys.DELETE_CONFIRM_TITLE),
                                                         style = MaterialTheme.typography.h6,
                                                         color = VetNutriColors.Error
                                                 )
                                         },
                                         text = {
                                                 Text(
-                                                        "Êtes-vous sûr de vouloir supprimer la ration '${rationCible.name}' ?\n\nCette action est irréversible.",
+                                                        translate(
+                                                                RationKeys.DELETE_CONFIRM_MESSAGE,
+                                                                rationCible.name
+                                                        ),
                                                         style = MaterialTheme.typography.body1
                                                 )
                                         },
@@ -1588,7 +1602,10 @@ fun RationsView(
                                                                         rationCible
                                                                 )
                                                                 showSnackbar(
-                                                                        "Ration '${rationCible.name}' supprimée"
+                                                                        translate(
+                                                                                RationKeys.DELETED,
+                                                                                rationCible.name
+                                                                        )
                                                                 )
                                                                 showDeleteRationDialog = false
                                                                 rationToDelete = null
@@ -1600,7 +1617,7 @@ fun RationsView(
                                                                         contentColor =
                                                                                 VetNutriColors.OnError
                                                                 )
-                                                ) { Text("Supprimer") }
+                                                ) { Text(translate(General.DELETE)) }
                                         },
                                         dismissButton = {
                                                 TextButton(
@@ -1608,7 +1625,7 @@ fun RationsView(
                                                                 showDeleteRationDialog = false
                                                                 rationToDelete = null
                                                         }
-                                                ) { Text("Annuler") }
+                                                ) { Text(translate(General.CANCEL)) }
                                         }
                                 )
                         }
@@ -1626,14 +1643,19 @@ fun RationsView(
 @Composable
 fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) -> Unit) {
         val isNewRation = ration == null
-        val title = if (isNewRation) "Créer une ration" else "Modifier la ration"
+        val title =
+                if (isNewRation) {
+                        translate(RationKeys.CREATE_TITLE)
+                } else {
+                        translate(RationKeys.EDIT_TITLE)
+                }
 
         // État éditable de la ration
         var editedRation by remember {
                 mutableStateOf(
                         ration?.copy()
                                 ?: Ration(
-                                        name = "Nouvelle ration",
+                                        name = translate(RationKeys.NEW_NAME),
                                         actual = false,
                                         alimentMutableList = mutableListOf()
                                 )
@@ -1656,7 +1678,7 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                         onValueChange = {
                                                 editedRation = editedRation.copy(name = it)
                                         },
-                                        label = { Text("Nom de la ration") },
+                                        label = { Text(translate(RationKeys.NAME_LABEL)) },
                                         modifier = Modifier.fillMaxWidth()
                                 )
 
@@ -1665,7 +1687,10 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                        Text("Type de ration:", modifier = Modifier.weight(1f))
+                                        Text(
+                                                translate(RationKeys.TYPE_LABEL),
+                                                modifier = Modifier.weight(1f)
+                                        )
 
                                         Switch(
                                                 checked = editedRation.actual,
@@ -1686,8 +1711,11 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
 
                                         Text(
                                                 text =
-                                                        if (editedRation.actual) "Actuelle"
-                                                        else "Proposée",
+                                                        if (editedRation.actual) {
+                                                                translate(RationKeys.ACTUAL)
+                                                        } else {
+                                                                translate(RationKeys.PROPOSED)
+                                                        },
                                                 style = MaterialTheme.typography.body2,
                                                 modifier =
                                                         Modifier.padding(
@@ -1702,7 +1730,7 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                         onValueChange = {
                                                 editedRation = editedRation.copy(description = it)
                                         },
-                                        label = { Text("Description") },
+                                        label = { Text(translate(RationKeys.DESCRIPTION)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         maxLines = 3,
                                         singleLine = false
@@ -1728,13 +1756,15 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                                                 )
                                                 }
                                         },
-                                        label = { Text("Coefficient de la ration") },
+                                        label = { Text(translate(RationKeys.COEFFICIENT_LABEL)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         keyboardOptions =
                                                 KeyboardOptions(
                                                         keyboardType = KeyboardType.Decimal
                                                 ),
-                                        placeholder = { Text("Ex: 1,0 ou 1.0") }
+                                        placeholder = {
+                                                Text(translate(RationKeys.COEFFICIENT_PLACEHOLDER))
+                                        }
                                 )
                         }
                 },
@@ -1746,9 +1776,9 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                                 backgroundColor = VetNutriColors.Primary,
                                                 contentColor = VetNutriColors.OnPrimary
                                         )
-                        ) { Text("Enregistrer") }
+                        ) { Text(translate(General.SAVE)) }
                 },
-                dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } }
+                dismissButton = { TextButton(onClick = onDismiss) { Text(translate(General.CANCEL)) } }
         )
 }
 
@@ -1788,7 +1818,7 @@ private fun MetabolicValuesDialog(
                 onDismissRequest = onDismiss,
                 title = {
                         Text(
-                                "Valeurs métaboliques détaillées",
+                                translate(AnalNut.METABOLIC_VALUES_TITLE),
                                 style = MaterialTheme.typography.h5,
                                 color = VetNutriColors.Primary
                         )
@@ -1796,25 +1826,25 @@ private fun MetabolicValuesDialog(
                 text = {
                         Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)) {
                                 LocalInfoRow(
-                                        label = "Poids actuel",
+                                        label = translate(AnalNut.WEIGHT_CURRENT),
                                         value =
                                                 selectedConsultation?.weight?.let {
                                                         "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                                 }
-                                                        ?: "Non renseigné"
+                                                        ?: translate(General.NOT_SPECIFIED)
                                 )
 
                                 LocalInfoRow(
-                                        label = "Poids idéal",
+                                        label = translate(AnalNut.WEIGHT_IDEAL),
                                         value =
                                                 selectedConsultation?.effectiveWeight?.let {
                                                         "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                                 }
-                                                        ?: "Non calculé"
+                                                        ?: translate(General.NOT_CALCULATED)
                                 )
 
                                 LocalInfoRow(
-                                        label = "Poids métabolique",
+                                        label = translate(AnalNut.WEIGHT_METABOLIC),
                                         value =
                                                 poidsMetabolique?.let {
                                                         TextUtils.formatKgAvecPuissanceDynamique(
@@ -1822,38 +1852,38 @@ private fun MetabolicValuesDialog(
                                                                 referenceUtilisee?.equationBW?.equationScript
                                                         )
                                                 }
-                                                        ?: "Non calculé"
+                                                        ?: translate(General.NOT_CALCULATED)
                                 )
 
                                 LocalInfoRow(
-                                        label = "Besoin énergétique standard (BEE)",
+                                        label = translate(AnalNut.ENERGY_STANDARD),
                                         value =
                                                 besoinEnergetiqueStandard?.let {
                                                         "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kcal/jour"
                                                 }
-                                                        ?: "Non calculé"
+                                                        ?: translate(General.NOT_CALCULATED)
                                 )
 
                                 LocalInfoRow(
-                                        label = "Besoin énergétique total",
+                                        label = translate(AnalNut.ENERGY_TOTAL),
                                         value =
                                                 besoinEnergetiqueTotal?.let {
                                                         "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kcal/jour"
                                                 }
-                                                        ?: "Non calculé"
+                                                        ?: translate(General.NOT_CALCULATED)
                                 )
 
                                 Divider()
 
                                 LocalInfoRow(
-                                        label = "K Observé",
+                                        label = translate(AnalNut.K_OBSERVED),
                                         value =
                                                 fr.vetbrain.vetnutri_mp.Utils.TextUtils
                                                         .formatDecimal(kObserve, 2)
                                 )
 
                                 LocalInfoRow(
-                                        label = "K Calculé",
+                                        label = translate(AnalNut.K_CALCULATED),
                                         value =
                                                 fr.vetbrain.vetnutri_mp.Utils.TextUtils
                                                         .formatDecimal(kCalcule, 2)
@@ -1862,14 +1892,19 @@ private fun MetabolicValuesDialog(
                                 referenceUtilisee?.let { reference ->
                                         Divider()
                                         Text(
-                                                "Référence utilisée: ${reference.nom}",
+                                                translate(
+                                                        AnalNut.REFERENCE_USED,
+                                                        reference.nom
+                                                ),
                                                 style = MaterialTheme.typography.caption,
                                                 color = VetNutriColors.Primary
                                         )
                                 }
                         }
                 },
-                confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } }
+                confirmButton = {
+                        TextButton(onClick = onDismiss) { Text(translate(General.CLOSE)) }
+                }
         )
 }
 
@@ -1886,11 +1921,12 @@ private fun CoefficientEditableRow(
         onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit
 ) {
         var showDropdown by remember { mutableStateOf(false) }
+        val customValueLabel = translate(RationKeys.CUSTOM_VALUE)
 
         // Vérifier si la valeur actuelle est personnalisée (pas dans la liste prédéfinie)
         val isCustomValue =
                 remember(currentValue, currentDescription, availableCoefficients) {
-                        currentDescription == "Valeur personnalisée" ||
+                        currentDescription == customValueLabel ||
                                 availableCoefficients.none {
                                         it.coef == currentValue &&
                                                 it.description == currentDescription
@@ -1933,18 +1969,20 @@ private fun CoefficientEditableRow(
                                                 val customCoef =
                                                         fr.vetbrain.vetnutri_mp.Data.CoefP(
                                                                 description =
-                                                                        "Valeur personnalisée",
+                                                                        customValueLabel,
                                                                 coef = value,
                                                                 groupUUID = null
                                                         )
                                                 onCoefficientSelected(customCoef)
                                         }
                                 },
-                                label = { Text("Coefficient") },
+                                label = { Text(translate(ConsultationEdit.COEF_SELECTOR_LABEL)) },
                                 modifier = Modifier.fillMaxWidth(),
                                 keyboardOptions =
                                         KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                placeholder = { Text("Ex: 1,2 ou 1.2") },
+                                placeholder = {
+                                        Text(translate(RationKeys.COEFFICIENT_PLACEHOLDER))
+                                },
                                 trailingIcon = {
                                         Row {
                                                 // Bouton de validation (uniquement en mode édition)
@@ -1971,7 +2009,7 @@ private fun CoefficientEditableRow(
                                                                                                 .Data
                                                                                                 .CoefP(
                                                                                                         description =
-                                                                                                                "Valeur personnalisée",
+                                                                                                                customValueLabel,
                                                                                                         coef =
                                                                                                                 value,
                                                                                                         groupUUID =
@@ -1984,8 +2022,9 @@ private fun CoefficientEditableRow(
                                                                         isEditing = false
                                                                 },
                                                                 imageVector = Icons.Default.Check,
-                                                                contentDescription = "Valider",
-                                                                tooltip = "Valider",
+                                                                contentDescription =
+                                                                        translate(General.VALIDATE),
+                                                                tooltip = translate(General.VALIDATE),
                                                                 tint = VetNutriColors.Primary
                                                         )
                                                 }
@@ -1999,8 +2038,10 @@ private fun CoefficientEditableRow(
                                                                 // on ouvre le dropdown
                                                         },
                                                         imageVector = if (showDropdown) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                                        contentDescription = "Sélectionner un coefficient",
-                                                        tooltip = "Sélectionner un coefficient"
+                                                        contentDescription =
+                                                                translate(ConsultationEdit.COEF_SELECTOR_NONE),
+                                                        tooltip =
+                                                                translate(ConsultationEdit.COEF_SELECTOR_NONE)
                                                 )
                                         }
                                 }
@@ -2034,7 +2075,13 @@ private fun CoefficientEditableRow(
                                                         }
                                                 },
                                         onValueChange = { /* Pas d'édition en mode lecture */},
-                                        label = { Text("Coefficient") },
+                                        label = {
+                                                Text(
+                                                        translate(
+                                                                ConsultationEdit.COEF_SELECTOR_LABEL
+                                                        )
+                                                )
+                                        },
                                         readOnly = true,
                                         modifier = Modifier.fillMaxWidth(),
                                         trailingIcon = {
@@ -2042,8 +2089,10 @@ private fun CoefficientEditableRow(
                                                 IconButtonWithTooltip(
                                                         onClick = { showDropdown = true },
                                                         imageVector = if (showDropdown) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                                        contentDescription = "Sélectionner un coefficient",
-                                                        tooltip = "Sélectionner un coefficient"
+                                                        contentDescription =
+                                                                translate(ConsultationEdit.COEF_SELECTOR_NONE),
+                                                        tooltip =
+                                                                translate(ConsultationEdit.COEF_SELECTOR_NONE)
                                                 )
                                         }
                                 )
@@ -2093,7 +2142,11 @@ private fun CoefficientEditableRow(
                 // DropdownMenu avec les coefficients disponibles
                 DropdownMenu(
                         expanded = showDropdown,
-                        onDismissRequest = { showDropdown = false },
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                showDropdown = false 
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth()
                 ) {
                         availableCoefficients.forEach { coef ->
@@ -2106,12 +2159,27 @@ private fun CoefficientEditableRow(
                                         Column {
                                                 Text(
                                                         text = coef.description
-                                                                        ?: "Sans description",
+                                                                        ?: translate(
+                                                                                ConsultationEdit
+                                                                                        .REF_COEF_NO_DESC
+                                                                        ),
                                                         style = MaterialTheme.typography.body1
                                                 )
                                                 Text(
                                                         text =
-                                                                "Coefficient: ${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal((coef.coef ?: 1.0).toDouble(), 2)}",
+                                                                translate(
+                                                                        ConsultationEdit.COEF_VAL_LABEL,
+                                                                        fr.vetbrain
+                                                                                .vetnutri_mp
+                                                                                .Utils
+                                                                                .TextUtils
+                                                                                .formatDecimal(
+                                                                                        (coef.coef
+                                                                                                ?: 1.0)
+                                                                                                .toDouble(),
+                                                                                        2
+                                                                                )
+                                                                ),
                                                         style = MaterialTheme.typography.body2,
                                                         color = Color.Gray
                                                 )
@@ -2146,7 +2214,7 @@ private fun CoefficientEditableRow(
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                                text = "Édition directe...",
+                                                text = translate(RationKeys.DIRECT_EDIT),
                                                 style = MaterialTheme.typography.body2,
                                                 fontStyle = FontStyle.Italic
                                         )
@@ -2179,7 +2247,7 @@ private fun CoefficientsDialog(
                 onDismissRequest = onDismiss,
                 title = {
                         Text(
-                                "Coefficients détaillés",
+                                translate(RationKeys.COEFFICIENTS_DETAIL_TITLE),
                                 style = MaterialTheme.typography.h5,
                                 color = VetNutriColors.Primary
                         )
@@ -2191,7 +2259,7 @@ private fun CoefficientsDialog(
                         ) {
                                 item {
                                         Text(
-                                                "Coefficients K",
+                                                translate(RationKeys.COEFFICIENTS_K_TITLE),
                                                 style = MaterialTheme.typography.h6,
                                                 color = VetNutriColors.Primary,
                                                 fontWeight = FontWeight.Bold
@@ -2318,7 +2386,7 @@ private fun CoefficientsDialog(
                                                 verticalAlignment = Alignment.CenterVertically
                                         ) {
                                                 Text(
-                                                        "Coefficient d'ajustement",
+                                                        translate(RationKeys.COEFFICIENT_ADJUST_LABEL),
                                                         style = MaterialTheme.typography.subtitle1
                                                 )
 
@@ -2367,8 +2435,10 @@ private fun CoefficientsDialog(
                                                                                         false
                                                                         },
                                                                         imageVector = Icons.Filled.Check,
-                                                                        contentDescription = "Valider",
-                                                                        tooltip = "Valider",
+                                                                        contentDescription =
+                                                                                translate(General.VALIDATE),
+                                                                        tooltip =
+                                                                                translate(General.VALIDATE),
                                                                         tint = Color.Green
                                                                 )
                                                                 IconButtonWithTooltip(
@@ -2382,8 +2452,10 @@ private fun CoefficientsDialog(
                                                                                         false
                                                                         },
                                                                         imageVector = Icons.Filled.Close,
-                                                                        contentDescription = "Annuler",
-                                                                        tooltip = "Annuler",
+                                                                        contentDescription =
+                                                                                translate(General.CANCEL),
+                                                                        tooltip =
+                                                                                translate(General.CANCEL),
                                                                         tint = Color.Red
                                                                 )
                                                         }
@@ -2424,8 +2496,10 @@ private fun CoefficientsDialog(
                                                                                         true
                                                                         },
                                                                         imageVector = Icons.Filled.Edit,
-                                                                        contentDescription = "Éditer",
-                                                                        tooltip = "Éditer"
+                                                                        contentDescription =
+                                                                                translate(General.EDIT),
+                                                                        tooltip =
+                                                                                translate(General.EDIT)
                                                                 )
                                                         }
                                                 }
@@ -2433,7 +2507,7 @@ private fun CoefficientsDialog(
                                 }
                         }
                 },
-                confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } }
+                confirmButton = { TextButton(onClick = onDismiss) { Text(translate(General.CLOSE)) } }
         )
 }
 

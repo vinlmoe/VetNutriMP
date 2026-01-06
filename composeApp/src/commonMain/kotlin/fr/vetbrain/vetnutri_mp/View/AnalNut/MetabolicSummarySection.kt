@@ -76,7 +76,7 @@ fun SectionValeursMetaboliques(
                                     selectedConsultation?.weight?.let {
                                         "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                     }
-                                            ?: "Non renseigné"
+                                            ?: translate(LocalizationKeys.General.NOT_SPECIFIED)
                     )
                     LigneInfoLocaleCompacte(
                             label = translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL),
@@ -84,7 +84,7 @@ fun SectionValeursMetaboliques(
                                     selectedConsultation?.effectiveWeight?.let {
                                         "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                     }
-                                            ?: "Non calculé"
+                                            ?: translate(LocalizationKeys.General.NOT_CALCULATED)
                     )
                     LigneInfoLocaleCompacte(
                             label = translate(LocalizationKeys.AnalNut.P_METABOLIC),
@@ -94,7 +94,7 @@ fun SectionValeursMetaboliques(
                                                 referenceUtilisee?.equationBW?.equationScript
                                         )
                                     }
-                                            ?: "Non calculé"
+                                            ?: translate(LocalizationKeys.General.NOT_CALCULATED)
                     )
                     LigneInfoLocaleCompacte(
                             label = translate(LocalizationKeys.AnalNut.BEE_STANDARD),
@@ -102,7 +102,7 @@ fun SectionValeursMetaboliques(
                                     besoinEnergetiqueStandard?.let {
                                         "${TextUtils.formatDecimal(it, 0)} kcal/j"
                                     }
-                                            ?: "Non calculé"
+                                            ?: translate(LocalizationKeys.General.NOT_CALCULATED)
                     )
                     if ((energieAdditionnelle ?: 0.0) > 0.0) {
                         LigneInfoLocaleCompacte(
@@ -115,7 +115,7 @@ fun SectionValeursMetaboliques(
                             value =
                                     besoinEnergetiqueTotal?.let {
                                         "${TextUtils.formatDecimal(it, 0)} kcal/j"
-                                    } ?: "Non calculé"
+                                    } ?: translate(LocalizationKeys.General.NOT_CALCULATED)
                     )
                 }
             } else {
@@ -127,7 +127,7 @@ fun SectionValeursMetaboliques(
                                     selectedConsultation?.weight?.let {
                                         "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                     }
-                                            ?: "Non renseigné"
+                                            ?: translate(LocalizationKeys.General.NOT_SPECIFIED)
                     )
                     LigneInfoLocaleCompacte(
                             label = translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL),
@@ -135,7 +135,7 @@ fun SectionValeursMetaboliques(
                                     selectedConsultation?.effectiveWeight?.let {
                                         "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                     }
-                                            ?: "Non calculé"
+                                            ?: translate(LocalizationKeys.General.NOT_CALCULATED)
                     )
                     LigneInfoLocaleCompacte(
                             label = translate(LocalizationKeys.AnalNut.WEIGHT_METABOLIC),
@@ -145,7 +145,7 @@ fun SectionValeursMetaboliques(
                                                 referenceUtilisee?.equationBW?.equationScript
                                         )
                                     }
-                                            ?: "Non calculé"
+                                            ?: translate(LocalizationKeys.General.NOT_CALCULATED)
                     )
                     LigneInfoLocaleCompacte(
                             label = translate(LocalizationKeys.AnalNut.BEE_STANDARD),
@@ -153,7 +153,7 @@ fun SectionValeursMetaboliques(
                                     besoinEnergetiqueStandard?.let {
                                         "${TextUtils.formatDecimal(it, 0)} kcal/j"
                                     }
-                                            ?: "Non calculé"
+                                            ?: translate(LocalizationKeys.General.NOT_CALCULATED)
                     )
                     if ((energieAdditionnelle ?: 0.0) > 0.0) {
                         LigneInfoLocaleCompacte(
@@ -166,7 +166,7 @@ fun SectionValeursMetaboliques(
                             value =
                                     besoinEnergetiqueTotal?.let {
                                         "${TextUtils.formatDecimal(it, 0)} kcal/j"
-                                    } ?: "Non calculé"
+                                    } ?: translate(LocalizationKeys.General.NOT_CALCULATED)
                     )
                 }
             }

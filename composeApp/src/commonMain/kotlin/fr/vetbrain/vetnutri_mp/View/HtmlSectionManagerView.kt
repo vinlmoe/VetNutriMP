@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.RichTextEditor
 import fr.vetbrain.vetnutri_mp.Export.*
 import fr.vetbrain.vetnutri_mp.ViewModel.HtmlSectionViewModel
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /** Écran principal pour gérer les sections HTML réutilisables */
 @Composable
@@ -86,7 +87,14 @@ fun HtmlSectionManagerView(viewModel: HtmlSectionViewModel, onNavigateBack: () -
                     )
                 }
 
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                expanded = false
+                            }
+                        }
+                ) {
                     DropdownMenuItem(
                             onClick = {
                                 selectedCategory = null

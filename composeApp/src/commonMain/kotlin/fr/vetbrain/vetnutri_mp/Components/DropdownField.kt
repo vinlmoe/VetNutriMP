@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Dialog
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Composant générique de liste déroulante basé sur BasicTextField pour un contrôle total
@@ -192,7 +193,11 @@ fun <T> DropdownField(
 
                         DropdownMenu(
                                 expanded = expanded && enabled,
-                                onDismissRequest = { expanded = false },
+                                onDismissRequest = {
+                                        if (!isIosPlatform) {
+                                                expanded = false
+                                        }
+                                },
                                 modifier = Modifier.fillMaxWidth(0.9f)
                         ) {
                                 options.forEach { option ->

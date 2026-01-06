@@ -38,6 +38,7 @@ import fr.vetbrain.vetnutri_mp.View.Components.QRCodeScannerView
 import fr.vetbrain.vetnutri_mp.getPlatform
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Liste des animaux.
@@ -71,6 +72,7 @@ fun AnimalListView(
         val apiProgress = viewModel.apiImportProgress.collectAsState().value
         val apiLogs = viewModel.apiImportLogs.collectAsState().value
         var showApiResultDialog by remember { mutableStateOf(false) }
+        val showCrossAnalysisButton = false
 
         LaunchedEffect(apiImportResult) {
             if (apiImportResult != null && apiImportResult is AnimalListViewModel.ImportResult.Success) {
@@ -148,16 +150,19 @@ fun AnimalListView(
                                                 )
                                 ) { Text(translate(AnimalList.QUICK_IMPORT)) }
 
-                                // Analyses croisées
-                                Button(
-                                        onClick = onShowCrossAnalysis,
-                                        modifier = Modifier.weight(1f),
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = VetNutriColors.Primary,
-                                                        contentColor = VetNutriColors.OnPrimary
-                                                )
-                                ) { Text(translate(AnimalList.CROSS_ANALYSIS)) }
+                                if (showCrossAnalysisButton) {
+                                        Button(
+                                                onClick = onShowCrossAnalysis,
+                                                modifier = Modifier.weight(1f),
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor =
+                                                                        VetNutriColors.Primary,
+                                                                contentColor =
+                                                                        VetNutriColors.OnPrimary
+                                                        )
+                                        ) { Text(translate(AnimalList.CROSS_ANALYSIS)) }
+                                }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -431,7 +436,11 @@ private fun EspeceDropdown(
 
                 DropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false },
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                expanded = false 
+                            }
+                        },
                         modifier = Modifier.exposedDropdownSize()
                 ) {
                         availableEspeces.forEach { espece ->

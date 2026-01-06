@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteException
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import fr.vetbrain.vetnutri_mp.DataBase.*
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
@@ -435,31 +436,48 @@ fun createMigration25to26(): Migration {
     return object : Migration(25, 26) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
             try {
-                connection.prepare(
-                    "ALTER TABLE CONSULTATIONS ADD COLUMN keywordsJson TEXT"
-                ).use { statement ->
-                    statement.step()
-                }
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN keywordsJson TEXT"
+                )
 
-                connection.prepare(
-                    """
-                    CREATE TABLE CONSULTATION_KEYWORDS (
-                        uuid TEXT NOT NULL PRIMARY KEY,
-                        label TEXT NOT NULL
-                    )
-                    """
-                ).use { statement ->
-                    statement.step()
-                }
+                runStatementIgnoreIfExists(
+                        connection,
+                        """
+                        CREATE TABLE CONSULTATION_KEYWORDS (
+                            uuid TEXT NOT NULL PRIMARY KEY,
+                            label TEXT NOT NULL
+                        )
+                        """
+                )
 
-                connection.prepare(
-                    "CREATE UNIQUE INDEX index_CONSULTATION_KEYWORDS_label ON CONSULTATION_KEYWORDS(label)"
-                ).use { statement ->
-                    statement.step()
-                }
+                runStatementIgnoreIfExists(
+                        connection,
+                        "CREATE UNIQUE INDEX index_CONSULTATION_KEYWORDS_label ON CONSULTATION_KEYWORDS(label)"
+                )
             } catch (e: Exception) {
                 throw e
             }
         }
     }
+}
+
+private fun runStatementIgnoreIfExists(
+        connection: androidx.sqlite.SQLiteConnection,
+        sql: String
+) {
+    try {
+        connection.prepare(sql).use { statement ->
+            statement.step()
+        }
+    } catch (e: SQLiteException) {
+        if (!shouldIgnoreSqliteExistsError(e)) {
+            throw e
+        }
+    }
+}
+
+private fun shouldIgnoreSqliteExistsError(e: SQLiteException): Boolean {
+    val message = e.message?.lowercase() ?: return false
+    return message.contains("already exists") || message.contains("duplicate column")
 }

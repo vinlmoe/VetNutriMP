@@ -30,6 +30,7 @@ import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /** Données d'ajustement pour un aliment spécifique */
 data class AlimentAdjustmentData(
@@ -450,8 +451,12 @@ fun MultiNutrientAdjustmentView(
                                                                         DropdownMenu(
                                                                                 expanded = expanded,
                                                                                 onDismissRequest = {
+                                                                                    if (!isIosPlatform) {
+
                                                                                         expanded =
                                                                                                 false
+
+                                                                                    }
                                                                                 }
                                                                         ) {
                                                                                 Reflevel.entries
@@ -616,7 +621,7 @@ fun MultiNutrientAdjustmentView(
                                                                                         // Appliquer le même facteur à toutes les quantités
                                                                                         val adjustedAliments = ration.alimentMutableList.map { ar ->
                                                                                                 val nouvelleQuantite = kotlin.math.round(ar.quantite * facteur)
-                                                                                                ar.copy(quantite = nouvelleQuantite)
+                                                                                                ar.copy(quantite = nouvelleQuantite.coerceAtLeast(0.0))
                                                                                         }
                                                                                         val result = RationAdjustmentResult(
                                                                                                 success = true,
@@ -1380,7 +1385,7 @@ suspend fun calculerAjustement(
                                                                 // Arrondir au centième de gramme pour éviter les erreurs de précision
                                                                 val quantiteArrondie: Double = kotlin.math.round(nouvelleQuantite * 100.0) / 100.0
                                                                 adjustedAliments[index] = adjustedAliments[index].copy(
-                                                                        quantite = quantiteArrondie
+                                                                        quantite = quantiteArrondie.coerceAtLeast(0.0)
                                                                 )
                                                                 ajustementEffectue = true
                                                         }
@@ -2025,7 +2030,7 @@ private suspend fun adjustRationForMultipleNutrients(
                                                                 // Arrondir au centième de gramme pour éviter les erreurs de précision
                                                                 val quantiteArrondie: Double = kotlin.math.round(nouvelleQuantite * 100.0) / 100.0
                                                                 adjustedAliments[index] = adjustedAliments[index].copy(
-                                                                        quantite = quantiteArrondie
+                                                                        quantite = quantiteArrondie.coerceAtLeast(0.0)
                                                                 )
                                                                 ajustementEffectue = true
                                                         }
@@ -2041,6 +2046,11 @@ private suspend fun adjustRationForMultipleNutrients(
                                         iterations++
                                 }
                         }
+                }
+
+                for (i in adjustedAliments.indices) {
+                        val quantiteClamped = adjustedAliments[i].quantite.toDouble().coerceAtLeast(0.0)
+                        adjustedAliments[i] = adjustedAliments[i].copy(quantite = quantiteClamped)
                 }
 
                 return RationAdjustmentResult(
@@ -2071,14 +2081,15 @@ private fun arrondirQuantiteSelonRegles(alimentRation: AlimentRation, quantite: 
                 // Règle contenant: si contenant défini et quantInt > 0, arrondir au multiple de quantInt/2
                 if (cont != null && cont != ContEnum.NO && quantInt != null && quantInt > 0.0) {
                         val step = quantInt / 2.0
-                        return kotlin.math.round(quantite / step) * step
+                        return (kotlin.math.round(quantite / step) * step).coerceAtLeast(0.0)
                 }
         }
         
         // Règles générales par défaut
-        return when {
+        val arrondie = when {
                 quantite < 20.0 -> kotlin.math.round(quantite) // Arrondi au gramme
                 quantite < 200.0 -> kotlin.math.round(quantite / 5.0) * 5.0 // Arrondi aux 5g
                 else -> kotlin.math.round(quantite / 25.0) * 25.0 // Arrondi aux 25g
         }
+        return arrondie.coerceAtLeast(0.0)
 }

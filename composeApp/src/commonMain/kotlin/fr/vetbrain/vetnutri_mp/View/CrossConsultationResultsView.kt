@@ -35,6 +35,7 @@ import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CrossConsultationAnalysisViewModel
+import kotlin.math.roundToInt
 import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
 import io.github.koalaplot.core.xygraph.CategoryAxisModel
@@ -246,7 +247,7 @@ private fun RationList(items: List<CrossConsultationAnalysisViewModel.RationSumm
                         style = androidx.compose.material.MaterialTheme.typography.body2
                 )
                 Text(
-                        "Réf: ${item.referenceLabel ?: "Aucune"} | Espèce: ${item.speciesLabel} | Quantité: ${"%.0f".format(item.quantity)} g | Statut: ${if (item.actual) "Actuelle" else "Proposée"}",
+                        "Réf: ${item.referenceLabel ?: "Aucune"} | Espèce: ${item.speciesLabel} | Quantité: ${item.quantity.roundToInt()} g | Statut: ${if (item.actual) "Actuelle" else "Proposée"}",
                         style = androidx.compose.material.MaterialTheme.typography.caption
                 )
                 Divider()
@@ -292,4 +293,3 @@ private fun ConsultationBarChart(
         )
     }
 }
-

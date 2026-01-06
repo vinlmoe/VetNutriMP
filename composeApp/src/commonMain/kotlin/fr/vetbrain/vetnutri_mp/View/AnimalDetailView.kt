@@ -73,9 +73,9 @@ typealias RecipeRepo = fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
  * Format: "ID animal + Nom Animal + date consultation.pdf"
  */
 private fun generateDefaultPdfFileName(animal: AnimalEv?, consultation: ConsultationEv?): String {
-    val animalId = animal?.id ?: "ID_INCONNU"
-    val animalName = animal?.nom ?: "NOM_INCONNU"
-    val consultationDate = consultation?.date?.toString() ?: "DATE_INCONNUE"
+    val animalId = animal?.id ?: translate(AnimalDetail.UNKNOWN_ID)
+    val animalName = animal?.nom ?: translate(AnimalDetail.UNKNOWN_NAME)
+    val consultationDate = consultation?.date?.toString() ?: translate(AnimalDetail.UNKNOWN_DATE)
     return "${animalId}_${animalName}_${consultationDate}.pdf"
 }
 
@@ -424,7 +424,7 @@ private fun handlePdfExport(
                         animal = animalDetails,
                         ration = null,
                         reference = referenceUtilisee,
-                        conseils = listOf("Veiller à l'hydratation"),
+                        conseils = listOf(translate(AnimalDetail.DEFAULT_ADVICE_HYDRATION)),
                         title = translate(AnimalDetail.PRESCRIPTION_TITLE),
                         additionalText = additionalText,
                         htmlSections = getSelectedConseils(),
@@ -1422,7 +1422,10 @@ private fun WideScreenLayout(
                                                                                                         id =
                                                                                                                 "section_${kotlinx.datetime.Clock.System.now().toEpochMilliseconds()}",
                                                                                                         title =
-                                                                                                                "Section personnalisée ${availableConseils.size + 1}",
+                                                                                                                translate(
+                                                                                                                        AnimalDetail.CUSTOM_SECTION_TITLE,
+                                                                                                                        (availableConseils.size + 1).toString()
+                                                                                                                ),
                                                                                                         content =
                                                                                                                 currentHtmlContent,
                                                                                                         category =
@@ -1451,7 +1454,7 @@ private fun WideScreenLayout(
                                                                                 currentHtmlContent
                                                                                         .blocks
                                                                                         .isNotEmpty()
-                                                                ) { Text("Ajouter la section") }
+                                                                ) { Text(translate(AnimalDetail.ADD_SECTION)) }
 
                                                                 OutlinedButton(
                                                                         onClick = {
@@ -1461,7 +1464,7 @@ private fun WideScreenLayout(
                                                                                                 .Export
                                                                                                 .RichTextContent()
                                                                         }
-                                                                ) { Text("Effacer") }
+                                                                ) { Text(translate(AnimalDetail.CLEAR_SECTION)) }
                                                         }
                                                 }
                                         } else {
@@ -1479,7 +1482,7 @@ private fun WideScreenLayout(
                                                 ) {
                                                         item {
                                                         Text(
-                                                                "Export des documents",
+                                                                translate(AnimalDetail.EXPORT_DOCUMENTS_TITLE),
                                                                 style = MaterialTheme.typography.h6,
                                                                 color = VetNutriColors.Primary
                                                         )
@@ -1488,7 +1491,7 @@ private fun WideScreenLayout(
                                                         item {
                                                         if (selectedConsultation == null) {
                                                                 Text(
-                                                                        "Aucune consultation sélectionnée pour l'ordonnance",
+                                                                        translate(AnimalDetail.NO_CONSULTATION_FOR_PRESCRIPTION),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -1497,7 +1500,7 @@ private fun WideScreenLayout(
                                                                 )
                                                         } else {
                                                                 Text(
-                                                                        "Sélection des rations à inclure dans l'ordonnance :",
+                                                                        translate(AnimalDetail.SELECT_RATIONS_FOR_PRESCRIPTION),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -1546,10 +1549,19 @@ private fun WideScreenLayout(
                                                                         )
                                                                         Column {
                                                                                 val rationLabel: String =
-                                                                                        if (ration.actual) "Ration actuelle" else "Ration proposée"
+                                                                                        if (ration.actual) {
+                                                                                                translate(AnimalDetail.RATION_CURRENT)
+                                                                                        } else {
+                                                                                                translate(AnimalDetail.RATION_PROPOSED)
+                                                                                        }
                                                                                 Text(
                                                                                         text =
-                                                                                                "${ration.name} - $rationLabel (${ration.getQuantiteTotale()} g/jour)",
+                                                                                                translate(
+                                                                                                        AnimalDetail.RATION_LINE,
+                                                                                                        ration.name,
+                                                                                                        rationLabel,
+                                                                                                        ration.getQuantiteTotale().toString()
+                                                                                                ),
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -1561,7 +1573,7 @@ private fun WideScreenLayout(
                                                         } else {
                                                                 item {
                                                                 Text(
-                                                                        "Aucune ration disponible pour la consultation sélectionnée",
+                                                                        translate(AnimalDetail.NO_RATION_AVAILABLE),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -1581,7 +1593,7 @@ private fun WideScreenLayout(
                                                         // Section pour les conseils personnalisés
                                                         item {
                                                         Text(
-                                                                "Conseils personnalisés:",
+                                                                translate(AnimalDetail.CUSTOM_ADVICE_TITLE),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .subtitle1,
@@ -1641,11 +1653,14 @@ private fun WideScreenLayout(
                                                                                                         )
                                                                                                         Text(
                                                                                                                 text =
-                                                                                                                        "Catégorie: ${conseil.category.name}",
+                                                                                                                        translate(
+                                                                                                                                AnimalDetail.CATEGORY_LABEL,
+                                                                                                                                conseil.category.name
+                                                                                                                        ),
                                                                                                                 style =
                                                                                                                         MaterialTheme
-                                                                                                                                .typography
-                                                                                                                                .caption,
+                                                                                                                               .typography
+                                                                                                                               .caption,
                                                                                                                 color =
                                                                                                                         Color.Gray
                                                                                                         )
@@ -1660,8 +1675,8 @@ private fun WideScreenLayout(
                                                                                                                                 }
                                                                                                         },
                                                                                                         imageVector = Icons.Default.Delete,
-                                                                                                        contentDescription = "Supprimer",
-                                                                                                        tooltip = "Supprimer",
+                                                                                                        contentDescription = translate(General.DELETE),
+                                                                                                        tooltip = translate(General.DELETE),
                                                                                                         tint = Color.Red
                                                                                                 )
                                                                                                 }
@@ -1688,12 +1703,15 @@ private fun WideScreenLayout(
                                                                                                 .OnSecondary
                                                                         )
                                                         ) {
-                                                                Icon(Icons.Default.Add, "Ajouter")
+                                                                Icon(
+                                                                        Icons.Default.Add,
+                                                                        translate(General.ADD)
+                                                                )
                                                                 Spacer(
                                                                         modifier =
                                                                                 Modifier.width(8.dp)
                                                                 )
-                                                                Text("Ajouter des conseils")
+                                                                Text(translate(AnimalDetail.ADD_ADVICE))
                                                                 }
                                                         }
 
@@ -1706,7 +1724,10 @@ private fun WideScreenLayout(
                                                         if (localHtmlSections.isNotEmpty()) {
                                                                 item {
                                                                 Text(
-                                                                        "Sections HTML créées localement (${localHtmlSections.size}):",
+                                                                translate(
+                                                                        AnimalDetail.LOCAL_HTML_SECTIONS_TITLE,
+                                                                        localHtmlSections.size.toString()
+                                                                ),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -1766,11 +1787,14 @@ private fun WideScreenLayout(
                                                                                                         )
                                                                                                         Text(
                                                                                                                 text =
-                                                                                                                        "${section.content.blocks.size} blocs",
+                                                                                                                        translate(
+                                                                                                                                AnimalDetail.BLOCKS_COUNT,
+                                                                                                                                section.content.blocks.size.toString()
+                                                                                                                        ),
                                                                                                                 style =
                                                                                                                         MaterialTheme
-                                                                                                                                .typography
-                                                                                                                                .caption,
+                                                                                                                               .typography
+                                                                                                                               .caption,
                                                                                                                 color =
                                                                                                                         Color.Gray
                                                                                                         )
@@ -1785,8 +1809,8 @@ private fun WideScreenLayout(
                                                                                                                                 }
                                                                                                         },
                                                                                                         imageVector = Icons.Default.Delete,
-                                                                                                        contentDescription = "Supprimer",
-                                                                                                        tooltip = "Supprimer",
+                                                                                                        contentDescription = translate(General.DELETE),
+                                                                                                        tooltip = translate(General.DELETE),
                                                                                                         tint = Color.Red
                                                                                                 )
                                                                                         }
@@ -1824,7 +1848,7 @@ private fun WideScreenLayout(
                                                         ) {
                                                                 Icon(
                                                                         Icons.Default.Edit,
-                                                                        "Éditeur HTML"
+                                                                        translate(AnimalDetail.HTML_EDITOR)
                                                                 )
                                                                 Spacer(
                                                                         modifier =
@@ -1833,8 +1857,8 @@ private fun WideScreenLayout(
                                                                                 )
                                                                 )
                                                                 Text(
-                                                                        "Créer des sections HTML personnalisées"
-                                                                )
+                                                                translate(AnimalDetail.CREATE_CUSTOM_HTML_SECTIONS)
+                                                        )
                                                         }
                                                         }
 
@@ -1847,7 +1871,7 @@ private fun WideScreenLayout(
                                                                 modifier = Modifier.fillMaxWidth(),
                                                                 label = {
                                                                         Text(
-                                                                                "Texte additionnel (apparaît en fin de document)"
+                                                                                translate(AnimalDetail.ADDITIONAL_TEXT_LABEL)
                                                                         )
                                                                 },
                                                                 maxLines = 6
@@ -1902,10 +1926,10 @@ private fun WideScreenLayout(
                                                                                                                                         referenceUtilisee,
                                                                                                                                 conseils =
                                                                                                                                         listOf(
-                                                                                                                                                "Veiller à l'hydratation"
+                                                                                                                                                translate(AnimalDetail.DEFAULT_ADVICE_HYDRATION)
                                                                                                                                         ),
                                                                                                                                 title =
-                                                                                                                                        "Ordonnance nutritionnelle",
+                                                                                                                                        translate(AnimalDetail.PRESCRIPTION_TITLE),
                                                                                                                                 additionalText =
                                                                                                                                         additionalText,
                                                                                                                                 htmlSections =
@@ -1937,7 +1961,7 @@ private fun WideScreenLayout(
                                                                                                                 ration = null,
                                                                                                                 reference = referenceUtilisee,
                                                                                                                 conseils = emptyList(),
-                                                                                                                title = "Ordonnance nutritionnelle",
+                                                                                                                title = translate(AnimalDetail.PRESCRIPTION_TITLE),
                                                                                                                 additionalText = additionalText,
                                                                                                                 htmlSections = getSelectedConseils(),
                                                                                                                 rations = selectedRationsForPrescription,
@@ -1954,10 +1978,10 @@ private fun WideScreenLayout(
                                                                         }
                                                                 ) {
                                                                         Text(
-                                                                                "Prévisualiser ordonnance"
+                                                                                translate(AnimalDetail.PREVIEW_PRESCRIPTION)
                                                                         )
                                                                 }
-                                                                }
+                                                        }
                                                         }
 
                                                         // Texte additionnel
@@ -2005,7 +2029,7 @@ private fun WideScreenLayout(
                         if (showSearchDialog) {
                                 AlertDialog(
                                         onDismissRequest = { showSearchDialog = false },
-                                        title = { Text("Ajouter des conseils") },
+                                        title = { Text(translate(AnimalDetail.ADD_ADVICE)) },
                                         text = {
                                                 Column {
                                                         OutlinedTextField(
@@ -2015,7 +2039,7 @@ private fun WideScreenLayout(
                                                                 },
                                                                 label = {
                                                                         Text(
-                                                                                "Rechercher un conseil..."
+                                                                                translate(AnimalDetail.SEARCH_ADVICE_HINT)
                                                                         )
                                                                 },
                                                                 modifier = Modifier.fillMaxWidth()
@@ -2107,11 +2131,14 @@ private fun WideScreenLayout(
                                                                                                 )
                                                                                                 Text(
                                                                                                         text =
-                                                                                                                "Catégorie: ${conseil.category.name}",
+                                                                                                                translate(
+                                                                                                                        AnimalDetail.CATEGORY_LABEL,
+                                                                                                                        conseil.category.name
+                                                                                                                ),
                                                                                                         style =
                                                                                                                 MaterialTheme
-                                                                                                                        .typography
-                                                                                                                        .caption,
+                                                                                                                       .typography
+                                                                                                                       .caption,
                                                                                                         color =
                                                                                                                 Color.Gray
                                                                                                 )
@@ -2122,10 +2149,10 @@ private fun WideScreenLayout(
                                                                                                 Icon(
                                                                                                         Icons.Default
                                                                                                                 .Check,
-                                                                                                        "Sélectionné",
+                                                                                                        translate(AnimalDetail.SELECTED),
                                                                                                         tint =
                                                                                                                 VetNutriColors
-                                                                                                                        .Primary
+                                                                                                                       .Primary
                                                                                                 )
                                                                                         } else {
                                                                                                 IconButtonWithTooltip(
@@ -2135,8 +2162,8 @@ private fun WideScreenLayout(
                                                                                                                                 conseil
                                                                                                         },
                                                                                                         imageVector = Icons.Default.Add,
-                                                                                                        contentDescription = "Ajouter",
-                                                                                                        tooltip = "Ajouter",
+                                                                                                        contentDescription = translate(General.ADD),
+                                                                                                        tooltip = translate(General.ADD),
                                                                                                         tint = VetNutriColors.Primary
                                                                                                 )
                                                                                         }
@@ -2148,7 +2175,7 @@ private fun WideScreenLayout(
                                         },
                                         confirmButton = {
                                                 TextButton(onClick = { showSearchDialog = false }) {
-                                                        Text("Fermer")
+                                                        Text(translate(General.CLOSE))
                                                 }
                                         }
                                 )
@@ -2304,10 +2331,10 @@ private fun NarrowScreenLayout(
                                 ) {
                                         Icon(
                                                 imageVector = Icons.Default.Download,
-                                                contentDescription = "Exporter"
+                                                contentDescription = translate(AnimalDetail.EXPORT_ANIMAL)
                                         )
                                         Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                        Text(text = "Exporter animal")
+                                        Text(text = translate(AnimalDetail.EXPORT_ANIMAL))
                                 }
                                 
                                 // Bouton partager en ligne
@@ -2325,10 +2352,10 @@ private fun NarrowScreenLayout(
                                 ) {
                                         Icon(
                                                 imageVector = Icons.Default.Share,
-                                                contentDescription = "Partager"
+                                                contentDescription = translate(AnimalDetail.SHARE_ONLINE)
                                         )
                                         Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                        Text(text = "Partager en ligne")
+                                        Text(text = translate(AnimalDetail.SHARE_ONLINE))
                                 }
 
                                 // Bouton retour
@@ -2344,10 +2371,10 @@ private fun NarrowScreenLayout(
                                 ) {
                                         Icon(
                                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                                contentDescription = "Retour"
+                                                contentDescription = translate(AnimalDetail.BACK)
                                         )
                                         Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                        Text(text = "Retour")
+                                        Text(text = translate(AnimalDetail.BACK))
                                 }
 
                                 // Ajout de l'option Paramètres en bas du menu
@@ -2357,7 +2384,7 @@ private fun NarrowScreenLayout(
                                                 MenuOption(
                                                         section =
                                                                 AnimalDetailSection.IDENTIFICATION,
-                                                        title = "Paramètres",
+                                                        title = translate(Settings.TITLE),
                                                         icon = Icons.Default.Settings
                                                 ),
                                         isSelected = false,
@@ -2381,8 +2408,8 @@ private fun NarrowScreenLayout(
                                         IconButtonWithTooltip(
                                                 onClick = { scope.launch { drawerState.open() } },
                                                 imageVector = Icons.Default.Menu,
-                                                contentDescription = "Menu",
-                                                tooltip = "Menu",
+                                                contentDescription = translate(AnimalDetail.MENU),
+                                                tooltip = translate(AnimalDetail.MENU),
                                                 tint = VetNutriColors.Primary
                                         )
 
@@ -2581,7 +2608,7 @@ private fun NarrowScreenLayout(
                                                                                         )
                                                                         )
                                                                         Text(
-                                                                                "Chargement des aliments...",
+                                                                                translate(AnimalDetail.LOADING_FOODS),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -2708,7 +2735,7 @@ private fun NarrowScreenLayout(
                                                                                                 )
                                                                                                 Text(
                                                                                                         text =
-                                                                                                                "Chargement des valeurs nutritionnelles...",
+                                                                                                                translate(AnimalDetail.LOADING_NUTRITION),
                                                                                                         style =
                                                                                                                 MaterialTheme
                                                                                                                         .typography
@@ -2805,7 +2832,7 @@ private fun NarrowScreenLayout(
                                                                                         .CenterHorizontally
                                                                 ) {
                                                                         Text(
-                                                                                "Aucun aliment disponible",
+                                                                                translate(AnimalDetail.NO_FOOD_AVAILABLE),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -2815,7 +2842,7 @@ private fun NarrowScreenLayout(
                                                                                                 .Primary
                                                                         )
                                                                         Text(
-                                                                                "Aucun aliment n'est disponible pour l'analyse graphique",
+                                                                                translate(AnimalDetail.NO_FOOD_GRAPH_AVAILABLE),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -2918,11 +2945,11 @@ private fun NarrowScreenLayout(
                                                                                                 .CenterVertically
                                                                         ) {
                                                                                 Text(
-                                                                                        "Éditeur de sections HTML",
+                                                                                        translate(AnimalDetail.HTML_EDITOR),
                                                                                         style =
                                                                                                 MaterialTheme
-                                                                                                        .typography
-                                                                                                        .h6,
+                                                                                                       .typography
+                                                                                                       .h6,
                                                                                         color =
                                                                                                 VetNutriColors
                                                                                                         .Primary
@@ -2983,7 +3010,10 @@ private fun NarrowScreenLayout(
                                                                                                                         id =
                                                                                                                                 "section_${kotlinx.datetime.Clock.System.now().toEpochMilliseconds()}",
                                                                                                                         title =
-                                                                                                                                "Section personnalisée ${availableConseils.size + 1}",
+                                                                                                                                translate(
+                                                                                                                                        AnimalDetail.CUSTOM_SECTION_TITLE,
+                                                                                                                                        (availableConseils.size + 1).toString()
+                                                                                                                                ),
                                                                                                                         content =
                                                                                                                                 currentHtmlContent,
                                                                                                                         category =
@@ -3010,9 +3040,7 @@ private fun NarrowScreenLayout(
                                                                                                         .blocks
                                                                                                         .isNotEmpty()
                                                                                 ) {
-                                                                                        Text(
-                                                                                                "Ajouter"
-                                                                                        )
+                                                                                        Text(translate(AnimalDetail.ADD_SECTION))
                                                                                 }
 
                                                                                 OutlinedButton(
@@ -3024,9 +3052,7 @@ private fun NarrowScreenLayout(
                                                                                                                 .RichTextContent()
                                                                                         }
                                                                                 ) {
-                                                                                        Text(
-                                                                                                "Effacer"
-                                                                                        )
+                                                                                        Text(translate(AnimalDetail.CLEAR_SECTION))
                                                                                 }
                                                                         }
                                                                 }
@@ -3046,7 +3072,7 @@ private fun NarrowScreenLayout(
                                                                 ) {
                                                                         item {
                                                                         Text(
-                                                                                "Export des documents",
+                                                                                translate(AnimalDetail.EXPORT_DOCUMENTS_TITLE),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -3060,7 +3086,7 @@ private fun NarrowScreenLayout(
                                                                         item {
                                                                         if (selectedConsultation == null) {
                                                                                 Text(
-                                                                                        "Aucune consultation sélectionnée pour l'ordonnance",
+                                                                                        translate(AnimalDetail.NO_CONSULTATION_FOR_PRESCRIPTION),
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -3071,7 +3097,7 @@ private fun NarrowScreenLayout(
                                                                                 )
                                                                         } else {
                                                                                 Text(
-                                                                                        "Sélection des rations à inclure dans l'ordonnance :",
+                                                                                        translate(AnimalDetail.SELECT_RATIONS_FOR_PRESCRIPTION),
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -3123,14 +3149,23 @@ private fun NarrowScreenLayout(
                                                                                         )
                                                                                         Column {
                                                                                                 val rationLabel: String =
-                                                                                                        if (ration.actual) "Ration actuelle" else "Ration proposée"
+                                                                                                        if (ration.actual) {
+                                                                                                                translate(AnimalDetail.RATION_CURRENT)
+                                                                                                        } else {
+                                                                                                                translate(AnimalDetail.RATION_PROPOSED)
+                                                                                                        }
                                                                                                 Text(
                                                                                                         text =
-                                                                                                                "${ration.name} - $rationLabel (${ration.getQuantiteTotale()} g/jour)",
+                                                                                                                translate(
+                                                                                                                        AnimalDetail.RATION_LINE,
+                                                                                                                        ration.name,
+                                                                                                                        rationLabel,
+                                                                                                                        ration.getQuantiteTotale().toString()
+                                                                                                                ),
                                                                                                         style =
                                                                                                                 MaterialTheme
-                                                                                                                        .typography
-                                                                                                                        .body2
+                                                                                                                       .typography
+                                                                                                                       .body2
                                                                                                 )
                                                                                         }
                                                                                 }
@@ -3138,11 +3173,11 @@ private fun NarrowScreenLayout(
                                                                         } else {
                                                                                 item {
                                                                                 Text(
-                                                                                        "Aucune ration disponible pour la consultation sélectionnée",
+                                                                                        translate(AnimalDetail.NO_RATION_AVAILABLE),
                                                                                         style =
                                                                                                 MaterialTheme
-                                                                                                        .typography
-                                                                                                        .body2,
+                                                                                                       .typography
+                                                                                                       .body2,
                                                                                         color =
                                                                                                 MaterialTheme
                                                                                                         .colors
@@ -3159,7 +3194,7 @@ private fun NarrowScreenLayout(
                                                                         // personnalisés
                                                                         item {
                                                                         Text(
-                                                                                "Conseils personnalisés:",
+                                                                                translate(AnimalDetail.CUSTOM_ADVICE_TITLE),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -3227,7 +3262,10 @@ private fun NarrowScreenLayout(
                                                                                                                                 )
                                                                                                                                 Text(
                                                                                                                                         text =
-                                                                                                                                                "Catégorie: ${conseil.category.name}",
+                                                                                                                                                translate(
+                                                                                                                                                        AnimalDetail.CATEGORY_LABEL,
+                                                                                                                                                        conseil.category.name
+                                                                                                                                                ),
                                                                                                                                         style =
                                                                                                                                                 MaterialTheme
                                                                                                                                                         .typography
@@ -3246,8 +3284,8 @@ private fun NarrowScreenLayout(
                                                                                                                                                         }
                                                                                                                                 },
                                                                                                                                 imageVector = Icons.Default.Delete,
-                                                                                                                                contentDescription = "Supprimer",
-                                                                                                                                tooltip = "Supprimer",
+                                                                                                                                contentDescription = translate(General.DELETE),
+                                                                                                                                tooltip = translate(General.DELETE),
                                                                                                                                 tint = Color.Red
                                                                                                                         )
                                                                                                                         }
@@ -3281,7 +3319,7 @@ private fun NarrowScreenLayout(
                                                                                 Icon(
                                                                                         Icons.Default
                                                                                                 .Add,
-                                                                                        "Ajouter"
+                                                                                        translate(General.ADD)
                                                                                 )
                                                                                 Spacer(
                                                                                         modifier =
@@ -3289,9 +3327,7 @@ private fun NarrowScreenLayout(
                                                                                                         8.dp
                                                                                                 )
                                                                                 )
-                                                                                Text(
-                                                                                        "Ajouter des conseils"
-                                                                                )
+                                                                                Text(translate(AnimalDetail.ADD_ADVICE))
                                                                                 }
                                                                         }
 
@@ -3311,7 +3347,10 @@ private fun NarrowScreenLayout(
                                                                         ) {
                                                                                 item {
                                                                                 Text(
-                                                                                        "Sections HTML créées localement (${localHtmlSections.size}):",
+                                                                                        translate(
+                                                                                                AnimalDetail.LOCAL_HTML_SECTIONS_TITLE,
+                                                                                                localHtmlSections.size.toString()
+                                                                                        ),
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -3373,7 +3412,10 @@ private fun NarrowScreenLayout(
                                                                                                                                 )
                                                                                                                                 Text(
                                                                                                                                         text =
-                                                                                                                                                "${section.content.blocks.size} blocs",
+                                                                                                                                                translate(
+                                                                                                                                                        AnimalDetail.BLOCKS_COUNT,
+                                                                                                                                                        section.content.blocks.size.toString()
+                                                                                                                                                ),
                                                                                                                                         style =
                                                                                                                                                 MaterialTheme
                                                                                                                                                         .typography
@@ -3392,8 +3434,8 @@ private fun NarrowScreenLayout(
                                                                                                                                                         }
                                                                                                                                 },
                                                                                                                                 imageVector = Icons.Default.Delete,
-                                                                                                                                contentDescription = "Supprimer",
-                                                                                                                                tooltip = "Supprimer",
+                                                                                                                                contentDescription = translate(General.DELETE),
+                                                                                                                                tooltip = translate(General.DELETE),
                                                                                                                                 tint = Color.Red
                                                                                                                         )
                                                                                                                 }
@@ -3436,7 +3478,7 @@ private fun NarrowScreenLayout(
                                                                                 Icon(
                                                                                         Icons.Default
                                                                                                 .Edit,
-                                                                                        "Éditeur HTML"
+                                                                                        translate(AnimalDetail.HTML_EDITOR)
                                                                                 )
                                                                                 Spacer(
                                                                                         modifier =
@@ -3444,9 +3486,7 @@ private fun NarrowScreenLayout(
                                                                                                         AppSizes.paddingSmall
                                                                                                 )
                                                                                 )
-                                                                                Text(
-                                                                                        "Créer des sections HTML"
-                                                                                )
+                                                                                Text(translate(AnimalDetail.CREATE_CUSTOM_HTML_SECTIONS))
                                                                                 }
                                                                         }
 
@@ -3460,7 +3500,7 @@ private fun NarrowScreenLayout(
                                                                                 modifier = Modifier.fillMaxWidth(),
                                                                                 label = {
                                                                                         Text(
-                                                                                                "Texte additionnel (apparaît en fin de document)"
+                                                                                                translate(AnimalDetail.ADDITIONAL_TEXT_LABEL)
                                                                                         )
                                                                                 },
                                                                                 maxLines = 6
@@ -3511,8 +3551,8 @@ private fun NarrowScreenLayout(
                                                                                                                                                 animal = animalDetails,
                                                                                                                                                 ration = null,
                                                                                                                                                 reference = referenceUtilisee,
-                                                                                                                                                conseils = listOf("Veiller à l'hydratation"),
-                                                                                                                                                title = "Ordonnance nutritionnelle",
+                                                                                                                                                conseils = listOf(translate(AnimalDetail.DEFAULT_ADVICE_HYDRATION)),
+                                                                                                                                                title = translate(AnimalDetail.PRESCRIPTION_TITLE),
                                                                                                                                                 additionalText = additionalText,
                                                                                                                                                 htmlSections = getSelectedConseils(),
                                                                                                                                                 rations = selectedRationsForPrescription,
@@ -3542,7 +3582,7 @@ private fun NarrowScreenLayout(
                                                                                                                                 ration = null,
                                                                                                                                 reference = referenceUtilisee,
                                                                                                                                 conseils = emptyList(),
-                                                                                                                                title = "Ordonnance nutritionnelle",
+                                                                                                                                title = translate(AnimalDetail.PRESCRIPTION_TITLE),
                                                                                                                                 additionalText = additionalText,
                                                                                                                                 htmlSections = getSelectedConseils(),
                                                                                                                                 rations = selectedRationsForPrescription,
@@ -3558,9 +3598,7 @@ private fun NarrowScreenLayout(
                                                                                                 }
                                                                                         }
                                                                                 ) {
-                                                                                        Text(
-                                                                                                "Prévisualiser ordonnance"
-                                                                                        )
+                                                                                        Text(translate(AnimalDetail.PREVIEW_PRESCRIPTION))
                                                                                 }
                                                                                 }
                                                                         }
@@ -3575,7 +3613,7 @@ private fun NarrowScreenLayout(
                         if (showSearchDialog) {
                                 AlertDialog(
                                         onDismissRequest = { showSearchDialog = false },
-                                        title = { Text("Ajouter des conseils") },
+                                        title = { Text(translate(AnimalDetail.ADD_ADVICE)) },
                                         text = {
                                                 Column {
                                                         OutlinedTextField(
@@ -3585,7 +3623,7 @@ private fun NarrowScreenLayout(
                                                                 },
                                                                 label = {
                                                                         Text(
-                                                                                "Rechercher un conseil..."
+                                                                                translate(AnimalDetail.SEARCH_ADVICE_HINT)
                                                                         )
                                                                 },
                                                                 modifier = Modifier.fillMaxWidth()
@@ -3677,11 +3715,14 @@ private fun NarrowScreenLayout(
                                                                                                 )
                                                                                                 Text(
                                                                                                         text =
-                                                                                                                "Catégorie: ${conseil.category.name}",
+                                                                                                                translate(
+                                                                                                                        AnimalDetail.CATEGORY_LABEL,
+                                                                                                                        conseil.category.name
+                                                                                                                ),
                                                                                                         style =
                                                                                                                 MaterialTheme
-                                                                                                                        .typography
-                                                                                                                        .caption,
+                                                                                                                       .typography
+                                                                                                                       .caption,
                                                                                                         color =
                                                                                                                 Color.Gray
                                                                                                 )
@@ -3692,10 +3733,10 @@ private fun NarrowScreenLayout(
                                                                                                 Icon(
                                                                                                         Icons.Default
                                                                                                                 .Check,
-                                                                                                        "Sélectionné",
+                                                                                                        translate(AnimalDetail.SELECTED),
                                                                                                         tint =
                                                                                                                 VetNutriColors
-                                                                                                                        .Primary
+                                                                                                                       .Primary
                                                                                                 )
                                                                                         } else {
                                                                                                 IconButtonWithTooltip(
@@ -3705,8 +3746,8 @@ private fun NarrowScreenLayout(
                                                                                                                                 conseil
                                                                                                         },
                                                                                                         imageVector = Icons.Default.Add,
-                                                                                                        contentDescription = "Ajouter",
-                                                                                                        tooltip = "Ajouter",
+                                                                                                        contentDescription = translate(General.ADD),
+                                                                                                        tooltip = translate(General.ADD),
                                                                                                         tint = VetNutriColors.Primary
                                                                                                 )
                                                                                         }
@@ -3718,7 +3759,7 @@ private fun NarrowScreenLayout(
                                         },
                                         confirmButton = {
                                                 TextButton(onClick = { showSearchDialog = false }) {
-                                                        Text("Fermer")
+                                                        Text(translate(General.CLOSE))
                                                 }
                                         }
                                 )

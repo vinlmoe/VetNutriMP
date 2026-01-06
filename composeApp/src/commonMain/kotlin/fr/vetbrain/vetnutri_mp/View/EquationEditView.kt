@@ -27,6 +27,7 @@ import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Vue pour éditer une équation avec onglets d'édition et de test
@@ -443,7 +444,11 @@ private fun EquationEditTab(
             }
             DropdownMenu(
                     expanded = expandedVariables,
-                    onDismissRequest = { expandedVariables = false }
+                    onDismissRequest = {
+                        if (!isIosPlatform) {
+                            expandedVariables = false 
+                        }
+                    }
             ) {
                 allAvailableVariables.forEach { (displayName, variableCode) ->
                     DropdownMenuItem(
@@ -501,7 +506,11 @@ private fun EquationEditTab(
 
             DropdownMenu(
                     expanded = expandedBiblioRefs,
-                    onDismissRequest = { expandedBiblioRefs = false }
+                    onDismissRequest = {
+                        if (!isIosPlatform) {
+                            expandedBiblioRefs = false 
+                        }
+                    }
             ) {
                 if (biblioRefs.isEmpty()) {
                     DropdownMenuItem(onClick = { expandedBiblioRefs = false }) {
