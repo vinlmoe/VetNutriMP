@@ -16,7 +16,9 @@ object LocalizationManager {
     private const val KEY_LOCALE = "selected_locale"
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var strings by mutableStateOf<LocalizedStrings?>(null)
-    private var currentLocale by mutableStateOf("fr")
+    private var currentLocaleState by mutableStateOf("fr")
+    val currentLocale: String
+        get() = currentLocaleState
     private val json = Json { ignoreUnknownKeys = true }
     private var resourceReader = ResourceReader()
 
@@ -28,23 +30,33 @@ object LocalizationManager {
      * Charge la langue sauvegardée au démarrage
      */
     suspend fun loadLocale() {
+        println("LocalizationManager: Loading saved locale...")
         try {
             val storage = createPreferencesStorage()
             val savedLocale = storage.getString(KEY_LOCALE, "fr")
+            println("LocalizationManager: Saved locale found: $savedLocale")
             initialize(savedLocale)
         } catch (e: Exception) {
+            println("LocalizationManager: Error loading saved locale: ${e.message}. Defaulting to 'fr'")
             initialize("fr")
         }
     }
 
     fun initialize(locale: String = "fr") {
-        currentLocale = locale
+        if (strings != null && currentLocaleState == locale) {
+            println("LocalizationManager: Already initialized for $locale, skipping")
+            return
+        }
+        
+        println("LocalizationManager: Initializing for $locale")
+        currentLocaleState = locale
         loadStrings()
     }
 
     fun setLocale(locale: String) {
-        if (currentLocale != locale) {
-            currentLocale = locale
+        println("LocalizationManager: Requesting locale change to $locale")
+        if (currentLocaleState != locale) {
+            currentLocaleState = locale
             loadStrings()
             
             // Persister le changement
@@ -52,26 +64,33 @@ object LocalizationManager {
                 try {
                     val storage = createPreferencesStorage()
                     storage.saveString(KEY_LOCALE, locale)
-                } catch (_: Exception) {}
+                    println("LocalizationManager: Locale $locale persisted successfully")
+                } catch (e: Exception) {
+                    println("LocalizationManager: Error persisting locale: ${e.message}")
+                }
             }
+        } else {
+            println("LocalizationManager: Locale is already $locale, skipping")
         }
     }
 
     private fun loadStrings() {
-        val resourceName = "strings_$currentLocale.json"
+        val resourceName = "strings_$currentLocaleState.json"
+        println("LocalizationManager: Loading strings from $resourceName")
         
         try {
             val jsonString = resourceReader.readResource(resourceName)
             strings = json.decodeFromString<LocalizedStrings>(jsonString)
+            println("LocalizationManager: Successfully loaded strings for $currentLocaleState")
             
         } catch (e: Exception) {
-            
-            if (currentLocale != "fr") {
-                
-                currentLocale = "fr"
+            println("LocalizationManager: Error loading strings for $currentLocaleState: ${e.message}")
+            if (currentLocaleState != "fr") {
+                println("LocalizationManager: Falling back to 'fr'")
+                currentLocaleState = "fr"
                 loadStrings()
             } else {
-                
+                println("LocalizationManager: CRITICAL: Could not load fallback 'fr' strings")
             }
         }
     }

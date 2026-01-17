@@ -10,9 +10,17 @@ echo "================================================"
 
 # Variables de configuration
 APP_NAME="VetNutriMP"
-PACKAGE_VERSION="3.2.11"
+PACKAGE_VERSION="3.2.16"
 BUNDLE_ID="fr.vetbrain.vetnutri_mp"
 VENDOR="VetBrain"
+
+# Si la version n'est pas tenue à jour ici, tenter de la lire depuis Gradle
+if [ -z "$PACKAGE_VERSION" ] || [ "$PACKAGE_VERSION" = "3.2.11" ]; then
+    GRADLE_VERSION=$(grep -n "versionName = " composeApp/build.gradle.kts | head -1 | sed -E 's/.*versionName = "([^"]+)".*/\1/')
+    if [ -n "$GRADLE_VERSION" ]; then
+        PACKAGE_VERSION="$GRADLE_VERSION"
+    fi
+fi
 
 # Variables de signature (à configurer selon votre compte développeur)
 # Obtenez ces informations depuis votre compte développeur Apple
@@ -44,8 +52,8 @@ fi
 # 3. Créez un nouveau mot de passe pour "App Store Connect API"
 # 4. Configurez les variables ci-dessous
 
-APPLE_ID=""  # Votre Apple ID (ex: votre@email.com)
-APP_SPECIFIC_PASSWORD=""  # Mot de passe spécifique généré (format: xxxx-xxxx-xxxx-xxxx)
+APPLE_ID="sebastien.lefebvre@vetbrain.fr"  # Votre Apple ID (ex: votre@email.com)
+APP_SPECIFIC_PASSWORD="slub-kica-ofmz-iwnz"  # Mot de passe spécifique généré (format: xxxx-xxxx-xxxx-xxxx)
 
 # Alternative: Utiliser un fichier de configuration pour éviter de mettre les credentials dans le script
 # Créez un fichier .notarization_config avec:
@@ -79,7 +87,16 @@ echo ""
 echo "📦 Étape 1: Compilation du DMG macOS..."
 ./gradlew :composeApp:packageDmg --no-daemon
 
-DMG_PATH="composeApp/build/compose/binaries/main/dmg/${APP_NAME}-${PACKAGE_VERSION}.dmg"
+DMG_DIR="composeApp/build/compose/binaries/main/dmg"
+DMG_PATH="$DMG_DIR/${APP_NAME}-${PACKAGE_VERSION}.dmg"
+
+# Si la version ne correspond pas, prendre le DMG le plus récent
+if [ ! -f "$DMG_PATH" ]; then
+    LATEST_DMG=$(ls -t "$DMG_DIR/${APP_NAME}-"*.dmg 2>/dev/null | head -1)
+    if [ -n "$LATEST_DMG" ]; then
+        DMG_PATH="$LATEST_DMG"
+    fi
+fi
 
 if [ ! -f "$DMG_PATH" ]; then
     echo "❌ Échec de la génération du DMG"
@@ -123,7 +140,11 @@ echo ""
 echo "✍️  Étape 3: Signature du DMG..."
 
 # Créer un DMG temporaire signé
-SIGNED_DMG_PATH="${DMG_PATH%.dmg}-signed.dmg"
+if [[ "$DMG_PATH" == *-signed.dmg ]]; then
+    SIGNED_DMG_PATH="$DMG_PATH"
+else
+    SIGNED_DMG_PATH="${DMG_PATH%.dmg}-signed.dmg"
+fi
 TEMP_DMG_DIR=$(mktemp -d)
 
 # Monter le DMG original
@@ -144,6 +165,45 @@ hdiutil attach "$TEMP_DMG_DIR/temp.dmg" -mountpoint "$MOUNT_POINT" -quiet
 APP_IN_DMG="$MOUNT_POINT/$APP_NAME.app"
 if [ -d "$APP_IN_DMG" ]; then
     echo "   Signature de l'application..."
+
+    sign_macho() {
+        local target="$1"
+        if file "$target" | grep -q "Mach-O"; then
+            codesign --force --sign "$DEVELOPER_ID" --options runtime --timestamp "$target"
+        fi
+    }
+
+    sign_jar_macho() {
+        local target="$1"
+        if file "$target" | grep -q "Mach-O"; then
+            codesign --force --sign "$DEVELOPER_ID" --timestamp "$target"
+        fi
+    }
+
+    sign_binaries_in_dir() {
+        local root="$1"
+        while IFS= read -r f; do
+            sign_macho "$f"
+        done < <(find "$root" -type f -print)
+    }
+
+    sign_jar_dylibs() {
+        local jar_root="$1"
+        local jar tmpdir
+        while IFS= read -r jar; do
+            if unzip -l "$jar" | /usr/bin/grep -q '\.dylib$'; then
+                tmpdir=$(mktemp -d)
+                unzip -q "$jar" -d "$tmpdir"
+                while IFS= read -r dylib; do
+                    sign_jar_macho "$dylib"
+                    codesign --verify --verbose=2 "$dylib" >/dev/null
+                done < <(find "$tmpdir" -type f -name "*.dylib" -print)
+                rm -f "$jar"
+                (cd "$tmpdir" && /usr/bin/zip -qry "$jar" .)
+                rm -rf "$tmpdir"
+            fi
+        done < <(find "$jar_root" -type f -name "*.jar" -print)
+    }
     
     # Créer un fichier d'entitlements temporaire
     ENTITLEMENTS_FILE=$(mktemp)
@@ -160,6 +220,14 @@ if [ -d "$APP_IN_DMG" ]; then
 </plist>
 EOF
     
+    # Signer les binaires embarques (runtime + dylibs)
+    sign_binaries_in_dir "$APP_IN_DMG/Contents/runtime"
+    sign_binaries_in_dir "$APP_IN_DMG/Contents/app"
+
+    # Signer les dylibs embarques dans les jars (ex: skiko/sqlite)
+    sign_jar_dylibs "$APP_IN_DMG/Contents/app"
+
+    # Signature finale du bundle .app
     codesign --force --deep --sign "$DEVELOPER_ID" \
         --timestamp \
         --options runtime \
@@ -231,16 +299,22 @@ fi
 echo "   Soumission pour notarisation Apple..."
 echo "   Cela peut prendre quelques minutes..."
 
-# Soumettre pour notarisation
-NOTARIZATION_OUTPUT=$(xcrun notarytool submit "$SIGNED_DMG_PATH" \
+# Soumettre pour notarisation (logs en direct)
+NOTARIZATION_LOG=$(mktemp)
+set +e
+xcrun notarytool submit "$SIGNED_DMG_PATH" \
     --apple-id "$APPLE_ID" \
     --team-id "$TEAM_ID" \
     --password "$APP_SPECIFIC_PASSWORD" \
-    --wait 2>&1)
+    --wait 2>&1 | tee "$NOTARIZATION_LOG"
+NOTARIZATION_EXIT_CODE=${PIPESTATUS[0]}
+set -e
 
-NOTARIZATION_EXIT_CODE=$?
+# Tenter de récupérer l'ID pour un log détaillé
+NOTARIZATION_ID=$(awk -F': ' '/^[[:space:]]*id:/ {print $2; exit}' "$NOTARIZATION_LOG")
+NOTARIZATION_STATUS=$(awk -F': ' '/^[[:space:]]*status:/ {print $2; exit}' "$NOTARIZATION_LOG")
 
-if [ $NOTARIZATION_EXIT_CODE -eq 0 ]; then
+if [ $NOTARIZATION_EXIT_CODE -eq 0 ] && [ "$NOTARIZATION_STATUS" = "Accepted" ]; then
     echo "✅ Notarisation réussie"
     
     # Agrafer le ticket de notarisation
@@ -261,7 +335,18 @@ else
     echo "❌ Échec de la notarisation"
     echo ""
     echo "📋 Détails de l'erreur:"
-    echo "$NOTARIZATION_OUTPUT"
+    cat "$NOTARIZATION_LOG"
+    if [ -n "$NOTARIZATION_ID" ]; then
+        echo ""
+        echo "📋 Log détaillé Apple (notarytool log):"
+        xcrun notarytool log "$NOTARIZATION_ID" /tmp/notarytool.log \
+            --apple-id "$APPLE_ID" \
+            --team-id "$TEAM_ID" \
+            --password "$APP_SPECIFIC_PASSWORD" || true
+        if [ -f /tmp/notarytool.log ]; then
+            cat /tmp/notarytool.log
+        fi
+    fi
     echo ""
     echo "💡 Vérifiez:"
     echo "   1. Vos credentials (APPLE_ID et APP_SPECIFIC_PASSWORD)"
@@ -287,4 +372,3 @@ echo ""
 echo "⚠️  Note: Ce DMG ne peut PAS être soumis à l'App Store macOS"
 echo "   car il s'agit d'une application JVM. Pour l'App Store, il faudra"
 echo "   attendre le support macOS natif de Compose Multiplatform."
-

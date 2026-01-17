@@ -54,6 +54,43 @@ expect fun exportPdfDocument(
 // Service de gestion des fichiers
 expect fun createFileService(): FileService
 
+private suspend fun ensureDefaultConsultationKeywords(
+    consultationRepository: ConsultationRepository
+) {
+    val defaultLabels =
+        listOf(
+            "MRC",
+            "IPE",
+            "Entéropathie chronique",
+            "Urolithiases",
+            "Insuffisance hépatique",
+            "Shunt portosystémique",
+            "Cardiomyopathie dilatée",
+            "Maladie valvulaire dégénérative",
+            "Cardiomyopathie hypertrophique",
+            "Hypothyroïdie",
+            "Hyperthyroïdie",
+            "Diabète sucré",
+            "Diabète insipide",
+            "Obésité",
+            "Cachexie",
+            "Travaux dirigés",
+            "Animal théorique"
+        )
+
+    val existingLabels =
+        consultationRepository.getAllKeywords().map { it.label.lowercase() }.toSet()
+    defaultLabels
+        .filter { label -> !existingLabels.contains(label.lowercase()) }
+        .forEach { label ->
+            try {
+                consultationRepository.saveKeyword(
+                    fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword(label = label)
+                )
+            } catch (_: Exception) {}
+        }
+}
+
 @Composable
 fun App(appDatabase: AppDatabase) {
     // Initialisation de la localisation
@@ -157,6 +194,12 @@ fun App(appDatabase: AppDatabase) {
     
     // État pour le service de sauvegarde
     var backupService by remember { mutableStateOf<BackupService?>(null) }
+
+    LaunchedEffect(consultationRepository) {
+        try {
+            ensureDefaultConsultationKeywords(consultationRepository)
+        } catch (_: Exception) {}
+    }
 
     // Initialisation des services au démarrage
     LaunchedEffect(Unit) {
