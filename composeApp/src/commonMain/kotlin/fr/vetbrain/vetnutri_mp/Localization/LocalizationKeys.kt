@@ -432,6 +432,11 @@ object LocalizationKeys {
         val SCAN_QR = "animalList.scanQr"
         val NO_ANIMAL_FOUND = "animalList.noAnimalFound"
         val NO_FILTER_RESULTS = "animalList.noFilterResults"
+        val KEYWORD_FILTER_BUTTON = "animalList.keywordFilterButton"
+        val KEYWORD_FILTER_TITLE = "animalList.keywordFilterTitle"
+        val KEYWORD_FILTER_INCLUDE = "animalList.keywordFilterInclude"
+        val KEYWORD_FILTER_EXCLUDE = "animalList.keywordFilterExclude"
+        val KEYWORD_FILTER_EMPTY = "animalList.keywordFilterEmpty"
     }
 
     object Chart {

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
+import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodImportResult
@@ -44,6 +45,17 @@ class AnimalListViewModel(
     private val _selectedEspece = MutableStateFlow<Espece?>(null)
     val selectedEspece: StateFlow<Espece?> = _selectedEspece
 
+    private val _keywordIncludeIds = MutableStateFlow<Set<String>>(emptySet())
+    val keywordIncludeIds: StateFlow<Set<String>> = _keywordIncludeIds.asStateFlow()
+
+    private val _keywordExcludeIds = MutableStateFlow<Set<String>>(emptySet())
+    val keywordExcludeIds: StateFlow<Set<String>> = _keywordExcludeIds.asStateFlow()
+
+    private val _availableKeywords = MutableStateFlow<List<ConsultationKeyword>>(emptyList())
+    val availableKeywords: StateFlow<List<ConsultationKeyword>> = _availableKeywords.asStateFlow()
+
+    private val _animalKeywordIds = MutableStateFlow<Map<String, Set<String>>>(emptyMap())
+
     // Liste de toutes les espèces disponibles, avec une option "Toutes" (null)
     val availableEspeces: List<Espece?> = listOf(null) + Espece.entries.toList()
 
@@ -54,10 +66,34 @@ class AnimalListViewModel(
      * - Le nom du propriétaire
      * - La race de l'animal Les résultats sont triés par ordre alphabétique du nom de l'animal.
      */
+    private data class AnimalFilterState(
+            val animals: List<AnimalEv>,
+            val query: String,
+            val espece: Espece?,
+            val keywordMap: Map<String, Set<String>>,
+            val includeIds: Set<String>
+    )
+
     val animals: StateFlow<List<AnimalEv>> =
-            combine(_allAnimals, _searchQuery, _selectedEspece) { all, query, espece ->
-                        filterAnimals(all, query, espece)
-                                    }
+            combine(
+                            _allAnimals,
+                            _searchQuery,
+                            _selectedEspece,
+                            _animalKeywordIds,
+                            _keywordIncludeIds
+                    ) { all, query, espece, keywordMap, includeIds ->
+                        AnimalFilterState(all, query, espece, keywordMap, includeIds)
+                    }
+                    .combine(_keywordExcludeIds) { state, excludeIds ->
+                        filterAnimals(
+                                state.animals,
+                                state.query,
+                                state.espece,
+                                state.keywordMap,
+                                state.includeIds,
+                                excludeIds
+                        )
+                    }
                     .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _importResult = MutableStateFlow<ImportResult?>(null)
@@ -76,6 +112,7 @@ class AnimalListViewModel(
     fun loadAnimals() {
         viewModelScope.launch {
             _allAnimals.value = animalRepository.getAllAnimals()
+            refreshKeywordData()
         }
     }
 
@@ -90,11 +127,14 @@ class AnimalListViewModel(
     private fun filterAnimals(
             animals: List<AnimalEv>,
             query: String,
-            espece: Espece?
+            espece: Espece?,
+            keywordMap: Map<String, Set<String>>,
+            includeIds: Set<String>,
+            excludeIds: Set<String>
     ): List<AnimalEv> {
         val trimmedQuery = query.trim()
 
-        return if (trimmedQuery.isBlank() && espece == null) {
+        return if (trimmedQuery.isBlank() && espece == null && includeIds.isEmpty() && excludeIds.isEmpty()) {
             animals.sortedBy { it.nom }
                 } else {
             animals
@@ -106,11 +146,60 @@ class AnimalListViewModel(
                                         animal.race.contains(trimmedQuery, ignoreCase = true)
 
                                 val matchesEspece = espece == null || animal.getEspece() == espece
+                                val animalKeywords = keywordMap[animal.uuid] ?: emptySet()
+                                val matchesKeywordInclude =
+                                        includeIds.isEmpty() ||
+                                                includeIds.all { animalKeywords.contains(it) }
+                                val matchesKeywordExclude =
+                                        excludeIds.isEmpty() ||
+                                                excludeIds.none { animalKeywords.contains(it) }
 
-                                matchesQuery && matchesEspece
+                                matchesQuery && matchesEspece && matchesKeywordInclude && matchesKeywordExclude
                             }
                             .sortedBy { it.nom }
                 }
+    }
+
+    fun setKeywordFilters(includeIds: Set<String>, excludeIds: Set<String>) {
+        _keywordIncludeIds.value = includeIds
+        _keywordExcludeIds.value = excludeIds
+    }
+
+    fun clearKeywordFilters() {
+        _keywordIncludeIds.value = emptySet()
+        _keywordExcludeIds.value = emptySet()
+    }
+
+    private suspend fun refreshKeywordData() {
+        if (consultationRepository == null) {
+            _availableKeywords.value = emptyList()
+            _animalKeywordIds.value = emptyMap()
+            return
+        }
+
+        try {
+            _availableKeywords.value = consultationRepository.getAllKeywords()
+        } catch (_: Exception) {
+            _availableKeywords.value = emptyList()
+        }
+
+        val animalIds = _allAnimals.value.map { it.uuid }
+        val keywordMap = mutableMapOf<String, Set<String>>()
+
+        for (animalId in animalIds) {
+            try {
+                val consultations = consultationRepository.getConsultationsForAnimal(animalId)
+                val keywordIds =
+                        consultations
+                                .flatMap { it.keywordIds }
+                                .filter { it.isNotBlank() }
+                                .toSet()
+                keywordMap[animalId] = keywordIds
+            } catch (_: Exception) {
+                keywordMap[animalId] = emptySet()
+            }
+        }
+        _animalKeywordIds.value = keywordMap
     }
 
     fun deleteAnimal(animal: AnimalEv) {
