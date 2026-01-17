@@ -25,6 +25,7 @@ import androidx.compose.ui.window.DialogProperties
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalList
@@ -60,6 +61,9 @@ fun AnimalListView(
         val animals: List<AnimalEv> = viewModel.animals.collectAsState().value
         val searchQuery = viewModel.searchQuery.collectAsState().value
         val selectedEspece = viewModel.selectedEspece.collectAsState().value
+        val availableKeywords = viewModel.availableKeywords.collectAsState().value
+        val keywordIncludeIds = viewModel.keywordIncludeIds.collectAsState().value
+        val keywordExcludeIds = viewModel.keywordExcludeIds.collectAsState().value
         val coroutineScope = rememberCoroutineScope()
 
         // États pour l'import rapide
@@ -73,6 +77,8 @@ fun AnimalListView(
         val apiLogs = viewModel.apiImportLogs.collectAsState().value
         var showApiResultDialog by remember { mutableStateOf(false) }
         val showCrossAnalysisButton = false
+        var showKeywordFilterDialog by remember { mutableStateOf(false) }
+        val hasKeywordFilter = keywordIncludeIds.isNotEmpty() || keywordExcludeIds.isNotEmpty()
 
         LaunchedEffect(apiImportResult) {
             if (apiImportResult != null && apiImportResult is AnimalListViewModel.ImportResult.Success) {
@@ -215,6 +221,13 @@ fun AnimalListView(
                                         availableEspeces = viewModel.availableEspeces,
                                         modifier = Modifier.weight(1f)
                                 )
+
+                                OutlinedButton(
+                                        onClick = { showKeywordFilterDialog = true },
+                                        modifier = Modifier.weight(1f)
+                                ) {
+                                        Text(translate(AnimalList.KEYWORD_FILTER_BUTTON))
+                                }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -227,7 +240,8 @@ fun AnimalListView(
                                         Text(
                                                 text =
                                                         if (searchQuery.isEmpty() &&
-                                                                        selectedEspece == null
+                                                                        selectedEspece == null &&
+                                                                        !hasKeywordFilter
                                                         )
                                                                 translate(AnimalList.NO_ANIMAL_FOUND)
                                                         else
@@ -398,6 +412,19 @@ fun AnimalListView(
                 }
             )
         }
+
+        if (showKeywordFilterDialog) {
+                KeywordFilterDialog(
+                        availableKeywords = availableKeywords,
+                        includeIds = keywordIncludeIds,
+                        excludeIds = keywordExcludeIds,
+                        onUpdateFilters = { includeIds, excludeIds ->
+                                viewModel.setKeywordFilters(includeIds, excludeIds)
+                        },
+                        onReset = { viewModel.clearKeywordFilters() },
+                        onDismiss = { showKeywordFilterDialog = false }
+                )
+        }
 }
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -527,4 +554,112 @@ private fun AnimalCard(
                         onDismiss = { showDeleteConfirmation = false }
                 )
         }
+}
+
+@Composable
+private fun KeywordFilterDialog(
+        availableKeywords: List<ConsultationKeyword>,
+        includeIds: Set<String>,
+        excludeIds: Set<String>,
+        onUpdateFilters: (Set<String>, Set<String>) -> Unit,
+        onReset: () -> Unit,
+        onDismiss: () -> Unit
+) {
+        val sortedKeywords =
+                remember(availableKeywords) {
+                        availableKeywords.sortedBy { it.label.lowercase() }
+                }
+        val includeLabel = translate(AnimalList.KEYWORD_FILTER_INCLUDE)
+        val excludeLabel = translate(AnimalList.KEYWORD_FILTER_EXCLUDE)
+
+        AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(translate(AnimalList.KEYWORD_FILTER_TITLE)) },
+                text = {
+                        Column(modifier = Modifier.width(520.dp).height(480.dp)) {
+                                if (sortedKeywords.isEmpty()) {
+                                        Text(translate(AnimalList.KEYWORD_FILTER_EMPTY))
+                                } else {
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                                Box(modifier = Modifier.width(72.dp)) {
+                                                        Text(includeLabel, style = MaterialTheme.typography.caption)
+                                                }
+                                                Box(modifier = Modifier.width(72.dp)) {
+                                                        Text(excludeLabel, style = MaterialTheme.typography.caption)
+                                                }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        LazyColumn(
+                                                modifier = Modifier.fillMaxWidth().weight(1f)
+                                        ) {
+                                                items(sortedKeywords) { keyword ->
+                                                        val isIncluded = includeIds.contains(keyword.uuid)
+                                                        val isExcluded = excludeIds.contains(keyword.uuid)
+
+                                                        Row(
+                                                                modifier =
+                                                                        Modifier.fillMaxWidth()
+                                                                                .padding(4.dp),
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Box(modifier = Modifier.width(72.dp)) {
+                                                                        Checkbox(
+                                                                                checked = isIncluded,
+                                                                                onCheckedChange = { checked ->
+                                                                                        val newInclude = includeIds.toMutableSet()
+                                                                                        val newExclude = excludeIds.toMutableSet()
+                                                                                        if (checked) {
+                                                                                                newInclude.add(keyword.uuid)
+                                                                                                newExclude.remove(keyword.uuid)
+                                                                                        } else {
+                                                                                                newInclude.remove(keyword.uuid)
+                                                                                        }
+                                                                                        onUpdateFilters(newInclude, newExclude)
+                                                                                }
+                                                                        )
+                                                                }
+                                                                Box(modifier = Modifier.width(72.dp)) {
+                                                                        Checkbox(
+                                                                                checked = isExcluded,
+                                                                                onCheckedChange = { checked ->
+                                                                                        val newInclude = includeIds.toMutableSet()
+                                                                                        val newExclude = excludeIds.toMutableSet()
+                                                                                        if (checked) {
+                                                                                                newExclude.add(keyword.uuid)
+                                                                                                newInclude.remove(keyword.uuid)
+                                                                                        } else {
+                                                                                                newExclude.remove(keyword.uuid)
+                                                                                        }
+                                                                                        onUpdateFilters(newInclude, newExclude)
+                                                                                }
+                                                                        )
+                                                                }
+                                                                Text(
+                                                                        text = keyword.label,
+                                                                        style = MaterialTheme.typography.body1
+                                                                )
+                                                        }
+                                                        Divider(color = Color.LightGray.copy(alpha = 0.3f))
+                                                }
+                                        }
+                                }
+                        }
+                },
+                confirmButton = {
+                        TextButton(onClick = onDismiss) {
+                                Text(translate(General.CLOSE))
+                        }
+                },
+                dismissButton = {
+                        TextButton(onClick = onReset) {
+                                Text(translate(General.RESET))
+                        }
+                }
+        )
 }
