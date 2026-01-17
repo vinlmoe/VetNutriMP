@@ -1267,15 +1267,14 @@ fun ConsultationFullScreenEditView(
                                         editedConsultation.copy(
                                                 referencesMaladies = referenceId.toMutableList()
                                         )
-                                showReferenceMaladieDialog = false
                         },
                         onReferenceRemoved = { referenceId ->
                                 editedConsultation =
                                         editedConsultation.copy(
                                                 referencesMaladies = referenceId.toMutableList()
                                         )
-                                showReferenceMaladieDialog = false
-                        }
+                        },
+                        onDismiss = { showReferenceMaladieDialog = false }
                 )
         }
 
@@ -1288,7 +1287,6 @@ fun ConsultationFullScreenEditView(
                                         editedConsultation.copy(
                                                 keywordIds = keywordIds.toMutableList()
                                         )
-                                showKeywordDialog = false
                         },
                         onKeywordCreated = { keyword ->
                                 onCreateKeyword(keyword)
@@ -1300,8 +1298,8 @@ fun ConsultationFullScreenEditView(
                                                                 .distinct()
                                                                 .toMutableList()
                                         )
-                                showKeywordDialog = false
-                        }
+                        },
+                        onDismiss = { showKeywordDialog = false }
                 )
         }
 
@@ -1780,7 +1778,8 @@ private fun ReferenceMaladieDialog(
         references: List<String>,
         availableReferences: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv>,
         onReferenceSelected: (List<String>) -> Unit,
-        onReferenceRemoved: (List<String>) -> Unit
+        onReferenceRemoved: (List<String>) -> Unit,
+        onDismiss: () -> Unit
 ) {
         // Les références arrivent déjà filtrées par espèce et type complémentaire
         var searchText by remember { mutableStateOf("") }
@@ -1802,7 +1801,7 @@ private fun ReferenceMaladieDialog(
                 }
 
         AlertDialog(
-                onDismissRequest = { onReferenceSelected(references) },
+                onDismissRequest = onDismiss,
                 title = { Text(ConsultationEdit.REF_DISEASE_DIALOG_TITLE.translate()) },
                 text = {
                         Column(modifier = Modifier.width(500.dp).height(400.dp)) {
@@ -1911,7 +1910,9 @@ private fun ReferenceMaladieDialog(
                         }
                 },
                 confirmButton = {
-                        TextButton(onClick = { onReferenceSelected(references) }) { Text(LocalizationKeys.General.CLOSE.translate()) }
+                        TextButton(onClick = onDismiss) {
+                                Text(LocalizationKeys.General.CLOSE.translate())
+                        }
                 }
         )
 }
@@ -1921,7 +1922,8 @@ private fun ConsultationKeywordDialog(
         selectedKeywordIds: List<String>,
         availableKeywords: List<ConsultationKeyword>,
         onKeywordsSelected: (List<String>) -> Unit,
-        onKeywordCreated: (ConsultationKeyword) -> Unit
+        onKeywordCreated: (ConsultationKeyword) -> Unit,
+        onDismiss: () -> Unit
 ) {
         var searchText by remember { mutableStateOf("") }
         val trimmedSearch = searchText.trim()
@@ -1949,7 +1951,7 @@ private fun ConsultationKeywordDialog(
                 }
 
         AlertDialog(
-                onDismissRequest = { onKeywordsSelected(selectedKeywordIds) },
+                onDismissRequest = onDismiss,
                 title = { Text(ConsultationEdit.KEYWORDS_DIALOG_TITLE.translate()) },
                 text = {
                         Column(modifier = Modifier.width(500.dp).height(420.dp)) {
@@ -2106,7 +2108,7 @@ private fun ConsultationKeywordDialog(
                         }
                 },
                 confirmButton = {
-                        TextButton(onClick = { onKeywordsSelected(selectedKeywordIds) }) {
+                        TextButton(onClick = onDismiss) {
                                 Text(LocalizationKeys.General.CLOSE.translate())
                         }
                 }

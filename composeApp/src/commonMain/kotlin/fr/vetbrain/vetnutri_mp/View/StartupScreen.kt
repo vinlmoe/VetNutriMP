@@ -488,40 +488,61 @@ fun StartupScreen(
                                         style = MaterialTheme.typography.caption,
                                         color = VetNutriColors.Secondary
                                     )
-                                    Text(
-                                        text = translate(LocalizationKeys.Settings.FRENCH),
-                                        modifier = Modifier
-                                            .clickable { fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.setLocale("fr") }
-                                            .padding(8.dp),
-                                        color = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate("welcome") == "Bienvenue") VetNutriColors.Primary else VetNutriColors.Secondary,
-                                        fontWeight = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate("welcome") == "Bienvenue") FontWeight.Bold else FontWeight.Normal
-                                    )
-                                    Text(
-                                        text = "|",
-                                        modifier = Modifier.padding(horizontal = 4.dp),
-                                        color = VetNutriColors.Secondary.copy(alpha = 0.5f)
-                                    )
-                                    Text(
-                                        text = translate(LocalizationKeys.Settings.ENGLISH),
-                                        modifier = Modifier
-                                            .clickable { fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.setLocale("en") }
-                                            .padding(8.dp),
-                                        color = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate("welcome") == "Welcome") VetNutriColors.Primary else VetNutriColors.Secondary,
-                                        fontWeight = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate("welcome") == "Welcome") FontWeight.Bold else FontWeight.Normal
-                                    )
+                                    TextButton(
+                                        onClick = {
+                                                fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.setLocale(
+                                                        "fr"
+                                                )
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                                    ) {
+                                        val currentLocale = fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.currentLocale
+                                        Text(
+                                            text = translate(LocalizationKeys.Settings.FRENCH),
+                                            color = if (currentLocale == "fr") VetNutriColors.Primary else VetNutriColors.Secondary,
+                                            fontWeight = if (currentLocale == "fr") FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
                                     Text(
                                         text = "|",
                                         modifier = Modifier.padding(horizontal = 4.dp),
                                         color = VetNutriColors.Secondary.copy(alpha = 0.5f)
                                     )
+                                    TextButton(
+                                        onClick = {
+                                                fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.setLocale(
+                                                        "en"
+                                                )
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                                    ) {
+                                        val currentLocale = fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.currentLocale
+                                        Text(
+                                            text = translate(LocalizationKeys.Settings.ENGLISH),
+                                            color = if (currentLocale == "en") VetNutriColors.Primary else VetNutriColors.Secondary,
+                                            fontWeight = if (currentLocale == "en") FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
                                     Text(
-                                        text = translate(LocalizationKeys.Settings.CHINESE),
-                                        modifier = Modifier
-                                            .clickable { fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.setLocale("zh") }
-                                            .padding(8.dp),
-                                        color = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate("welcome") == "欢迎") VetNutriColors.Primary else VetNutriColors.Secondary,
-                                        fontWeight = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate("welcome") == "欢迎") FontWeight.Bold else FontWeight.Normal
+                                        text = "|",
+                                        modifier = Modifier.padding(horizontal = 4.dp),
+                                        color = VetNutriColors.Secondary.copy(alpha = 0.5f)
                                     )
+                                    TextButton(
+                                        onClick = {
+                                                fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.setLocale(
+                                                        "zh"
+                                                )
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                                    ) {
+                                        val currentLocale = fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.currentLocale
+                                        Text(
+                                            text = translate(LocalizationKeys.Settings.CHINESE),
+                                            color = if (currentLocale == "zh") VetNutriColors.Primary else VetNutriColors.Secondary,
+                                            fontWeight = if (currentLocale == "zh") FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
                                 }
 
                                 // Logo et titre

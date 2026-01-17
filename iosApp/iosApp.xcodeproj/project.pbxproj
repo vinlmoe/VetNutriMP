@@ -10,6 +10,13 @@
 		058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
 		058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */; };
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
+		6A88B9E92F1687230026DC15 /* vetnutri_export_init.json in Resources */ = {isa = PBXBuildFile; fileRef = 6AB2A8BB2EE1BDBD002B02ED /* vetnutri_export_init.json */; };
+		6A88B9EA2F1687230026DC15 /* strings_en.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A91510E2F0D10C300DE2478 /* strings_en.json */; };
+		6A88B9EB2F1687230026DC15 /* strings_zh.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A9151122F0D10E300DE2478 /* strings_zh.json */; };
+		6A88B9EC2F1687230026DC15 /* strings_fr.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A9151102F0D10DC00DE2478 /* strings_fr.json */; };
+		6A88B9ED2F1687230026DC15 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */; };
+		6A88B9EE2F1687230026DC15 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
+		6A88B9EF2F1687230026DC15 /* File.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6AE565BF2E50F3A5000F5E5C /* File.txt */; };
 		6A91510F2F0D10C300DE2478 /* strings_en.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A91510E2F0D10C300DE2478 /* strings_en.json */; };
 		6A9151112F0D10DC00DE2478 /* strings_fr.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A9151102F0D10DC00DE2478 /* strings_fr.json */; };
 		6A9151132F0D10E300DE2478 /* strings_zh.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A9151122F0D10E300DE2478 /* strings_zh.json */; };
@@ -245,6 +252,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6AB2A8BC2EE1BDBD002B02ED /* vetnutri_export_init.json in Resources */,
+				6A91510F2F0D10C300DE2478 /* strings_en.json in Resources */,
+				6A9151132F0D10E300DE2478 /* strings_zh.json in Resources */,
+				6A9151112F0D10DC00DE2478 /* strings_fr.json in Resources */,
+				058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */,
+				058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */,
+				6AE565C02E50F3A5000F5E5C /* File.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -259,13 +273,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6AB2A8BC2EE1BDBD002B02ED /* vetnutri_export_init.json in Resources */,
-				6A91510F2F0D10C300DE2478 /* strings_en.json in Resources */,
-				6A9151132F0D10E300DE2478 /* strings_zh.json in Resources */,
-				6A9151112F0D10DC00DE2478 /* strings_fr.json in Resources */,
-				058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */,
-				058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */,
-				6AE565C02E50F3A5000F5E5C /* File.txt in Resources */,
+				6A88B9E92F1687230026DC15 /* vetnutri_export_init.json in Resources */,
+				6A88B9EA2F1687230026DC15 /* strings_en.json in Resources */,
+				6A88B9EB2F1687230026DC15 /* strings_zh.json in Resources */,
+				6A88B9EC2F1687230026DC15 /* strings_fr.json in Resources */,
+				6A88B9ED2F1687230026DC15 /* Preview Assets.xcassets in Resources */,
+				6A88B9EE2F1687230026DC15 /* Assets.xcassets in Resources */,
+				6A88B9EF2F1687230026DC15 /* File.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
