@@ -324,6 +324,7 @@ object LocalizationKeys {
         const val SELECT_RATION_FOR_ANALYSIS = "analnut.error.select_ration_for_analysis"
         const val NUTRITIONAL_REFERENCES = "analnut.references.nutritional"
         const val NUTR_ANALYSIS_TITLE = "analnut.analysis.title"
+        const val ANALYSIS_SHORT_TITLE = "analnut.analysis.short.title"
         const val OPEN_RECIPES = "analnut.action.open_recipes"
         const val PREVIEW = "analnut.action.preview"
         const val ENERGY_STANDARD = "analnut.energy.standard"

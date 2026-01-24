@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -33,6 +34,7 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import fr.vetbrain.vetnutri_mp.View.Components.QRCodeScannerView
@@ -174,59 +176,175 @@ fun AnimalListView(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // Filtres de recherche
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                                // Champ de recherche
-                                OutlinedTextField(
-                                        value = searchQuery,
-                                        onValueChange = { viewModel.setSearchQuery(it) },
-                                        modifier = Modifier.weight(2f),
-                                        placeholder = {
-                                                Text(
-                                                        "${General.SEARCH.translate()} (${Animal.NAME.translate()}, ${Animal.OWNER.translate()}, ${Animal.BREED.translate()})"
+                        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                                val isCompact = maxWidth < 560.dp
+                                val placeholderText =
+                                        if (isCompact) {
+                                                General.SEARCH.translate()
+                                        } else {
+                                                "${General.SEARCH.translate()} (${Animal.NAME.translate()}, ${Animal.OWNER.translate()}, ${Animal.BREED.translate()})"
+                                        }
+                                val especeNullLabel =
+                                        if (isCompact) Animal.SPECIES.translate()
+                                        else "Toutes espèces"
+
+                                if (isCompact) {
+                                        Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                                OutlinedTextField(
+                                                        value = searchQuery,
+                                                        onValueChange = { viewModel.setSearchQuery(it) },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        placeholder = {
+                                                                Text(
+                                                                        placeholderText,
+                                                                        maxLines = 1,
+                                                                        overflow = TextOverflow.Ellipsis
+                                                                )
+                                                        },
+                                                        leadingIcon = {
+                                                                Icon(
+                                                                        Icons.Default.Search,
+                                                                        contentDescription = null
+                                                                )
+                                                        },
+                                                        trailingIcon = {
+                                                                if (searchQuery.isNotEmpty()) {
+                                                                        IconButtonWithTooltip(
+                                                                                onClick = {
+                                                                                        viewModel.setSearchQuery("")
+                                                                                },
+                                                                                imageVector = Icons.Default.Clear,
+                                                                                contentDescription = "Effacer",
+                                                                                tooltip = "Effacer"
+                                                                        )
+                                                                }
+                                                        },
+                                                        singleLine = true,
+                                                        colors =
+                                                                TextFieldDefaults.outlinedTextFieldColors(
+                                                                        focusedBorderColor = VetNutriColors.Primary,
+                                                                        unfocusedBorderColor = Color.Gray
+                                                                )
                                                 )
-                                        },
-                                        leadingIcon = {
-                                                Icon(
-                                                        Icons.Default.Search,
-                                                        contentDescription = null
-                                                )
-                                        },
-                                        trailingIcon = {
-                                                if (searchQuery.isNotEmpty()) {
-                                                        IconButtonWithTooltip(
-                                                                onClick = {
-                                                                        viewModel.setSearchQuery("")
-                                                                },
-                                                                imageVector = Icons.Default.Clear,
-                                                                contentDescription = "Effacer",
-                                                                tooltip = "Effacer"
+
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                        EspeceDropdown(
+                                                                selectedEspece = selectedEspece,
+                                                                onEspeceSelected = { viewModel.setSelectedEspece(it) },
+                                                                availableEspeces = viewModel.availableEspeces,
+                                                                nullLabel = especeNullLabel,
+                                                                modifier = Modifier.weight(1f)
                                                         )
+
+                                                        OutlinedButton(
+                                                                onClick = { showKeywordFilterDialog = true },
+                                                                modifier = Modifier.weight(1f)
+                                                        ) {
+                                                                Text(
+                                                                        translate(AnimalList.KEYWORD_FILTER_BUTTON),
+                                                                        maxLines = 1,
+                                                                        overflow = TextOverflow.Ellipsis
+                                                                )
+                                                                if (hasKeywordFilter) {
+                                                                        Spacer(
+                                                                                modifier =
+                                                                                        Modifier.width(
+                                                                                                AppSizes.paddingSmall
+                                                                                        )
+                                                                        )
+                                                                        Box(
+                                                                                modifier =
+                                                                                        Modifier.size(8.dp)
+                                                                                                .background(
+                                                                                                        VetNutriColors.Primary,
+                                                                                                        shape =
+                                                                                                                MaterialTheme.shapes.small
+                                                                                                )
+                                                                        )
+                                                                }
+                                                        }
                                                 }
-                                        },
-                                        singleLine = true,
-                                        colors =
-                                                TextFieldDefaults.outlinedTextFieldColors(
-                                                        focusedBorderColor = VetNutriColors.Primary,
-                                                        unfocusedBorderColor = Color.Gray
+                                        }
+                                } else {
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                                OutlinedTextField(
+                                                        value = searchQuery,
+                                                        onValueChange = { viewModel.setSearchQuery(it) },
+                                                        modifier = Modifier.weight(2f),
+                                                        placeholder = {
+                                                                Text(
+                                                                        placeholderText,
+                                                                        maxLines = 1,
+                                                                        overflow = TextOverflow.Ellipsis
+                                                                )
+                                                        },
+                                                        leadingIcon = {
+                                                                Icon(
+                                                                        Icons.Default.Search,
+                                                                        contentDescription = null
+                                                                )
+                                                        },
+                                                        trailingIcon = {
+                                                                if (searchQuery.isNotEmpty()) {
+                                                                        IconButtonWithTooltip(
+                                                                                onClick = {
+                                                                                        viewModel.setSearchQuery("")
+                                                                                },
+                                                                                imageVector = Icons.Default.Clear,
+                                                                                contentDescription = "Effacer",
+                                                                                tooltip = "Effacer"
+                                                                        )
+                                                                }
+                                                        },
+                                                        singleLine = true,
+                                                        colors =
+                                                                TextFieldDefaults.outlinedTextFieldColors(
+                                                                        focusedBorderColor = VetNutriColors.Primary,
+                                                                        unfocusedBorderColor = Color.Gray
+                                                                )
                                                 )
-                                )
 
-                                // Combobox pour filtrer par espèce
-                                EspeceDropdown(
-                                        selectedEspece = selectedEspece,
-                                        onEspeceSelected = { viewModel.setSelectedEspece(it) },
-                                        availableEspeces = viewModel.availableEspeces,
-                                        modifier = Modifier.weight(1f)
-                                )
+                                                EspeceDropdown(
+                                                        selectedEspece = selectedEspece,
+                                                        onEspeceSelected = { viewModel.setSelectedEspece(it) },
+                                                        availableEspeces = viewModel.availableEspeces,
+                                                        nullLabel = especeNullLabel,
+                                                        modifier = Modifier.weight(1f)
+                                                )
 
-                                OutlinedButton(
-                                        onClick = { showKeywordFilterDialog = true },
-                                        modifier = Modifier.weight(1f)
-                                ) {
-                                        Text(translate(AnimalList.KEYWORD_FILTER_BUTTON))
+                                                OutlinedButton(
+                                                        onClick = { showKeywordFilterDialog = true },
+                                                        modifier = Modifier.weight(1f)
+                                                ) {
+                                                        Text(translate(AnimalList.KEYWORD_FILTER_BUTTON))
+                                                        if (hasKeywordFilter) {
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.width(
+                                                                                        AppSizes.paddingSmall
+                                                                                )
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.size(8.dp)
+                                                                                        .background(
+                                                                                                VetNutriColors.Primary,
+                                                                                                shape =
+                                                                                                        MaterialTheme.shapes.small
+                                                                                        )
+                                                                )
+                                                        }
+                                                }
+                                        }
                                 }
                         }
 
@@ -433,6 +551,7 @@ private fun EspeceDropdown(
         selectedEspece: Espece?,
         onEspeceSelected: (Espece?) -> Unit,
         availableEspeces: List<Espece?>,
+        nullLabel: String,
         modifier: Modifier = Modifier
 ) {
         var expanded by remember { mutableStateOf(false) }
@@ -443,9 +562,10 @@ private fun EspeceDropdown(
                 modifier = modifier
         ) {
                 OutlinedTextField(
-                        value = selectedEspece?.label ?: "Toutes espèces",
+                        value = selectedEspece?.label ?: nullLabel,
                         onValueChange = {},
                         readOnly = true,
+                        singleLine = true,
                         trailingIcon = {
                                 Icon(
                                         if (expanded) Icons.Default.KeyboardArrowUp
@@ -476,7 +596,7 @@ private fun EspeceDropdown(
                                                 onEspeceSelected(espece)
                                                 expanded = false
                                         }
-                                ) { Text(espece?.label ?: "Toutes espèces") }
+                                ) { Text(espece?.label ?: nullLabel) }
                         }
                 }
         }
