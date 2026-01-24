@@ -271,6 +271,83 @@ fun RationsView(
                 mutableStateOf<Triple<String, ValeurNutritionnelle, Ration>?>(null)
         }
 
+        // Sélection locale (non sauvegardée) du type d'expression des besoins
+        val typeExpressionBesoinFromPrefs by viewModel.typeExpressionBesoin.collectAsState()
+        var localTypeExpressionBesoin by remember { mutableStateOf<TypeExpressionBesoin?>(null) }
+        var showTypeExpressionMenu by remember { mutableStateOf(false) }
+        val typeExpressionOptions = remember { TypeExpressionBesoin.getValidUnits() }
+
+        LaunchedEffect(animal) { localTypeExpressionBesoin = null }
+
+        val effectiveTypeExpressionBesoin =
+                localTypeExpressionBesoin
+                        ?: typeExpressionBesoinFromPrefs
+                        ?: TypeExpressionBesoin.DEFAULT
+
+        val typeExpressionSelector: @Composable RowScope.() -> Unit = {
+                Box {
+                        TextButton(
+                                onClick = { showTypeExpressionMenu = true },
+                                contentPadding =
+                                        PaddingValues(
+                                                horizontal = AppSizes.paddingSmall,
+                                                vertical = 0.dp
+                                        )
+                        ) {
+                                Text(
+                                        text = effectiveTypeExpressionBesoin.displayName,
+                                        style = MaterialTheme.typography.caption,
+                                        color = VetNutriColors.Primary
+                                )
+                                Icon(
+                                        imageVector = Icons.Filled.KeyboardArrowDown,
+                                        contentDescription = null,
+                                        tint = VetNutriColors.Primary
+                                )
+                        }
+                        DropdownMenu(
+                                expanded = showTypeExpressionMenu,
+                                onDismissRequest = { showTypeExpressionMenu = false }
+                        ) {
+                                typeExpressionOptions.forEach { type ->
+                                        DropdownMenuItem(
+                                                onClick = {
+                                                        localTypeExpressionBesoin = type
+                                                        showTypeExpressionMenu = false
+                                                }
+                                        ) {
+                                                Row(
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically,
+                                                        horizontalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingXSmall
+                                                                )
+                                                ) {
+                                                        Text(
+                                                                text = type.displayName,
+                                                                style =
+                                                                        MaterialTheme.typography.body2
+                                                        )
+                                                        if (type == effectiveTypeExpressionBesoin) {
+                                                                Icon(
+                                                                        imageVector =
+                                                                                Icons.Filled.Check,
+                                                                        contentDescription = null,
+                                                                        tint =
+                                                                                VetNutriColors
+                                                                                        .Primary,
+                                                                        modifier =
+                                                                                Modifier.size(16.dp)
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+
         // État pour le dialog d'ajustement multi-nutriments
         var showMultiNutrientAdjustmentDialog by remember { mutableStateOf(false) }
         var showRecipeDialog by remember { mutableStateOf(false) }
@@ -928,17 +1005,22 @@ fun RationsView(
                                                                                         preferencesRepository,
                                                                                 equationRepository =
                                                                                         equationRepository,
-                                                                                // Utiliser les préférences
-                                                                                // pré-chargées du ViewModel
-                                                                                typeExpressionBesoin =
-                                                                                        viewModel
-                                                                                                .typeExpressionBesoin
-                                                                                                .collectAsState()
-                                                                                                .value,
-                                                                                isLargeView = !isCompact,
-                                                                                referencesMaladies =
-                                                                                        referencesMaladiesResolues
-                                                                        )
+                                                                        // Utiliser les préférences
+                                                                        // pré-chargées du ViewModel
+                                                                        typeExpressionBesoin =
+                                                                                effectiveTypeExpressionBesoin,
+                                                                        headerActions =
+                                                                                typeExpressionSelector,
+                                                                        titleOverride =
+                                                                                translate(
+                                                                                        AnalNut
+                                                                                                .ANALYSIS_SHORT_TITLE
+                                                                                ),
+                                                                        showDisplayModeText = false,
+                                                                        isLargeView = !isCompact,
+                                                                        referencesMaladies =
+                                                                                referencesMaladiesResolues
+                                                                )
                                                                 } else {
                                                                         Card(
                                                                                 modifier = Modifier.fillMaxWidth(),
@@ -1355,10 +1437,15 @@ fun RationsView(
                                                                         // Utiliser les préférences
                                                                         // pré-chargées du ViewModel
                                                                         typeExpressionBesoin =
-                                                                                viewModel
-                                                                                        .typeExpressionBesoin
-                                                                                        .collectAsState()
-                                                                                        .value,
+                                                                                effectiveTypeExpressionBesoin,
+                                                                        headerActions =
+                                                                                typeExpressionSelector,
+                                                                        titleOverride =
+                                                                                translate(
+                                                                                        AnalNut
+                                                                                                .ANALYSIS_SHORT_TITLE
+                                                                                ),
+                                                                        showDisplayModeText = false,
                                                                         isLargeView = true,
                                                                         referencesMaladies =
                                                                                 referencesMaladiesResolues

@@ -81,6 +81,12 @@ fun AnalyseNutritionnelleCard(
         equationRepository: EquationRepository? = null,
         // Nouveau paramètre pour les préférences pré-chargées
         typeExpressionBesoin: TypeExpressionBesoin? = null,
+        // Actions supplémentaires à afficher dans l'en-tête (ex: sélection d'unité)
+        headerActions: @Composable RowScope.() -> Unit = {},
+        // Option pour personnaliser le titre (ex: "Analyse")
+        titleOverride: String? = null,
+        // Option pour masquer l'indication d'expression des besoins
+        showDisplayModeText: Boolean = true,
         // Paramètre pour adapter la hauteur selon la vue (large ou compacte)
         isLargeView: Boolean = false,
         // Références de maladies pour le contrôle et les graphes
@@ -210,22 +216,26 @@ fun AnalyseNutritionnelleCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                            text = translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE),
+                            text =
+                                    titleOverride
+                                            ?: translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE),
                             style = MaterialTheme.typography.subtitle1,
                             fontWeight = FontWeight.Bold,
                             color = VetNutriColors.Primary
                     )
 
                     // Indicateur des préférences d'affichage
-                    finalTypeExpressionBesoin?.let { typeExpr ->
-                        Text(
-                                text = translate(LocalizationKeys.AnalNut.DISPLAY_MODE, typeExpr.displayName),
-                                style = MaterialTheme.typography.caption,
-                                color =
-                                        if (preferencesLoaded) VetNutriColors.Primary
-                                        else VetNutriColors.Error,
-                                modifier = Modifier.padding(top = 2.dp)
-                        )
+                    if (showDisplayModeText) {
+                        finalTypeExpressionBesoin?.let { typeExpr ->
+                            Text(
+                                    text = translate(LocalizationKeys.AnalNut.DISPLAY_MODE, typeExpr.displayName),
+                                    style = MaterialTheme.typography.caption,
+                                    color =
+                                            if (preferencesLoaded) VetNutriColors.Primary
+                                            else VetNutriColors.Error,
+                                    modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
                     }
                 }
 
@@ -233,6 +243,7 @@ fun AnalyseNutritionnelleCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
                 ) {
+                    headerActions()
                     Text(
                             text = if (afficherTousLesNutriments) translate(LocalizationKeys.AnalNut.ALL) else translate(LocalizationKeys.AnalNut.SELECTED),
                             style = MaterialTheme.typography.caption,
