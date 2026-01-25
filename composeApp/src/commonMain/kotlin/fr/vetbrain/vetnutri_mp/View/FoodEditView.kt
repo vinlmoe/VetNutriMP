@@ -19,6 +19,7 @@ import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.MultiSelectionCard
 import fr.vetbrain.vetnutri_mp.Components.NutrientSection
 import fr.vetbrain.vetnutri_mp.Components.TopBar
+import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
@@ -36,6 +37,7 @@ fun FoodEditView(
         viewModel: FoodEditViewModel,
         onNavigateBack: () -> Unit,
         onNavigateToSettings: () -> Unit,
+        onFoodSaved: (AlimentEv) -> Unit = {},
         modifier: Modifier = Modifier
 ) {
         val aliment = viewModel.alimentState.collectAsState().value
@@ -366,6 +368,7 @@ fun FoodEditView(
                                                                         updatedAliment
                                                                 )
                                                                 showSuccessMessage = true
+                                                                onFoodSaved(updatedAliment)
                                                                 onNavigateBack()
                                                          } catch (e: Exception) {
                                                                  e.printStackTrace()

@@ -35,6 +35,7 @@ import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchConfig
 import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
 import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchLayout
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
+import fr.vetbrain.vetnutri_mp.ViewModel.FoodEditViewModel
 
 /**
  * Vue complète pour ajouter un aliment à une ration
@@ -53,6 +54,9 @@ fun AddAlimentView(
         equationRepository: EquationRepository? = null,
         modifier: Modifier = Modifier
 ) {
+        var showFoodEditView by remember { mutableStateOf(false) }
+        var foodEditViewModel by remember { mutableStateOf<FoodEditViewModel?>(null) }
+
         // États pour les filtres - mémorisés tant que l'animal ne change pas
         val filtersFromViewModel by viewModel.addAlimentFilters.collectAsState()
         var filters by remember { mutableStateOf(filtersFromViewModel) }
@@ -159,12 +163,46 @@ fun AddAlimentView(
                 }
         }
 
+        if (showFoodEditView && foodEditViewModel != null) {
+                FoodEditView(
+                        viewModel = foodEditViewModel!!,
+                        onNavigateBack = {
+                                showFoodEditView = false
+                                foodEditViewModel = null
+                        },
+                        onNavigateToSettings = {},
+                        onFoodSaved = { savedFood ->
+                                viewModel.setAddAlimentSelectedFoodId(savedFood.uuid)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                )
+                return
+        }
+
         Column(modifier = modifier.fillMaxSize()) {
                 // Barre de navigation avec signature correcte et taille réduite
                 TopBar(
                         title = "Ajouter aliment - ${ration.name}",
                         onBackClick = onNavigateBack,
-                        onSettingsClick = { /* Pas de settings pour cette vue */}
+                        onSettingsClick = { /* Pas de settings pour cette vue */ },
+                        actions = {
+                                IconButton(
+                                        onClick = {
+                                                foodEditViewModel = FoodEditViewModel(
+                                                        foodRepository = viewModel.foodRepository,
+                                                        alimentUuid = null
+                                                )
+                                                showFoodEditView = true
+                                        },
+                                        modifier = Modifier.size(AppSizes.iconSizeLarge)
+                                ) {
+                                        Icon(
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = "Créer un aliment",
+                                                modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                        )
+                                }
+                        }
                 )
                 
                 // Message de confirmation d'ajout d'aliment
