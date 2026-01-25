@@ -50,7 +50,9 @@ data class FoodEntity(
         val especesJson: String? = null,
         val indicationsJson: String? = null,
         val name: String? = null,
-        val quantite: Double = 0.0
+        val quantite: Double = 0.0,
+        val lastUpdateDate: String? = null,
+        val imageRef: String? = null
 )
 
 @Serializable

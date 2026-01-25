@@ -293,6 +293,8 @@ object Mappers {
                         RefRation = safeRationUUID,
                         name = this.nom,
                         quantite = safeQuantInt,
+                        lastUpdateDate = this.lastUpdateDate,
+                        imageRef = this.imageRef,
                         especesJson =
                                 if (this.especes.isNotEmpty()) this.especes.joinToString(",")
                                 else null,
@@ -459,6 +461,8 @@ object Mappers {
                         gamme = this.gamme ?: "",
                         quantInt = this.quantityPres ?: 0.0,
                         dataB = this.DataB ?: "",
+                        lastUpdateDate = this.lastUpdateDate,
+                        imageRef = this.imageRef,
                         especes = especesList.toMutableList(),
                         indicat = indicatList.toMutableList(),
                         valMap = nutrientValues.toNutrientValueMap(),

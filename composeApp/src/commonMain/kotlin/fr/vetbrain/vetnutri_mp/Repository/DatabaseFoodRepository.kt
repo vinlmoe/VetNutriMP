@@ -708,6 +708,8 @@ class DatabaseFoodRepository(
                                             RefAlimUnif = null,
                                             name = food.nom ?: "",
                                             quantite = 0.0,
+                                            lastUpdateDate = food.dateMaj,
+                                            imageRef = food.imageRef,
                                             especesJson = especesJson,
                                             indicationsJson = indicationsJson
                                     )

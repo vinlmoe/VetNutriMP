@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 
 @OptIn(ExperimentalUuidApi::class)
 class FoodEditViewModel(
@@ -136,10 +139,13 @@ class FoodEditViewModel(
 
     suspend fun saveAliment(aliment: AlimentEv) {
         try {
+            val todayIso = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
+            val alimentWithDate = aliment.copy(lastUpdateDate = todayIso)
+
             // Vérifier si c'est un nouvel aliment ou une mise à jour
             val existingAliment =
                     try {
-                        foodRepository.getFoodById(aliment.uuid)
+                        foodRepository.getFoodById(alimentWithDate.uuid)
                     } catch (e: Exception) {
                         null
                     }
@@ -147,14 +153,14 @@ class FoodEditViewModel(
             // Sauvegarder l'aliment selon le cas
             if (existingAliment != null) {
                 // Aliment existant : mise à jour
-                foodRepository.updateFood(aliment)
+                foodRepository.updateFood(alimentWithDate)
             } else {
                 // Nouvel aliment : insertion
-                foodRepository.insertFood(aliment)
+                foodRepository.insertFood(alimentWithDate)
             }
 
             // Mettre à jour l'état local
-            _alimentState.value = aliment
+            _alimentState.value = alimentWithDate
         } catch (e: Exception) {
             e.printStackTrace()
             throw e // Relancer l'exception pour que la vue puisse la gérer

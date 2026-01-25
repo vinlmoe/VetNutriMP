@@ -154,6 +154,8 @@ private fun AlimentEv.toAlimentEvJson(): fr.vetbrain.vetnutri_mp.Data.AlimentEvJ
         espece = 0, // TODO: Déterminer l'espèce principale
         Especes = especes,
         gamme = gamme ?: "",
+        dateMaj = lastUpdateDate ?: "",
+        imageRef = imageRef ?: "",
         presentation = cont?.name ?: "",
         quantInt = quantInt ?: 0.0,
         cont = cont?.name ?: "NO",
