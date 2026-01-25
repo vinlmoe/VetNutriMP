@@ -53,12 +53,14 @@ fun AddAlimentView(
         equationRepository: EquationRepository? = null,
         modifier: Modifier = Modifier
 ) {
-        // États pour les filtres - maintenant gérés par FoodSearchComponent
-        var filters by remember { mutableStateOf(FoodSearchFilters()) }
+        // États pour les filtres - mémorisés tant que l'animal ne change pas
+        val filtersFromViewModel by viewModel.addAlimentFilters.collectAsState()
+        var filters by remember { mutableStateOf(filtersFromViewModel) }
         var aminoEligibility by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
         var isEvaluatingAmino by remember { mutableStateOf(false) }
 
         // État pour l'aliment sélectionné (version complète avec données nutritionnelles)
+        val selectedFoodIdFromViewModel by viewModel.addAlimentSelectedFoodId.collectAsState()
         var selectedFood by remember { mutableStateOf<AlimentEv?>(null) }
         var isLoadingCompleteFood by remember { mutableStateOf(false) }
         
@@ -73,6 +75,8 @@ fun AddAlimentView(
 
         // Charger les aliments au premier affichage
         LaunchedEffect(Unit) { viewModel.loadAvailableFoods() }
+
+        LaunchedEffect(filtersFromViewModel) { filters = filtersFromViewModel }
         
         // Faire disparaître le message de confirmation après 3 secondes
         LaunchedEffect(showConfirmation) {
@@ -94,7 +98,8 @@ fun AddAlimentView(
                         showFilters = true,
                         showSearchBar = true,
                         showResultsCount = true,
-                        onFoodSelected = { aliment -> 
+                        onFoodSelected = { aliment ->
+                            viewModel.setAddAlimentSelectedFoodId(aliment.uuid)
                             // Charger l'aliment complet avec ses données nutritionnelles
                             isLoadingCompleteFood = true
                             viewModel.loadCompleteFood(aliment.uuid) { alimentComplet ->
@@ -139,6 +144,19 @@ fun AddAlimentView(
         val displayedFoods = remember(availableFoods, filters.aminoOnly, aminoEligibility) {
                 if (!filters.aminoOnly) availableFoods
                 else availableFoods.filter { aliment -> aminoEligibility[aliment.uuid] == true }
+        }
+
+        LaunchedEffect(selectedFoodIdFromViewModel, availableFoods) {
+                if (selectedFoodIdFromViewModel.isNullOrBlank()) {
+                        selectedFood = null
+                        return@LaunchedEffect
+                }
+                if (selectedFood?.uuid == selectedFoodIdFromViewModel) return@LaunchedEffect
+                isLoadingCompleteFood = true
+                viewModel.loadCompleteFood(selectedFoodIdFromViewModel!!) { alimentComplet ->
+                        selectedFood = alimentComplet
+                        isLoadingCompleteFood = false
+                }
         }
 
         Column(modifier = modifier.fillMaxSize()) {
@@ -191,7 +209,10 @@ fun AddAlimentView(
                                 FoodSearchComponent(
                                     foods = displayedFoods,
                                     filters = filters,
-                                    onFiltersChange = { filters = it },
+                                    onFiltersChange = {
+                                        filters = it
+                                        viewModel.setAddAlimentFilters(it)
+                                    },
                                     config = searchConfig,
                                     modifier = Modifier.fillMaxSize()
                                 )

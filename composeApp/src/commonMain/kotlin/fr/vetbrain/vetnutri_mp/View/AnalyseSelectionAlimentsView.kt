@@ -73,6 +73,8 @@ fun AnalyseSelectionAlimentsView(
     alimentsInitialementSelectionnes: List<AlimentEv> = emptyList(),
     onSelectionChanged: ((List<AlimentEv>) -> Unit)? = null, // ✨ Callback pour synchroniser les changements
     onLoadNutrients: (suspend (List<String>, List<fr.vetbrain.vetnutri_mp.Enumer.Nutrient>) -> Map<String, Map<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>>)? = null,
+    filtersInitial: FoodSearchFilters = FoodSearchFilters(),
+    onFiltersChange: ((FoodSearchFilters) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     // État pour les aliments sélectionnés (synchronisé avec le ViewModel)
@@ -91,7 +93,15 @@ fun AnalyseSelectionAlimentsView(
     }
     
     // État pour les filtres de recherche (utilisant FoodSearchFilters comme AddAlimentView)
-    var filters by remember { mutableStateOf(FoodSearchFilters()) }
+    var filters by remember { mutableStateOf(filtersInitial) }
+
+    LaunchedEffect(filtersInitial) {
+        filters = filtersInitial
+    }
+
+    LaunchedEffect(filters) {
+        onFiltersChange?.invoke(filters)
+    }
     
     // État pour stocker les nutriments chargés depuis la base de données
     var loadedNutrients by remember { 
@@ -842,4 +852,3 @@ private fun AlimentsSelectionnesCompactSection(
         }
     }
 }
-
