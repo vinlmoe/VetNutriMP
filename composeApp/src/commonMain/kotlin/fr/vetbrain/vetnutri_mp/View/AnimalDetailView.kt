@@ -1131,6 +1131,9 @@ private fun WideScreenLayout(
                                                 val alimentsSelectionnes by
                                                         viewModel.alimentsSelectionnes
                                                                 .collectAsState()
+                                                val analyseSelectionFilters by
+                                                        viewModel.analyseSelectionFilters
+                                                                .collectAsState()
 
                                                 if (showAnalyseGraphique &&
                                                                 alimentsSelectionnes.isNotEmpty()
@@ -1293,6 +1296,14 @@ private fun WideScreenLayout(
                                                                                 )
                                                                 }, // ✨ Synchroniser avec le
                                                                 // ViewModel
+                                                                filtersInitial =
+                                                                        analyseSelectionFilters,
+                                                                onFiltersChange = {
+                                                                        viewModel
+                                                                                .setAnalyseSelectionFilters(
+                                                                                        it
+                                                                                )
+                                                                },
                                                                 onLoadNutrients = { foodUuids, nutrients ->
                                                                         viewModel.loadNutrientsForFoods(foodUuids, nutrients)
                                                                 },
@@ -2636,6 +2647,10 @@ private fun NarrowScreenLayout(
                                                                         viewModel
                                                                                 .alimentsSelectionnes
                                                                                 .collectAsState()
+                                                                val analyseSelectionFilters by
+                                                                        viewModel
+                                                                                .analyseSelectionFilters
+                                                                                .collectAsState()
 
                                                                 if (showAnalyseGraphique &&
                                                                                 alimentsSelectionnes
@@ -2807,6 +2822,14 @@ private fun NarrowScreenLayout(
                                                                                         viewModel
                                                                                                 .setAlimentsSelectionnes(
                                                                                                         nouvelleSelection
+                                                                                                )
+                                                                                },
+                                                                                filtersInitial =
+                                                                                        analyseSelectionFilters,
+                                                                                onFiltersChange = {
+                                                                                        viewModel
+                                                                                                .setAnalyseSelectionFilters(
+                                                                                                        it
                                                                                                 )
                                                                                 },
                                                                                 onLoadNutrients = { foodUuids, nutrients ->

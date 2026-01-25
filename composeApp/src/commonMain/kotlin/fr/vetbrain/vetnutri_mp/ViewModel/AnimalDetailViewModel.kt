@@ -179,6 +179,20 @@ class AnimalDetailViewModel(
     // StateFlow pour stocker le type d'expression des besoins
     private val _typeExpressionBesoin = MutableStateFlow<TypeExpressionBesoin?>(null)
     val typeExpressionBesoin: StateFlow<TypeExpressionBesoin?> = _typeExpressionBesoin.asStateFlow()
+    // Override en mémoire (non sauvegardé) pour l'expression des besoins
+    private val _typeExpressionBesoinOverride = MutableStateFlow<TypeExpressionBesoin?>(null)
+    val typeExpressionBesoinOverride: StateFlow<TypeExpressionBesoin?> =
+            _typeExpressionBesoinOverride.asStateFlow()
+
+    // États en mémoire pour les recherches d'aliments (réinitialisés au changement d'animal)
+    private val _addAlimentFilters = MutableStateFlow(FoodSearchFilters())
+    val addAlimentFilters: StateFlow<FoodSearchFilters> = _addAlimentFilters.asStateFlow()
+    private val _addAlimentSelectedFoodId = MutableStateFlow<String?>(null)
+    val addAlimentSelectedFoodId: StateFlow<String?> = _addAlimentSelectedFoodId.asStateFlow()
+
+    private val _analyseSelectionFilters = MutableStateFlow(FoodSearchFilters())
+    val analyseSelectionFilters: StateFlow<FoodSearchFilters> =
+            _analyseSelectionFilters.asStateFlow()
 
     // StateFlow pour stocker la comparaison entre deux rations
     private val _rationsComparaison =
@@ -350,6 +364,10 @@ class AnimalDetailViewModel(
             isEditingRation = false
             isEditingAnimal = false
             _showFullScreenEdit.value = false
+            _typeExpressionBesoinOverride.value = null
+            _addAlimentFilters.value = FoodSearchFilters()
+            _addAlimentSelectedFoodId.value = null
+            _analyseSelectionFilters.value = FoodSearchFilters()
 
             // DEBUG: Vérifier l'historique des poids de l'animal reçu
 
@@ -429,6 +447,26 @@ class AnimalDetailViewModel(
                 e.printStackTrace()
             }
         }
+    }
+
+    fun setTypeExpressionBesoinOverride(typeExpression: TypeExpressionBesoin?) {
+        _typeExpressionBesoinOverride.value = typeExpression
+    }
+
+    fun clearTypeExpressionBesoinOverride() {
+        _typeExpressionBesoinOverride.value = null
+    }
+
+    fun setAddAlimentFilters(filters: FoodSearchFilters) {
+        _addAlimentFilters.value = filters
+    }
+
+    fun setAddAlimentSelectedFoodId(foodId: String?) {
+        _addAlimentSelectedFoodId.value = foodId
+    }
+
+    fun setAnalyseSelectionFilters(filters: FoodSearchFilters) {
+        _analyseSelectionFilters.value = filters
     }
 
     fun navigateTo(section: AnimalDetailSection) {

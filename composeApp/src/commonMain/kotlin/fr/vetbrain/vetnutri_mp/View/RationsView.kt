@@ -45,6 +45,7 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.ConsultationEdit
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
@@ -273,14 +274,12 @@ fun RationsView(
 
         // Sélection locale (non sauvegardée) du type d'expression des besoins
         val typeExpressionBesoinFromPrefs by viewModel.typeExpressionBesoin.collectAsState()
-        var localTypeExpressionBesoin by remember { mutableStateOf<TypeExpressionBesoin?>(null) }
+        val typeExpressionBesoinOverride by viewModel.typeExpressionBesoinOverride.collectAsState()
         var showTypeExpressionMenu by remember { mutableStateOf(false) }
         val typeExpressionOptions = remember { TypeExpressionBesoin.getValidUnits() }
 
-        LaunchedEffect(animal) { localTypeExpressionBesoin = null }
-
         val effectiveTypeExpressionBesoin =
-                localTypeExpressionBesoin
+                typeExpressionBesoinOverride
                         ?: typeExpressionBesoinFromPrefs
                         ?: TypeExpressionBesoin.DEFAULT
 
@@ -295,7 +294,9 @@ fun RationsView(
                                         )
                         ) {
                                 Text(
-                                        text = effectiveTypeExpressionBesoin.displayName,
+                                        text =
+                                                effectiveTypeExpressionBesoin.unitReqEnum
+                                                        .translateEnum(),
                                         style = MaterialTheme.typography.caption,
                                         color = VetNutriColors.Primary
                                 )
@@ -312,7 +313,9 @@ fun RationsView(
                                 typeExpressionOptions.forEach { type ->
                                         DropdownMenuItem(
                                                 onClick = {
-                                                        localTypeExpressionBesoin = type
+                                                        viewModel.setTypeExpressionBesoinOverride(
+                                                                type
+                                                        )
                                                         showTypeExpressionMenu = false
                                                 }
                                         ) {
@@ -325,7 +328,9 @@ fun RationsView(
                                                                 )
                                                 ) {
                                                         Text(
-                                                                text = type.displayName,
+                                                                text =
+                                                                        type.unitReqEnum
+                                                                                .translateEnum(),
                                                                 style =
                                                                         MaterialTheme.typography.body2
                                                         )
