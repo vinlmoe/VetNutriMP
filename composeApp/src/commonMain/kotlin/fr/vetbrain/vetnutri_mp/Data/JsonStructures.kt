@@ -18,6 +18,8 @@ data class AlimentEvJson(
         val espece: Int,
         val Especes: List<String> = listOf(),
         val gamme: String = "",
+        val dateMaj: String = "",
+        val imageRef: String = "",
         val presentation: String = "",
         val quantInt: Double = 0.0,
         val cont: String = "NO",

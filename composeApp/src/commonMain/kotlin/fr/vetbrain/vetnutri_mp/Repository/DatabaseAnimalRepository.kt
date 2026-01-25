@@ -343,6 +343,8 @@ class DatabaseAnimalRepository(
                                                         cont = "NO", // Valeur par défaut
                                                         name = aliment.nom ?: "",
                                                         quantite = 0.0,
+                                                        lastUpdateDate = aliment.dateMaj,
+                                                        imageRef = aliment.imageRef,
                                                         especesJson = "[]",
                                                         indicationsJson = "[]"
                                                 )
@@ -847,6 +849,12 @@ class DatabaseAnimalRepository(
                                                                                         dataB =
                                                                                                 foodEntity
                                                                                                         .DataB,
+                                                                                        lastUpdateDate =
+                                                                                                foodEntity
+                                                                                                        .lastUpdateDate,
+                                                                                        imageRef =
+                                                                                                foodEntity
+                                                                                                        .imageRef,
                                                                                         rationUUID =
                                                                                                 alimentRation
                                                                                                         .uuid

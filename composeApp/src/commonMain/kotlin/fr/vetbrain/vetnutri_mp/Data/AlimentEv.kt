@@ -24,6 +24,8 @@ data class AlimentEv(
         var quantInt: Double? = null,
         var deprecated: Boolean = false,
         var dataB: String? = null,
+        var lastUpdateDate: String? = null,
+        var imageRef: String? = null,
         var especes: MutableList<String> = mutableListOf(),
         var indicat: MutableList<AlimIndic> = mutableListOf(),
         var valMap: MutableMap<Nutrient, NutrientQuantity> = mutableMapOf(),

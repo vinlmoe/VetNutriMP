@@ -28,6 +28,8 @@ fun AlimentEv.toJson(): AlimentEvJson {
             espece = 0, // À adapter selon votre logique
             Especes = this.especes,
             gamme = this.gamme ?: "",
+            dateMaj = this.lastUpdateDate ?: "",
+            imageRef = this.imageRef ?: "",
             presentation = "", // Non présent dans AlimentEv
             quantInt = this.quantInt ?: 0.0,
             cont = if (this.cont != null) this.cont.name else "NO",
@@ -113,6 +115,8 @@ fun AlimentEvJson.toData(): AlimentEv {
                     quantInt = this.quantInt,
                     deprecated = this.deprecated,
                     dataB = this.DataB,
+                    lastUpdateDate = this.dateMaj,
+                    imageRef = this.imageRef,
                     especes = especesConverties.toMutableList(),
                     indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
                     // Assurez-vous que valMap est mutable
@@ -175,6 +179,8 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
             quantInt = this.quantInt,
             deprecated = this.deprecated,
             dataB = this.DataB,
+            lastUpdateDate = this.dateMaj,
+            imageRef = this.imageRef,
             especes = especesConverties.toMutableList(),
             indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
             valMap = nutrientMap.toMutableMap(),
