@@ -1280,12 +1280,13 @@ private fun WideScreenLayout(
                                                                 },
                                                                 onAlimentSelected = { /* Gestion de la sélection */
                                                                 },
-                                                                onAnalyseGraphique = { aliments ->
+                                                                onPrimaryAction = { aliments ->
                                                                         viewModel
                                                                                 .lancerAnalyseGraphique(
                                                                                         aliments
                                                                                 )
                                                                 },
+                                                                primaryActionLabel = "Voir l'analyse graphique",
                                                                 alimentsInitialementSelectionnes =
                                                                         alimentsSelectionnes,
                                                                 onSelectionChanged = {
@@ -2807,13 +2808,14 @@ private fun NarrowScreenLayout(
                                                                                 },
                                                                                 onAlimentSelected = { /* Gestion de la sélection */
                                                                                 },
-                                                                                onAnalyseGraphique = {
+                                                                                onPrimaryAction = {
                                                                                         aliments ->
                                                                                         viewModel
                                                                                                 .lancerAnalyseGraphique(
                                                                                                         aliments
                                                                                                 )
                                                                                 },
+                                                                                primaryActionLabel = "Voir l'analyse graphique",
                                                                                 alimentsInitialementSelectionnes =
                                                                                         alimentsSelectionnes,
                                                                                 onSelectionChanged = {
