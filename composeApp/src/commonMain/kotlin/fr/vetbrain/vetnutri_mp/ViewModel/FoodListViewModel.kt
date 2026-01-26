@@ -407,10 +407,6 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                 foodUuids: List<String>,
                 nutrients: List<fr.vetbrain.vetnutri_mp.Enumer.Nutrient>
         ): Map<String, Map<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>> {
-                return if (foodRepository is fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository) {
-                        foodRepository.loadNutrientsForFoods(foodUuids, nutrients)
-                } else {
-                        emptyMap()
-                }
+                return foodRepository.loadNutrientsForFoods(foodUuids, nutrients)
         }
 }

@@ -62,14 +62,15 @@ import fr.vetbrain.vetnutri_mp.Utils.DataB
 
 /**
  * Vue de sélection d'aliments avec deux listes (gauche et droite) et boutons de sélection.
- * Permet de sélectionner des aliments pour l'analyse graphique.
+ * Peut être utilisée pour l'analyse graphique ou toute action principale sur une sélection.
  */
 @Composable
 fun AnalyseSelectionAlimentsView(
     aliments: List<AlimentEv>,
     onClose: () -> Unit,
     onAlimentSelected: ((AlimentEv) -> Unit)? = null,
-    onAnalyseGraphique: ((List<AlimentEv>) -> Unit)? = null,
+    onPrimaryAction: ((List<AlimentEv>) -> Unit)? = null,
+    primaryActionLabel: String = "Voir l'analyse graphique",
     alimentsInitialementSelectionnes: List<AlimentEv> = emptyList(),
     onSelectionChanged: ((List<AlimentEv>) -> Unit)? = null, // ✨ Callback pour synchroniser les changements
     onLoadNutrients: (suspend (List<String>, List<fr.vetbrain.vetnutri_mp.Enumer.Nutrient>) -> Map<String, Map<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>>)? = null,
@@ -630,21 +631,21 @@ fun AnalyseSelectionAlimentsView(
                 } // Fin else
             } // Fin BoxWithConstraints
 
-            // Bouton d'analyse graphique
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Button(
-                    onClick = {
-                        // Lancer l'analyse graphique avec tous les aliments sélectionnés
-                        onAnalyseGraphique?.invoke(alimentsSelectionnes)
-                    },
-                    enabled = alimentsSelectionnes.isNotEmpty()
+            if (onPrimaryAction != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    Text("Voir l'analyse graphique")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(Icons.AutoMirrored.Default.ArrowForward, contentDescription = null)
+                    Button(
+                        onClick = {
+                            onPrimaryAction(alimentsSelectionnes)
+                        },
+                        enabled = alimentsSelectionnes.isNotEmpty()
+                    ) {
+                        Text(primaryActionLabel)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(Icons.AutoMirrored.Default.ArrowForward, contentDescription = null)
+                    }
                 }
             }
         }

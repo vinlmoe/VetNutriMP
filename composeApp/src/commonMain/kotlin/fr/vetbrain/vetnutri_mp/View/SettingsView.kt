@@ -21,11 +21,19 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import fr.vetbrain.vetnutri_mp.Components.DropdownField
+import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.Equation
+import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsTabs
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.AdministrationSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
@@ -34,11 +42,15 @@ import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.Services.ExcelFoodService
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Settings
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
+
+private data class FilterOption<T>(val label: String, val value: T?)
 
 /**
  * Dialogue simple pour les paramètres d'affichage
@@ -230,158 +242,1154 @@ fun SettingsView(
                                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                                 // Sélection export avancée
-                                                var includeAnimals by remember {
-                                                        mutableStateOf(true)
-                                                }
-                                                var includeFoods by remember {
-                                                        mutableStateOf(true)
-                                                }
-                                                var includeEquations by remember {
-                                                        mutableStateOf(true)
-                                                }
-                                                var includeRations by remember {
-                                                        mutableStateOf(true)
-                                                }
-                                                var includeRecipes by remember {
-                                                        mutableStateOf(true)
-                                                }
-                                                var includeConseils by remember {
-                                                        mutableStateOf(true)
-                                                }
                                                 var selectedAnimalIds by remember {
                                                         mutableStateOf(setOf<String>())
                                                 }
                                                 var selectedFoodIds by remember {
                                                         mutableStateOf(setOf<String>())
                                                 }
+                                                var selectedEquationIds by remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedReferenceIds by remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
 
-                                                // Bouton: choisir animaux à exporter (ouvre
-                                                // un simple sélecteur basique)
+                                                var showAnimalSelectionDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showFoodSelectionDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showEquationSelectionDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showReferenceSelectionDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+
+                                                var availableAnimals by remember {
+                                                        mutableStateOf<List<AnimalEv>>(emptyList())
+                                                }
+                                                var availableFoods by remember {
+                                                        mutableStateOf<List<AlimentEv>>(emptyList())
+                                                }
+                                                var availableEquations by remember {
+                                                        mutableStateOf<List<Equation>>(emptyList())
+                                                }
+                                                var availableReferences by remember {
+                                                        mutableStateOf<List<ReferenceEv>>(emptyList())
+                                                }
+
+                                                var isLoadingAnimals by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingFoods by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingEquations by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingReferences by remember {
+                                                        mutableStateOf(false)
+                                                }
+
+                                                var selectionLoadError by remember {
+                                                        mutableStateOf<String?>(null)
+                                                }
+
+                                                var foodSelectionFilters by remember {
+                                                        mutableStateOf(FoodSearchFilters())
+                                                }
+                                                var animalFilterEspece by remember {
+                                                        mutableStateOf(
+                                                                FilterOption<Espece>(
+                                                                        label = "Toutes",
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
+                                                var equationFilterEspece by remember {
+                                                        mutableStateOf(
+                                                                FilterOption<Espece>(
+                                                                        label = "Toutes",
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
+                                                var equationFilterKind by remember {
+                                                        mutableStateOf(
+                                                                FilterOption<EquationKind>(
+                                                                        label = "Tous",
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
+                                                var referenceFilterEspece by remember {
+                                                        mutableStateOf(
+                                                                FilterOption<Espece>(
+                                                                        label = "Toutes",
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
+
+                                                // Boutons: sélectionner les éléments à exporter
                                                 OutlinedButton(
                                                         onClick = {
-                                                                coroutineScope.launch {
-                                                                        try {
-                                                                                val animals =
-                                                                                        viewModel
-                                                                                                .animalRepository
-                                                                                                .getAllAnimals()
-                                                                                // Simple
-                                                                                // sélection: toggle
-                                                                                // tout si vide
-                                                                                selectedAnimalIds =
-                                                                                        if (selectedAnimalIds
-                                                                                                        .isEmpty()
-                                                                                        )
-                                                                                                animals
-                                                                                                        .map {
-                                                                                                                it.uuid
-                                                                                                        }
-                                                                                                        .toSet()
-                                                                                        else
-                                                                                                emptySet()
-                                                                        } catch (e: Exception) {}
+                                                                showAnimalSelectionDialog = true
+                                                                if (availableAnimals.isEmpty() &&
+                                                                                !isLoadingAnimals
+                                                                ) {
+                                                                        coroutineScope.launch {
+                                                                                isLoadingAnimals = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableAnimals =
+                                                                                                viewModel
+                                                                                                        .animalRepository
+                                                                                                        .getAllAnimals()
+                                                                                } catch (e: Exception) {
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement animaux: ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingAnimals = false
+                                                                                }
+                                                                        }
                                                                 }
                                                         }
-                                                ) { Text(translate(Settings.SELECT_ANIMALS)) }
+                                                ) {
+                                                        Text(
+                                                                "${translate(Settings.SELECT_ANIMALS)} (${selectedAnimalIds.size})"
+                                                        )
+                                                }
 
-                                                // Bouton: choisir aliments à exporter
-                                                // (toggle tout)
                                                 OutlinedButton(
                                                         onClick = {
-                                                                coroutineScope.launch {
-                                                                        try {
-                                                                                val foods =
-                                                                                        viewModel
-                                                                                                .foodRepository
-                                                                                                .getAllFoods()
-                                                                                selectedFoodIds =
-                                                                                        if (selectedFoodIds
-                                                                                                        .isEmpty()
-                                                                                        )
-                                                                                                foods
-                                                                                                        .map {
-                                                                                                                it.uuid
-                                                                                                        }
-                                                                                                        .toSet()
-                                                                                        else
-                                                                                                emptySet()
-                                                                        } catch (e: Exception) {}
+                                                                showFoodSelectionDialog = true
+                                                                if (availableFoods.isEmpty() &&
+                                                                                !isLoadingFoods
+                                                                ) {
+                                                                        coroutineScope.launch {
+                                                                                isLoadingFoods = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableFoods =
+                                                                                                viewModel
+                                                                                                        .foodRepository
+                                                                                                        .getAllFoods()
+                                                                                } catch (e: Exception) {
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement aliments: ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingFoods = false
+                                                                                }
+                                                                        }
                                                                 }
                                                         }
-                                                ) { Text(translate(Settings.SELECT_FOODS)) }
+                                                ) {
+                                                        Text(
+                                                                "${translate(Settings.SELECT_FOODS)} (${selectedFoodIds.size})"
+                                                        )
+                                                }
+
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showEquationSelectionDialog = true
+                                                                if (availableEquations.isEmpty() &&
+                                                                                !isLoadingEquations
+                                                                ) {
+                                                                        coroutineScope.launch {
+                                                                                isLoadingEquations = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableEquations =
+                                                                                                viewModel
+                                                                                                        .equationRepository
+                                                                                                        ?.getAllEquations()
+                                                                                                        ?: emptyList()
+                                                                                } catch (e: Exception) {
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement equations: ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingEquations = false
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                ) { Text("Selectionner equations (${selectedEquationIds.size})") }
+
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showReferenceSelectionDialog = true
+                                                                if (availableReferences.isEmpty() &&
+                                                                                !isLoadingReferences
+                                                                ) {
+                                                                        coroutineScope.launch {
+                                                                                isLoadingReferences = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableReferences =
+                                                                                                viewModel
+                                                                                                        .referenceEvRepository
+                                                                                                        ?.getAllReferenceEv()
+                                                                                                        ?: emptyList()
+                                                                                } catch (e: Exception) {
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement references: ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingReferences = false
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                ) { Text("Selectionner references (${selectedReferenceIds.size})") }
 
                                                 // Cases à cocher d’inclusion
-                                                Row(
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Checkbox(
-                                                                checked = includeAnimals,
-                                                                onCheckedChange = {
-                                                                        includeAnimals = it
+
+                                                if (showAnimalSelectionDialog) {
+                                                        Dialog(
+                                                                onDismissRequest = {
+                                                                        showAnimalSelectionDialog = false
+                                                                },
+                                                                properties =
+                                                                        DialogProperties(
+                                                                                usePlatformDefaultWidth =
+                                                                                        false
+                                                                        )
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .background
+                                                                                        )
+                                                                ) {
+                                                                        when {
+                                                                                isLoadingAnimals -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                CircularProgressIndicator()
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        12.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Chargement des animaux..."
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                                selectionLoadError != null -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        selectionLoadError
+                                                                                                                ?: "Erreur inconnue",
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .error,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showAnimalSelectionDialog =
+                                                                                                                        false
+                                                                                                                selectionLoadError =
+                                                                                                                        null
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                availableAnimals.isEmpty() -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        "Aucun animal disponible."
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showAnimalSelectionDialog =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                else -> {
+                                                                                        val animalById =
+                                                                                                remember(
+                                                                                                        availableAnimals
+                                                                                                ) {
+                                                                                                        availableAnimals
+                                                                                                                .associateBy {
+                                                                                                                        it.uuid
+                                                                                                                }
+                                                                                                }
+                                                                                        val animalFilterOptions =
+                                                                                                remember {
+                                                                                                        listOf<FilterOption<Espece>>(
+                                                                                                                FilterOption<Espece>(
+                                                                                                                        label =
+                                                                                                                                "Toutes",
+                                                                                                                        value = null
+                                                                                                                )
+                                                                                                        ) +
+                                                                                                                Espece
+                                                                                                                        .values()
+                                                                                                                        .map {
+                                                                                                                                FilterOption(
+                                                                                                                                        label =
+                                                                                                                                                it.label,
+                                                                                                                                        value =
+                                                                                                                                                it
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                }
+                                                                                        SelectionDialog(
+                                                                                                title =
+                                                                                                        "Selection des animaux",
+                                                                                                items =
+                                                                                                        availableAnimals.map {
+                                                                                                                SelectionItem(
+                                                                                                                        id =
+                                                                                                                                it.uuid,
+                                                                                                                        title =
+                                                                                                                                it.nom
+                                                                                                                                        .ifBlank {
+                                                                                                                                                "Sans nom"
+                                                                                                                                        },
+                                                                                                                        subtitle =
+                                                                                                                                it.ownerName
+                                                                                                                                        .ifBlank {
+                                                                                                                                                ""
+                                                                                                                                        }
+                                                                                                                )
+                                                                                                        },
+                                                                                                initialSelectedIds =
+                                                                                                        selectedAnimalIds,
+                                                                                                onConfirm = {
+                                                                                                        ids ->
+                                                                                                        selectedAnimalIds =
+                                                                                                                ids
+                                                                                                        showAnimalSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                onDismiss = {
+                                                                                                        showAnimalSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                confirmLabel =
+                                                                                                        "Valider la selection",
+                                                                                                emptyLabel =
+                                                                                                        "Aucun animal disponible.",
+                                                                                                filtersContent = {
+                                                                                                        DropdownField(
+                                                                                                                label =
+                                                                                                                        "Espece",
+                                                                                                                selectedValue =
+                                                                                                                        animalFilterEspece,
+                                                                                                                options =
+                                                                                                                        animalFilterOptions,
+                                                                                                                onValueChange = {
+                                                                                                                        animalFilterEspece =
+                                                                                                                                it
+                                                                                                                },
+                                                                                                                valueToString = {
+                                                                                                                        it.label
+                                                                                                                },
+                                                                                                                modifier =
+                                                                                                                        Modifier.fillMaxWidth()
+                                                                                                        )
+                                                                                                },
+                                                                                                filterPredicate = { item ->
+                                                                                                        val animal =
+                                                                                                                animalById[
+                                                                                                                        item.id
+                                                                                                                ]
+                                                                                                        val selected =
+                                                                                                                animalFilterEspece.value
+                                                                                                        selected == null ||
+                                                                                                                animal?.getEspece() ==
+                                                                                                                        selected
+                                                                                                }
+                                                                                        )
+                                                                                }
+                                                                        }
+
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        showAnimalSelectionDialog =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.align(
+                                                                                                Alignment.TopEnd
+                                                                                        )
+                                                                                                .padding(
+                                                                                                        16.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Default.Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer"
+                                                                                )
+                                                                        }
                                                                 }
-                                                        )
-                                                        Text(translate(Settings.INCLUDE_ANIMALS))
+                                                        }
                                                 }
-                                                Row(
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Checkbox(
-                                                                checked = includeFoods,
-                                                                onCheckedChange = {
-                                                                        includeFoods = it
+
+                                                if (showFoodSelectionDialog) {
+                                                        Dialog(
+                                                                onDismissRequest = {
+                                                                        showFoodSelectionDialog = false
+                                                                },
+                                                                properties =
+                                                                        DialogProperties(
+                                                                                usePlatformDefaultWidth =
+                                                                                        false
+                                                                        )
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .background
+                                                                                        )
+                                                                ) {
+                                                                        when {
+                                                                                isLoadingFoods -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                CircularProgressIndicator()
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        12.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Chargement des aliments..."
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                                selectionLoadError != null -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        selectionLoadError
+                                                                                                                ?: "Erreur inconnue",
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .error,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showFoodSelectionDialog =
+                                                                                                                        false
+                                                                                                                selectionLoadError =
+                                                                                                                        null
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                availableFoods.isEmpty() -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        "Aucun aliment disponible."
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showFoodSelectionDialog =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                else -> {
+                                                                                        AnalyseSelectionAlimentsView(
+                                                                                                aliments =
+                                                                                                        availableFoods,
+                                                                                                onClose = {
+                                                                                                        showFoodSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                onPrimaryAction = {
+                                                                                                        aliments ->
+                                                                                                        selectedFoodIds =
+                                                                                                                aliments.map {
+                                                                                                                        it.uuid
+                                                                                                                }
+                                                                                                                        .toSet()
+                                                                                                        showFoodSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                primaryActionLabel =
+                                                                                                        "Valider la selection",
+                                                                                                alimentsInitialementSelectionnes =
+                                                                                                        availableFoods.filter {
+                                                                                                                selectedFoodIds.contains(
+                                                                                                                        it.uuid
+                                                                                                                )
+                                                                                                        },
+                                                                                                onSelectionChanged = {
+                                                                                                        selectedFoodIds =
+                                                                                                                it.map { al ->
+                                                                                                                        al.uuid
+                                                                                                                }
+                                                                                                                        .toSet()
+                                                                                                },
+                                                                                                filtersInitial =
+                                                                                                        foodSelectionFilters,
+                                                                                                onFiltersChange = {
+                                                                                                        foodSelectionFilters =
+                                                                                                                it
+                                                                                                },
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                        )
+                                                                                }
+                                                                        }
+
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        showFoodSelectionDialog =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.align(
+                                                                                                Alignment.TopEnd
+                                                                                        )
+                                                                                                .padding(
+                                                                                                        16.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Default.Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer"
+                                                                                )
+                                                                        }
                                                                 }
-                                                        )
-                                                        Text(translate(Settings.INCLUDE_FOODS))
+                                                        }
                                                 }
-                                                Row(
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Checkbox(
-                                                                checked = includeEquations,
-                                                                onCheckedChange = {
-                                                                        includeEquations = it
+
+                                                if (showEquationSelectionDialog) {
+                                                        Dialog(
+                                                                onDismissRequest = {
+                                                                        showEquationSelectionDialog = false
+                                                                },
+                                                                properties =
+                                                                        DialogProperties(
+                                                                                usePlatformDefaultWidth =
+                                                                                        false
+                                                                        )
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .background
+                                                                                        )
+                                                                ) {
+                                                                        when {
+                                                                                isLoadingEquations -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                CircularProgressIndicator()
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        12.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Chargement des equations..."
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                                selectionLoadError != null -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        selectionLoadError
+                                                                                                                ?: "Erreur inconnue",
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .error,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showEquationSelectionDialog =
+                                                                                                                        false
+                                                                                                                selectionLoadError =
+                                                                                                                        null
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                availableEquations.isEmpty() -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        "Aucune equation disponible."
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showEquationSelectionDialog =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                else -> {
+                                                                                        val equationById =
+                                                                                                remember(
+                                                                                                        availableEquations
+                                                                                                ) {
+                                                                                                        availableEquations
+                                                                                                                .associateBy {
+                                                                                                                        it.uuid
+                                                                                                                }
+                                                                                                }
+                                                                                        val equationSpecieOptions =
+                                                                                                remember {
+                                                                                                        listOf<FilterOption<Espece>>(
+                                                                                                                FilterOption<Espece>(
+                                                                                                                        label =
+                                                                                                                                "Toutes",
+                                                                                                                        value = null
+                                                                                                                )
+                                                                                                        ) +
+                                                                                                                Espece
+                                                                                                                        .values()
+                                                                                                                        .map {
+                                                                                                                                FilterOption(
+                                                                                                                                        label =
+                                                                                                                                                it.label,
+                                                                                                                                        value =
+                                                                                                                                                it
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                }
+                                                                                        val equationKindOptions =
+                                                                                                remember {
+                                                                                                        listOf<FilterOption<EquationKind>>(
+                                                                                                                FilterOption<EquationKind>(
+                                                                                                                        label =
+                                                                                                                                "Tous",
+                                                                                                                        value = null
+                                                                                                                )
+                                                                                                        ) +
+                                                                                                                EquationKind
+                                                                                                                        .values()
+                                                                                                                        .map {
+                                                                                                                                FilterOption(
+                                                                                                                                        label =
+                                                                                                                                                it.name,
+                                                                                                                                        value =
+                                                                                                                                                it
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                }
+                                                                                        SelectionDialog(
+                                                                                                title =
+                                                                                                        "Selection des equations",
+                                                                                                items =
+                                                                                                        availableEquations.map {
+                                                                                                                val specie =
+                                                                                                                        it.specie?.name
+                                                                                                                                ?: "ALL"
+                                                                                                                val kind =
+                                                                                                                        it.kind.name
+                                                                                                                SelectionItem(
+                                                                                                                        id =
+                                                                                                                                it.uuid,
+                                                                                                                        title =
+                                                                                                                                it.name.ifBlank {
+                                                                                                                                        it.description.ifBlank {
+                                                                                                                                                "Equation"
+                                                                                                                                        }
+                                                                                                                                },
+                                                                                                                        subtitle =
+                                                                                                                                "$kind - $specie"
+                                                                                                                )
+                                                                                                        },
+                                                                                                initialSelectedIds =
+                                                                                                        selectedEquationIds,
+                                                                                                onConfirm = {
+                                                                                                        ids ->
+                                                                                                        selectedEquationIds =
+                                                                                                                ids
+                                                                                                        showEquationSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                onDismiss = {
+                                                                                                        showEquationSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                confirmLabel =
+                                                                                                        "Valider la selection",
+                                                                                                emptyLabel =
+                                                                                                        "Aucune equation disponible.",
+                                                                                                filtersContent = {
+                                                                                                        Column(
+                                                                                                                verticalArrangement =
+                                                                                                                        Arrangement.spacedBy(
+                                                                                                                                8.dp
+                                                                                                                        )
+                                                                                                        ) {
+                                                                                                                DropdownField(
+                                                                                                                        label =
+                                                                                                                                "Espece",
+                                                                                                                        selectedValue =
+                                                                                                                                equationFilterEspece,
+                                                                                                                        options =
+                                                                                                                                equationSpecieOptions,
+                                                                                                                        onValueChange = {
+                                                                                                                                equationFilterEspece =
+                                                                                                                                        it
+                                                                                                                        },
+                                                                                                                        valueToString = {
+                                                                                                                                it.label
+                                                                                                                        },
+                                                                                                                        modifier =
+                                                                                                                                Modifier.fillMaxWidth()
+                                                                                                                )
+                                                                                                                DropdownField(
+                                                                                                                        label =
+                                                                                                                                "Type d'equation",
+                                                                                                                        selectedValue =
+                                                                                                                                equationFilterKind,
+                                                                                                                        options =
+                                                                                                                                equationKindOptions,
+                                                                                                                        onValueChange = {
+                                                                                                                                equationFilterKind =
+                                                                                                                                        it
+                                                                                                                        },
+                                                                                                                        valueToString = {
+                                                                                                                                it.label
+                                                                                                                        },
+                                                                                                                        modifier =
+                                                                                                                                Modifier.fillMaxWidth()
+                                                                                                                )
+                                                                                                        }
+                                                                                                },
+                                                                                                filterPredicate = { item ->
+                                                                                                        val equation =
+                                                                                                                equationById[
+                                                                                                                        item.id
+                                                                                                                ]
+                                                                                                        val selectedSpecie =
+                                                                                                                equationFilterEspece.value
+                                                                                                        val selectedKind =
+                                                                                                                equationFilterKind.value
+                                                                                                        val matchesSpecie =
+                                                                                                                selectedSpecie ==
+                                                                                                                        null ||
+                                                                                                                        equation?.specie ==
+                                                                                                                        selectedSpecie
+                                                                                                        val matchesKind =
+                                                                                                                selectedKind ==
+                                                                                                                        null ||
+                                                                                                                        equation?.kind ==
+                                                                                                                        selectedKind
+                                                                                                        matchesSpecie &&
+                                                                                                                matchesKind
+                                                                                                }
+                                                                                        )
+                                                                                }
+                                                                        }
+
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        showEquationSelectionDialog =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.align(
+                                                                                                Alignment.TopEnd
+                                                                                        )
+                                                                                                .padding(
+                                                                                                        16.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Default.Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer"
+                                                                                )
+                                                                        }
                                                                 }
-                                                        )
-                                                        Text(translate(Settings.INCLUDE_EQUATIONS))
+                                                        }
                                                 }
-                                                Row(
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Checkbox(
-                                                                checked = includeRations,
-                                                                onCheckedChange = {
-                                                                        includeRations = it
+
+                                                if (showReferenceSelectionDialog) {
+                                                        Dialog(
+                                                                onDismissRequest = {
+                                                                        showReferenceSelectionDialog = false
+                                                                },
+                                                                properties =
+                                                                        DialogProperties(
+                                                                                usePlatformDefaultWidth =
+                                                                                        false
+                                                                        )
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .background
+                                                                                        )
+                                                                ) {
+                                                                        when {
+                                                                                isLoadingReferences -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                CircularProgressIndicator()
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        12.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Chargement des references..."
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                                selectionLoadError != null -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        selectionLoadError
+                                                                                                                ?: "Erreur inconnue",
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .error,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showReferenceSelectionDialog =
+                                                                                                                        false
+                                                                                                                selectionLoadError =
+                                                                                                                        null
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                availableReferences.isEmpty() -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        "Aucune reference disponible."
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showReferenceSelectionDialog =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                else -> {
+                                                                                        val referenceById =
+                                                                                                remember(
+                                                                                                        availableReferences
+                                                                                                ) {
+                                                                                                        availableReferences
+                                                                                                                .associateBy {
+                                                                                                                        it.uuid
+                                                                                                                }
+                                                                                                }
+                                                                                        val referenceSpecieOptions =
+                                                                                                remember {
+                                                                                                        listOf<FilterOption<Espece>>(
+                                                                                                                FilterOption<Espece>(
+                                                                                                                        label =
+                                                                                                                                "Toutes",
+                                                                                                                        value = null
+                                                                                                                )
+                                                                                                        ) +
+                                                                                                                Espece
+                                                                                                                        .values()
+                                                                                                                        .map {
+                                                                                                                                FilterOption(
+                                                                                                                                        label =
+                                                                                                                                                it.label,
+                                                                                                                                        value =
+                                                                                                                                                it
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                }
+                                                                                        SelectionDialog(
+                                                                                                title =
+                                                                                                        "Selection des references",
+                                                                                                items =
+                                                                                                        availableReferences.map {
+                                                                                                                SelectionItem(
+                                                                                                                        id =
+                                                                                                                                it.uuid,
+                                                                                                                        title =
+                                                                                                                                it.nom.ifBlank {
+                                                                                                                                        "Reference"
+                                                                                                                                },
+                                                                                                                        subtitle =
+                                                                                                                                it.espece.label
+                                                                                                                )
+                                                                                                        },
+                                                                                                initialSelectedIds =
+                                                                                                        selectedReferenceIds,
+                                                                                                onConfirm = {
+                                                                                                        ids ->
+                                                                                                        selectedReferenceIds =
+                                                                                                                ids
+                                                                                                        showReferenceSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                onDismiss = {
+                                                                                                        showReferenceSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                confirmLabel =
+                                                                                                        "Valider la selection",
+                                                                                                emptyLabel =
+                                                                                                        "Aucune reference disponible.",
+                                                                                                filtersContent = {
+                                                                                                        DropdownField(
+                                                                                                                label =
+                                                                                                                        "Espece",
+                                                                                                                selectedValue =
+                                                                                                                        referenceFilterEspece,
+                                                                                                                options =
+                                                                                                                        referenceSpecieOptions,
+                                                                                                                onValueChange = {
+                                                                                                                        referenceFilterEspece =
+                                                                                                                                it
+                                                                                                                },
+                                                                                                                valueToString = {
+                                                                                                                        it.label
+                                                                                                                },
+                                                                                                                modifier =
+                                                                                                                        Modifier.fillMaxWidth()
+                                                                                                        )
+                                                                                                },
+                                                                                                filterPredicate = { item ->
+                                                                                                        val reference =
+                                                                                                                referenceById[
+                                                                                                                        item.id
+                                                                                                                ]
+                                                                                                        val selected =
+                                                                                                                referenceFilterEspece.value
+                                                                                                        selected == null ||
+                                                                                                                reference?.espece ==
+                                                                                                                        selected
+                                                                                                }
+                                                                                        )
+                                                                                }
+                                                                        }
+
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        showReferenceSelectionDialog =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.align(
+                                                                                                Alignment.TopEnd
+                                                                                        )
+                                                                                                .padding(
+                                                                                                        16.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Default.Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer"
+                                                                                )
+                                                                        }
                                                                 }
-                                                        )
-                                                        Text(translate(Settings.INCLUDE_RATIONS))
-                                                }
-                                                Row(
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Checkbox(
-                                                                checked = includeRecipes,
-                                                                onCheckedChange = {
-                                                                        includeRecipes = it
-                                                                }
-                                                        )
-                                                        Text(translate(Settings.INCLUDE_RECIPES))
-                                                }
-                                                Row(
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Checkbox(
-                                                                checked = includeConseils,
-                                                                onCheckedChange = {
-                                                                        includeConseils = it
-                                                                }
-                                                        )
-                                                        Text(translate(Settings.INCLUDE_CONSEILS))
+                                                        }
                                                 }
                                                 // Affichage du message de résultat
                                                 // d'importation des références
@@ -520,38 +1528,89 @@ fun SettingsView(
                                                                                                         viewModel
                                                                                                                 .conseilRepository
                                                                                         )
+                                                                                val exportOptions =
+                                                                                        ExportImportRepository
+                                                                                                .ExportSelectionOptions(
+                                                                                                        includeAnimals =
+                                                                                                                false,
+                                                                                                        includeFoods =
+                                                                                                                false,
+                                                                                                        includeRations =
+                                                                                                                false,
+                                                                                                        includeRecipes =
+                                                                                                                false,
+                                                                                                        includeEquations =
+                                                                                                                false,
+                                                                                                        includeConseils =
+                                                                                                                false,
+                                                                                                        includeLinkedFromAnimals =
+                                                                                                                true,
+                                                                                                        animalIds =
+                                                                                                                selectedAnimalIds,
+                                                                                                        foodIds =
+                                                                                                                selectedFoodIds,
+                                                                                                        referenceIds =
+                                                                                                                selectedReferenceIds,
+                                                                                                        equationIds =
+                                                                                                                selectedEquationIds
+                                                                                                )
+                                                                                val hasNoSelection =
+                                                                                        selectedAnimalIds.isEmpty() &&
+                                                                                                selectedFoodIds.isEmpty() &&
+                                                                                                selectedReferenceIds.isEmpty() &&
+                                                                                                selectedEquationIds.isEmpty()
+                                                                                val effectiveOptions =
+                                                                                        if (hasNoSelection) {
+                                                                                                exportOptions.copy(
+                                                                                                        includeAnimals =
+                                                                                                                true,
+                                                                                                        includeFoods =
+                                                                                                                true,
+                                                                                                        includeRations =
+                                                                                                                true,
+                                                                                                        includeRecipes =
+                                                                                                                true,
+                                                                                                        includeEquations =
+                                                                                                                true,
+                                                                                                        includeConseils =
+                                                                                                                true,
+                                                                                                        includeLinkedFromAnimals =
+                                                                                                                true
+                                                                                                )
+                                                                                        } else {
+                                                                                                exportOptions.copy(
+                                                                                                        includeAnimals =
+                                                                                                                selectedAnimalIds.isNotEmpty(),
+                                                                                                        includeFoods =
+                                                                                                                selectedFoodIds.isNotEmpty(),
+                                                                                                        includeEquations =
+                                                                                                                selectedEquationIds.isNotEmpty(),
+                                                                                                        includeLinkedFromAnimals =
+                                                                                                                true
+                                                                                                )
+                                                                                        }
                                                                                 val json =
-                                                                                        exportRepo
-                                                                                                .exportWithSelection(
-                                                                                                        ExportImportRepository
-                                                                                                                .ExportSelectionOptions(
-                                                                                                                        includeAnimals =
-                                                                                                                                includeAnimals,
-                                                                                                                        includeFoods =
-                                                                                                                                includeFoods,
-                                                                                                                        includeRations =
-                                                                                                                                includeRations,
-                                                                                                                        includeRecipes =
-                                                                                                                                includeRecipes,
-                                                                                                                        includeEquations =
-                                                                                                                                includeEquations,
-                                                                                                                        includeConseils =
-                                                                                                                                includeConseils,
-                                                                                                                        animalIds =
-                                                                                                                                selectedAnimalIds,
-                                                                                                                        foodIds =
-                                                                                                                                selectedFoodIds
-                                                                                                                )
-                                                                                                )
+                                                                                        withContext(
+                                                                                                AppDispatchers.IO
+                                                                                        ) {
+                                                                                                exportRepo
+                                                                                                        .exportWithSelection(
+                                                                                                                effectiveOptions
+                                                                                                        )
+                                                                                        }
                                                                                 val ok =
-                                                                                        fr.vetbrain
-                                                                                                .vetnutri_mp
-                                                                                                .exportJsonToFile(
-                                                                                                        content =
-                                                                                                                json,
-                                                                                                        defaultFileName =
-                                                                                                                "vetnutri_export.json"
-                                                                                                )
+                                                                                        withContext(
+                                                                                                AppDispatchers.IO
+                                                                                        ) {
+                                                                                                fr.vetbrain
+                                                                                                        .vetnutri_mp
+                                                                                                        .exportJsonToFile(
+                                                                                                                content =
+                                                                                                                        json,
+                                                                                                                defaultFileName =
+                                                                                                                        "vetnutri_export.json"
+                                                                                                        )
+                                                                                        }
                                                                                 // Export
                                                                                 // terminé,
                                                                                 // résultat
@@ -959,7 +2018,8 @@ fun SettingsView(
                                         }
                                         ExcelImportExportSection(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                excelFoodService = excelFoodService
+                                                excelFoodService = excelFoodService,
+                                                foodRepository = viewModel.foodRepository
                                         )
                                 }
                                 4 -> { // Recettes

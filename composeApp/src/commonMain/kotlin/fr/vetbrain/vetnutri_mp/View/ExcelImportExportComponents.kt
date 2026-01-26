@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,12 +17,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
 import fr.vetbrain.vetnutri_mp.Services.ExcelFoodService
 import fr.vetbrain.vetnutri_mp.ExcelPlatform.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
+import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import kotlinx.coroutines.launch
 
 /**
@@ -30,7 +35,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun ExcelImportExportSection(
         modifier: Modifier = Modifier,
-        excelFoodService: ExcelFoodService? = null
+        excelFoodService: ExcelFoodService? = null,
+        foodRepository: FoodRepository? = null
 ) {
         // États pour la gestion des dialogues
         var showPreviewDialog by remember { mutableStateOf(false) }
@@ -44,6 +50,14 @@ fun ExcelImportExportSection(
         var exportResult by remember { mutableStateOf<String?>(null) }
         var importResult by remember { mutableStateOf<ExcelFoodService.ExcelImportResult?>(null) }
         var showImportDialog by remember { mutableStateOf(false) }
+
+        // États pour la sélection d'aliments à exporter
+        var showExportSelectionDialog by remember { mutableStateOf(false) }
+        var availableFoods by remember { mutableStateOf<List<AlimentEv>>(emptyList()) }
+        var selectedFoods by remember { mutableStateOf<List<AlimentEv>>(emptyList()) }
+        var selectionFilters by remember { mutableStateOf(FoodSearchFilters()) }
+        var isLoadingFoods by remember { mutableStateOf(false) }
+        var selectionLoadError by remember { mutableStateOf<String?>(null) }
         
         // État pour la base de données sélectionnée (prioritaire sur celle du CSV)
         var selectedDataB by remember { mutableStateOf<String?>(null) }
@@ -60,6 +74,43 @@ fun ExcelImportExportSection(
         
         // Vérifier si les opérations CSV sont supportées
         val csvSupported = isCsvFileOperationsSupported()
+
+        val exportFoods: (Set<String>) -> Unit = { foodIds ->
+                coroutineScope.launch {
+                        isExporting = true
+                        try {
+                                if (excelFoodService != null) {
+                                        val csv =
+                                                if (foodIds.isEmpty())
+                                                        excelFoodService.exportAllFoodsToCsv()
+                                                else
+                                                        excelFoodService.exportSelectedFoodsToCsv(
+                                                                foodIds
+                                                        )
+                                        val success =
+                                                saveCsvFileForExport(
+                                                        csv,
+                                                        "aliments_export.csv"
+                                                )
+                                        exportResult =
+                                                if (success)
+                                                        "✅ Export réussi: fichier sauvegardé"
+                                                else
+                                                        "❌ Erreur lors de la sauvegarde du fichier"
+                                } else {
+                                        val csv =
+                                                excelFoodService?.generateExampleCsv()
+                                                        ?: "Exemple CSV"
+                                        exportResult =
+                                                "✅ Export d'exemple généré (service non disponible)"
+                                }
+                        } catch (e: Exception) {
+                                exportResult = "❌ Erreur d'export: ${e.message}"
+                        } finally {
+                                isExporting = false
+                        }
+                }
+        }
 
         Column(
                 modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
@@ -112,28 +163,38 @@ fun ExcelImportExportSection(
                                         modifier = Modifier.padding(bottom = 16.dp)
                                 )
 
+                                if (selectedFoods.isNotEmpty()) {
+                                        Text(
+                                                "Sélection actuelle: ${selectedFoods.size} aliments",
+                                                style = MaterialTheme.typography.caption,
+                                                color = Color.Gray,
+                                                modifier = Modifier.padding(bottom = 8.dp)
+                                        )
+                                }
+
                                 Button(
                                         onClick = {
-                                                coroutineScope.launch {
-                                                        isExporting = true
-                                                        try {
-                                                                if (excelFoodService != null) {
-                                                                        // Export réel avec le service
-                                                                        val csv = excelFoodService.exportAllFoodsToCsv()
-                                                                        val success = saveCsvFileForExport(csv, "aliments_export.csv")
-                                                                        exportResult = if (success) 
-                                                                                "✅ Export réussi: fichier sauvegardé" 
-                                                                        else 
-                                                                                "❌ Erreur lors de la sauvegarde du fichier"
-                                                                } else {
-                                                                        // Fallback: générer un exemple
-                                                                        val csv = excelFoodService?.generateExampleCsv() ?: "Exemple CSV"
-                                                                        exportResult = "✅ Export d'exemple généré (service non disponible)"
+                                                if (foodRepository == null) {
+                                                        exportFoods(emptySet())
+                                                } else {
+                                                        showExportSelectionDialog = true
+                                                        if (availableFoods.isEmpty() &&
+                                                                        !isLoadingFoods
+                                                        ) {
+                                                                coroutineScope.launch {
+                                                                        isLoadingFoods = true
+                                                                        selectionLoadError = null
+                                                                        try {
+                                                                                availableFoods =
+                                                                                        foodRepository
+                                                                                                .getAllFoods()
+                                                                        } catch (e: Exception) {
+                                                                                selectionLoadError =
+                                                                                        "Erreur de chargement: ${e.message}"
+                                                                        } finally {
+                                                                                isLoadingFoods = false
+                                                                        }
                                                                 }
-                                                        } catch (e: Exception) {
-                                                                exportResult = "❌ Erreur d'export: ${e.message}"
-                                                        } finally {
-                                                                isExporting = false
                                                         }
                                                 }
                                         },
@@ -151,7 +212,7 @@ fun ExcelImportExportSection(
                                                 Icon(Icons.Default.Download, contentDescription = null)
                                                 Spacer(modifier = Modifier.width(8.dp))
                                         }
-                                        Text("Exporter vers CSV")
+                                        Text("Sélectionner et exporter")
                                 }
                         }
                 }
@@ -177,6 +238,166 @@ fun ExcelImportExportSection(
                                         )
                                         IconButton(onClick = { exportResult = null }) {
                                                 Icon(Icons.Default.Close, contentDescription = "Fermer")
+                                        }
+                                }
+                        }
+                }
+
+                if (showExportSelectionDialog) {
+                        Dialog(
+                                onDismissRequest = { showExportSelectionDialog = false },
+                                properties = DialogProperties(usePlatformDefaultWidth = false)
+                        ) {
+                                Box(
+                                        modifier =
+                                                Modifier.fillMaxSize()
+                                                        .background(
+                                                                MaterialTheme.colors
+                                                                        .background
+                                                        )
+                                ) {
+                                        when {
+                                                isLoadingFoods -> {
+                                                        Column(
+                                                                modifier =
+                                                                        Modifier.fillMaxSize(),
+                                                                verticalArrangement =
+                                                                        Arrangement.Center,
+                                                                horizontalAlignment =
+                                                                        Alignment.CenterHorizontally
+                                                        ) {
+                                                                CircularProgressIndicator()
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        12.dp
+                                                                                )
+                                                                )
+                                                                Text(
+                                                                        "Chargement des aliments..."
+                                                                )
+                                                        }
+                                                }
+                                                selectionLoadError != null -> {
+                                                        Column(
+                                                                modifier =
+                                                                        Modifier.fillMaxSize()
+                                                                                .padding(
+                                                                                        24.dp
+                                                                                ),
+                                                                verticalArrangement =
+                                                                        Arrangement.Center,
+                                                                horizontalAlignment =
+                                                                        Alignment.CenterHorizontally
+                                                        ) {
+                                                                Text(
+                                                                        selectionLoadError
+                                                                                ?: "Erreur inconnue",
+                                                                        color =
+                                                                                MaterialTheme
+                                                                                        .colors
+                                                                                        .error,
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .body1
+                                                                )
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        16.dp
+                                                                                )
+                                                                )
+                                                                Button(
+                                                                        onClick = {
+                                                                                showExportSelectionDialog =
+                                                                                        false
+                                                                        }
+                                                                ) { Text("Fermer") }
+                                                        }
+                                                }
+                                                availableFoods.isEmpty() -> {
+                                                        Column(
+                                                                modifier =
+                                                                        Modifier.fillMaxSize()
+                                                                                .padding(
+                                                                                        24.dp
+                                                                                ),
+                                                                verticalArrangement =
+                                                                        Arrangement.Center,
+                                                                horizontalAlignment =
+                                                                        Alignment.CenterHorizontally
+                                                        ) {
+                                                                Text(
+                                                                        "Aucun aliment disponible."
+                                                                )
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        16.dp
+                                                                                )
+                                                                )
+                                                                Button(
+                                                                        onClick = {
+                                                                                showExportSelectionDialog =
+                                                                                        false
+                                                                        }
+                                                                ) { Text("Fermer") }
+                                                        }
+                                                }
+                                                else -> {
+                                                        AnalyseSelectionAlimentsView(
+                                                                aliments = availableFoods,
+                                                                onClose = {
+                                                                        showExportSelectionDialog =
+                                                                                false
+                                                                },
+                                                                onPrimaryAction = {
+                                                                        aliments ->
+                                                                        selectedFoods = aliments
+                                                                        showExportSelectionDialog =
+                                                                                false
+                                                                        exportFoods(
+                                                                                aliments
+                                                                                        .map {
+                                                                                                it.uuid
+                                                                                        }
+                                                                                        .toSet()
+                                                                        )
+                                                                },
+                                                                primaryActionLabel =
+                                                                        "Exporter la sélection",
+                                                                alimentsInitialementSelectionnes =
+                                                                        selectedFoods,
+                                                                onSelectionChanged = {
+                                                                        selectedFoods = it
+                                                                },
+                                                                filtersInitial =
+                                                                        selectionFilters,
+                                                                onFiltersChange = {
+                                                                        selectionFilters = it
+                                                                },
+                                                                modifier =
+                                                                        Modifier.fillMaxSize()
+                                                                                .padding(
+                                                                                        16.dp
+                                                                                )
+                                                        )
+                                                }
+                                        }
+
+                                        IconButton(
+                                                onClick = {
+                                                        showExportSelectionDialog = false
+                                                },
+                                                modifier =
+                                                        Modifier.align(Alignment.TopEnd)
+                                                                .padding(16.dp)
+                                        ) {
+                                                Icon(
+                                                        imageVector = Icons.Default.Close,
+                                                        contentDescription = "Fermer"
+                                                )
                                         }
                                 }
                         }

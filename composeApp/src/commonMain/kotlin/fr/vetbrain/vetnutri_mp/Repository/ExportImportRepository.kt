@@ -53,6 +53,7 @@ class ExportImportRepository(
                 val includeRecipes: Boolean = true,
                 val includeEquations: Boolean = true,
                 val includeConseils: Boolean = true,
+                val includeLinkedFromAnimals: Boolean = true,
                 val animalIds: Set<String> = emptySet(),
                 val foodIds: Set<String> = emptySet(),
                 val referenceIds: Set<String> = emptySet(),
@@ -183,14 +184,134 @@ class ExportImportRepository(
                                 .toList()
                 val animals: List<AnimalApi> = filteredDomainAnimals.map { it.toApi() }
 
+                // Déduire les éléments liés aux animaux sélectionnés (aliments, références, équations)
+                val linkedFoodIds = mutableSetOf<String>()
+                val linkedReferenceIds = mutableSetOf<String>()
+                if (options.includeAnimals &&
+                                options.includeLinkedFromAnimals &&
+                                filteredDomainAnimals.isNotEmpty()
+                ) {
+                        filteredDomainAnimals.forEach { animal ->
+                                animal.consultations.forEach { consult ->
+                                        consult.referenceGeneraleId
+                                                ?.takeIf { it.isNotBlank() }
+                                                ?.let { linkedReferenceIds.add(it) }
+                                        consult.referencesMaladies
+                                                .filter { it.isNotBlank() }
+                                                .forEach { linkedReferenceIds.add(it) }
+                                        consult.rations.forEach { ration ->
+                                                ration.alimentMutableList.forEach { item ->
+                                                        val foodId =
+                                                                item.aliment?.uuid
+                                                                        ?: item.uuidUnif.takeIf {
+                                                                                it.isNotBlank()
+                                                                        }
+                                                                        ?: item.refAlimUnif
+                                                                                ?.takeIf {
+                                                                                        it.isNotBlank()
+                                                                                }
+                                                        if (foodId != null) {
+                                                                linkedFoodIds.add(foodId)
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                }
+
+                val linkedEquationIds = mutableSetOf<String>()
+                if ((options.includeEquations || options.includeLinkedFromAnimals) &&
+                                referenceRepository != null
+                ) {
+                        val referenceIdsToScan =
+                                if (options.includeLinkedFromAnimals) linkedReferenceIds
+                                else emptySet()
+                        referenceIdsToScan.forEach { refId ->
+                                try {
+                                        val ref =
+                                                referenceRepository.getReferenceEvById(refId)
+                                        if (ref != null) {
+                                                listOfNotNull(
+                                                                ref.equationBW,
+                                                                ref.equationBEE,
+                                                                ref.equationDEcom,
+                                                                ref.equationDEraw,
+                                                                ref.equationME
+                                                ).forEach { linkedEquationIds.add(it.uuid) }
+                                                ref.equationsNut.forEach {
+                                                        linkedEquationIds.add(it.uuid)
+                                                }
+                                        }
+                                } catch (_: Exception) {}
+                        }
+                }
+
+                val effectiveFoodIds =
+                        if (options.includeLinkedFromAnimals)
+                                options.foodIds + linkedFoodIds
+                        else options.foodIds
+                val effectiveReferenceIds =
+                        if (options.includeLinkedFromAnimals)
+                                options.referenceIds + linkedReferenceIds
+                        else options.referenceIds
+
+                val equationIdsFromReferences = mutableSetOf<String>()
+                if ((options.includeEquations || options.referenceIds.isNotEmpty()) &&
+                                referenceRepository != null
+                ) {
+                        effectiveReferenceIds.forEach { refId ->
+                                try {
+                                        val ref =
+                                                referenceRepository.getReferenceEvById(refId)
+                                        if (ref != null) {
+                                                listOfNotNull(
+                                                                ref.equationBW,
+                                                                ref.equationBEE,
+                                                                ref.equationDEcom,
+                                                                ref.equationDEraw,
+                                                                ref.equationME
+                                                ).forEach {
+                                                        equationIdsFromReferences.add(it.uuid)
+                                                }
+                                                ref.equationsNut.forEach {
+                                                        equationIdsFromReferences.add(it.uuid)
+                                                }
+                                        }
+                                } catch (_: Exception) {}
+                        }
+                }
+
+                val effectiveEquationIds =
+                        if (options.includeLinkedFromAnimals)
+                                options.equationIds + linkedEquationIds + equationIdsFromReferences
+                        else options.equationIds + equationIdsFromReferences
+
+                val shouldIncludeFoods =
+                        options.includeFoods ||
+                                options.foodIds.isNotEmpty() ||
+                                (options.includeLinkedFromAnimals &&
+                                        linkedFoodIds.isNotEmpty())
+                val shouldIncludeEquations =
+                        options.includeEquations ||
+                                options.equationIds.isNotEmpty() ||
+                                equationIdsFromReferences.isNotEmpty() ||
+                                (options.includeLinkedFromAnimals &&
+                                        linkedEquationIds.isNotEmpty())
+                val shouldIncludeReferences =
+                        options.includeEquations ||
+                                options.referenceIds.isNotEmpty() ||
+                                (options.includeLinkedFromAnimals &&
+                                        linkedReferenceIds.isNotEmpty())
+
                 // Forcer le chargement frais des aliments (avec nutriments) avant export filtré
-                if (options.includeFoods && foodRepository is DatabaseFoodRepository) {
+                if (shouldIncludeFoods && foodRepository is DatabaseFoodRepository) {
                         try {
                                 foodRepository.forceRefresh()
                         } catch (_: Exception) {}
                 }
                 val allFoods =
-                        if (options.includeFoods) (foodRepository?.getAllFoods() ?: emptyList())
+                        if (shouldIncludeFoods)
+                                (foodRepository?.getAllFoods() ?: emptyList())
                         else emptyList()
                 val foods: List<FoodApi> =
                         allFoods.asSequence()
@@ -200,7 +321,7 @@ class ExportImportRepository(
                                         // - Si foodIds est vide ET animalIds n'est PAS vide → export sélectif : exporter AUCUN aliment (l'animal n'en utilise pas)
                                         // - Si foodIds n'est pas vide → exporter seulement ceux dans la liste
                                         when {
-                                                options.foodIds.isNotEmpty() -> options.foodIds.contains(it.uuid)
+                                                effectiveFoodIds.isNotEmpty() -> effectiveFoodIds.contains(it.uuid)
                                                 options.animalIds.isEmpty() -> true // Export général : tous les aliments
                                                 else -> false // Export sélectif sans aliments spécifiés : aucun aliment
                                         }
@@ -224,7 +345,7 @@ class ExportImportRepository(
                                         .toList()
                         } else emptyList()
                 val allEquations =
-                        if (options.includeEquations)
+                        if (shouldIncludeEquations)
                                 (equationRepository?.getAllEquations() ?: emptyList())
                         else emptyList()
                 val equations: List<fr.vetbrain.vetnutri_mp.Data.EquationApi> =
@@ -235,7 +356,7 @@ class ExportImportRepository(
                                         // - Si equationIds est vide ET animalIds n'est PAS vide → export sélectif : exporter AUCUNE équation (l'animal n'en utilise pas)
                                         // - Si equationIds n'est pas vide → exporter seulement celles dans la liste
                                         when {
-                                                options.equationIds.isNotEmpty() -> options.equationIds.contains(it.uuid)
+                                                effectiveEquationIds.isNotEmpty() -> effectiveEquationIds.contains(it.uuid)
                                                 options.animalIds.isEmpty() -> true // Export général : toutes les équations
                                                 else -> false // Export sélectif sans équations spécifiées : aucune équation
                                         }
@@ -243,7 +364,7 @@ class ExportImportRepository(
                                 .map { it.toApi() }
                                 .toList()
                 val allReferences =
-                        if (options.includeEquations) {
+                        if (shouldIncludeReferences) {
                                 referenceRepository?.getAllReferenceEv() ?: emptyList()
                         } else emptyList()
                 val references: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEvApi> =
@@ -254,7 +375,7 @@ class ExportImportRepository(
                                         // - Si referenceIds est vide ET animalIds n'est PAS vide → export sélectif : exporter AUCUNE référence (l'animal n'en utilise pas)
                                         // - Si referenceIds n'est pas vide → exporter seulement celles dans la liste
                                         when {
-                                                options.referenceIds.isNotEmpty() -> options.referenceIds.contains(it.uuid)
+                                                effectiveReferenceIds.isNotEmpty() -> effectiveReferenceIds.contains(it.uuid)
                                                 options.animalIds.isEmpty() -> true // Export général : toutes les références
                                                 else -> false // Export sélectif sans références spécifiées : aucune référence
                                         }
