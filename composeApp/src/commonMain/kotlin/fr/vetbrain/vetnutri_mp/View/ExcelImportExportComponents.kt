@@ -50,6 +50,9 @@ fun ExcelImportExportSection(
         var exportResult by remember { mutableStateOf<String?>(null) }
         var importResult by remember { mutableStateOf<ExcelFoodService.ExcelImportResult?>(null) }
         var showImportDialog by remember { mutableStateOf(false) }
+        var showImportOptionsDialog by remember { mutableStateOf(false) }
+        var mergeNutrients by remember { mutableStateOf(false) }
+        var importOnlyIfNewer by remember { mutableStateOf(false) }
 
         // États pour la sélection d'aliments à exporter
         var showExportSelectionDialog by remember { mutableStateOf(false) }
@@ -441,47 +444,7 @@ fun ExcelImportExportSection(
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Button(
-                                        onClick = {
-                                                // Ouvrir le fichier CSV en dehors du contexte coroutine (comme les autres file browsers)
-                                                val csv = openCsvFileForImport()
-                                                if (csv != null) {
-                                                        coroutineScope.launch {
-                                                                isImporting = true
-                                                                try {
-                                                                        if (excelFoodService != null && csvSupported) {
-                                                                                // Import réel avec le contenu du fichier
-                                                                                csvContent = csv
-                                                                                val result = excelFoodService.importFoodsFromCsv(csv, selectedDataB)
-                                                                                importResult = result
-                                                                                showImportDialog = true
-                                                                        } else {
-                                                                                // Fallback: utiliser l'exemple
-                                                                                val csvExample = excelFoodService?.generateExampleCsv() ?: "Exemple CSV"
-                                                                                csvContent = csvExample
-                                                                                val result = excelFoodService?.previewCsvImport(csvExample, selectedDataB) ?: ExcelFoodService.ExcelImportResult(
-                                                                                        success = false,
-                                                                                        message = "Service non disponible"
-                                                                                )
-                                                                                importResult = result
-                                                                                showImportDialog = true
-                                                                        }
-                                                                } catch (e: Exception) {
-                                                                        importResult = ExcelFoodService.ExcelImportResult(
-                                                                                success = false,
-                                                                                message = "Erreur lors de la préparation: ${e.message}"
-                                                                        )
-                                                                } finally {
-                                                                        isImporting = false
-                                                                }
-                                                        }
-                                                } else {
-                                                        // Aucun fichier sélectionné
-                                                        importResult = ExcelFoodService.ExcelImportResult(
-                                                                success = false,
-                                                                message = "Aucun fichier sélectionné"
-                                                        )
-                                                }
-                                        },
+                                        onClick = { showImportOptionsDialog = true },
                                         enabled = !isExporting && !isImporting,
                                         modifier = Modifier.fillMaxWidth(),
                                         colors = ButtonDefaults.buttonColors(
@@ -601,7 +564,13 @@ fun ExcelImportExportSection(
                                 if (csvContent != null && excelFoodService != null) {
                                         coroutineScope.launch {
                                                 try {
-                                                        val finalResult = excelFoodService.importFoodsFromCsv(csvContent!!, selectedDataB)
+                                                        val finalResult =
+                                                                excelFoodService.importFoodsFromCsv(
+                                                                        csvContent!!,
+                                                                        selectedDataB,
+                                                                        mergeNutrients = mergeNutrients,
+                                                                        importOnlyIfNewer = importOnlyIfNewer
+                                                                )
                                                         importResult = finalResult
                                                         showImportDialog = false
                                                 } catch (e: Exception) {
@@ -618,6 +587,104 @@ fun ExcelImportExportSection(
                         onCancel = {
                                 showImportDialog = false
                                 importResult = null
+                        }
+                )
+        }
+
+        if (showImportOptionsDialog) {
+                AlertDialog(
+                        onDismissRequest = { showImportOptionsDialog = false },
+                        title = { Text("Options d'import CSV") },
+                        text = {
+                                Column {
+                                        Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Checkbox(
+                                                        checked = mergeNutrients,
+                                                        onCheckedChange = { mergeNutrients = it }
+                                                )
+                                                Text(
+                                                        "Fusionner les nutriments (ne pas supprimer ceux absents du fichier)"
+                                                )
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Checkbox(
+                                                        checked = importOnlyIfNewer,
+                                                        onCheckedChange = { importOnlyIfNewer = it }
+                                                )
+                                                Text(
+                                                        "N'importer que si la date de dernière mise à jour est plus récente"
+                                                )
+                                        }
+                                }
+                        },
+                        confirmButton = {
+                                Button(
+                                        onClick = {
+                                                showImportOptionsDialog = false
+                                                // Ouvrir le fichier CSV en dehors du contexte coroutine (comme les autres file browsers)
+                                                val csv = openCsvFileForImport()
+                                                if (csv != null) {
+                                                        coroutineScope.launch {
+                                                                isImporting = true
+                                                                try {
+                                                                        if (excelFoodService != null && csvSupported) {
+                                                                                // Import réel avec le contenu du fichier
+                                                                                csvContent = csv
+                                                                                val result =
+                                                                                        excelFoodService.importFoodsFromCsv(
+                                                                                                csv,
+                                                                                                selectedDataB,
+                                                                                                mergeNutrients = mergeNutrients,
+                                                                                                importOnlyIfNewer = importOnlyIfNewer
+                                                                                        )
+                                                                                importResult = result
+                                                                                showImportDialog = true
+                                                                        } else {
+                                                                                // Fallback: utiliser l'exemple
+                                                                                val csvExample =
+                                                                                        excelFoodService?.generateExampleCsv()
+                                                                                                ?: "Exemple CSV"
+                                                                                csvContent = csvExample
+                                                                                val result =
+                                                                                        excelFoodService?.previewCsvImport(
+                                                                                                csvExample,
+                                                                                                selectedDataB
+                                                                                        )
+                                                                                                ?: ExcelFoodService.ExcelImportResult(
+                                                                                                        success = false,
+                                                                                                        message = "Service non disponible"
+                                                                                                )
+                                                                                importResult = result
+                                                                                showImportDialog = true
+                                                                        }
+                                                                } catch (e: Exception) {
+                                                                        importResult = ExcelFoodService.ExcelImportResult(
+                                                                                success = false,
+                                                                                message = "Erreur lors de la préparation: ${e.message}"
+                                                                        )
+                                                                } finally {
+                                                                        isImporting = false
+                                                                }
+                                                        }
+                                                } else {
+                                                        // Aucun fichier sélectionné
+                                                        importResult = ExcelFoodService.ExcelImportResult(
+                                                                success = false,
+                                                                message = "Aucun fichier sélectionné"
+                                                        )
+                                                }
+                                        }
+                                ) { Text("Continuer") }
+                        },
+                        dismissButton = {
+                                Button(onClick = { showImportOptionsDialog = false }) {
+                                        Text("Annuler")
+                                }
                         }
                 )
         }

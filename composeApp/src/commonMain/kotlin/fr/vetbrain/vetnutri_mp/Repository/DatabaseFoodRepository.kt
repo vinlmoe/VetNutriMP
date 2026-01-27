@@ -27,6 +27,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -78,6 +80,33 @@ class DatabaseFoodRepository(
         speciesCacheTime.clear()
         searchCache.clear()
         searchCacheTime.clear()
+    }
+
+    private fun parseDateToInstantOrNull(rawDate: String?): Instant? {
+        val date = rawDate?.trim().orEmpty()
+        if (date.isEmpty()) return null
+        return try {
+            Instant.parse(date)
+        } catch (_: Exception) {
+            val datePart = if (date.length >= 10) date.substring(0, 10) else date
+            try {
+                Instant.parse("${LocalDate.parse(datePart)}T00:00:00Z")
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
+    private fun shouldUpdateFood(
+            existing: FoodEntity,
+            incomingDate: String?,
+            importOnlyIfNewer: Boolean
+    ): Boolean {
+        if (!importOnlyIfNewer) return true
+        val incomingInstant = parseDateToInstantOrNull(incomingDate)
+        val existingInstant = parseDateToInstantOrNull(existing.lastUpdateDate)
+        if (incomingInstant == null || existingInstant == null) return true
+        return incomingInstant > existingInstant
     }
 
     /**
@@ -134,7 +163,11 @@ class DatabaseFoodRepository(
      * par Set d'UUID, insert/update par lots, suppression groupée des nutriments puis insertion
      * groupée.
      */
-    suspend fun importFoodsDomain(aliments: List<AlimentEv>): FoodImportResult {
+    suspend fun importFoodsDomain(
+            aliments: List<AlimentEv>,
+            mergeNutrients: Boolean = false,
+            importOnlyIfNewer: Boolean = false
+    ): FoodImportResult {
         return withContext(AppDispatchers.IO) {
             
             var importCount: Int = 0
@@ -152,6 +185,7 @@ class DatabaseFoodRepository(
                         }
                 val newEntities: MutableList<FoodEntity> = mutableListOf()
                 val updateEntities: MutableList<FoodEntity> = mutableListOf()
+                val updateCandidateIds: MutableList<String> = mutableListOf()
                 val updateIds: MutableList<String> = mutableListOf()
                 val allNutrientValues: MutableList<NutrientValueEntity> = mutableListOf()
 
@@ -193,6 +227,9 @@ class DatabaseFoodRepository(
                         if (existants.containsKey(id)) {
                             try {
                                 val existing: FoodEntity = existants[id]!!
+                                if (!shouldUpdateFood(existing, aliment.lastUpdateDate, importOnlyIfNewer)) {
+                                    return@forEach
+                                }
                                 val updated: FoodEntity =
                                         aliment.toFoodEntity().copy(RefRation = existing.RefRation)
                                 updateEntities.add(updated)
@@ -231,7 +268,7 @@ class DatabaseFoodRepository(
                     }
                     
                     // Supprimer les nutriments existants SEULEMENT si on va les remplacer
-                    if (allIds.isNotEmpty()) {
+                    if (!mergeNutrients && allIds.isNotEmpty()) {
                         try {
                             allIds.chunked(500).forEach { part ->
                                 nutrientValueDao.deleteAllForAliments(part)
@@ -486,7 +523,11 @@ class DatabaseFoodRepository(
     // Description: Méthode critique pour l'importation des aliments depuis un format JSON.
     // Cette zone de code gère l'analyse et l'insertion des aliments dans la base de données,
     // incluant la vérification des aliments existants et la conversion des données.
-    override suspend fun importFoods(foods: List<AlimentEvJson>): FoodImportResult {
+    override suspend fun importFoods(
+            foods: List<AlimentEvJson>,
+            mergeNutrients: Boolean,
+            importOnlyIfNewer: Boolean
+    ): FoodImportResult {
         return withContext(AppDispatchers.IO) {
             var importCount: Int = 0
             var updateCount: Int = 0
@@ -503,6 +544,7 @@ class DatabaseFoodRepository(
                         }
                 val newEntities: MutableList<FoodEntity> = mutableListOf()
                 val updateEntities: MutableList<FoodEntity> = mutableListOf()
+                val updateCandidateIds: MutableList<String> = mutableListOf()
                 val updateIds: MutableList<String> = mutableListOf()
                 val allNutrientValues: MutableList<NutrientValueEntity> = mutableListOf()
                 fun nettoyerChaineBruteBrackets(valeur: String): String {
@@ -717,7 +759,7 @@ class DatabaseFoodRepository(
                             allNutrientValues.addAll(genererNutrientValues(food))
                             importCount++
                         } else {
-                            updateIds.add(food.UUID)
+                            updateCandidateIds.add(food.UUID)
                             // On résoudra RefRation et les champs conservés après avoir fetch tous
                             // les existants
                         }
@@ -728,10 +770,10 @@ class DatabaseFoodRepository(
                         )
                     }
                 }
-                if (updateIds.isNotEmpty()) {
+                if (updateCandidateIds.isNotEmpty()) {
                     val existants: Map<String, FoodEntity> =
                             try {
-                                foodDao.getFoodsByIds(updateIds).associateBy { it.uuid }
+                                foodDao.getFoodsByIds(updateCandidateIds).associateBy { it.uuid }
                             } catch (_: Exception) {
                                 emptyMap()
                             }
@@ -739,6 +781,9 @@ class DatabaseFoodRepository(
                         if (food.UUID != null && existants.containsKey(food.UUID)) {
                             try {
                                 val existing: FoodEntity = existants[food.UUID]!!
+                                if (!shouldUpdateFood(existing, food.dateMaj, importOnlyIfNewer)) {
+                                    return@forEach
+                                }
                                 val especes: List<String> = convertirEspecesList(food.Especes)
                                 val indications: List<String> =
                                         convertirIndicationsList(food.indication)
@@ -789,6 +834,7 @@ class DatabaseFoodRepository(
                                 updateEntities.add(updated)
                                 allNutrientValues.addAll(genererNutrientValues(food))
                                 updateCount++
+                                updateIds.add(food.UUID)
                             } catch (e: Exception) {
                                 errorCount++
                                 importErrors.add(
@@ -815,7 +861,7 @@ class DatabaseFoodRepository(
                 // Nettoyer et réinsérer les nutriments SEULEMENT si on a des données de nutriments à importer
                 if (allNutrientValues.isNotEmpty() && nutrientValueDao != null) {
                     // Supprimer les nutriments existants SEULEMENT si on va les remplacer
-                    if (updateIds.isNotEmpty()) {
+                    if (!mergeNutrients && updateIds.isNotEmpty()) {
                         try {
                             updateIds.chunked(500).forEach { part ->
                                 nutrientValueDao.deleteAllForAliments(part)

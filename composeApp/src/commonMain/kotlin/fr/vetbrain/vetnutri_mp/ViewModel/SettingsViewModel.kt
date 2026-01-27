@@ -43,6 +43,10 @@ class SettingsViewModel(
 ) : ViewModel() {
     // Instance statique de Json pour éviter la création redondante
     private val json = Json { ignoreUnknownKeys = true }
+
+    // Options d'import des aliments (configurées depuis l'UI)
+    var importMergeNutrients: Boolean = false
+    var importOnlyIfNewer: Boolean = false
     
     private val _uiScale = MutableStateFlow(1.0)
     val uiScale: StateFlow<Double> = _uiScale.asStateFlow()
@@ -231,7 +235,11 @@ class SettingsViewModel(
     suspend fun importFoodsFromJson(jsonContent: String): FoodImportResult {
         // Utilisation de kotlinx.serialization pour parser le JSON
         val alimentsJson = json.decodeFromString<List<AlimentEvJson>>(jsonContent)
-        return foodRepository.importFoods(alimentsJson)
+        return foodRepository.importFoods(
+                alimentsJson,
+                mergeNutrients = importMergeNutrients,
+                importOnlyIfNewer = importOnlyIfNewer
+        )
     }
 
     /**
@@ -399,8 +407,17 @@ class SettingsViewModel(
      * @param foodsList La liste d'aliments à importer
      * @return Le résultat détaillé de l'importation
      */
-    suspend fun importFoodsFromList(foodsList: List<AlimentEvJson>): FoodImportResult {
-        val result = foodRepository.importFoods(foodsList)
+    suspend fun importFoodsFromList(
+            foodsList: List<AlimentEvJson>,
+            mergeNutrients: Boolean = importMergeNutrients,
+            importOnlyIfNewer: Boolean = this.importOnlyIfNewer
+    ): FoodImportResult {
+        val result =
+                foodRepository.importFoods(
+                        foodsList,
+                        mergeNutrients = mergeNutrients,
+                        importOnlyIfNewer = importOnlyIfNewer
+                )
         // Mettre à jour le résultat de l'importation pour l'affichage dans l'interface
         _importResult.value =
                 ImportResult.Success(
