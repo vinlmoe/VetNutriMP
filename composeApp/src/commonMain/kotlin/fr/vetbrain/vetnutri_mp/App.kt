@@ -758,7 +758,6 @@ fun App(appDatabase: AppDatabase) {
                                     fr.vetbrain.vetnutri_mp.View.SpeciesPreferencesView(
                                             species = species,
                                             preferencesRepository = preferencesRepository,
-                                            equationRepository = equationRepository,
                                             modifier = Modifier.padding(paddingValues)
                                     )
                                 }
