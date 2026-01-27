@@ -13,9 +13,15 @@ actual class JsonShareService {
         options: ShareOptions
     ): Result<ShareLink> = helper.uploadJson(jsonContent, options)
     
-    actual suspend fun downloadJson(binId: String): Result<String> = helper.downloadJson(binId)
+    actual suspend fun downloadJson(
+        binId: String,
+        keyBase64: String?,
+        ivBase64: String?
+    ): Result<String> = helper.downloadJson(binId, keyBase64, ivBase64)
     
     actual fun extractBinIdFromUrl(url: String): String? = helper.extractBinIdFromUrl(url)
+
+    actual fun parseQrPayload(text: String): JsonBinQrPayload? = helper.parseQrPayload(text)
 }
 
 actual fun createJsonShareService(): JsonShareService = JsonShareService()

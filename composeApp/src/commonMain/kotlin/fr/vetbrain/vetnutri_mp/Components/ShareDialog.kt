@@ -29,12 +29,19 @@ fun ShareLinkDialog(
 ) {
     var binIdCopied by remember { mutableStateOf(false) }
     var shouldCopy by remember { mutableStateOf(false) }
+    var qrDataCopied by remember { mutableStateOf(false) }
+    var shouldCopyQrData by remember { mutableStateOf(false) }
     
     // Effectuer la copie dans le contexte Composable
     if (shouldCopy) {
         copyToClipboardComposable(shareLink.binId)
         shouldCopy = false
         binIdCopied = true
+    }
+    if (shouldCopyQrData) {
+        shareLink.qrCodeData?.let { copyToClipboardComposable(it) }
+        shouldCopyQrData = false
+        qrDataCopied = true
     }
     
     AlertDialog(
@@ -84,16 +91,41 @@ fun ShareLinkDialog(
                 
                 // QR Code avec le BinID
                 Text(
-                    "Scannez ce QR Code pour récupérer l'ID de l'export :",
+                    if (shareLink.qrCodeData != null)
+                        "Scannez ce QR Code pour récupérer l'export chiffré :"
+                    else
+                        "Scannez ce QR Code pour récupérer l'ID de l'export :",
                     style = MaterialTheme.typography.body2,
                     fontWeight = FontWeight.Bold
                 )
                 
                 QRCodeView(
-                    text = shareLink.binId,
+                    text = shareLink.qrCodeData ?: shareLink.binId,
                     size = 256,
                     modifier = Modifier.padding(16.dp)
                 )
+
+                if (shareLink.qrCodeData != null) {
+                    Text(
+                        "Données QR (JSON) :",
+                        style = MaterialTheme.typography.body2,
+                        fontWeight = FontWeight.Bold
+                    )
+                    SelectionContainer {
+                        OutlinedTextField(
+                            value = shareLink.qrCodeData,
+                            onValueChange = { },
+                            readOnly = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("QR JSON") },
+                            maxLines = 3,
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                disabledTextColor = MaterialTheme.colors.onSurface,
+                                disabledBorderColor = MaterialTheme.colors.primary
+                            )
+                        )
+                    }
+                }
                 
                 // Informations supplémentaires
                 if (shareLink.expiresAt != null) {
@@ -133,6 +165,25 @@ fun ShareLinkDialog(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(if (binIdCopied) "Copié !" else "Copier BinID")
                 }
+
+                if (shareLink.qrCodeData != null) {
+                    Button(
+                        onClick = {
+                            shouldCopyQrData = true
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            backgroundColor = if (qrDataCopied) MaterialTheme.colors.primary.copy(alpha = 0.7f)
+                            else MaterialTheme.colors.primary
+                        )
+                    ) {
+                        Icon(
+                            if (qrDataCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                            contentDescription = null
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (qrDataCopied) "Copié !" else "Copier QR JSON")
+                    }
+                }
                 
                 // Bouton partager (si onShare est fourni)
                 onShare?.let {
@@ -151,4 +202,3 @@ fun ShareLinkDialog(
         }
     )
 }
-
