@@ -10,7 +10,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.datetime.Clock
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.CryptoUtils
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 
 /**
  * Helper class pour l'implémentation commune de JsonShareService
@@ -27,6 +29,15 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
     private val readApiKey: String? = "\$2a\$10\$/HY9ayqrm63ps0vx5apI1.KG5tpNGdhsC3Hyx03SrwEpgnlrwD0Yq"
     
     private val baseUrl = "https://api.jsonbin.io/v3"
+
+    private fun log(message: String) {
+        println("JsonShareService: $message")
+    }
+
+    @Serializable
+    private data class EncryptedPayload(
+        val cipherText: String
+    )
     
     suspend fun uploadJson(
         jsonContent: String,
@@ -34,6 +45,15 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
     ): Result<ShareLink> = withContext(AppDispatchers.IO) {
         try {
             val isUpdate = options.binId != null
+            val json = Json { ignoreUnknownKeys = true; isLenient = true }
+
+            // Chiffrer le JSON avant envoi
+            val encryptionResult = CryptoUtils.encryptJson(jsonContent)
+            val encryptedJsonContent = json.encodeToString(
+                EncryptedPayload.serializer(),
+                EncryptedPayload(cipherText = encryptionResult.cipherTextBase64)
+            )
+            log("Upload start (isUpdate=$isUpdate, jsonSize=${jsonContent.length}, encryptedSize=${encryptedJsonContent.length})")
             
             // Construire l'URL
             // Si binId est fourni, on fait un PUT pour mettre à jour, sinon POST pour créer
@@ -42,6 +62,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
             } else {
                 "$baseUrl/b"
             }
+            log("Upload URL: $url")
             
             // Faire la requête POST ou PUT
             val response = if (isUpdate) {
@@ -58,7 +79,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                             append("X-Bin-Expiration", expirationSeconds.toString())
                         }
                     }
-                    setBody(jsonContent)
+                    setBody(encryptedJsonContent)
                 }
             } else {
                 httpClient.post(url) {
@@ -83,14 +104,15 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                             append("X-Bin-Expiration", expirationSeconds.toString())
                         }
                     }
-                    setBody(jsonContent)
+                    setBody(encryptedJsonContent)
                 }
             }
             
             if (response.status.isSuccess()) {
+                log("Upload success (${response.status})")
                 // Parser la réponse JSON manuellement
                 val responseText = response.body<String>()
-                val json = Json { ignoreUnknownKeys = true; isLenient = true }
+                log("Upload response size=${responseText.length}")
                 
                 // Si c'est une mise à jour, utiliser le binId fourni dans les options
                 // Sinon, extraire l'ID depuis la réponse (création)
@@ -133,6 +155,13 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 }
                 
                 val shareUrl = "https://jsonbin.io/$binId"
+                val qrPayload = JsonBinQrPayload(
+                    binId = binId,
+                    key = encryptionResult.keyBase64,
+                    iv = encryptionResult.ivBase64
+                )
+                val qrCodeData = json.encodeToString(JsonBinQrPayload.serializer(), qrPayload)
+                log("Upload done (binId=$binId, qrJsonSize=${qrCodeData.length})")
                 
                 // Calculer la date d'expiration si spécifiée
                 val expiresAt = options.expiresInHours?.let { hours ->
@@ -143,10 +172,11 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                     url = shareUrl,
                     binId = binId,
                     expiresAt = expiresAt,
-                    qrCodeData = shareUrl
+                    qrCodeData = qrCodeData
                 ))
             } else {
                 val responseText = response.body<String>()
+                log("Upload failed (${response.status}) responseSize=${responseText.length}")
                 
                 val errorResponse = try {
                     val json = Json { ignoreUnknownKeys = true; isLenient = true }
@@ -159,13 +189,20 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
+            log("Upload exception: ${e.message}")
             Result.failure(Exception("Erreur lors de l'upload vers jsonbin.io: ${e.message}", e))
         }
     }
     
-    suspend fun downloadJson(binId: String): Result<String> = withContext(AppDispatchers.IO) {
+    suspend fun downloadJson(
+        binId: String,
+        keyBase64: String?,
+        ivBase64: String?
+    ): Result<String> = withContext(AppDispatchers.IO) {
         try {
             val url = "$baseUrl/b/$binId"
+            log("Download start (binId=$binId, hasKey=${keyBase64 != null && ivBase64 != null})")
+            log("Download URL: $url")
             
             val response = httpClient.get(url) {
                 headers {
@@ -177,8 +214,10 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
             }
             
             if (response.status.isSuccess()) {
+                log("Download success (${response.status})")
                 // Parser la réponse JSON manuellement
                 val responseText = response.body<String>()
+                log("Download response size=${responseText.length}")
                 val json = Json { ignoreUnknownKeys = true; isLenient = true }
                 
                 // jsonbin.io peut retourner record comme string ou comme objet JSON
@@ -204,12 +243,26 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 }
                 
                 if (content != null) {
-                    Result.success(content)
+                    if (keyBase64 != null && ivBase64 != null) {
+                        try {
+                            val cipherTextBase64 = extractCipherText(content)
+                            log("Decrypting content (cipherBase64Size=${cipherTextBase64.length})")
+                            val decrypted = CryptoUtils.decryptJson(cipherTextBase64, keyBase64, ivBase64)
+                            log("Decrypt success (plainSize=${decrypted.length})")
+                            Result.success(decrypted)
+                        } catch (e: Exception) {
+                            log("Decrypt error: ${e.message}")
+                            Result.failure(Exception("Erreur lors du déchiffrement: ${e.message}", e))
+                        }
+                    } else {
+                        Result.success(content)
+                    }
                 } else {
                     Result.failure(Exception("Le bin est vide ou inaccessible"))
                 }
             } else {
                 val responseText = response.body<String>()
+                log("Download failed (${response.status}) responseSize=${responseText.length}")
                 
                 val errorResponse = try {
                     val json = Json { ignoreUnknownKeys = true; isLenient = true }
@@ -222,6 +275,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
+            log("Download exception: ${e.message}")
             Result.failure(Exception("Erreur lors du téléchargement depuis jsonbin.io: ${e.message}", e))
         }
     }
@@ -254,5 +308,30 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
         
         return null
     }
-}
 
+    fun parseQrPayload(text: String): JsonBinQrPayload? {
+        val trimmed = text.trim()
+        if (!trimmed.startsWith("{")) {
+            return null
+        }
+        return try {
+            val json = Json { ignoreUnknownKeys = true; isLenient = true }
+            json.decodeFromString(JsonBinQrPayload.serializer(), trimmed)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun extractCipherText(content: String): String {
+        val trimmed = content.trim()
+        if (!trimmed.startsWith("{")) {
+            return trimmed
+        }
+        return try {
+            val json = Json { ignoreUnknownKeys = true; isLenient = true }
+            json.decodeFromString(EncryptedPayload.serializer(), trimmed).cipherText
+        } catch (e: Exception) {
+            trimmed
+        }
+    }
+}

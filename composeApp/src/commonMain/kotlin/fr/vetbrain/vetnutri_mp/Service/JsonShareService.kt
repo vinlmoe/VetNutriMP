@@ -9,7 +9,17 @@ data class ShareLink(
     val url: String,
     val binId: String,
     val expiresAt: Long? = null, // timestamp Unix en millisecondes
-    val qrCodeData: String? = null // Données pour générer QR Code (l'URL)
+    val qrCodeData: String? = null // Données pour générer QR Code (ex: JSON {binId,key,iv})
+)
+
+/**
+ * Payload QR Code chiffré (binId + key + iv)
+ */
+@Serializable
+data class JsonBinQrPayload(
+    val binId: String,
+    val key: String,
+    val iv: String
 )
 
 /**
@@ -48,7 +58,11 @@ expect class JsonShareService {
      * @param binId ID du bin jsonbin.io (peut être extrait de l'URL)
      * @return Result<String> avec le contenu JSON ou une erreur
      */
-    suspend fun downloadJson(binId: String): Result<String>
+    suspend fun downloadJson(
+        binId: String,
+        keyBase64: String? = null,
+        ivBase64: String? = null
+    ): Result<String>
     
     /**
      * Extrait l'ID du bin depuis une URL jsonbin.io
@@ -56,6 +70,11 @@ expect class JsonShareService {
      * @return L'ID du bin ou null si l'URL n'est pas valide
      */
     fun extractBinIdFromUrl(url: String): String?
+
+    /**
+     * Parse un QR JSON du type {binId, key, iv}
+     */
+    fun parseQrPayload(text: String): JsonBinQrPayload?
 }
 
 /**
@@ -91,4 +110,3 @@ data class JsonBinErrorResponse(
     val success: Boolean = false,
     val message: String? = null
 )
-

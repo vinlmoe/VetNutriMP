@@ -259,21 +259,29 @@ class AnimalListViewModel(
             // Créer le service de partage JSON
             val shareService = fr.vetbrain.vetnutri_mp.Service.createJsonShareService()
 
-            // Extraire le binId depuis l'URL si nécessaire
-            val binId = if (binIdOrUrl.contains("jsonbin.io")) {
-                shareService.extractBinIdFromUrl(binIdOrUrl) ?: run {
-                    finishApiImport()
-                    return ImportResult.Error("Impossible d'extraire l'ID du bin depuis l'URL: $binIdOrUrl")
+            // Support QR JSON chiffré {binId, key, iv}
+            val qrPayload = shareService.parseQrPayload(binIdOrUrl)
+            val binId = when {
+                qrPayload != null -> qrPayload.binId
+                binIdOrUrl.contains("jsonbin.io") -> {
+                    shareService.extractBinIdFromUrl(binIdOrUrl) ?: run {
+                        finishApiImport()
+                        return ImportResult.Error("Impossible d'extraire l'ID du bin depuis l'URL: $binIdOrUrl")
+                    }
                 }
-            } else {
-                binIdOrUrl
+                else -> binIdOrUrl
+            }
+            val keyBase64 = qrPayload?.key
+            val ivBase64 = qrPayload?.iv
+            if (qrPayload != null) {
+                appendApiImportLog("🔐 QR chiffré détecté (bin: $binId)")
             }
 
             appendApiImportLog("📥 Téléchargement du bin: $binId")
             updateApiImportProgress(0.1)
 
             // Télécharger le JSON depuis jsonbin.io
-            val downloadResult = shareService.downloadJson(binId)
+            val downloadResult = shareService.downloadJson(binId, keyBase64, ivBase64)
 
             val jsonContent = downloadResult.getOrElse { error ->
                 finishApiImport()
