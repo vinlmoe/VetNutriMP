@@ -36,6 +36,7 @@ import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
 import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchLayout
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodEditViewModel
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 
 /**
  * Vue complète pour ajouter un aliment à une ration
@@ -186,7 +187,10 @@ fun AddAlimentView(
                         onBackClick = onNavigateBack,
                         onSettingsClick = { /* Pas de settings pour cette vue */ },
                         actions = {
-                                IconButton(
+                                IconButtonWithTooltip(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Créer un aliment",
+                                        tooltip = "Créer un aliment",
                                         onClick = {
                                                 foodEditViewModel = FoodEditViewModel(
                                                         foodRepository = viewModel.foodRepository,
@@ -194,14 +198,9 @@ fun AddAlimentView(
                                                 )
                                                 showFoodEditView = true
                                         },
-                                        modifier = Modifier.size(AppSizes.iconSizeLarge)
-                                ) {
-                                        Icon(
-                                                imageVector = Icons.Default.Add,
-                                                contentDescription = "Créer un aliment",
-                                                modifier = Modifier.size(AppSizes.iconSizeMedium)
-                                        )
-                                }
+                                        modifier = Modifier.size(AppSizes.iconSizeLarge),
+                                        iconModifier = Modifier.size(AppSizes.iconSizeMedium)
+                                )
                         }
                 )
                 
