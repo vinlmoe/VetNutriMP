@@ -1943,23 +1943,28 @@ fun SettingsView(
                                                         )
                                                 }
 
+                                                var showFoodImportOptionsDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var mergeNutrients by remember {
+                                                        mutableStateOf(viewModel.importMergeNutrients)
+                                                }
+                                                var importOnlyIfNewer by remember {
+                                                        mutableStateOf(viewModel.importOnlyIfNewer)
+                                                }
+                                                LaunchedEffect(showFoodImportOptionsDialog) {
+                                                        if (showFoodImportOptionsDialog) {
+                                                                mergeNutrients =
+                                                                        viewModel.importMergeNutrients
+                                                                importOnlyIfNewer =
+                                                                        viewModel.importOnlyIfNewer
+                                                        }
+                                                }
+
                                                 // Bouton pour importer des aliments
                                                 Button(
                                                         onClick = {
-                                                                try {
-                                                                        // Utilisons la
-                                                                        // méthode du
-                                                                        // ViewModel qui
-                                                                        // encapsule l'appel
-                                                                        // à
-                                                                        // importFoodsFromFile
-                                                                        viewModel
-                                                                                .importFoodsFromFileUI()
-                                                                } catch (e: Exception) {
-                                                                        // Les erreurs sont
-                                                                        // gérées par le
-                                                                        // ViewModel
-                                                                }
+                                                                showFoodImportOptionsDialog = true
                                                         },
                                                         colors =
                                                                 ButtonDefaults.buttonColors(
@@ -1972,6 +1977,93 @@ fun SettingsView(
                                                         Text(
                                                                 "Importer des aliments",
                                                                 color = Color.White
+                                                        )
+                                                }
+
+                                                if (showFoodImportOptionsDialog) {
+                                                        AlertDialog(
+                                                                onDismissRequest = {
+                                                                        showFoodImportOptionsDialog =
+                                                                                false
+                                                                },
+                                                                title = {
+                                                                        Text(
+                                                                                "Options d'import des aliments"
+                                                                        )
+                                                                },
+                                                                text = {
+                                                                        Column {
+                                                                                Row(
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
+                                                                                ) {
+                                                                                        Checkbox(
+                                                                                                checked =
+                                                                                                        mergeNutrients,
+                                                                                                onCheckedChange = {
+                                                                                                        mergeNutrients =
+                                                                                                                it
+                                                                                                }
+                                                                                        )
+                                                                                        Text(
+                                                                                                "Fusionner les nutriments (ne pas supprimer ceux absents du fichier)"
+                                                                                        )
+                                                                                }
+                                                                                Spacer(
+                                                                                        modifier =
+                                                                                                Modifier
+                                                                                                        .height(
+                                                                                                                8.dp
+                                                                                                        )
+                                                                                )
+                                                                                Row(
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
+                                                                                ) {
+                                                                                        Checkbox(
+                                                                                                checked =
+                                                                                                        importOnlyIfNewer,
+                                                                                                onCheckedChange = {
+                                                                                                        importOnlyIfNewer =
+                                                                                                                it
+                                                                                                }
+                                                                                        )
+                                                                                        Text(
+                                                                                                "N'importer que si la date de dernière mise à jour est plus récente"
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                },
+                                                                confirmButton = {
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showFoodImportOptionsDialog =
+                                                                                                false
+                                                                                        viewModel.importMergeNutrients =
+                                                                                                mergeNutrients
+                                                                                        viewModel.importOnlyIfNewer =
+                                                                                                importOnlyIfNewer
+                                                                                        try {
+                                                                                                viewModel
+                                                                                                        .importFoodsFromFileUI()
+                                                                                        } catch (
+                                                                                                e: Exception
+                                                                                        ) {
+                                                                                                // Les erreurs sont gérées par le ViewModel
+                                                                                        }
+                                                                                }
+                                                                        ) { Text("Continuer") }
+                                                                },
+                                                                dismissButton = {
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showFoodImportOptionsDialog =
+                                                                                                false
+                                                                                }
+                                                                        ) { Text("Annuler") }
+                                                                }
                                                         )
                                                 }
 

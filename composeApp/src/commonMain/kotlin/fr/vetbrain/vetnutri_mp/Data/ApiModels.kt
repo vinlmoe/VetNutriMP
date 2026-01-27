@@ -19,7 +19,8 @@ data class ApiEnvelope(
         val equations: List<EquationApi> = emptyList(),
         val biblioRefs: List<BiblioRefApi> = emptyList(),
         val references: List<ReferenceEvApi> = emptyList(),
-        val conseils: List<ConseilApi> = emptyList()
+        val conseils: List<ConseilApi> = emptyList(),
+        val consultationKeywords: List<ConsultationKeywordApi> = emptyList()
 )
 
 @Serializable
@@ -76,8 +77,15 @@ data class ConsultationApi(
         val referenceGeneraleId: String? = null,
         val diseaseReferences: List<String> = emptyList(),
         val coefficientAjustement: Double = 1.0,
+        val keywords: List<String> = emptyList(),
         val supplementalVariables: List<SupplementalVariableApi> = emptyList(),
         val rations: List<RationApi> = emptyList()
+)
+
+@Serializable
+data class ConsultationKeywordApi(
+        val uuid: String,
+        val label: String
 )
 
 @Serializable
@@ -369,6 +377,7 @@ fun ConsultationEv.toApi(): ConsultationApi {
                 referenceGeneraleId = referenceGeneraleId,
                 diseaseReferences = referencesMaladies,
                 coefficientAjustement = coefficientAjustement,
+                keywords = keywordIds.toList(),
                 supplementalVariables =
                         suppVarp.mapNotNull { sv ->
                                 sv.variable?.name?.let { vn ->
@@ -764,6 +773,7 @@ fun ConsultationApi.toDomain(): ConsultationEv {
                                 .toMutableList(),
                 referenceGeneraleId = referenceGeneraleId,
                 referencesMaladies = diseaseReferences.toMutableList(),
+                keywordIds = keywords.toMutableList(),
                 coefficientAjustement = coefficientAjustement
         )
 }

@@ -7,6 +7,8 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
+import fr.vetbrain.vetnutri_mp.Data.ConsultationKeywordApi
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.FoodApi
 import fr.vetbrain.vetnutri_mp.Data.Ration
@@ -137,6 +139,15 @@ class ExportImportRepository(
                         } catch (e: Exception) {
                                 emptyList()
                         }
+                val consultationKeywords: List<ConsultationKeywordApi> =
+                        try {
+                                consultationRepository?.getAllKeywords()?.map {
+                                        ConsultationKeywordApi(uuid = it.uuid, label = it.label)
+                                }
+                                        ?: emptyList()
+                        } catch (_: Exception) {
+                                emptyList()
+                        }
                 val envelope =
                         ApiEnvelope(
                                 version = "1.0.0",
@@ -148,7 +159,8 @@ class ExportImportRepository(
                                 equations = equations,
                                 biblioRefs = biblioRefs,
                                 references = references,
-                                conseils = conseils
+                                conseils = conseils,
+                                consultationKeywords = consultationKeywords
                         )
                 return jsonPretty.encodeToString(envelope)
         }
@@ -446,6 +458,33 @@ class ExportImportRepository(
                         } catch (e: Exception) {
                                 emptyList()
                         }
+                val consultationKeywords: List<ConsultationKeywordApi> =
+                        try {
+                                val allKeywords =
+                                        consultationRepository?.getAllKeywords() ?: emptyList()
+                                val filteredKeywords =
+                                        when {
+                                                options.animalIds.isNotEmpty() -> {
+                                                        val usedKeywordIds =
+                                                                filteredDomainAnimals
+                                                                        .flatMap { animal ->
+                                                                                animal.consultations
+                                                                                        .flatMap {
+                                                                                                consult ->
+                                                                                                consult.keywordIds
+                                                                                        }
+                                                                        }
+                                                                        .toSet()
+                                                        allKeywords.filter { it.uuid in usedKeywordIds }
+                                                }
+                                                else -> allKeywords
+                                        }
+                                filteredKeywords.map {
+                                        ConsultationKeywordApi(uuid = it.uuid, label = it.label)
+                                }
+                        } catch (_: Exception) {
+                                emptyList()
+                        }
 
                 val envelope =
                         ApiEnvelope(
@@ -458,7 +497,8 @@ class ExportImportRepository(
                                 equations = equations,
                                 biblioRefs = biblioRefs,
                                 references = references,
-                                conseils = conseils
+                                conseils = conseils,
+                                consultationKeywords = consultationKeywords
                         )
                         return jsonPretty.encodeToString(envelope)
         }
@@ -474,7 +514,7 @@ class ExportImportRepository(
                 val envelope = jsonPretty.decodeFromString<ApiEnvelope>(apiJson)
 
                 listener?.onLog?.invoke(
-                        "Contenu: animals=${envelope.animals.size}, foods=${envelope.foods.size}, rations=${envelope.rations.size}, recipes=${envelope.recipes.size}, equations=${envelope.equations.size}, biblioRefs=${envelope.biblioRefs.size}, references=${envelope.references.size}, conseils=${envelope.conseils.size}"
+                        "Contenu: animals=${envelope.animals.size}, foods=${envelope.foods.size}, rations=${envelope.rations.size}, recipes=${envelope.recipes.size}, equations=${envelope.equations.size}, biblioRefs=${envelope.biblioRefs.size}, references=${envelope.references.size}, conseils=${envelope.conseils.size}, consultationKeywords=${envelope.consultationKeywords.size}"
                 )
                 var animalsImported: Int = 0
                 var foodsImported: Int = 0
@@ -485,6 +525,7 @@ class ExportImportRepository(
                 var rationsImported: Int = 0
                 var recipesImported: Int = 0
                 var conseilsImported: Int = 0
+                var keywordsImported: Int = 0
                 val totalUnits: Int =
                         (envelope.foods.size +
                                         envelope.equations.size +
@@ -492,7 +533,8 @@ class ExportImportRepository(
                                         envelope.animals.size +
                                         envelope.references.size +
                                         envelope.recipes.size +
-                                        envelope.conseils.size)
+                                        envelope.conseils.size +
+                                        envelope.consultationKeywords.size)
                                 .coerceAtLeast(1)
                 var processedUnits = 0
                 fun advance(units: Int = 1) {
@@ -532,7 +574,31 @@ class ExportImportRepository(
                         listener?.onLog?.invoke("Bibliographies importées=$biblioImported")
                 }
 
-                // 2) Équations (aucune dépendance)
+                // 2) Mots-clés de consultation (aucune dépendance)
+                if (envelope.consultationKeywords.isNotEmpty() &&
+                                consultationRepository != null
+                ) {
+                        listener?.onLog?.invoke(
+                                "Import des mots-clés (${envelope.consultationKeywords.size})…"
+                        )
+                        for (kw in envelope.consultationKeywords) {
+                                try {
+                                        consultationRepository.saveKeyword(
+                                                ConsultationKeyword(uuid = kw.uuid, label = kw.label)
+                                        )
+                                        keywordsImported++
+                                        advance()
+                                } catch (e: Exception) {
+                                        listener?.onLog?.invoke(
+                                                "Erreur mot-clé ${kw.uuid}: ${e.message}"
+                                        )
+                                        advance()
+                                }
+                        }
+                        listener?.onLog?.invoke("Mots-clés importés=$keywordsImported")
+                }
+
+                // 3) Équations (aucune dépendance)
                 if (envelope.equations.isNotEmpty() && equationRepository != null) {
                         listener?.onLog?.invoke(
                                 "Import des équations (${envelope.equations.size})…"
@@ -546,7 +612,7 @@ class ExportImportRepository(
                         listener?.onLog?.invoke("Équations importées=$equationsImported")
                 }
 
-                // 3) Aliments (aucune dépendance)
+                // 4) Aliments (aucune dépendance)
                 if (envelope.foods.isNotEmpty() && foodRepository != null) {
                         listener?.onLog?.invoke("Import des aliments (${envelope.foods.size})…")
                         if (foodRepository is DatabaseFoodRepository) {
@@ -582,7 +648,7 @@ class ExportImportRepository(
                         listener?.onLog?.invoke("Aliments importés=$foodsImported")
                 }
 
-                // 4) Références nutritionnelles (avec liens vers équations et biblio)
+                // 5) Références nutritionnelles (avec liens vers équations et biblio)
                 if (envelope.references.isNotEmpty() && referenceRepository != null) {
                         listener?.onLog?.invoke(
                                 "Import des références nutritionnelles (${envelope.references.size})…"
@@ -813,7 +879,7 @@ class ExportImportRepository(
                         )
                 }
 
-                // 5) Animaux + consultations/rations (dépendent des aliments et références)
+                // 6) Animaux + consultations/rations (dépendent des aliments et références)
                 if (envelope.animals.isNotEmpty()) {
                         listener?.onLog?.invoke("Import des animaux (${envelope.animals.size})…")
                         // rations
@@ -906,7 +972,7 @@ class ExportImportRepository(
                         )
                 }
 
-                // 6) Recettes (dépendent des aliments)
+                // 7) Recettes (dépendent des aliments)
                 if (envelope.recipes.isNotEmpty() && recipeRepository != null) {
                         listener?.onLog?.invoke("Import des recettes (${envelope.recipes.size})…")
 

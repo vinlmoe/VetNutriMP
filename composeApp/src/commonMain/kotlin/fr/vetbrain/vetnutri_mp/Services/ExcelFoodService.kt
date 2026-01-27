@@ -40,7 +40,12 @@ class ExcelFoodService(
      * @param csvContent Le contenu du fichier CSV
      * @param dataB La base de données à utiliser (prioritaire sur celle du CSV, null pour utiliser celle du CSV)
      */
-    suspend fun importFoodsFromCsv(csvContent: String, dataB: String? = null): ExcelImportResult = withContext(AppDispatchers.IO) {
+    suspend fun importFoodsFromCsv(
+        csvContent: String,
+        dataB: String? = null,
+        mergeNutrients: Boolean = false,
+        importOnlyIfNewer: Boolean = false
+    ): ExcelImportResult = withContext(AppDispatchers.IO) {
         
         val parseResult = csvService.importFromCsv(csvContent, dataB)
         
@@ -59,14 +64,24 @@ class ExcelFoodService(
             // Utiliser le repository pour l'import avec persistance complète des nutriments
             val importResult = if (foodRepository is fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository) {
                 // Utiliser importFoodsDomain pour la persistance complète (aliments + nutriments)
-                val result = foodRepository.importFoodsDomain(parseResult.aliments)
+                val result =
+                    foodRepository.importFoodsDomain(
+                        parseResult.aliments,
+                        mergeNutrients = mergeNutrients,
+                        importOnlyIfNewer = importOnlyIfNewer
+                    )
                 result
             } else {
                 // Fallback pour les autres implémentations
                 val alimentsJson = parseResult.aliments.map { aliment ->
                     aliment.toAlimentEvJson()
                 }
-                val result = foodRepository.importFoods(alimentsJson)
+                val result =
+                    foodRepository.importFoods(
+                        alimentsJson,
+                        mergeNutrients = mergeNutrients,
+                        importOnlyIfNewer = importOnlyIfNewer
+                    )
                 result
             }
 
