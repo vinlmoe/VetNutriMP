@@ -68,7 +68,11 @@ class SqliteFoodRepository : FoodRepository {
         return count
     }
 
-    override suspend fun importFoods(foods: List<AlimentEvJson>): FoodImportResult {
+    override suspend fun importFoods(
+        foods: List<AlimentEvJson>,
+        mergeNutrients: Boolean,
+        importOnlyIfNewer: Boolean
+    ): FoodImportResult {
         var importCount = 0
 
         foods.forEach { jsonFood ->
