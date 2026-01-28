@@ -27,17 +27,10 @@ fun ShareLinkDialog(
     onDismiss: () -> Unit,
     onShare: (() -> Unit)? = null
 ) {
-    var binIdCopied by remember { mutableStateOf(false) }
-    var shouldCopy by remember { mutableStateOf(false) }
     var qrDataCopied by remember { mutableStateOf(false) }
     var shouldCopyQrData by remember { mutableStateOf(false) }
     
     // Effectuer la copie dans le contexte Composable
-    if (shouldCopy) {
-        copyToClipboardComposable(shareLink.binId)
-        shouldCopy = false
-        binIdCopied = true
-    }
     if (shouldCopyQrData) {
         shareLink.qrCodeData?.let { copyToClipboardComposable(it) }
         shouldCopyQrData = false
@@ -67,27 +60,6 @@ fun ShareLinkDialog(
                     "Votre fichier JSON a été uploadé avec succès.",
                     style = MaterialTheme.typography.body2
                 )
-                
-                Text(
-                    "ID de l'export (BinID) :",
-                    style = MaterialTheme.typography.body2,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                // Champ de texte avec le BinID (sélectionnable)
-                SelectionContainer {
-                    OutlinedTextField(
-                        value = shareLink.binId,
-                        onValueChange = { },
-                        readOnly = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("BinID") },
-                        colors = TextFieldDefaults.outlinedTextFieldColors(
-                            disabledTextColor = MaterialTheme.colors.onSurface,
-                            disabledBorderColor = MaterialTheme.colors.primary
-                        )
-                    )
-                }
                 
                 // QR Code avec le BinID
                 Text(
@@ -148,24 +120,6 @@ fun ShareLinkDialog(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Bouton copier le BinID
-                Button(
-                    onClick = {
-                        shouldCopy = true
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = if (binIdCopied) MaterialTheme.colors.primary.copy(alpha = 0.7f)
-                        else MaterialTheme.colors.primary
-                    )
-                ) {
-                    Icon(
-                        if (binIdCopied) Icons.Default.Check else Icons.Default.ContentCopy,
-                        contentDescription = null
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(if (binIdCopied) "Copié !" else "Copier BinID")
-                }
-
                 if (shareLink.qrCodeData != null) {
                     Button(
                         onClick = {

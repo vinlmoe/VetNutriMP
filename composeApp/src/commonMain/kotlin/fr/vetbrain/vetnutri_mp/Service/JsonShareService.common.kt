@@ -47,13 +47,23 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
             val isUpdate = options.binId != null
             val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-            // Chiffrer le JSON avant envoi
-            val encryptionResult = CryptoUtils.encryptJson(jsonContent)
-            val encryptedJsonContent = json.encodeToString(
-                EncryptedPayload.serializer(),
-                EncryptedPayload(cipherText = encryptionResult.cipherTextBase64)
+            val encryptionResult = if (options.encryptJson) {
+                CryptoUtils.encryptJson(jsonContent)
+            } else {
+                null
+            }
+            val bodyJsonContent = if (options.encryptJson && encryptionResult != null) {
+                json.encodeToString(
+                    EncryptedPayload.serializer(),
+                    EncryptedPayload(cipherText = encryptionResult.cipherTextBase64)
+                )
+            } else {
+                jsonContent
+            }
+            log(
+                "Upload start (isUpdate=$isUpdate, jsonSize=${jsonContent.length}, " +
+                    "encrypt=${options.encryptJson}, bodySize=${bodyJsonContent.length})"
             )
-            log("Upload start (isUpdate=$isUpdate, jsonSize=${jsonContent.length}, encryptedSize=${encryptedJsonContent.length})")
             
             // Construire l'URL
             // Si binId est fourni, on fait un PUT pour mettre à jour, sinon POST pour créer
@@ -79,7 +89,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                             append("X-Bin-Expiration", expirationSeconds.toString())
                         }
                     }
-                    setBody(encryptedJsonContent)
+                    setBody(bodyJsonContent)
                 }
             } else {
                 httpClient.post(url) {
@@ -104,7 +114,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                             append("X-Bin-Expiration", expirationSeconds.toString())
                         }
                     }
-                    setBody(encryptedJsonContent)
+                    setBody(bodyJsonContent)
                 }
             }
             
@@ -155,11 +165,15 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 }
                 
                 val shareUrl = "https://jsonbin.io/$binId"
-                val qrPayload = JsonBinQrPayload(
-                    binId = binId,
-                    key = encryptionResult.keyBase64,
-                    iv = encryptionResult.ivBase64
-                )
+                val qrPayload = if (options.encryptJson && encryptionResult != null) {
+                    JsonBinQrPayload(
+                        binId = binId,
+                        key = encryptionResult.keyBase64,
+                        iv = encryptionResult.ivBase64
+                    )
+                } else {
+                    JsonBinQrPayload(binId = binId)
+                }
                 val qrCodeData = json.encodeToString(JsonBinQrPayload.serializer(), qrPayload)
                 log("Upload done (binId=$binId, qrJsonSize=${qrCodeData.length})")
                 

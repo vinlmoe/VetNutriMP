@@ -319,6 +319,7 @@
         "analnut.k.calculated": "K Calculated",
         "analnut.reference.used": "Reference used: %1$s",
         "analnut.analysis.title": "Nutritional analysis",
+        "analnut.analysis.short.title": "Analysis",
         "analnut.display.mode": "Display: %1$s",
         "analnut.filter.all": "All",
         "analnut.filter.selected": "Selected",

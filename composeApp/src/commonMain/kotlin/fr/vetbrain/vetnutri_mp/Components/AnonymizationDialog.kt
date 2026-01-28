@@ -15,10 +15,11 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun AnonymizationDialog(
-    onConfirm: (shouldAnonymize: Boolean) -> Unit,
+    onConfirm: (shouldAnonymize: Boolean, shouldEncrypt: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     var shouldAnonymize by remember { mutableStateOf(false) }
+    var shouldEncrypt by remember { mutableStateOf(true) }
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -68,11 +69,33 @@ fun AnonymizationDialog(
                         style = MaterialTheme.typography.body2
                     )
                 }
+
+                Divider()
+
+                Text(
+                    "Souhaitez-vous chiffrer le JSON ?",
+                    style = MaterialTheme.typography.body2,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Checkbox(
+                        checked = shouldEncrypt,
+                        onCheckedChange = { shouldEncrypt = it }
+                    )
+                    Text(
+                        "Chiffrer le JSON (recommandé)",
+                        style = MaterialTheme.typography.body2
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(shouldAnonymize) }
+                onClick = { onConfirm(shouldAnonymize, shouldEncrypt) }
             ) {
                 Text("Continuer")
             }
@@ -84,4 +107,3 @@ fun AnonymizationDialog(
         }
     )
 }
-

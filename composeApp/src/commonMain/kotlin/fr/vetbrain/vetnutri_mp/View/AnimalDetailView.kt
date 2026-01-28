@@ -218,7 +218,8 @@ private suspend fun partagerAnimalEnLigne(
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository,
         snackbarHostState: SnackbarHostState,
         onShareLinkGenerated: (fr.vetbrain.vetnutri_mp.Service.ShareLink) -> Unit,
-        shouldAnonymize: Boolean = false
+        shouldAnonymize: Boolean = false,
+        shouldEncrypt: Boolean = true
 ) {
         try {
                 // Créer le repository d'export/import avec tous les repositories nécessaires depuis settingsViewModel (sur IO)
@@ -328,7 +329,8 @@ private suspend fun partagerAnimalEnLigne(
                         fileName = fileName,
                         expiresInHours = 168, // 7 jours par défaut
                         binName = animalToUse.uuid, // Utiliser l'UUID de l'animal comme nom du bin pour identification
-                        binId = existingBinId // Utiliser le binId existant pour mise à jour
+                        binId = existingBinId, // Utiliser le binId existant pour mise à jour
+                        encryptJson = shouldEncrypt
                 )
                 
                 val shareResult = withContext(AppDispatchers.IO) {
@@ -965,7 +967,7 @@ private fun WideScreenLayout(
                         // Dialog d'anonymisation
                         if (showAnonymizationDialog) {
                                 AnonymizationDialog(
-                                        onConfirm = { shouldAnonymize ->
+                                        onConfirm = { shouldAnonymize, shouldEncrypt ->
                                                 showAnonymizationDialog = false
                                                 scope.launch {
                                                         partagerAnimalEnLigne(
@@ -980,7 +982,8 @@ private fun WideScreenLayout(
                                                                         shareLink = link
                                                                         showShareDialog = true
                                                                 },
-                                                                shouldAnonymize = shouldAnonymize
+                                                                shouldAnonymize = shouldAnonymize,
+                                                                shouldEncrypt = shouldEncrypt
                                                         )
                                                 }
                                         },
@@ -999,7 +1002,7 @@ private fun WideScreenLayout(
                                                         showShareDialog = false
                                                         shareLink = null
                                                 },
-                                                onShare = { shareLauncher(link.binId) }
+                                                onShare = { shareLauncher(link.qrCodeData ?: link.binId) }
                                         )
                                 }
                         }
@@ -2447,7 +2450,7 @@ private fun NarrowScreenLayout(
                                         // Dialog d'anonymisation
                                         if (showAnonymizationDialog) {
                                                 AnonymizationDialog(
-                                                        onConfirm = { shouldAnonymize ->
+                                                        onConfirm = { shouldAnonymize, shouldEncrypt ->
                                                                 showAnonymizationDialog = false
                                                                 scope.launch {
                                                                         partagerAnimalEnLigne(
@@ -2462,7 +2465,8 @@ private fun NarrowScreenLayout(
                                                                                         shareLink = link
                                                                                         showShareDialog = true
                                                                                 },
-                                                                                shouldAnonymize = shouldAnonymize
+                                                                                shouldAnonymize = shouldAnonymize,
+                                                                                shouldEncrypt = shouldEncrypt
                                                                         )
                                                                 }
                                                         },
@@ -2481,7 +2485,7 @@ private fun NarrowScreenLayout(
                                                                         showShareDialog = false
                                                                         shareLink = null
                                                                 },
-                                                                onShare = { shareLauncher(link.binId) }
+                                                                onShare = { shareLauncher(link.qrCodeData ?: link.binId) }
                                                         )
                                                 }
                                         }

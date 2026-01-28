@@ -9,3 +9,9 @@ import androidx.compose.runtime.Composable
 @Composable
 expect fun copyToClipboardComposable(text: String)
 
+/**
+ * Lecture du texte du presse-papiers multiplateforme
+ * Pour Android, doit être appelé depuis un Composable
+ */
+@Composable
+expect fun getClipboardTextComposable(): String?
