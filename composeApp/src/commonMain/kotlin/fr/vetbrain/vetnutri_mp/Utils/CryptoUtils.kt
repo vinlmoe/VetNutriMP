@@ -11,12 +11,12 @@ internal data class EncryptionResult(
 
 internal object CryptoUtils {
     private const val KEY_SIZE_BYTES = 32
-    private const val IV_SIZE_BYTES = 12
+    private const val IV_SIZE_BYTES = 16
 
     fun encryptJson(plainText: String): EncryptionResult {
         val key = PlatformCrypto.secureRandomBytes(KEY_SIZE_BYTES)
         val iv = PlatformCrypto.secureRandomBytes(IV_SIZE_BYTES)
-        val cipherText = PlatformCrypto.aesGcmEncrypt(plainText.encodeToByteArray(), key, iv)
+        val cipherText = PlatformCrypto.aesCbcEncrypt(plainText.encodeToByteArray(), key, iv)
         return EncryptionResult(
             cipherTextBase64 = cipherText.toBase64(),
             keyBase64 = key.toBase64(),
@@ -28,7 +28,7 @@ internal object CryptoUtils {
         val cipherText = cipherTextBase64.fromBase64()
         val key = keyBase64.fromBase64()
         val iv = ivBase64.fromBase64()
-        val plainBytes = PlatformCrypto.aesGcmDecrypt(cipherText, key, iv)
+        val plainBytes = PlatformCrypto.aesCbcDecrypt(cipherText, key, iv)
         return plainBytes.decodeToString()
     }
 
@@ -41,6 +41,6 @@ internal object CryptoUtils {
 
 internal expect object PlatformCrypto {
     fun secureRandomBytes(size: Int): ByteArray
-    fun aesGcmEncrypt(plain: ByteArray, key: ByteArray, iv: ByteArray): ByteArray
-    fun aesGcmDecrypt(cipher: ByteArray, key: ByteArray, iv: ByteArray): ByteArray
+    fun aesCbcEncrypt(plain: ByteArray, key: ByteArray, iv: ByteArray): ByteArray
+    fun aesCbcDecrypt(cipher: ByteArray, key: ByteArray, iv: ByteArray): ByteArray
 }
