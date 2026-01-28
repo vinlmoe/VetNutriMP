@@ -294,6 +294,7 @@
         "analnut.k.observed": "观察到的 K",
         "analnut.k.calculated": "K 计算值",
         "analnut.analysis.title": "营养分析",
+        "analnut.analysis.short.title": "分析",
         "analnut.display.mode": "显示：%1$s",
         "analnut.filter.all": "全部",
         "analnut.filter.selected": "已选择",

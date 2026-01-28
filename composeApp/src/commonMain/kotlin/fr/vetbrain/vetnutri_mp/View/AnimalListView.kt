@@ -10,6 +10,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -42,6 +43,7 @@ import fr.vetbrain.vetnutri_mp.getPlatform
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
+import fr.vetbrain.vetnutri_mp.Utils.getClipboardTextComposable
 
 /**
  * Liste des animaux.
@@ -390,6 +392,29 @@ fun AnimalListView(
             val platform = getPlatform()
             val isDesktop = platform.name.contains("Java") || platform.name.contains("Windows") || platform.name.contains("Linux")
             var showScanner by remember { mutableStateOf(false) }
+            var shouldPaste by remember { mutableStateOf(false) }
+            val shareService = remember { fr.vetbrain.vetnutri_mp.Service.createJsonShareService() }
+            val trimmedImportCode = importCode.trim()
+            val qrPayload = remember(trimmedImportCode) { shareService.parseQrPayload(trimmedImportCode) }
+            val isEncryptedQr = qrPayload?.key?.isNotBlank() == true && qrPayload.iv?.isNotBlank() == true
+            val isQrPayload = qrPayload != null
+            val isJsonBinUrl = trimmedImportCode.contains("jsonbin.io", ignoreCase = true)
+            val isLikelyBinId = trimmedImportCode.matches(Regex("[A-Za-z0-9]{10,}"))
+            val importTypeLabel = when {
+                trimmedImportCode.isBlank() -> null
+                isEncryptedQr -> "Chiffré (QR)"
+                isQrPayload -> "QR sans chiffrement"
+                isJsonBinUrl || isLikelyBinId -> "Non chiffré (URL/BinID)"
+                else -> "Format inconnu"
+            }
+
+            if (shouldPaste) {
+                val clipboardText = getClipboardTextComposable()
+                if (!clipboardText.isNullOrBlank()) {
+                    importCode = clipboardText.trim()
+                }
+                shouldPaste = false
+            }
 
             if (showScanner) {
                 Dialog(
@@ -427,14 +452,43 @@ fun AnimalListView(
                 title = { Text(translate(AnimalList.QUICK_IMPORT_TITLE)) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(translate(AnimalList.ENTER_CODE))
+                        Text("Collez un BinID, une URL jsonbin.io ou un QR JSON (chiffré ou non).")
                         OutlinedTextField(
                             value = importCode,
                             onValueChange = { importCode = it },
                             label = { Text(translate(AnimalList.CODE_OR_URL)) },
+                            placeholder = { Text("{\"binId\":\"...\",\"key\":\"...\",\"iv\":\"...\"}") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedButton(
+                                onClick = { shouldPaste = true },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.ContentPaste, contentDescription = null)
+                                Spacer(Modifier.width(6.dp))
+                                Text("Coller")
+                            }
+                            importTypeLabel?.let { label ->
+                                Surface(
+                                    color = if (isEncryptedQr) VetNutriColors.Primary else Color.LightGray,
+                                    shape = MaterialTheme.shapes.small
+                                ) {
+                                    Text(
+                                        text = label,
+                                        color = if (isEncryptedQr) Color.White else Color.Black,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        style = MaterialTheme.typography.caption
+                                    )
+                                }
+                            }
+                        }
 
                         // Ou scanner (uniquement sur mobile)
                         if (!isDesktop) {

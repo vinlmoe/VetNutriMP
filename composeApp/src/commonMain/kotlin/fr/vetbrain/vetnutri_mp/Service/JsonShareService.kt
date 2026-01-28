@@ -18,8 +18,8 @@ data class ShareLink(
 @Serializable
 data class JsonBinQrPayload(
     val binId: String,
-    val key: String,
-    val iv: String
+    val key: String? = null,
+    val iv: String? = null
 )
 
 /**
@@ -30,7 +30,8 @@ data class ShareOptions(
     val expiresInHours: Int? = null, // Durée avant expiration (null = pas d'expiration)
     val isPrivate: Boolean = false, // Si true, nécessite une clé API pour accéder
     val binName: String? = null, // Nom du bin (peut être l'UUID de l'animal pour identification)
-    val binId: String? = null // ID du bin existant pour mise à jour (si fourni, fait un PUT au lieu d'un POST)
+    val binId: String? = null, // ID du bin existant pour mise à jour (si fourni, fait un PUT au lieu d'un POST)
+    val encryptJson: Boolean = true
 )
 
 /**

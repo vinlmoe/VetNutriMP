@@ -10,3 +10,8 @@ fun copyToClipboardComposable(text: String) {
     clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(text))
 }
 
+actual @Composable
+fun getClipboardTextComposable(): String? {
+    val clipboardManager: ClipboardManager = LocalClipboardManager.current
+    return clipboardManager.getText()?.text
+}

@@ -9,3 +9,8 @@ fun copyToClipboardComposable(text: String) {
     pasteboard.string = text
 }
 
+actual @Composable
+fun getClipboardTextComposable(): String? {
+    val pasteboard = UIPasteboard.generalPasteboard
+    return pasteboard.string
+}
