@@ -4,10 +4,10 @@ import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.isDebugBuild
 import kotlinx.coroutines.*
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -28,7 +28,7 @@ class BackupService(
     }
 
     private val json = Json {
-        prettyPrint = true
+        prettyPrint = isDebugBuild()
         encodeDefaults = true
         ignoreUnknownKeys = true
         explicitNulls = false
@@ -98,8 +98,7 @@ class BackupService(
     suspend fun createBackup(): Result<BackupMetadata> {
         return try {
             // Exporter toutes les données
-            val jsonData = exportImportRepository.exportAll()
-            val envelope = json.decodeFromString<ApiEnvelope>(jsonData)
+            val envelope = exportImportRepository.exportAllEnvelope()
 
             // Créer le nom de fichier avec timestamp
             val timestamp = Clock.System.now().toEpochMilliseconds()
@@ -107,8 +106,8 @@ class BackupService(
             val backupDirectory = fileService.getBackupDirectory()
             val file = PlatformFile.create("${backupDirectory.absolutePath}/$fileName")
 
-            // Sauvegarder le fichier
-            fileService.writeText(file, jsonData)
+            // Sauvegarder le fichier (streaming si possible)
+            exportImportRepository.writeEnvelopeToFile(envelope, file).getOrThrow()
 
             // Gérer la rotation des fichiers
             manageBackupRotation()

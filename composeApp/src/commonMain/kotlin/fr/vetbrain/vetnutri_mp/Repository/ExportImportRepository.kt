@@ -19,6 +19,9 @@ import fr.vetbrain.vetnutri_mp.Data.toApiRef
 import fr.vetbrain.vetnutri_mp.Data.toDomain
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
+import fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile
+import fr.vetbrain.vetnutri_mp.Utils.isDebugBuild
+import fr.vetbrain.vetnutri_mp.Utils.encodeEnvelopeToFile
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.Clock
 import kotlinx.serialization.decodeFromString
@@ -42,7 +45,7 @@ class ExportImportRepository(
         class ImportProgressListener(val onProgress: (Double) -> Unit, val onLog: (String) -> Unit)
 
         private val jsonPretty: Json = Json {
-                prettyPrint = true
+                prettyPrint = isDebugBuild()
                 encodeDefaults = true
                 ignoreUnknownKeys = true
                 explicitNulls = false
@@ -67,6 +70,23 @@ class ExportImportRepository(
          * format API.
          */
         suspend fun exportAll(): String {
+                return jsonPretty.encodeToString(buildEnvelopeAll())
+        }
+
+        suspend fun exportAllEnvelope(): ApiEnvelope {
+                return buildEnvelopeAll()
+        }
+
+        suspend fun writeEnvelopeToFile(envelope: ApiEnvelope, file: PlatformFile): Result<Unit> {
+                return jsonPretty.encodeEnvelopeToFile(envelope, file)
+        }
+
+        suspend fun writeAllToFile(file: PlatformFile): Result<Unit> {
+                val envelope = buildEnvelopeAll()
+                return jsonPretty.encodeEnvelopeToFile(envelope, file)
+        }
+
+        private suspend fun buildEnvelopeAll(): ApiEnvelope {
                 val domainAnimals = animalRepository.getAllAnimals()
                 // Charger les consultations/rations pour chaque animal pour un export complet
                 val animalsWithConsultations: List<AnimalEv> =
@@ -111,7 +131,6 @@ class ExportImportRepository(
                         equationRepository?.getAllEquations()?.map { it.toApi() } ?: emptyList()
 
                 // Récupérer toutes les recettes
-                
                 val recipes =
                         recipeRepository?.getAllRecipesAsRecette()?.map { it.toApi() }
                                 ?: emptyList()
@@ -123,7 +142,7 @@ class ExportImportRepository(
                                         it.toApi()
                                 }
                                         ?: emptyList()
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                                 emptyList()
                         }
 
@@ -136,7 +155,7 @@ class ExportImportRepository(
                                 val list =
                                         biblioRepository?.getAllBiblioRefs()?.first() ?: emptyList()
                                 list.map { it.toApi() }
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                                 emptyList()
                         }
                 val consultationKeywords: List<ConsultationKeywordApi> =
@@ -148,25 +167,41 @@ class ExportImportRepository(
                         } catch (_: Exception) {
                                 emptyList()
                         }
-                val envelope =
-                        ApiEnvelope(
-                                version = "1.0.0",
-                                generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
-                                animals = animals,
-                                foods = foods,
-                                rations = rationsList,
-                                recipes = recipes,
-                                equations = equations,
-                                biblioRefs = biblioRefs,
-                                references = references,
-                                conseils = conseils,
-                                consultationKeywords = consultationKeywords
-                        )
-                return jsonPretty.encodeToString(envelope)
+                return ApiEnvelope(
+                        version = "1.0.0",
+                        generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
+                        animals = animals,
+                        foods = foods,
+                        rations = rationsList,
+                        recipes = recipes,
+                        equations = equations,
+                        biblioRefs = biblioRefs,
+                        references = references,
+                        conseils = conseils,
+                        consultationKeywords = consultationKeywords
+                )
         }
 
         /** Export avec filtres et sélections par type/identifiants. */
         suspend fun exportWithSelection(options: ExportSelectionOptions): String {
+                return jsonPretty.encodeToString(buildEnvelopeWithSelection(options))
+        }
+
+        suspend fun exportWithSelectionEnvelope(options: ExportSelectionOptions): ApiEnvelope {
+                return buildEnvelopeWithSelection(options)
+        }
+
+        suspend fun writeSelectionToFile(
+                options: ExportSelectionOptions,
+                file: PlatformFile
+        ): Result<Unit> {
+                val envelope = buildEnvelopeWithSelection(options)
+                return jsonPretty.encodeEnvelopeToFile(envelope, file)
+        }
+
+        private suspend fun buildEnvelopeWithSelection(
+                options: ExportSelectionOptions
+        ): ApiEnvelope {
                 val allDomainAnimals =
                         if (options.includeAnimals) animalRepository.getAllAnimals()
                         else emptyList()
@@ -396,7 +431,6 @@ class ExportImportRepository(
                                 .toList()
 
                 // Récupérer les recettes selon les options
-                
                 val recipes =
                         if (options.includeRecipes) {
                                 recipeRepository?.getAllRecipesAsRecette()?.map { it.toApi() }
@@ -411,14 +445,14 @@ class ExportImportRepository(
                                                 it.toApi()
                                         }
                                                 ?: emptyList()
-                                } catch (e: Exception) {
+                                } catch (_: Exception) {
                                         emptyList()
                                 }
                         } else emptyList()
 
                 // Collecter les UUIDs des biblioRefs utilisées par les références et équations exportées
                 val biblioRefIdsToExport = mutableSetOf<String>()
-                
+
                 // Collecter depuis les équations exportées
                 equations.forEach { eqApi ->
                         // Les équations ont un champ bibRef qui peut être sérialisé différemment
@@ -429,7 +463,7 @@ class ExportImportRepository(
                                 }
                         }
                 }
-                
+
                 // Collecter depuis les références exportées (via leurs nutriments)
                 references.forEach { refApi ->
                         refApi.nutrients.forEach { nutrientApi ->
@@ -438,12 +472,12 @@ class ExportImportRepository(
                                 }
                         }
                 }
-                
+
                 val biblioRefs =
                         try {
                                 val allBiblioRefs =
                                         biblioRepository?.getAllBiblioRefs()?.first() ?: emptyList()
-                                
+
                                 // Filtrer les biblioRefs selon le contexte d'export
                                 val filteredBiblioRefs = when {
                                         // Export sélectif (animalIds non vide) : seulement celles utilisées
@@ -453,9 +487,9 @@ class ExportImportRepository(
                                         // Export général (animalIds vide) : toutes les biblioRefs
                                         else -> allBiblioRefs
                                 }
-                                
+
                                 filteredBiblioRefs.map { it.toApi() }
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                                 emptyList()
                         }
                 val consultationKeywords: List<ConsultationKeywordApi> =
@@ -486,21 +520,19 @@ class ExportImportRepository(
                                 emptyList()
                         }
 
-                val envelope =
-                        ApiEnvelope(
-                                version = "1.0.0",
-                                generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
-                                animals = animals,
-                                foods = foods,
-                                rations = rationsList2,
-                                recipes = recipes,
-                                equations = equations,
-                                biblioRefs = biblioRefs,
-                                references = references,
-                                conseils = conseils,
-                                consultationKeywords = consultationKeywords
-                        )
-                        return jsonPretty.encodeToString(envelope)
+                return ApiEnvelope(
+                        version = "1.0.0",
+                        generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
+                        animals = animals,
+                        foods = foods,
+                        rations = rationsList2,
+                        recipes = recipes,
+                        equations = equations,
+                        biblioRefs = biblioRefs,
+                        references = references,
+                        conseils = conseils,
+                        consultationKeywords = consultationKeywords
+                )
         }
 
         /** Importe les données au format API et les sauvegarde via les repositories. */

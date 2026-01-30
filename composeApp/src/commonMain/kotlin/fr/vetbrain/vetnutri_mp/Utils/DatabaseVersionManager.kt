@@ -234,26 +234,82 @@ class DatabaseVersionManager {
     }
 
     /**
+     * Vérifie si une mise à jour est nécessaire à partir d'une version déjà extraite.
+     * Utile pour éviter de charger et parser un gros JSON en mémoire.
+     */
+    suspend fun isJsonUpdateNeededByVersion(
+        embeddedVersion: String?,
+        embeddedTimestamp: Long? = null
+    ): Boolean {
+        try {
+            if (embeddedVersion == null) return true
+
+            val storedVersion = getStoredJsonVersion() ?: return true
+            val storedTimestamp = getStoredJsonTimestamp()
+
+            val versionComparison = compareVersions(embeddedVersion, storedVersion)
+            if (versionComparison > 0) return true
+
+            if (versionComparison == 0 && embeddedTimestamp != null && storedTimestamp != null) {
+                return embeddedTimestamp > storedTimestamp
+            }
+
+            return false
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return true
+        }
+    }
+
+    /**
      * Met à jour la version du JSON après un import réussi
      * @param jsonContent Le contenu du fichier JSON importé
      */
     suspend fun updateJsonVersionAfterImport(jsonContent: String) {
         try {
-            val jsonElement = kotlinx.serialization.json.Json.parseToJsonElement(jsonContent)
-            if (jsonElement is kotlinx.serialization.json.JsonObject) {
-                val version = jsonElement["version"]?.toString()?.removeSurrounding("\"")
-                val timestamp = jsonElement["generatedAtEpochMs"]?.toString()?.toLongOrNull()
+            // Extraction légère pour éviter la création d'un arbre JSON en mémoire.
+            val head =
+                if (jsonContent.length > 200_000) jsonContent.substring(0, 200_000)
+                else jsonContent
+            val version =
+                """"version"\s*:\s*"([^"]+)"""".toRegex()
+                    .find(head)?.groupValues?.get(1)
+            val timestamp =
+                """"generatedAtEpochMs"\s*:\s*(\d+)""".toRegex()
+                    .find(head)?.groupValues?.get(1)
+                    ?.toLongOrNull()
 
-                if (version != null) {
-                    val storage = createPreferencesStorage()
-                    storage.saveString(KEY_JSON_VERSION, version)
-                    _jsonVersion.value = version
+            if (version != null) {
+                val storage = createPreferencesStorage()
+                storage.saveString(KEY_JSON_VERSION, version)
+                _jsonVersion.value = version
 
-                    if (timestamp != null) {
-                        storage.saveString(KEY_JSON_TIMESTAMP, timestamp.toString())
-                        _jsonTimestamp.value = timestamp
-                    }
+                if (timestamp != null) {
+                    storage.saveString(KEY_JSON_TIMESTAMP, timestamp.toString())
+                    _jsonTimestamp.value = timestamp
                 }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * Met à jour la version du JSON après un import réussi à partir d'une version déjà extraite.
+     */
+    suspend fun updateJsonVersionAfterImport(
+        embeddedVersion: String?,
+        embeddedTimestamp: Long? = null
+    ) {
+        try {
+            if (embeddedVersion == null) return
+            val storage = createPreferencesStorage()
+            storage.saveString(KEY_JSON_VERSION, embeddedVersion)
+            _jsonVersion.value = embeddedVersion
+
+            if (embeddedTimestamp != null) {
+                storage.saveString(KEY_JSON_TIMESTAMP, embeddedTimestamp.toString())
+                _jsonTimestamp.value = embeddedTimestamp
             }
         } catch (e: Exception) {
             e.printStackTrace()

@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Utils
 
 import java.io.File
+import java.io.OutputStream
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
@@ -88,6 +89,44 @@ object FileUtils {
                             File(fileChooser.selectedFile.path + ".json")
                         }
                 file.writeText(content)
+                true
+            } catch (e: Exception) {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    /**
+     * Ouvre une boîte de dialogue pour enregistrer un contenu JSON en streaming.
+     *
+     * @param defaultFileName Nom de fichier suggéré
+     * @param writeTo Fonction qui écrit le contenu dans l'OutputStream fourni
+     * @return true si la sauvegarde a réussi, false sinon
+     */
+    fun saveJsonFileDialogStream(
+        defaultFileName: String,
+        writeTo: (OutputStream) -> Unit
+    ): Boolean {
+        val fileChooser =
+            JFileChooser().apply {
+                dialogTitle = "Exporter un fichier JSON"
+                selectedFile = File(defaultFileName)
+                fileFilter = FileNameExtensionFilter("Fichiers JSON (*.json)", "json")
+            }
+        return if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+            try {
+                val file: File =
+                    if (fileChooser.selectedFile.path.endsWith(".json", ignoreCase = true)) {
+                        fileChooser.selectedFile
+                    } else {
+                        File(fileChooser.selectedFile.path + ".json")
+                    }
+                file.outputStream().use { stream ->
+                    writeTo(stream)
+                    stream.flush()
+                }
                 true
             } catch (e: Exception) {
                 false

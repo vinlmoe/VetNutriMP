@@ -1589,24 +1589,20 @@ fun SettingsView(
                                                                                                                 true
                                                                                                 )
                                                                                         }
-                                                                                val json =
-                                                                                        withContext(
-                                                                                                AppDispatchers.IO
-                                                                                        ) {
-                                                                                                exportRepo
-                                                                                                        .exportWithSelection(
-                                                                                                                effectiveOptions
-                                                                                                        )
-                                                                                        }
                                                                                 val ok =
                                                                                         withContext(
                                                                                                 AppDispatchers.IO
                                                                                         ) {
+                                                                                                val envelope =
+                                                                                                        exportRepo
+                                                                                                                .exportWithSelectionEnvelope(
+                                                                                                                        effectiveOptions
+                                                                                                                )
                                                                                                 fr.vetbrain
                                                                                                         .vetnutri_mp
-                                                                                                        .exportJsonToFile(
-                                                                                                                content =
-                                                                                                                        json,
+                                                                                                        .exportApiEnvelopeToFile(
+                                                                                                                envelope =
+                                                                                                                        envelope,
                                                                                                                 defaultFileName =
                                                                                                                         "vetnutri_export.json"
                                                                                                         )

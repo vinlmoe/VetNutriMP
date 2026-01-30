@@ -53,7 +53,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailSection
-import fr.vetbrain.vetnutri_mp.exportJsonToFile
+import fr.vetbrain.vetnutri_mp.exportApiEnvelopeToFile
 import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
@@ -159,7 +159,7 @@ private suspend fun exporterAnimalComplet(
                 // Exporter avec sélection (sur IO)
                 // Note: Les références bibliographiques sont automatiquement incluses dans l'export
                 // car elles sont liées aux références nutritionnelles et équations exportées
-                val jsonContent = withContext(AppDispatchers.IO) {
+                val envelope = withContext(AppDispatchers.IO) {
                         val exportOptions = ExportImportRepository.ExportSelectionOptions(
                                 includeAnimals = true,
                                 includeFoods = true,
@@ -172,7 +172,7 @@ private suspend fun exporterAnimalComplet(
                                 referenceIds = referenceIds,
                                 equationIds = equationIds
                         )
-                        exportImportRepository.exportWithSelection(exportOptions)
+                        exportImportRepository.exportWithSelectionEnvelope(exportOptions)
                 }
                 
                 // Générer le nom de fichier
@@ -180,7 +180,7 @@ private suspend fun exporterAnimalComplet(
                 
                 // Sauvegarder le fichier avec sélecteur (sur Main pour l'UI)
                 val success = withContext(AppDispatchers.Main) {
-                        exportJsonToFile(jsonContent, fileName)
+                        exportApiEnvelopeToFile(envelope, fileName)
                 }
                 
                 // Afficher le résultat (déjà sur Main)
