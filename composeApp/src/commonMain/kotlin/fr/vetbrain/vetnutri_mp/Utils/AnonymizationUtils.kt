@@ -13,7 +13,7 @@ import kotlinx.serialization.json.Json
  */
 fun anonymizeExportJson(jsonContent: String): String {
     val json = Json {
-        prettyPrint = true
+        prettyPrint = isDebugBuild()
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
@@ -32,4 +32,3 @@ fun anonymizeExportJson(jsonContent: String): String {
         return jsonContent
     }
 }
-

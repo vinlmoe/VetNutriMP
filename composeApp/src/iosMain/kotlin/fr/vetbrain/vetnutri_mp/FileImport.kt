@@ -3,6 +3,8 @@ package fr.vetbrain.vetnutri_mp
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
+import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
+import fr.vetbrain.vetnutri_mp.Utils.createExportJson
 
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -19,6 +21,7 @@ import platform.UIKit.UIApplication
 import platform.UIKit.UIWindow
 import platform.UIKit.popoverPresentationController
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.serialization.encodeToString
 
 actual fun importAnimalsFromFile(viewModel: AnimalListViewModel) {
         viewModel.setImportError("L'importation de fichiers n'est pas encore implémentée sur iOS.")
@@ -86,6 +89,12 @@ actual fun exportJsonToFile(content: String, defaultFileName: String): Boolean {
         e.printStackTrace()
         return false
     }
+}
+
+actual fun exportApiEnvelopeToFile(envelope: ApiEnvelope, defaultFileName: String): Boolean {
+    val json = createExportJson()
+    val content = json.encodeToString(ApiEnvelope.serializer(), envelope)
+    return exportJsonToFile(content, defaultFileName)
 }
 
 actual fun openJsonFileContent(): String? {

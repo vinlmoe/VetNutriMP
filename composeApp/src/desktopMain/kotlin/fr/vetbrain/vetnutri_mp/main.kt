@@ -26,6 +26,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.encodeToStream
 
 // Configuration du gestionnaire d'exceptions pour desktop (accessible globalement)
 private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
@@ -465,6 +466,42 @@ actual fun exportJsonToFile(content: String, defaultFileName: String): Boolean {
                             content = content,
                             defaultFileName = defaultFileName
                     )
+        }
+    }
+    return resultat
+}
+
+@Suppress("UNUSED_PARAMETER")
+actual fun exportApiEnvelopeToFile(
+    envelope: fr.vetbrain.vetnutri_mp.Data.ApiEnvelope,
+    defaultFileName: String
+): Boolean {
+    var resultat: Boolean = false
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+        resultat =
+            fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveJsonFileDialogStream(
+                defaultFileName = defaultFileName
+            ) { stream ->
+                val json = fr.vetbrain.vetnutri_mp.Utils.createExportJson()
+                json.encodeToStream(
+                    fr.vetbrain.vetnutri_mp.Data.ApiEnvelope.serializer(),
+                    envelope,
+                    stream
+                )
+            }
+    } else {
+        javax.swing.SwingUtilities.invokeAndWait {
+            resultat =
+                fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveJsonFileDialogStream(
+                    defaultFileName = defaultFileName
+                ) { stream ->
+                    val json = fr.vetbrain.vetnutri_mp.Utils.createExportJson()
+                    json.encodeToStream(
+                        fr.vetbrain.vetnutri_mp.Data.ApiEnvelope.serializer(),
+                        envelope,
+                        stream
+                    )
+                }
         }
     }
     return resultat

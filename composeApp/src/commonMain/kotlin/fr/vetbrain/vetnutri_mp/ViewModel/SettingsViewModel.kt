@@ -521,46 +521,9 @@ class SettingsViewModel(
                     )
             log("✓ ExportImportRepository créé")
 
-            // Lire le fichier de ressources pour l'import automatique
-            log("Lecture du fichier JSON de ressources...")
-            val json =
-                    try {
-                        // Essayer d'abord le chemin iOS (direct), puis le chemin Android/Desktop
-                        // (data/)
-                        try {
-                            log("Tentative de lecture: vetnutri_export_init.json")
-                            val result = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
-                                    .readResource("vetnutri_export_init.json")
-                            log("✓ Fichier lu avec succès (${result.length} caractères)")
-                            result
-                        } catch (e: Exception) {
-                            log("⚠ Chemin direct échoué, tentative: data/vetnutri_export_init.json")
-                            val result = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
-                                    .readResource("data/vetnutri_export_init.json")
-                            log("✓ Fichier lu avec succès (${result.length} caractères)")
-                            result
-                        }
-                    } catch (e: Exception) {
-                        log("❌ ERREUR: Fichier introuvable - ${e.message}")
-                        throw IllegalStateException(
-                                "Fichier vetnutri_export_init.json introuvable: ${e.message}"
-                        )
-                    }
-
-            if (json.isEmpty()) {
-                log("❌ ERREUR: Le fichier JSON est vide")
-                throw IllegalStateException("Le fichier JSON d'import automatique est vide")
-            }
-
-            // Vérifier si une mise à jour est nécessaire
-            log("Vérification de la version de la base de données...")
-            val databaseVersionManager = fr.vetbrain.vetnutri_mp.Utils.DatabaseVersionManager()
-            val updateNeeded = databaseVersionManager.isJsonUpdateNeeded(json)
-            log("Mise à jour nécessaire: $updateNeeded")
-
             // 🔧 CORRECTION : Vérifier spécifiquement si les aliments sont manquants
             log("Vérification de l'état actuel de la base de données...")
-            val currentFoodCount = foodRepository.getAllFoods().size
+            val currentFoodCount = foodRepository.getAllFoodsLight().size
             val currentReferenceCount = referenceEvRepository?.getAllReferenceEv()?.size ?: 0
             val foodsAreMissing = currentFoodCount == 0
             val databaseIsEmpty = currentFoodCount == 0 && currentReferenceCount == 0
@@ -570,6 +533,22 @@ class SettingsViewModel(
             log("  - Références: $currentReferenceCount")
             log("  - Aliments manquants: $foodsAreMissing")
             log("  - Base vide: $databaseIsEmpty")
+
+            // Vérifier la version sans charger tout le JSON (évite OOM)
+            log("Vérification de la version JSON (lecture légère)...")
+            val databaseVersionManager = fr.vetbrain.vetnutri_mp.Utils.DatabaseVersionManager()
+            val resourceReader = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
+            val embeddedVersion =
+                    try {
+                        resourceReader.readJsonVersion("vetnutri_export_init.json")
+                                ?: resourceReader.readJsonVersion("data/vetnutri_export_init.json")
+                    } catch (_: Exception) {
+                        null
+                    }
+            val updateNeeded =
+                    databaseVersionManager.isJsonUpdateNeededByVersion(embeddedVersion)
+            log("Version intégrée: ${embeddedVersion ?: "introuvable"}")
+            log("Mise à jour nécessaire: $updateNeeded")
 
             // Si l'import n'est pas forcé, vérifier si une mise à jour est nécessaire
             if (!forceImport && !updateNeeded && !foodsAreMissing) {
@@ -589,6 +568,37 @@ class SettingsViewModel(
             // 🔧 CORRECTION : Forcer l'import si les aliments sont manquants ou si la base est vide
             if (foodsAreMissing || databaseIsEmpty) {
                 log("⚠️ Import forcé: base de données incomplète ou vide")
+            }
+
+            // Lire le fichier de ressources pour l'import automatique (plein JSON)
+            log("Lecture du fichier JSON de ressources...")
+            val json =
+                    try {
+                        // Essayer d'abord le chemin iOS (direct), puis le chemin Android/Desktop
+                        // (data/)
+                        try {
+                            log("Tentative de lecture: vetnutri_export_init.json")
+                            val result = resourceReader
+                                    .readResourceOptimized("vetnutri_export_init.json")
+                            log("✓ Fichier lu avec succès (${result.length} caractères)")
+                            result
+                        } catch (e: Exception) {
+                            log("⚠ Chemin direct échoué, tentative: data/vetnutri_export_init.json")
+                            val result = resourceReader
+                                    .readResourceOptimized("data/vetnutri_export_init.json")
+                            log("✓ Fichier lu avec succès (${result.length} caractères)")
+                            result
+                        }
+                    } catch (e: Exception) {
+                        log("❌ ERREUR: Fichier introuvable - ${e.message}")
+                        throw IllegalStateException(
+                                "Fichier vetnutri_export_init.json introuvable: ${e.message}"
+                        )
+                    }
+
+            if (json.isEmpty()) {
+                log("❌ ERREUR: Le fichier JSON est vide")
+                throw IllegalStateException("Le fichier JSON d'import automatique est vide")
             }
 
             // Lancer l'import avec un listener de progression
@@ -625,7 +635,11 @@ class SettingsViewModel(
 
             // Mettre à jour la version JSON après import réussi
             log("Mise à jour de la version JSON stockée...")
-            databaseVersionManager.updateJsonVersionAfterImport(json)
+            if (embeddedVersion != null) {
+                databaseVersionManager.updateJsonVersionAfterImport(embeddedVersion)
+            } else {
+                databaseVersionManager.updateJsonVersionAfterImport(json)
+            }
             val newStoredVersion = databaseVersionManager.getStoredJsonVersion()
             log("✓ Version JSON mise à jour: ${newStoredVersion ?: "Aucune"}")
 

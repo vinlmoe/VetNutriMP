@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
@@ -41,6 +42,7 @@ expect fun importApiFromFile(viewModel: SettingsViewModel)
 
 // Export/Import génériques pour le nouveau format API
 expect fun exportJsonToFile(content: String, defaultFileName: String): Boolean
+expect fun exportApiEnvelopeToFile(envelope: ApiEnvelope, defaultFileName: String): Boolean
 
 expect fun openJsonFileContent(): String?
 
