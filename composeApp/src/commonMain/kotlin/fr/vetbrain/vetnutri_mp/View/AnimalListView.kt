@@ -80,7 +80,7 @@ fun AnimalListView(
         val apiProgress = viewModel.apiImportProgress.collectAsState().value
         val apiLogs = viewModel.apiImportLogs.collectAsState().value
         var showApiResultDialog by remember { mutableStateOf(false) }
-        val showCrossAnalysisButton = false
+        val showCrossAnalysisButton = true
         var showKeywordFilterDialog by remember { mutableStateOf(false) }
         val hasKeywordFilter = keywordIncludeIds.isNotEmpty() || keywordExcludeIds.isNotEmpty()
 
