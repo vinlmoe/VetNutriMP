@@ -8,6 +8,11 @@ import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.CrossConsultationAnalysis
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -64,6 +69,8 @@ class CrossConsultationAnalysisViewModel(
             val lipids: Double,
             val ratioCaP: Double,
             val ratioOmega6Omega3: Double,
+            val nutrientValues: Map<String, Double>,
+            val ratioValues: Map<String, Double>,
             val animalName: String,
             val consultationDate: String,
             val referenceLabel: String?,
@@ -253,10 +260,12 @@ class CrossConsultationAnalysisViewModel(
         val rationSummaries =
                 consultation.rations.map { ration ->
                     val analyse = rationAnalyzer.analyserRation(ration, consultation)
-                    val proteins = ration.getNutrient(NutrientMain.PROTEINE, referenceEv) ?: 0.0
-                    val lipids = ration.getNutrient(NutrientMain.LIPIDE, referenceEv) ?: 0.0
+                    val nutrientValues = buildNutrientValues(ration, referenceEv)
+                    val proteins = nutrientValues[NutrientMain.PROTEINE.label] ?: 0.0
+                    val lipids = nutrientValues[NutrientMain.LIPIDE.label] ?: 0.0
                     val ratioCaP = analyse.ratios["Calcium/Phosphore"] ?: 0.0
                     val ratioOmega = analyse.ratios["Oméga-6/Oméga-3"] ?: 0.0
+                    val ratioValues = buildRatioValues(nutrientValues, analyse.ratios)
                     val energyDensity =
                             ration.getDensiteEnergetiqueMoyenne(referenceEv, equationRepository)
 
@@ -285,6 +294,8 @@ class CrossConsultationAnalysisViewModel(
                             lipids = lipids,
                             ratioCaP = ratioCaP,
                             ratioOmega6Omega3 = ratioOmega,
+                            nutrientValues = nutrientValues,
+                            ratioValues = ratioValues,
                             animalName = animal.nom.ifBlank { "Animal sans nom" },
                             consultationDate = dateLabel,
                             referenceLabel = refLabel,
@@ -340,5 +351,68 @@ class CrossConsultationAnalysisViewModel(
                         ?: EquationEvaluator.calculerBesoinEnergetiqueBase(poids)
 
         return bee
+    }
+
+    private fun buildNutrientValues(
+            ration: Ration,
+            referenceEv: fr.vetbrain.vetnutri_mp.Data.ReferenceEv?
+    ): Map<String, Double> {
+        val result = mutableMapOf<String, Double>()
+        NutrientMain.entries.forEach { nutrient ->
+            result[nutrient.label] = ration.getNutrient(nutrient, referenceEv) ?: 0.0
+        }
+        NutrientMacro.entries.forEach { nutrient ->
+            result[nutrient.label] = ration.getNutrient(nutrient, referenceEv) ?: 0.0
+        }
+        NutrientMin.entries.forEach { nutrient ->
+            result[nutrient.label] = ration.getNutrient(nutrient, referenceEv) ?: 0.0
+        }
+        NutrientVitam.entries.forEach { nutrient ->
+            result[nutrient.label] = ration.getNutrient(nutrient, referenceEv) ?: 0.0
+        }
+        NutrientLipid.entries.forEach { nutrient ->
+            result[nutrient.label] = ration.getNutrient(nutrient, referenceEv) ?: 0.0
+        }
+        return result
+    }
+
+    private fun buildRatioValues(
+            nutrientValues: Map<String, Double>,
+            computedRatios: Map<String, Double>
+    ): Map<String, Double> {
+        val result = mutableMapOf<String, Double>()
+        NutrientAnalysis.entries.forEach { ratio ->
+            result[ratio.label] =
+                    when (ratio.label) {
+                        "KNA" -> computedRatios["Potassium/Sodium"] ?: safeDiv(
+                                nutrientValues[NutrientMacro.K.label],
+                                nutrientValues[NutrientMacro.NA.label]
+                        )
+                        "CAP" -> computedRatios["Calcium/Phosphore"] ?: safeDiv(
+                                nutrientValues[NutrientMacro.CAL.label],
+                                nutrientValues[NutrientMacro.PHOS.label]
+                        )
+                        "O6O3" -> computedRatios["Oméga-6/Oméga-3"] ?: safeDiv(
+                                nutrientValues[NutrientLipid.O6.label],
+                                nutrientValues[NutrientLipid.O3.label]
+                        )
+                        "ZNCU" -> computedRatios["Zinc/Cuivre"] ?: safeDiv(
+                                nutrientValues[NutrientMin.ZN.label],
+                                nutrientValues[NutrientMin.CU.label]
+                        )
+                        "PROTP" -> computedRatios["Protéines/Phosphore"] ?: safeDiv(
+                                nutrientValues[NutrientMain.PROTEINE.label],
+                                nutrientValues[NutrientMacro.PHOS.label]
+                        )
+                        else -> 0.0
+                    }
+        }
+        return result
+    }
+
+    private fun safeDiv(a: Double?, b: Double?): Double {
+        val numerator = a ?: return 0.0
+        val denominator = b ?: return 0.0
+        return if (denominator > 0.0) numerator / denominator else 0.0
     }
 }

@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,11 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.Canvas
 import androidx.compose.material.Divider
+import androidx.compose.material.DropdownMenu
+import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Icon
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Text
@@ -30,12 +32,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CrossConsultationAnalysisViewModel
 import kotlin.math.roundToInt
+import kotlin.math.floor
+import kotlin.math.ceil
+import androidx.compose.foundation.layout.heightIn
 import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
 import io.github.koalaplot.core.xygraph.CategoryAxisModel
@@ -50,85 +62,83 @@ private data class MetricOption(
         val extractor: (CrossConsultationAnalysisViewModel.RationSummary) -> Float
 )
 
-private val METRICS =
-        listOf(
+private fun buildMetricOptions(): List<MetricOption> {
+    val nutrients =
+            buildList {
+                NutrientMain.entries.forEach { n ->
+                    add(
+                            MetricOption(
+                                    key = "n:${n.label}",
+                                    label = n.nameToString(),
+                                    unit = n.unite,
+                                    extractor = {
+                                        (it.nutrientValues[n.label] ?: 0.0).toFloat().coerceAtLeast(0f)
+                                    }
+                            )
+                    )
+                }
+                NutrientMacro.entries.forEach { n ->
+                    add(
+                            MetricOption(
+                                    key = "n:${n.label}",
+                                    label = n.nameToString(),
+                                    unit = n.unite,
+                                    extractor = {
+                                        (it.nutrientValues[n.label] ?: 0.0).toFloat().coerceAtLeast(0f)
+                                    }
+                            )
+                    )
+                }
+                NutrientMin.entries.forEach { n ->
+                    add(
+                            MetricOption(
+                                    key = "n:${n.label}",
+                                    label = n.nameToString(),
+                                    unit = n.unite,
+                                    extractor = {
+                                        (it.nutrientValues[n.label] ?: 0.0).toFloat().coerceAtLeast(0f)
+                                    }
+                            )
+                    )
+                }
+                NutrientVitam.entries.forEach { n ->
+                    add(
+                            MetricOption(
+                                    key = "n:${n.label}",
+                                    label = n.displayName,
+                                    unit = n.unite,
+                                    extractor = {
+                                        (it.nutrientValues[n.label] ?: 0.0).toFloat().coerceAtLeast(0f)
+                                    }
+                            )
+                    )
+                }
+                NutrientLipid.entries.forEach { n ->
+                    add(
+                            MetricOption(
+                                    key = "n:${n.label}",
+                                    label = n.nameToString(),
+                                    unit = n.unite,
+                                    extractor = {
+                                        (it.nutrientValues[n.label] ?: 0.0).toFloat().coerceAtLeast(0f)
+                                    }
+                            )
+                    )
+                }
+            }
+
+    val ratios =
+            NutrientAnalysis.entries.map { r ->
                 MetricOption(
-                        key = "qty_total",
-                        label = "Quantité totale",
-                        unit = "g",
-                        extractor = { it.quantity.toFloat().coerceAtLeast(0f) }
-                ),
-                MetricOption(
-                        key = "energy_total",
-                        label = "Énergie totale",
-                        unit = "kcal",
-                        extractor = {
-                            val energy = (it.energyDensity * it.quantity / 100.0).toFloat()
-                            energy.coerceAtLeast(0f)
-                        }
-                ),
-                MetricOption(
-                        key = "proteins_mcal",
-                        label = "Protéines",
-                        unit = "g/Mcal BEE",
-                        extractor = {
-                            val bee = it.beeKcal ?: 0.0
-                            if (bee > 0.0) {
-                                (it.proteins.toFloat() / (bee / 1000.0).toFloat())
-                            } else {
-                                val energy = (it.energyDensity * it.quantity / 100.0).toFloat()
-                                if (energy <= 0f) 0f else (it.proteins.toFloat() / energy * 1000f)
-                            }
-                        }
-                ),
-                MetricOption(
-                        key = "lipids_mcal",
-                        label = "Lipides",
-                        unit = "g/Mcal BEE",
-                        extractor = {
-                            val bee = it.beeKcal ?: 0.0
-                            if (bee > 0.0) {
-                                (it.lipids.toFloat() / (bee / 1000.0).toFloat())
-                            } else {
-                                val energy = (it.energyDensity * it.quantity / 100.0).toFloat()
-                                if (energy <= 0f) 0f else (it.lipids.toFloat() / energy * 1000f)
-                            }
-                        }
-                ),
-                MetricOption(
-                        key = "lipids",
-                        label = "Lipides",
-                        unit = "g",
-                        extractor = { it.lipids.toFloat().coerceAtLeast(0f) }
-                ),
-                MetricOption(
-                        key = "ratio_cap",
-                        label = "Ca/P",
-                        unit = "ratio",
-                        extractor = { it.ratioCaP.toFloat().coerceAtLeast(0f) }
-                ),
-                MetricOption(
-                        key = "ratio_o6o3",
-                        label = "O6/O3",
-                        unit = "ratio",
-                        extractor = { it.ratioOmega6Omega3.toFloat().coerceAtLeast(0f) }
-                ),
-                MetricOption(
-                        key = "ration_count",
-                        label = "Nb rations",
-                        unit = "rations",
-                        extractor = { 1f }
-                ),
-                MetricOption(
-                        key = "qty_moy",
-                        label = "Quantité moy./ration",
-                        unit = "g/ration",
-                        extractor = {
-                            val qty = it.quantity.toFloat()
-                            qty.coerceAtLeast(0f)
-                        }
+                        key = "r:${r.label}",
+                        label = r.displayName,
+                        unit = if (r.unite.isBlank()) "ratio" else r.unite,
+                        extractor = { (it.ratioValues[r.label] ?: 0.0).toFloat().coerceAtLeast(0f) }
                 )
-        )
+            }
+
+    return nutrients + ratios
+}
 
 /**
  * Vue résultats (phase 2 initiale) :
@@ -142,8 +152,13 @@ fun CrossConsultationResultsView(
         modifier: Modifier = Modifier
 ) {
     val selected by viewModel.selectedIds.collectAsState()
+    val metricOptions = remember { buildMetricOptions() }
     var showActual by remember { mutableStateOf(true) }
-    var selectedMetric by remember { mutableStateOf(METRICS.first()) }
+    var metricMenuExpanded by remember { mutableStateOf(false) }
+    var selectedMetricKey by remember { mutableStateOf(metricOptions.first().key) }
+    val selectedMetric =
+            metricOptions.firstOrNull { it.key == selectedMetricKey } ?: metricOptions.first()
+    var showBoxplot by remember { mutableStateOf(false) }
     val displayedRations = viewModel.getSelectedRations(actualOnly = showActual)
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -211,20 +226,54 @@ fun CrossConsultationResultsView(
                 )
                 Row(
                         horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                        modifier = Modifier.horizontalScroll(rememberScrollState())
+                        verticalAlignment = Alignment.CenterVertically
                 ) {
-                    METRICS.forEach { option ->
-                        OutlinedButton(
-                                onClick = { selectedMetric = option },
-                                enabled = selectedMetric.key != option.key
-                        ) { Text("${option.label} (${option.unit})") }
+                    Text("Nutriment / rapport :")
+                    Box {
+                        OutlinedButton(onClick = { metricMenuExpanded = true }) {
+                            Text("${selectedMetric.label} (${selectedMetric.unit})")
+                        }
+                        DropdownMenu(
+                                expanded = metricMenuExpanded,
+                                onDismissRequest = { metricMenuExpanded = false },
+                                modifier = Modifier.heightIn(max = 360.dp)
+                        ) {
+                            metricOptions.forEach { option ->
+                                DropdownMenuItem(
+                                        onClick = {
+                                            selectedMetricKey = option.key
+                                            metricMenuExpanded = false
+                                        }
+                                ) { Text("${option.label} (${option.unit})") }
+                            }
+                        }
                     }
                 }
-                ConsultationBarChart(
-                        items = displayedRations,
-                        metric = selectedMetric,
-                        modifier = Modifier.fillMaxWidth().weight(1f)
-                )
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                ) {
+                    OutlinedButton(
+                            onClick = { showBoxplot = false },
+                            enabled = showBoxplot
+                    ) { Text("Barres") }
+                    OutlinedButton(
+                            onClick = { showBoxplot = true },
+                            enabled = !showBoxplot
+                    ) { Text("Boxplots") }
+                }
+                if (showBoxplot) {
+                    BoxPlotChart(
+                            items = displayedRations,
+                            metric = selectedMetric,
+                            modifier = Modifier.fillMaxWidth().weight(1f)
+                    )
+                } else {
+                    ConsultationBarChart(
+                            items = displayedRations,
+                            metric = selectedMetric,
+                            modifier = Modifier.fillMaxWidth().weight(1f)
+                    )
+                }
             }
         }
     }
@@ -292,4 +341,177 @@ private fun ConsultationBarChart(
                 }
         )
     }
+}
+
+private data class BoxPlotStats(
+        val min: Float,
+        val q1: Float,
+        val median: Float,
+        val q3: Float,
+        val max: Float
+)
+
+@Composable
+private fun BoxPlotChart(
+        items: List<CrossConsultationAnalysisViewModel.RationSummary>,
+        metric: MetricOption,
+        modifier: Modifier = Modifier
+) {
+    if (items.isEmpty()) {
+        Text(
+                "Aucune donnée à tracer. Sélectionnez des rations.",
+                style = androidx.compose.material.MaterialTheme.typography.body2,
+                modifier = Modifier.padding(horizontal = AppSizes.paddingMedium)
+        )
+        return
+    }
+
+    val values = items.map { metric.extractor(it) }.filter { it.isFinite() }
+    if (values.isEmpty()) {
+        Text(
+                "Aucune donnée à tracer. Sélectionnez des rations.",
+                style = androidx.compose.material.MaterialTheme.typography.body2,
+                modifier = Modifier.padding(horizontal = AppSizes.paddingMedium)
+        )
+        return
+    }
+
+    val stats = computeBoxPlot(values)
+    val allValues = listOf(stats.min, stats.q1, stats.median, stats.q3, stats.max)
+    val minValue = allValues.minOrNull() ?: 0f
+    val maxValue = allValues.maxOrNull() ?: 1f
+    val range = (maxValue - minValue).let { if (it == 0f) 1f else it }
+
+    Row(modifier = modifier.padding(horizontal = AppSizes.paddingMedium)) {
+        val paddingTop = 12.dp
+        val paddingBottom = 24.dp
+        val axisWidth = 52.dp
+        val tickCount = 5
+        val ticks =
+                (0 until tickCount).map { i ->
+                    val t = 1f - (i.toFloat() / (tickCount - 1).toFloat())
+                    minValue + range * t
+                }
+
+        Column(
+                modifier = Modifier.width(axisWidth).fillMaxHeight(),
+                verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Spacer(modifier = Modifier.height(paddingTop))
+            Column(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                ticks.forEach { value ->
+                    Text(
+                            formatAxisValue(value),
+                            style = androidx.compose.material.MaterialTheme.typography.caption,
+                            color = Color.Gray
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(paddingBottom))
+        }
+
+        Canvas(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            val paddingTopPx = paddingTop.toPx()
+            val paddingBottomPx = paddingBottom.toPx()
+            val paddingSide = 12.dp.toPx()
+            val chartHeight = size.height - paddingTopPx - paddingBottomPx
+            val chartWidth = size.width - paddingSide * 2
+            val slotWidth = chartWidth
+            val boxWidth = slotWidth * 0.4f
+
+            fun yFor(value: Float): Float {
+                val normalized = (value - minValue) / range
+                return paddingTopPx + chartHeight * (1f - normalized)
+            }
+
+            val centerX = paddingSide + slotWidth / 2f
+            val yMin = yFor(stats.min)
+            val yMax = yFor(stats.max)
+            val yQ1 = yFor(stats.q1)
+            val yQ3 = yFor(stats.q3)
+            val yMedian = yFor(stats.median)
+
+            val boxLeft = centerX - boxWidth / 2f
+            val boxRight = centerX + boxWidth / 2f
+
+            drawLine(
+                    color = VetNutriColors.Primary,
+                    start = androidx.compose.ui.geometry.Offset(centerX, yMin),
+                    end = androidx.compose.ui.geometry.Offset(centerX, yMax),
+                    strokeWidth = 2f
+            )
+            drawLine(
+                    color = VetNutriColors.Primary,
+                    start = androidx.compose.ui.geometry.Offset(centerX - boxWidth / 3f, yMin),
+                    end = androidx.compose.ui.geometry.Offset(centerX + boxWidth / 3f, yMin),
+                    strokeWidth = 2f
+            )
+            drawLine(
+                    color = VetNutriColors.Primary,
+                    start = androidx.compose.ui.geometry.Offset(centerX - boxWidth / 3f, yMax),
+                    end = androidx.compose.ui.geometry.Offset(centerX + boxWidth / 3f, yMax),
+                    strokeWidth = 2f
+            )
+
+            drawRect(
+                    color = VetNutriColors.Primary.copy(alpha = 0.2f),
+                    topLeft = androidx.compose.ui.geometry.Offset(boxLeft, yQ3),
+                    size = androidx.compose.ui.geometry.Size(boxRight - boxLeft, yQ1 - yQ3)
+            )
+            drawRect(
+                    color = VetNutriColors.Primary,
+                    topLeft = androidx.compose.ui.geometry.Offset(boxLeft, yQ3),
+                    size = androidx.compose.ui.geometry.Size(boxRight - boxLeft, yQ1 - yQ3),
+                    style = Stroke(width = 2f)
+            )
+            drawLine(
+                    color = VetNutriColors.Primary,
+                    start = androidx.compose.ui.geometry.Offset(boxLeft, yMedian),
+                    end = androidx.compose.ui.geometry.Offset(boxRight, yMedian),
+                    strokeWidth = 2f
+            )
+        }
+    }
+
+    Row(
+            modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = AppSizes.paddingMedium),
+            horizontalArrangement = Arrangement.Center
+    ) {
+        Text(
+                "Toutes rations",
+                style = androidx.compose.material.MaterialTheme.typography.caption
+        )
+    }
+}
+
+private fun computeBoxPlot(values: List<Float>): BoxPlotStats {
+    val sorted = values.sorted()
+    val min = sorted.first()
+    val max = sorted.last()
+    val q1 = percentile(sorted, 0.25f)
+    val median = percentile(sorted, 0.5f)
+    val q3 = percentile(sorted, 0.75f)
+    return BoxPlotStats(min = min, q1 = q1, median = median, q3 = q3, max = max)
+}
+
+private fun percentile(sorted: List<Float>, p: Float): Float {
+    if (sorted.isEmpty()) return 0f
+    if (sorted.size == 1) return sorted.first()
+    val n = sorted.size
+    val index = (n - 1) * p
+    val lower = floor(index).toInt()
+    val upper = ceil(index).toInt()
+    if (lower == upper) return sorted[lower]
+    val weight = index - lower
+    return sorted[lower] + (sorted[upper] - sorted[lower]) * weight
+}
+
+private fun formatAxisValue(value: Float): String {
+    val rounded = (value * 10f).roundToInt() / 10f
+    return if (rounded == -0f) "0" else rounded.toString()
 }
