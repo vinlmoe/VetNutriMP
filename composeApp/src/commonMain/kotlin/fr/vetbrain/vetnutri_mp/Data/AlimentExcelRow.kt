@@ -54,7 +54,6 @@ data class AlimentExcelRow(
                         "LIPIDE",
                         "GLUCIDE",
                         "ENA",
-                        "FIBRE",
                         "CELLULOSE",
                         "CENDRE",
                         "ENERGIE",

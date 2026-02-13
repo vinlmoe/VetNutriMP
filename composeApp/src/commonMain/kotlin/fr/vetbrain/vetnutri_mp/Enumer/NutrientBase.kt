@@ -25,7 +25,7 @@ object NutrientBaseExt {
     val GLUCIDE
         get() = NutrientMain.GLUCIDE
     val FIBRE
-        get() = NutrientMain.FIBRE
+        get() = NutrientMain.CELLULOSE
     val CENDRE
         get() = NutrientMain.CENDRE
     val HUMIDITE

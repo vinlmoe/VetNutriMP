@@ -209,7 +209,7 @@ object NutrientResolver {
             "CENDRE", "CENDRES", "ASH", "ASHES", "MM", "MINERALS" -> "CENDRE"
             "ENERGIE", "ÉNERGIE", "ENERGY", "CALORIES", "EB", "ED", "EM", "ME", "DE", "GE" ->
                     "ENERGIE"
-            "FIBRE", "FIBRES", "FIBER", "FIBERS", "FB", "TDF", "FIBRA" -> "FIBRE"
+            "FIBRE", "FIBRES", "FIBER", "FIBERS", "FB", "TDF", "FIBRA" -> "CELLULOSE"
             "CELLULOSE", "CELLULOSES", "CRUDE_FIBER", "FIBRE_BRUTE", "FIBRA_BRUTA" -> "CELLULOSE"
             "AMIDON", "STARCH", "STARCHES", "ALMIDON" -> "AMIDON"
             "SUCRE", "SUCRES", "SUGAR", "SUGARS", "AZUCAR", "AZUCARES" -> "SUCRE"

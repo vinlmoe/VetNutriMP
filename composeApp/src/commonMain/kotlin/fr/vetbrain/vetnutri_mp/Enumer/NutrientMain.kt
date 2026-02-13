@@ -17,7 +17,6 @@ enum class NutrientMain(
     LIPIDE("Lipides", 2, "g", UnitEnum.BUg, "LIPIDE", "#F8FF5D"),
     GLUCIDE("Glucides", 3, "g", UnitEnum.BUg, "GLUCIDE", "#FF5D5D"),
     ENA("ENA", 4, "g", UnitEnum.BUg, "ENA", "#FF5D5D"),
-    FIBRE("Fibres brutes", 5, "g", UnitEnum.BUg, "FIBRE", "#4BE715"),
     CELLULOSE("Cellulose brute", 6, "g", UnitEnum.BUg, "CELLULOSE", "#4BE715"),
     CENDRE("Cendres", 7, "g", UnitEnum.BUg, "CENDRE", "#820326"),
     ENERGIE("Énergie", 8, "kcal", UnitEnum.KCAL, "ENERGIE", "#FF8C00"),

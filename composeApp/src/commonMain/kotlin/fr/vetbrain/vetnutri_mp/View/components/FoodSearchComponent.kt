@@ -101,7 +101,7 @@ fun FoodSearchComponent(
                         SortCriteria.PROTEIN -> listOf(NutrientMain.PROTEINE)
                         SortCriteria.FAT -> listOf(NutrientMain.LIPIDE)
                         SortCriteria.CARBOHYDRATE -> listOf(NutrientMain.GLUCIDE)
-                        SortCriteria.FIBER -> listOf(NutrientMain.FIBRE)
+                        SortCriteria.FIBER -> listOf(NutrientMain.CELLULOSE)
                         SortCriteria.ENERGY -> listOf(NutrientMain.ENERGIE)
                         SortCriteria.CALCIUM -> listOf(NutrientMacro.CAL)
                         SortCriteria.PHOSPHORUS -> listOf(NutrientMacro.PHOS)
@@ -340,9 +340,9 @@ fun FoodSearchComponent(
                                         }
                                         SortCriteria.FIBER -> {
                                                 if (filters.sortOrder == SortOrder.ASCENDING) {
-                                                        result.sortedBy { it.getNutrient(NutrientMain.FIBRE, config.referenceEv) ?: 0.0 }
+                                                        result.sortedBy { it.getNutrient(NutrientMain.CELLULOSE, config.referenceEv) ?: 0.0 }
                                                 } else {
-                                                        result.sortedByDescending { it.getNutrient(NutrientMain.FIBRE, config.referenceEv) ?: 0.0 }
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.CELLULOSE, config.referenceEv) ?: 0.0 }
                                                 }
                                         }
                                         SortCriteria.ENERGY -> {
@@ -1536,5 +1536,3 @@ private fun getAllAvailableNutrients(): List<Nutrient> {
         allNutrients.addAll(AAEnum.entries)
         return allNutrients
 }
-
-
