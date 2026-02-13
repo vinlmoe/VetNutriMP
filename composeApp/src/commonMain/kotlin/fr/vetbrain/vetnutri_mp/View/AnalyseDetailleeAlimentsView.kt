@@ -314,8 +314,8 @@ private fun AlimentNutrientsDetails(
         val glucide = alimentRation.getNutrientWithComplementary(
                 NutrientMain.GLUCIDE, preferencesEspece, equationRepository, referenceEv
         ) ?: 0.0
-        val fibre = alimentRation.getNutrientWithComplementary(
-                NutrientMain.FIBRE, preferencesEspece, equationRepository, referenceEv
+        val cellulose = alimentRation.getNutrientWithComplementary(
+                NutrientMain.CELLULOSE, preferencesEspece, equationRepository, referenceEv
         ) ?: 0.0
         val cendre = alimentRation.getNutrientWithComplementary(
                 NutrientMain.CENDRE, preferencesEspece, equationRepository, referenceEv
@@ -354,7 +354,7 @@ private fun AlimentNutrientsDetails(
         nutrients["Protéines"] = convertir(proteine)
         nutrients["Lipides"] = convertir(lipide)
         nutrients["Glucides"] = convertir(glucide)
-        nutrients["Fibres"] = convertir(fibre)
+        nutrients["Cellulose brute"] = convertir(cellulose)
         nutrients["Cendres"] = convertir(cendre)
         nutrients["Calcium"] = convertir(calcium)
         nutrients["Phosphore"] = convertir(phosphore)
@@ -390,7 +390,7 @@ private fun AlimentNutrientsDetails(
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
             )
             
-            nutrientsData.filter { it.key in listOf("Protéines", "Lipides", "Glucides", "Fibres", "Cendres") }
+            nutrientsData.filter { it.key in listOf("Protéines", "Lipides", "Glucides", "Cellulose brute", "Cendres") }
                     .forEach { (nom, valeur) ->
                         NutrientRow(nom = nom, valeur = valeur, unit = "g")
                     }
@@ -469,4 +469,3 @@ private fun NutrientRow(
         )
     }
 }
-

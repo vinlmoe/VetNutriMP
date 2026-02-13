@@ -727,16 +727,15 @@ private fun obtenirOrdreNutrimentBase(nom: String): Int {
         "LIPIDE" -> 2
         "GLUCIDE" -> 3
         "ENA" -> 4
-        "FIBRE" -> 5
-        "CELLULOSE" -> 6
-        "CENDRE" -> 7
-        "ENERGIE" -> 8
-        "SUCRE" -> 9
-        "AMIDON" -> 10
-        "FIBRESOL" -> 11
-        "FIBRETOT" -> 12
-        "NDF" -> 13
-        "ADF" -> 14
+        "CELLULOSE" -> 5
+        "CENDRE" -> 6
+        "ENERGIE" -> 7
+        "SUCRE" -> 8
+        "AMIDON" -> 9
+        "FIBRESOL" -> 10
+        "FIBRETOT" -> 11
+        "NDF" -> 12
+        "ADF" -> 13
         else -> 999 // Pour les nutriments non définis dans l'enum
     }
 }
@@ -875,7 +874,6 @@ private fun determinerCategorieNutriment(nom: String, nutriment: Any): String {
                         "LIPIDE",
                         "GLUCIDE",
                         "ENA",
-                        "FIBRE",
                         "CELLULOSE",
                         "CENDRE",
                         "ENERGIE",

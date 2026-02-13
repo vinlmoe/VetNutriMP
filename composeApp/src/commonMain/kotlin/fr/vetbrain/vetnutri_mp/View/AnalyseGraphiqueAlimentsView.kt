@@ -249,7 +249,6 @@ private val NUTRIMENT_OPTIONS =
                 NutrimentOption("lipide", "Lipides", "g"),
                 NutrimentOption("glucide", "Glucides", "g"),
                 NutrimentOption("ena", "ENA", "g"),
-                NutrimentOption("fibre", "Fibres brutes", "g"),
                 NutrimentOption("cellulose", "Cellulose brute", "g"),
                 NutrimentOption("cendre", "Cendres", "g"),
                 NutrimentOption("energie", "Énergie", "kcal"),
@@ -382,7 +381,7 @@ private suspend fun AlimentAnalyseData.getNutrimentValue(
         "lipide" -> alimentRation.getNutrientWithComplementary(NutrientMain.LIPIDE, null, equationRepository, referenceEv) ?: 0.0
         "glucide" -> alimentRation.getNutrientWithComplementary(NutrientMain.GLUCIDE, null, equationRepository, referenceEv) ?: 0.0
         "ena" -> alimentRation.getNutrientWithComplementary(NutrientMain.ENA, null, equationRepository, referenceEv) ?: 0.0
-        "fibre" -> alimentRation.getNutrientWithComplementary(NutrientMain.FIBRE, null, equationRepository, referenceEv) ?: 0.0
+        "fibre" -> alimentRation.getNutrientWithComplementary(NutrientMain.CELLULOSE, null, equationRepository, referenceEv) ?: 0.0
         "cellulose" -> alimentRation.getNutrientWithComplementary(NutrientMain.CELLULOSE, null, equationRepository, referenceEv) ?: 0.0
         "cendre" -> alimentRation.getNutrientWithComplementary(NutrientMain.CENDRE, null, equationRepository, referenceEv) ?: 0.0
         "energie" -> alimentRation.getNutrientWithComplementary(NutrientMain.ENERGIE, null, equationRepository, referenceEv) ?: 0.0

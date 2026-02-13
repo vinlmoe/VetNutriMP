@@ -116,7 +116,7 @@ fun AnalyseSelectionAlimentsView(
             SortCriteria.PROTEIN -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE)
             SortCriteria.FAT -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.LIPIDE)
             SortCriteria.CARBOHYDRATE -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.GLUCIDE)
-            SortCriteria.FIBER -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.FIBRE)
+            SortCriteria.FIBER -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.CELLULOSE)
             SortCriteria.ENERGY -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE)
             SortCriteria.CALCIUM -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL)
             SortCriteria.PHOSPHORUS -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS)
@@ -291,9 +291,9 @@ fun AnalyseSelectionAlimentsView(
                 }
                 SortCriteria.FIBER -> {
                     if (filters.sortOrder == SortOrder.ASCENDING) {
-                        result.sortedBy { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.FIBRE, null) ?: 0.0 }
+                        result.sortedBy { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.CELLULOSE, null) ?: 0.0 }
                     } else {
-                        result.sortedByDescending { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.FIBRE, null) ?: 0.0 }
+                        result.sortedByDescending { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.CELLULOSE, null) ?: 0.0 }
                     }
                 }
                 SortCriteria.ENERGY -> {

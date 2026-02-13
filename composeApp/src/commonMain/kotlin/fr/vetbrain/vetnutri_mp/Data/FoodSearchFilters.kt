@@ -21,7 +21,7 @@ enum class SortCriteria(val displayName: String) {
         PROTEIN("Protéines"),
         FAT("Lipides"),
         CARBOHYDRATE("Glucides"),
-        FIBER("Fibres"),
+        FIBER("Cellulose"),
         ENERGY("Énergie"),
         CALCIUM("Calcium"),
         PHOSPHORUS("Phosphore")

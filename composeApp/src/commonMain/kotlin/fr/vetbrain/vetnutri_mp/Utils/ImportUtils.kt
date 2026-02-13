@@ -850,7 +850,6 @@ object ImportUtils {
                         "CENDRE",
                         "ENA",
                         "CELLULOSE",
-                        "FIBRE",
                         "AMIDON",
                         "SUCRE"
                 )
@@ -2147,7 +2146,7 @@ object ImportUtils {
             "PROTEIN" -> "PROTEINE"
             "LIPIDE", "LIPIDES", "FAT" -> "LIPIDE"
             "GLUCIDE", "GLUCIDES", "CARBOHYDRATE" -> "GLUCIDE"
-            "FIBRE", "FIBRES", "FIBER" -> "FIBRE"
+            "FIBRE", "FIBRES", "FIBER" -> "CELLULOSE"
             "CELLULOSE" -> "CELLULOSE"
             "AMIDON", "STARCH" -> "AMIDON"
             "SUCRE", "SUGAR" -> "SUCRE"
