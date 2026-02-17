@@ -132,7 +132,12 @@ data class ConsultationEntity(
         val referenceGeneraleId: String? = null,
         val referencesMaladiesJson: String? = null,
         val keywordsJson: String? = null,
-        val coefficientAjustement: Double = 1.0
+        val coefficientAjustement: Double = 1.0,
+        // Ordonnance: état sauvegardé par consultation
+        val prescriptionAdditionalText: String? = null,
+        val prescriptionSelectedConseilIdsJson: String? = null,
+        val prescriptionLocalHtmlSectionsJson: String? = null,
+        val prescriptionSelectedRationIdsJson: String? = null
 )
 
 @Serializable

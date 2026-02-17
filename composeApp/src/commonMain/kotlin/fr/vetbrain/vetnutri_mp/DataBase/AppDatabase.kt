@@ -39,7 +39,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ReferenceEvNutrientEntity::class,
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class],
-        version = 27,
+        version = 28,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -100,7 +100,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         // Migration 25→26 : Ajout des mots-clés pour les consultations
                         createMigration25to26(),
                         // Migration 26→27 : Ajout des champs de mise à jour et image produit
-                        createMigration26to27()
+                        createMigration26to27(),
+                        // Migration 27→28 : Ajout des champs ordonnance pour les consultations
+                        createMigration27to28()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -476,6 +478,34 @@ fun createMigration26to27(): Migration {
                 runStatementIgnoreIfExists(
                         connection,
                         "ALTER TABLE FOOD ADD COLUMN imageRef TEXT"
+                )
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 27 → 28 : Ajout des champs ordonnance pour les consultations */
+fun createMigration27to28(): Migration {
+    return object : Migration(27, 28) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionAdditionalText TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionSelectedConseilIdsJson TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionLocalHtmlSectionsJson TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionSelectedRationIdsJson TEXT"
                 )
             } catch (e: Exception) {
                 throw e

@@ -4,7 +4,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.uuid.ExperimentalUuidApi
-import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalUuidApi::class)
 data class AlimentRation(
@@ -144,7 +143,7 @@ data class AlimentRation(
                                                 null
                                         }
                                 selectedUuids.forEach { uuid ->
-                                        val eq = runBlocking { equationRepository.getEquationById(uuid) }
+                                        val eq = equationRepository.getEquationById(uuid)
                                         if (eq != null) {
                                                 val kindOk =
                                                         eq.kind ==
