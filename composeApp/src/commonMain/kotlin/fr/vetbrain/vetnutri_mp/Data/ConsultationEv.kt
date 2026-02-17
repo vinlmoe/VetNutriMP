@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.datetime.LocalDate
 
@@ -42,7 +43,12 @@ data class ConsultationEv(
         var referenceGeneraleId: String? = null,
         var referencesMaladies: MutableList<String> = mutableListOf(),
         var keywordIds: MutableList<String> = mutableListOf(),
-        var coefficientAjustement: Double = 1.0
+        var coefficientAjustement: Double = 1.0,
+        // Ordonnance: état sauvegardé par consultation
+        var prescriptionAdditionalText: String = "",
+        var prescriptionSelectedConseilIds: MutableList<String> = mutableListOf(),
+        var prescriptionLocalHtmlSections: MutableList<HtmlSection> = mutableListOf(),
+        var prescriptionSelectedRationIds: MutableList<String> = mutableListOf()
 ) {
 
         // Cache pour la propriété calculée

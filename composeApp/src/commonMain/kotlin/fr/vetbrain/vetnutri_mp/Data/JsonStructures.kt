@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
@@ -86,7 +87,12 @@ data class ConsultationEvJson(
         val ky: Double = 0.0,
         val newBE: Double = 0.0,
         val newRation: List<RationJson> = listOf(),
-        val keywords: List<String> = listOf()
+        val keywords: List<String> = listOf(),
+        // Ordonnance: état sauvegardé par consultation
+        val prescriptionAdditionalText: String = "",
+        val prescriptionSelectedConseilIds: List<String> = listOf(),
+        val prescriptionLocalHtmlSections: List<HtmlSection> = listOf(),
+        val prescriptionSelectedRationIds: List<String> = listOf()
 )
 
 /** Structure JSON pour BiblioRef */

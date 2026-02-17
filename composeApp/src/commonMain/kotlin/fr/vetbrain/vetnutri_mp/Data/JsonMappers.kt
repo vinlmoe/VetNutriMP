@@ -363,7 +363,11 @@ fun ConsultationEv.toJson(): ConsultationEvJson {
             rationList = this.rations.associateBy({ it.uuid }, { it.toJson() }),
             diseaseRef = listOf(), // Non présent dans ConsultationEv
             svp = this.suppVarp.map { it.toJson() },
-            keywords = this.keywordIds
+            keywords = this.keywordIds,
+            prescriptionAdditionalText = this.prescriptionAdditionalText,
+            prescriptionSelectedConseilIds = this.prescriptionSelectedConseilIds,
+            prescriptionLocalHtmlSections = this.prescriptionLocalHtmlSections,
+            prescriptionSelectedRationIds = this.prescriptionSelectedRationIds
     )
 }
 
@@ -388,7 +392,11 @@ fun ConsultationEvJson.toData(): ConsultationEv {
             k5Value = this.k5value,
             suppVarp = this.svp.map { it.toData() }.toMutableList(),
             rations = this.rationList.values.map { it.toData() }.toMutableList(),
-            keywordIds = this.keywords.toMutableList()
+            keywordIds = this.keywords.toMutableList(),
+            prescriptionAdditionalText = this.prescriptionAdditionalText,
+            prescriptionSelectedConseilIds = this.prescriptionSelectedConseilIds.toMutableList(),
+            prescriptionLocalHtmlSections = this.prescriptionLocalHtmlSections.toMutableList(),
+            prescriptionSelectedRationIds = this.prescriptionSelectedRationIds.toMutableList()
     )
 }
 

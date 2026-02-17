@@ -58,6 +58,8 @@ import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Service.JsonShareService
 import fr.vetbrain.vetnutri_mp.Service.ShareOptions
@@ -810,7 +812,83 @@ private fun WideScreenLayout(
         var isLoadingConseils by remember { mutableStateOf(true) }
         var searchQuery by remember { mutableStateOf("") }
         var showSearchDialog by remember { mutableStateOf(false) }
+        var additionalText by remember { mutableStateOf("") }
+        val selectedConsultation by viewModel.selectedConsultation.collectAsState()
+        var selectedRationIdsForPrescription by remember(selectedConsultation?.uuid) {
+                val initialSelection: Set<String> =
+                        selectedConsultation?.rations
+                                ?.filter { ration: Ration -> !ration.actual }
+                                ?.map { ration: Ration -> ration.uuid }
+                                ?.toSet() ?: emptySet()
+                mutableStateOf(initialSelection)
+        }
+        var savePrescriptionJob by remember(selectedConsultation?.uuid) {
+                mutableStateOf<Job?>(null)
+        }
 
+        fun schedulePrescriptionSave() {
+                val consultation = selectedConsultation ?: return
+                savePrescriptionJob?.cancel()
+                savePrescriptionJob =
+                        scope.launch {
+                                delay(400)
+                                val updatedConsultation =
+                                        consultation.copy(
+                                                prescriptionAdditionalText = additionalText,
+                                                prescriptionSelectedConseilIds =
+                                                        selectedConseils
+                                                                .map { it.id }
+                                                                .toMutableList(),
+                                                prescriptionLocalHtmlSections =
+                                                        localHtmlSections.toMutableList(),
+                                                prescriptionSelectedRationIds =
+                                                        selectedRationIdsForPrescription
+                                                                .toMutableList()
+                                        )
+                                if (updatedConsultation != consultation) {
+                                        viewModel.updateConsultation(updatedConsultation)
+                                }
+                        }
+        }
+
+        LaunchedEffect(selectedConsultation?.uuid) {
+                val consultation = selectedConsultation
+                if (consultation == null) {
+                        additionalText = ""
+                        localHtmlSections = emptyList()
+                        selectedConseils = emptyList()
+                        selectedRationIdsForPrescription = emptySet()
+                        return@LaunchedEffect
+                }
+                additionalText = consultation.prescriptionAdditionalText
+                localHtmlSections = consultation.prescriptionLocalHtmlSections
+                if (consultation.prescriptionSelectedRationIds.isNotEmpty()) {
+                        selectedRationIdsForPrescription =
+                                consultation.prescriptionSelectedRationIds.toSet()
+                }
+                val selectedConseilIds =
+                        consultation.prescriptionSelectedConseilIds.toSet()
+                selectedConseils =
+                        if (selectedConseilIds.isEmpty()) {
+                                emptyList()
+                        } else {
+                                availableConseils.filter { it.id in selectedConseilIds }
+                        }
+        }
+
+        LaunchedEffect(availableConseils, selectedConsultation?.uuid) {
+                val consultation = selectedConsultation ?: return@LaunchedEffect
+                if (selectedConseils.isNotEmpty()) {
+                        return@LaunchedEffect
+                }
+                if (consultation.prescriptionSelectedConseilIds.isEmpty()) {
+                        return@LaunchedEffect
+                }
+                val selectedConseilIds =
+                        consultation.prescriptionSelectedConseilIds.toSet()
+                selectedConseils =
+                        availableConseils.filter { it.id in selectedConseilIds }
+        }
         // Charger les conseils personnalisés
         LaunchedEffect(Unit) {
                 try {
@@ -830,9 +908,6 @@ private fun WideScreenLayout(
                 mutableStateOf(false)
         }
         var previewHtml by remember {
-                mutableStateOf("")
-        }
-        var additionalText by remember {
                 mutableStateOf("")
         }
         
@@ -1345,23 +1420,12 @@ private fun WideScreenLayout(
                                         }
                                 }
                                 AnimalDetailSection.EXPORT -> {
-                                        val selectedConsultation by
-                                                viewModel.selectedConsultation.collectAsState()
                                         val selectedRation by
                                                 viewModel.selectedRation.collectAsState()
                                         val referenceUtilisee by
                                                 viewModel.referenceUtilisee.collectAsState()
                                         val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
                                         val poidsMetabolique by viewModel.poidsMetabolique.collectAsState()
-                                        var selectedRationIdsForPrescription by remember(selectedConsultation?.uuid) {
-                                                val initialSelection: Set<String> =
-                                                        selectedConsultation?.rations
-                                                                ?.filter { ration: Ration -> !ration.actual }
-                                                                ?.map { ration: Ration -> ration.uuid }
-                                                                ?.toSet() ?: emptySet()
-                                                mutableStateOf(initialSelection)
-                                        }
-
                                         if (showRichTextEditor) {
                                                 // Éditeur de texte enrichi
                                                 Column(modifier = Modifier.fillMaxSize()) {
@@ -1457,6 +1521,7 @@ private fun WideScreenLayout(
                                                                                 localHtmlSections =
                                                                                         localHtmlSections +
                                                                                                 newSection
+                                                                                schedulePrescriptionSave()
                                                                                 currentHtmlContent =
                                                                                         fr.vetbrain
                                                                                                 .vetnutri_mp
@@ -1554,6 +1619,7 @@ private fun WideScreenLayout(
                                                                                                         selectedRationIdsForPrescription -
                                                                                                                 ration.uuid
                                                                                                 }
+                                                                                        schedulePrescriptionSave()
                                                                                 }
                                                                         )
                                                                         Spacer(
@@ -1688,6 +1754,7 @@ private fun WideScreenLayout(
                                                                                                                                         it.id !=
                                                                                                                                                 conseil.id
                                                                                                                                 }
+                                                                                                                schedulePrescriptionSave()
                                                                                                         },
                                                                                                         imageVector = Icons.Default.Delete,
                                                                                                         contentDescription = translate(General.DELETE),
@@ -1822,6 +1889,7 @@ private fun WideScreenLayout(
                                                                                                                                         it.id !=
                                                                                                                                                 section.id
                                                                                                                                 }
+                                                                                                                schedulePrescriptionSave()
                                                                                                         },
                                                                                                         imageVector = Icons.Default.Delete,
                                                                                                         contentDescription = translate(General.DELETE),
@@ -1882,6 +1950,7 @@ private fun WideScreenLayout(
                                                                 value = additionalText,
                                                                 onValueChange = {
                                                                         additionalText = it
+                                                                        schedulePrescriptionSave()
                                                                 },
                                                                 modifier = Modifier.fillMaxWidth(),
                                                                 label = {
@@ -2175,6 +2244,7 @@ private fun WideScreenLayout(
                                                                                                                 selectedConseils =
                                                                                                                         selectedConseils +
                                                                                                                                 conseil
+                                                                                                                schedulePrescriptionSave()
                                                                                                         },
                                                                                                         imageVector = Icons.Default.Add,
                                                                                                         contentDescription = translate(General.ADD),
@@ -2249,7 +2319,83 @@ private fun NarrowScreenLayout(
         var isLoadingConseils by remember { mutableStateOf(true) }
         var searchQuery by remember { mutableStateOf("") }
         var showSearchDialog by remember { mutableStateOf(false) }
+        var additionalText by remember { mutableStateOf("") }
+        val selectedConsultation by viewModel.selectedConsultation.collectAsState()
+        var selectedRationIdsForPrescription by remember(selectedConsultation?.uuid) {
+                val initialSelection: Set<String> =
+                        selectedConsultation?.rations
+                                ?.filter { ration: Ration -> !ration.actual }
+                                ?.map { ration: Ration -> ration.uuid }
+                                ?.toSet() ?: emptySet()
+                mutableStateOf(initialSelection)
+        }
+        var savePrescriptionJob by remember(selectedConsultation?.uuid) {
+                mutableStateOf<Job?>(null)
+        }
 
+        fun schedulePrescriptionSave() {
+                val consultation = selectedConsultation ?: return
+                savePrescriptionJob?.cancel()
+                savePrescriptionJob =
+                        scope.launch {
+                                delay(400)
+                                val updatedConsultation =
+                                        consultation.copy(
+                                                prescriptionAdditionalText = additionalText,
+                                                prescriptionSelectedConseilIds =
+                                                        selectedConseils
+                                                                .map { it.id }
+                                                                .toMutableList(),
+                                                prescriptionLocalHtmlSections =
+                                                        localHtmlSections.toMutableList(),
+                                                prescriptionSelectedRationIds =
+                                                        selectedRationIdsForPrescription
+                                                                .toMutableList()
+                                        )
+                                if (updatedConsultation != consultation) {
+                                        viewModel.updateConsultation(updatedConsultation)
+                                }
+                        }
+        }
+
+        LaunchedEffect(selectedConsultation?.uuid) {
+                val consultation = selectedConsultation
+                if (consultation == null) {
+                        additionalText = ""
+                        localHtmlSections = emptyList()
+                        selectedConseils = emptyList()
+                        selectedRationIdsForPrescription = emptySet()
+                        return@LaunchedEffect
+                }
+                additionalText = consultation.prescriptionAdditionalText
+                localHtmlSections = consultation.prescriptionLocalHtmlSections
+                if (consultation.prescriptionSelectedRationIds.isNotEmpty()) {
+                        selectedRationIdsForPrescription =
+                                consultation.prescriptionSelectedRationIds.toSet()
+                }
+                val selectedConseilIds =
+                        consultation.prescriptionSelectedConseilIds.toSet()
+                selectedConseils =
+                        if (selectedConseilIds.isEmpty()) {
+                                emptyList()
+                        } else {
+                                availableConseils.filter { it.id in selectedConseilIds }
+                        }
+        }
+
+        LaunchedEffect(availableConseils, selectedConsultation?.uuid) {
+                val consultation = selectedConsultation ?: return@LaunchedEffect
+                if (selectedConseils.isNotEmpty()) {
+                        return@LaunchedEffect
+                }
+                if (consultation.prescriptionSelectedConseilIds.isEmpty()) {
+                        return@LaunchedEffect
+                }
+                val selectedConseilIds =
+                        consultation.prescriptionSelectedConseilIds.toSet()
+                selectedConseils =
+                        availableConseils.filter { it.id in selectedConseilIds }
+        }
         // Charger les conseils personnalisés
         LaunchedEffect(Unit) {
                 try {
@@ -2269,9 +2415,6 @@ private fun NarrowScreenLayout(
                 mutableStateOf(false)
         }
         var previewHtml by remember {
-                mutableStateOf("")
-        }
-        var additionalText by remember {
                 mutableStateOf("")
         }
 
@@ -2889,9 +3032,6 @@ private fun NarrowScreenLayout(
                                                         }
                                                 }
                                                 AnimalDetailSection.EXPORT -> {
-                                                        val selectedConsultation by
-                                                                viewModel.selectedConsultation
-                                                                        .collectAsState()
                                                         val selectedRation by
                                                                 viewModel.selectedRation
                                                                         .collectAsState()
@@ -2900,23 +3040,11 @@ private fun NarrowScreenLayout(
                                                                         .collectAsState()
                                                         val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
                                                         val poidsMetabolique by viewModel.poidsMetabolique.collectAsState()
-                                                        var selectedRationIdsForPrescription by remember(selectedConsultation?.uuid) {
-                                                                val initialSelection: Set<String> =
-                                                                        selectedConsultation?.rations
-                                                                                ?.filter { ration: Ration -> !ration.actual }
-                                                                                ?.map { ration: Ration -> ration.uuid }
-                                                                                ?.toSet() ?: emptySet()
-                                                                mutableStateOf(initialSelection)
-                                                        }
-
                                                         // Variables pour la prévisualisation et l'export
                                                         var showPreview by remember {
                                                                 mutableStateOf(false)
                                                         }
                                                         var previewHtml by remember {
-                                                                mutableStateOf("")
-                                                        }
-                                                        var additionalText by remember {
                                                                 mutableStateOf("")
                                                         }
 
@@ -3052,10 +3180,11 @@ private fun NarrowScreenLayout(
                                                                                                                                         .SectionCategory
                                                                                                                                         .CUSTOM
                                                                                                                 )
-                                                                                                // Ajouter à la liste des conseils disponibles
-                                                                                                availableConseils =
-                                                                                                        availableConseils +
+                                                                                                // Ajouter à la liste des sections HTML locales
+                                                                                                localHtmlSections =
+                                                                                                        localHtmlSections +
                                                                                                                 newSection
+                                                                                                schedulePrescriptionSave()
                                                                                                 currentHtmlContent =
                                                                                                         fr.vetbrain
                                                                                                                 .vetnutri_mp
@@ -3168,6 +3297,7 @@ private fun NarrowScreenLayout(
                                                                                                                         selectedRationIdsForPrescription -
                                                                                                                                 ration.uuid
                                                                                                                 }
+                                                                                                        schedulePrescriptionSave()
                                                                                                 }
                                                                                         )
                                                                                         Spacer(
@@ -3304,14 +3434,15 @@ private fun NarrowScreenLayout(
                                                                                                                                 )
                                                                                                                         }
                                                                                                                         IconButtonWithTooltip(
-                                                                                                                                onClick = {
-                                                                                                                                        selectedConseils =
-                                                                                                                                                selectedConseils
-                                                                                                                                                        .filter {
-                                                                                                                                                                it.id !=
-                                                                                                                                                                        conseil.id
-                                                                                                                                                        }
-                                                                                                                                },
+                                                                                                                                        onClick = {
+                                                                                                                                                selectedConseils =
+                                                                                                                                                        selectedConseils
+                                                                                                                                                                .filter {
+                                                                                                                                                                        it.id !=
+                                                                                                                                                                                conseil.id
+                                                                                                                                                                }
+                                                                                                                                                schedulePrescriptionSave()
+                                                                                                                                        },
                                                                                                                                 imageVector = Icons.Default.Delete,
                                                                                                                                 contentDescription = translate(General.DELETE),
                                                                                                                                 tooltip = translate(General.DELETE),
@@ -3454,14 +3585,15 @@ private fun NarrowScreenLayout(
                                                                                                                                 )
                                                                                                                         }
                                                                                                                         IconButtonWithTooltip(
-                                                                                                                                onClick = {
-                                                                                                                                        localHtmlSections =
-                                                                                                                                                localHtmlSections
-                                                                                                                                                        .filter {
-                                                                                                                                                                it.id !=
-                                                                                                                                                                        section.id
-                                                                                                                                                        }
-                                                                                                                                },
+                                                                                                        onClick = {
+                                                                                                                localHtmlSections =
+                                                                                                                        localHtmlSections
+                                                                                                                                .filter {
+                                                                                                                                        it.id !=
+                                                                                                                                                section.id
+                                                                                                                                }
+                                                                                                                schedulePrescriptionSave()
+                                                                                                        },
                                                                                                                                 imageVector = Icons.Default.Delete,
                                                                                                                                 contentDescription = translate(General.DELETE),
                                                                                                                                 tooltip = translate(General.DELETE),
@@ -3525,6 +3657,7 @@ private fun NarrowScreenLayout(
                                                                                 value = additionalText,
                                                                                 onValueChange = {
                                                                                         additionalText = it
+                                                                                        schedulePrescriptionSave()
                                                                                 },
                                                                                 modifier = Modifier.fillMaxWidth(),
                                                                                 label = {
@@ -3773,6 +3906,7 @@ private fun NarrowScreenLayout(
                                                                                                                 selectedConseils =
                                                                                                                         selectedConseils +
                                                                                                                                 conseil
+                                                                                                                schedulePrescriptionSave()
                                                                                                         },
                                                                                                         imageVector = Icons.Default.Add,
                                                                                                         contentDescription = translate(General.ADD),

@@ -8,7 +8,16 @@ import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+private val consultationPrescriptionJson = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+}
 
 object Mappers {
         // Animal Mappers avec relations
@@ -103,7 +112,21 @@ object Mappers {
                                 referenceGeneraleId = this.referenceGeneraleId,
                                 referencesMaladiesJson = this.referencesMaladies.joinToString(","),
                                 keywordsJson = this.keywordIds.joinToString(","),
-                                coefficientAjustement = this.coefficientAjustement
+                                coefficientAjustement = this.coefficientAjustement,
+                                prescriptionAdditionalText =
+                                        this.prescriptionAdditionalText.ifBlank { "" },
+                                prescriptionSelectedConseilIdsJson =
+                                        consultationPrescriptionJson.encodeToString(
+                                                this.prescriptionSelectedConseilIds
+                                        ),
+                                prescriptionLocalHtmlSectionsJson =
+                                        consultationPrescriptionJson.encodeToString(
+                                                this.prescriptionLocalHtmlSections
+                                        ),
+                                prescriptionSelectedRationIdsJson =
+                                        consultationPrescriptionJson.encodeToString(
+                                                this.prescriptionSelectedRationIds
+                                        )
                         )
                         .apply {
                                 if (includeRelations) {
@@ -127,6 +150,51 @@ object Mappers {
                 rations: List<RationEntity> = emptyList(),
                 suppVars: List<SupplementalVariableEntity> = emptyList()
         ): ConsultationEv {
+                val prescriptionSelectedConseilIds: MutableList<String> =
+                        try {
+                                if (!this.prescriptionSelectedConseilIdsJson.isNullOrBlank()) {
+                                        consultationPrescriptionJson
+                                                .decodeFromString<List<String>>(
+                                                        this.prescriptionSelectedConseilIdsJson
+                                                )
+                                                .toMutableList()
+                                } else {
+                                        mutableListOf()
+                                }
+                        } catch (_: Exception) {
+                                mutableListOf()
+                        }
+
+                val prescriptionLocalHtmlSections: MutableList<HtmlSection> =
+                        try {
+                                if (!this.prescriptionLocalHtmlSectionsJson.isNullOrBlank()) {
+                                        consultationPrescriptionJson
+                                                .decodeFromString<List<HtmlSection>>(
+                                                        this.prescriptionLocalHtmlSectionsJson
+                                                )
+                                                .toMutableList()
+                                } else {
+                                        mutableListOf()
+                                }
+                        } catch (_: Exception) {
+                                mutableListOf()
+                        }
+
+                val prescriptionSelectedRationIds: MutableList<String> =
+                        try {
+                                if (!this.prescriptionSelectedRationIdsJson.isNullOrBlank()) {
+                                        consultationPrescriptionJson
+                                                .decodeFromString<List<String>>(
+                                                        this.prescriptionSelectedRationIdsJson
+                                                )
+                                                .toMutableList()
+                                } else {
+                                        mutableListOf()
+                                }
+                        } catch (_: Exception) {
+                                mutableListOf()
+                        }
+
                 return ConsultationEv(
                         uuid = this.uuid,
                         idAnim = this.idAnim,
@@ -181,7 +249,11 @@ object Mappers {
                                 } else {
                                         mutableListOf()
                                 },
-                        coefficientAjustement = this.coefficientAjustement
+                        coefficientAjustement = this.coefficientAjustement,
+                        prescriptionAdditionalText = this.prescriptionAdditionalText ?: "",
+                        prescriptionSelectedConseilIds = prescriptionSelectedConseilIds,
+                        prescriptionLocalHtmlSections = prescriptionLocalHtmlSections,
+                        prescriptionSelectedRationIds = prescriptionSelectedRationIds
                 )
         }
 

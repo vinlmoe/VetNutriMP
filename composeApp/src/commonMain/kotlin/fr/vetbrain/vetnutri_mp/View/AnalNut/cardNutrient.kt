@@ -31,7 +31,8 @@ import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRation
 import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import io.github.koalaplot.core.pie.PieChart
 import io.github.koalaplot.core.pie.DefaultSlice
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
@@ -133,56 +134,71 @@ fun AnalyseNutritionnelleCard(
                 }
     }
 
-    val valeursNutritionnellesBase =
-            if (afficherTousLesNutriments ||
-                            nutrimentsSelectionnes == null ||
-                            nutrimentsSelectionnes.isEmpty()
+    var valeursNutritionnellesBase by remember {
+        mutableStateOf<Map<String, ValeurNutritionnelle>>(emptyMap())
+    }
+
+    var valeursNutritionnellesLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(
+        afficherTousLesNutriments,
+        nutrimentsSelectionnes,
+        ration,
+        referenceUtilisee,
+        equationRepository,
+        animal,
+        preferencesRepository
+    ) {
+        valeursNutritionnellesLoading = true
+
+        val shouldUseEquations = referenceUtilisee != null && equationRepository != null
+
+        val preferencesEspece = if (shouldUseEquations) {
+            if (animal != null && preferencesRepository != null) {
+                withContext(Dispatchers.IO) {
+                    preferencesRepository.getPreferencesForSpecies(animal.getEspece())
+                }
+            } else {
+                PreferencesEspece()
+            }
+        } else {
+            null
+        }
+
+        val resultat = withContext(Dispatchers.Default) {
+            if (
+                afficherTousLesNutriments ||
+                nutrimentsSelectionnes == null ||
+                nutrimentsSelectionnes.isEmpty()
             ) {
-                // Utiliser les équations complémentaires depuis la ReferenceEv si disponible
-                if (referenceUtilisee != null && equationRepository != null) {
-                    // Créer les préférences de l'espèce à partir de l'animal
-                    val preferencesEspece = animal?.let { 
-                        runBlocking { preferencesRepository?.getPreferencesForSpecies(it.getEspece()) }
-                    } ?: PreferencesEspece()
-                    
-                    
-                    val resultat = runBlocking {
-                        fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations(
-                                ration = ration,
-                                preferencesEspece = preferencesEspece,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceUtilisee
-                        )
-                    }
-                    resultat
+                if (shouldUseEquations && preferencesEspece != null) {
+                    fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations(
+                        ration = ration,
+                        preferencesEspece = preferencesEspece,
+                        equationRepository = equationRepository,
+                        referenceEv = referenceUtilisee
+                    )
                 } else {
                     analyserValeursNutritionnellesRation(ration)
                 }
             } else {
-                // Mode filtré: intégrer aussi les équations si disponibles via la ReferenceEv
-                if (referenceUtilisee != null && equationRepository != null) {
-                    // Créer les préférences de l'espèce à partir de l'animal
-                    val preferencesEspece = animal?.let { 
-                        runBlocking { preferencesRepository?.getPreferencesForSpecies(it.getEspece()) }
-                    } ?: PreferencesEspece()
-                    
-                    
-                    val resultat = runBlocking {
-                        fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
-                                ration = ration,
-                                nutrimentsSelectionnes = nutrimentsSelectionnes,
-                                preferencesEspece = preferencesEspece,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceUtilisee
-                        )
-                    }
-                    resultat
+                if (shouldUseEquations && preferencesEspece != null) {
+                    fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
+                        ration = ration,
+                        nutrimentsSelectionnes = nutrimentsSelectionnes,
+                        preferencesEspece = preferencesEspece,
+                        equationRepository = equationRepository,
+                        referenceEv = referenceUtilisee
+                    )
                 } else {
-                    runBlocking {
-                        analyserValeursNutritionnellesRationSelective(ration, nutrimentsSelectionnes)
-                    }
+                    analyserValeursNutritionnellesRationSelective(ration, nutrimentsSelectionnes)
                 }
             }
+        }
+
+        valeursNutritionnellesBase = resultat
+        valeursNutritionnellesLoading = false
+    }
 
     // Les équations complémentaires sont déjà appliquées dans analyserValeursNutritionnellesRationAvecEquations
     // via getNutrientWithComplementary, donc on utilise directement les valeurs de base
@@ -207,6 +223,15 @@ fun AnalyseNutritionnelleCard(
                 modifier = Modifier.fillMaxSize().padding(AppSizes.paddingSmall),
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
         ) {
+            if (valeursNutritionnellesLoading) {
+                Box(
+                        modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingSmall),
+                        contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+                return@Column
+            }
             var afficherBullet by remember { mutableStateOf(false) }
             // En-tête avec titre et bouton toggle
             Row(
