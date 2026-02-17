@@ -169,7 +169,7 @@ fun TooltipArea(
 }
 
 @Composable
-private fun TooltipPopup(
+fun TooltipBubble(
     text: String,
     onDismiss: () -> Unit
 ) {
@@ -195,4 +195,12 @@ private fun TooltipPopup(
             )
         }
     }
+}
+
+@Composable
+private fun TooltipPopup(
+    text: String,
+    onDismiss: () -> Unit
+) {
+    TooltipBubble(text = text, onDismiss = onDismiss)
 }
