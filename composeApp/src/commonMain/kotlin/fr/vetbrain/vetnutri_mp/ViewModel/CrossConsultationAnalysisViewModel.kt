@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import kotlin.math.pow
 
 /**
  * Sélection/filtrage de consultations multi-animaux pour analyse croisée (phase 1).
@@ -63,18 +64,27 @@ class CrossConsultationAnalysisViewModel(
             val name: String,
             val actual: Boolean,
             val quantity: Double,
+            val energyTotalKcal: Double,
             val energyDensity: Double,
             val beeKcal: Double?,
+            val animalWeightKg: Double,
+            val animalMetabolicWeightKg: Double,
             val proteins: Double,
             val lipids: Double,
             val ratioCaP: Double,
             val ratioOmega6Omega3: Double,
             val nutrientValues: Map<String, Double>,
             val ratioValues: Map<String, Double>,
+            val ingredients: List<IngredientSummary>,
             val animalName: String,
             val consultationDate: String,
             val referenceLabel: String?,
             val speciesLabel: String
+    )
+
+    data class IngredientSummary(
+            val name: String,
+            val quantity: Double
     )
 
     data class SelectionSummary(
@@ -271,6 +281,12 @@ class CrossConsultationAnalysisViewModel(
 
                     val qty = ration.getQuantiteTotale()
                     val energyTotalKcal = energyDensity * qty / 100.0
+                    val weightKg =
+                            consultation.effectiveWeight?.toDouble()
+                                    ?: consultation.weight?.toDouble()
+                                    ?: 0.0
+                    val metabolicWeight =
+                            if (weightKg > 0.0) weightKg.pow(0.75) else 0.0
                     val proteinsPerMcal =
                             if (beeKcal != null && beeKcal > 0) proteins / (beeKcal / 1000.0)
                             else if (energyTotalKcal > 0) proteins / energyTotalKcal * 1000.0
@@ -279,6 +295,15 @@ class CrossConsultationAnalysisViewModel(
                             if (beeKcal != null && beeKcal > 0) lipids / (beeKcal / 1000.0)
                             else if (energyTotalKcal > 0) lipids / energyTotalKcal * 1000.0
                             else 0.0
+                    val ingredientSummaries =
+                            ration.alimentMutableList.map { alimentRation ->
+                                IngredientSummary(
+                                        name =
+                                                alimentRation.aliment?.nom
+                                                        ?: "Aliment sans nom",
+                                        quantity = alimentRation.quantite
+                                )
+                            }
 
                     RationSummary(
                             rationId = ration.uuid,
@@ -288,14 +313,18 @@ class CrossConsultationAnalysisViewModel(
                                     },
                             actual = ration.actual,
                             quantity = ration.getQuantiteTotale(),
+                            energyTotalKcal = energyTotalKcal,
                             energyDensity = energyDensity,
                             beeKcal = beeKcal,
+                            animalWeightKg = weightKg,
+                            animalMetabolicWeightKg = metabolicWeight,
                             proteins = proteins,
                             lipids = lipids,
                             ratioCaP = ratioCaP,
                             ratioOmega6Omega3 = ratioOmega,
                             nutrientValues = nutrientValues,
                             ratioValues = ratioValues,
+                            ingredients = ingredientSummaries,
                             animalName = animal.nom.ifBlank { "Animal sans nom" },
                             consultationDate = dateLabel,
                             referenceLabel = refLabel,
