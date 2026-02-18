@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
@@ -262,6 +263,7 @@ fun RationsView(
 
         // Scope pour les coroutines locales dans le composable
         val coroutineScope = rememberCoroutineScope()
+        val focusManager = LocalFocusManager.current
 
         // États pour les dialogues de section agrandie
         var showMetabolicValuesDialog by remember { mutableStateOf(false) }
@@ -755,6 +757,9 @@ fun RationsView(
                                                                                                                                 selectedRation
                                                                                                                                         ?.uuid,
                                                                                                                 onClick = {
+                                                                                                                        focusManager.clearFocus(
+                                                                                                                                force = true
+                                                                                                                        )
                                                                                                                         viewModel
                                                                                                                                 .selectRation(
                                                                                                                                         ration
@@ -1244,6 +1249,9 @@ fun RationsView(
                                                                                                                 selectedRation
                                                                                                                         ?.uuid,
                                                                                                 onClick = {
+                                                                                                        focusManager.clearFocus(
+                                                                                                                force = true
+                                                                                                        )
                                                                                                         viewModel
                                                                                                                 .selectRation(
                                                                                                                         ration

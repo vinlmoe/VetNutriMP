@@ -102,6 +102,24 @@ interface ConsultationDao {
 }
 
 @Dao
+interface ExamGradingDao {
+        @Query("SELECT * FROM EXAM_GRADING_RULES WHERE examId = :examId AND exerciseId = :exerciseId")
+        suspend fun getRule(examId: String, exerciseId: String): ExamGradingRuleEntity?
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsertRule(rule: ExamGradingRuleEntity)
+
+        @Query("SELECT * FROM EXAM_GRADES WHERE examId = :examId AND exerciseId = :exerciseId")
+        suspend fun getGrades(examId: String, exerciseId: String): List<ExamGradeEntity>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsertGrades(grades: List<ExamGradeEntity>)
+
+        @Query("DELETE FROM EXAM_GRADES WHERE examId = :examId AND exerciseId = :exerciseId")
+        suspend fun deleteGrades(examId: String, exerciseId: String)
+}
+
+@Dao
 interface RecipeDao {
         @Insert suspend fun insertRecipe(recipe: RecetteEntity)
         @Update suspend fun updateRecipe(recipe: RecetteEntity)

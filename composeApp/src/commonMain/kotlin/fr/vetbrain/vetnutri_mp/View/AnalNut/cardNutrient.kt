@@ -223,6 +223,7 @@ fun AnalyseNutritionnelleCard(
                 modifier = Modifier.fillMaxSize().padding(AppSizes.paddingSmall),
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
         ) {
+            var afficherBullet by remember { mutableStateOf(false) }
             if (valeursNutritionnellesLoading) {
                 Box(
                         modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingSmall),
@@ -230,138 +231,136 @@ fun AnalyseNutritionnelleCard(
                 ) {
                     CircularProgressIndicator()
                 }
-                return@Column
-            }
-            var afficherBullet by remember { mutableStateOf(false) }
-            // En-tête avec titre et bouton toggle
-            Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                            text =
-                                    titleOverride
-                                            ?: translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE),
-                            style = MaterialTheme.typography.subtitle1,
-                            fontWeight = FontWeight.Bold,
-                            color = VetNutriColors.Primary
-                    )
+            } else {
+                // En-tête avec titre et bouton toggle
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                                text =
+                                        titleOverride
+                                                ?: translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE),
+                                style = MaterialTheme.typography.subtitle1,
+                                fontWeight = FontWeight.Bold,
+                                color = VetNutriColors.Primary
+                        )
 
-                    // Indicateur des préférences d'affichage
-                    if (showDisplayModeText) {
-                        finalTypeExpressionBesoin?.let { typeExpr ->
-                            Text(
-                                    text = translate(LocalizationKeys.AnalNut.DISPLAY_MODE, typeExpr.displayName),
-                                    style = MaterialTheme.typography.caption,
-                                    color =
-                                            if (preferencesLoaded) VetNutriColors.Primary
-                                            else VetNutriColors.Error,
-                                    modifier = Modifier.padding(top = 2.dp)
+                        // Indicateur des préférences d'affichage
+                        if (showDisplayModeText) {
+                            finalTypeExpressionBesoin?.let { typeExpr ->
+                                Text(
+                                        text = translate(LocalizationKeys.AnalNut.DISPLAY_MODE, typeExpr.displayName),
+                                        style = MaterialTheme.typography.caption,
+                                        color =
+                                                if (preferencesLoaded) VetNutriColors.Primary
+                                                else VetNutriColors.Error,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+                    ) {
+                        headerActions()
+                        Text(
+                                text = if (afficherTousLesNutriments) translate(LocalizationKeys.AnalNut.ALL) else translate(LocalizationKeys.AnalNut.SELECTED),
+                                style = MaterialTheme.typography.caption,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+
+                        IconButton(
+                                onClick = { afficherTousLesNutriments = !afficherTousLesNutriments },
+                                modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                    imageVector =
+                                            if (afficherTousLesNutriments) Icons.Filled.ToggleOn
+                                            else Icons.Filled.ToggleOff,
+                                    contentDescription =
+                                            if (afficherTousLesNutriments)
+                                                    translate(LocalizationKeys.AnalNut.SHOW_SELECTED_ONLY)
+                                            else translate(LocalizationKeys.AnalNut.SHOW_ALL),
+                                    tint =
+                                            if (afficherTousLesNutriments) VetNutriColors.Primary
+                                            else MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        // Toggle d'affichage BulletGraph
+                        Text(
+                                text = if (afficherBullet) translate(LocalizationKeys.AnalNut.BULLET_VIEW) else translate(LocalizationKeys.AnalNut.CARDS_VIEW),
+                                style = MaterialTheme.typography.caption,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+                        IconButton(
+                                onClick = { afficherBullet = !afficherBullet },
+                                modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                    imageVector =
+                                            if (afficherBullet) Icons.Filled.ToggleOn
+                                            else Icons.Filled.ToggleOff,
+                                    contentDescription =
+                                            if (afficherBullet) translate(LocalizationKeys.AnalNut.SHOW_CARDS)
+                                            else translate(LocalizationKeys.AnalNut.SHOW_BULLETS),
+                                    tint =
+                                            if (afficherBullet) VetNutriColors.Primary
+                                            else MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(24.dp)
                             )
                         }
                     }
                 }
 
-                Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+                // Liste avec titres de section et grilles de nutriments
+                LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        modifier =
+                                if (isLargeView) {
+                                    // En vue large, utiliser une hauteur adaptative basée sur l'espace
+                                    // disponible
+                                    Modifier.fillMaxWidth().fillMaxHeight()
+                                } else {
+                                    // En vue compacte, utiliser une hauteur fixe pour éviter les
+                                    // conflits de scroll
+                                    Modifier.fillMaxWidth().height(400.dp)
+                                }
                 ) {
-                    headerActions()
-                    Text(
-                            text = if (afficherTousLesNutriments) translate(LocalizationKeys.AnalNut.ALL) else translate(LocalizationKeys.AnalNut.SELECTED),
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                    )
-
-                    IconButton(
-                            onClick = { afficherTousLesNutriments = !afficherTousLesNutriments },
-                            modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                                imageVector =
-                                        if (afficherTousLesNutriments) Icons.Filled.ToggleOn
-                                        else Icons.Filled.ToggleOff,
-                                contentDescription =
-                                        if (afficherTousLesNutriments)
-                                                translate(LocalizationKeys.AnalNut.SHOW_SELECTED_ONLY)
-                                        else translate(LocalizationKeys.AnalNut.SHOW_ALL),
-                                tint =
-                                        if (afficherTousLesNutriments) VetNutriColors.Primary
-                                        else MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
-                                modifier = Modifier.size(24.dp)
-                        )
-                    }
-
-                    // Toggle d'affichage BulletGraph
-                    Text(
-                            text = if (afficherBullet) translate(LocalizationKeys.AnalNut.BULLET_VIEW) else translate(LocalizationKeys.AnalNut.CARDS_VIEW),
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                    )
-                    IconButton(
-                            onClick = { afficherBullet = !afficherBullet },
-                            modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                                imageVector =
-                                        if (afficherBullet) Icons.Filled.ToggleOn
-                                        else Icons.Filled.ToggleOff,
-                                contentDescription =
-                                        if (afficherBullet) translate(LocalizationKeys.AnalNut.SHOW_CARDS)
-                                        else translate(LocalizationKeys.AnalNut.SHOW_BULLETS),
-                                tint =
-                                        if (afficherBullet) VetNutriColors.Primary
-                                        else MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
-                                modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-            }
-
-            // Liste avec titres de section et grilles de nutriments
-            LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                    modifier =
-                            if (isLargeView) {
-                                // En vue large, utiliser une hauteur adaptative basée sur l'espace
-                                // disponible
-                                Modifier.fillMaxWidth().fillMaxHeight()
-                            } else {
-                                // En vue compacte, utiliser une hauteur fixe pour éviter les
-                                // conflits de scroll
-                                Modifier.fillMaxWidth().height(400.dp)
+                    // Ajouter les pie charts si mode bullet activé
+                    if (afficherBullet) {
+                        item {
+                            Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                            ) {
+                                if (compositionData.isNotEmpty()) {
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        PieChartCard(
+                                                title = translate(LocalizationKeys.AnalNut.COMPOSITION),
+                                                data = compositionData,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                                if (energyData.isNotEmpty()) {
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        PieChartCard(
+                                                title = translate(LocalizationKeys.AnalNut.ENERGY_ORIGIN),
+                                                data = energyData,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
                             }
-            ) {
-                // Ajouter les pie charts si mode bullet activé
-                if (afficherBullet) {
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                        ) {
-                             if (compositionData.isNotEmpty()) {
-                                 Box(modifier = Modifier.weight(1f)) {
-                                     PieChartCard(
-                                         title = translate(LocalizationKeys.AnalNut.COMPOSITION),
-                                         data = compositionData,
-                                         modifier = Modifier.fillMaxWidth()
-                                     )
-                                 }
-                             }
-                             if (energyData.isNotEmpty()) {
-                                 Box(modifier = Modifier.weight(1f)) {
-                                     PieChartCard(
-                                         title = translate(LocalizationKeys.AnalNut.ENERGY_ORIGIN),
-                                         data = energyData,
-                                         modifier = Modifier.fillMaxWidth()
-                                     )
-                                 }
-                             }
                         }
                     }
-                }
                 
                 // Ordre d'affichage des catégories
                 val ordreCategories =
@@ -656,6 +655,7 @@ fun AnalyseNutritionnelleCard(
                             }
                         }
                     }
+                }
                 }
             }
         }

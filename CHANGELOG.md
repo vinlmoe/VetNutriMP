@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - Auto-open imported animal after quick import when a single animal is present (including update-only imports).
 - Exam exercise ID on animals (stored in DB and included in JSON/API exports); required at creation in exam mode.
 - Cross-analysis filters now support the exam ID + exercise ID pair.
+- Added exam grading module (rules per exercise, batch scoring, manual overrides, DB storage, and CSV export).
 
 ### Changed
 - Mise à jour de la structure de la base de données (version 29).

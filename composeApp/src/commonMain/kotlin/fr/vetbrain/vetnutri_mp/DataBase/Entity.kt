@@ -93,6 +93,31 @@ data class AnimalEntity(
 )
 
 @Serializable
+@Entity(tableName = "EXAM_GRADING_RULES", primaryKeys = ["examId", "exerciseId"])
+data class ExamGradingRuleEntity(
+        val examId: String,
+        val exerciseId: String,
+        val rulesJson: String,
+        val updatedAtEpochMs: Long
+)
+
+@Serializable
+@Entity(tableName = "EXAM_GRADES", primaryKeys = ["examId", "exerciseId", "studentId"])
+data class ExamGradeEntity(
+        val examId: String,
+        val exerciseId: String,
+        val studentId: String,
+        val animalId: String? = null,
+        val animalName: String = "",
+        val consultationId: String? = null,
+        val autoScore: Double = 0.0,
+        val manualScore: Double? = null,
+        val finalScore: Double = 0.0,
+        val detailsJson: String = "",
+        val updatedAtEpochMs: Long
+)
+
+@Serializable
 @Entity(
         tableName = "CONSULTATIONS",
         foreignKeys =

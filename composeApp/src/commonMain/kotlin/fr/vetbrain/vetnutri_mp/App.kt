@@ -120,6 +120,10 @@ fun App(appDatabase: AppDatabase) {
         DatabaseConsultationRepository(appDatabase.consultationDao(), foodRepository)
     }
 
+    val examGradingRepository = remember {
+        ExamGradingRepository(appDatabase.examGradingDao())
+    }
+
     // Repository pour les recettes
     val recipeRepository = remember {
         RecipeRepository(appDatabase.recipeDao(), appDatabase.foodDao())
@@ -240,6 +244,8 @@ fun App(appDatabase: AppDatabase) {
             conseilRepository = conseilRepository
         ) 
     }
+
+    val examGradingViewModel = remember { ExamGradingViewModel(examGradingRepository) }
 
 
     val animalDetailViewModel = remember {
@@ -805,7 +811,15 @@ fun App(appDatabase: AppDatabase) {
                                     viewModel = crossAnalysisViewModel,
                                     onNavigateBack = { currentScreen = Screen.List },
                                     onOpenResults = { currentScreen = Screen.CrossAnalysisResults },
+                                    onOpenGrading = { currentScreen = Screen.CrossAnalysisGrading },
                                     modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.CrossAnalysisGrading -> {
+                            CrossConsultationGradingView(
+                                    analysisViewModel = crossAnalysisViewModel,
+                                    gradingViewModel = examGradingViewModel,
+                                    onNavigateBack = { currentScreen = Screen.CrossAnalysis }
                             )
                         }
                         Screen.CrossAnalysisResults -> {
@@ -977,4 +991,5 @@ private sealed class Screen {
     object BackupRestore : Screen()
     object CrossAnalysis : Screen()
     object CrossAnalysisResults : Screen()
+    object CrossAnalysisGrading : Screen()
 }

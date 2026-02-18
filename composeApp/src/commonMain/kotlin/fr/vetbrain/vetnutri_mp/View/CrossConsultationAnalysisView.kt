@@ -58,6 +58,7 @@ fun CrossConsultationAnalysisView(
         viewModel: CrossConsultationAnalysisViewModel,
         onNavigateBack: () -> Unit,
         onOpenResults: () -> Unit,
+        onOpenGrading: () -> Unit,
         modifier: Modifier = Modifier
 ) {
     val isLoading by viewModel.isLoading.collectAsState()
@@ -89,6 +90,9 @@ fun CrossConsultationAnalysisView(
                         onClick = { viewModel.selectAllVisible(consultations.map { it.consultationId }) },
                         enabled = consultations.isNotEmpty()
                 ) { Text(CrossConsultationAnalysis.SELECT_ALL.translate()) }
+                OutlinedButton(
+                        onClick = onOpenGrading
+                ) { Text("Notation") }
             }
         }
 
