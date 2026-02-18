@@ -30,6 +30,7 @@ import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel.ImportResult
 import fr.vetbrain.vetnutri_mp.Enumer.TextConstant
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Data.ExamSession
 import fr.vetbrain.vetnutri_mp.getPlatform
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -61,6 +62,7 @@ fun StartupScreen(
         onDatabaseReady: () -> Unit,
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null,
         onShowBackupDialog: () -> Unit = {},
+        onStartExam: (ExamSession) -> Unit = {},
         modifier: Modifier = Modifier
 ) {
         var showStartupScreen by remember { mutableStateOf(true) }
@@ -69,6 +71,9 @@ fun StartupScreen(
         var databaseStatus by remember { mutableStateOf<DatabaseStatus?>(null) }
         var showUpdateDialog by remember { mutableStateOf(false) }
         var showTermsDialog by remember { mutableStateOf(false) }
+        var showExamDialog by remember { mutableStateOf(false) }
+        var examStudentNumber by remember { mutableStateOf("") }
+        var examStudentId by remember { mutableStateOf("") }
 
         // Gestionnaire de stockage des CGU
         val termsStorage = remember { TermsAcceptanceStorage() }
@@ -984,7 +989,36 @@ fun StartupScreen(
                                                                                         )
                                                                         )
                                                                         Text(
-                                                                                                                                                                 translate(LocalizationKeys.Startup.RESTORE_BACKUP)
+                                                                                                                         translate(LocalizationKeys.Startup.RESTORE_BACKUP)
+                                                                        )
+                                                                }
+
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        8.dp
+                                                                                )
+                                                                )
+
+                                                                Button(
+                                                                        onClick = {
+                                                                                showExamDialog = true
+                                                                        },
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                                        .height(
+                                                                                                48.dp
+                                                                                        ),
+                                                                        colors =
+                                                                                ButtonDefaults.buttonColors(
+                                                                                        backgroundColor =
+                                                                                                VetNutriColors.Secondary,
+                                                                                        contentColor =
+                                                                                                VetNutriColors.OnSecondary
+                                                                                )
+                                                                ) {
+                                                                        Text(
+                                                                                translate(LocalizationKeys.Startup.EXAM_MODE)
                                                                         )
                                                                 }
                                                         }
@@ -1070,6 +1104,35 @@ fun StartupScreen(
                                                                         )
                                                                         Text(
                                                                                 "Restaurer une sauvegarde"
+                                                                        )
+                                                                }
+
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        8.dp
+                                                                                )
+                                                                )
+
+                                                                Button(
+                                                                        onClick = {
+                                                                                showExamDialog = true
+                                                                        },
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                                        .height(
+                                                                                                48.dp
+                                                                                        ),
+                                                                        colors =
+                                                                                ButtonDefaults.buttonColors(
+                                                                                        backgroundColor =
+                                                                                                VetNutriColors.Secondary,
+                                                                                        contentColor =
+                                                                                                VetNutriColors.OnSecondary
+                                                                                )
+                                                                ) {
+                                                                        Text(
+                                                                                translate(LocalizationKeys.Startup.EXAM_MODE)
                                                                         )
                                                                 }
                                                         }
@@ -1435,6 +1498,61 @@ fun StartupScreen(
                                         }
                                 },
                                 onDismiss = { showTermsDialog = false }
+                        )
+                }
+
+                if (showExamDialog) {
+                        AlertDialog(
+                                onDismissRequest = { showExamDialog = false },
+                                title = { Text(translate(LocalizationKeys.Startup.EXAM_MODE_TITLE)) },
+                                text = {
+                                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                                Text(translate(LocalizationKeys.Startup.EXAM_INSTRUCTIONS))
+                                                OutlinedTextField(
+                                                        value = examStudentNumber,
+                                                        onValueChange = { examStudentNumber = it },
+                                                        label = { Text(translate(LocalizationKeys.Startup.EXAM_STUDENT_NUMBER)) },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        singleLine = true
+                                                )
+                                                OutlinedTextField(
+                                                        value = examStudentId,
+                                                        onValueChange = { examStudentId = it },
+                                                        label = { Text(translate(LocalizationKeys.Startup.EXAM_STUDENT_ID)) },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        singleLine = true
+                                                )
+                                        }
+                                },
+                                confirmButton = {
+                                        Button(
+                                                onClick = {
+                                                        val session =
+                                                                ExamSession(
+                                                                        studentNumber =
+                                                                                examStudentNumber.trim(),
+                                                                        studentId =
+                                                                                examStudentId.trim()
+                                                                )
+                                                        onStartExam(session)
+                                                        showExamDialog = false
+                                                        showStartupScreen = false
+                                                        onDatabaseReady()
+                                                },
+                                                enabled =
+                                                        examStudentNumber.isNotBlank() &&
+                                                                examStudentId.isNotBlank()
+                                        ) {
+                                                Text(translate(LocalizationKeys.Startup.EXAM_START))
+                                        }
+                                },
+                                dismissButton = {
+                                        OutlinedButton(
+                                                onClick = { showExamDialog = false }
+                                        ) {
+                                                Text(translate(LocalizationKeys.General.CANCEL))
+                                        }
+                                }
                         )
                 }
 

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -556,7 +557,8 @@ fun AnimalDetailView(
         modifier: Modifier = Modifier,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
-        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository,
+        isExamMode: Boolean = false
 ) {
         val animal by viewModel.animal.collectAsState()
         val currentSection by viewModel.currentSection.collectAsState()
@@ -691,7 +693,8 @@ fun AnimalDetailView(
                                         onShowConsultationDetail = { showConsultationDetail = it },
                                         equationRepository = equationRepository,
                                         recipeRepository = recipeRepository,
-                                        conseilRepository = conseilRepository
+                                        conseilRepository = conseilRepository,
+                                        isExamMode = isExamMode
                                 )
                         } else {
                                 // Layout pour écrans étroits avec drawer
@@ -714,7 +717,8 @@ fun AnimalDetailView(
                                         scope = scope,
                                         equationRepository = equationRepository,
                                         recipeRepository = recipeRepository,
-                                        conseilRepository = conseilRepository
+                                        conseilRepository = conseilRepository,
+                                        isExamMode = isExamMode
                                 )
                         }
 
@@ -778,7 +782,8 @@ private fun WideScreenLayout(
         onShowConsultationDetail: (Boolean) -> Unit,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
-        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository,
+        isExamMode: Boolean = false
 ) {
         // Scope pour les coroutines
         val scope = rememberCoroutineScope()
@@ -891,6 +896,11 @@ private fun WideScreenLayout(
         }
         // Charger les conseils personnalisés
         LaunchedEffect(Unit) {
+                if (isExamMode) {
+                        availableConseils = emptyList()
+                        isLoadingConseils = false
+                        return@LaunchedEffect
+                }
                 try {
                         val result = conseilRepository.getConseilsActifs()
                         if (result.isSuccess) {
@@ -918,6 +928,18 @@ private fun WideScreenLayout(
                         selectedConseils + localHtmlSections
                 }
         
+        val examBorderModifier =
+                if (isExamMode) {
+                        Modifier.border(1.dp, Color.Red)
+                } else {
+                        Modifier
+                }
+
+        Box(
+                modifier =
+                        Modifier.fillMaxSize().then(examBorderModifier)
+                                .padding(if (isExamMode) 2.dp else 0.dp)
+        ) {
         Row(modifier = Modifier.fillMaxSize()) {
                 // Sidebar
                 Column(
@@ -931,6 +953,14 @@ private fun WideScreenLayout(
                         // En-tête avec nom et espèce de l'animal
                         Column(modifier = Modifier.fillMaxWidth()) {
                                 Text(text = animalDetails.nom, style = MaterialTheme.typography.h5)
+                                if (isExamMode && !animalDetails.examExerciseId.isNullOrBlank()) {
+                                        Text(
+                                                text =
+                                                        "ID exercice: ${animalDetails.examExerciseId}",
+                                                style = MaterialTheme.typography.body2,
+                                                color = VetNutriColors.Primary
+                                        )
+                                }
                                 Text(
                                         text = animalDetails.getEspece().translateEnum(),
                                         style = MaterialTheme.typography.subtitle1,
@@ -1126,6 +1156,7 @@ private fun WideScreenLayout(
                                                 showSnackbar = { message -> },
                                                 equationRepository = equationRepository,
                                                 recipeRepository = recipeRepository,
+                                                isExamMode = isExamMode
                                         )
                                 }
                                 AnimalDetailSection.GRAPHIQUE -> {
@@ -1671,129 +1702,139 @@ private fun WideScreenLayout(
                                                                 }
                                                         }
 
-                                                        // Section pour les conseils personnalisés
-                                                        item {
-                                                        Text(
-                                                                translate(AnimalDetail.CUSTOM_ADVICE_TITLE),
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .subtitle1,
-                                                                color = VetNutriColors.Primary
-                                                        )
-                                                        }
-
-                                                        // Affichage des conseils sélectionnés
-                                                        if (selectedConseils.isNotEmpty()) {
+                                                        if (isExamMode) {
                                                                 item {
-                                                                Column(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        verticalArrangement =
-                                                                                Arrangement
-                                                                                        .spacedBy(
-                                                                                                4.dp
-                                                                                        )
-                                                                ) {
-                                                                        selectedConseils.forEach {
-                                                                                conseil ->
-                                                                                Card(
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxWidth(),
-                                                                                        elevation =
-                                                                                                2.dp
-                                                                                ) {
-                                                                                        Row(
-                                                                                                modifier =
-                                                                                                        Modifier.fillMaxWidth()
-                                                                                                                .padding(
-                                                                                                                        8.dp
-                                                                                                                ),
-                                                                                                horizontalArrangement =
-                                                                                                        Arrangement
-                                                                                                                .SpaceBetween,
-                                                                                                verticalAlignment =
-                                                                                                        Alignment
-                                                                                                                .CenterVertically
-                                                                                        ) {
-                                                                                                Column(
-                                                                                                        modifier =
-                                                                                                                Modifier.weight(
-                                                                                                                        1f
-                                                                                                                )
-                                                                                                ) {
-                                                                                                        Text(
-                                                                                                                text =
-                                                                                                                        conseil.title,
-                                                                                                                style =
-                                                                                                                        MaterialTheme
-                                                                                                                                .typography
-                                                                                                                                .body2,
-                                                                                                                fontWeight =
-                                                                                                                        FontWeight
-                                                                                                                                .Medium
-                                                                                                        )
-                                                                                                        Text(
-                                                                                                                text =
-                                                                                                                        translate(
-                                                                                                                                AnimalDetail.CATEGORY_LABEL,
-                                                                                                                                conseil.category.name
-                                                                                                                        ),
-                                                                                                                style =
-                                                                                                                        MaterialTheme
-                                                                                                                               .typography
-                                                                                                                               .caption,
-                                                                                                                color =
-                                                                                                                        Color.Gray
-                                                                                                        )
-                                                                                                }
-                                                                                                IconButtonWithTooltip(
-                                                                                                        onClick = {
-                                                                                                                selectedConseils =
-                                                                                                                        selectedConseils
-                                                                                                                                .filter {
-                                                                                                                                        it.id !=
-                                                                                                                                                conseil.id
-                                                                                                                                }
-                                                                                                                schedulePrescriptionSave()
-                                                                                                        },
-                                                                                                        imageVector = Icons.Default.Delete,
-                                                                                                        contentDescription = translate(General.DELETE),
-                                                                                                        tooltip = translate(General.DELETE),
-                                                                                                        tint = Color.Red
+                                                                        Text(
+                                                                                "Conseils personnalisés indisponibles en mode examen.",
+                                                                                style = MaterialTheme.typography.body2,
+                                                                                color = Color.Gray
+                                                                        )
+                                                                }
+                                                        } else {
+                                                                // Section pour les conseils personnalisés
+                                                                item {
+                                                                Text(
+                                                                        translate(AnimalDetail.CUSTOM_ADVICE_TITLE),
+                                                                        style =
+                                                                                MaterialTheme.typography
+                                                                                        .subtitle1,
+                                                                        color = VetNutriColors.Primary
+                                                                )
+                                                                }
+
+                                                                // Affichage des conseils sélectionnés
+                                                                if (selectedConseils.isNotEmpty()) {
+                                                                        item {
+                                                                        Column(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(),
+                                                                                verticalArrangement =
+                                                                                        Arrangement
+                                                                                                .spacedBy(
+                                                                                                        4.dp
                                                                                                 )
+                                                                        ) {
+                                                                                selectedConseils.forEach {
+                                                                                        conseil ->
+                                                                                        Card(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxWidth(),
+                                                                                                elevation =
+                                                                                                        2.dp
+                                                                                        ) {
+                                                                                                Row(
+                                                                                                        modifier =
+                                                                                                                Modifier.fillMaxWidth()
+                                                                                                                        .padding(
+                                                                                                                                8.dp
+                                                                                                                        ),
+                                                                                                        horizontalArrangement =
+                                                                                                                Arrangement
+                                                                                                                        .SpaceBetween,
+                                                                                                        verticalAlignment =
+                                                                                                                Alignment
+                                                                                                                        .CenterVertically
+                                                                                                ) {
+                                                                                                        Column(
+                                                                                                                modifier =
+                                                                                                                        Modifier.weight(
+                                                                                                                                1f
+                                                                                                                        )
+                                                                                                        ) {
+                                                                                                                Text(
+                                                                                                                        text =
+                                                                                                                                conseil.title,
+                                                                                                                        style =
+                                                                                                                                MaterialTheme
+                                                                                                                                        .typography
+                                                                                                                                        .body2,
+                                                                                                                        fontWeight =
+                                                                                                                                FontWeight
+                                                                                                                                        .Medium
+                                                                                                                )
+                                                                                                                Text(
+                                                                                                                        text =
+                                                                                                                                translate(
+                                                                                                                                        AnimalDetail.CATEGORY_LABEL,
+                                                                                                                                        conseil.category.name
+                                                                                                                                ),
+                                                                                                                        style =
+                                                                                                                                MaterialTheme
+                                                                                                                                       .typography
+                                                                                                                                       .caption,
+                                                                                                                        color =
+                                                                                                                                Color.Gray
+                                                                                                                )
+                                                                                                        }
+                                                                                                        IconButtonWithTooltip(
+                                                                                                                onClick = {
+                                                                                                                        selectedConseils =
+                                                                                                                                selectedConseils
+                                                                                                                                        .filter {
+                                                                                                                                                it.id !=
+                                                                                                                                                        conseil.id
+                                                                                                                                        }
+                                                                                                                        schedulePrescriptionSave()
+                                                                                                                },
+                                                                                                                imageVector = Icons.Default.Delete,
+                                                                                                                contentDescription = translate(General.DELETE),
+                                                                                                                tooltip = translate(General.DELETE),
+                                                                                                                tint = Color.Red
+                                                                                                        )
+                                                                                                        }
                                                                                                 }
                                                                                         }
                                                                                 }
                                                                         }
                                                                 }
-                                                        }
 
-                                                        // Bouton pour ajouter des conseils
-                                                        item {
-                                                        Button(
-                                                                onClick = {
-                                                                        showSearchDialog = true
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Secondary,
-                                                                                contentColor =
-                                                                                        VetNutriColors
-                                                                                                .OnSecondary
+                                                                // Bouton pour ajouter des conseils
+                                                                item {
+                                                                Button(
+                                                                        onClick = {
+                                                                                showSearchDialog = true
+                                                                        },
+                                                                        modifier = Modifier.fillMaxWidth(),
+                                                                        colors =
+                                                                                ButtonDefaults.buttonColors(
+                                                                                        backgroundColor =
+                                                                                                VetNutriColors
+                                                                                                        .Secondary,
+                                                                                        contentColor =
+                                                                                                VetNutriColors
+                                                                                                        .OnSecondary
+                                                                                )
+                                                                ) {
+                                                                        Icon(
+                                                                                Icons.Default.Add,
+                                                                                translate(General.ADD)
                                                                         )
-                                                        ) {
-                                                                Icon(
-                                                                        Icons.Default.Add,
-                                                                        translate(General.ADD)
-                                                                )
-                                                                Spacer(
-                                                                        modifier =
-                                                                                Modifier.width(8.dp)
-                                                                )
-                                                                Text(translate(AnimalDetail.ADD_ADVICE))
+                                                                        Spacer(
+                                                                                modifier =
+                                                                                        Modifier.width(8.dp)
+                                                                        )
+                                                                        Text(translate(AnimalDetail.ADD_ADVICE))
+                                                                        }
                                                                 }
                                                         }
 
@@ -2267,6 +2308,7 @@ private fun WideScreenLayout(
                         }
                 }
         }
+        }
 }
 
 /** Layout pour les écrans étroits avec un drawer */
@@ -2288,7 +2330,8 @@ private fun NarrowScreenLayout(
         scope: CoroutineScope,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
-        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository,
+        isExamMode: Boolean = false
 ) {
         // État pour les messages Snackbar
         val snackbarHostState = remember { SnackbarHostState() }
@@ -2398,6 +2441,11 @@ private fun NarrowScreenLayout(
         }
         // Charger les conseils personnalisés
         LaunchedEffect(Unit) {
+                if (isExamMode) {
+                        availableConseils = emptyList()
+                        isLoadingConseils = false
+                        return@LaunchedEffect
+                }
                 try {
                         val result = conseilRepository.getConseilsActifs()
                         if (result.isSuccess) {
@@ -2693,6 +2741,7 @@ private fun NarrowScreenLayout(
                                                                 equationRepository =
                                                                         equationRepository,
                                                                 recipeRepository = recipeRepository,
+                                                                isExamMode = isExamMode
                                                         )
                                                 }
                                                 AnimalDetailSection.GRAPHIQUE -> {
@@ -3349,145 +3398,155 @@ private fun NarrowScreenLayout(
                                                                                 }
                                                                         }
 
-                                                                        // Section pour les conseils
-                                                                        // personnalisés
-                                                                        item {
-                                                                        Text(
-                                                                                translate(AnimalDetail.CUSTOM_ADVICE_TITLE),
-                                                                                style =
-                                                                                        MaterialTheme
-                                                                                                .typography
-                                                                                                .subtitle1,
-                                                                                color =
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                        )
-                                                                        }
-
-                                                                        // Affichage des conseils
-                                                                        // sélectionnés
-                                                                        if (selectedConseils
-                                                                                        .isNotEmpty()
-                                                                        ) {
+                                                                        if (isExamMode) {
                                                                                 item {
-                                                                                Column(
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxWidth(),
-                                                                                        verticalArrangement =
-                                                                                                Arrangement
-                                                                                                        .spacedBy(
-                                                                                                                4.dp
-                                                                                                        )
+                                                                                Text(
+                                                                                        "Conseils personnalisés indisponibles en mode examen.",
+                                                                                        style = MaterialTheme.typography.body2,
+                                                                                        color = Color.Gray
+                                                                                )
+                                                                                }
+                                                                        } else {
+                                                                                // Section pour les conseils
+                                                                                // personnalisés
+                                                                                item {
+                                                                                Text(
+                                                                                        translate(AnimalDetail.CUSTOM_ADVICE_TITLE),
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .subtitle1,
+                                                                                        color =
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                )
+                                                                                }
+
+                                                                                // Affichage des conseils
+                                                                                // sélectionnés
+                                                                                if (selectedConseils
+                                                                                                .isNotEmpty()
                                                                                 ) {
-                                                                                        selectedConseils
-                                                                                                .forEach {
-                                                                                                        conseil
-                                                                                                        ->
-                                                                                                        Card(
-                                                                                                                modifier =
-                                                                                                                        Modifier.fillMaxWidth(),
-                                                                                                                elevation =
-                                                                                                                        2.dp
-                                                                                                        ) {
-                                                                                                                Row(
+                                                                                        item {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxWidth(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement
+                                                                                                                .spacedBy(
+                                                                                                                        4.dp
+                                                                                                                )
+                                                                                        ) {
+                                                                                                selectedConseils
+                                                                                                        .forEach {
+                                                                                                                conseil
+                                                                                                                ->
+                                                                                                                Card(
                                                                                                                         modifier =
-                                                                                                                                Modifier.fillMaxWidth()
-                                                                                                                                        .padding(
-                                                                                                                                                8.dp
-                                                                                                                                        ),
-                                                                                                                        horizontalArrangement =
-                                                                                                                                Arrangement
-                                                                                                                                        .SpaceBetween,
-                                                                                                                        verticalAlignment =
-                                                                                                                                Alignment
-                                                                                                                                        .CenterVertically
+                                                                                                                                Modifier.fillMaxWidth(),
+                                                                                                                        elevation =
+                                                                                                                                2.dp
                                                                                                                 ) {
-                                                                                                                        Column(
+                                                                                                                        Row(
                                                                                                                                 modifier =
-                                                                                                                                        Modifier.weight(
-                                                                                                                                                1f
-                                                                                                                                        )
-                                                                                                                        ) {
-                                                                                                                                Text(
-                                                                                                                                        text =
-                                                                                                                                                conseil.title,
-                                                                                                                                        style =
-                                                                                                                                                MaterialTheme
-                                                                                                                                                        .typography
-                                                                                                                                                        .body2,
-                                                                                                                                        fontWeight =
-                                                                                                                                                FontWeight
-                                                                                                                                                        .Medium
-                                                                                                                                )
-                                                                                                                                Text(
-                                                                                                                                        text =
-                                                                                                                                                translate(
-                                                                                                                                                        AnimalDetail.CATEGORY_LABEL,
-                                                                                                                                                        conseil.category.name
+                                                                                                                                        Modifier.fillMaxWidth()
+                                                                                                                                                .padding(
+                                                                                                                                                        8.dp
                                                                                                                                                 ),
-                                                                                                                                        style =
-                                                                                                                                                MaterialTheme
-                                                                                                                                                        .typography
-                                                                                                                                                        .caption,
-                                                                                                                                        color =
-                                                                                                                                                Color.Gray
+                                                                                                                                horizontalArrangement =
+                                                                                                                                        Arrangement
+                                                                                                                                                .SpaceBetween,
+                                                                                                                                verticalAlignment =
+                                                                                                                                        Alignment
+                                                                                                                                                .CenterVertically
+                                                                                                                        ) {
+                                                                                                                                Column(
+                                                                                                                                        modifier =
+                                                                                                                                                Modifier.weight(
+                                                                                                                                                        1f
+                                                                                                                                                )
+                                                                                                                                ) {
+                                                                                                                                        Text(
+                                                                                                                                                text =
+                                                                                                                                                        conseil.title,
+                                                                                                                                                style =
+                                                                                                                                                        MaterialTheme
+                                                                                                                                                                .typography
+                                                                                                                                                                .body2,
+                                                                                                                                                fontWeight =
+                                                                                                                                                        FontWeight
+                                                                                                                                                                .Medium
+                                                                                                                                        )
+                                                                                                                                        Text(
+                                                                                                                                                text =
+                                                                                                                                                        translate(
+                                                                                                                                                                AnimalDetail.CATEGORY_LABEL,
+                                                                                                                                                                conseil.category.name
+                                                                                                                                                        ),
+                                                                                                                                                style =
+                                                                                                                                                        MaterialTheme
+                                                                                                                                                                .typography
+                                                                                                                                                                .caption,
+                                                                                                                                                color =
+                                                                                                                                                        Color.Gray
+                                                                                                                                        )
+                                                                                                                                }
+                                                                                                                                IconButtonWithTooltip(
+                                                                                                                                                onClick = {
+                                                                                                                                                        selectedConseils =
+                                                                                                                                                                selectedConseils
+                                                                                                                                                                        .filter {
+                                                                                                                                                                                it.id !=
+                                                                                                                                                                                        conseil.id
+                                                                                                                                                                        }
+                                                                                                                                                        schedulePrescriptionSave()
+                                                                                                                                                },
+                                                                                                                                        imageVector = Icons.Default.Delete,
+                                                                                                                                        contentDescription = translate(General.DELETE),
+                                                                                                                                        tooltip = translate(General.DELETE),
+                                                                                                                                        tint = Color.Red
                                                                                                                                 )
-                                                                                                                        }
-                                                                                                                        IconButtonWithTooltip(
-                                                                                                                                        onClick = {
-                                                                                                                                                selectedConseils =
-                                                                                                                                                        selectedConseils
-                                                                                                                                                                .filter {
-                                                                                                                                                                        it.id !=
-                                                                                                                                                                                conseil.id
-                                                                                                                                                                }
-                                                                                                                                                schedulePrescriptionSave()
-                                                                                                                                        },
-                                                                                                                                imageVector = Icons.Default.Delete,
-                                                                                                                                contentDescription = translate(General.DELETE),
-                                                                                                                                tooltip = translate(General.DELETE),
-                                                                                                                                tint = Color.Red
-                                                                                                                        )
+                                                                                                                                }
                                                                                                                         }
                                                                                                                 }
                                                                                                         }
-                                                                                                }
+                                                                                        }
                                                                                 }
-                                                                        }
 
-                                                                        // Bouton pour ajouter des
-                                                                        // conseils
-                                                                        item {
-                                                                        Button(
-                                                                                onClick = {
-                                                                                        showSearchDialog =
-                                                                                                true
-                                                                                },
-                                                                                modifier =
-                                                                                        Modifier.fillMaxWidth(),
-                                                                                colors =
-                                                                                        ButtonDefaults
-                                                                                                .buttonColors(
-                                                                                                        backgroundColor =
-                                                                                                                VetNutriColors
-                                                                                                                        .Secondary,
-                                                                                                        contentColor =
-                                                                                                                VetNutriColors
-                                                                                                                        .OnSecondary
-                                                                                                )
-                                                                        ) {
-                                                                                Icon(
-                                                                                        Icons.Default
-                                                                                                .Add,
-                                                                                        translate(General.ADD)
-                                                                                )
-                                                                                Spacer(
+                                                                                // Bouton pour ajouter des
+                                                                                // conseils
+                                                                                item {
+                                                                                Button(
+                                                                                        onClick = {
+                                                                                                showSearchDialog =
+                                                                                                        true
+                                                                                        },
                                                                                         modifier =
-                                                                                                Modifier.width(
-                                                                                                        8.dp
-                                                                                                )
-                                                                                )
-                                                                                Text(translate(AnimalDetail.ADD_ADVICE))
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        colors =
+                                                                                                ButtonDefaults
+                                                                                                        .buttonColors(
+                                                                                                                backgroundColor =
+                                                                                                                        VetNutriColors
+                                                                                                                                .Secondary,
+                                                                                                                contentColor =
+                                                                                                                        VetNutriColors
+                                                                                                                                .OnSecondary
+                                                                                                        )
+                                                                                ) {
+                                                                                        Icon(
+                                                                                                Icons.Default
+                                                                                                        .Add,
+                                                                                                translate(General.ADD)
+                                                                                        )
+                                                                                        Spacer(
+                                                                                                modifier =
+                                                                                                        Modifier.width(
+                                                                                                                8.dp
+                                                                                                        )
+                                                                                        )
+                                                                                        Text(translate(AnimalDetail.ADD_ADVICE))
+                                                                                        }
                                                                                 }
                                                                         }
 

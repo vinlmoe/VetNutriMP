@@ -54,6 +54,7 @@ fun SectionAlimentsRation(
         onMultiNutrientAdjustment: () -> Unit,
         onOpenRecipeDialog: () -> Unit,
         onSaveRecipe: () -> Unit,
+        isExamMode: Boolean = false,
         showSnackbar: (String) -> Unit,
         isCompact: Boolean = false,
         modifier: Modifier = Modifier
@@ -86,28 +87,30 @@ fun SectionAlimentsRation(
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingXSmall)
                                 ) {
-                                        // Sauvegarder la ration comme recette
-                                        IconWithTooltip(
-                                                imageVector = Icons.Filled.Save,
-                                                contentDescription = translate(LocalizationKeys.AnalNut.SAVE_AS_RECIPE),
-                                                tint =
-                                                        if (selectedRation?.alimentMutableList
-                                                                        ?.isNotEmpty() == true
-                                                        )
-                                                                VetNutriColors.Primary
-                                                        else
-                                                                VetNutriColors.Primary.copy(
-                                                                        alpha = 0.5f
-                                                                ),
-                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
-                                                tooltip = translate(LocalizationKeys.AnalNut.SAVE_AS_RECIPE),
-                                                enabled =
-                                                        selectedRation
-                                                                ?.alimentMutableList
-                                                                ?.isNotEmpty() ==
-                                                                true,
-                                                onClick = onSaveRecipe
-                                        )
+                                        if (!isExamMode) {
+                                                // Sauvegarder la ration comme recette
+                                                IconWithTooltip(
+                                                        imageVector = Icons.Filled.Save,
+                                                        contentDescription = translate(LocalizationKeys.AnalNut.SAVE_AS_RECIPE),
+                                                        tint =
+                                                                if (selectedRation?.alimentMutableList
+                                                                                ?.isNotEmpty() == true
+                                                                )
+                                                                        VetNutriColors.Primary
+                                                                else
+                                                                        VetNutriColors.Primary.copy(
+                                                                                alpha = 0.5f
+                                                                        ),
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.AnalNut.SAVE_AS_RECIPE),
+                                                        enabled =
+                                                                selectedRation
+                                                                        ?.alimentMutableList
+                                                                        ?.isNotEmpty() ==
+                                                                        true,
+                                                        onClick = onSaveRecipe
+                                                )
+                                        }
 
                                         // Bouton pour l'ajustement multi-nutriments
                                         IconWithTooltip(
@@ -247,15 +250,17 @@ fun SectionAlimentsRation(
                                                                         }
                                         )
 
-                                        // Ouvrir le gestionnaire de recettes
-                                        IconWithTooltip(
-                                                imageVector = Icons.Filled.MenuBook,
-                                                contentDescription = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
-                                                tint = VetNutriColors.Primary,
-                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
-                                                tooltip = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
-                                                onClick = onOpenRecipeDialog
-                                        )
+                                        if (!isExamMode) {
+                                                // Ouvrir le gestionnaire de recettes
+                                                IconWithTooltip(
+                                                        imageVector = Icons.Filled.MenuBook,
+                                                        contentDescription = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
+                                                        tint = VetNutriColors.Primary,
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
+                                                        onClick = onOpenRecipeDialog
+                                                )
+                                        }
 
                                         // Bouton pour ajouter un aliment
                                         IconWithTooltip(

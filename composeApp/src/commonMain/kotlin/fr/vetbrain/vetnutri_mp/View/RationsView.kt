@@ -100,6 +100,7 @@ fun RationsView(
         modifier: Modifier = Modifier,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
+        isExamMode: Boolean = false
 ) {
         val animal by viewModel.animal.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
@@ -364,7 +365,7 @@ fun RationsView(
         var rationToDelete by remember { mutableStateOf<Ration?>(null) }
 
         // Dialog de gestion des recettes
-        if (showRecipeDialog) {
+        if (!isExamMode && showRecipeDialog) {
                 RecipeDialog(
                         repository = recipeRepository,
                         foodRepository = viewModel.foodRepository,
@@ -376,7 +377,7 @@ fun RationsView(
                 )
         }
 
-        if (showSaveRecipeDialog) {
+        if (!isExamMode && showSaveRecipeDialog) {
                 AlertDialog(
                         onDismissRequest = { showSaveRecipeDialog = false },
                         title = { Text(translate(RationKeys.CREATE_RECIPE)) },
@@ -822,6 +823,7 @@ fun RationsView(
                                                                                                 true
                                                                                 }
                                                                         },
+                                                                        isExamMode = isExamMode,
                                                                         showSnackbar = showSnackbar,
                                                                         isCompact = isCompact,
                                                                         modifier = Modifier.fillMaxWidth()
@@ -1305,6 +1307,7 @@ fun RationsView(
                                                                                 showSaveRecipeDialog = true
                                                                         }
                                                                 },
+                                                                isExamMode = isExamMode,
                                                                 showSnackbar = showSnackbar,
                                                                 modifier =
                                                                         Modifier.weight(1f).fillMaxWidth()

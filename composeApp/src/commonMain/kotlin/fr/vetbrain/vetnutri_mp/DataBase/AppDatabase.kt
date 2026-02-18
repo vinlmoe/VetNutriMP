@@ -39,7 +39,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ReferenceEvNutrientEntity::class,
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class],
-        version = 28,
+        version = 30,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -102,7 +102,10 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         // Migration 26→27 : Ajout des champs de mise à jour et image produit
                         createMigration26to27(),
                         // Migration 27→28 : Ajout des champs ordonnance pour les consultations
-                        createMigration27to28()
+                        createMigration27to28(),
+                        // Migration 28→29 : Ajout des champs examen pour les animaux
+                        createMigration28to29(),
+                        createMigration29to30()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -506,6 +509,46 @@ fun createMigration27to28(): Migration {
                 runStatementIgnoreIfExists(
                         connection,
                         "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionSelectedRationIdsJson TEXT"
+                )
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 28 → 29 : Ajout des champs examen pour les animaux */
+fun createMigration28to29(): Migration {
+    return object : Migration(28, 29) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE ANIMALS ADD COLUMN exam INTEGER NOT NULL DEFAULT 0"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE ANIMALS ADD COLUMN examStudentId TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE ANIMALS ADD COLUMN examStudentNumber TEXT"
+                )
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 29 → 30 : Ajout de l'ID d'exercice pour les animaux */
+fun createMigration29to30(): Migration {
+    return object : Migration(29, 30) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE ANIMALS ADD COLUMN examExerciseId TEXT"
                 )
             } catch (e: Exception) {
                 throw e

@@ -45,6 +45,10 @@ data class AnimalEvJson(
         val race: String = "",
         val resume: String = "",
         val jsonbinId: String? = null, // ID du bin jsonbin.io pour le partage en ligne
+        val exam: Boolean = false, // Indique si l'animal a été créé en mode examen
+        val examStudentId: String? = null, // Identifiant de l'étudiant
+        val examStudentNumber: String? = null, // Numéro de l'étudiant
+        val examExerciseId: String? = null, // ID de l'exercice
         val listWeight: List<WeightDateJson> = listOf(),
         val list: ListConsultEvJson? = null,
         val consultations: List<ConsultationEvJson>? = null

@@ -10,11 +10,9 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,16 +20,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
+import fr.vetbrain.vetnutri_mp.Data.ExamSession
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalList
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Settings
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
@@ -39,16 +37,15 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import fr.vetbrain.vetnutri_mp.View.Components.QRCodeScannerView
-import fr.vetbrain.vetnutri_mp.getPlatform
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.copyToClipboardComposable
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
-import fr.vetbrain.vetnutri_mp.Utils.getClipboardTextComposable
 
 /**
  * Liste des animaux.
  * - Observe les flux filtrés du `AnimalListViewModel` (recherche + espèce).
- * - Pilote les imports (rapide/API) et la navigation vers aliments / calculs.
+ * - Pilote l'export examen et la navigation vers aliments / calculs.
  */
 @OptIn(ExperimentalUuidApi::class, ExperimentalMaterialApi::class)
 @Composable
@@ -59,7 +56,7 @@ fun AnimalListView(
         onEditAnimal: (AnimalEv) -> Unit,
         onShowFoodList: () -> Unit,
         onShowCalculationTabs: () -> Unit,
-        onShowCrossAnalysis: () -> Unit,
+        examSession: ExamSession? = null,
         modifier: Modifier = Modifier
 ) {
         val animals: List<AnimalEv> = viewModel.animals.collectAsState().value
@@ -70,28 +67,22 @@ fun AnimalListView(
         val keywordExcludeIds = viewModel.keywordExcludeIds.collectAsState().value
         val coroutineScope = rememberCoroutineScope()
 
-        // États pour l'import rapide
-        var showImportDialog by remember { mutableStateOf(false) }
-        var importCode by remember { mutableStateOf("") }
-        
-        // États pour le suivi de l'import API
-        val apiImportResult = viewModel.importResult.collectAsState().value
-        val apiImporting = viewModel.isApiImporting.collectAsState().value
-        val apiProgress = viewModel.apiImportProgress.collectAsState().value
-        val apiLogs = viewModel.apiImportLogs.collectAsState().value
-        var showApiResultDialog by remember { mutableStateOf(false) }
-        val showCrossAnalysisButton = true
+        // États pour l'export examen
+        var isExporting by remember { mutableStateOf(false) }
+        var exportError by remember { mutableStateOf<String?>(null) }
+        var exportLink by remember {
+                mutableStateOf<fr.vetbrain.vetnutri_mp.Service.ShareLink?>(null)
+        }
+        var showExportResultDialog by remember { mutableStateOf(false) }
+        var pendingCopyText by remember { mutableStateOf<String?>(null) }
+        var showQuickImportDialog by remember { mutableStateOf(false) }
+        var quickImportInput by remember { mutableStateOf("") }
+        var showQuickImportScanner by remember { mutableStateOf(false) }
+        var pendingAutoOpenAnimalId by remember { mutableStateOf<String?>(null) }
+        var shouldAutoOpenAfterDialog by remember { mutableStateOf(false) }
         var showKeywordFilterDialog by remember { mutableStateOf(false) }
         val hasKeywordFilter = keywordIncludeIds.isNotEmpty() || keywordExcludeIds.isNotEmpty()
-
-        LaunchedEffect(apiImportResult) {
-            if (apiImportResult != null && apiImportResult is AnimalListViewModel.ImportResult.Success) {
-                showApiResultDialog = true
-                showImportDialog = false
-            } else if (apiImportResult != null && apiImportResult is AnimalListViewModel.ImportResult.Error) {
-                showApiResultDialog = true
-            }
-        }
+        val isExamMode = examSession != null
 
         LaunchedEffect(Unit) { viewModel.loadAnimals() }
 
@@ -149,30 +140,57 @@ fun AnimalListView(
                                                 )
                                 ) { Text(translate(AnimalList.CALCULATION_DATA)) }
 
-                                // Bouton Import Rapide
-                                Button(
-                                        onClick = { showImportDialog = true },
-                                        modifier = Modifier.weight(1f),
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = VetNutriColors.Secondary,
-                                                        contentColor = Color.White
-                                                )
-                                ) { Text(translate(AnimalList.QUICK_IMPORT)) }
-
-                                if (showCrossAnalysisButton) {
+                                if (examSession == null) {
                                         Button(
-                                                onClick = onShowCrossAnalysis,
+                                                onClick = { showQuickImportDialog = true },
                                                 modifier = Modifier.weight(1f),
                                                 colors =
                                                         ButtonDefaults.buttonColors(
                                                                 backgroundColor =
-                                                                        VetNutriColors.Primary,
-                                                                contentColor =
-                                                                        VetNutriColors.OnPrimary
+                                                                        VetNutriColors.Secondary,
+                                                                contentColor = Color.White
                                                         )
-                                        ) { Text(translate(AnimalList.CROSS_ANALYSIS)) }
+                                        ) { Text(translate(AnimalList.QUICK_IMPORT)) }
+                                } else {
+                                        // Bouton Export Examen
+                                        Button(
+                                                onClick = {
+                                                        isExporting = true
+                                                        exportError = null
+                                                        exportLink = null
+                                                        coroutineScope.launch {
+                                                                val result =
+                                                                        viewModel.exportExamAnimalsToJsonBin(
+                                                                                examSession
+                                                                        )
+                                                                isExporting = false
+                                                                result.fold(
+                                                                        onSuccess = { link ->
+                                                                                exportLink = link
+                                                                                exportError = null
+                                                                        },
+                                                                        onFailure = { error ->
+                                                                                exportLink = null
+                                                                                exportError =
+                                                                                        error.message
+                                                                                ?: translate(
+                                                                                        AnimalList.EXPORT_EXAM_ERROR
+                                                                                )
+                                                                        }
+                                                                )
+                                                                showExportResultDialog = true
+                                                        }
+                                                },
+                                                modifier = Modifier.weight(1f),
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor =
+                                                                        VetNutriColors.Secondary,
+                                                                contentColor = Color.White
+                                                        )
+                                        ) { Text(translate(AnimalList.EXPORT_EXAM)) }
                                 }
+
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -380,7 +398,8 @@ fun AnimalListView(
                                                         onClick = { onSelectAnimal(animal) },
                                                         onDelete = {
                                                                 viewModel.deleteAnimal(animal)
-                                                        }
+                                                        },
+                                                        isExamMode = isExamMode
                                                 )
                                         }
                                 }
@@ -388,163 +407,183 @@ fun AnimalListView(
                 }
         }
 
-        if (showImportDialog) {
-            val platform = getPlatform()
-            val isDesktop = platform.name.contains("Java") || platform.name.contains("Windows") || platform.name.contains("Linux")
-            var showScanner by remember { mutableStateOf(false) }
-            var shouldPaste by remember { mutableStateOf(false) }
-            val shareService = remember { fr.vetbrain.vetnutri_mp.Service.createJsonShareService() }
-            val trimmedImportCode = importCode.trim()
-            val qrPayload = remember(trimmedImportCode) { shareService.parseQrPayload(trimmedImportCode) }
-            val isEncryptedQr = qrPayload?.key?.isNotBlank() == true && qrPayload.iv?.isNotBlank() == true
-            val isQrPayload = qrPayload != null
-            val isJsonBinUrl = trimmedImportCode.contains("jsonbin.io", ignoreCase = true)
-            val isLikelyBinId = trimmedImportCode.matches(Regex("[A-Za-z0-9]{10,}"))
-            val importTypeLabel = when {
-                trimmedImportCode.isBlank() -> null
-                isEncryptedQr -> "Chiffré (QR)"
-                isQrPayload -> "QR sans chiffrement"
-                isJsonBinUrl || isLikelyBinId -> "Non chiffré (URL/BinID)"
-                else -> "Format inconnu"
-            }
+        if (isExporting) {
+            AlertDialog(
+                onDismissRequest = {},
+                title = { Text(translate(AnimalList.EXPORT_EXAM_TITLE)) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        Text(translate(AnimalList.EXPORT_EXAM_IN_PROGRESS))
+                    }
+                },
+                confirmButton = {}
+            )
+        }
 
-            if (shouldPaste) {
-                val clipboardText = getClipboardTextComposable()
-                if (!clipboardText.isNullOrBlank()) {
-                    importCode = clipboardText.trim()
-                }
-                shouldPaste = false
-            }
+        if (pendingCopyText != null) {
+            copyToClipboardComposable(pendingCopyText!!)
+            LaunchedEffect(pendingCopyText) { pendingCopyText = null }
+        }
 
-            if (showScanner) {
-                Dialog(
-                    onDismissRequest = { showScanner = false },
-                    properties = DialogProperties(usePlatformDefaultWidth = false)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-                        QRCodeScannerView(
-                            onCodeScanned = { code ->
-                                showScanner = false
-                                importCode = code
-                                // Optionnel: lancer l'import automatiquement
-                                // coroutineScope.launch { viewModel.importFromJsonBin(code) }
-                            },
-                            onClose = { showScanner = false }
-                        )
-                        
-                        // Bouton fermer le scanner
-                        IconButton(
-                            onClick = { showScanner = false },
-                            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Clear,
-                                contentDescription = "Fermer",
-                                tint = Color.White
+        if (showExportResultDialog) {
+            AlertDialog(
+                onDismissRequest = { showExportResultDialog = false },
+                title = { Text(translate(AnimalList.EXPORT_EXAM_TITLE)) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (exportLink != null && exportError == null) {
+                            Text(translate(AnimalList.EXPORT_EXAM_SUCCESS))
+                            Text(
+                                    text = exportLink!!.binId,
+                                    style = MaterialTheme.typography.subtitle1,
+                                    color = VetNutriColors.Primary
+                            )
+                            Text(translate(AnimalList.EXPORT_EXAM_NOTE))
+                        } else {
+                            Text(
+                                    exportError
+                                            ?: translate(AnimalList.EXPORT_EXAM_ERROR),
+                                    color = MaterialTheme.colors.error
                             )
                         }
                     }
+                },
+                confirmButton = {
+                    Button(onClick = { showExportResultDialog = false }) { Text("OK") }
+                },
+                dismissButton = {
+                    if (exportLink != null && exportError == null) {
+                        OutlinedButton(
+                                onClick = { pendingCopyText = exportLink!!.binId }
+                        ) { Text(translate(General.COPY)) }
+                    }
                 }
-            }
+            )
+        }
 
+        if (showQuickImportDialog) {
             AlertDialog(
-                onDismissRequest = { showImportDialog = false },
+                onDismissRequest = {
+                    showQuickImportDialog = false
+                    quickImportInput = ""
+                },
                 title = { Text(translate(AnimalList.QUICK_IMPORT_TITLE)) },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text("Collez un BinID, une URL jsonbin.io ou un QR JSON (chiffré ou non).")
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            translate(Settings.JSONBIN_MESSAGE),
+                            style = MaterialTheme.typography.body2
+                        )
                         OutlinedTextField(
-                            value = importCode,
-                            onValueChange = { importCode = it },
-                            label = { Text(translate(AnimalList.CODE_OR_URL)) },
-                            placeholder = { Text("{\"binId\":\"...\",\"key\":\"...\",\"iv\":\"...\"}") },
+                            value = quickImportInput,
+                            onValueChange = { quickImportInput = it },
+                            label = {
+                                Text(translate(Settings.JSONBIN_LABEL))
+                            },
+                            placeholder = {
+                                Text(translate(Settings.JSONBIN_PLACEHOLDER))
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        OutlinedButton(
+                            onClick = { showQuickImportScanner = true },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            OutlinedButton(
-                                onClick = { shouldPaste = true },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.ContentPaste, contentDescription = null)
-                                Spacer(Modifier.width(6.dp))
-                                Text("Coller")
-                            }
-                            importTypeLabel?.let { label ->
-                                Surface(
-                                    color = if (isEncryptedQr) VetNutriColors.Primary else Color.LightGray,
-                                    shape = MaterialTheme.shapes.small
-                                ) {
-                                    Text(
-                                        text = label,
-                                        color = if (isEncryptedQr) Color.White else Color.Black,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        style = MaterialTheme.typography.caption
-                                    )
-                                }
-                            }
-                        }
-
-                        // Ou scanner (uniquement sur mobile)
-                        if (!isDesktop) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Text(translate(General.OR), color = Color.Gray)
-                            }
-
-                            Button(
-                                onClick = { showScanner = true },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(backgroundColor = Color.DarkGray, contentColor = Color.White)
-                            ) {
-                                Icon(Icons.Default.QrCodeScanner, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(translate(AnimalList.SCAN_QR))
-                            }
+                            Text(translate(AnimalList.SCAN_QR))
                         }
                     }
                 },
                 confirmButton = {
                     Button(
                         onClick = {
-                            if (importCode.isNotBlank()) {
+                            if (quickImportInput.isNotBlank()) {
                                 coroutineScope.launch {
-                                    viewModel.importFromJsonBin(importCode)
+                                    val result =
+                                        viewModel.importFromJsonBin(quickImportInput.trim())
+                                    viewModel.setImportResult(result)
+                                    println("[QUICK_IMPORT] Result set: ${result::class.simpleName}")
+                                    if (result is AnimalListViewModel.ImportResult.Success &&
+                                        result.animalIds.size == 1
+                                    ) {
+                                        pendingAutoOpenAnimalId = result.animalIds.first()
+                                        shouldAutoOpenAfterDialog = true
+                                    } else {
+                                        pendingAutoOpenAnimalId = null
+                                        shouldAutoOpenAfterDialog = false
+                                    }
+                                    viewModel.loadAnimals()
+                                    showQuickImportDialog = false
+                                    quickImportInput = ""
                                 }
-                                // On ne ferme pas le dialog tout de suite, le progress va s'afficher
                             }
                         },
-                        enabled = importCode.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary, contentColor = Color.White)
-                    ) { Text("Importer") }
+                        enabled = quickImportInput.isNotBlank(),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                backgroundColor = VetNutriColors.Primary
+                            )
+                    ) {
+                        Text(translate(General.IMPORT), color = Color.White)
+                    }
                 },
                 dismissButton = {
-                    Button(onClick = { showImportDialog = false }) { Text("Annuler") }
+                    TextButton(
+                        onClick = {
+                            showQuickImportDialog = false
+                            quickImportInput = ""
+                        }
+                    ) { Text(translate(General.CANCEL)) }
                 }
             )
         }
 
+        if (showQuickImportScanner) {
+            AlertDialog(
+                onDismissRequest = { showQuickImportScanner = false },
+                title = { Text(translate(AnimalList.SCAN_QR)) },
+                text = {
+                    Box(modifier = Modifier.fillMaxWidth().height(360.dp)) {
+                        QRCodeScannerView(
+                            onCodeScanned = { code ->
+                                quickImportInput = code
+                                showQuickImportScanner = false
+                            },
+                            onClose = { showQuickImportScanner = false },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showQuickImportScanner = false }) {
+                        Text(translate(General.CANCEL))
+                    }
+                }
+            )
+        }
+
+        val apiImportResult = viewModel.importResult.collectAsState().value
+        val apiImporting = viewModel.isApiImporting.collectAsState().value
+        val apiProgress = viewModel.apiImportProgress.collectAsState().value
+        val apiLogs = viewModel.apiImportLogs.collectAsState().value
+
         if (apiImporting) {
             AlertDialog(
                 onDismissRequest = {},
-                title = { Text(translate(General.IMPORTING)) },
+                title = { Text(translate(Settings.IMPORT_RUNNING)) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LinearProgressIndicator(progress = apiProgress.toFloat(), modifier = Modifier.fillMaxWidth())
-                        Text("${translate("progress")}: ${(apiProgress * 100).toInt()}%") // Assuming progress is not localized or generic
-
-                        Box(modifier = Modifier.fillMaxWidth().height(100.dp).background(Color.LightGray.copy(alpha = 0.3f)).padding(4.dp)) {
-                            LazyColumn {
-                                items(apiLogs.takeLast(5)) { log ->
-                                    Text(log, style = MaterialTheme.typography.caption)
-                                }
+                        LinearProgressIndicator(progress = apiProgress.toFloat())
+                        Box(
+                            modifier =
+                                Modifier.fillMaxWidth().height(120.dp).verticalScroll(
+                                    rememberScrollState()
+                                )
+                        ) {
+                            Column {
+                                apiLogs.takeLast(10).forEach { line -> Text(line) }
                             }
                         }
                     }
@@ -553,34 +592,68 @@ fun AnimalListView(
             )
         }
 
-        if (showApiResultDialog) {
+        var showApiImportDialog by remember { mutableStateOf(false) }
+        LaunchedEffect(apiImportResult) {
+            showApiImportDialog = apiImportResult != null
+        }
+        if (showApiImportDialog && apiImportResult != null) {
             AlertDialog(
                 onDismissRequest = {
-                    showApiResultDialog = false
-                    viewModel.resetImportResult() // Reset result
+                    showApiImportDialog = false
+                    viewModel.resetImportResult()
                 },
-                title = {
-                    Text(if (apiImportResult is AnimalListViewModel.ImportResult.Success) translate(General.SUCCESS) else translate(General.ERROR))
-                },
+                title = { Text("Résultat de l'import") },
                 text = {
-                    when (apiImportResult) {
+                    when (val r = apiImportResult) {
                         is AnimalListViewModel.ImportResult.Success -> {
                             Column {
-                                Text(translate(General.IMPORT_SUCCESS))
-                                Text("${translate(General.TOTAL_ELEMENTS)} ${apiImportResult.count}")
+                                Text("Total pris en compte: ${r.count}")
+                                Text("Importés: ${r.importedCount}")
+                                if (r.updatedCount > 0) Text("Mises à jour: ${r.updatedCount}")
+                                if (r.deletedCount > 0) Text("Supprimés: ${r.deletedCount}")
+                                if (r.errorCount > 0) {
+                                    Text(
+                                        "Erreurs: ${r.errorCount}",
+                                        color = MaterialTheme.colors.error
+                                    )
+                                }
+                                if (r.conseils > 0) Text("Conseils: ${r.conseils}")
                             }
                         }
                         is AnimalListViewModel.ImportResult.Error -> {
-                            Text(apiImportResult.message)
+                            Text(
+                                "Erreur: ${r.message}",
+                                color = MaterialTheme.colors.error
+                            )
                         }
-                        null -> {}
+                        else -> {}
                     }
                 },
                 confirmButton = {
-                    Button(onClick = {
-                        showApiResultDialog = false
-                        viewModel.resetImportResult()
-                    }) { Text("OK") }
+                    Button(
+                        onClick = {
+                            showApiImportDialog = false
+                            val id = pendingAutoOpenAnimalId
+                            val shouldOpen = shouldAutoOpenAfterDialog && id != null
+                            shouldAutoOpenAfterDialog = false
+                            pendingAutoOpenAnimalId = null
+                            viewModel.resetImportResult()
+                            if (shouldOpen) {
+                                coroutineScope.launch {
+                                    println("[QUICK_IMPORT] Attempt auto-open for animalId=$id")
+                                    val animal = viewModel.getAnimalById(id!!)
+                                    if (animal != null) {
+                                        println("[QUICK_IMPORT] Auto-open success for animalId=$id")
+                                        onSelectAnimal(animal)
+                                    } else {
+                                        println("[QUICK_IMPORT] Auto-open failed: animal not found for id=$id")
+                                    }
+                                }
+                            } else {
+                                println("[QUICK_IMPORT] Auto-open skipped: shouldOpen=$shouldOpen id=$id")
+                            }
+                        }
+                    ) { Text("OK") }
                 }
             )
         }
@@ -662,6 +735,7 @@ private fun AnimalCard(
         animal: AnimalEv,
         onClick: () -> Unit,
         onDelete: () -> Unit,
+        isExamMode: Boolean,
         modifier: Modifier = Modifier
 ) {
         var showDeleteConfirmation by remember { mutableStateOf(false) }
@@ -695,6 +769,14 @@ private fun AnimalCard(
                                                         text =
                                                                 "${Animal.OWNER.translate()}: ${animal.ownerName}",
                                                         style = MaterialTheme.typography.body2
+                                                )
+                                        }
+                                        if (isExamMode && !animal.examExerciseId.isNullOrBlank()) {
+                                                Text(
+                                                        text =
+                                                                "${Animal.EXAM_EXERCISE_ID.translate()}: ${animal.examExerciseId}",
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = VetNutriColors.Primary
                                                 )
                                         }
                                 }

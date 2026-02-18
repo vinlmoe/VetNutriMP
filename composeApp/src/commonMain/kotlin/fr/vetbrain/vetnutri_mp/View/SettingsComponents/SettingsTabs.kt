@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -24,7 +25,12 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
  * @param modifier Modificateur appliqué au composant
  */
 @Composable
-fun SettingsTabs(selectedTab: Int, onTabSelected: (Int) -> Unit, modifier: Modifier = Modifier) {
+fun SettingsTabs(
+        selectedTab: Int,
+        onTabSelected: (Int) -> Unit,
+        modifier: Modifier = Modifier,
+        isExamMode: Boolean = false
+) {
     val tabs =
             listOf(
                     TabInfo(
@@ -68,6 +74,8 @@ fun SettingsTabs(selectedTab: Int, onTabSelected: (Int) -> Unit, modifier: Modif
         ) {
             tabs.forEachIndexed { index, tab ->
                 val isSelected = selectedTab == index
+                val isRecipeTab = tab.section == SettingsSection.RECIPES
+                val isEnabled = !(isExamMode && isRecipeTab)
                 val scale by
                         animateFloatAsState(
                                 targetValue = if (isSelected) 1.05f else 1.0f,
@@ -77,7 +85,7 @@ fun SettingsTabs(selectedTab: Int, onTabSelected: (Int) -> Unit, modifier: Modif
 
                 Tab(
                         selected = isSelected,
-                        onClick = { onTabSelected(index) },
+                        onClick = { if (isEnabled) onTabSelected(index) },
                         modifier = Modifier.padding(vertical = 8.dp).scale(scale)
                 ) {
                     Row(
@@ -87,13 +95,15 @@ fun SettingsTabs(selectedTab: Int, onTabSelected: (Int) -> Unit, modifier: Modif
                         Icon(
                                 imageVector = tab.icon,
                                 contentDescription = null,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(20.dp),
+                                tint = if (isEnabled) VetNutriColors.Primary else Color.Gray
                         )
                         Text(
                                 text = tab.title,
                                 style = MaterialTheme.typography.body2,
                                 fontWeight =
-                                        if (isSelected) FontWeight.Medium else FontWeight.Normal
+                                        if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                                color = if (isEnabled) MaterialTheme.colors.onSurface else Color.Gray
                         )
                     }
                 }

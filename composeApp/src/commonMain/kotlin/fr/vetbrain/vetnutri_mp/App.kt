@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -26,6 +27,7 @@ import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.View.*
 import fr.vetbrain.vetnutri_mp.View.StartupScreen
 import fr.vetbrain.vetnutri_mp.ViewModel.*
+import fr.vetbrain.vetnutri_mp.Data.ExamSession
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CoroutineScope
@@ -189,6 +191,7 @@ fun App(appDatabase: AppDatabase) {
 
     // Variables d'état pour l'interface
     var showStartupBackupDialog by remember { mutableStateOf(false) }
+    var examSession by remember { mutableStateOf<ExamSession?>(null) }
 
     // Création des services de sauvegarde
     val fileService = remember { createFileService() }
@@ -238,6 +241,7 @@ fun App(appDatabase: AppDatabase) {
         ) 
     }
 
+
     val animalDetailViewModel = remember {
         AnimalDetailViewModel(
                 consultationRepository,
@@ -275,6 +279,13 @@ fun App(appDatabase: AppDatabase) {
 
     // État pour gérer l'onglet sélectionné dans CalculationTabsView
     var selectedCalculationTab by remember { mutableStateOf(0) }
+
+    LaunchedEffect(examSession) {
+        animalListViewModel.setExamSession(examSession)
+        if (examSession != null && selectedCalculationTab == 3) {
+            selectedCalculationTab = 0
+        }
+    }
 
     val equationViewModel = remember {
         EquationViewModel(
@@ -409,16 +420,31 @@ fun App(appDatabase: AppDatabase) {
                         settingsViewModel = settingsViewModel,
                         onDatabaseReady = onDatabaseReady,
                         conseilRepository = settingsViewModel.conseilRepository,
-                        onShowBackupDialog = { showStartupBackupDialog = true }
+                        onShowBackupDialog = { showStartupBackupDialog = true },
+                        onStartExam = { session -> examSession = session }
                 )
             } else {
                 // Afficher l'application principale
                 Column(modifier = Modifier.fillMaxSize()) {
                     when (currentScreen) {
                         Screen.List -> {
-                            Column(modifier = Modifier.fillMaxSize()) {
+                            val examBorderModifier =
+                                    if (examSession != null) {
+                                        Modifier.border(1.dp, Color.Red)
+                                    } else {
+                                        Modifier
+                                    }
+                            Column(
+                                    modifier =
+                                            Modifier.fillMaxSize().then(examBorderModifier)
+                                                    .padding(if (examSession != null) 2.dp else 0.dp)
+                            ) {
+                                val examInfoTitle =
+                                        examSession?.let { session ->
+                                            "Liste des animaux — ID examen: ${session.studentNumber} | Étudiant: ${session.studentId}"
+                                        } ?: "Liste des animaux"
                                 TopBar(
-                                        title = "Liste des animaux",
+                                        title = examInfoTitle,
                                         onSettingsClick = { currentScreen = Screen.Settings }
                                 ) {
                                     // Boutons supprimés
@@ -455,9 +481,7 @@ fun App(appDatabase: AppDatabase) {
                                         onShowCalculationTabs = {
                                             currentScreen = Screen.CalculationTabs
                                         },
-                                        onShowCrossAnalysis = {
-                                            currentScreen = Screen.CrossAnalysis
-                                        },
+                                        examSession = examSession,
                                         modifier = Modifier.fillMaxWidth().weight(1f)
                                 )
                             }
@@ -489,6 +513,7 @@ fun App(appDatabase: AppDatabase) {
                                             currentScreen = Screen.Detail
                                         },
                                         isEditing = isEditing,
+                                        examSession = examSession,
                                         modifier = Modifier.fillMaxWidth().weight(1f)
                                 )
                             }
@@ -503,7 +528,8 @@ fun App(appDatabase: AppDatabase) {
                                         modifier = Modifier.fillMaxWidth().weight(1f),
                                         equationRepository = equationRepository,
                                         recipeRepository = recipeRepository,
-                                        conseilRepository = conseilRepository
+                                        conseilRepository = conseilRepository,
+                                        isExamMode = examSession != null
                                 )
                             }
                         }
@@ -560,6 +586,7 @@ fun App(appDatabase: AppDatabase) {
                                     selectedTab = selectedCalculationTab,
                                     onTabChanged = { selectedCalculationTab = it },
                                     modifier = Modifier.fillMaxSize(),
+                                    isExamMode = examSession != null,
                                     biblioRefRepository = biblioRefRepository,
                                     equationRepository = equationRepository,
                                     referenceEvRepository = databaseReferenceEvRepository,
@@ -733,6 +760,9 @@ fun App(appDatabase: AppDatabase) {
                                             // TODO: implémenter le rafraîchissement de la liste des
                                             // aliments
                                         },
+                                        onShowCrossAnalysis = {
+                                            currentScreen = Screen.CrossAnalysis
+                                        },
                                         modifier = Modifier.padding(paddingValues),
                                         onSpeciesClick = { species ->
                                             selectedSpecies = species
@@ -740,7 +770,8 @@ fun App(appDatabase: AppDatabase) {
                                         },
                                         onBackupClick = {
                                             currentScreen = Screen.BackupRestore
-                                        }
+                                        },
+                                        isExamMode = examSession != null
                                 )
                             }
                         }

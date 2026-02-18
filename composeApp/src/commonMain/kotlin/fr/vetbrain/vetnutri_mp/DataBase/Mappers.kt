@@ -34,7 +34,11 @@ object Mappers {
                                 birthdate = this.birthdate?.toString() ?: "",
                                 race = this.race,
                                 summary = this.summary,
-                                jsonbinId = this.jsonbinId
+                                jsonbinId = this.jsonbinId,
+                                exam = this.exam,
+                                examStudentId = this.examStudentId,
+                                examStudentNumber = this.examStudentNumber,
+                                examExerciseId = this.examExerciseId
                         )
 
                 if (includeRelations) {
@@ -73,6 +77,10 @@ object Mappers {
                         race = this.race ?: "",
                         summary = this.summary ?: "",
                         jsonbinId = this.jsonbinId,
+                        exam = this.exam,
+                        examStudentId = this.examStudentId,
+                        examStudentNumber = this.examStudentNumber,
+                        examExerciseId = this.examExerciseId,
                         consultations = consultations.map { it.toData() }.toMutableList(),
                         weightHistory = weights.map { it.toData() }.toMutableList()
                 )
