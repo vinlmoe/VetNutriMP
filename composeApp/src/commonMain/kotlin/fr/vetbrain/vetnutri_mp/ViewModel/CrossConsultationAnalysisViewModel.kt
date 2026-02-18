@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -56,7 +57,10 @@ class CrossConsultationAnalysisViewModel(
             val rations: List<RationSummary>,
             val espece: Espece,
             val rawDate: LocalDate?,
-            val keywordIds: List<String>
+            val keywordIds: List<String>,
+            val examId: String? = null,
+            val studentIdentifier: String? = null,
+            val examExerciseId: String? = null
     )
 
     data class RationSummary(
@@ -102,10 +106,21 @@ class CrossConsultationAnalysisViewModel(
             val value: Double
     )
 
+    private data class FilterState(
+            val items: List<ConsultationItem>,
+            val query: String,
+            val specie: Espece?,
+            val keywords: Set<String>,
+            val examId: String,
+            val examExerciseId: String
+    )
+
     private val _items = MutableStateFlow<List<ConsultationItem>>(emptyList())
     private val _searchQuery = MutableStateFlow("")
     private val _speciesFilter = MutableStateFlow<Espece?>(null)
     private val _keywordFilter = MutableStateFlow<Set<String>>(emptySet())
+    private val _examIdFilter = MutableStateFlow("")
+    private val _examExerciseIdFilter = MutableStateFlow("")
     private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
     private val _isLoading = MutableStateFlow(false)
     private val _availableKeywords = MutableStateFlow<List<ConsultationKeyword>>(emptyList())
@@ -115,25 +130,65 @@ class CrossConsultationAnalysisViewModel(
     val searchQuery: StateFlow<String> = _searchQuery
     val speciesFilter: StateFlow<Espece?> = _speciesFilter
     val keywordFilter: StateFlow<Set<String>> = _keywordFilter
+    val examIdFilter: StateFlow<String> = _examIdFilter
+    val examExerciseIdFilter: StateFlow<String> = _examExerciseIdFilter
     val selectedIds: StateFlow<Set<String>> = _selectedIds
     val availableKeywords: StateFlow<List<ConsultationKeyword>> = _availableKeywords
 
     val consultations: StateFlow<List<ConsultationItem>> =
-            combine(_items, _searchQuery, _speciesFilter, _keywordFilter) { items, query, specie, keywords ->
-                val q = query.trim().lowercase()
-                items.filter { item ->
-                    val matchText =
-                            q.isBlank() ||
-                                    item.animalName.lowercase().contains(q) ||
-                                    item.dateLabel.lowercase().contains(q) ||
-                                    item.objective.lowercase().contains(q) ||
-                                    (item.referenceLabel?.lowercase()?.contains(q) == true)
-                    val matchSpecies = specie == null || item.espece == specie
-                    val matchKeywords =
-                            keywords.isEmpty() || item.keywordIds.any { keywords.contains(it) }
-                    matchText && matchSpecies && matchKeywords
-                }
-            }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+            combine(
+                            _items,
+                            _searchQuery,
+                            _speciesFilter,
+                            _keywordFilter
+                    ) { items, query, specie, keywords ->
+                        FilterState(items, query, specie, keywords, "", "")
+                    }
+                    .combine(_examIdFilter) { state, examId ->
+                        state.copy(examId = examId)
+                    }
+                    .combine(_examExerciseIdFilter) { state, exerciseId ->
+                        state.copy(examExerciseId = exerciseId)
+                    }
+                    .map { state ->
+                        val q = state.query.trim().lowercase()
+                        val qExamId = state.examId.trim()
+                        val qExerciseId = state.examExerciseId.trim()
+                        state.items.filter { item ->
+                            val matchText =
+                                    q.isBlank() ||
+                                            item.animalName.lowercase().contains(q) ||
+                                            item.dateLabel.lowercase().contains(q) ||
+                                            item.objective.lowercase().contains(q) ||
+                                            (item.referenceLabel?.lowercase()?.contains(q) == true) ||
+                                            (item.examId?.lowercase()?.contains(q) == true) ||
+                                            (item.studentIdentifier?.lowercase()?.contains(q) == true) ||
+                                            (item.examExerciseId?.lowercase()?.contains(q) == true)
+                            val matchSpecies = state.specie == null || item.espece == state.specie
+                            val matchKeywords =
+                                    state.keywords.isEmpty() ||
+                                            item.keywordIds.any { state.keywords.contains(it) }
+                            val matchExamPair =
+                                    when {
+                                        qExamId.isBlank() && qExerciseId.isBlank() -> true
+                                        qExamId.isNotBlank() && qExerciseId.isNotBlank() ->
+                                                item.examId.equals(qExamId, ignoreCase = true) &&
+                                                        item.examExerciseId.equals(
+                                                                qExerciseId,
+                                                                ignoreCase = true
+                                                        )
+                                        qExamId.isNotBlank() ->
+                                                item.examId.equals(qExamId, ignoreCase = true)
+                                        else ->
+                                                item.examExerciseId.equals(
+                                                        qExerciseId,
+                                                        ignoreCase = true
+                                                )
+                                    }
+                            matchText && matchSpecies && matchKeywords && matchExamPair
+                        }
+                    }
+                    .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val selectedCount: StateFlow<Int> =
             _selectedIds
@@ -153,6 +208,14 @@ class CrossConsultationAnalysisViewModel(
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    fun setExamIdFilter(value: String) {
+        _examIdFilter.value = value
+    }
+
+    fun setExamExerciseIdFilter(value: String) {
+        _examExerciseIdFilter.value = value
     }
 
     fun setSpeciesFilter(espece: Espece?) {
@@ -351,7 +414,10 @@ class CrossConsultationAnalysisViewModel(
                 rations = rationSummaries,
                 espece = animal.getEspece(),
                 rawDate = consultation.date,
-                keywordIds = consultation.keywordIds.toList()
+                keywordIds = consultation.keywordIds.toList(),
+                examId = animal.examStudentNumber,
+                studentIdentifier = animal.examStudentId,
+                examExerciseId = animal.examExerciseId
         )
     }
 

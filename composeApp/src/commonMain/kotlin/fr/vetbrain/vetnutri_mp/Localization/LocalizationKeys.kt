@@ -41,6 +41,7 @@ object LocalizationKeys {
         val COMPARE = "general.compare"
         val CONFIRM_DELETE = "general.confirm"
         val CREATE = "general.create"
+        val COPY = "general.copy"
         val DATE_PICKER = "general.datePicker"
         val ERROR = "general.error"
         val IMPORT = "import"
@@ -365,6 +366,7 @@ object LocalizationKeys {
         val SUMMARY = "animal.summary"
         val STERILIZED = "animal.sterilized"
         val DEAD = "animal.dead"
+        val EXAM_EXERCISE_ID = "animal.examExerciseId"
         val EDIT_ANIMAL = "animal.edit"
         val NEW_ANIMAL = "animal.new"
         val DELETE_ANIMAL = "general.delete"
@@ -438,6 +440,13 @@ object LocalizationKeys {
         val KEYWORD_FILTER_INCLUDE = "animalList.keywordFilterInclude"
         val KEYWORD_FILTER_EXCLUDE = "animalList.keywordFilterExclude"
         val KEYWORD_FILTER_EMPTY = "animalList.keywordFilterEmpty"
+        val EXPORT_EXAM = "animalList.exportExam"
+        val EXPORT_EXAM_TITLE = "animalList.exportExamTitle"
+        val EXPORT_EXAM_IN_PROGRESS = "animalList.exportExamInProgress"
+        val EXPORT_EXAM_SUCCESS = "animalList.exportExamSuccess"
+        val EXPORT_EXAM_NOTE = "animalList.exportExamNote"
+        val EXPORT_EXAM_ERROR = "animalList.exportExamError"
+        val EXPORT_EXAM_MODE_REQUIRED = "animalList.exportExamModeRequired"
     }
 
     object Chart {
@@ -888,6 +897,12 @@ object LocalizationKeys {
         val VERSION_CURRENT = "startup.version_current"
         val VERSION_EMBEDDED = "startup.version_embedded"
         val VERSION_NONE = "startup.version_none"
+        val EXAM_MODE = "startup.exam_mode"
+        val EXAM_MODE_TITLE = "startup.exam_mode_title"
+        val EXAM_STUDENT_NUMBER = "startup.exam_student_number"
+        val EXAM_STUDENT_ID = "startup.exam_student_id"
+        val EXAM_START = "startup.exam_start"
+        val EXAM_INSTRUCTIONS = "startup.exam_instructions"
     }
 
     object Terms {

@@ -36,6 +36,10 @@ data class AnimalApi(
         @Serializable(with = LocalDateSerializer::class) val birthdate: LocalDate? = null,
         val breed: String,
         val summary: String,
+        val exam: Boolean = false,
+        val examStudentId: String? = null,
+        val examStudentNumber: String? = null,
+        val examExerciseId: String? = null,
         val weights: List<WeightEntryApi> = emptyList(),
         val consultations: List<ConsultationApi> = emptyList()
 )
@@ -343,6 +347,10 @@ fun AnimalEv.toApi(): AnimalApi {
                 birthdate = birthdate,
                 breed = race,
                 summary = summary,
+                exam = exam,
+                examStudentId = examStudentId,
+                examStudentNumber = examStudentNumber,
+                examExerciseId = examExerciseId,
                 weights = weightHistory.map { it.toApi() },
                 consultations = consultations.map { it.toApi() }
         )
@@ -411,6 +419,10 @@ fun AnimalApi.toDomain(): AnimalEv {
                 birthdate = birthdate,
                 race = breed,
                 summary = summary,
+                exam = exam,
+                examStudentId = examStudentId,
+                examStudentNumber = examStudentNumber,
+                examExerciseId = examExerciseId,
                 consultations = consultations.map { it.toDomain() }.toMutableList(),
                 weightHistory = weights.map { it.toDomain() }.toMutableList()
         )

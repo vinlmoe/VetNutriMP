@@ -85,7 +85,11 @@ data class AnimalEntity(
         val birthdate: String?,
         val race: String?,
         val summary: String?,
-        val jsonbinId: String? = null // ID du bin jsonbin.io pour le partage en ligne
+        val jsonbinId: String? = null, // ID du bin jsonbin.io pour le partage en ligne
+        val exam: Boolean = false, // Indique si l'animal est lié à un examen
+        val examStudentId: String? = null, // Identifiant de l'étudiant
+        val examStudentNumber: String? = null, // Numéro de l'étudiant
+        val examExerciseId: String? = null // ID de l'exercice
 )
 
 @Serializable

@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.CrossConsultationAnalysis
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal as AnimalKeys
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Startup as StartupKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -64,6 +66,8 @@ fun CrossConsultationAnalysisView(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val speciesFilter by viewModel.speciesFilter.collectAsState()
     val keywordFilter by viewModel.keywordFilter.collectAsState()
+    val examIdFilter by viewModel.examIdFilter.collectAsState()
+    val examExerciseIdFilter by viewModel.examExerciseIdFilter.collectAsState()
     val availableKeywords by viewModel.availableKeywords.collectAsState()
     val scope = rememberCoroutineScope()
     var aggregatesText by remember { mutableStateOf<String?>(null) }
@@ -107,6 +111,26 @@ fun CrossConsultationAnalysisView(
                         leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = null) },
                         singleLine = true
                 )
+
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                            value = examIdFilter,
+                            onValueChange = { viewModel.setExamIdFilter(it) },
+                            modifier = Modifier.weight(1f),
+                            label = { Text(StartupKeys.EXAM_STUDENT_NUMBER.translate()) },
+                            singleLine = true
+                    )
+                    OutlinedTextField(
+                            value = examExerciseIdFilter,
+                            onValueChange = { viewModel.setExamExerciseIdFilter(it) },
+                            modifier = Modifier.weight(1f),
+                            label = { Text(AnimalKeys.EXAM_EXERCISE_ID.translate()) },
+                            singleLine = true
+                    )
+                }
 
                 // Filtre espèce
                 Row(

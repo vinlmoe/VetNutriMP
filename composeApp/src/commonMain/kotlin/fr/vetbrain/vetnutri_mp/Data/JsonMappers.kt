@@ -246,6 +246,10 @@ fun AnimalEv.toJson(): AnimalEvJson {
             race = this.race,
             resume = this.summary,
             jsonbinId = this.jsonbinId,
+            exam = this.exam,
+            examStudentId = this.examStudentId,
+            examStudentNumber = this.examStudentNumber,
+            examExerciseId = this.examExerciseId,
             listWeight = this.weightHistory.map { it.toJson() },
             list = ListConsultEvJson(consultations = this.consultations.map { it.toJson() })
     )
@@ -314,6 +318,10 @@ fun AnimalEvJson.toData(): AnimalEv {
             race = this.race,
             summary = this.resume,
             jsonbinId = this.jsonbinId,
+            exam = this.exam,
+            examStudentId = this.examStudentId,
+            examStudentNumber = this.examStudentNumber,
+            examExerciseId = this.examExerciseId,
             weightHistory =
                     try {
                         this.listWeight.map { it.toData() }.toMutableList()

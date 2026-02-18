@@ -5,9 +5,12 @@ import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
 import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
+import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
+import fr.vetbrain.vetnutri_mp.Data.ExamSession
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodImportResult
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +18,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.uuid.ExperimentalUuidApi
 
 /**
@@ -56,6 +65,9 @@ class AnimalListViewModel(
 
     private val _animalKeywordIds = MutableStateFlow<Map<String, Set<String>>>(emptyMap())
 
+    private val _examSession = MutableStateFlow<ExamSession?>(null)
+    val examSession: StateFlow<ExamSession?> = _examSession.asStateFlow()
+
     // Liste de toutes les espèces disponibles, avec une option "Toutes" (null)
     val availableEspeces: List<Espece?> = listOf(null) + Espece.entries.toList()
 
@@ -71,7 +83,8 @@ class AnimalListViewModel(
             val query: String,
             val espece: Espece?,
             val keywordMap: Map<String, Set<String>>,
-            val includeIds: Set<String>
+            val includeIds: Set<String>,
+            val examSession: ExamSession?
     )
 
     val animals: StateFlow<List<AnimalEv>> =
@@ -82,7 +95,10 @@ class AnimalListViewModel(
                             _animalKeywordIds,
                             _keywordIncludeIds
                     ) { all, query, espece, keywordMap, includeIds ->
-                        AnimalFilterState(all, query, espece, keywordMap, includeIds)
+                        AnimalFilterState(all, query, espece, keywordMap, includeIds, null)
+                    }
+                    .combine(_examSession) { state, examSession ->
+                        state.copy(examSession = examSession)
                     }
                     .combine(_keywordExcludeIds) { state, excludeIds ->
                         filterAnimals(
@@ -91,7 +107,8 @@ class AnimalListViewModel(
                                 state.espece,
                                 state.keywordMap,
                                 state.includeIds,
-                                excludeIds
+                                excludeIds,
+                                state.examSession
                         )
                     }
                     .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -124,40 +141,107 @@ class AnimalListViewModel(
         _selectedEspece.value = espece
     }
 
+    fun setExamSession(session: ExamSession?) {
+        _examSession.value = session
+    }
+
     private fun filterAnimals(
             animals: List<AnimalEv>,
             query: String,
             espece: Espece?,
             keywordMap: Map<String, Set<String>>,
             includeIds: Set<String>,
-            excludeIds: Set<String>
+            excludeIds: Set<String>,
+            examSession: ExamSession?
     ): List<AnimalEv> {
         val trimmedQuery = query.trim()
 
-        return if (trimmedQuery.isBlank() && espece == null && includeIds.isEmpty() && excludeIds.isEmpty()) {
-            animals.sortedBy { it.nom }
-                } else {
-            animals
-                            .filter { animal ->
-                                val matchesQuery =
-                                trimmedQuery.isBlank() ||
-                                        animal.nom.contains(trimmedQuery, ignoreCase = true) ||
-                                        animal.ownerName.contains(trimmedQuery, ignoreCase = true) ||
-                                        animal.race.contains(trimmedQuery, ignoreCase = true)
+        return animals
+                .filter { animal ->
+                    val matchesExam =
+                            examSession == null ||
+                                    (animal.exam &&
+                                            (examSession.studentId.isBlank() ||
+                                                    animal.examStudentId == examSession.studentId) &&
+                                            (examSession.studentNumber.isBlank() ||
+                                                    animal.examStudentNumber == examSession.studentNumber))
 
-                                val matchesEspece = espece == null || animal.getEspece() == espece
-                                val animalKeywords = keywordMap[animal.uuid] ?: emptySet()
-                                val matchesKeywordInclude =
-                                        includeIds.isEmpty() ||
-                                                includeIds.all { animalKeywords.contains(it) }
-                                val matchesKeywordExclude =
-                                        excludeIds.isEmpty() ||
-                                                excludeIds.none { animalKeywords.contains(it) }
+                    val matchesQuery =
+                            trimmedQuery.isBlank() ||
+                                    animal.nom.contains(trimmedQuery, ignoreCase = true) ||
+                                    animal.ownerName.contains(trimmedQuery, ignoreCase = true) ||
+                                    animal.race.contains(trimmedQuery, ignoreCase = true)
 
-                                matchesQuery && matchesEspece && matchesKeywordInclude && matchesKeywordExclude
-                            }
-                            .sortedBy { it.nom }
+                    val matchesEspece = espece == null || animal.getEspece() == espece
+                    val animalKeywords = keywordMap[animal.uuid] ?: emptySet()
+                    val matchesKeywordInclude =
+                            includeIds.isEmpty() ||
+                                    includeIds.all { animalKeywords.contains(it) }
+                    val matchesKeywordExclude =
+                            excludeIds.isEmpty() ||
+                                    excludeIds.none { animalKeywords.contains(it) }
+
+                    matchesExam && matchesQuery && matchesEspece && matchesKeywordInclude && matchesKeywordExclude
                 }
+                .sortedBy { it.nom }
+    }
+
+    suspend fun exportExamAnimalsToJsonBin(session: ExamSession): Result<fr.vetbrain.vetnutri_mp.Service.ShareLink> {
+        return withContext(AppDispatchers.IO) {
+            try {
+                val allAnimals = animalRepository.getAllAnimals()
+                val examAnimals =
+                        allAnimals.filter { animal ->
+                            animal.exam &&
+                                    (session.studentId.isBlank() || animal.examStudentId == session.studentId) &&
+                                    (session.studentNumber.isBlank() || animal.examStudentNumber == session.studentNumber)
+                        }
+
+                if (examAnimals.isEmpty()) {
+                    return@withContext Result.failure(Exception("Aucun animal d'examen à exporter."))
+                }
+
+                if (consultationRepository == null) {
+                    return@withContext Result.failure(Exception("Références manquantes pour exporter les consultations."))
+                }
+
+                val exportImportRepo = fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
+                    animalRepository = animalRepository,
+                    foodRepository = foodRepository,
+                    equationRepository = equationRepository,
+                    referenceRepository = referenceEvRepository,
+                    biblioRepository = biblioRefRepository,
+                    consultationRepository = consultationRepository,
+                    recipeRepository = recipeRepository,
+                    conseilRepository = conseilRepository
+                )
+
+                val jsonContent = exportImportRepo.exportWithSelection(
+                    fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ExportSelectionOptions(
+                        includeAnimals = true,
+                        includeFoods = false,
+                        includeRations = true,
+                        includeRecipes = false,
+                        includeEquations = false,
+                        includeConseils = false,
+                        includeLinkedFromAnimals = true,
+                        animalIds = examAnimals.map { it.uuid }.toSet()
+                    )
+                )
+
+                val shareService = fr.vetbrain.vetnutri_mp.Service.createJsonShareService()
+                val shareOptions =
+                        fr.vetbrain.vetnutri_mp.Service.ShareOptions(
+                            binName = "exam_${session.studentId}",
+                            encryptJson = false,
+                            isPrivate = false
+                        )
+
+                shareService.uploadJson(jsonContent, shareOptions)
+            } catch (e: Exception) {
+                Result.failure(Exception("Erreur lors de l'export examen: ${e.message}", e))
+            }
+        }
     }
 
     fun setKeywordFilters(includeIds: Set<String>, excludeIds: Set<String>) {
@@ -255,6 +339,13 @@ class AnimalListViewModel(
         return try {
             startApiImport()
             appendApiImportLog("🔄 Début de l'import depuis jsonbin.io...")
+            println("[QUICK_IMPORT] Start importFromJsonBin input=$binIdOrUrl")
+            val preImportIds = try {
+                animalRepository.getAllAnimals().map { it.uuid }.toSet()
+            } catch (e: Exception) {
+                println("[QUICK_IMPORT] Pre-import animal list failed: ${e.message}")
+                emptySet()
+            }
 
             // Créer le service de partage JSON
             val shareService = fr.vetbrain.vetnutri_mp.Service.createJsonShareService()
@@ -266,6 +357,7 @@ class AnimalListViewModel(
                 binIdOrUrl.contains("jsonbin.io") -> {
                     shareService.extractBinIdFromUrl(binIdOrUrl) ?: run {
                         finishApiImport()
+                        println("[QUICK_IMPORT] Failed to extract binId from URL=$binIdOrUrl")
                         return ImportResult.Error("Impossible d'extraire l'ID du bin depuis l'URL: $binIdOrUrl")
                     }
                 }
@@ -276,6 +368,7 @@ class AnimalListViewModel(
             if (qrPayload != null) {
                 appendApiImportLog("🔐 QR chiffré détecté (bin: $binId)")
             }
+            println("[QUICK_IMPORT] Parsed binId=$binId hasKey=${qrPayload != null}")
 
             appendApiImportLog("📥 Téléchargement du bin: $binId")
             updateApiImportProgress(0.1)
@@ -287,6 +380,22 @@ class AnimalListViewModel(
                 finishApiImport()
                 return ImportResult.Error("Erreur lors du téléchargement depuis jsonbin.io: ${error.message}")
             }
+
+            val importedAnimalIds: List<String> =
+                try {
+                    val root = json.parseToJsonElement(jsonContent)
+                    val animalsArray = root.jsonObject["animals"]?.jsonArray ?: JsonArray(emptyList())
+                    val ids =
+                        animalsArray.mapNotNull { element ->
+                            val obj = element as? JsonObject ?: return@mapNotNull null
+                            obj["uuid"]?.jsonPrimitive?.content
+                        }
+                    println("[QUICK_IMPORT] Parsed animals array size=${animalsArray.size} ids=$ids")
+                    ids
+                } catch (e: Exception) {
+                    println("[QUICK_IMPORT] Envelope parse failed: ${e.message}")
+                    emptyList()
+                }
 
             appendApiImportLog("✅ JSON téléchargé (${jsonContent.length} caractères)")
             updateApiImportProgress(0.3)
@@ -328,6 +437,20 @@ class AnimalListViewModel(
                     }
                 )
             )
+            println("[QUICK_IMPORT] Import counts: animals=${importCounts.animals}")
+
+            val postImportIds = try {
+                animalRepository.getAllAnimals().map { it.uuid }.toSet()
+            } catch (e: Exception) {
+                println("[QUICK_IMPORT] Post-import animal list failed: ${e.message}")
+                emptySet()
+            }
+            val newIds = (postImportIds - preImportIds).toList()
+            val resolvedAnimalIds =
+                if (importedAnimalIds.isNotEmpty()) importedAnimalIds else newIds
+            println(
+                "[QUICK_IMPORT] Resolved animalIds=${resolvedAnimalIds} (newIds=${newIds.size})"
+            )
 
             updateApiImportProgress(1.0)
 
@@ -344,14 +467,13 @@ class AnimalListViewModel(
             loadAnimals()
 
             ImportResult.Success(
-                count = totalCount,
-                importedCount = importCounts.animals + importCounts.foods + importCounts.equations +
-                              importCounts.references + importCounts.biblios + importCounts.rations +
-                              importCounts.recipes + importCounts.conseils,
+                count = importCounts.animals,
+                importedCount = importCounts.animals,
                 updatedCount = 0, // L'importAll ne retourne pas les counts de mise à jour séparément
                 deletedCount = 0,
                 errorCount = 0,
-                conseils = importCounts.conseils
+                conseils = importCounts.conseils,
+                animalIds = resolvedAnimalIds
             )
         } catch (e: Exception) {
             finishApiImport()
@@ -371,6 +493,12 @@ class AnimalListViewModel(
 
     fun resetImportResult() {
         _importResult.value = null
+    }
+
+    suspend fun getAnimalById(uuid: String): AnimalEv? {
+        return withContext(AppDispatchers.IO) {
+            animalRepository.getAnimalById(uuid)
+        }
     }
 
     /**
@@ -468,7 +596,8 @@ class AnimalListViewModel(
             val deletedCount: Int = 0,
             val errorCount: Int = 0,
             val nonResolvedNutrients: Int = 0,
-            val conseils: Int = 0
+            val conseils: Int = 0,
+            val animalIds: List<String> = emptyList()
         ) : ImportResult()
         data class Error(val message: String) : ImportResult()
     }

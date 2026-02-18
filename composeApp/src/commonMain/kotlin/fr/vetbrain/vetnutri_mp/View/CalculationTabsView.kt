@@ -3,7 +3,9 @@ package fr.vetbrain.vetnutri_mp.View
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
@@ -49,6 +51,7 @@ fun CalculationTabsView(
         selectedTab: Int = 0,
         onTabChanged: (Int) -> Unit = {},
         modifier: Modifier = Modifier,
+        isExamMode: Boolean = false,
         biblioRefRepository: BiblioRefRepository? = null,
         equationRepository: EquationRepository? = null,
         referenceEvRepository: DatabaseReferenceEvRepository? = null,
@@ -163,7 +166,8 @@ fun CalculationTabsView(
                         )
                         Tab(
                                 selected = selectedTab == 3,
-                                onClick = { onTabChanged(3) },
+                                onClick = { if (!isExamMode) onTabChanged(3) },
+                                modifier = Modifier.alpha(if (isExamMode) 0.5f else 1f),
                                 text = { Text("Conseils personnalisés") }
                         )
                 }
@@ -195,12 +199,21 @@ fun CalculationTabsView(
                                         }
                                 )
                         3 ->
-                                ConseilsPersonnalisesView(
-                                        conseilRepository = conseilRepository,
-                                        onNavigateBack = onNavigateBack,
-                                        onEditConseil = onEditConseil,
-                                        onCreateConseil = onCreateConseil
-                                )
+                                if (isExamMode) {
+                                        Box(
+                                                modifier = Modifier.fillMaxSize().padding(16.dp),
+                                                contentAlignment = Alignment.Center
+                                        ) {
+                                                Text("Conseils personnalisés indisponibles en mode examen.")
+                                        }
+                                } else {
+                                        ConseilsPersonnalisesView(
+                                                conseilRepository = conseilRepository,
+                                                onNavigateBack = onNavigateBack,
+                                                onEditConseil = onEditConseil,
+                                                onCreateConseil = onCreateConseil
+                                        )
+                                }
                 }
         }
 }

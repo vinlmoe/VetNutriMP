@@ -40,6 +40,7 @@ import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.Services.ExcelFoodService
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
@@ -130,9 +131,11 @@ fun SettingsView(
         onBack: () -> Unit,
         onAnimalListRefresh: () -> Unit,
         onFoodListRefresh: () -> Unit,
+        onShowCrossAnalysis: () -> Unit,
         modifier: Modifier = Modifier,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {},
-        onBackupClick: () -> Unit = {}
+        onBackupClick: () -> Unit = {},
+        isExamMode: Boolean = false
 ) {
 
         // État pour le dialogue d'alerte d'importation des références nutritionnelles
@@ -185,16 +188,47 @@ fun SettingsView(
                 // En-tête avec bouton retour
 
                 // Navigation par onglets
-                SettingsTabs(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+                SettingsTabs(
+                        selectedTab = selectedTab,
+                        onTabSelected = { selectedTab = it },
+                        isExamMode = isExamMode
+                )
 
                 // Contenu de l'onglet sélectionné
                 Box(modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium)) {
                         when (selectedTab) {
                                 0 -> { // Interface
-                                        InterfaceSettings(
-                                                viewModel = viewModel,
-                                                modifier = Modifier.fillMaxWidth()
-                                        )
+                                        Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingSmall)
+                                        ) {
+                                                Button(
+                                                        onClick = onShowCrossAnalysis,
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary,
+                                                                        contentColor =
+                                                                                VetNutriColors
+                                                                                        .OnPrimary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                translate(
+                                                                        LocalizationKeys
+                                                                                .AnimalList
+                                                                                .CROSS_ANALYSIS
+                                                                )
+                                                        )
+                                                }
+                                                InterfaceSettings(
+                                                        viewModel = viewModel,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                )
+                                        }
                                 }
                                 1 -> { // Préférences
                                         PreferencesSection(
@@ -2111,22 +2145,33 @@ fun SettingsView(
                                         )
                                 }
                                 4 -> { // Recettes
-                                        RecipeEditView(
-                                                viewModel =
-                                                        RecipeEditViewModel(
-                                                                recipeRepository =
-                                                                        viewModel.recipeRepository
-                                                                                ?: throw IllegalStateException(
-                                                                                        "RecipeRepository not available"
-                                                                                ),
-                                                                foodRepository =
-                                                                        viewModel.foodRepository
-                                                                                ?: throw IllegalStateException(
-                                                                                        "FoodRepository not available"
-                                                                                )
-                                                        ),
-                                                modifier = Modifier.fillMaxWidth()
-                                        )
+                                        if (isExamMode) {
+                                                Box(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        contentAlignment = Alignment.Center
+                                                ) {
+                                                        Text(
+                                                                "Recettes indisponibles en mode examen."
+                                                        )
+                                                }
+                                        } else {
+                                                RecipeEditView(
+                                                        viewModel =
+                                                                RecipeEditViewModel(
+                                                                        recipeRepository =
+                                                                                viewModel.recipeRepository
+                                                                                        ?: throw IllegalStateException(
+                                                                                                "RecipeRepository not available"
+                                                                                        ),
+                                                                        foodRepository =
+                                                                                viewModel.foodRepository
+                                                                                        ?: throw IllegalStateException(
+                                                                                                "FoodRepository not available"
+                                                                                        )
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                )
+                                        }
                                 }
                                 5 -> { // Administration
                                         AdministrationSettings(

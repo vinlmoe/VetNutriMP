@@ -27,6 +27,7 @@ import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
+import fr.vetbrain.vetnutri_mp.Data.ExamSession
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -40,6 +41,7 @@ fun CreateAnimalView(
         onNavigateBack: () -> Unit,
         onAnimalCreated: (fr.vetbrain.vetnutri_mp.Data.AnimalEv) -> Unit,
         isEditing: Boolean = false,
+        examSession: ExamSession? = null,
         modifier: Modifier = Modifier
 ) {
         val animal = viewModel.animal.collectAsState().value
@@ -49,6 +51,7 @@ fun CreateAnimalView(
         var showDateError by remember { mutableStateOf(false) }
         var isDatePickerVisible by remember { mutableStateOf(false) }
         var availableRaces by remember { mutableStateOf<List<String>>(emptyList()) }
+        var showExamExerciseError by remember { mutableStateOf(false) }
         val coroutineScope = rememberCoroutineScope()
 
         // Charger les races disponibles pour l'espèce actuelle
@@ -78,6 +81,29 @@ fun CreateAnimalView(
                 floatingActionButton = {
                         FloatingActionButton(
                                 onClick = {
+                                        if (examSession != null &&
+                                                animal.examExerciseId.isNullOrBlank()
+                                        ) {
+                                                showExamExerciseError = true
+                                                return@FloatingActionButton
+                                        }
+                                        val updatedAnimal =
+                                                if (examSession != null) {
+                                                        animal.copy(
+                                                                exam = true,
+                                                                examStudentId =
+                                                                        examSession.studentId.trim(),
+                                                                examStudentNumber =
+                                                                        examSession.studentNumber.trim(),
+                                                                examExerciseId =
+                                                                        animal.examExerciseId?.trim()
+                                                        )
+                                                } else {
+                                                        animal
+                                                }
+                                        if (updatedAnimal != animal) {
+                                                viewModel.updateAnimal(updatedAnimal)
+                                        }
                                         viewModel.saveAnimal()
                                 },
                                 backgroundColor = VetNutriColors.Primary
@@ -115,6 +141,28 @@ fun CreateAnimalView(
                                 label = { Text(AnimalKeys.ID.translate()) },
                                 modifier = Modifier.fillMaxWidth()
                         )
+
+                        if (examSession != null) {
+                                OutlinedTextField(
+                                        value = animal.examExerciseId ?: "",
+                                        onValueChange = { newValue: String ->
+                                                showExamExerciseError = false
+                                                viewModel.updateAnimal(
+                                                        animal.copy(examExerciseId = newValue)
+                                                )
+                                        },
+                                        label = { Text(AnimalKeys.EXAM_EXERCISE_ID.translate()) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        isError = showExamExerciseError
+                                )
+                                if (showExamExerciseError) {
+                                        Text(
+                                                text = "error.invalidValue".translate(),
+                                                color = MaterialTheme.colors.error,
+                                                style = MaterialTheme.typography.caption
+                                        )
+                                }
+                        }
 
                         OutlinedTextField(
                                 value = animal.nom,

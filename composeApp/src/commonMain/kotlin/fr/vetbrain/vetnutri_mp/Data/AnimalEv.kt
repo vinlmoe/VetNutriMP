@@ -23,6 +23,10 @@ data class AnimalEv(
         var race: String = "",
         var summary: String = "",
         var jsonbinId: String? = null, // ID du bin jsonbin.io pour le partage en ligne
+        var exam: Boolean = false, // Indique si l'animal a été créé en mode examen
+        var examStudentId: String? = null, // Identifiant de l'étudiant (mode examen)
+        var examStudentNumber: String? = null, // Numéro de l'étudiant (mode examen)
+        var examExerciseId: String? = null, // ID de l'exercice (mode examen)
         var consultations: MutableList<ConsultationEv> = mutableListOf(),
         var weightHistory: MutableList<WeightDate> = mutableListOf()
 ) {

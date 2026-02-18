@@ -57,73 +57,12 @@ class DatabaseAnimalRepository(
                         val entities = animalDao.getAllAnimals()
 
                         entities.map { entity ->
-                                val animalEv =
-                                        AnimalEv(
-                                                uuid = entity.uuid,
-                                                nom = entity.nom ?: "",
-                                                dead = entity.dead ?: false,
-                                                id = entity.id,
-                                                sexId = entity.sexId ?: 0,
-                                                specieId = entity.specieId ?: "",
-                                                ownerName = entity.ownerName ?: "",
-                                                birthdate =
-                                                        entity.birthdate?.let { dateStr ->
-                                                                if (dateStr.isNotBlank()) {
-                                                                        try {
-                                                                                LocalDate.parse(
-                                                                                        dateStr
-                                                                                )
-                                                                        } catch (e: Exception) {
-
-                                                                                null
-                                                                        }
-                                                                } else {
-                                                                        null
-                                                                }
-                                                        },
-                                                race = entity.race ?: "",
-                                                summary = entity.summary ?: ""
-                                        )
-
                                 // Charger les poids pour chaque animal
                                 val weightEntities = animalDao.getWeightsForAnimal(entity.uuid)
-                                if (weightEntities.isNotEmpty()) {
-                                        animalEv.weightHistory.addAll(
-                                                weightEntities.mapNotNull { weightEntity ->
-                                                        // Vérifier que la date n'est pas vide ou
-                                                        // null
-                                                        if (weightEntity.date.isNullOrBlank()) {
-
-                                                                null // Ignorer ce poids
-                                                        } else {
-                                                                try {
-                                                                        WeightDate(
-                                                                                uuid =
-                                                                                        weightEntity
-                                                                                                .uuid,
-                                                                                refAnimal =
-                                                                                        weightEntity
-                                                                                                .refAnimal,
-                                                                                date =
-                                                                                        LocalDate
-                                                                                                .parse(
-                                                                                                        weightEntity
-                                                                                                                .date
-                                                                                                ),
-                                                                                value =
-                                                                                        weightEntity
-                                                                                                .value
-                                                                        )
-                                                                } catch (e: Exception) {
-
-                                                                        null // Ignorer ce poids
-                                                                }
-                                                        }
-                                                }
-                                        )
-                                } else {}
-
-                                animalEv
+                                entity.toData(
+                                        consultations = emptyList(),
+                                        weights = weightEntities
+                                )
                         }
                 }
         }
