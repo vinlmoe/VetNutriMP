@@ -37,9 +37,11 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ReferenceEvEquationEntity::class,
                         ReferenceEvCoefficientEntity::class,
                         ReferenceEvNutrientEntity::class,
+                        ExamGradingRuleEntity::class,
+                        ExamGradeEntity::class,
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class],
-        version = 30,
+        version = 31,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -54,6 +56,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun equationDao(): EquationDao
     abstract fun referenceEvDao(): ReferenceEvDao
     abstract fun htmlSectionDao(): HtmlSectionDao
+    abstract fun examGradingDao(): ExamGradingDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
@@ -105,7 +108,8 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         createMigration27to28(),
                         // Migration 28→29 : Ajout des champs examen pour les animaux
                         createMigration28to29(),
-                        createMigration29to30()
+                        createMigration29to30(),
+                        createMigration30to31()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -549,6 +553,26 @@ fun createMigration29to30(): Migration {
                 runStatementIgnoreIfExists(
                         connection,
                         "ALTER TABLE ANIMALS ADD COLUMN examExerciseId TEXT"
+                )
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 30 → 31 : Ajout des tables de notation d'examen */
+fun createMigration30to31(): Migration {
+    return object : Migration(30, 31) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "CREATE TABLE IF NOT EXISTS EXAM_GRADING_RULES (examId TEXT NOT NULL, exerciseId TEXT NOT NULL, rulesJson TEXT NOT NULL, updatedAtEpochMs INTEGER NOT NULL, PRIMARY KEY(examId, exerciseId))"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "CREATE TABLE IF NOT EXISTS EXAM_GRADES (examId TEXT NOT NULL, exerciseId TEXT NOT NULL, studentId TEXT NOT NULL, animalId TEXT, animalName TEXT NOT NULL, consultationId TEXT, autoScore REAL NOT NULL, manualScore REAL, finalScore REAL NOT NULL, detailsJson TEXT NOT NULL, updatedAtEpochMs INTEGER NOT NULL, PRIMARY KEY(examId, exerciseId, studentId))"
                 )
             } catch (e: Exception) {
                 throw e

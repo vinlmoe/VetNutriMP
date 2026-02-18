@@ -51,6 +51,7 @@ class CrossConsultationAnalysisViewModel(
             val objective: String,
             val dateLabel: String,
             val referenceLabel: String?,
+            val referenceId: String?,
             val speciesLabel: String,
             val rationCount: Int,
             val totalRationQuantity: Double,
@@ -60,7 +61,8 @@ class CrossConsultationAnalysisViewModel(
             val keywordIds: List<String>,
             val examId: String? = null,
             val studentIdentifier: String? = null,
-            val examExerciseId: String? = null
+            val examExerciseId: String? = null,
+            val adviceText: String = ""
     )
 
     data class RationSummary(
@@ -134,6 +136,7 @@ class CrossConsultationAnalysisViewModel(
     val examExerciseIdFilter: StateFlow<String> = _examExerciseIdFilter
     val selectedIds: StateFlow<Set<String>> = _selectedIds
     val availableKeywords: StateFlow<List<ConsultationKeyword>> = _availableKeywords
+    val allItems: StateFlow<List<ConsultationItem>> = _items
 
     val consultations: StateFlow<List<ConsultationItem>> =
             combine(
@@ -408,6 +411,7 @@ class CrossConsultationAnalysisViewModel(
                         },
                 dateLabel = dateLabel,
                 referenceLabel = refLabel,
+                referenceId = consultation.referenceGeneraleId,
                 speciesLabel = animal.getEspece().label,
                 rationCount = consultation.rations.size,
                 totalRationQuantity = totalQuantity,
@@ -417,7 +421,14 @@ class CrossConsultationAnalysisViewModel(
                 keywordIds = consultation.keywordIds.toList(),
                 examId = animal.examStudentNumber,
                 studentIdentifier = animal.examStudentId,
-                examExerciseId = animal.examExerciseId
+                examExerciseId = animal.examExerciseId,
+                adviceText =
+                        listOf(
+                                        consultation.prescriptionAdditionalText,
+                                        consultation.cRendu,
+                                        consultation.observation
+                                )
+                                .joinToString(" ")
         )
     }
 
