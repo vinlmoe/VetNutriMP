@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
@@ -78,6 +79,11 @@ data class ConsultationApi(
         val diseaseReferences: List<String> = emptyList(),
         val coefficientAjustement: Double = 1.0,
         val keywords: List<String> = emptyList(),
+        // Ordonnance: état sauvegardé par consultation
+        val prescriptionAdditionalText: String = "",
+        val prescriptionSelectedConseilIds: List<String> = emptyList(),
+        val prescriptionLocalHtmlSections: List<HtmlSection> = emptyList(),
+        val prescriptionSelectedRationIds: List<String> = emptyList(),
         val supplementalVariables: List<SupplementalVariableApi> = emptyList(),
         val rations: List<RationApi> = emptyList()
 )
@@ -378,6 +384,10 @@ fun ConsultationEv.toApi(): ConsultationApi {
                 diseaseReferences = referencesMaladies,
                 coefficientAjustement = coefficientAjustement,
                 keywords = keywordIds.toList(),
+                prescriptionAdditionalText = prescriptionAdditionalText,
+                prescriptionSelectedConseilIds = prescriptionSelectedConseilIds.toList(),
+                prescriptionLocalHtmlSections = prescriptionLocalHtmlSections.toList(),
+                prescriptionSelectedRationIds = prescriptionSelectedRationIds.toList(),
                 supplementalVariables =
                         suppVarp.mapNotNull { sv ->
                                 sv.variable?.name?.let { vn ->
@@ -774,7 +784,14 @@ fun ConsultationApi.toDomain(): ConsultationEv {
                 referenceGeneraleId = referenceGeneraleId,
                 referencesMaladies = diseaseReferences.toMutableList(),
                 keywordIds = keywords.toMutableList(),
-                coefficientAjustement = coefficientAjustement
+                coefficientAjustement = coefficientAjustement,
+                prescriptionAdditionalText = prescriptionAdditionalText,
+                prescriptionSelectedConseilIds =
+                        prescriptionSelectedConseilIds.toMutableList(),
+                prescriptionLocalHtmlSections =
+                        prescriptionLocalHtmlSections.toMutableList(),
+                prescriptionSelectedRationIds =
+                        prescriptionSelectedRationIds.toMutableList()
         )
 }
 
