@@ -48,7 +48,6 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Settings
-import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 
 private data class FilterOption<T>(val label: String, val value: T?)
@@ -367,6 +366,43 @@ fun SettingsView(
                                                         )
                                                 }
 
+                                                var showAdvancedSelection by remember {
+                                                        mutableStateOf(false)
+                                                }
+
+                                                Card(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        backgroundColor = MaterialTheme.colors.surface
+                                                ) {
+                                                        Column(modifier = Modifier.padding(12.dp)) {
+                                                                Text(
+                                                                        "Export API",
+                                                                        style = MaterialTheme.typography.subtitle1,
+                                                                        fontWeight = FontWeight.Medium
+                                                                )
+                                                                Spacer(modifier = Modifier.height(6.dp))
+                                                                Text(
+                                                                        "Sélection avancée: animaux ${selectedAnimalIds.size}, aliments ${selectedFoodIds.size}, équations ${selectedEquationIds.size}, références ${selectedReferenceIds.size}",
+                                                                        style = MaterialTheme.typography.body2,
+                                                                        color = Color.Gray
+                                                                )
+                                                                Spacer(modifier = Modifier.height(8.dp))
+                                                                OutlinedButton(
+                                                                        onClick = {
+                                                                                showAdvancedSelection =
+                                                                                        !showAdvancedSelection
+                                                                        }
+                                                                ) {
+                                                                        Text(
+                                                                                if (showAdvancedSelection)
+                                                                                        "Masquer la sélection avancée"
+                                                                                else "Afficher la sélection avancée"
+                                                                        )
+                                                                }
+                                                        }
+                                                }
+
+                                                if (showAdvancedSelection) {
                                                 // Boutons: sélectionner les éléments à exporter
                                                 OutlinedButton(
                                                         onClick = {
@@ -1424,6 +1460,7 @@ fun SettingsView(
                                                                 }
                                                         }
                                                 }
+                                                }
                                                 // Affichage du message de résultat
                                                 // d'importation des références
                                                 // nutritionnelles
@@ -1511,22 +1548,6 @@ fun SettingsView(
                                                                         )
                                                                 }
                                                         }
-                                                }
-
-                                                Button(
-                                                        onClick = onImportAnimals,
-                                                        colors =
-                                                                ButtonDefaults.buttonColors(
-                                                                        backgroundColor =
-                                                                                VetNutriColors
-                                                                                        .Primary
-                                                                ),
-                                                        modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                        Text(
-                                                                translate(Settings.IMPORT_ANIMALS),
-                                                                color = Color.White
-                                                        )
                                                 }
 
                                                 // Export (nouveau format API)
@@ -1682,131 +1703,6 @@ fun SettingsView(
                                                         Text(
                                                                 translate(Settings.IMPORT_API),
                                                                 color = Color.White
-                                                        )
-                                                }
-
-                                                // Import depuis jsonbin.io
-                                                var showJsonBinImportDialog by remember {
-                                                        mutableStateOf(false)
-                                                }
-                                                var jsonBinUrlOrId by remember {
-                                                        mutableStateOf("")
-                                                }
-                                                
-                                                Button(
-                                                        onClick = {
-                                                                showJsonBinImportDialog = true
-                                                        },
-                                                        colors =
-                                                                ButtonDefaults.buttonColors(
-                                                                        backgroundColor =
-                                                                                VetNutriColors
-                                                                                        .Secondary
-                                                                ),
-                                                        modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                        Text(
-                                                                translate(Settings.IMPORT_JSONBIN),
-                                                                color = Color.White
-                                                        )
-                                                }
-                                                
-                                                // Dialogue pour saisir l'URL ou l'ID jsonbin.io
-                                                if (showJsonBinImportDialog) {
-                                                        AlertDialog(
-                                                                onDismissRequest = {
-                                                                        showJsonBinImportDialog = false
-                                                                        jsonBinUrlOrId = ""
-                                                                },
-                                                                title = {
-                                                                        Text(translate(Settings.JSONBIN_TITLE))
-                                                                },
-                                                                text = {
-                                                                        Column(
-                                                                                verticalArrangement =
-                                                                                        Arrangement
-                                                                                                .spacedBy(
-                                                                                                        8.dp
-                                                                                                )
-                                                                        ) {
-                                                                                Text(
-                                                                                        translate(Settings.JSONBIN_MESSAGE),
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .body2
-                                                                                )
-                                                                                OutlinedTextField(
-                                                                                        value =
-                                                                                                jsonBinUrlOrId,
-                                                                                        onValueChange = {
-                                                                                                jsonBinUrlOrId =
-                                                                                                        it
-                                                                                        },
-                                                                                        label = {
-                                                                                                 Text(
-                                                                                                         translate(Settings.JSONBIN_LABEL)
-                                                                                                 )
-                                                                                        },
-                                                                                        placeholder = {
-                                                                                                 Text(
-                                                                                                         translate(Settings.JSONBIN_PLACEHOLDER)
-                                                                                                 )
-                                                                                        },
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxWidth(),
-                                                                                        singleLine =
-                                                                                                true
-                                                                                )
-                                                                        }
-                                                                },
-                                                                confirmButton = {
-                                                                        Button(
-                                                                                onClick = {
-                                                                                        if (jsonBinUrlOrId.isNotBlank()) {
-                                                                                                coroutineScope.launch {
-                                                                                                        val result =
-                                                                                                                viewModel.importFromJsonBin(
-                                                                                                                        jsonBinUrlOrId.trim()
-                                                                                                                )
-                                                                                                        viewModel.setImportResult(
-                                                                                                                result
-                                                                                                        )
-                                                                                                        showJsonBinImportDialog =
-                                                                                                                false
-                                                                                                        jsonBinUrlOrId =
-                                                                                                                ""
-                                                                                                }
-                                                                                        }
-                                                                                },
-                                                                                enabled =
-                                                                                        jsonBinUrlOrId.isNotBlank(),
-                                                                                colors =
-                                                                                        ButtonDefaults.buttonColors(
-                                                                                                backgroundColor =
-                                                                                                        VetNutriColors
-                                                                                                                .Primary
-                                                                                        )
-                                                                        ) {
-                                                                                Text(
-                                                                                        translate(General.IMPORT),
-                                                                                        color =
-                                                                                                Color.White
-                                                                                )
-                                                                        }
-                                                                },
-                                                                dismissButton = {
-                                                                        TextButton(
-                                                                                onClick = {
-                                                                                        showJsonBinImportDialog =
-                                                                                                false
-                                                                                        jsonBinUrlOrId =
-                                                                                                ""
-                                                                                }
-                                                                        ) {
-                                                                                Text(translate(General.CANCEL))
-                                                                        }
-                                                                }
                                                         )
                                                 }
 
@@ -2093,6 +1989,22 @@ fun SettingsView(
                                                                                 }
                                                                         ) { Text("Annuler") }
                                                                 }
+                                                        )
+                                                }
+
+                                                Button(
+                                                        onClick = onImportAnimals,
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                translate(Settings.IMPORT_ANIMALS),
+                                                                color = Color.White
                                                         )
                                                 }
 
