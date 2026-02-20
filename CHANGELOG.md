@@ -25,6 +25,9 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - « Import rapide » reste hors mode examen ; « Export examen » est affiché uniquement en mode examen.
 - Recettes et conseils personnalisés restreints en mode examen.
 - Les résultats d'import rapide affichent désormais le nombre d'animaux (et non le total des éléments importés).
+- Import/Export Excel aliments : ajout de la colonne **Date dernière mise à jour** (prise en compte par l'option "importer seulement si plus récent").
+- Import Excel aliments : si la date de dernière mise à jour est absente, elle est définie à la date du jour.
+- Export Excel aliments : si la date de dernière mise à jour est absente, elle est définie à la date du jour.
 
 ### Fixed
 - Le mode d'affichage "bullet" de l'analyse nutritionnelle ne revient plus en mode cartes après la mise à jour d'une quantité.

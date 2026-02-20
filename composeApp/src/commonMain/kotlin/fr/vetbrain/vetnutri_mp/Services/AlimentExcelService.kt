@@ -4,6 +4,9 @@ import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentExcelRow
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -128,6 +131,7 @@ class AlimentExcelService {
             "Quantité Interne",
             "Consistant",
             "Obsolète",
+            "Date dernière mise à jour",
             "Données Base",
             "Espèces",
             "Indications",
@@ -181,6 +185,11 @@ class AlimentExcelService {
      * Crée une ligne CSV à partir d'un AlimentExcelRow
      */
     private fun createCsvLine(row: AlimentExcelRow): String {
+        val exportDate = row.lastUpdateDate
+            ?: Clock.System.now()
+                .toLocalDateTime(TimeZone.currentSystemDefault())
+                .date
+                .toString()
         val values = mutableListOf(
             escapeCsvValue(row.uuid),
             escapeCsvValue(row.nom ?: ""),
@@ -195,6 +204,7 @@ class AlimentExcelService {
             row.quantInt?.toString() ?: "",
             row.consistent.toString(),
             row.deprecated.toString(),
+            escapeCsvValue(exportDate),
             escapeCsvValue(row.dataB ?: ""),
             escapeCsvValue(row.especes ?: ""),
             escapeCsvValue(row.indications ?: ""),
@@ -269,11 +279,26 @@ class AlimentExcelService {
         // Statuts
         val consistent = headerValueMap["Consistant"]?.toBooleanStrictOrNull() ?: false
         val deprecated = headerValueMap["Obsolète"]?.toBooleanStrictOrNull() ?: false
+        val lastUpdateDateRaw = headerValueMap.trouverValeurColonne(
+            listOf(
+                "Date dernière mise à jour",
+                "Date derniere mise a jour",
+                "Date mise a jour",
+                "Date mise à jour",
+                "Date MAJ",
+                "DateMaj"
+            )
+        )
+        val lastUpdateDate = lastUpdateDateRaw?.takeIf { it.isNotBlank() }
+            ?: Clock.System.now()
+                .toLocalDateTime(TimeZone.currentSystemDefault())
+                .date
+                .toString()
         val dataBFromCsv = headerValueMap["Données Base"]?.takeIf { it.isNotBlank() }
         // Utiliser la valeur prioritaire si fournie, sinon celle du CSV
         val dataB = dataBPriority?.takeIf { it.isNotBlank() } ?: dataBFromCsv
         
-        logInfo("Statuts - Consistant: $consistent, Obsolète: $deprecated, DataB (CSV): '$dataBFromCsv', DataB (prioritaire): '$dataBPriority', DataB (final): '$dataB'")
+        logInfo("Statuts - Consistant: $consistent, Obsolète: $deprecated, Date MAJ: '$lastUpdateDate', DataB (CSV): '$dataBFromCsv', DataB (prioritaire): '$dataBPriority', DataB (final): '$dataB'")
 
         // Espèces et indications (recherche tolérante)
         val especesRaw = headerValueMap.trouverValeurColonne(
@@ -311,6 +336,7 @@ class AlimentExcelService {
                 "Quantité Interne",
                 "Consistant",
                 "Obsolète",
+                "Date dernière mise à jour",
                 "Données Base",
                 "Espèces",
                 "Indications",
@@ -383,6 +409,7 @@ class AlimentExcelService {
             consistent = consistent,
             deprecated = deprecated,
             dataB = dataB, // Sera remplacé par la valeur prioritaire si fournie
+            lastUpdateDate = lastUpdateDate,
             especes = especes,
             indications = indications,
             rationUUID = rationUUID,
@@ -620,6 +647,7 @@ class AlimentExcelService {
                 categPrice = "Premium",
                 quantInt = 2.0,
                 consistent = true,
+                lastUpdateDate = "2024-01-01",
                 especes = mutableListOf("Chat"),
                 indicat = mutableListOf(AlimIndic.NEUT, AlimIndic.SEN)
             ).apply {
