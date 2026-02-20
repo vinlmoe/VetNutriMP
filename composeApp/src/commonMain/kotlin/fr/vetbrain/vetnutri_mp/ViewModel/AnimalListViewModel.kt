@@ -116,6 +116,9 @@ class AnimalListViewModel(
     private val _importResult = MutableStateFlow<ImportResult?>(null)
     val importResult: StateFlow<ImportResult?> = _importResult
 
+    private val _isImportingAnimals = MutableStateFlow(false)
+    val isImportingAnimals: StateFlow<Boolean> = _isImportingAnimals.asStateFlow()
+
     // État import API (progression + logs)
     private val _isApiImporting = MutableStateFlow(false)
     val isApiImporting: StateFlow<Boolean> = _isApiImporting.asStateFlow()
@@ -501,12 +504,14 @@ class AnimalListViewModel(
         }
     }
 
+    fun getFoodRepository() = animalRepository.getFoodRepository()
+
     /**
      * Délègue l'importation des animaux à la fonction de plateforme spécifique Cela permet d'éviter
      * l'ambiguïté d'appel direct dans la vue
      */
     fun importAnimalsFromFileUI() {
-        fr.vetbrain.vetnutri_mp.importAnimalsFromFile(this)
+        fr.vetbrain.vetnutri_mp.importAnimalsFromFile(this, clearFoodsBeforeImport = false)
     }
 
     /**
@@ -515,6 +520,7 @@ class AnimalListViewModel(
      * @param jsonContent Le contenu JSON à désérialiser
      */
     fun importAnimalsFromJson(jsonContent: String) {
+        _isImportingAnimals.value = true
         viewModelScope.launch {
             try {
                 val importResult =
@@ -584,6 +590,8 @@ class AnimalListViewModel(
             } catch (e: Exception) {
                 _importResult.value = ImportResult.Error(e.message ?: "Erreur inconnue")
                 e.printStackTrace()
+            } finally {
+                _isImportingAnimals.value = false
             }
         }
     }
