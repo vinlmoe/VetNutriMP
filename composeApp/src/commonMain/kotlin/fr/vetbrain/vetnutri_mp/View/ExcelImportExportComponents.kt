@@ -526,6 +526,7 @@ fun ExcelImportExportSection(
                                 Text("• Première ligne: en-têtes des colonnes", style = MaterialTheme.typography.body2)
                                 Text("• Listes: séparées par des virgules (,)", style = MaterialTheme.typography.body2)
                                 Text("• Valeurs vides: cellules vides ou absence de valeur", style = MaterialTheme.typography.body2)
+                                Text("• Date dernière mise à jour: idéalement YYYY-MM-DD", style = MaterialTheme.typography.body2)
 
                                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -539,7 +540,7 @@ fun ExcelImportExportSection(
                                         "UUID", "Nom", "Marque", "Gamme", "Ingrédients",
                                         "Groupe Alimentaire", "Type Aliment", "Conditionnement",
                                         "Prix", "Catégorie Prix", "Quantité Interne",
-                                        "Consistant", "Obsolète", "Espèces", "Indications"
+                                        "Consistant", "Obsolète", "Date dernière mise à jour", "Espèces", "Indications"
                                 )
 
                                 mainColumns.forEach { column ->

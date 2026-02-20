@@ -39,6 +39,9 @@ data class AlimentExcelRow(
         // Ration associée
         val rationUUID: String? = null,
 
+        // Date de dernière mise à jour (format libre, idéalement ISO 8601)
+        val lastUpdateDate: String? = null,
+
         // Nutriments - colonnes dynamiques pour chaque nutriment
         // Le format sera : Map<nutrientLabel, valeur>
         val nutriments: Map<String, Double?> = emptyMap()
@@ -184,6 +187,7 @@ data class AlimentExcelRow(
                     consistent = alimentEv.consistent,
                     deprecated = alimentEv.deprecated,
                     dataB = alimentEv.dataB,
+                    lastUpdateDate = alimentEv.lastUpdateDate,
                     especes = alimentEv.especes.joinToString(", "),
                     indications = alimentEv.indicat.joinToString(", ") { it.nameToString() },
                     rationUUID = alimentEv.rationUUID,
@@ -235,6 +239,7 @@ data class AlimentExcelRow(
                             consistent = row.consistent,
                             deprecated = row.deprecated,
                             dataB = row.dataB,
+                            lastUpdateDate = row.lastUpdateDate,
                             especes = especes,
                             indicat = indicat,
                             rationUUID = row.rationUUID
