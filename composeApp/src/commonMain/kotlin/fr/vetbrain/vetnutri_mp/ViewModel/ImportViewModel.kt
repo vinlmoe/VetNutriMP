@@ -32,15 +32,11 @@ class ImportViewModel(
     // Flag pour indiquer si les aliments doivent être supprimés avant l'importation
     var shouldClearFoodsBeforeImport: Boolean = false
 
-    private val _isImporting = MutableStateFlow(false)
-    val isImporting: StateFlow<Boolean> = _isImporting.asStateFlow()
+    val isImporting: StateFlow<Boolean> = animalListViewModel.isImportingAnimals
 
     private val _isImportingNutritionalRequirements = MutableStateFlow(false)
     val isImportingNutritionalRequirements: StateFlow<Boolean> =
             _isImportingNutritionalRequirements.asStateFlow()
-
-    private val _importResultMessage = MutableStateFlow<String?>(null)
-    val importResultMessage: StateFlow<String?> = _importResultMessage.asStateFlow()
 
     private val _nutritionalRequirementImportResultMessage = MutableStateFlow<String?>(null)
     val nutritionalRequirementImportResultMessage: StateFlow<String?> =
@@ -163,7 +159,6 @@ class ImportViewModel(
 
     /** Réinitialise les résultats d'importation */
     fun resetImportResult() {
-        _importResultMessage.value = null
         _nutritionalRequirementImportResultMessage.value = null
         animalListViewModel.resetImportResult()
     }
@@ -180,7 +175,11 @@ class ImportViewModel(
 
     /** Délègue l'importation des animaux à la fonction de plateforme spécifique */
     fun importAnimalsFromFileUI() {
-        fr.vetbrain.vetnutri_mp.importAnimalsFromFile(animalListViewModel)
+        fr.vetbrain.vetnutri_mp.importAnimalsFromFile(
+                animalListViewModel,
+                clearFoodsBeforeImport = shouldClearFoodsBeforeImport
+        )
+        shouldClearFoodsBeforeImport = false
     }
 
     /**

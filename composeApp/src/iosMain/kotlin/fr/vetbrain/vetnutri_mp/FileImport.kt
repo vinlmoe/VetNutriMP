@@ -23,7 +23,10 @@ import platform.UIKit.popoverPresentationController
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.serialization.encodeToString
 
-actual fun importAnimalsFromFile(viewModel: AnimalListViewModel) {
+actual fun importAnimalsFromFile(
+        viewModel: AnimalListViewModel,
+        clearFoodsBeforeImport: Boolean
+) {
         viewModel.setImportError("L'importation de fichiers n'est pas encore implémentée sur iOS.")
 }
 

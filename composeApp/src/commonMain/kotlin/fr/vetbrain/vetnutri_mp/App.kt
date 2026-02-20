@@ -32,7 +32,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 
 // Fonctions d'importation de fichiers - implémentées par plateforme spécifique
-expect fun importAnimalsFromFile(viewModel: AnimalListViewModel)
+expect fun importAnimalsFromFile(
+    viewModel: AnimalListViewModel,
+    clearFoodsBeforeImport: Boolean
+)
 
 expect fun importFoodsFromFile(viewModel: SettingsViewModel)
 
