@@ -152,9 +152,8 @@ fun SettingsView(
         var conseilsCount by remember { mutableStateOf(0) }
 
         // Observer le message d'importation des références nutritionnelles
-        val nutritionalRequirementMessage by remember {
-                derivedStateOf { importViewModel.nutritionalRequirementImportResultMessage }
-        }
+        val nutritionalRequirementMessage by
+                importViewModel.nutritionalRequirementImportResultMessage.collectAsState()
 
         // Afficher le dialogue d'alerte quand l'importation est terminée
         LaunchedEffect(nutritionalRequirementMessage) {
@@ -2155,20 +2154,28 @@ fun SettingsView(
                                                         )
                                                 }
                                         } else {
+                                                val recipeEditViewModel = remember(
+                                                        viewModel.recipeRepository,
+                                                        viewModel.foodRepository
+                                                ) {
+                                                        RecipeEditViewModel(
+                                                                recipeRepository =
+                                                                        viewModel.recipeRepository
+                                                                                ?: throw IllegalStateException(
+                                                                                        "RecipeRepository not available"
+                                                                                ),
+                                                                foodRepository =
+                                                                        viewModel.foodRepository
+                                                                                ?: throw IllegalStateException(
+                                                                                        "FoodRepository not available"
+                                                                                )
+                                                        )
+                                                }
+                                                DisposableEffect(recipeEditViewModel) {
+                                                        onDispose { recipeEditViewModel.clear() }
+                                                }
                                                 RecipeEditView(
-                                                        viewModel =
-                                                                RecipeEditViewModel(
-                                                                        recipeRepository =
-                                                                                viewModel.recipeRepository
-                                                                                        ?: throw IllegalStateException(
-                                                                                                "RecipeRepository not available"
-                                                                                        ),
-                                                                        foodRepository =
-                                                                                viewModel.foodRepository
-                                                                                        ?: throw IllegalStateException(
-                                                                                                "FoodRepository not available"
-                                                                                        )
-                                                                ),
+                                                        viewModel = recipeEditViewModel,
                                                         modifier = Modifier.fillMaxWidth()
                                                 )
                                         }
@@ -2277,6 +2284,7 @@ private fun PreferencesContentWithPersistence(
 ) {
         // État pour les préférences chargées
         var preferencesLoaded by remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
         var currentPreferences by remember {
                 mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null)
         }
@@ -2397,8 +2405,7 @@ private fun PreferencesContentWithPersistence(
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Button(
                                                         onClick = {
-                                                                kotlinx.coroutines.GlobalScope
-                                                                        .launch {
+                                                                coroutineScope.launch {
                                                                                 try {
                                                                                         isSavingUser =
                                                                                                 true
@@ -2532,6 +2539,7 @@ private fun SpeciesPreferenceCardWithPersistence(
 ) {
         var expanded by remember { mutableStateOf(false) }
         var isSaving by remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
 
         val speciesPreferences = currentPreferences.getPreferencesEspece(species)
         val currentExpressionType = speciesPreferences.getTypeExpressionBesoinEnum()
@@ -2605,8 +2613,7 @@ private fun SpeciesPreferenceCardWithPersistence(
                                                                         ) {
                                                                                 // Sauvegarder avec
                                                                                 // persistance
-                                                                                kotlinx.coroutines
-                                                                                        .GlobalScope
+                                                                                coroutineScope
                                                                                         .launch {
                                                                                                 try {
                                                                                                         isSaving =

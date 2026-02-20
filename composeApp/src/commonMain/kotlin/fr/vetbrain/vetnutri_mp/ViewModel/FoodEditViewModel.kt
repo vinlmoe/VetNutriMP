@@ -8,6 +8,8 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +23,8 @@ class FoodEditViewModel(
         private val foodRepository: FoodRepository,
         private val alimentUuid: String? = null
 ) {
-    private val coroutineScope = CoroutineScope(AppDispatchers.Main)
+    private val job = SupervisorJob()
+    private val coroutineScope = CoroutineScope(AppDispatchers.Main + job)
 
     // Créer un aliment par défaut avec un UUID aléatoire
     private val defaultAliment = AlimentEv(uuid = Uuid.random().toString(), rationUUID = null)
@@ -165,5 +168,9 @@ class FoodEditViewModel(
             e.printStackTrace()
             throw e // Relancer l'exception pour que la vue puisse la gérer
         }
+    }
+
+    fun clear() {
+        job.cancel()
     }
 }

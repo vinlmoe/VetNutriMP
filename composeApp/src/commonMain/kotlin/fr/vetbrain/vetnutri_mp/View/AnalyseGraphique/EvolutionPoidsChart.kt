@@ -12,7 +12,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +38,7 @@ import fr.vetbrain.vetnutri_mp.Export.ExportData
 import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import fr.vetbrain.vetnutri_mp.Export.RichTextContent
 import fr.vetbrain.vetnutri_mp.Export.TextBlock
+import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import io.github.koalaplot.core.*
 import io.github.koalaplot.core.line.AreaBaseline
@@ -801,7 +802,7 @@ fun PoidsTableau(
                                                 ) {
                                                     IconButtonWithTooltip(
                                                         onClick = { onActivateCone(consultationData.date, consultationData.weight.toDouble(), getTargetWeight()) },
-                                                        imageVector = Icons.Default.TrendingDown,
+                                                        imageVector = Icons.AutoMirrored.Filled.TrendingDown,
                                                         contentDescription = translate(LocalizationKeys.Graph.TOOLTIP_LOSS_CONE),
                                                         tooltip = translate(LocalizationKeys.Graph.TOOLTIP_LOSS_CONE),
                                                         tint = VetNutriColors.Secondary,
@@ -1008,11 +1009,13 @@ fun ConeZoomView(
                         ),
                         isLandscape = true
                     )
-                    PdfExporter.exportDocument(
-                        DocumentType.RATION_ANALYSIS,
-                        exportData,
-                        "suivi_poids_${animal?.nom ?: "animal"}.pdf"
-                    )
+                    scope.launch {
+                        PdfExporter.exportDocument(
+                            DocumentType.RATION_ANALYSIS,
+                            exportData,
+                            "suivi_poids_${animal?.nom ?: "animal"}.pdf"
+                        )
+                    }
                 },
                 colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Secondary)
             ) {
@@ -1215,6 +1218,7 @@ fun GrowthZoomView(
     onClose: () -> Unit
 ) {
     val animal by viewModel.animal.collectAsState()
+    val scope = rememberCoroutineScope()
 
     val birthDate = animal?.birthdate
     if (birthDate == null) {
@@ -1390,11 +1394,13 @@ fun GrowthZoomView(
                                                 isLandscape = true
                                         )
 
-                                PdfExporter.exportDocument(
-                                        DocumentType.RATION_ANALYSIS,
-                                        exportData,
-                                        "croissance_${animal?.nom ?: "animal"}.pdf"
-                                )
+                                scope.launch {
+                                        PdfExporter.exportDocument(
+                                                DocumentType.RATION_ANALYSIS,
+                                                exportData,
+                                                "croissance_${animal?.nom ?: "animal"}.pdf"
+                                        )
+                                }
                         },
                         colors =
                                 ButtonDefaults.buttonColors(
@@ -1590,4 +1596,3 @@ fun generateGrowthGraphSvg(
     sb.append("</svg>")
     return sb.toString()
 }
-

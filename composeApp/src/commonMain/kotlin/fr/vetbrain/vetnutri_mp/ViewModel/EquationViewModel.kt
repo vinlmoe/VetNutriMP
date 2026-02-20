@@ -30,7 +30,6 @@ import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.ResultatValidation
 import fr.vetbrain.vetnutri_mp.Utils.TypeEquationValidation
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -53,7 +52,7 @@ class EquationViewModel(
         private val biblioRepository: BiblioRefRepository,
         private val referenceRepository: DatabaseReferenceEvRepository
 ) : ViewModel() {
-    private val coroutineScope = CoroutineScope(AppDispatchers.Main)
+    private val coroutineScope = viewModelScope
 
     // État d'édition
     private val _currentEquation = MutableStateFlow(Equation())

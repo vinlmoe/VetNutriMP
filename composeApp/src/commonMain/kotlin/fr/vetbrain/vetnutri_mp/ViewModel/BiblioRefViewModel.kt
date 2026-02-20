@@ -6,6 +6,8 @@ import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +19,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     // Utilisation du dispatcher de la plateforme
     private val dispatcher = PlatformDispatcher().provideMainDispatcher()
-    private val viewModelScope = CoroutineScope(dispatcher)
+    private val job = SupervisorJob()
+    private val viewModelScope = CoroutineScope(dispatcher + job)
 
     // État de toutes les références bibliographiques
     val allBiblioRefs: StateFlow<List<BiblioRef>> =
@@ -259,5 +262,9 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     /** Efface le message d'opération */
     fun clearOperationMessage() {
         _operationMessage.value = null
+    }
+
+    fun clear() {
+        viewModelScope.cancel()
     }
 }

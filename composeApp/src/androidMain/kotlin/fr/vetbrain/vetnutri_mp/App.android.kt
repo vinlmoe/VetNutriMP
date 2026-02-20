@@ -8,7 +8,7 @@ actual fun createFileService(): FileService {
             ?: throw IllegalStateException("Android context not initialized")
 }
 
-actual fun exportPdfDocument(
+actual suspend fun exportPdfDocument(
     documentType: fr.vetbrain.vetnutri_mp.Export.DocumentType,
     data: fr.vetbrain.vetnutri_mp.Export.ExportData,
     defaultFileName: String

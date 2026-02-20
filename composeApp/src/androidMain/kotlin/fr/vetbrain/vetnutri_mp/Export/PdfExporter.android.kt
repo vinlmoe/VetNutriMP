@@ -10,11 +10,11 @@ import android.webkit.WebViewClient
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
 
 actual object PdfExporter {
-        actual fun exportDocument(
-                documentType: DocumentType,
-                data: ExportData,
-                defaultFileName: String
-        ): Boolean {
+    actual suspend fun exportDocument(
+            documentType: DocumentType,
+            data: ExportData,
+            defaultFileName: String
+    ): Boolean {
                 val activity: Activity? = AndroidContext.getCurrentActivityOrNull()
                 if (activity == null) return false
                 val html: String = HtmlDocumentBuilder.buildHtml(documentType, data)

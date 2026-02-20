@@ -19,7 +19,6 @@ import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
-import kotlinx.coroutines.runBlocking
 
 object HtmlDocumentBuilder {
 
@@ -203,7 +202,7 @@ object HtmlDocumentBuilder {
         }
     }
 
-    fun buildHtml(documentType: DocumentType, data: ExportData): String {
+    suspend fun buildHtml(documentType: DocumentType, data: ExportData): String {
         return when (documentType) {
             DocumentType.RATION_ANALYSIS ->
                     buildRationAnalysisHtml(
@@ -342,7 +341,7 @@ object HtmlDocumentBuilder {
         """.trimIndent()
     }
 
-    private fun buildRationsBlocks(
+    private suspend fun buildRationsBlocks(
             rations: List<Ration>,
             reference: ReferenceEv? = null,
             animal: AnimalEv? = null,
@@ -354,19 +353,22 @@ object HtmlDocumentBuilder {
             includeBulletGraphs: Boolean = true
     ): String {
         if (rations.isEmpty()) return ""
-        return rations.joinToString("\n") { ration ->
-            val header = if (ration.name.isNotBlank()) "<h2>Ration: ${ration.name}</h2>" else ""
-            val block = buildRationBlock(ration)
-            val rationImages = bulletGraphImages[ration.uuid] ?: emptyMap()
-            val bulletGraphs = if (includeBulletGraphs) {
-                buildNutrientAnalysisBulletGraphs(
-                        ration, reference, animal, preferences,
-                        poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, rationImages
-                )
-            } else {
-                ""
+        return buildString {
+            rations.forEach { ration ->
+                val header = if (ration.name.isNotBlank()) "<h2>Ration: ${ration.name}</h2>" else ""
+                val block = buildRationBlock(ration)
+                val rationImages = bulletGraphImages[ration.uuid] ?: emptyMap()
+                val bulletGraphs =
+                    if (includeBulletGraphs) {
+                        buildNutrientAnalysisBulletGraphs(
+                                ration, reference, animal, preferences,
+                                poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, rationImages
+                        )
+                    } else {
+                        ""
+                    }
+                append("<div class='section'>${header}${block}${bulletGraphs}</div>")
             }
-            "<div class='section'>${header}${block}${bulletGraphs}</div>"
         }
     }
 
@@ -392,7 +394,7 @@ object HtmlDocumentBuilder {
         """.trimIndent()
     }
 
-    private fun buildRationAnalysisHtml(
+    private suspend fun buildRationAnalysisHtml(
             animal: AnimalEv?,
             ration: Ration?,
             reference: ReferenceEv?,
@@ -424,7 +426,7 @@ object HtmlDocumentBuilder {
                 buildFooter()
     }
 
-    private fun buildPrescriptionHtml(
+    private suspend fun buildPrescriptionHtml(
             animal: AnimalEv?,
             conseils: List<String>,
             title: String,
@@ -485,7 +487,7 @@ object HtmlDocumentBuilder {
     /**
      * Génère les bullet graphs pour l'analyse nutritionnelle d'une ration
      */
-    private fun buildNutrientAnalysisBulletGraphs(
+    private suspend fun buildNutrientAnalysisBulletGraphs(
         ration: Ration,
         reference: ReferenceEv?,
         animal: AnimalEv?,
@@ -513,13 +515,12 @@ object HtmlDocumentBuilder {
         }
 
         // Obtenir les valeurs nutritionnelles pour calculer les affichages
-        val valeursNutritionnelles = runBlocking {
+        val valeursNutritionnelles =
             try {
                 analyserValeursNutritionnellesRation(ration)
             } catch (e: Exception) {
                 emptyMap()
             }
-        }
 
         // Obtenir le type d'expression des besoins depuis les préférences
         val typeExpressionBesoin = preferences?.getTypeExpressionBesoinEnum() ?: TypeExpressionBesoin.DEFAULT

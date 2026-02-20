@@ -24,7 +24,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.View.AnalNut.ReferenceBulletGraph
-import kotlinx.coroutines.runBlocking
 
 /**
  * Service pour générer des images de bullet graphs en utilisant directement les composables KoalaPlot
@@ -34,7 +33,7 @@ object BulletGraphImageCapture {
     /**
      * Génère des images de bullet graphs pour une ration en utilisant la même logique que RationsView.kt
      */
-    fun generateRationBulletGraphImages(
+    suspend fun generateRationBulletGraphImages(
         ration: Ration,
         reference: ReferenceEv,
         animal: AnimalEv,
@@ -47,14 +46,13 @@ object BulletGraphImageCapture {
         val images = mutableMapOf<String, ByteArray>()
         
         // Obtenir les valeurs nutritionnelles de la même façon que cardNutrient.kt
-        val valeursNutritionnelles = kotlinx.coroutines.runBlocking {
+        val valeursNutritionnelles =
             fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations(
                 ration = ration,
                 preferencesEspece = preferences,
                 equationRepository = equationRepository,
                 referenceEv = reference
             )
-        }
         
         // Utiliser le type d'expression de besoin depuis les préférences
         val typeExpressionBesoin = preferences.getTypeExpressionBesoinEnum()

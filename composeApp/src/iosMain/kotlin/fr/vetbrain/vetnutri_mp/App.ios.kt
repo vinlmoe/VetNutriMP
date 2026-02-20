@@ -4,7 +4,7 @@ import fr.vetbrain.vetnutri_mp.Service.FileService
 
 actual fun createFileService(): FileService = FileService()
 
-actual fun exportPdfDocument(
+actual suspend fun exportPdfDocument(
     documentType: fr.vetbrain.vetnutri_mp.Export.DocumentType,
     data: fr.vetbrain.vetnutri_mp.Export.ExportData,
     defaultFileName: String

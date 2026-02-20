@@ -30,7 +30,7 @@ actual object PdfExporter {
         private const val a4Height: Double = 595.0
         private const val margin: Double = 20.0
 
-        actual fun exportDocument(
+        actual suspend fun exportDocument(
                 documentType: DocumentType,
                 data: ExportData,
                 defaultFileName: String

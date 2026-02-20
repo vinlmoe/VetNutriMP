@@ -9,7 +9,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -212,7 +212,7 @@ fun UpdateDialog(
                             )
                         ) {
                             Icon(
-                                imageVector = Icons.Default.OpenInNew,
+                                imageVector = Icons.AutoMirrored.Default.OpenInNew,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )

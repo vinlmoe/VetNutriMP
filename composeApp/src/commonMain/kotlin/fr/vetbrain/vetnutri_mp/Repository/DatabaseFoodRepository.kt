@@ -48,13 +48,8 @@ class DatabaseFoodRepository(
 
     // Cache en mémoire pour les aliments avec métadonnées améliorées
     private var cachedFoods: List<AlimentEv>? = null
-    private var cachedFoodsLight: List<AlimentEvLight>? = null
     private var lastCacheTime: Long = 0
     private val cacheValidityDuration = 5 * 60 * 1000L // 5 minutes
-
-    // Cache pour les recherches par espèce pour éviter les requêtes répétées
-    private val speciesCache = mutableMapOf<Espece, List<AlimentEv>>()
-    private val speciesCacheTime = mutableMapOf<Espece, Long>()
 
     // Mode batch pour désactiver les refresh coûteux à chaque insert/update
     // KMP: éviter @Volatile en commonMain
@@ -63,6 +58,7 @@ class DatabaseFoodRepository(
     // Cache de recherche pour les filtres fréquents
     private val searchCache = mutableMapOf<String, List<AlimentEv>>()
     private val searchCacheTime = mutableMapOf<String, Long>()
+    private val maxSearchCacheEntries = 200
     fun beginBatch() {
         isBatchMode = true
     }
@@ -74,12 +70,24 @@ class DatabaseFoodRepository(
     /** Vide le cache en mémoire pour forcer un rechargement des données */
     fun clearCache() {
         cachedFoods = null
-        cachedFoodsLight = null
         lastCacheTime = 0
-        speciesCache.clear()
-        speciesCacheTime.clear()
         searchCache.clear()
         searchCacheTime.clear()
+    }
+
+    private fun pruneSearchCacheIfNeeded() {
+        if (searchCache.size <= maxSearchCacheEntries) return
+        val excess = searchCache.size - maxSearchCacheEntries
+        if (excess <= 0) return
+        val keysToRemove =
+                searchCacheTime.entries
+                        .sortedBy { it.value }
+                        .take(excess)
+                        .map { it.key }
+        keysToRemove.forEach { key ->
+            searchCache.remove(key)
+            searchCacheTime.remove(key)
+        }
     }
 
     private fun parseDateToInstantOrNull(rawDate: String?): Instant? {
@@ -123,37 +131,43 @@ class DatabaseFoodRepository(
         // Vérifier le cache si pas de refresh forcé
         if (!forceRefresh) {
             val cachedTime = searchCacheTime[cacheKey]
-            if (cachedTime != null && (kotlinx.datetime.Clock.System.now().toEpochMilliseconds() - cachedTime) < cacheValidityDuration) {
-                return searchCache[cacheKey] ?: emptyList()
+            if (cachedTime != null) {
+                val now = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+                if (now - cachedTime < cacheValidityDuration) {
+                    return searchCache[cacheKey] ?: emptyList()
+                }
+                searchCache.remove(cacheKey)
+                searchCacheTime.remove(cacheKey)
             }
         }
 
-        val allFoods = getAllFoods()
+        val normalizedQuery = searchQuery.trim()
+        val foodEntities =
+                if (normalizedQuery.isBlank() && groupAlim == null && espece == null) {
+                        foodDao.findAll()
+                } else {
+                        foodDao.searchFoodsFiltered(
+                                query = normalizedQuery,
+                                groupAlim = groupAlim?.ordinal,
+                                especeText = espece?.name
+                        )
+                }
 
-        val filteredFoods = allFoods.filter { aliment ->
-            var matches = true
-
-            // Filtre de recherche textuelle
-            if (searchQuery.isNotBlank()) {
-                matches = matches && aliment.nom?.contains(searchQuery, ignoreCase = true) == true
-            }
-
-            // Filtre par espèce
-            if (espece != null) {
-                matches = matches && aliment.especes.contains(espece.name)
-            }
-
-            // Filtre par groupe alimentaire
-            if (groupAlim != null) {
-                matches = matches && aliment.group == groupAlim
-            }
-
-            matches
-        }
+        val filteredFoods =
+                foodEntities
+                        .map { it.toAlimentEv() }
+                        .filter { aliment ->
+                                // Garde-fou pour conserver le comportement métier
+                                val especeMatches =
+                                        espece == null || aliment.especes.contains(espece.name)
+                                val groupMatches = groupAlim == null || aliment.group == groupAlim
+                                especeMatches && groupMatches
+                        }
 
         // Mettre en cache le résultat
         searchCache[cacheKey] = filteredFoods
         searchCacheTime[cacheKey] = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        pruneSearchCacheIfNeeded()
 
         return filteredFoods
     }
@@ -808,7 +822,7 @@ class DatabaseFoodRepository(
                                 emptyMap()
                             }
                     foods.forEach { food ->
-                        if (food.UUID != null && existants.containsKey(food.UUID)) {
+                        if (existants.containsKey(food.UUID)) {
                             try {
                                 val existing: FoodEntity = existants[food.UUID]!!
                                 if (!shouldUpdateFood(existing, food.dateMaj, importOnlyIfNewer)) {

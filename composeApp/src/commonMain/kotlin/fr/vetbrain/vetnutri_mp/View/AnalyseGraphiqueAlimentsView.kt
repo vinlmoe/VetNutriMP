@@ -57,7 +57,6 @@ import io.github.koalaplot.core.xygraph.*
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.Point
 import io.github.koalaplot.core.xygraph.XYGraph
-import kotlinx.coroutines.runBlocking
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /** Données calculées pour un aliment avec sa densité énergétique et pourcentages */
@@ -2584,16 +2583,90 @@ private fun GraphiqueNutrimentsPersonnalise(
         return
     }
 
+    var scatterPoints by remember(
+        nutrimentX,
+        nutrimentY,
+        alimentsAnalyses,
+        referenceEv,
+        equationRepository,
+        useDryMatterPer100g
+    ) {
+        mutableStateOf<List<Point<Float, Float>>>(emptyList())
+    }
+    var histogramValues by remember(
+        nutrimentX,
+        alimentsAnalyses,
+        referenceEv,
+        equationRepository,
+        useDryMatterPer100g
+    ) {
+        mutableStateOf<List<Float>>(emptyList())
+    }
+    var isDataLoading by remember(
+        nutrimentX,
+        nutrimentY,
+        alimentsAnalyses,
+        referenceEv,
+        equationRepository,
+        useDryMatterPer100g
+    ) {
+        mutableStateOf(true)
+    }
+
+    LaunchedEffect(
+        nutrimentX,
+        nutrimentY,
+        alimentsAnalyses,
+        referenceEv,
+        equationRepository,
+        useDryMatterPer100g
+    ) {
+        isDataLoading = true
+        if (nutrimentY != null && nutrimentY.isNotEmpty()) {
+            scatterPoints =
+                alimentsAnalyses.map { data ->
+                    Point(
+                        x = data.getNutrimentValue(
+                                nutrimentX,
+                                referenceEv,
+                                equationRepository,
+                                useDryMatterPer100g
+                        ).toFloat(),
+                        y = data.getNutrimentValue(
+                                nutrimentY,
+                                referenceEv,
+                                equationRepository,
+                                useDryMatterPer100g
+                        ).toFloat()
+                    )
+                }
+        } else {
+            histogramValues =
+                alimentsAnalyses.map { data ->
+                    data.getNutrimentValue(
+                            nutrimentX,
+                            referenceEv,
+                            equationRepository,
+                            useDryMatterPer100g
+                    ).toFloat()
+                }
+        }
+        isDataLoading = false
+    }
+
+    if (isDataLoading) {
+        Text(
+                text = "Chargement des données...",
+                style = MaterialTheme.typography.body1,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+        )
+        return
+    }
+
     // Si Y est sélectionné (et pas "aucun") : scatter plot
     if (nutrimentY != null && nutrimentY.isNotEmpty()) {
         // 📈 SCATTER PLOT : X vs Y
-        val points =
-                alimentsAnalyses.map { data ->
-                    Point(
-                            x = runBlocking { data.getNutrimentValue(nutrimentX, referenceEv, equationRepository, useDryMatterPer100g).toFloat() },
-                            y = runBlocking { data.getNutrimentValue(nutrimentY, referenceEv, equationRepository, useDryMatterPer100g).toFloat() }
-                    )
-                }
+        val points = scatterPoints
 
         // Vérifier que nous avons des données valides
         if (points.isEmpty() || points.all { it.x == 0f && it.y == 0f }) {
@@ -2853,7 +2926,7 @@ private fun GraphiqueNutrimentsPersonnalise(
         }
     } else {
         // 📊 HISTOGRAMME : Distribution du nutriment X
-        val valeurs = alimentsAnalyses.map { runBlocking { it.getNutrimentValue(nutrimentX, referenceEv, equationRepository, useDryMatterPer100g).toFloat() } }
+        val valeurs = histogramValues
         val categories = alimentsAnalyses.map { "${it.numero}" }
 
         // Vérifier que nous avons des données valides

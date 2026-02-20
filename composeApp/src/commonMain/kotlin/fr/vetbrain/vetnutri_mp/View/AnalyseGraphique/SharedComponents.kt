@@ -6,7 +6,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,7 +68,7 @@ fun GraphiqueHeader(
                                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Icon(
-                                        imageVector = Icons.Filled.TrendingUp,
+                                        imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                                         contentDescription = null,
                                         tint = VetNutriColors.Primary
                                 )

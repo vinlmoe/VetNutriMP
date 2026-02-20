@@ -6,7 +6,7 @@ import fr.vetbrain.vetnutri_mp.Utils.FileUtils
 import java.io.ByteArrayOutputStream
 
 actual object PdfExporter {
-    actual fun exportDocument(
+    actual suspend fun exportDocument(
             documentType: DocumentType,
             data: ExportData,
             defaultFileName: String
@@ -44,4 +44,3 @@ actual object PdfExporter {
         }
     }
 }
-

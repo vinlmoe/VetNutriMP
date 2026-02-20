@@ -8,7 +8,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Balance
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.*
@@ -253,7 +253,7 @@ fun SectionAlimentsRation(
                                         if (!isExamMode) {
                                                 // Ouvrir le gestionnaire de recettes
                                                 IconWithTooltip(
-                                                        imageVector = Icons.Filled.MenuBook,
+                                                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
                                                         contentDescription = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
                                                         tint = VetNutriColors.Primary,
                                                         modifier = Modifier.size(AppSizes.iconSizeXSmall),
