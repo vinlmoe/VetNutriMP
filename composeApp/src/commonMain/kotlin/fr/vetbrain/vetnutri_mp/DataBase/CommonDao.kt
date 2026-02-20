@@ -221,6 +221,23 @@ interface FoodDao {
 
         @Query("SELECT * FROM FOOD WHERE deprecated = 0 LIMIT :limit")
         suspend fun getActiveFoods(limit: Int = 100): List<FoodEntity>
+
+        @Query(
+                """
+                SELECT * FROM FOOD
+                WHERE
+                    (:query = '' OR nameDef LIKE '%' || :query || '%' OR name LIKE '%' || :query || '%' OR brand LIKE '%' || :query || '%')
+                    AND (:groupAlim IS NULL OR groupAlim = :groupAlim)
+                    AND (:especeText IS NULL OR especesJson LIKE '%' || :especeText || '%')
+                LIMIT :limit
+                """
+        )
+        suspend fun searchFoodsFiltered(
+                query: String,
+                groupAlim: Int?,
+                especeText: String?,
+                limit: Int = 5000
+        ): List<FoodEntity>
 }
 
 @Dao

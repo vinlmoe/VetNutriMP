@@ -408,36 +408,6 @@ object EquationEvaluator {
     }
 
     /**
-     * Wrapper non-suspend pour utiliser l'évaluation avec compléments depuis un contexte non
-     * coroutine (UI existante). Bloque le thread courant pendant l'évaluation.
-     */
-    fun evaluerBesoinNutritionnelAvecComplementairesBlocking(
-            expression: String,
-            poidsCorps: Double,
-            besoinEnergetique: Double,
-            poidsMetabolique: Double,
-            variablesSupp: List<SupplementalvariableP> = emptyList(),
-            ration: Ration,
-            preferences: PreferencesEspece,
-            equationRepository: EquationRepository,
-            referenceEv: ReferenceEv? = null
-    ): Double? {
-        return kotlinx.coroutines.runBlocking {
-            evaluerBesoinNutritionnelAvecComplementaires(
-                    expression = expression,
-                    poidsCorps = poidsCorps,
-                    besoinEnergetique = besoinEnergetique,
-                    poidsMetabolique = poidsMetabolique,
-                    variablesSupp = variablesSupp,
-                    ration = ration,
-                    preferences = preferences,
-                    equationRepository = equationRepository,
-                    referenceEv = referenceEv
-            )
-        }
-    }
-
-    /**
      * Évalue une équation de densité énergétique pour un aliment
      *
      * @param expression L'expression mathématique à évaluer

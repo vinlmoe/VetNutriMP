@@ -14,6 +14,8 @@ import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -113,7 +115,8 @@ class NewReferenceEvViewModel(
     val groupNames: StateFlow<List<String>> = _groupNames.asStateFlow()
 
     // Scope pour les coroutines
-    private val coroutineScope = CoroutineScope(AppDispatchers.Main)
+    private val job = SupervisorJob()
+    private val coroutineScope = CoroutineScope(AppDispatchers.Main + job)
 
     /** Initialise le ViewModel pour une nouvelle référence */
     fun initForNew() {
@@ -935,5 +938,9 @@ class NewReferenceEvViewModel(
             3 -> _coefficientsK4.value = reference.modk4.toList()
             4 -> _coefficientsK5.value = reference.modk5.toList()
         }
+    }
+
+    fun clear() {
+        coroutineScope.cancel()
     }
 }

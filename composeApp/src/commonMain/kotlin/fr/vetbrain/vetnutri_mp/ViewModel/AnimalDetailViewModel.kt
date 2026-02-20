@@ -27,6 +27,8 @@ import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,7 +37,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -65,7 +66,8 @@ class AnimalDetailViewModel(
         private val preferencesRepository: PreferencesRepository,
         val foodRepository: FoodRepository
 ) {
-    private val viewModelScope = CoroutineScope(AppDispatchers.Main)
+    private val job = SupervisorJob()
+    private val viewModelScope = CoroutineScope(AppDispatchers.Main + job)
     private val _animal = MutableStateFlow<AnimalEv?>(null)
     val animal: StateFlow<AnimalEv?> = _animal.asStateFlow()
 
@@ -1845,15 +1847,6 @@ class AnimalDetailViewModel(
         return foodRepository.getFoodById(uuid)
     }
 
-    /**
-     * Récupère un aliment complet de manière synchrone pour les besoins de l'UI
-     * @param uuid L'identifiant de l'aliment
-     * @return AlimentEv complet ou null si non trouvé
-     */
-    fun getAlimentCompletSync(uuid: String): AlimentEv? {
-        return runBlocking { foodRepository.getFoodById(uuid) }
-    }
-
     // MARK: - Gestion des poids supplémentaires
 
     /** Active le mode d'ajout de poids */
@@ -2002,5 +1995,12 @@ class AnimalDetailViewModel(
             } else {
                     emptyMap()
             }
+    }
+
+    fun clear() {
+        rationAnalysisCache.clear()
+        analysisCacheTime.clear()
+        animalDataCache.clear()
+        viewModelScope.cancel()
     }
 }

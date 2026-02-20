@@ -25,7 +25,7 @@ import androidx.compose.material.Icon
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -201,7 +201,7 @@ fun CrossConsultationResultsView(
                 onNavigateBack = onNavigateBack
         ) {
             OutlinedButton(onClick = onNavigateBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = null)
+                Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = null)
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Retour sélection")
             }

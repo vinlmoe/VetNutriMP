@@ -1,15 +1,11 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.ui.text.input.TextFieldValue
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Ration
@@ -17,8 +13,9 @@ import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 
 /**
@@ -28,6 +25,9 @@ class RecipeEditViewModel(
     private val recipeRepository: RecipeRepository,
     val foodRepository: FoodRepository
 ) {
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(AppDispatchers.IO + job)
+
     // Compteur pour générer des UUIDs uniques
     private var uuidCounter = 0
     
@@ -104,18 +104,21 @@ class RecipeEditViewModel(
      * Charge toutes les recettes depuis le repository
      */
     fun loadRecipes() {
-        CoroutineScope(AppDispatchers.IO).launch {
-            try {
-                _isLoading.value = true
-                val loadedRecipes = recipeRepository.getAllRecipes()
-                _recipes.clear()
-                _recipes.addAll(loadedRecipes)
-            } catch (e: Exception) {
-                
-                _message.value = "Erreur lors du chargement des recettes: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
+        scope.launch {
+            loadRecipesInternal()
+        }
+    }
+
+    private suspend fun loadRecipesInternal() {
+        try {
+            _isLoading.value = true
+            val loadedRecipes = recipeRepository.getAllRecipes()
+            _recipes.clear()
+            _recipes.addAll(loadedRecipes)
+        } catch (e: Exception) {
+            _message.value = "Erreur lors du chargement des recettes: ${e.message}"
+        } finally {
+            _isLoading.value = false
         }
     }
     
@@ -316,7 +319,7 @@ class RecipeEditViewModel(
             return
         }
         
-        CoroutineScope(AppDispatchers.IO).launch {
+        scope.launch {
             try {
                 _isLoading.value = true
                 
@@ -352,7 +355,7 @@ class RecipeEditViewModel(
                 }
                 
                 // Recharger les recettes et sortir du mode édition
-                loadRecipes()
+                loadRecipesInternal()
                 cancelEditing()
                 
             } catch (e: Exception) {
@@ -367,12 +370,12 @@ class RecipeEditViewModel(
      * Supprime une recette
      */
     fun deleteRecipe(recipe: Ration) {
-        CoroutineScope(AppDispatchers.IO).launch {
+        scope.launch {
             try {
                 _isLoading.value = true
                 recipeRepository.deleteRecipe(recipe.uuid)
                 _message.value = "Recette supprimée avec succès"
-                loadRecipes()
+                loadRecipesInternal()
             } catch (e: Exception) {
                 _message.value = "Erreur lors de la suppression: ${e.message}"
             } finally {
@@ -385,7 +388,7 @@ class RecipeEditViewModel(
      * Duplique une recette
      */
     fun duplicateRecipe(recipe: Ration) {
-        CoroutineScope(AppDispatchers.IO).launch {
+        scope.launch {
             try {
                 _isLoading.value = true
                 val duplicatedRecipe = recipeRepository.cloneRecipe(recipe.uuid)
@@ -394,7 +397,7 @@ class RecipeEditViewModel(
                 } else {
                     _message.value = "Erreur lors de la duplication"
                 }
-                loadRecipes()
+                loadRecipesInternal()
             } catch (e: Exception) {
                 _message.value = "Erreur lors de la duplication: ${e.message}"
             } finally {
@@ -462,5 +465,9 @@ class RecipeEditViewModel(
                    matching.quantite != original.quantite ||
                    matching.refTarget != original.refTarget
                }
+    }
+
+    fun clear() {
+        scope.cancel()
     }
 }

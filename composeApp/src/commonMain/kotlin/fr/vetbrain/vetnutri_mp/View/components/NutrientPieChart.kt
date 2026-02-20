@@ -20,7 +20,6 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
-import kotlinx.coroutines.runBlocking
 import io.github.koalaplot.core.*
 import io.github.koalaplot.core.pie.*
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
@@ -43,8 +42,37 @@ fun NutrientPieChart(
     equationRepository: EquationRepository? = null,
     modifier: Modifier = Modifier
 ) {
-    val nutrientData = remember(aliment, referenceEv, equationRepository) {
-        extractNutrientDataWithComplementary(aliment, referenceEv, equationRepository)
+    var nutrientData by remember(aliment, referenceEv, equationRepository) {
+        mutableStateOf<List<NutrientPieData>>(emptyList())
+    }
+    var isLoading by remember(aliment, referenceEv, equationRepository) { mutableStateOf(true) }
+
+    LaunchedEffect(aliment, referenceEv, equationRepository) {
+        isLoading = true
+        nutrientData = extractNutrientDataWithComplementary(aliment, referenceEv, equationRepository)
+        isLoading = false
+    }
+
+    if (isLoading) {
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            elevation = AppSizes.elevationSmall,
+            backgroundColor = MaterialTheme.colors.surface.copy(alpha = 0.5f)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(AppSizes.paddingMedium),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Chargement des données...",
+                    style = MaterialTheme.typography.body2,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        }
+        return
     }
 
     if (nutrientData.isEmpty()) {
@@ -172,7 +200,11 @@ private fun NutrientLegendItem(
  * @param referenceEv Référence pour calculer les nutriments complémentaires
  * @return Liste des données de nutriments
  */
-private fun extractNutrientDataWithComplementary(aliment: AlimentEv, referenceEv: ReferenceEv?, equationRepository: EquationRepository?): List<NutrientPieData> {
+private suspend fun extractNutrientDataWithComplementary(
+    aliment: AlimentEv,
+    referenceEv: ReferenceEv?,
+    equationRepository: EquationRepository?
+): List<NutrientPieData> {
     val targetNutrients = listOf(
         NutrientMain.HUMIDITE,
         NutrientMain.PROTEINE,
@@ -190,24 +222,22 @@ private fun extractNutrientDataWithComplementary(aliment: AlimentEv, referenceEv
     
     targetNutrients.forEach { nutrient ->
         // Utiliser getNutrientWithComplementary pour obtenir la valeur (directe + calculée via équations)
-        val nutrientValue = runBlocking {
-            // Créer un AlimentRation temporaire pour utiliser getNutrientWithComplementary
-            val alimentRation = AlimentRation(
-                aliment = aliment,
-                quantite = 100.0, // 100g pour les calculs
-                proportion = 100.0,
-                weight = 100.0,
-                densiteEnergetique = 0.0
-            )
-            
-            // Utiliser getNutrientWithComplementary qui gère automatiquement les équations complémentaires
-            alimentRation.getNutrientWithComplementary(
-                nutrient = nutrient,
-                preferences = null, // Pas de préférences spécifiques pour l'instant
-                equationRepository = equationRepository, // Utiliser le repository d'équations
-                referenceEv = referenceEv
-            )
-        }
+        // Créer un AlimentRation temporaire pour utiliser getNutrientWithComplementary
+        val alimentRation = AlimentRation(
+            aliment = aliment,
+            quantite = 100.0, // 100g pour les calculs
+            proportion = 100.0,
+            weight = 100.0,
+            densiteEnergetique = 0.0
+        )
+
+        // Utiliser getNutrientWithComplementary qui gère automatiquement les équations complémentaires
+        val nutrientValue = alimentRation.getNutrientWithComplementary(
+            nutrient = nutrient,
+            preferences = null, // Pas de préférences spécifiques pour l'instant
+            equationRepository = equationRepository, // Utiliser le repository d'équations
+            referenceEv = referenceEv
+        )
         
         if (nutrientValue != null && nutrientValue > 0) {
             nutrientValues[nutrient] = nutrientValue

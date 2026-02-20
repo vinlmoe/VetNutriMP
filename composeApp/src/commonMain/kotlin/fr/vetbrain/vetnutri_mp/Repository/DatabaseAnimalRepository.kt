@@ -226,9 +226,7 @@ class DatabaseAnimalRepository(
                                                         // Stocker tous les noms d'aliments dans la
                                                         // map, même si l'aliment
                                                         // existe déjà dans la base de données
-                                                        if (alimentJson.UUIDunif != null &&
-                                                                        alimentJson.alime != null
-                                                        ) {
+                                                        run {
                                                                 val nomAliment = alimentJson.alime.nom
                                                                 foodNamesMap[alimentJson.UUIDunif] =
                                                                         nomAliment

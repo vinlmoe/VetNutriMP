@@ -11,6 +11,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +26,8 @@ class LocalAlimentDataSource(
         private val nutrientValueDao: NutrientValueDao
 ) : FoodRepository {
     private val _foodsFlow = MutableStateFlow<List<AlimentEv>>(emptyList())
-    private val coroutineScope = CoroutineScope(Dispatchers.Default)
+    private val job = SupervisorJob()
+    private val coroutineScope = CoroutineScope(Dispatchers.Default + job)
 
     init {
         // Initialiser le flow au démarrage
@@ -261,5 +264,9 @@ class LocalAlimentDataSource(
         refreshFoodsFlow()
 
         return count
+    }
+
+    fun clear() {
+        coroutineScope.cancel()
     }
 }

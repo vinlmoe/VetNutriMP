@@ -465,77 +465,86 @@ private fun handlePdfExport(
             }
         }
     } else {
-        // Export analyse de ration avec bullet graphs
-        val bulletGraphImages = mutableMapOf<String, Map<String, String>>()
-        
-        selectedRation?.let { ration: Ration ->
-            try {
-                val prefsStorage = createPreferencesStorage()
-                val prefsRepo = PreferencesRepository(prefsStorage)
-                
-                scope.launch {
+        scope.launch(AppDispatchers.Default) {
+            // Export analyse de ration avec bullet graphs
+            val bulletGraphImages = mutableMapOf<String, Map<String, String>>()
+
+            selectedRation?.let { ration: Ration ->
+                try {
+                    val prefsStorage = createPreferencesStorage()
+                    val prefsRepo = PreferencesRepository(prefsStorage)
                     prefsRepo.loadPreferences()
-                }
-                val prefs = prefsRepo.preferences
-                val prefsEspece = prefs?.getPreferencesEspece(animalDetails.getEspece())
-                
-                val ref = referenceUtilisee
-                if (prefsEspece != null && ref != null) {
-                    val images = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateRationBulletGraphImages(
-                        ration = ration,
-                        reference = ref,
-                        animal = animalDetails,
-                        preferences = prefsEspece,
-                        poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
-                        poidsMetabolique = poidsMetabolique,
-                        besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
-                        equationRepository = equationRepository
-                    )
-                    
-                    val imagePaths = images.mapValues { (_, imageBytes) ->
-                        val tempFilePath = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "export")
-                        "file://$tempFilePath"
+                    val prefs = prefsRepo.preferences
+                    val prefsEspece = prefs?.getPreferencesEspece(animalDetails.getEspece())
+
+                    val ref = referenceUtilisee
+                    if (prefsEspece != null && ref != null) {
+                        val images =
+                            fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture
+                                .generateRationBulletGraphImages(
+                                    ration = ration,
+                                    reference = ref,
+                                    animal = animalDetails,
+                                    preferences = prefsEspece,
+                                    poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                    poidsMetabolique = poidsMetabolique,
+                                    besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
+                                    equationRepository = equationRepository
+                                )
+
+                        val imagePaths =
+                            images.mapValues { (_, imageBytes) ->
+                                val tempFilePath =
+                                    fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture
+                                        .saveImageToTempFile(imageBytes, "export")
+                                "file://$tempFilePath"
+                            }
+
+                        bulletGraphImages[ration.uuid] = imagePaths
+                    } else {
+                        // Générer des images de test
+                        val testImages = mutableMapOf<String, ByteArray>()
+                        listOf("PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE", "CAL", "PHOS")
+                            .forEach { nom ->
+                                val imageBytes =
+                                    fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture
+                                        .generateBulletGraphImage(
+                                            nom, 25.0, 15.0, 40.0, 20.0, 35.0, "g/kg DM"
+                                        )
+                                testImages[nom] = imageBytes
+                            }
+
+                        val testImagePaths =
+                            testImages.mapValues { (_, imageBytes) ->
+                                val tempFilePath =
+                                    fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture
+                                        .saveImageToTempFile(imageBytes, "export_test")
+                                "file://$tempFilePath"
+                            }
+
+                        bulletGraphImages[ration.uuid] = testImagePaths
                     }
-                    
-                    bulletGraphImages[ration.uuid] = imagePaths
-                } else {
-                    // Générer des images de test
-                    val testImages = mutableMapOf<String, ByteArray>()
-                    listOf("PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE", "CAL", "PHOS").forEach { nom ->
-                        val imageBytes = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateBulletGraphImage(
-                            nom, 25.0, 15.0, 40.0, 20.0, 35.0, "g/kg DM"
-                        )
-                        testImages[nom] = imageBytes
-                    }
-                    
-                    val testImagePaths = testImages.mapValues { (_, imageBytes) ->
-                        val tempFilePath = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "export_test")
-                        "file://$tempFilePath"
-                    }
-                    
-                    bulletGraphImages[ration.uuid] = testImagePaths
-                }
-            } catch (e: Exception) {
+                } catch (_: Exception) {}
             }
+
+            PdfExporter.exportDocument(
+                DocumentType.RATION_ANALYSIS,
+                ExportData(
+                    animal = animalDetails,
+                    ration = selectedRation,
+                    reference = referenceUtilisee,
+                    title = translate(AnimalDetail.RATION_ANALYSIS_TITLE),
+                    additionalText = additionalText,
+                    htmlSections = getSelectedConseils(),
+                    preferences = null,
+                    poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                    poidsMetabolique = null,
+                    besoinEnergetiqueEntretien = null,
+                    bulletGraphImages = bulletGraphImages
+                ),
+                defaultFileName = "analyse_ration.pdf"
+            )
         }
-        
-        PdfExporter.exportDocument(
-            DocumentType.RATION_ANALYSIS,
-            ExportData(
-                animal = animalDetails,
-                ration = selectedRation,
-                reference = referenceUtilisee,
-                title = translate(AnimalDetail.RATION_ANALYSIS_TITLE),
-                additionalText = additionalText,
-                htmlSections = getSelectedConseils(),
-                preferences = null,
-                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
-                poidsMetabolique = null,
-                besoinEnergetiqueEntretien = null,
-                bulletGraphImages = bulletGraphImages
-            ),
-            defaultFileName = "analyse_ration.pdf"
-        )
     }
 }
 
@@ -1276,20 +1285,17 @@ private fun WideScreenLayout(
                                                                                 // depuis le
                                                                                 // repository
                                                                                 val alimentComplet =
-                                                                                        viewModel.getAlimentCompletSync(
+                                                                                        viewModel.getAlimentComplet(
                                                                                                 aliment.uuid
                                                                                         )
 
                                                                                 if (alimentComplet !=
                                                                                                 null
                                                                                 ) {
-
-                                                                                        if (alimentComplet is AlimentEv) {
-                                                                                                alimentsAvecValeurs
-                                                                                                        .add(
-                                                                                                                alimentComplet
-                                                                                                        )
-                                                                                                }
+                                                                                        alimentsAvecValeurs
+                                                                                                .add(
+                                                                                                        alimentComplet
+                                                                                                )
                                                                                 } else {
 
                                                                                         alimentsAvecValeurs
@@ -2014,7 +2020,7 @@ private fun WideScreenLayout(
                                                                         onClick = {
                                                                                 val prefsStorage = createPreferencesStorage()
                                                                                 val prefsRepo = PreferencesRepository(prefsStorage)
-                                                                                kotlinx.coroutines.GlobalScope.launch {
+                                                                                scope.launch {
                                                                                         try {
                                                                                                 prefsRepo.loadPreferences()
                                                                                                 val prefs = prefsRepo.preferences
@@ -2883,19 +2889,16 @@ private fun NarrowScreenLayout(
                                                                                         try {
 
                                                                                                 // Récupérer l'aliment complet depuis le repository
-                                                                                                val alimentComplet =
-                                                                                                        viewModel.getAlimentCompletSync(
-                                                                                                                aliment.uuid
-                                                                                                        )
+                                                                                                        val alimentComplet =
+                                                                                                                viewModel.getAlimentComplet(
+                                                                                                                        aliment.uuid
+                                                                                                                )
 
                                                                                                 if (alimentComplet != null) {
-
-                                                                                                        if (alimentComplet is AlimentEv) {
-                                                                                                                alimentsAvecValeurs
-                                                                                                                        .add(
-                                                                                                                                alimentComplet
-                                                                                                                        )
-                                                                                                        }
+                                                                                                        alimentsAvecValeurs
+                                                                                                                .add(
+                                                                                                                        alimentComplet
+                                                                                                                )
                                                                                                 } else {
 
                                                                                                         alimentsAvecValeurs

@@ -218,10 +218,7 @@ data class AlimentExcelRow(
             
             val indicat = row.indications?.split(",")?.mapNotNull { 
                 val trimmed = it.trim()
-                val result = AlimIndic.getFromString(trimmed)
-                if (result == null) {
-                }
-                result
+                AlimIndic.getFromString(trimmed)
             }?.toMutableList() ?: mutableListOf()
             
             return AlimentEv(

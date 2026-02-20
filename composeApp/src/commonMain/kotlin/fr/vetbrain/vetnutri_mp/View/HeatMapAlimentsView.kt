@@ -27,7 +27,6 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
-import kotlinx.coroutines.runBlocking
 
 /**
  * Vue HeatMap pour comparer les aliments aux références nutritionnelles
@@ -48,8 +47,7 @@ fun HeatMapAlimentsView(
     // État pour le toggle MIN uniquement
     var utiliserSeulementMin by remember { mutableStateOf(false) }
     
-    // Calculer les données de la heatmap
-    val heatMapData = remember(
+    var heatMapData by remember(
             alimentsAnalyses,
             referenceEv,
             equationRepository,
@@ -59,16 +57,44 @@ fun HeatMapAlimentsView(
             poidsMetabolique,
             utiliserSeulementMin
     ) {
-        calculerHeatMapData(
-                alimentsAnalyses = alimentsAnalyses,
-                referenceEv = referenceEv,
-                equationRepository = equationRepository,
-                preferencesEspece = preferencesEspece,
-                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
-                poidsAnimal = poidsAnimal,
-                poidsMetabolique = poidsMetabolique,
-                utiliserSeulementMin = utiliserSeulementMin
-        )
+        mutableStateOf(HeatMapData(emptyList(), emptyList(), emptyMap()))
+    }
+    var isDataLoading by remember(
+            alimentsAnalyses,
+            referenceEv,
+            equationRepository,
+            preferencesEspece,
+            besoinEnergetiqueEntretien,
+            poidsAnimal,
+            poidsMetabolique,
+            utiliserSeulementMin
+    ) {
+        mutableStateOf(true)
+    }
+
+    LaunchedEffect(
+            alimentsAnalyses,
+            referenceEv,
+            equationRepository,
+            preferencesEspece,
+            besoinEnergetiqueEntretien,
+            poidsAnimal,
+            poidsMetabolique,
+            utiliserSeulementMin
+    ) {
+        isDataLoading = true
+        heatMapData =
+                calculerHeatMapData(
+                        alimentsAnalyses = alimentsAnalyses,
+                        referenceEv = referenceEv,
+                        equationRepository = equationRepository,
+                        preferencesEspece = preferencesEspece,
+                        besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                        poidsAnimal = poidsAnimal,
+                        poidsMetabolique = poidsMetabolique,
+                        utiliserSeulementMin = utiliserSeulementMin
+                )
+        isDataLoading = false
     }
 
     Column(
@@ -91,6 +117,20 @@ fun HeatMapAlimentsView(
             return
         }
         
+        if (isDataLoading) {
+            Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+            ) {
+                Text(
+                        text = "Chargement des données...",
+                        style = MaterialTheme.typography.body1,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                )
+            }
+            return
+        }
+
         if (heatMapData.nutriments.isEmpty() || heatMapData.aliments.isEmpty()) {
             Box(
                     modifier = Modifier.fillMaxSize(),
@@ -416,7 +456,7 @@ private data class AlimentHeatMap(
 /**
  * Calcule les données de la HeatMap
  */
-private fun calculerHeatMapData(
+private suspend fun calculerHeatMapData(
         alimentsAnalyses: List<AlimentAnalyseData>,
         referenceEv: ReferenceEv?,
         equationRepository: EquationRepository?,
@@ -643,20 +683,18 @@ private fun calculerHeatMapData(
         val valeursAliment = mutableMapOf<String, Double>()
         
         alimentsAnalyses.forEach { alimentData ->
-            val ratio = runBlocking {
-                calculerRatioHeatMap(
-                        aliment = alimentData.aliment,
-                        nutriment = nutrimentData.nutriment,
-                        niveau = nutrimentData.niveau,
-                        referenceEv = referenceEv,
-                        equationRepository = equationRepository,
-                        preferencesEspece = preferencesEspece,
-                        besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
-                        poidsAnimal = poidsAnimal,
-                        poidsMetabolique = poidsMetabolique,
-                        densiteEnergetique = alimentData.densiteEnergetique
-                )
-            }
+            val ratio = calculerRatioHeatMap(
+                    aliment = alimentData.aliment,
+                    nutriment = nutrimentData.nutriment,
+                    niveau = nutrimentData.niveau,
+                    referenceEv = referenceEv,
+                    equationRepository = equationRepository,
+                    preferencesEspece = preferencesEspece,
+                    besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                    poidsAnimal = poidsAnimal,
+                    poidsMetabolique = poidsMetabolique,
+                    densiteEnergetique = alimentData.densiteEnergetique
+            )
             valeursAliment[alimentData.aliment.uuid] = ratio
         }
         
@@ -820,4 +858,3 @@ private fun calculerCouleurHeatMap(ratio: Double): Color {
         else -> Color(0xFF4CAF50) // Vert - besoin satisfait
     }
 }
-

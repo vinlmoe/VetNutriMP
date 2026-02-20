@@ -8,6 +8,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +25,8 @@ import kotlinx.coroutines.launch
  */
 class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         // Scope dédié (pas de ViewModel Android ici)
-        private val viewModelScope = CoroutineScope(AppDispatchers.Main)
+        private val job = SupervisorJob()
+        private val viewModelScope = CoroutineScope(AppDispatchers.Main + job)
 
         // Liste des aliments (non filtrée)
         private val _allFoods = MutableStateFlow<List<AlimentEv>>(emptyList())
@@ -134,8 +137,23 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         /** Force le rechargement des données depuis le repository */
         fun forceRefresh() {
                 viewModelScope.launch {
-                        // Forcer le rechargement des données
-                        val allFoods = foodRepository.getAllFoods()
+                        // Forcer le rechargement des données (version light pour éviter les nutriments)
+                        val allFoodsLight = foodRepository.getAllFoodsLight()
+                        val allFoods = allFoodsLight.map { light ->
+                                fr.vetbrain.vetnutri_mp.Data.AlimentEv(
+                                        uuid = light.uuid,
+                                        nom = light.nom,
+                                        brand = light.brand,
+                                        group = light.group,
+                                        typeAliment = light.typeAliment,
+                                        gamme = light.gamme,
+                                        deprecated = light.deprecated,
+                                        dataB = light.dataB,
+                                        especes = light.especes.toMutableList(),
+                                        indicat = light.indicat.toMutableList(),
+                                        valMap = mutableMapOf()
+                                )
+                        }
 
                         // Stocker tous les aliments non filtrés
                         _allFoods.value = allFoods
@@ -408,5 +426,9 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                 nutrients: List<fr.vetbrain.vetnutri_mp.Enumer.Nutrient>
         ): Map<String, Map<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>> {
                 return foodRepository.loadNutrientsForFoods(foodUuids, nutrients)
+        }
+
+        fun clear() {
+                viewModelScope.cancel()
         }
 }

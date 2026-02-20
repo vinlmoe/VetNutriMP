@@ -9,9 +9,12 @@ import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,10 +24,12 @@ import kotlinx.coroutines.launch
 /** ViewModel pour la gestion des références évaluées (ReferenceEv). */
 class ReferenceEvViewModel(
         private val repository: DatabaseReferenceEvRepository,
+        private val equationRepository: EquationRepository? = null,
         private val platformDispatcher: PlatformDispatcher = PlatformDispatcher(),
         private val coroutineContext: CoroutineContext = platformDispatcher.provideMainDispatcher()
 ) {
-    private val scope = CoroutineScope(coroutineContext)
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(coroutineContext + job)
 
     // Référence courante en édition
     private val _currentReferenceEv = MutableStateFlow(ReferenceEv())
@@ -651,54 +656,19 @@ class ReferenceEvViewModel(
 
         scope.launch {
             try {
-                // Création d'équations de démonstration pour le développement
-                val equations =
-                        listOf(
-                                Equation(
-                                        uuid = "equation-1",
-                                        name = "BEE Chien",
-                                        kind =
-                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind
-                                                        .ENERGYDENSITY
-                                ),
-                                Equation(
-                                        uuid = "equation-2",
-                                        name = "BEE Chat",
-                                        kind =
-                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind
-                                                        .ENERGYNEED
-                                ),
-                                Equation(
-                                        uuid = "equation-3",
-                                        name = "Poids métabolique",
-                                        kind = fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW
-                                ),
-                                Equation(
-                                        uuid = "equation-4",
-                                        name = "Densité énergétique",
-                                        kind =
-                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind
-                                                        .ENERGYDENSITY
-                                )
-                        )
-
+                val equations = equationRepository?.getAllEquations() ?: emptyList()
                 _availableEquations.value = equations
-
-                // Vérification des équations disponibles
-                for (i in equations.indices) {
-                    val equation = equations[i]
-                }
-
-                // Vérification des équations associées à la référence courante
-                _currentReferenceEv.value.equationsNut.forEach { equation -> }
-
-                // Vérification des équations principales
             } catch (e: Exception) {
                 e.printStackTrace()
                 _operationMessage.value = "Erreur lors du chargement des équations: ${e.message}"
+                _availableEquations.value = emptyList()
             } finally {
                 _loadingEquations.value = false
             }
         }
+    }
+
+    fun clear() {
+        scope.cancel()
     }
 }
