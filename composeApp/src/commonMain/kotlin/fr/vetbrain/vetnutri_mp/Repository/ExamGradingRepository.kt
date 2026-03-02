@@ -6,6 +6,7 @@ import fr.vetbrain.vetnutri_mp.Data.ExamGradingRuleSet
 import fr.vetbrain.vetnutri_mp.DataBase.ExamGradeEntity
 import fr.vetbrain.vetnutri_mp.DataBase.ExamGradingDao
 import fr.vetbrain.vetnutri_mp.DataBase.ExamGradingRuleEntity
+import fr.vetbrain.vetnutri_mp.Utils.TimeStamp
 import kotlinx.serialization.json.Json
 
 class ExamGradingRepository(
@@ -23,7 +24,7 @@ class ExamGradingRepository(
             examId = rule.examId,
             exerciseId = rule.exerciseId,
             rulesJson = json.encodeToString(ExamGradingRuleSet.serializer(), rule),
-            updatedAtEpochMs = System.currentTimeMillis()
+            updatedAtEpochMs = TimeStamp()
         )
         dao.upsertRule(entity)
     }
@@ -75,6 +76,6 @@ private fun ExamGrade.toEntity(json: Json): ExamGradeEntity {
         manualScore = manualScore,
         finalScore = finalScore,
         detailsJson = json.encodeToString(ExamGradeDetail.serializer(), detail),
-        updatedAtEpochMs = System.currentTimeMillis()
+        updatedAtEpochMs = TimeStamp()
     )
 }

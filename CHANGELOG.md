@@ -2,7 +2,7 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
-## [Non publié]
+## 3.2.25
 
 ### Added
 - **Analyse transversale (inter-consultations)** : nouvelle fonctionnalité permettant de comparer et d'analyser les résultats nutritionnels sur plusieurs consultations pour un même animal.
