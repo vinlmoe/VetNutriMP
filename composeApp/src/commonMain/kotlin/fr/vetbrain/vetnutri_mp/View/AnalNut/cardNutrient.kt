@@ -27,6 +27,7 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRation
@@ -155,7 +156,7 @@ fun AnalyseNutritionnelleCard(
 
         val preferencesEspece = if (shouldUseEquations) {
             if (animal != null && preferencesRepository != null) {
-                withContext(Dispatchers.IO) {
+                withContext(AppDispatchers.IO) {
                     preferencesRepository.getPreferencesForSpecies(animal.getEspece())
                 }
             } else {
