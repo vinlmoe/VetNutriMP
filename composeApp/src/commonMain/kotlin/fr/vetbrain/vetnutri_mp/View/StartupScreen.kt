@@ -32,6 +32,8 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Data.ExamSession
 import fr.vetbrain.vetnutri_mp.getPlatform
+import fr.vetbrain.vetnutri_mp.performDatabaseFactoryReset
+import fr.vetbrain.vetnutri_mp.View.SettingsComponents.ConfirmationDialog
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -70,6 +72,7 @@ fun StartupScreen(
         var isUpdatingDatabase by remember { mutableStateOf(false) }
         var databaseStatus by remember { mutableStateOf<DatabaseStatus?>(null) }
         var showUpdateDialog by remember { mutableStateOf(false) }
+        var showRecoveryDialog by remember { mutableStateOf(false) }
         var showTermsDialog by remember { mutableStateOf(false) }
         var showExamDialog by remember { mutableStateOf(false) }
         var examStudentNumber by remember { mutableStateOf("") }
@@ -400,6 +403,7 @@ fun StartupScreen(
                                         needsUpdate = true,
                                         error = e.message
                                 )
+                        showRecoveryDialog = true
                 } finally {
                         isCheckingDatabase = false
                 }
@@ -1483,6 +1487,41 @@ fun StartupScreen(
                                         // annule la mise à jour
                                         showUpdateButtonByDefault = false
                                 }
+                        )
+                }
+
+                if (showRecoveryDialog) {
+                        val databaseError = databaseStatus?.error ?: "Erreur inconnue"
+                        ConfirmationDialog(
+                                title = "Base de donnees illisible",
+                                message =
+                                        "La base de donnees n'a pas pu etre lue correctement.\n\n" +
+                                                "Erreur: $databaseError\n\n" +
+                                                "Voulez-vous reinitialiser la base locale puis la recreer depuis les donnees integrees ? " +
+                                                "Les donnees locales non exportees pourront etre perdues.",
+                                confirmText = "Reinitialiser",
+                                dismissText = "Annuler",
+                                isDestructive = true,
+                                onConfirm = {
+                                        showRecoveryDialog = false
+                                        isUpdatingDatabase = true
+                                        coroutineScope.launch {
+                                                val resetError = performDatabaseFactoryReset()
+                                                if (resetError != null) {
+                                                        databaseStatus =
+                                                                DatabaseStatus(
+                                                                        foodCount = 0,
+                                                                        referenceCount = 0,
+                                                                        needsUpdate = true,
+                                                                        error =
+                                                                                "Erreur lors du factory reset: $resetError"
+                                                                )
+                                                        isUpdatingDatabase = false
+                                                        showRecoveryDialog = true
+                                                }
+                                        }
+                                },
+                                onDismiss = { showRecoveryDialog = false }
                         )
                 }
 

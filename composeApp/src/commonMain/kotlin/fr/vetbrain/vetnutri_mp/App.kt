@@ -50,6 +50,10 @@ expect fun exportApiEnvelopeToFile(envelope: ApiEnvelope, defaultFileName: Strin
 
 expect fun openJsonFileContent(): String?
 
+// Réinitialisation physique de la base locale, puis relance éventuelle de l'application.
+// Retourne `null` si l'opération a été lancée, sinon un message d'erreur.
+expect fun performDatabaseFactoryReset(): String?
+
 // Export PDF - implémenté par plateforme
 expect suspend fun exportPdfDocument(
     documentType: fr.vetbrain.vetnutri_mp.Export.DocumentType,

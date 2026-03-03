@@ -489,6 +489,65 @@ class SettingsViewModel(
     }
 
     /**
+     * Tente une récupération après erreur de lecture/migration de la base.
+     *
+     * La stratégie est volontairement best-effort:
+     * - vider les tables critiques quand c'est encore possible
+     * - ignorer les erreurs de purge individuelle
+     * - relancer ensuite un import complet
+     */
+    suspend fun recoverDatabaseByResettingContent(): ImportResult {
+        val resetErrors = mutableListOf<String>()
+
+        suspend fun attemptReset(step: String, action: suspend () -> Unit) {
+            try {
+                action()
+            } catch (e: Exception) {
+                resetErrors += "$step: ${e.message ?: "erreur inconnue"}"
+            }
+        }
+
+        attemptReset("suppression des animaux") { clearAllAnimals() }
+        attemptReset("suppression des aliments") { clearAllFoods() }
+        attemptReset("suppression des références") { clearAllReferences() }
+        attemptReset("suppression des équations") { clearAllEquations() }
+        attemptReset("suppression des bibliographies") { clearAllBiblioRefs() }
+
+        val importResult = relaunchAutomaticImport(forceImport = true)
+
+        return when (importResult) {
+            is ImportResult.Success -> {
+                if (resetErrors.isEmpty()) {
+                    importResult
+                } else {
+                    ImportResult.Success(
+                        count = importResult.count,
+                        importedCount = importResult.importedCount,
+                        updatedCount = importResult.updatedCount,
+                        deletedCount = importResult.deletedCount,
+                        errorCount = importResult.errorCount + resetErrors.size,
+                        nonResolvedNutrients = importResult.nonResolvedNutrients,
+                        conseils = importResult.conseils
+                    )
+                }
+            }
+            is ImportResult.Error -> {
+                if (resetErrors.isEmpty()) {
+                    importResult
+                } else {
+                    ImportResult.Error(
+                        buildString {
+                            append(importResult.message)
+                            append(" | Réinitialisation partielle: ")
+                            append(resetErrors.joinToString("; "))
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    /**
      * Relance l'import automatique des données initiales (aliments et références nutritionnelles)
      * @param forceImport Si true, force l'import même si les versions sont identiques
      * @return Le résultat de l'importation

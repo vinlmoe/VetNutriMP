@@ -37,6 +37,29 @@ private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
 }
 
 private var appScope: CoroutineScope? = null
+private var desktopAppDatabase: fr.vetbrain.vetnutri_mp.DataBase.AppDatabase? = null
+
+private fun desktopDatabaseFiles(): List<File> {
+    val userHome = System.getProperty("user.home")
+    val dataDir = File(userHome, ".vetnutri_mp/data")
+    val dbFile = File(dataDir, fr.vetbrain.vetnutri_mp.DataBase.AppDatabase.DATABASE_NAME)
+    return listOf(
+        dbFile,
+        File(dbFile.absolutePath + "-wal"),
+        File(dbFile.absolutePath + "-shm")
+    )
+}
+
+private fun restartCurrentDesktopProcess(): Result<Unit> {
+    return runCatching {
+        val command = ProcessHandle.current().info().command().orElse(null)
+            ?: error("Commande de lancement introuvable")
+        val args = ProcessHandle.current().info().arguments().orElse(emptyArray())
+        ProcessBuilder(listOf(command) + args)
+            .directory(File(System.getProperty("user.dir")))
+            .start()
+    }.map { Unit }
+}
 
 private fun chooseFileOnEdt(dialogTitle: String, fileFilter: FileFilter): File? {
     var selectedFile: File? = null
@@ -77,6 +100,7 @@ suspend fun main(args: Array<String> = emptyArray()) {
 
     // Initialisation de la base de données
     val appDatabase = getRoomDatabase(getDatabaseBuilder())
+    desktopAppDatabase = appDatabase
 
     // Création du repository des animaux
     val animalRepository = DatabaseAnimalRepository(appDatabase.animalDao(), appDatabase.foodDao())
@@ -190,6 +214,32 @@ suspend fun main(args: Array<String> = emptyArray()) {
                     state = rememberWindowState(width = 1200.dp, height = 800.dp)
             ) { App(appDatabase) }
         }
+    }
+}
+
+actual fun performDatabaseFactoryReset(): String? {
+    return try {
+        appScope?.cancel()
+        desktopAppDatabase?.close()
+        desktopAppDatabase = null
+
+        val failures =
+            desktopDatabaseFiles()
+                .filter { it.exists() && !it.delete() }
+                .map { it.absolutePath }
+
+        if (failures.isNotEmpty()) {
+            return "Impossible de supprimer: ${failures.joinToString(", ")}"
+        }
+
+        val restartResult = restartCurrentDesktopProcess()
+        if (restartResult.isFailure) {
+            return "Base reinitialisee, mais redemarrage impossible: ${restartResult.exceptionOrNull()?.message}"
+        }
+
+        exitProcess(0)
+    } catch (e: Exception) {
+        "Echec du factory reset: ${e.message}"
     }
 }
 
