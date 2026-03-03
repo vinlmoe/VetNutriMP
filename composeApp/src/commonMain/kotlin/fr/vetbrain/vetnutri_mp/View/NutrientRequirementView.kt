@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
@@ -184,6 +186,8 @@ private fun ReferenceNutrientCard(
         onDuplicate: () -> Unit,
         modifier: Modifier = Modifier
 ) {
+    val missingEquationLabels = remember(reference) { reference.getMissingEquationLabels() }
+
     Card(modifier = modifier.fillMaxWidth().clickable { onEdit() }, elevation = 4.dp) {
         Column(
                 modifier = Modifier.padding(16.dp),
@@ -200,6 +204,23 @@ private fun ReferenceNutrientCard(
                             style = MaterialTheme.typography.subtitle1,
                             fontWeight = FontWeight.Bold
                     )
+
+                    if (missingEquationLabels.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Surface(
+                                color = VetNutriColors.Error.copy(alpha = 0.12f),
+                                contentColor = VetNutriColors.Error,
+                                shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(
+                                    text =
+                                            "${missingEquationLabels.size} ${translate(LocalizationKeys.NewReference.NOT_DEFINED)}",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.caption,
+                                    fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
 
                     Text(
                             text = "Espèce: ${reference.espece}",
@@ -218,6 +239,15 @@ private fun ReferenceNutrientCard(
                                 text = "Maladie: ${reference.nomMaladie}",
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.error
+                        )
+                    }
+
+                    if (missingEquationLabels.isNotEmpty()) {
+                        Text(
+                                text =
+                                        "${translate(LocalizationKeys.NewReference.NOT_DEFINED)}: ${missingEquationLabels.joinToString()}",
+                                style = MaterialTheme.typography.caption,
+                                color = VetNutriColors.Error
                         )
                     }
                 }
@@ -249,6 +279,25 @@ private fun ReferenceNutrientCard(
                     }
                 }
             }
+        }
+    }
+}
+
+private fun ReferenceEv.getMissingEquationLabels(): List<String> {
+    if (maladie) return emptyList()
+
+    return buildList {
+        if (equationBW?.equationScript.isNullOrBlank()) {
+            add(translate(LocalizationKeys.NewReference.EQ_METABOLIC_WEIGHT))
+        }
+        if (equationBEE?.equationScript.isNullOrBlank()) {
+            add(translate(LocalizationKeys.NewReference.EQ_BEE))
+        }
+        if (equationDEcom?.equationScript.isNullOrBlank()) {
+            add(translate(LocalizationKeys.NewReference.EQ_DECOM))
+        }
+        if (equationDEraw?.equationScript.isNullOrBlank()) {
+            add(translate(LocalizationKeys.NewReference.EQ_DERAW))
         }
     }
 }

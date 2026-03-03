@@ -34,6 +34,8 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
+import fr.vetbrain.vetnutri_mp.Export.SectionCategory
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsTabs
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.AdministrationSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
@@ -286,6 +288,9 @@ fun SettingsView(
                                                 var selectedReferenceIds by remember {
                                                         mutableStateOf(setOf<String>())
                                                 }
+                                                var selectedConseilIds by remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
 
                                                 var showAnimalSelectionDialog by remember {
                                                         mutableStateOf(false)
@@ -297,6 +302,9 @@ fun SettingsView(
                                                         mutableStateOf(false)
                                                 }
                                                 var showReferenceSelectionDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showConseilSelectionDialog by remember {
                                                         mutableStateOf(false)
                                                 }
 
@@ -312,6 +320,9 @@ fun SettingsView(
                                                 var availableReferences by remember {
                                                         mutableStateOf<List<ReferenceEv>>(emptyList())
                                                 }
+                                                var availableConseils by remember {
+                                                        mutableStateOf<List<HtmlSection>>(emptyList())
+                                                }
 
                                                 var isLoadingAnimals by remember {
                                                         mutableStateOf(false)
@@ -323,6 +334,9 @@ fun SettingsView(
                                                         mutableStateOf(false)
                                                 }
                                                 var isLoadingReferences by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingConseils by remember {
                                                         mutableStateOf(false)
                                                 }
 
@@ -365,6 +379,14 @@ fun SettingsView(
                                                                 )
                                                         )
                                                 }
+                                                var conseilFilterCategory by remember {
+                                                        mutableStateOf(
+                                                                FilterOption<SectionCategory>(
+                                                                        label = "Toutes",
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
 
                                                 var showAdvancedSelection by remember {
                                                         mutableStateOf(false)
@@ -382,7 +404,7 @@ fun SettingsView(
                                                                 )
                                                                 Spacer(modifier = Modifier.height(6.dp))
                                                                 Text(
-                                                                        "Sélection avancée: animaux ${selectedAnimalIds.size}, aliments ${selectedFoodIds.size}, équations ${selectedEquationIds.size}, références ${selectedReferenceIds.size}",
+                                                                        "Sélection avancée: animaux ${selectedAnimalIds.size}, aliments ${selectedFoodIds.size}, équations ${selectedEquationIds.size}, références ${selectedReferenceIds.size}, conseils ${selectedConseilIds.size}",
                                                                         style = MaterialTheme.typography.body2,
                                                                         color = Color.Gray
                                                                 )
@@ -513,6 +535,33 @@ fun SettingsView(
                                                                 }
                                                         }
                                                 ) { Text("Selectionner references (${selectedReferenceIds.size})") }
+
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showConseilSelectionDialog = true
+                                                                if (availableConseils.isEmpty() &&
+                                                                                !isLoadingConseils
+                                                                ) {
+                                                                        coroutineScope.launch {
+                                                                                isLoadingConseils = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableConseils =
+                                                                                                viewModel
+                                                                                                        .conseilRepository
+                                                                                                        ?.getConseilsActifs()
+                                                                                                        ?.getOrThrow()
+                                                                                                        ?: emptyList()
+                                                                                } catch (e: Exception) {
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement conseils: ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingConseils = false
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                ) { Text("Selectionner conseils (${selectedConseilIds.size})") }
 
                                                 // Cases à cocher d’inclusion
 
@@ -1460,6 +1509,254 @@ fun SettingsView(
                                                                 }
                                                         }
                                                 }
+
+                                                if (showConseilSelectionDialog) {
+                                                        Dialog(
+                                                                onDismissRequest = {
+                                                                        showConseilSelectionDialog = false
+                                                                },
+                                                                properties =
+                                                                        DialogProperties(
+                                                                                usePlatformDefaultWidth =
+                                                                                        false
+                                                                        )
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .background
+                                                                                        )
+                                                                ) {
+                                                                        when {
+                                                                                isLoadingConseils -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                CircularProgressIndicator()
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        12.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Chargement des conseils..."
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                                selectionLoadError != null -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        selectionLoadError
+                                                                                                                ?: "Erreur inconnue",
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .error,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showConseilSelectionDialog =
+                                                                                                                        false
+                                                                                                                selectionLoadError =
+                                                                                                                        null
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                availableConseils.isEmpty() -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        "Aucun conseil disponible."
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showConseilSelectionDialog =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                else -> {
+                                                                                        val conseilById =
+                                                                                                remember(
+                                                                                                        availableConseils
+                                                                                                ) {
+                                                                                                        availableConseils
+                                                                                                                .associateBy {
+                                                                                                                        it.id
+                                                                                                                }
+                                                                                                }
+                                                                                        val conseilCategoryOptions =
+                                                                                                remember {
+                                                                                                        listOf(
+                                                                                                                FilterOption<SectionCategory>(
+                                                                                                                        label =
+                                                                                                                                "Toutes",
+                                                                                                                        value = null
+                                                                                                                )
+                                                                                                        ) +
+                                                                                                                SectionCategory
+                                                                                                                        .entries
+                                                                                                                        .filter {
+                                                                                                                                it.name.startsWith(
+                                                                                                                                        "CONSEIL"
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                        .map {
+                                                                                                                                FilterOption(
+                                                                                                                                        label =
+                                                                                                                                                it.name,
+                                                                                                                                        value =
+                                                                                                                                                it
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                }
+                                                                                        SelectionDialog(
+                                                                                                title =
+                                                                                                        "Selection des conseils",
+                                                                                                items =
+                                                                                                        availableConseils.map {
+                                                                                                                val tags =
+                                                                                                                        it.tags
+                                                                                                                                .takeIf {
+                                                                                                                                        tags ->
+                                                                                                                                        tags.isNotEmpty()
+                                                                                                                                }
+                                                                                                                                ?.joinToString(
+                                                                                                                                        ", "
+                                                                                                                                )
+                                                                                                                                ?: it.category.name
+                                                                                                                SelectionItem(
+                                                                                                                        id =
+                                                                                                                                it.id,
+                                                                                                                        title =
+                                                                                                                                it.title.ifBlank {
+                                                                                                                                        "Conseil"
+                                                                                                                                },
+                                                                                                                        subtitle =
+                                                                                                                                tags
+                                                                                                                )
+                                                                                                        },
+                                                                                                initialSelectedIds =
+                                                                                                        selectedConseilIds,
+                                                                                                onConfirm = {
+                                                                                                        ids ->
+                                                                                                        selectedConseilIds =
+                                                                                                                ids
+                                                                                                        showConseilSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                onDismiss = {
+                                                                                                        showConseilSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                confirmLabel =
+                                                                                                        "Valider la selection",
+                                                                                                emptyLabel =
+                                                                                                        "Aucun conseil disponible.",
+                                                                                                filtersContent = {
+                                                                                                        DropdownField(
+                                                                                                                label =
+                                                                                                                        "Categorie",
+                                                                                                                selectedValue =
+                                                                                                                        conseilFilterCategory,
+                                                                                                                options =
+                                                                                                                        conseilCategoryOptions,
+                                                                                                                onValueChange = {
+                                                                                                                        conseilFilterCategory =
+                                                                                                                                it
+                                                                                                                },
+                                                                                                                valueToString = {
+                                                                                                                        it.label
+                                                                                                                },
+                                                                                                                modifier =
+                                                                                                                        Modifier.fillMaxWidth()
+                                                                                                        )
+                                                                                                },
+                                                                                                filterPredicate = { item ->
+                                                                                                        val conseil =
+                                                                                                                conseilById[
+                                                                                                                        item.id
+                                                                                                                ]
+                                                                                                        val selected =
+                                                                                                                conseilFilterCategory
+                                                                                                                        .value
+                                                                                                        selected == null ||
+                                                                                                                conseil?.category ==
+                                                                                                                        selected
+                                                                                                }
+                                                                                        )
+                                                                                }
+                                                                        }
+
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        showConseilSelectionDialog =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.align(
+                                                                                                Alignment.TopEnd
+                                                                                        )
+                                                                                                .padding(
+                                                                                                        16.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Default.Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer"
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                }
                                                 }
                                                 // Affichage du message de résultat
                                                 // d'importation des références
@@ -1606,13 +1903,16 @@ fun SettingsView(
                                                                                                         referenceIds =
                                                                                                                 selectedReferenceIds,
                                                                                                         equationIds =
-                                                                                                                selectedEquationIds
+                                                                                                                selectedEquationIds,
+                                                                                                        conseilIds =
+                                                                                                                selectedConseilIds
                                                                                                 )
                                                                                 val hasNoSelection =
                                                                                         selectedAnimalIds.isEmpty() &&
                                                                                                 selectedFoodIds.isEmpty() &&
                                                                                                 selectedReferenceIds.isEmpty() &&
-                                                                                                selectedEquationIds.isEmpty()
+                                                                                                selectedEquationIds.isEmpty() &&
+                                                                                                selectedConseilIds.isEmpty()
                                                                                 val effectiveOptions =
                                                                                         if (hasNoSelection) {
                                                                                                 exportOptions.copy(
@@ -1639,6 +1939,8 @@ fun SettingsView(
                                                                                                                 selectedFoodIds.isNotEmpty(),
                                                                                                         includeEquations =
                                                                                                                 selectedEquationIds.isNotEmpty(),
+                                                                                                        includeConseils =
+                                                                                                                selectedConseilIds.isNotEmpty(),
                                                                                                         includeLinkedFromAnimals =
                                                                                                                 true
                                                                                                 )
