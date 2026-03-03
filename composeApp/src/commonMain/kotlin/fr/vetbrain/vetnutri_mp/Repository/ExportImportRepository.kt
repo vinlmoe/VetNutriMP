@@ -62,7 +62,8 @@ class ExportImportRepository(
                 val animalIds: Set<String> = emptySet(),
                 val foodIds: Set<String> = emptySet(),
                 val referenceIds: Set<String> = emptySet(),
-                val equationIds: Set<String> = emptySet()
+                val equationIds: Set<String> = emptySet(),
+                val conseilIds: Set<String> = emptySet()
         )
 
         /**
@@ -441,10 +442,21 @@ class ExportImportRepository(
                 val conseils =
                         if (options.includeConseils) {
                                 try {
-                                        conseilRepository?.getConseilsActifs()?.getOrThrow()?.map {
-                                                it.toApi()
-                                        }
-                                                ?: emptyList()
+                                        val allConseils =
+                                                conseilRepository?.getConseilsActifs()?.getOrThrow()
+                                                        ?: emptyList()
+                                        allConseils
+                                                .asSequence()
+                                                .filter {
+                                                        when {
+                                                                options.conseilIds.isNotEmpty() ->
+                                                                        options.conseilIds.contains(it.id)
+                                                                options.animalIds.isEmpty() -> true
+                                                                else -> false
+                                                        }
+                                                }
+                                                .map { it.toApi() }
+                                                .toList()
                                 } catch (_: Exception) {
                                         emptyList()
                                 }

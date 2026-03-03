@@ -695,12 +695,22 @@ class SettingsViewModel(
             // Mettre à jour la version JSON après import réussi
             log("Mise à jour de la version JSON stockée...")
             if (embeddedVersion != null) {
-                databaseVersionManager.updateJsonVersionAfterImport(embeddedVersion)
+                databaseVersionManager.updateJsonVersionAfterImport(
+                        embeddedVersion = embeddedVersion
+                )
             } else {
                 databaseVersionManager.updateJsonVersionAfterImport(json)
             }
             val newStoredVersion = databaseVersionManager.getStoredJsonVersion()
             log("✓ Version JSON mise à jour: ${newStoredVersion ?: "Aucune"}")
+
+            if (newStoredVersion != null) {
+                databaseVersionManager.updateDatabaseVersion(
+                        newVersion = newStoredVersion,
+                        importSource = "vetnutri_export_init.json"
+                )
+                log("✓ Version interne mise à jour: $newStoredVersion")
+            }
 
             // Retourner le résultat de l'importation
             val totalCount = importCounts.animals + importCounts.foods + importCounts.equations + importCounts.references

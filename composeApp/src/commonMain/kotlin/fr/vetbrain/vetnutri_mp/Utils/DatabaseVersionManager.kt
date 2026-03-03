@@ -54,7 +54,11 @@ class DatabaseVersionManager {
      */
     suspend fun updateDatabaseVersion(newVersion: String, importSource: String) {
         try {
+            val previousVersion = getStoredDatabaseVersion()
             val storage = createPreferencesStorage()
+            println(
+                "[DatabaseVersionManager] updateDatabaseVersion start previousVersion=$previousVersion newVersion=$newVersion importSource=$importSource"
+            )
             
             // Sauvegarder la nouvelle version
             storage.saveString(KEY_DB_VERSION, newVersion)
@@ -70,8 +74,16 @@ class DatabaseVersionManager {
             _currentVersion.value = newVersion
             _lastUpdateDate.value = currentDate
             _importSource.value = importSource
+
+            val storedVersion = storage.getString(KEY_DB_VERSION, DEFAULT_VERSION)
+            println(
+                "[DatabaseVersionManager] updateDatabaseVersion storedVersion=$storedVersion lastUpdate=$currentDate"
+            )
+
+            DatabaseChangeNotifier.notifyVersionUpdate(previousVersion, newVersion)
             
         } catch (e: Exception) {
+            println("[DatabaseVersionManager] updateDatabaseVersion error=${e.message}")
             e.printStackTrace()
         }
     }
@@ -83,6 +95,7 @@ class DatabaseVersionManager {
     suspend fun getCurrentDatabaseVersion(): String {
         val version = getStoredDatabaseVersion()
         _currentVersion.value = version
+        println("[DatabaseVersionManager] getCurrentDatabaseVersion version=$version")
         return version
     }
     
@@ -267,6 +280,7 @@ class DatabaseVersionManager {
      */
     suspend fun updateJsonVersionAfterImport(jsonContent: String) {
         try {
+            val previousVersion = getStoredJsonVersion()
             // Extraction légère pour éviter la création d'un arbre JSON en mémoire.
             val head =
                 if (jsonContent.length > 200_000) jsonContent.substring(0, 200_000)
@@ -288,8 +302,18 @@ class DatabaseVersionManager {
                     storage.saveString(KEY_JSON_TIMESTAMP, timestamp.toString())
                     _jsonTimestamp.value = timestamp
                 }
+
+                println(
+                    "[DatabaseVersionManager] updateJsonVersionAfterImport(raw) previousVersion=${previousVersion ?: "null"} newVersion=$version timestamp=${timestamp ?: "null"}"
+                )
+
+                DatabaseChangeNotifier.notifyVersionUpdate(
+                    previousVersion ?: DEFAULT_VERSION,
+                    version
+                )
             }
         } catch (e: Exception) {
+            println("[DatabaseVersionManager] updateJsonVersionAfterImport(raw) error=${e.message}")
             e.printStackTrace()
         }
     }
@@ -303,6 +327,7 @@ class DatabaseVersionManager {
     ) {
         try {
             if (embeddedVersion == null) return
+            val previousVersion = getStoredJsonVersion()
             val storage = createPreferencesStorage()
             storage.saveString(KEY_JSON_VERSION, embeddedVersion)
             _jsonVersion.value = embeddedVersion
@@ -311,7 +336,17 @@ class DatabaseVersionManager {
                 storage.saveString(KEY_JSON_TIMESTAMP, embeddedTimestamp.toString())
                 _jsonTimestamp.value = embeddedTimestamp
             }
+
+            println(
+                "[DatabaseVersionManager] updateJsonVersionAfterImport(extracted) previousVersion=${previousVersion ?: "null"} newVersion=$embeddedVersion timestamp=${embeddedTimestamp ?: "null"}"
+            )
+
+            DatabaseChangeNotifier.notifyVersionUpdate(
+                previousVersion ?: DEFAULT_VERSION,
+                embeddedVersion
+            )
         } catch (e: Exception) {
+            println("[DatabaseVersionManager] updateJsonVersionAfterImport(extracted) error=${e.message}")
             e.printStackTrace()
         }
     }
@@ -388,7 +423,9 @@ class DatabaseVersionManager {
     // Méthodes privées pour la persistance des données
     private suspend fun getStoredDatabaseVersion(): String {
         val storage = createPreferencesStorage()
-        return storage.getString(KEY_DB_VERSION, DEFAULT_VERSION)
+        val version = storage.getString(KEY_DB_VERSION, DEFAULT_VERSION)
+        println("[DatabaseVersionManager] getStoredDatabaseVersion version=$version")
+        return version
     }
     
     private suspend fun getStoredLastUpdateDate(): String? {

@@ -46,7 +46,9 @@ data class DatabaseStatus(
         val error: String? = null
 )
 
-private fun journaliserMiseAJour(message: String): Unit {}
+private fun journaliserMiseAJour(message: String): Unit {
+        println("[StartupScreen] $message")
+}
 
 private fun extraireVersionJson(contenu: String): String? {
         val motif: Regex = "\"version\"\\s*:\\s*\"([^\"]+)\"".toRegex()
@@ -461,6 +463,27 @@ fun StartupScreen(
                                                                 .getCurrentDatabaseVersion()
                                                 lastUpdateDate =
                                                         databaseVersionManager.getLastUpdateDate()
+                                                currentJsonVersion =
+                                                        databaseVersionManager.getStoredJsonVersion()
+                                                jsonUpdateAvailable =
+                                                        embeddedJsonVersion?.let { embeddedVersion ->
+                                                                currentJsonVersion?.let { storedVersion ->
+                                                                        databaseVersionManager.compareVersions(
+                                                                                embeddedVersion,
+                                                                                storedVersion
+                                                                        ) > 0
+                                                                } ?: true
+                                                        } ?: false
+                                                journaliserMiseAJour(
+                                                        "DATABASE_VERSION_UPDATED reçu: currentDatabaseVersion=" +
+                                                                currentDatabaseVersion +
+                                                                ", currentJsonVersion=" +
+                                                                (currentJsonVersion ?: "null") +
+                                                                ", embeddedJsonVersion=" +
+                                                                (embeddedJsonVersion ?: "null") +
+                                                                ", jsonUpdateAvailable=" +
+                                                                jsonUpdateAvailable
+                                                )
                                         }
                                         else -> {
                                                 // Autres types de changements
@@ -1360,13 +1383,34 @@ fun StartupScreen(
                                                 coroutineScope.launch {
                                                         when (result) {
                                                                 is ImportResult.Success -> {
+                                                                        val refreshedFoodCount =
+                                                                                settingsViewModel
+                                                                                        .foodRepository
+                                                                                        .getAllFoods()
+                                                                                        .size
+                                                                        val refreshedReferenceCount =
+                                                                                referenceRepository
+                                                                                        ?.getAllReferenceEv()
+                                                                                        ?.size
+                                                                                        ?: 0
+                                                                        val refreshedConseilsCount =
+                                                                                try {
+                                                                                        conseilRepository
+                                                                                                ?.getConseilsCount()
+                                                                                                ?.getOrThrow()
+                                                                                                ?: 0
+                                                                                } catch (_: Exception) {
+                                                                                        0
+                                                                                }
                                                                         databaseStatus =
                                                                                 databaseStatus
                                                                                         ?.copy(
                                                                                                 foodCount =
-                                                                                                        result.count,
+                                                                                                        refreshedFoodCount,
                                                                                                 referenceCount =
-                                                                                                        result.count,
+                                                                                                        refreshedReferenceCount,
+                                                                                                conseilsCount =
+                                                                                                        refreshedConseilsCount,
                                                                                                 needsUpdate =
                                                                                                         false
                                                                                         )
@@ -1394,11 +1438,14 @@ fun StartupScreen(
                                                                         
                                                                         // Marquer qu'un import vient d'être fait pour éviter le réaffichage
                                                                         hasJustImported = true
-
-                                                                        // Passer à l'application après la mise à
-                                                                        // jour
-                                                                        showStartupScreen = false
-                                                                        onDatabaseReady()
+                                                                        journaliserMiseAJour(
+                                                                                "Import JSON réussi: foods=" +
+                                                                                        refreshedFoodCount +
+                                                                                        ", references=" +
+                                                                                        refreshedReferenceCount +
+                                                                                        ", conseils=" +
+                                                                                        refreshedConseilsCount
+                                                                        )
                                                                 }
                                                                 is ImportResult.Error -> {
                                                                         databaseStatus =
@@ -1447,33 +1494,72 @@ fun StartupScreen(
 
                                         settingsViewModel.launchAutomaticImport(forceImport = true) { result ->
                                                 // Mettre à jour le statut
-                                                when (result) {
-                                                        is SettingsViewModel.ImportResult.Success -> {
-                                                                databaseStatus =
-                                                                        databaseStatus
-                                                                                ?.copy(
-                                                                                        foodCount =
-                                                                                                result.count,
-                                                                                        referenceCount =
-                                                                                                result.count,
-                                                                                        needsUpdate =
-                                                                                                false
-                                                                                )
-                                                                isUpdatingDatabase = false
-
-                                                                // Passer à l'application
-                                                                // après la mise à jour
-                                                                showStartupScreen = false
-                                                                onDatabaseReady()
-                                                        }
-                                                        is SettingsViewModel.ImportResult.Error -> {
-                                                                databaseStatus =
-                                                                        databaseStatus
-                                                                                ?.copy(
-                                                                                        error =
-                                                                                                "Erreur lors de la mise à jour : ${result.message}"
-                                                                                )
-                                                                isUpdatingDatabase = false
+                                                coroutineScope.launch {
+                                                        when (result) {
+                                                                is SettingsViewModel.ImportResult.Success -> {
+                                                                        val refreshedFoodCount =
+                                                                                settingsViewModel
+                                                                                        .foodRepository
+                                                                                        .getAllFoods()
+                                                                                        .size
+                                                                        val refreshedReferenceCount =
+                                                                                referenceRepository
+                                                                                        ?.getAllReferenceEv()
+                                                                                        ?.size
+                                                                                        ?: 0
+                                                                        val refreshedConseilsCount =
+                                                                                try {
+                                                                                        conseilRepository
+                                                                                                ?.getConseilsCount()
+                                                                                                ?.getOrThrow()
+                                                                                                ?: 0
+                                                                                } catch (_: Exception) {
+                                                                                        0
+                                                                                }
+                                                                        databaseStatus =
+                                                                                databaseStatus
+                                                                                        ?.copy(
+                                                                                                foodCount =
+                                                                                                        refreshedFoodCount,
+                                                                                                referenceCount =
+                                                                                                        refreshedReferenceCount,
+                                                                                                conseilsCount =
+                                                                                                        refreshedConseilsCount,
+                                                                                                needsUpdate =
+                                                                                                        false
+                                                                                        )
+                                                                        isUpdatingDatabase = false
+                                                                        currentJsonVersion =
+                                                                                databaseVersionManager
+                                                                                        .getStoredJsonVersion()
+                                                                        jsonUpdateAvailable =
+                                                                                embeddedJsonVersion?.let { embeddedVersion ->
+                                                                                        currentJsonVersion?.let { storedVersion ->
+                                                                                                databaseVersionManager.compareVersions(
+                                                                                                        embeddedVersion,
+                                                                                                        storedVersion
+                                                                                                ) > 0
+                                                                                        } ?: true
+                                                                                } ?: false
+                                                                        hasJustImported = true
+                                                                        journaliserMiseAJour(
+                                                                                "Import base réussi: foods=" +
+                                                                                        refreshedFoodCount +
+                                                                                        ", references=" +
+                                                                                        refreshedReferenceCount +
+                                                                                        ", conseils=" +
+                                                                                        refreshedConseilsCount
+                                                                        )
+                                                                }
+                                                                is SettingsViewModel.ImportResult.Error -> {
+                                                                        databaseStatus =
+                                                                                databaseStatus
+                                                                                        ?.copy(
+                                                                                                error =
+                                                                                                        "Erreur lors de la mise à jour : ${result.message}"
+                                                                                        )
+                                                                        isUpdatingDatabase = false
+                                                                }
                                                         }
                                                 }
                                         }
