@@ -1,7 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Enumer
 
 enum class TextConstant(val value: String) {
-    VERSION("3.2.25"),
+    VERSION("3.2.30"),
     NOM("VetNutri"),
     STADE("Beta"),
     NBRATION("7");
