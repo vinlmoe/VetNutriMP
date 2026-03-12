@@ -157,10 +157,10 @@ android {
             // arm64-v8a est compatible avec 16KB pages sur Android 15+
             // IMPORTANT: 
             // - armeabi-v7a exclu (32-bit, souvent problématique avec 16KB)
-            // - x86 et x86_64 exclus (émulateurs uniquement, bibliothèques non alignées)
-            // La plupart des appareils Android modernes utilisent arm64-v8a
-            // Cette configuration maximise la compatibilité 16KB avec Google Play
-            abiFilters += listOf("arm64-v8a")
+            // - x86 exclu (architecture 32-bit legacy)
+            // - x86_64 conservé pour la compatibilité Chromebook (Android on ChromeOS)
+            // Cette configuration maximise la compatibilité Android + Chromebook
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 
