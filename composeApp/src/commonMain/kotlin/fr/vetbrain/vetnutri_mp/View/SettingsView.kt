@@ -33,6 +33,7 @@ import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.Data.Recette
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import fr.vetbrain.vetnutri_mp.Export.SectionCategory
@@ -288,6 +289,9 @@ fun SettingsView(
                                                 var selectedReferenceIds by remember {
                                                         mutableStateOf(setOf<String>())
                                                 }
+                                                var selectedRecipeIds by remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
                                                 var selectedConseilIds by remember {
                                                         mutableStateOf(setOf<String>())
                                                 }
@@ -302,6 +306,9 @@ fun SettingsView(
                                                         mutableStateOf(false)
                                                 }
                                                 var showReferenceSelectionDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showRecipeSelectionDialog by remember {
                                                         mutableStateOf(false)
                                                 }
                                                 var showConseilSelectionDialog by remember {
@@ -320,6 +327,9 @@ fun SettingsView(
                                                 var availableReferences by remember {
                                                         mutableStateOf<List<ReferenceEv>>(emptyList())
                                                 }
+                                                var availableRecipes by remember {
+                                                        mutableStateOf<List<Recette>>(emptyList())
+                                                }
                                                 var availableConseils by remember {
                                                         mutableStateOf<List<HtmlSection>>(emptyList())
                                                 }
@@ -334,6 +344,9 @@ fun SettingsView(
                                                         mutableStateOf(false)
                                                 }
                                                 var isLoadingReferences by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingRecipes by remember {
                                                         mutableStateOf(false)
                                                 }
                                                 var isLoadingConseils by remember {
@@ -404,7 +417,7 @@ fun SettingsView(
                                                                 )
                                                                 Spacer(modifier = Modifier.height(6.dp))
                                                                 Text(
-                                                                        "Sélection avancée: animaux ${selectedAnimalIds.size}, aliments ${selectedFoodIds.size}, équations ${selectedEquationIds.size}, références ${selectedReferenceIds.size}, conseils ${selectedConseilIds.size}",
+                                                                        "Sélection avancée: animaux ${selectedAnimalIds.size}, aliments ${selectedFoodIds.size}, recettes ${selectedRecipeIds.size}, équations ${selectedEquationIds.size}, références ${selectedReferenceIds.size}, conseils ${selectedConseilIds.size}",
                                                                         style = MaterialTheme.typography.body2,
                                                                         color = Color.Gray
                                                                 )
@@ -483,6 +496,32 @@ fun SettingsView(
                                                                 "${translate(Settings.SELECT_FOODS)} (${selectedFoodIds.size})"
                                                         )
                                                 }
+
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showRecipeSelectionDialog = true
+                                                                if (availableRecipes.isEmpty() &&
+                                                                                !isLoadingRecipes
+                                                                ) {
+                                                                        coroutineScope.launch {
+                                                                                isLoadingRecipes = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableRecipes =
+                                                                                                viewModel
+                                                                                                        .recipeRepository
+                                                                                                        ?.getAllRecipesAsRecette()
+                                                                                                        ?: emptyList()
+                                                                                } catch (e: Exception) {
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement recettes: ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingRecipes = false
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                ) { Text("Selectionner recettes (${selectedRecipeIds.size})") }
 
                                                 OutlinedButton(
                                                         onClick = {
@@ -1757,6 +1796,182 @@ fun SettingsView(
                                                                 }
                                                         }
                                                 }
+
+                                                if (showRecipeSelectionDialog) {
+                                                        Dialog(
+                                                                onDismissRequest = {
+                                                                        showRecipeSelectionDialog = false
+                                                                },
+                                                                properties =
+                                                                        DialogProperties(
+                                                                                usePlatformDefaultWidth =
+                                                                                        false
+                                                                        )
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .background
+                                                                                        )
+                                                                ) {
+                                                                        when {
+                                                                                isLoadingRecipes -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                CircularProgressIndicator()
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        12.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Chargement des recettes..."
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                                selectionLoadError != null -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        selectionLoadError
+                                                                                                                ?: "Erreur inconnue",
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .error,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showRecipeSelectionDialog =
+                                                                                                                        false
+                                                                                                                selectionLoadError =
+                                                                                                                        null
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                availableRecipes.isEmpty() -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        "Aucune recette disponible."
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showRecipeSelectionDialog =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                else -> {
+                                                                                        SelectionDialog(
+                                                                                                title =
+                                                                                                        "Selection des recettes",
+                                                                                                items =
+                                                                                                        availableRecipes.map {
+                                                                                                                SelectionItem(
+                                                                                                                        id =
+                                                                                                                                it.uuid,
+                                                                                                                        title =
+                                                                                                                                it.name
+                                                                                                                                        ?.ifBlank {
+                                                                                                                                                "Recette"
+                                                                                                                                        }
+                                                                                                                                        ?: "Recette",
+                                                                                                                        subtitle =
+                                                                                                                                it.description
+                                                                                                                                        ?: ""
+                                                                                                                )
+                                                                                                        },
+                                                                                                initialSelectedIds =
+                                                                                                        selectedRecipeIds,
+                                                                                                onConfirm = {
+                                                                                                        ids ->
+                                                                                                        selectedRecipeIds =
+                                                                                                                ids
+                                                                                                        showRecipeSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                onDismiss = {
+                                                                                                        showRecipeSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                confirmLabel =
+                                                                                                        "Valider la selection",
+                                                                                                emptyLabel =
+                                                                                                        "Aucune recette disponible."
+                                                                                        )
+                                                                                }
+                                                                        }
+
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        showRecipeSelectionDialog =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.align(
+                                                                                                Alignment.TopEnd
+                                                                                        )
+                                                                                                .padding(
+                                                                                                        16.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Default.Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer"
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                }
                                                 }
                                                 // Affichage du message de résultat
                                                 // d'importation des références
@@ -1902,6 +2117,8 @@ fun SettingsView(
                                                                                                                 selectedFoodIds,
                                                                                                         referenceIds =
                                                                                                                 selectedReferenceIds,
+                                                                                                        recipeIds =
+                                                                                                                selectedRecipeIds,
                                                                                                         equationIds =
                                                                                                                 selectedEquationIds,
                                                                                                         conseilIds =
@@ -1910,6 +2127,7 @@ fun SettingsView(
                                                                                 val hasNoSelection =
                                                                                         selectedAnimalIds.isEmpty() &&
                                                                                                 selectedFoodIds.isEmpty() &&
+                                                                                                selectedRecipeIds.isEmpty() &&
                                                                                                 selectedReferenceIds.isEmpty() &&
                                                                                                 selectedEquationIds.isEmpty() &&
                                                                                                 selectedConseilIds.isEmpty()
@@ -1937,6 +2155,8 @@ fun SettingsView(
                                                                                                                 selectedAnimalIds.isNotEmpty(),
                                                                                                         includeFoods =
                                                                                                                 selectedFoodIds.isNotEmpty(),
+                                                                                                        includeRecipes =
+                                                                                                                selectedRecipeIds.isNotEmpty(),
                                                                                                         includeEquations =
                                                                                                                 selectedEquationIds.isNotEmpty(),
                                                                                                         includeConseils =

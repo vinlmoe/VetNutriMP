@@ -49,16 +49,16 @@ class AlimentExcelService {
             logInfo("=== DÉBUT IMPORT CSV ===")
             logInfo("Taille du contenu CSV: ${csvContent.length} caractères")
             
-            val lines = csvContent.lines().filter { it.isNotBlank() }
-            logInfo("Nombre de lignes non vides: ${lines.size}")
+            val rows = splitCsvRows(csvContent).filter { it.isNotBlank() }
+            logInfo("Nombre de lignes CSV non vides (quote-aware): ${rows.size}")
             
-            if (lines.isEmpty()) {
+            if (rows.isEmpty()) {
                 logError("Le fichier CSV est vide")
                 return ImportResult(emptyList(), listOf("Le fichier CSV est vide"))
             }
 
             // Analyse des en-têtes
-            val headers = lines.first().split(";").map { it.trim() }
+            val headers = parseCsvValues(rows.first())
             logInfo("En-têtes détectés (${headers.size}): ${headers.take(5).joinToString(", ")}${if (headers.size > 5) "..." else ""}")
             logInfo("TOUS LES HEADERS: ${headers.joinToString("|")}")
             
@@ -66,7 +66,7 @@ class AlimentExcelService {
             val expectedHeaders = createCsvHeaders()
             logInfo("En-têtes attendus (${expectedHeaders.size}): ${expectedHeaders.take(5).joinToString(", ")}${if (expectedHeaders.size > 5) "..." else ""}")
             
-            val dataLines = lines.drop(1)
+            val dataLines = rows.drop(1)
             logInfo("Nombre de lignes de données: ${dataLines.size}")
 
             val aliments = mutableListOf<AlimentEv>()
@@ -453,6 +453,51 @@ class AlimentExcelService {
         values.add(currentValue.toString().trim())
 
         return values
+    }
+
+    /**
+     * Découpe le contenu CSV en lignes en respectant les retours à la ligne
+     * présents dans des cellules entre guillemets.
+     */
+    private fun splitCsvRows(csvContent: String): List<String> {
+        val rows = mutableListOf<String>()
+        val currentRow = StringBuilder()
+        var inQuotes = false
+        var i = 0
+
+        while (i < csvContent.length) {
+            val char = csvContent[i]
+
+            when {
+                char == '"' -> {
+                    if (inQuotes && i + 1 < csvContent.length && csvContent[i + 1] == '"') {
+                        // Guillemet échappé
+                        currentRow.append('"')
+                        i++
+                    } else {
+                        inQuotes = !inQuotes
+                        currentRow.append(char)
+                    }
+                }
+                (char == '\n' || char == '\r') && !inQuotes -> {
+                    if (char == '\r' && i + 1 < csvContent.length && csvContent[i + 1] == '\n') {
+                        i++ // Consommer le LF de CRLF
+                    }
+                    rows.add(currentRow.toString())
+                    currentRow.clear()
+                }
+                else -> {
+                    currentRow.append(char)
+                }
+            }
+            i++
+        }
+
+        if (currentRow.isNotEmpty()) {
+            rows.add(currentRow.toString())
+        }
+
+        return rows
     }
 
     /**

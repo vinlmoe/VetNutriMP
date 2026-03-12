@@ -61,6 +61,7 @@ class ExportImportRepository(
                 val includeLinkedFromAnimals: Boolean = true,
                 val animalIds: Set<String> = emptySet(),
                 val foodIds: Set<String> = emptySet(),
+                val recipeIds: Set<String> = emptySet(),
                 val referenceIds: Set<String> = emptySet(),
                 val equationIds: Set<String> = emptySet(),
                 val conseilIds: Set<String> = emptySet()
@@ -434,8 +435,20 @@ class ExportImportRepository(
                 // Récupérer les recettes selon les options
                 val recipes =
                         if (options.includeRecipes) {
-                                recipeRepository?.getAllRecipesAsRecette()?.map { it.toApi() }
-                                        ?: emptyList()
+                                val allRecipes =
+                                        recipeRepository?.getAllRecipesAsRecette() ?: emptyList()
+                                allRecipes
+                                        .asSequence()
+                                        .filter {
+                                                when {
+                                                        options.recipeIds.isNotEmpty() ->
+                                                                options.recipeIds.contains(it.uuid)
+                                                        options.animalIds.isEmpty() -> true
+                                                        else -> false
+                                                }
+                                        }
+                                        .map { it.toApi() }
+                                        .toList()
                         } else emptyList()
 
                 // Récupérer les conseils selon les options

@@ -25,7 +25,6 @@ object HtmlSectionParser {
                 <div class='section-content'>
                     $contentHtml
                 </div>
-                ${if (section.tags.isNotEmpty()) "<div class='section-tags'>${section.tags.joinToString(", ") { "#$it" }}</div>" else ""}
             </div>
         """.trimIndent()
     }
@@ -225,6 +224,5 @@ object HtmlSectionParser {
         """.trimIndent()
     }
 }
-
 
 
