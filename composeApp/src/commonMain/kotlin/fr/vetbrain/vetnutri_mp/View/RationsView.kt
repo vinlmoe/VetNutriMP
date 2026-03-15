@@ -64,6 +64,7 @@ import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionAlimentsRation
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionBilanEnergetique
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionCoefficients
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionValeursMetaboliques
+import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseQuantitativeRationSection
 import fr.vetbrain.vetnutri_mp.View.Components.RecipeDialog
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import kotlinx.coroutines.launch
@@ -285,6 +286,80 @@ fun RationsView(
                 typeExpressionBesoinOverride
                         ?: typeExpressionBesoinFromPrefs
                         ?: TypeExpressionBesoin.DEFAULT
+        var showRationNutrientInspector by remember { mutableStateOf(false) }
+
+        val nutrimentsSelectionnesPreferences =
+                remember(animal, preferencesApplication) {
+                        val animalActuel = animal
+                        val prefsApp = preferencesApplication
+                        if (animalActuel != null && prefsApp != null) {
+                                val preferencesEspece =
+                                        prefsApp.getPreferencesEspece(animalActuel.getEspece())
+                                val nutrimentsLabels =
+                                        convertirPreferencesVersLabelsNutriments(preferencesEspece)
+                                if (nutrimentsLabels.isNotEmpty()) {
+                                        nutrimentsLabels
+                                } else {
+                                        listOf(
+                                                "PROTEINE",
+                                                "LIPIDE",
+                                                "ENA",
+                                                "CELLULOSE",
+                                                "CENDRE",
+                                                "CAL",
+                                                "PHOS"
+                                        )
+                                }
+                        } else {
+                                listOf(
+                                        "PROTEINE",
+                                        "LIPIDE",
+                                        "ENA",
+                                        "CELLULOSE",
+                                        "CENDRE",
+                                        "CAL",
+                                        "PHOS",
+                                        "FE",
+                                        "ZN",
+                                        "CU",
+                                        "MN",
+                                        "I",
+                                        "SE",
+                                        "NA",
+                                        "K",
+                                        "MG",
+                                        "CHL",
+                                        "VITA",
+                                        "VITD",
+                                        "VITE",
+                                        "VITB1",
+                                        "VITB2",
+                                        "VITB3",
+                                        "VITB5",
+                                        "VITB6",
+                                        "VITB8",
+                                        "VITB9",
+                                        "VITB12",
+                                        "O3",
+                                        "O6",
+                                        "AG205",
+                                        "AG226",
+                                        "EPADHA",
+                                        "AG60",
+                                        "AG80",
+                                        "AG100",
+                                        "LYSINE",
+                                        "METHIONINE",
+                                        "TRYPTOPHANE",
+                                        "CAP",
+                                        "O6O3",
+                                        "KNA",
+                                        "ZNCU",
+                                        "TAURINE",
+                                        "CARNITINE"
+                                )
+                        }
+                }
 
         val typeExpressionSelector: @Composable RowScope.() -> Unit = {
                 Box {
@@ -851,136 +926,31 @@ fun RationsView(
                                                                 }
                                                         }
 
+                                                        if (selectedRation != null && showRationNutrientInspector) {
+                                                                Divider()
+                                                                AnalyseQuantitativeRationSection(
+                                                                        ration = selectedRation!!,
+                                                                        referenceUtilisee = referenceUtilisee,
+                                                                        equationRepository = equationRepository,
+                                                                        preferencesApplication = preferencesApplication,
+                                                                        animal = animal,
+                                                                        nutrimentsSelectionnes =
+                                                                                nutrimentsSelectionnesPreferences,
+                                                                        energieTotaleKcal = energieApportee,
+                                                                        isLargeView = !isCompact,
+                                                                        onContextBadgeClick = {
+                                                                                showRationNutrientInspector =
+                                                                                        false
+                                                                        },
+                                                                        modifier = Modifier.fillMaxWidth()
+                                                                )
+                                                        }
+
                                                         // Section 6: Analyse nutritionnelle (si une
                                                         // ration est sélectionnée)
-                                                        if (selectedRation != null) {
+                                                        if (selectedRation != null && !showRationNutrientInspector) {
                                                                 Divider()
                                                                 if (referenceUtilisee != null) {
-                                                                        // Obtenir les nutriments
-                                                                        // sélectionnés selon l'espèce avec
-                                                                        // logs
-                                                                        val nutrimentsSelectionnes =
-                                                                                remember(
-                                                                                        animal,
-                                                                                        preferencesApplication
-                                                                                ) {
-                                                                                        val animalActuel =
-                                                                                                animal
-                                                                                        val prefsApp =
-                                                                                                preferencesApplication
-                                                                                        if (animalActuel !=
-                                                                                                        null &&
-                                                                                                        prefsApp !=
-                                                                                                                null
-                                                                                        ) {
-                                                                                                val especeAnimal =
-                                                                                                        animalActuel
-                                                                                                                .getEspece()
-                                                                                                val preferencesEspece =
-                                                                                                        prefsApp.getPreferencesEspece(
-                                                                                                                especeAnimal
-                                                                                                        )
-                                                                                                val nutrimentsLabels =
-                                                                                                        convertirPreferencesVersLabelsNutriments(
-                                                                                                                preferencesEspece
-                                                                                                        )
-                                                                                                if (nutrimentsLabels
-                                                                                                                .isNotEmpty()
-                                                                                                ) {
-                                                                                                        nutrimentsLabels
-                                                                                                } else {
-                                                                                                        listOf(
-                                                                                                                "PROTEINE",
-                                                                                                                "LIPIDE",
-                                                                                                                "ENA",
-                                                                                                                "CELLULOSE",
-                                                                                                                "CENDRE",
-                                                                                                                "CAL",
-                                                                                                                "PHOS"
-                                                                                                        )
-                                                                                                }
-                                                                                        } else {
-                                                                                                listOf(
-                                                                                                        "PROTEINE",
-                                                                                                        "LIPIDE",
-                                                                                                        "ENA",
-                                                                                                        "CELLULOSE",
-                                                                                                        "CENDRE",
-                                                                                                        "CAL",
-                                                                                                        "PHOS",
-                                                                                                        "FE",
-                                                                                                        "ZN",
-                                                                                                        "CU",
-                                                                                                        "MN",
-                                                                                                        "I",
-                                                                                                        "SE",
-                                                                                                        "NA",
-                                                                                                        "K",
-                                                                                                        "MG",
-                                                                                                        "CHL",
-                                                                                                        "VITA",
-                                                                                                        "VITD",
-                                                                                                        "VITE",
-                                                                                                        "VITB1",
-                                                                                                        "VITB2",
-                                                                                                        "VITB3",
-                                                                                                        "VITB5",
-                                                                                                        "VITB6",
-                                                                                                        "VITB8",
-                                                                                                        "VITB9",
-                                                                                                        "VITB12",
-                                                                                                        "O3",
-                                                                                                        "O6",
-                                                                                                        "AG205",
-                                                                                                        "AG226",
-                                                                                                        "EPADHA",
-                                                                                                        "AG60",
-                                                                                                        "AG80",
-                                                                                                        "AG100",
-                                                                                                        "LYSINE",
-                                                                                                        "METHIONINE",
-                                                                                                        "TRYPTOPHANE",
-                                                                                                        "CAP",
-                                                                                                        "O6O3",
-                                                                                                        "KNA",
-                                                                                                        "ZNCU",
-                                                                                                        "TAURINE",
-                                                                                                        "CARNITINE"
-                                                                                                )
-                                                                                        }
-                                                                                }
-
-                                                                        // Obtenir le type d'expression
-                                                                        // selon l'espèce
-                                                                        val typeExpressionBesoin =
-                                                                                remember(
-                                                                                        animal,
-                                                                                        preferencesApplication
-                                                                                ) {
-                                                                                        val animalActuel =
-                                                                                                animal
-                                                                                        val prefsApp =
-                                                                                                preferencesApplication
-                                                                                        if (animalActuel !=
-                                                                                                        null &&
-                                                                                                        prefsApp !=
-                                                                                                                null
-                                                                                        ) {
-                                                                                                val especeAnimal =
-                                                                                                        animalActuel
-                                                                                                                .getEspece()
-                                                                                                val preferencesEspece =
-                                                                                                        prefsApp.getPreferencesEspece(
-                                                                                                                especeAnimal
-                                                                                                        )
-                                                                                                preferencesEspece
-                                                                                                        .typeExpressionBesoinId
-                                                                                        } else {
-                                                                                                0 // Par
-                                                                                                // défaut
-                                                                                        }
-                                                                                }
-
                                                                         // Utiliser la version existante de
                                                                         // AnalyseNutritionnelleCard
                                                                         AnalyseNutritionnelleCard(
@@ -998,7 +968,7 @@ fun RationsView(
                                                                                 modifier =
                                                                                         Modifier.fillMaxWidth(),
                                                                                 nutrimentsSelectionnes =
-                                                                                        nutrimentsSelectionnes,
+                                                                                        nutrimentsSelectionnesPreferences,
                                                                                 onNutrimentClick = {
                                                                                         nom,
                                                                                         valeurNutritionnelle
@@ -1023,10 +993,22 @@ fun RationsView(
                                                                                 effectiveTypeExpressionBesoin,
                                                                         headerActions =
                                                                                 typeExpressionSelector,
-                                                                        titleOverride =
+                                                                        titleOverride = "",
+                                                                        contextBadgeLabel =
                                                                                 translate(
                                                                                         AnalNut
-                                                                                                .ANALYSIS_SHORT_TITLE
+                                                                                                .BADGE_INTAKES
+                                                                                ),
+                                                                        contextBadgeColor =
+                                                                                Color(0xFF3558A8),
+                                                                        contextBadgeOnClick = {
+                                                                                showRationNutrientInspector =
+                                                                                        true
+                                                                        },
+                                                                        contextBadgeTooltip =
+                                                                                translate(
+                                                                                        AnalNut
+                                                                                                .TOOLTIP_SWITCH_TO_COMPOSITION
                                                                                 ),
                                                                         showDisplayModeText = false,
                                                                         isLargeView = !isCompact,
@@ -1349,73 +1331,24 @@ fun RationsView(
                                                 // Analyse nutritionnelle de la ration
                                                 // sélectionnée
                                                 if (selectedRation != null) {
-                                                        if (referenceUtilisee != null) {
-                                                                // Obtenir les nutriments
-                                                                // sélectionnés selon
-                                                                // l'espèce avec logs
-                                                                val nutrimentsSelectionnes =
-                                                                        remember(
-                                                                                animal,
-                                                                                preferencesApplication
-                                                                        ) {
-                                                                                val animalActuel = animal
-                                                                                val prefsApp =
-                                                                                        preferencesApplication
-
-                                                                                if (animalActuel != null &&
-                                                                                                prefsApp !=
-                                                                                                        null
-                                                                                ) {
-                                                                                        val especeAnimal =
-                                                                                                animalActuel
-                                                                                                        .getEspece()
-
-                                                                                        val preferencesEspece =
-                                                                                                prefsApp.getPreferencesEspece(
-                                                                                                        especeAnimal
-                                                                                                )
-
-                                                                                        val nutrimentsLabels =
-                                                                                                convertirPreferencesVersLabelsNutriments(
-                                                                                                        preferencesEspece
-                                                                                                )
-
-                                                                                        if (nutrimentsLabels
-                                                                                                        .isNotEmpty()
-                                                                                        ) {
-                                                                                                nutrimentsLabels
-                                                                                        } else {
-                                                                                                listOf(
-                                                                                                        "PROTEINE",
-                                                                                                        "LIPIDE",
-                                                                                                        "ENA",
-                                                                                                        "CELLULOSE",
-                                                                                                        "CENDRE",
-                                                                                                        "CAL",
-                                                                                                        "PHOS"
-                                                                                                )
-                                                                                        }
-                                                                                } else {
-                                                                                        listOf(
-                                                                                                "PROTEINE",
-                                                                                                "LIPIDE",
-                                                                                                "ENA",
-                                                                                                "CELLULOSE",
-                                                                                                "CENDRE",
-                                                                                                "CAL",
-                                                                                                "PHOS",
-                                                                                                "FE",
-                                                                                                "ZN",
-                                                                                                "CU",
-                                                                                                "VITA",
-                                                                                                "VITD",
-                                                                                                "VITE",
-                                                                                                "VITB1",
-                                                                                                "VITB2"
-                                                                                        )
-                                                                                }
-                                                                        }
-
+                                                        if (showRationNutrientInspector) {
+                                                                AnalyseQuantitativeRationSection(
+                                                                        ration = selectedRation!!,
+                                                                        referenceUtilisee = referenceUtilisee,
+                                                                        equationRepository = equationRepository,
+                                                                        preferencesApplication = preferencesApplication,
+                                                                        animal = animal,
+                                                                        nutrimentsSelectionnes =
+                                                                                nutrimentsSelectionnesPreferences,
+                                                                        energieTotaleKcal = energieApportee,
+                                                                        isLargeView = true,
+                                                                        onContextBadgeClick = {
+                                                                                showRationNutrientInspector =
+                                                                                        false
+                                                                        },
+                                                                        modifier = Modifier.fillMaxSize()
+                                                                )
+                                                        } else if (referenceUtilisee != null) {
                                                                 AnalyseNutritionnelleCard(
                                                                         ration = selectedRation!!,
                                                                         poidsMetabolique = poidsMetabolique,
@@ -1429,7 +1362,7 @@ fun RationsView(
                                                                                         ?.toDouble(),
                                                                         modifier = Modifier.fillMaxWidth(),
                                                                         nutrimentsSelectionnes =
-                                                                                nutrimentsSelectionnes, // Utilisation des préférences
+                                                                                nutrimentsSelectionnesPreferences,
                                                                         onNutrimentClick = {
                                                                                 nom,
                                                                                 valeurNutritionnelle ->
@@ -1442,24 +1375,31 @@ fun RationsView(
                                                                                 showNutrimentDetailDialog =
                                                                                         true
                                                                         },
-                                                                        // Nouveaux paramètres pour
-                                                                        // les
-                                                                        // préférences
                                                                         animal = animal,
                                                                         preferencesRepository =
                                                                                 preferencesRepository,
                                                                         equationRepository =
                                                                                 equationRepository,
-                                                                        // Utiliser les préférences
-                                                                        // pré-chargées du ViewModel
                                                                         typeExpressionBesoin =
                                                                                 effectiveTypeExpressionBesoin,
                                                                         headerActions =
                                                                                 typeExpressionSelector,
-                                                                        titleOverride =
+                                                                        titleOverride = "",
+                                                                        contextBadgeLabel =
                                                                                 translate(
                                                                                         AnalNut
-                                                                                                .ANALYSIS_SHORT_TITLE
+                                                                                                .BADGE_INTAKES
+                                                                                ),
+                                                                        contextBadgeColor =
+                                                                                Color(0xFF3558A8),
+                                                                        contextBadgeOnClick = {
+                                                                                showRationNutrientInspector =
+                                                                                        true
+                                                                        },
+                                                                        contextBadgeTooltip =
+                                                                                translate(
+                                                                                        AnalNut
+                                                                                                .TOOLTIP_SWITCH_TO_COMPOSITION
                                                                                 ),
                                                                         showDisplayModeText = false,
                                                                         isLargeView = true,

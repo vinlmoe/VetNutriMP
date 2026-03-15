@@ -350,6 +350,16 @@ object LocalizationKeys {
         const val WEIGHT_CURRENT = "analnut.weight.current"
         const val WEIGHT_IDEAL = "analnut.weight.ideal"
         const val WEIGHT_METABOLIC = "analnut.weight.metabolic"
+        const val BADGE_INTAKES = "analnut.badge.intakes"
+        const val TOOLTIP_SWITCH_TO_COMPOSITION = "analnut.tooltip.switch_to_composition"
+        const val TOOLTIP_SWITCH_TO_INTAKES = "analnut.tooltip.switch_to_intakes"
+        const val TOOLTIP_SWITCH_ANALYSIS = "analnut.tooltip.switch_analysis"
+        const val QUANTITY_MODE_ABSOLUTE = "analnut.quantity_mode.absolute"
+        const val QUANTITY_MODE_PER_100G_RATION = "analnut.quantity_mode.per_100g_ration"
+        const val QUANTITY_MODE_PER_100G_DM = "analnut.quantity_mode.per_100g_dm"
+        const val QUANTITY_MODE_PER_MCAL = "analnut.quantity_mode.per_mcal"
+        const val QUANTITY_MODE_PER_MJ = "analnut.quantity_mode.per_mj"
+        const val NO_VALUE_AVAILABLE = "analnut.no_value_available"
     }
 
     object Animal {

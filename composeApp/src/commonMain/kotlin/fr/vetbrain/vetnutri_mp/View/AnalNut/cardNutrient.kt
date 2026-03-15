@@ -30,6 +30,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
+import fr.vetbrain.vetnutri_mp.Components.TooltipArea
 import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRation
 import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective
 import kotlinx.coroutines.Dispatchers
@@ -87,6 +88,11 @@ fun AnalyseNutritionnelleCard(
         headerActions: @Composable RowScope.() -> Unit = {},
         // Option pour personnaliser le titre (ex: "Analyse")
         titleOverride: String? = null,
+        // Badge de contexte (ex: BESOINS)
+        contextBadgeLabel: String? = null,
+        contextBadgeColor: Color = VetNutriColors.Primary,
+        contextBadgeOnClick: (() -> Unit)? = null,
+        contextBadgeTooltip: String? = null,
         // Option pour masquer l'indication d'expression des besoins
         showDisplayModeText: Boolean = true,
         // Paramètre pour adapter la hauteur selon la vue (large ou compacte)
@@ -240,14 +246,54 @@ fun AnalyseNutritionnelleCard(
                         verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                                text =
-                                        titleOverride
-                                                ?: translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE),
-                                style = MaterialTheme.typography.subtitle1,
-                                fontWeight = FontWeight.Bold,
-                                color = VetNutriColors.Primary
-                        )
+                        val resolvedTitle =
+                                titleOverride
+                                        ?: translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE)
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement =
+                                        Arrangement.spacedBy(AppSizes.paddingXSmall)
+                        ) {
+                            if (resolvedTitle.isNotBlank()) {
+                                Text(
+                                        text = resolvedTitle,
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Primary
+                                )
+                            }
+                            contextBadgeLabel?.let { badge ->
+                                TooltipArea(
+                                        tooltip =
+                                                contextBadgeTooltip
+                                                        ?: translate(
+                                                                LocalizationKeys.AnalNut
+                                                                        .TOOLTIP_SWITCH_ANALYSIS
+                                                        )
+                                ) {
+                                    Surface(
+                                            modifier =
+                                                    if (contextBadgeOnClick != null) {
+                                                        Modifier.clickable {
+                                                            contextBadgeOnClick.invoke()
+                                                        }
+                                                    } else {
+                                                        Modifier
+                                                    },
+                                            color = contextBadgeColor.copy(alpha = 0.15f),
+                                            shape = MaterialTheme.shapes.small
+                                    ) {
+                                        Text(
+                                                text = badge,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                                style = MaterialTheme.typography.overline,
+                                                fontWeight = FontWeight.Bold,
+                                                color = contextBadgeColor
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
                         // Indicateur des préférences d'affichage
                         if (showDisplayModeText) {
