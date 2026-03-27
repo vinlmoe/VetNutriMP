@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## 3.2.40
+
+### Changed
+- Bump de version applicative vers **3.2.40 (240)** sur Android, iOS et Desktop.
+- Alignement des métadonnées de version dans les ressources d'initialisation (`vetnutri_export_init.json`).
+
 ## 3.2.25
 
 ### Added

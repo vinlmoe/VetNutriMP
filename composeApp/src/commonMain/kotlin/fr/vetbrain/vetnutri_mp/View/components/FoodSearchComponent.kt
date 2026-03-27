@@ -149,6 +149,7 @@ fun FoodSearchComponent(
                         filters.selectedEspece,
                         filters.selectedIndications,
                         filters.dataB,
+                        filters.includeDeprecated,
                         filters.aminoOnly,
                         filters.nutrientFilters,
                         filters.sortCriteria,
@@ -297,6 +298,9 @@ fun FoodSearchComponent(
                                                         lysine != null && lysine > 0.0 && methionine != null && methionine > 0.0
                                                 }
 
+                                        val matchesDeprecated =
+                                                filters.includeDeprecated || !aliment.deprecated
+
                                         matchesSearch &&
                                                 matchesType &&
                                                 matchesGroup &&
@@ -304,7 +308,8 @@ fun FoodSearchComponent(
                                                 matchesIndications &&
                                                 matchesDataB &&
                                                 matchesNutrients &&
-                                                matchesAmino
+                                                matchesAmino &&
+                                                matchesDeprecated
                                 }
 
                         // Trier les résultats
@@ -439,15 +444,6 @@ private fun VerticalLayout(
                                 foods = allFoods,
                                 filters = filters,
                                 onFiltersChange = onFiltersChange,
-                                modifier = Modifier.fillMaxWidth()
-                        )
-                }
-
-                // Compteur de résultats
-                if (config.showResultsCount) {
-                        ResultsCount(
-                                totalCount = allFoods.size,
-                                filteredCount = filteredFoods.size,
                                 modifier = Modifier.fillMaxWidth()
                         )
                 }
@@ -680,23 +676,7 @@ private fun FiltersSection(
                                         options = dataBOptions,
                                         onValueChange = {
                                                 val newDataB = if (it.isEmpty()) null else it
-                                                // Créer un nouvel objet complètement différent pour
-                                                // forcer le re-rendu
-                                val newFilters =
-                                        FoodSearchFilters(
-                                                searchQuery = filters.searchQuery,
-                                                selectedFoodType =
-                                                        filters.selectedFoodType,
-                                                selectedFoodGroup =
-                                                        filters.selectedFoodGroup,
-                                                selectedEspece =
-                                                        filters.selectedEspece,
-                                                selectedIndications =
-                                                        filters.selectedIndications,
-                                                dataB = newDataB,
-                                                aminoOnly = filters.aminoOnly
-                                        )
-                                                onFiltersChange(newFilters)
+                                                onFiltersChange(filters.copy(dataB = newDataB))
                                         },
                                         valueToString = {
                                                 if (it.isEmpty()) "Toutes"
@@ -733,12 +713,6 @@ private fun FiltersCard(
                         modifier = Modifier.padding(AppSizes.paddingMedium),
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
-                        Text(
-                                text = "Filtres de recherche",
-                                style = MaterialTheme.typography.subtitle2,
-                                color = VetNutriColors.Primary
-                        )
-
                         // Barre de recherche + raccourci Ac. Aminé avec disposition adaptative
                         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                                 val isCompact = maxWidth < 600.dp
@@ -767,7 +741,7 @@ private fun FiltersCard(
                                                 contentDescription = "Tri avancé",
                                                 tooltip = "Ouvrir le tri avancé",
                                                 onClick = { showAdvancedSortDialog = true },
-                                                tint = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) VetNutriColors.Primary else MaterialTheme.colors.onSurface,
+                                                tint = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null || filters.includeDeprecated) VetNutriColors.Primary else MaterialTheme.colors.onSurface,
                                                 iconModifier = Modifier.size(18.dp)
                                         )
                                 }
@@ -793,7 +767,8 @@ private fun FiltersCard(
                                         filters.selectedFoodGroup != null ||
                                         filters.selectedEspece != null ||
                                         filters.selectedIndications.isNotEmpty() ||
-                                        !filters.dataB.isNullOrEmpty()
+                                        !filters.dataB.isNullOrEmpty() ||
+                                        filters.includeDeprecated
                         ) {
                                 Text(
                                         text = "Filtres actifs",
@@ -867,19 +842,7 @@ private fun CompactFilters(
                         options = dataBOptions,
                         onValueChange = {
                                 val newDataB = if (it.isEmpty()) null else it
-                                // Créer un nouvel objet complètement différent pour forcer le
-                                // re-rendu
-                                val newFilters =
-                                        FoodSearchFilters(
-                                                searchQuery = filters.searchQuery,
-                                                selectedFoodType = filters.selectedFoodType,
-                                                selectedFoodGroup = filters.selectedFoodGroup,
-                                                selectedEspece = filters.selectedEspece,
-                                                selectedIndications = filters.selectedIndications,
-                                                dataB = newDataB,
-                                                aminoOnly = filters.aminoOnly
-                                        )
-                                onFiltersChange(newFilters)
+                                onFiltersChange(filters.copy(dataB = newDataB))
                         },
                         valueToString = {
                                 if (it.isEmpty()) "Toutes"
@@ -910,17 +873,6 @@ private fun CompactFilters(
         }
 }
 
-
-/** Compteur de résultats */
-@Composable
-private fun ResultsCount(totalCount: Int, filteredCount: Int, modifier: Modifier = Modifier) {
-        Text(
-                text = "Aliments disponibles (${filteredCount})",
-                style = MaterialTheme.typography.subtitle2,
-                color = VetNutriColors.Primary,
-                modifier = modifier
-        )
-}
 
 /** Liste des résultats de recherche */
 @Composable
@@ -1186,16 +1138,6 @@ private fun AlimentDetailsContent(aliment: AlimentEv, referenceEv: ReferenceEv? 
                 modifier = modifier.padding(AppSizes.paddingMedium),
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
         ) {
-                item {
-                        Text(
-                                text = "Détails de l'aliment",
-                                style = MaterialTheme.typography.h6,
-                                color = VetNutriColors.Primary
-                        )
-                }
-
-                item { Divider() }
-
                 // Informations générales
                 item {
                         Text(
@@ -1304,12 +1246,21 @@ fun AdvancedSortDialog(
         var localSortOrder by remember(filters.sortOrder) { 
                 mutableStateOf(filters.sortOrder) 
         }
+        var localIncludeDeprecated by remember(filters.includeDeprecated) {
+                mutableStateOf(filters.includeDeprecated)
+        }
         
         // Synchroniser avec les changements externes
-        LaunchedEffect(filters.nutrientFilters, filters.sortCriteria, filters.sortOrder) {
+        LaunchedEffect(
+                filters.nutrientFilters,
+                filters.sortCriteria,
+                filters.sortOrder,
+                filters.includeDeprecated
+        ) {
                 localNutrientFilters = filters.nutrientFilters.toMutableList()
                 localSortCriteria = filters.sortCriteria
                 localSortOrder = filters.sortOrder
+                localIncludeDeprecated = filters.includeDeprecated
         }
         AlertDialog(
                 onDismissRequest = onDismiss,
@@ -1397,6 +1348,23 @@ fun AdvancedSortDialog(
                                         labelFontSize = 10.sp,
                                         borderWidth = 0.5.dp
                                 )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                        Text(
+                                                text = "Inclure les aliments obsolètes",
+                                                style = MaterialTheme.typography.body2
+                                        )
+                                        Switch(
+                                                checked = localIncludeDeprecated,
+                                                onCheckedChange = {
+                                                        localIncludeDeprecated = it
+                                                }
+                                        )
+                                }
                         }
                 },
                 confirmButton = {
@@ -1406,7 +1374,8 @@ fun AdvancedSortDialog(
                                                 filters.copy(
                                                         nutrientFilters = localNutrientFilters,
                                                         sortCriteria = localSortCriteria,
-                                                        sortOrder = localSortOrder
+                                                        sortOrder = localSortOrder,
+                                                        includeDeprecated = localIncludeDeprecated
                                                 )
                                         )
                                         onDismiss()

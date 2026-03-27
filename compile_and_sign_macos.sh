@@ -10,7 +10,7 @@ echo "================================================"
 
 # Variables de configuration
 APP_NAME="VetNutriMP"
-PACKAGE_VERSION="3.2.16"
+PACKAGE_VERSION="3.2.40"
 BUNDLE_ID="fr.vetbrain.vetnutri_mp"
 VENDOR="VetBrain"
 
@@ -163,20 +163,31 @@ hdiutil attach "$TEMP_DMG_DIR/temp.dmg" -mountpoint "$MOUNT_POINT" -quiet
 
 # Signer l'application dans le DMG
 APP_IN_DMG="$MOUNT_POINT/$APP_NAME.app"
+
+codesign_with_timestamp_fallback() {
+    local target="$1"
+    shift
+    if ! codesign "$@" --timestamp "$target"; then
+        echo "⚠️  Horodatage Apple indisponible pour: $target"
+        echo "   Nouvelle tentative sans horodatage..."
+        codesign "$@" --timestamp=none "$target"
+    fi
+}
+
 if [ -d "$APP_IN_DMG" ]; then
     echo "   Signature de l'application..."
 
     sign_macho() {
         local target="$1"
         if file "$target" | grep -q "Mach-O"; then
-            codesign --force --sign "$DEVELOPER_ID" --options runtime --timestamp "$target"
+            codesign_with_timestamp_fallback "$target" --force --sign "$DEVELOPER_ID" --options runtime
         fi
     }
 
     sign_jar_macho() {
         local target="$1"
         if file "$target" | grep -q "Mach-O"; then
-            codesign --force --sign "$DEVELOPER_ID" --timestamp "$target"
+            codesign_with_timestamp_fallback "$target" --force --sign "$DEVELOPER_ID"
         fi
     }
 
@@ -227,12 +238,12 @@ EOF
     # Signer les dylibs embarques dans les jars (ex: skiko/sqlite)
     sign_jar_dylibs "$APP_IN_DMG/Contents/app"
 
-    # Signature finale du bundle .app
-    codesign --force --deep --sign "$DEVELOPER_ID" \
-        --timestamp \
+    # Signature finale du bundle .app (sans --deep pour eviter de re-signer
+    # agressivement le runtime Java deja signe fichier par fichier).
+    codesign_with_timestamp_fallback "$APP_IN_DMG" --force --sign "$DEVELOPER_ID" \
         --options runtime \
         --entitlements "$ENTITLEMENTS_FILE" \
-        "$APP_IN_DMG"
+        --preserve-metadata=identifier,requirements,flags
     
     # Nettoyer le fichier temporaire
     rm -f "$ENTITLEMENTS_FILE"
@@ -255,7 +266,7 @@ rm -rf "$TEMP_DMG_DIR"
 
 # Signer le DMG lui-même
 echo "   Signature du DMG..."
-codesign --sign "$DEVELOPER_ID" --timestamp "$SIGNED_DMG_PATH"
+codesign_with_timestamp_fallback "$SIGNED_DMG_PATH" --sign "$DEVELOPER_ID"
 
 # Vérifier la signature du DMG
 codesign --verify --verbose "$SIGNED_DMG_PATH"

@@ -1,5 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.gradle.jvm.tasks.Jar
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -143,8 +144,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 236
-        versionName = "3.2.36"
+        versionCode = 240
+        versionName = "3.2.40"
 
         // Configuration de Room
 
@@ -156,11 +157,11 @@ android {
             // Filtrer les ABI pour ne garder que celles compatibles avec 16KB
             // arm64-v8a est compatible avec 16KB pages sur Android 15+
             // IMPORTANT: 
-            // - armeabi-v7a exclu (32-bit, souvent problématique avec 16KB)
+            // - armeabi-v7a réintroduit pour améliorer la compatibilité Chromebook
+            //   (certains environnements Android sur ChromeOS restent limités en 32-bit)
             // - x86 exclu (architecture 32-bit legacy)
             // - x86_64 conservé pour la compatibilité Chromebook (Android on ChromeOS)
-            // Cette configuration maximise la compatibilité Android + Chromebook
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
         }
     }
 
@@ -210,7 +211,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "VetNutriMP"
-            packageVersion = "3.2.36"
+            packageVersion = "3.2.40"
             description = "Application de nutrition vétérinaire multiplateforme"
             copyright = "© 2026 VetBrain"
             vendor = "VetBrain"
@@ -257,5 +258,76 @@ room { schemaDirectory("$projectDir/schemas") }
 configurations.configureEach {
     if (name.lowercase().contains("desktop")) {
         exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
+    }
+}
+
+// Native Image (GraalVM) - expérimental pour Windows single-file
+val desktopMainClass = "fr.vetbrain.vetnutri_mp.MainKt"
+val nativeImageConfigDir = layout.buildDirectory.dir("native-image/config")
+val nativeImageOutputDir = layout.buildDirectory.dir("native/native-image")
+val isWindowsHost = providers.systemProperty("os.name")
+    .map { it.lowercase().contains("windows") }
+    .orElse(false)
+
+tasks.register<JavaExec>("runDesktopWithNativeAgent") {
+    group = "native image"
+    description = "Lance l'app desktop avec l'agent Native Image pour générer la config de réflexion/JNI."
+    dependsOn("desktopJar")
+    mainClass.set(desktopMainClass)
+    classpath = files(
+        tasks.named<Jar>("desktopJar").flatMap { it.archiveFile },
+        configurations.getByName("desktopRuntimeClasspath")
+    )
+    jvmArgs(
+        "-agentlib:native-image-agent=config-output-dir=${nativeImageConfigDir.get().asFile.absolutePath}"
+    )
+}
+
+tasks.register<Exec>("buildWindowsNativeImage") {
+    group = "native image"
+    description = "Construit un exe Windows single-file via GraalVM native-image (expérimental)."
+    dependsOn("desktopJar")
+    onlyIf {
+        if (!isWindowsHost.get()) {
+            logger.warn("buildWindowsNativeImage ignorée: cette tâche doit être lancée sur Windows.")
+            false
+        } else {
+            true
+        }
+    }
+
+    doFirst {
+        val outputDir = nativeImageOutputDir.get().asFile
+        outputDir.mkdirs()
+
+        val desktopJar = tasks.named<Jar>("desktopJar").get().archiveFile.get().asFile
+        val runtimeFiles = configurations.getByName("desktopRuntimeClasspath").resolve()
+        val classpath = (listOf(desktopJar) + runtimeFiles).joinToString(";") { it.absolutePath }
+        val outputExe = outputDir.resolve("VetNutriMP.exe").absolutePath
+
+        val args = mutableListOf(
+            "native-image",
+            "--no-fallback",
+            "--enable-url-protocols=http,https",
+            "-H:+AddAllCharsets",
+            "-H:+ReportExceptionStackTraces",
+            "-Dfile.encoding=UTF-8",
+            "-cp",
+            classpath,
+            desktopMainClass,
+            outputExe
+        )
+
+        val configDir = nativeImageConfigDir.get().asFile
+        if (configDir.exists()) {
+            args.add(1, "-H:ConfigurationFileDirectories=${configDir.absolutePath}")
+        } else {
+            logger.lifecycle(
+                "Aucune config agent trouvée dans ${configDir.absolutePath}. " +
+                    "Exécute d'abord runDesktopWithNativeAgent pour améliorer les chances de succès."
+            )
+        }
+
+        commandLine(args)
     }
 }

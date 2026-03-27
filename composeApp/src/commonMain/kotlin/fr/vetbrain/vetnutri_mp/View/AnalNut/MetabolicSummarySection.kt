@@ -23,6 +23,8 @@ import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import fr.vetbrain.vetnutri_mp.Utils.normalizeDecimalInput
+import fr.vetbrain.vetnutri_mp.Utils.parsePositiveDecimal
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 
 /** Section compacte pour afficher les valeurs métaboliques d'une consultation */
@@ -266,12 +268,14 @@ fun SectionCoefficients(
                     if (isEditingCoefficient) {
                         BasicAppTextField(
                                 value = coefficientText,
-                                onValueChange = { coefficientText = it },
+                                onValueChange = {
+                                    coefficientText = normalizeDecimalInput(it)
+                                },
                                 placeholder = translate(LocalizationKeys.AnalNut.COEFF_ADJUST),
                                 modifier = Modifier.width(100.dp).height(50.dp),
                                 trailingIcon = Icons.Filled.Check,
                                 onTrailingIconClick = {
-                                    coefficientText.toDoubleOrNull()?.let { newValue ->
+                                    parsePositiveDecimal(coefficientText)?.let { newValue ->
                                         selectedConsultation?.let { consultation ->
                                             viewModel.updateCoefficientAjustement(
                                                     consultation.uuid,
@@ -380,12 +384,14 @@ fun SectionCoefficients(
                     if (isEditingCoefficient) {
                         BasicAppTextField(
                                 value = coefficientText,
-                                onValueChange = { coefficientText = it },
+                                onValueChange = {
+                                    coefficientText = normalizeDecimalInput(it)
+                                },
                                 placeholder = translate(LocalizationKeys.AnalNut.COEFF_ADJUST),
                                 modifier = Modifier.width(80.dp).height(50.dp),
                                 trailingIcon = Icons.Filled.Check,
                                 onTrailingIconClick = {
-                                    coefficientText.toDoubleOrNull()?.let { newValue ->
+                                    parsePositiveDecimal(coefficientText)?.let { newValue ->
                                         selectedConsultation?.let { consultation ->
                                             viewModel.updateCoefficientAjustement(
                                                     consultation.uuid,

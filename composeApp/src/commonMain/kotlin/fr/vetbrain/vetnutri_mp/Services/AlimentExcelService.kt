@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Services
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentExcelRow
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Utils.DataB
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -48,8 +49,9 @@ class AlimentExcelService {
         try {
             logInfo("=== DÉBUT IMPORT CSV ===")
             logInfo("Taille du contenu CSV: ${csvContent.length} caractères")
+            val sanitizedCsvContent = csvContent.removePrefix("\uFEFF")
             
-            val rows = splitCsvRows(csvContent).filter { it.isNotBlank() }
+            val rows = splitCsvRows(sanitizedCsvContent).filter { it.isNotBlank() }
             logInfo("Nombre de lignes CSV non vides (quote-aware): ${rows.size}")
             
             if (rows.isEmpty()) {
@@ -58,7 +60,7 @@ class AlimentExcelService {
             }
 
             // Analyse des en-têtes
-            val headers = parseCsvValues(rows.first())
+            val headers = parseCsvValues(rows.first()).map { it.removePrefix("\uFEFF").trim() }
             logInfo("En-têtes détectés (${headers.size}): ${headers.take(5).joinToString(", ")}${if (headers.size > 5) "..." else ""}")
             logInfo("TOUS LES HEADERS: ${headers.joinToString("|")}")
             
@@ -244,7 +246,16 @@ class AlimentExcelService {
         logInfo("Map header->valeur créée avec ${headerValueMap.size} entrées")
 
         // Informations de base
-        val uuid = headerValueMap["UUID"] ?: ""
+        val uuidRaw = headerValueMap.trouverValeurColonne(
+            listOf(
+                "UUID",
+                "\uFEFFUUID",
+                "ï»¿UUID"
+            )
+        )?.trim()
+        val uuid = uuidRaw?.takeIf { it.isNotBlank() } ?: genUUID().also {
+            logWarning("Ligne $lineNumber: UUID manquant, UUID généré automatiquement: $it")
+        }
         val nom = headerValueMap["Nom"]?.takeIf { it.isNotBlank() }
         val brand = headerValueMap["Marque"]?.takeIf { it.isNotBlank() }
         val gamme = headerValueMap["Gamme"]?.takeIf { it.isNotBlank() }
@@ -293,11 +304,23 @@ class AlimentExcelService {
                 .toLocalDateTime(TimeZone.currentSystemDefault())
                 .date
                 .toString()
-        val dataBFromCsv = headerValueMap["Données Base"]?.takeIf { it.isNotBlank() }
+        val dataBFromCsvRaw = headerValueMap.trouverValeurColonne(
+            listOf(
+                "Données Base",
+                "Donnees Base",
+                "Donn�es Base",
+                "DataB",
+                "Data B",
+                "Base de données",
+                "Base de donnees"
+            )
+        )?.takeIf { it.isNotBlank() }
+        val dataBFromCsv = dataBFromCsvRaw?.let { normalizeDataBValue(it) }
+        val dataBPriorityNormalized = dataBPriority?.takeIf { it.isNotBlank() }?.let { normalizeDataBValue(it) }
         // Utiliser la valeur prioritaire si fournie, sinon celle du CSV
-        val dataB = dataBPriority?.takeIf { it.isNotBlank() } ?: dataBFromCsv
+        val dataB = dataBPriorityNormalized ?: dataBFromCsv
         
-        logInfo("Statuts - Consistant: $consistent, Obsolète: $deprecated, Date MAJ: '$lastUpdateDate', DataB (CSV): '$dataBFromCsv', DataB (prioritaire): '$dataBPriority', DataB (final): '$dataB'")
+        logInfo("Statuts - Consistant: $consistent, Obsolète: $deprecated, Date MAJ: '$lastUpdateDate', DataB (CSV brute): '$dataBFromCsvRaw', DataB (CSV normalisée): '$dataBFromCsv', DataB (prioritaire): '$dataBPriority', DataB (final): '$dataB'")
 
         // Espèces et indications (recherche tolérante)
         val especesRaw = headerValueMap.trouverValeurColonne(
@@ -651,15 +674,40 @@ class AlimentExcelService {
     }
 
     /**
+     * Normalise la valeur DataB importée:
+     * - conserve les codes connus (0, 1, 2, 4, 5, VF24, CHEVAL)
+     * - convertit un libellé lisible (ex: "CIQUAL") vers son code
+     * - sinon retourne la valeur d'origine trimmée
+     */
+    private fun normalizeDataBValue(rawValue: String): String {
+        val trimmed = rawValue.trim()
+        if (trimmed.isEmpty()) return trimmed
+
+        DataB.fromCode(trimmed)?.let { return it.code }
+
+        val byDisplayName = DataB.values().firstOrNull {
+            it.displayName.equals(trimmed, ignoreCase = true)
+        }
+        if (byDisplayName != null) {
+            return byDisplayName.code
+        }
+
+        return trimmed
+    }
+
+    /**
      * Fonctions de logging pour le débogage
      */
     private fun logInfo(message: String) {
+        println("[CSV_IMPORT][INFO] $message")
     }
     
     private fun logError(message: String) {
+        println("[CSV_IMPORT][ERROR] $message")
     }
     
     private fun logWarning(message: String) {
+        println("[CSV_IMPORT][WARN] $message")
     }
 
     /**
