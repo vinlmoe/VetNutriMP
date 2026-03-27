@@ -183,7 +183,9 @@ class DatabaseFoodRepository(
             importOnlyIfNewer: Boolean = false
     ): FoodImportResult {
         return withContext(AppDispatchers.IO) {
-            
+            println(
+                    "[CSV_DB_IMPORT][INFO] Début importFoodsDomain: aliments=${aliments.size}, mergeNutrients=$mergeNutrients, importOnlyIfNewer=$importOnlyIfNewer"
+            )
             var importCount: Int = 0
             var updateCount: Int = 0
             var errorCount: Int = 0
@@ -209,6 +211,7 @@ class DatabaseFoodRepository(
                         try {
                             if (aliment.uuid.isBlank()) {
                                 errorCount++
+                                println("[CSV_DB_IMPORT][ERROR] UUID vide détecté pendant le prétraitement")
                                 return@forEach
                             }
                             val belongs: Boolean = existingFoodUUIDs.contains(aliment.uuid)
@@ -219,12 +222,14 @@ class DatabaseFoodRepository(
                                 val nutrientValues =
                                         aliment.valMap.toNutrientValueEntities(aliment.uuid)
                                 batchNutrientValues.addAll(nutrientValues)
-                                importCount++
                             } else {
                                 updateIds.add(aliment.uuid)
                             }
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
                             errorCount++
+                            println(
+                                    "[CSV_DB_IMPORT][ERROR] Prétraitement KO pour uuid=${aliment.uuid}: ${e.message}"
+                            )
                         }
                     }
 
@@ -255,9 +260,11 @@ class DatabaseFoodRepository(
                                     batchNutrientValues.addAll(
                                             aliment.valMap.toNutrientValueEntities(aliment.uuid)
                                     )
-                                    updateCount++
-                                } catch (_: Exception) {
+                                } catch (e: Exception) {
                                     errorCount++
+                                    println(
+                                            "[CSV_DB_IMPORT][ERROR] Préparation update KO pour uuid=${aliment.uuid}: ${e.message}"
+                                    )
                                 }
                             }
                         }
@@ -265,17 +272,49 @@ class DatabaseFoodRepository(
 
                     // Inserts/updates en lots (batch)
                     if (newEntities.isNotEmpty()) {
-                        try {
-                            newEntities.chunked(500).forEach { part -> foodDao.insertFoods(part) }
-                        } catch (_: Exception) {
-                            errorCount += newEntities.size
+                        newEntities.chunked(500).forEach { part ->
+                            try {
+                                foodDao.insertFoods(part)
+                                importCount += part.size
+                            } catch (e: Exception) {
+                                println(
+                                        "[CSV_DB_IMPORT][ERROR] Insert batch KO (size=${part.size}): ${e.message}"
+                                )
+                                part.forEach { entity ->
+                                    try {
+                                        foodDao.insertFoods(listOf(entity))
+                                        importCount++
+                                    } catch (singleEx: Exception) {
+                                        errorCount++
+                                        println(
+                                                "[CSV_DB_IMPORT][ERROR] Insert KO uuid=${entity.uuid}: ${singleEx.message}"
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                     if (updateEntities.isNotEmpty()) {
-                        try {
-                            updateEntities.chunked(500).forEach { part -> foodDao.updateFoods(part) }
-                        } catch (_: Exception) {
-                            errorCount += updateEntities.size
+                        updateEntities.chunked(500).forEach { part ->
+                            try {
+                                foodDao.updateFoods(part)
+                                updateCount += part.size
+                            } catch (e: Exception) {
+                                println(
+                                        "[CSV_DB_IMPORT][ERROR] Update batch KO (size=${part.size}): ${e.message}"
+                                )
+                                part.forEach { entity ->
+                                    try {
+                                        foodDao.updateFoods(listOf(entity))
+                                        updateCount++
+                                    } catch (singleEx: Exception) {
+                                        errorCount++
+                                        println(
+                                                "[CSV_DB_IMPORT][ERROR] Update KO uuid=${entity.uuid}: ${singleEx.message}"
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -291,20 +330,27 @@ class DatabaseFoodRepository(
                                 allIds.chunked(500).forEach { part ->
                                     nutrientValueDao.deleteAllForAliments(part)
                                 }
-                            } catch (_: Exception) {
-                                // Erreur silencieuse
+                            } catch (e: Exception) {
+                                println(
+                                        "[CSV_DB_IMPORT][WARN] Suppression nutriments existants KO: ${e.message}"
+                                )
                             }
                         }
                         try {
                             batchNutrientValues.chunked(1000).forEach { chunk ->
                                 nutrientValueDao.insertNutrientValues(chunk)
                             }
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            println(
+                                    "[CSV_DB_IMPORT][WARN] Insert nutriments batch KO (size=${batchNutrientValues.size}): ${e.message}"
+                            )
                             batchNutrientValues.forEach { nv ->
                                 try {
                                     nutrientValueDao.insertNutrientValues(listOf(nv))
-                                } catch (_: Exception) {
-                                    // Erreur silencieuse
+                                } catch (singleEx: Exception) {
+                                    println(
+                                            "[CSV_DB_IMPORT][WARN] Insert nutriment KO refAliment=${nv.refAliment}, nutrient=${nv.nutrientLabel}: ${singleEx.message}"
+                                    )
                                 }
                             }
                         }
@@ -339,7 +385,9 @@ class DatabaseFoodRepository(
                     nonResolvedNutrientsCount = nonResolvedNutrients.size,
                     nonResolvedNutrients = nonResolvedNutrients.keys.toList()
             )
-            
+            println(
+                    "[CSV_DB_IMPORT][INFO] Fin importFoodsDomain: imported=$importCount, updated=$updateCount, errors=$errorCount"
+            )
             
             return@withContext result
         }

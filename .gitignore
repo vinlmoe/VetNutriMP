@@ -36,3 +36,4 @@ composeApp/release/
 *.jar
 *.aar
 .notarization_config
+.Rproj.user

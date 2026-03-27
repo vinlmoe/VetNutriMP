@@ -59,6 +59,7 @@ fun FoodEditView(
         val quantIntState = remember { mutableStateOf("") }
         val contState = remember { mutableStateOf("") }
         val consistentState = remember { mutableStateOf(false) }
+        val deprecatedState = remember { mutableStateOf(false) }
         val dataBState = remember { mutableStateOf("") }
 
         val selectedFoodType = remember { mutableStateOf<FoodKind?>(null) }
@@ -110,6 +111,7 @@ fun FoodEditView(
                 quantIntState.value = aliment.quantInt?.toString() ?: ""
                 contState.value = aliment.cont?.toString() ?: ""
                 consistentState.value = aliment.consistent
+                deprecatedState.value = aliment.deprecated
                 dataBState.value = aliment.dataB ?: ""
                 selectedFoodType.value = aliment.typeAliment
                 selectedFoodGroup.value = aliment.group
@@ -332,6 +334,9 @@ fun FoodEditView(
                                                                         consistent =
                                                                                 consistentState
                                                                                         .value,
+                                                                        deprecated =
+                                                                                deprecatedState
+                                                                                        .value,
                                                                         dataB =
                                                                                 dataBState.value
                                                                                         .takeIf {
@@ -424,6 +429,7 @@ fun FoodEditView(
                                                         quantIntState = quantIntState,
                                                         contState = contState,
                                                         consistentState = consistentState,
+                                                        deprecatedState = deprecatedState,
                                                         dataBState = dataBState,
                                                         selectedFoodType = selectedFoodType,
                                                         selectedFoodGroup = selectedFoodGroup,
@@ -461,6 +467,7 @@ private fun GeneralInfoTab(
         quantIntState: MutableState<String>,
         contState: MutableState<String>,
         consistentState: MutableState<Boolean>,
+        deprecatedState: MutableState<Boolean>,
         dataBState: MutableState<String>,
         selectedFoodType: MutableState<FoodKind?>,
         selectedFoodGroup: MutableState<GroupAlim?>,
@@ -630,6 +637,25 @@ private fun GeneralInfoTab(
                                         )
 
                                         Text(translate(LocalizationKeys.FoodEdit.FIELD_CONSISTENT))
+                                }
+
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        Checkbox(
+                                                checked = deprecatedState.value,
+                                                onCheckedChange = {
+                                                        deprecatedState.value = it
+                                                },
+                                                colors =
+                                                        CheckboxDefaults.colors(
+                                                                checkedColor =
+                                                                        VetNutriColors.Primary
+                                                        )
+                                        )
+
+                                        Text(translate(LocalizationKeys.FoodEdit.FIELD_DEPRECATED))
                                 }
                         }
                 }

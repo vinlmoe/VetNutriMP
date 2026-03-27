@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.CenteredMessage
@@ -57,6 +59,8 @@ import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
+import fr.vetbrain.vetnutri_mp.Utils.normalizeDecimalInput
+import fr.vetbrain.vetnutri_mp.Utils.parsePositiveDecimal
 import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseNutritionnelleCard
 import fr.vetbrain.vetnutri_mp.View.AnalNut.MultiNutrientAdjustmentView
 import fr.vetbrain.vetnutri_mp.View.AnalNut.NutrientDetailDialog
@@ -2276,6 +2280,7 @@ private fun CoefficientsDialog(
 ) {
         // Observer la référence utilisée pour récupérer les coefficients disponibles
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
+        val focusManager = LocalFocusManager.current
 
         // État pour l'édition du coefficient d'ajustement
         var isEditingCoefficient by remember { mutableStateOf(false) }
@@ -2285,6 +2290,9 @@ private fun CoefficientsDialog(
                                 selectedConsultation?.coefficientAjustement?.toString() ?: "1.0"
                         )
                 }
+        val coefficientValue = parsePositiveDecimal(coefficientText)
+        val isCoefficientValid = coefficientValue != null
+        val showCoefficientError = coefficientText.isNotBlank() && !isCoefficientValid
 
         AlertDialog(
                 onDismissRequest = onDismiss,
@@ -2441,47 +2449,76 @@ private fun CoefficientsDialog(
                                                                 OutlinedTextField(
                                                                         value = coefficientText,
                                                                         onValueChange = {
-                                                                                coefficientText = it
+                                                                                coefficientText = normalizeDecimalInput(it)
                                                                         },
                                                                         modifier =
                                                                                 Modifier.width(
                                                                                         100.dp
                                                                                 ),
                                                                         singleLine = true,
+                                                                        isError =
+                                                                                showCoefficientError,
                                                                         keyboardOptions =
                                                                                 KeyboardOptions(
                                                                                         keyboardType =
                                                                                                 KeyboardType
-                                                                                                        .Number
+                                                                                                        .Decimal,
+                                                                                        imeAction =
+                                                                                                ImeAction
+                                                                                                        .Done
+                                                                                ),
+                                                                        keyboardActions =
+                                                                                KeyboardActions(
+                                                                                        onDone = {
+                                                                                                coefficientValue
+                                                                                                        ?.let {
+                                                                                                                newValue
+                                                                                                                ->
+                                                                                                                selectedConsultation
+                                                                                                                        ?.let {
+                                                                                                                                consultation
+                                                                                                                                ->
+                                                                                                                                viewModel
+                                                                                                                                        .updateCoefficientAjustement(
+                                                                                                                                                consultation
+                                                                                                                                                        .uuid,
+                                                                                                                                                newValue
+                                                                                                                                        )
+                                                                                                                        }
+                                                                                                isEditingCoefficient =
+                                                                                                        false
+                                                                                                focusManager
+                                                                                                        .clearFocus()
+                                                                                                        }
+                                                                                        }
                                                                                 )
                                                                 )
                                                                 IconButtonWithTooltip(
                                                                         onClick = {
-                                                                                coefficientText
-                                                                                        .toDoubleOrNull()
-                                                                                        ?.let {
-                                                                                                newValue
-                                                                                                ->
-                                                                                                selectedConsultation
-                                                                                                        ?.let {
-                                                                                                                consultation
-                                                                                                                ->
-                                                                                                                viewModel
-                                                                                                                        .updateCoefficientAjustement(
-                                                                                                                                consultation
-                                                                                                                                        .uuid,
-                                                                                                                                newValue
-                                                                                                                        )
-                                                                                                        }
+                                                                                coefficientValue
+                                                                                        ?.let { newValue ->
+                                                                                                selectedConsultation?.let {
+                                                                                                        consultation
+                                                                                                        ->
+                                                                                                        viewModel
+                                                                                                                .updateCoefficientAjustement(
+                                                                                                                        consultation
+                                                                                                                                .uuid,
+                                                                                                                        newValue
+                                                                                                                )
+                                                                                                }
                                                                                         }
                                                                                 isEditingCoefficient =
                                                                                         false
+                                                                                focusManager
+                                                                                        .clearFocus()
                                                                         },
                                                                         imageVector = Icons.Filled.Check,
                                                                         contentDescription =
                                                                                 translate(General.VALIDATE),
                                                                         tooltip =
                                                                                 translate(General.VALIDATE),
+                                                                        enabled = isCoefficientValid,
                                                                         tint = Color.Green
                                                                 )
                                                                 IconButtonWithTooltip(
@@ -2493,6 +2530,8 @@ private fun CoefficientsDialog(
                                                                                                 ?: "1.0"
                                                                                 isEditingCoefficient =
                                                                                         false
+                                                                                focusManager
+                                                                                        .clearFocus()
                                                                         },
                                                                         imageVector = Icons.Filled.Close,
                                                                         contentDescription =

@@ -1,0 +1,300 @@
+---
+title: "Test VetNutri - JSONBin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# Charger le package (installe) ou les sources locales (dev)
+if (requireNamespace("vetnutriExamR", quietly = TRUE)) {
+  library(vetnutriExamR)
+} else {
+  source("../../R/io.R")
+  source("../../R/grading.R")
+  source("../../R/nutrition.R")
+}
+
+library(jsonlite)
+has_ggplot2 <- requireNamespace("ggplot2", quietly = TRUE)
+```
+
+## Parametres
+
+```{r}
+BIN_ID <- "69c0ea5eb7ec241ddc93eaa8"
+API_KEY <- Sys.getenv("JSONBIN_API_KEY", unset = "$2a$10$fV1xZ85W47525pd19RcnR.gpGLX9fqwRMbkRapKQWCqGVow36vlKq")
+```
+
+## Chargement du JSON depuis JSONBin
+
+```{r}
+fetch_jsonbin <- function(bin_id, api_key = "") {
+  url <- sprintf("https://api.jsonbin.io/v3/b/%s/latest", bin_id)
+
+  if (!requireNamespace("httr2", quietly = TRUE)) {
+    stop("Installez 'httr2' pour un diagnostic HTTP fiable: install.packages(\"httr2\")")
+  }
+
+  req <- httr2::request(url)
+  if (nzchar(api_key)) {
+    req <- req |>
+      httr2::req_headers("X-Master-Key" = api_key)
+  }
+
+  resp <- tryCatch(
+    httr2::req_perform(req),
+    error = function(e) {
+      stop(
+        paste0(
+          "Connexion impossible a JSONBin.\n",
+          "- URL: ", url, "\n",
+          "- Message: ", conditionMessage(e), "\n",
+          "- Verifiez internet/proxy/firewall ou l'URL."
+        ),
+        call. = FALSE
+      )
+    }
+  )
+
+  status <- httr2::resp_status(resp)
+  if (status >= 400) {
+    body_txt <- httr2::resp_body_string(resp)
+    stop(
+      paste0(
+        "Erreur JSONBin HTTP ", status, ".\n",
+        if (status %in% c(401, 403)) "Cle API absente/invalide ou droits insuffisants.\n" else "",
+        if (status == 404) "Bin introuvable (binId incorrect ou non accessible).\n" else "",
+        "Reponse: ", body_txt
+      ),
+      call. = FALSE
+    )
+  }
+
+  txt <- httr2::resp_body_string(resp)
+  obj <- jsonlite::fromJSON(txt, simplifyVector = FALSE)
+
+  # JSONBin v3 renvoie generalement {record: ...}
+  if (is.list(obj) && !is.null(obj$record)) obj$record else obj
+}
+
+x <- fetch_jsonbin(BIN_ID, API_KEY)
+
+cat("Top-level keys:\n")
+print(names(x))
+```
+
+## Calcul des besoins energetiques
+
+```{r}
+needs <- vn_compute_energy_needs(x)
+need_cols <- c(
+  "exam_student_id", "exam_exercise_id", "animal_name",
+  "consultation_id", "need_kcal"
+)
+need_cols <- need_cols[need_cols %in% names(needs)]
+print(head(needs[, need_cols, drop = FALSE], 20))
+```
+
+## Calcul des apports des rations
+
+```{r}
+intakes <- vn_compute_ration_intakes(x)
+
+cat("Apport energetique par ration:\n")
+energy_cols <- c(
+  "exam_student_id", "exam_exercise_id", "animal_name",
+  "consultation_id", "ration_id", "ration_type", "energy_intake_kcal"
+)
+energy_cols <- energy_cols[energy_cols %in% names(intakes$ration_energy)]
+print(head(intakes$ration_energy[, energy_cols, drop = FALSE], 20))
+
+cat("Apports nutriments agreges par ration:\n")
+nut_cols <- c(
+  "exam_student_id", "exam_exercise_id", "animal_name",
+  "consultation_id", "ration_id", "ration_type", "nutrient", "intake"
+)
+nut_cols <- nut_cols[nut_cols %in% names(intakes$ration_nutrients)]
+print(head(intakes$ration_nutrients[, nut_cols, drop = FALSE], 20))
+```
+
+## Comparaison aux references
+
+```{r}
+cmp <- vn_compare_to_references(x)
+
+cat("Balance energetique:\n")
+bal_cols <- c(
+  "exam_student_id", "exam_exercise_id", "animal_name",
+  "consultation_id", "ration_id", "ration_type",
+  "energy_intake_kcal", "need_kcal", "coverage_ratio"
+)
+bal_cols <- bal_cols[bal_cols %in% names(cmp$energy_balance)]
+print(head(cmp$energy_balance[, bal_cols, drop = FALSE], 20))
+
+cat("Comparaison nutriments vs references:\n")
+print(head(cmp$nutrient_comparison, 30))
+```
+
+### Signaux nutritionnels (minimums et maximums)
+
+```{r}
+signals_df <- cmp$nutrient_comparison
+if (nrow(signals_df) == 0) {
+  cat("Pas de signaux disponibles.\n")
+} else {
+  cols <- c(
+    "exam_student_id", "exam_exercise_id", "consultation_id", "ration_id", "ration_type",
+    "nutrient", "reflevel",
+    "intake", "reference_value",
+    "minimum_coverage_pct", "minimum_gap_pct",
+    "maximum_excess_pct", "signal"
+  )
+  cols <- cols[cols %in% names(signals_df)]
+  signals_df <- signals_df[signals_df$signal != "OK", cols, drop = FALSE]
+  if (nrow(signals_df) == 0) {
+    cat("Aucune alerte: minimums respectes et pas de depassement des maximums.\n")
+  } else {
+    print(head(signals_df, 50))
+  }
+}
+```
+
+## Analyses graphiques
+
+### Energie: besoin vs apport (par ration)
+
+```{r}
+energy_df <- cmp$energy_balance
+
+if (nrow(energy_df) == 0) {
+  cat("Pas de donnees energie a tracer.\n")
+} else if (has_ggplot2) {
+  p <- ggplot2::ggplot(
+    energy_df,
+    ggplot2::aes(x = reorder(ration_id, coverage_ratio), y = coverage_ratio)
+  ) +
+    ggplot2::geom_col(fill = "#2C7FB8") +
+    ggplot2::geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+    ggplot2::coord_flip() +
+    ggplot2::labs(
+      title = "Couverture energetique par ration",
+      x = "Ration",
+      y = "Apport / Besoin"
+    ) +
+    ggplot2::theme_minimal()
+  print(p)
+} else {
+  op <- par(mar = c(5, 10, 4, 2))
+  vals <- energy_df$coverage_ratio
+  names(vals) <- energy_df$ration_id
+  barplot(vals, horiz = TRUE, las = 1, col = "steelblue", xlab = "Apport / Besoin")
+  abline(v = 1, lty = 2, col = "red")
+  par(op)
+}
+```
+
+### Energie: besoin et apport en kcal
+
+```{r}
+if (nrow(energy_df) > 0) {
+  long_energy <- rbind(
+    data.frame(ration_id = energy_df$ration_id, metric = "need_kcal", value = energy_df$need_kcal),
+    data.frame(ration_id = energy_df$ration_id, metric = "energy_intake_kcal", value = energy_df$energy_intake_kcal)
+  )
+
+  if (has_ggplot2) {
+    p2 <- ggplot2::ggplot(
+      long_energy,
+      ggplot2::aes(x = reorder(ration_id, value), y = value, fill = metric)
+    ) +
+      ggplot2::geom_col(position = "dodge") +
+      ggplot2::coord_flip() +
+      ggplot2::labs(
+        title = "Besoin vs apport energetique",
+        x = "Ration",
+        y = "kcal"
+      ) +
+      ggplot2::theme_minimal()
+    print(p2)
+  } else {
+    wide <- tapply(long_energy$value, list(long_energy$ration_id, long_energy$metric), sum)
+    barplot(t(wide), beside = TRUE, legend.text = TRUE, las = 2, col = c("grey70", "darkgreen"))
+  }
+}
+```
+
+### Nutriments: top ecarts aux references
+
+```{r}
+nut_df <- cmp$nutrient_comparison
+nut_df <- nut_df[!is.na(nut_df$gap), ]
+
+if (nrow(nut_df) == 0) {
+  cat("Pas de comparaison nutriments exploitable (references manquantes ou non alignees).\n")
+} else {
+  ord <- order(abs(nut_df$gap_pct), decreasing = TRUE, na.last = NA)
+  top_n <- nut_df[ord, ][seq_len(min(15, nrow(nut_df))), ]
+
+  if (has_ggplot2) {
+    p3 <- ggplot2::ggplot(
+      top_n,
+      ggplot2::aes(x = reorder(paste(ration_id, nutrient, sep = " | "), gap_pct), y = gap_pct, fill = signal)
+    ) +
+      ggplot2::geom_col() +
+      ggplot2::coord_flip() +
+      ggplot2::scale_fill_manual(
+        values = c("BELOW_MINIMUM" = "#de2d26", "ABOVE_MAXIMUM" = "#f16913", "OK" = "#2ca25f"),
+        drop = FALSE
+      ) +
+      ggplot2::labs(
+        title = "Top ecarts normalises (%) apports - references",
+        x = "Ration | Nutriment",
+        y = "Ecart normalise (%)"
+      ) +
+      ggplot2::theme_minimal()
+    print(p3)
+  } else {
+    labels <- paste(top_n$ration_id, top_n$nutrient, sep = " | ")
+    cols <- ifelse(top_n$signal == "ABOVE_MAXIMUM", "darkorange", ifelse(top_n$signal == "BELOW_MINIMUM", "firebrick", "darkgreen"))
+    op <- par(mar = c(5, 14, 4, 2))
+    barplot(top_n$gap_pct, names.arg = labels, horiz = TRUE, las = 1, col = cols, xlab = "Ecart normalise (%)")
+    abline(v = 0, lty = 2)
+    par(op)
+  }
+}
+```
+
+## Export optionnel CSV
+
+```{r}
+# Decommentez si besoin
+# write.csv(needs, "needs_from_jsonbin.csv", row.names = FALSE)
+# write.csv(intakes$ration_energy, "ration_energy_from_jsonbin.csv", row.names = FALSE)
+# write.csv(cmp$nutrient_comparison, "nutrient_comparison_from_jsonbin.csv", row.names = FALSE)
+```
+
+## Module de notation (liste de JSON)
+
+```{r}
+# Exemple: une liste de sources (locales et/ou URL)
+sources <- c(
+  bin_primary = sprintf("https://api.jsonbin.io/v3/b/%s/latest", BIN_ID)
+  #, local_copy = "inst/examples/vetnutri_exam_example.json"
+)
+
+# Import batch
+imp_batch <- vn_import_json_list(sources, simplify = FALSE, api_key = API_KEY)
+print(imp_batch$errors)
+
+# Notation batch
+notes_batch <- vn_grade_nutrition_batch(
+  sources = sources,
+  scale_to = 20,
+  energy_tolerance_pct = 30,
+  weights = c(energy = 0.4, minimum = 0.4, maximum = 0.2),
+  api_key = API_KEY
+)
+
+print(notes_batch$scores)
+```

@@ -183,7 +183,7 @@ fun AddAlimentView(
         Column(modifier = modifier.fillMaxSize()) {
                 // Barre de navigation avec signature correcte et taille réduite
                 TopBar(
-                        title = "Ajouter aliment - ${ration.name}",
+                        title = ration.name,
                         onBackClick = onNavigateBack,
                         onSettingsClick = { /* Pas de settings pour cette vue */ },
                         actions = {

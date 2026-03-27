@@ -41,6 +41,7 @@ data class FoodSearchFilters(
         val selectedEspece: Espece? = null,
         val selectedIndications: Set<AlimIndic> = emptySet(),
         val dataB: String? = null,
+        val includeDeprecated: Boolean = false,
         val aminoOnly: Boolean = false,
         val nutrientFilters: List<NutrientFilter> = emptyList(),
         val sortCriteria: SortCriteria? = null,

@@ -187,6 +187,7 @@ object LocalizationKeys {
         val FIELD_PRICE_CATEGORY = "food_edit.field.price_category"
         val FIELD_QUANTITY = "food_edit.field.quantity"
         val FIELD_CONSISTENT = "food_edit.field.consistent"
+        val FIELD_DEPRECATED = "food_edit.field.deprecated"
         val FIELD_TYPE_CLASS = "food_edit.field.type_class"
         val FIELD_INGREDIENTS = "food_edit.field.ingredients"
         val FIELD_INGREDIENTS_LIST = "food_edit.field.ingredients_list"

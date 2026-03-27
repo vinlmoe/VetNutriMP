@@ -226,17 +226,18 @@ fun BasicAppTextField(
         focusRequester: FocusRequester? = null,
         selectAllOnFocus: Boolean = false
 ) {
-        var textFieldValue by remember(value) { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+        var textFieldValue by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+        var lastDispatchedText by remember { mutableStateOf<String?>(null) }
         var isFocused by remember { mutableStateOf(false) }
         var hasSelectedOnFocus by remember { mutableStateOf(false) }
         
-        // Synchroniser textFieldValue avec value quand value change de l'extérieur
-        // Ne pas toucher à la sélection si l'utilisateur est en train de taper (isFocused && hasSelectedOnFocus)
+        // Synchroniser textFieldValue uniquement pour les changements externes.
+        // Évite de réinjecter immédiatement la valeur que ce champ vient d'émettre.
         LaunchedEffect(value) {
                 if (textFieldValue.text != value) {
-                        // Si l'utilisateur est en train de taper, ne pas mettre à jour
-                        // (hasSelectedOnFocus est true seulement après la sélection initiale)
-                        if (!isFocused || !hasSelectedOnFocus) {
+                        if (lastDispatchedText == value) {
+                                lastDispatchedText = null
+                        } else {
                                 textFieldValue = TextFieldValue(value, TextRange(value.length))
                         }
                 }
@@ -269,7 +270,10 @@ fun BasicAppTextField(
                                                 newValue.text.matches(validationRegex)
                                 ) {
                                         textFieldValue = newValue
-                                        onValueChange(newValue.text)
+                                        if (newValue.text != value) {
+                                                lastDispatchedText = newValue.text
+                                                onValueChange(newValue.text)
+                                        }
                                 }
                         },
                         textStyle =
