@@ -27,7 +27,8 @@ class ExamGradingCsvService {
             "referencePoints",
             "adviceOk",
             "advicePoints",
-            "nutrientDetails"
+            "nutrientDetails",
+            "customCriteriaDetails"
         )
 
         val lines = mutableListOf(headers.joinToString(","))
@@ -35,6 +36,10 @@ class ExamGradingCsvService {
             val detail = grade.detail
             val nutrientDetails = detail.nutrientResults.joinToString("|") { n ->
                 "${n.nutrientLabel}:${n.value}:${n.ok}:${n.points}"
+            }
+            val customDetails = detail.customCriteriaResults.joinToString("|") { c ->
+                val metricValue = c.measuredNumber?.toString() ?: c.measuredText
+                "${c.label}:${c.metric}:${c.rationScope}:${metricValue}:${c.ok}:${c.pointsAwarded}"
             }
             val row = listOf(
                 grade.examId,
@@ -59,7 +64,8 @@ class ExamGradingCsvService {
                 detail.referencePoints.toString(),
                 detail.adviceOk.toString(),
                 detail.advicePoints.toString(),
-                nutrientDetails
+                nutrientDetails,
+                customDetails
             ).joinToString(",") { escapeCsv(it) }
             lines.add(row)
         }

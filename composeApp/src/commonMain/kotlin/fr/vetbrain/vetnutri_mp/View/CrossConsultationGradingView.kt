@@ -9,7 +9,6 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.*
@@ -19,7 +18,6 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CrossConsultationAnalysisViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ExamGradingViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun CrossConsultationGradingView(
@@ -31,7 +29,6 @@ fun CrossConsultationGradingView(
     val rule by gradingViewModel.rule.collectAsState()
     val grades by gradingViewModel.grades.collectAsState()
     val message by gradingViewModel.message.collectAsState()
-    val scope = rememberCoroutineScope()
     var examId by remember { mutableStateOf("") }
     var exerciseId by remember { mutableStateOf("") }
 
@@ -104,9 +101,13 @@ fun CrossConsultationGradingView(
                 ) {
                     items(grades) { grade ->
                         Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
-                            Column(modifier = Modifier.padding(12.dp)) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text("${grade.animalName} — Étudiant: ${grade.studentId}")
-                                Text("Auto: ${grade.autoScore} / 20")
+                                Text("Auto: ${grade.autoScore} / ${rule?.autoScoreMax ?: 20.0}")
+                                val customPts = grade.detail.customCriteriaResults.sumOf { it.pointsAwarded }
+                                if (customPts > 0.0 || grade.detail.customCriteriaResults.isNotEmpty()) {
+                                    Text("Critères flexibles: $customPts pt")
+                                }
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -157,6 +158,23 @@ private fun RuleEditor(
     Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Règles", style = MaterialTheme.typography.h6)
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = rule.label,
+                    onValueChange = { value -> onRuleChange(rule.copy(label = value)) },
+                    label = { Text("Libellé exercice") },
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = rule.autoScoreMax.toString(),
+                    onValueChange = { value ->
+                        onRuleChange(rule.copy(autoScoreMax = value.toDoubleOrNull() ?: 20.0))
+                    },
+                    label = { Text("Note max auto") },
+                    modifier = Modifier.width(160.dp)
+                )
+            }
 
             Text("Ingrédients")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -299,6 +317,168 @@ private fun RuleEditor(
                     modifier = Modifier.width(80.dp)
                 )
             }
+
+            Divider()
+            Text("Critères personnalisés", style = MaterialTheme.typography.subtitle1)
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                rule.customCriteria.forEachIndexed { index, criterion ->
+                    Card(modifier = Modifier.fillMaxWidth(), elevation = 1.dp) {
+                        Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Switch(
+                                    checked = criterion.enabled,
+                                    onCheckedChange = { checked ->
+                                        val updated = rule.customCriteria.toMutableList()
+                                        updated[index] = criterion.copy(enabled = checked)
+                                        onRuleChange(rule.copy(customCriteria = updated))
+                                    }
+                                )
+                                OutlinedTextField(
+                                    value = criterion.label,
+                                    onValueChange = { value ->
+                                        val updated = rule.customCriteria.toMutableList()
+                                        updated[index] = criterion.copy(label = value)
+                                        onRuleChange(rule.copy(customCriteria = updated))
+                                    },
+                                    label = { Text("Nom du critère") },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(onClick = {
+                                    val updated = rule.customCriteria.toMutableList()
+                                    updated.removeAt(index)
+                                    onRuleChange(rule.copy(customCriteria = updated))
+                                }) { Text("X") }
+                            }
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                OutlinedButton(
+                                    onClick = {
+                                        val updated = rule.customCriteria.toMutableList()
+                                        updated[index] = criterion.copy(metric = nextEnum(criterion.metric))
+                                        onRuleChange(rule.copy(customCriteria = updated))
+                                    }
+                                ) { Text("Métrique: ${criterion.metric.uiLabel()}") }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        val updated = rule.customCriteria.toMutableList()
+                                        updated[index] = criterion.copy(rationScope = nextEnum(criterion.rationScope))
+                                        onRuleChange(rule.copy(customCriteria = updated))
+                                    }
+                                ) { Text("Portée: ${criterion.rationScope.uiLabel()}") }
+
+                                OutlinedTextField(
+                                    value = criterion.points.toString(),
+                                    onValueChange = { value ->
+                                        val updated = rule.customCriteria.toMutableList()
+                                        updated[index] = criterion.copy(points = value.toDoubleOrNull() ?: 0.0)
+                                        onRuleChange(rule.copy(customCriteria = updated))
+                                    },
+                                    label = { Text("Pts") },
+                                    modifier = Modifier.width(100.dp)
+                                )
+                            }
+
+                            if (criterion.metric == FlexibleMetricKind.NUTRIENT_TOTAL) {
+                                OutlinedTextField(
+                                    value = criterion.nutrientLabel,
+                                    onValueChange = { value ->
+                                        val updated = rule.customCriteria.toMutableList()
+                                        updated[index] = criterion.copy(nutrientLabel = value)
+                                        onRuleChange(rule.copy(customCriteria = updated))
+                                    },
+                                    label = { Text("Nutriment (label exact)") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                OutlinedTextField(
+                                    value = criterion.min?.toString() ?: "",
+                                    onValueChange = { value ->
+                                        val updated = rule.customCriteria.toMutableList()
+                                        updated[index] = criterion.copy(min = value.toDoubleOrNull())
+                                        onRuleChange(rule.copy(customCriteria = updated))
+                                    },
+                                    label = { Text("Min") },
+                                    modifier = Modifier.width(120.dp)
+                                )
+                                OutlinedTextField(
+                                    value = criterion.max?.toString() ?: "",
+                                    onValueChange = { value ->
+                                        val updated = rule.customCriteria.toMutableList()
+                                        updated[index] = criterion.copy(max = value.toDoubleOrNull())
+                                        onRuleChange(rule.copy(customCriteria = updated))
+                                    },
+                                    label = { Text("Max") },
+                                    modifier = Modifier.width(120.dp)
+                                )
+                                if (criterion.metric == FlexibleMetricKind.INGREDIENT_KEYWORDS ||
+                                    criterion.metric == FlexibleMetricKind.ADVICE_KEYWORDS ||
+                                    criterion.metric == FlexibleMetricKind.REFERENCE_ID
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(
+                                            checked = criterion.requireAllIncludes,
+                                            onCheckedChange = { checked ->
+                                                val updated = rule.customCriteria.toMutableList()
+                                                updated[index] = criterion.copy(requireAllIncludes = checked)
+                                                onRuleChange(rule.copy(customCriteria = updated))
+                                            }
+                                        )
+                                        Text("Tous les mots requis")
+                                    }
+                                }
+                            }
+
+                            if (criterion.metric == FlexibleMetricKind.INGREDIENT_KEYWORDS ||
+                                criterion.metric == FlexibleMetricKind.ADVICE_KEYWORDS ||
+                                criterion.metric == FlexibleMetricKind.REFERENCE_ID
+                            ) {
+                                OutlinedTextField(
+                                    value = criterion.includes.joinToString(", "),
+                                    onValueChange = { value ->
+                                        val updated = rule.customCriteria.toMutableList()
+                                        updated[index] = criterion.copy(includes = splitCsv(value))
+                                        onRuleChange(rule.copy(customCriteria = updated))
+                                    },
+                                    label = { Text("Mots/IDs requis (csv)") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = criterion.excludes.joinToString(", "),
+                                    onValueChange = { value ->
+                                        val updated = rule.customCriteria.toMutableList()
+                                        updated[index] = criterion.copy(excludes = splitCsv(value))
+                                        onRuleChange(rule.copy(customCriteria = updated))
+                                    },
+                                    label = { Text("Mots/IDs interdits (csv)") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+
+                OutlinedButton(onClick = {
+                    val nextIndex = rule.customCriteria.size + 1
+                    val newCriterion = FlexibleCriterionRule(
+                        id = "c$nextIndex",
+                        label = "Critère $nextIndex",
+                        metric = FlexibleMetricKind.TOTAL_RATION_QUANTITY,
+                        rationScope = RationScope.ALL,
+                        points = 0.0
+                    )
+                    onRuleChange(rule.copy(customCriteria = rule.customCriteria + newCriterion))
+                }) {
+                    Text("Ajouter un critère")
+                }
+            }
         }
     }
 }
@@ -332,4 +512,31 @@ private fun MinMaxEditor(
 
 private fun splitCsv(value: String): List<String> {
     return value.split(",").map { it.trim() }.filter { it.isNotBlank() }
+}
+
+private fun FlexibleMetricKind.uiLabel(): String {
+    return when (this) {
+        FlexibleMetricKind.TOTAL_RATION_QUANTITY -> "Qté ration"
+        FlexibleMetricKind.ENERGY_DENSITY -> "Densité énergie"
+        FlexibleMetricKind.NUTRIENT_TOTAL -> "Total nutriment"
+        FlexibleMetricKind.RATION_COUNT -> "Nb rations"
+        FlexibleMetricKind.INGREDIENT_KEYWORDS -> "Mots ingrédients"
+        FlexibleMetricKind.ADVICE_KEYWORDS -> "Mots conseils"
+        FlexibleMetricKind.REFERENCE_ID -> "ID référence"
+    }
+}
+
+private fun RationScope.uiLabel(): String {
+    return when (this) {
+        RationScope.ALL -> "Toutes"
+        RationScope.CURRENT_ONLY -> "Actuelles"
+        RationScope.PROPOSED_ONLY -> "Proposées"
+        RationScope.FIRST_PROPOSED -> "1re proposée"
+    }
+}
+
+private inline fun <reified T : Enum<T>> nextEnum(value: T): T {
+    val values = enumValues<T>()
+    val index = values.indexOf(value)
+    return values[(index + 1) % values.size]
 }

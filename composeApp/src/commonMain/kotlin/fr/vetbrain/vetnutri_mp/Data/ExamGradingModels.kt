@@ -6,12 +6,50 @@ import kotlinx.serialization.Serializable
 data class ExamGradingRuleSet(
     val examId: String,
     val exerciseId: String,
+    val label: String = "",
+    val autoScoreMax: Double = 20.0,
     val ingredientRule: IngredientRule = IngredientRule(),
     val rationQuantityRule: MinMaxPointsRule = MinMaxPointsRule(points = 5),
     val energyDensityRule: MinMaxPointsRule = MinMaxPointsRule(points = 5),
     val nutrientRules: List<NutrientRule> = emptyList(),
     val referenceRule: ReferenceRule = ReferenceRule(points = 0),
-    val adviceRule: AdviceRule = AdviceRule(points = 3)
+    val adviceRule: AdviceRule = AdviceRule(points = 3),
+    val customCriteria: List<FlexibleCriterionRule> = emptyList()
+)
+
+@Serializable
+enum class FlexibleMetricKind {
+    TOTAL_RATION_QUANTITY,
+    ENERGY_DENSITY,
+    NUTRIENT_TOTAL,
+    RATION_COUNT,
+    INGREDIENT_KEYWORDS,
+    ADVICE_KEYWORDS,
+    REFERENCE_ID
+}
+
+@Serializable
+enum class RationScope {
+    ALL,
+    CURRENT_ONLY,
+    PROPOSED_ONLY,
+    FIRST_PROPOSED
+}
+
+@Serializable
+data class FlexibleCriterionRule(
+    val id: String = "",
+    val label: String = "",
+    val enabled: Boolean = true,
+    val metric: FlexibleMetricKind = FlexibleMetricKind.TOTAL_RATION_QUANTITY,
+    val rationScope: RationScope = RationScope.ALL,
+    val nutrientLabel: String = "",
+    val includes: List<String> = emptyList(),
+    val excludes: List<String> = emptyList(),
+    val requireAllIncludes: Boolean = true,
+    val min: Double? = null,
+    val max: Double? = null,
+    val points: Double = 0.0
 )
 
 @Serializable
@@ -69,7 +107,8 @@ data class ExamGradeDetail(
     val referenceOk: Boolean = false,
     val referencePoints: Int = 0,
     val adviceOk: Boolean = false,
-    val advicePoints: Int = 0
+    val advicePoints: Int = 0,
+    val customCriteriaResults: List<FlexibleCriterionResult> = emptyList()
 )
 
 @Serializable
@@ -78,6 +117,18 @@ data class NutrientResult(
     val value: Double,
     val ok: Boolean,
     val points: Int
+)
+
+@Serializable
+data class FlexibleCriterionResult(
+    val id: String,
+    val label: String,
+    val metric: FlexibleMetricKind,
+    val rationScope: RationScope,
+    val measuredNumber: Double? = null,
+    val measuredText: String = "",
+    val ok: Boolean = false,
+    val pointsAwarded: Double = 0.0
 )
 
 @Serializable

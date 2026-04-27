@@ -26,6 +26,10 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
+import fr.vetbrain.vetnutri_mp.Components.genererTexteRationPressePapier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.material.icons.filled.Assignment
 import kotlinx.coroutines.launch
 
 /**
@@ -61,6 +65,7 @@ fun SectionAlimentsRation(
 ) {
         var editingAlimentId by remember { mutableStateOf<String?>(null) }
         val coroutineScope = rememberCoroutineScope()
+        val clipboardManager = LocalClipboardManager.current
 
         Card(
                 modifier = modifier.fillMaxWidth(),
@@ -109,6 +114,27 @@ fun SectionAlimentsRation(
                                                                         ?.isNotEmpty() ==
                                                                         true,
                                                         onClick = onSaveRecipe
+                                                )
+                                        }
+
+                                        if (!isExamMode) {
+                                                IconWithTooltip(
+                                                        imageVector = Icons.Filled.Assignment,
+                                                        contentDescription = translate(LocalizationKeys.General.COPY),
+                                                        tint = if (selectedRation?.alimentMutableList?.isNotEmpty() == true)
+                                                                        VetNutriColors.Primary
+                                                                else
+                                                                        VetNutriColors.Primary.copy(alpha = 0.5f),
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.General.COPY),
+                                                        enabled = selectedRation?.alimentMutableList?.isNotEmpty() == true,
+                                                        onClick = {
+                                                                selectedRation?.let { ration ->
+                                                                        val text = genererTexteRationPressePapier(ration)
+                                                                        clipboardManager.setText(AnnotatedString(text))
+                                                                        showSnackbar("Ration copiée dans le presse-papier")
+                                                                }
+                                                        }
                                                 )
                                         }
 

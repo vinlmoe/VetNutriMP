@@ -26,7 +26,7 @@ import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
  * @param aliment L'aliment ration
  * @return Une chaîne de caractères représentant la quantité en unités ou null si non applicable
  */
-private fun calculerQuantiteEnUnites(aliment: AlimentRation): String? {
+fun calculerQuantiteEnUnites(aliment: AlimentRation): String? {
         val alim = aliment.aliment ?: return null
         val cont = alim.cont ?: return null
         val quantInt = alim.quantInt ?: return null
@@ -55,6 +55,18 @@ private fun calculerQuantiteEnUnites(aliment: AlimentRation): String? {
                         "${NumberUtils.format(nombreUnites.toDouble(), 1)} pression${if (nombreUnites > 1) "s" else ""} (${quantInt}g/pression)"
                 else -> null
         }
+}
+
+fun genererTexteRationPressePapier(ration: fr.vetbrain.vetnutri_mp.Data.Ration): String {
+        val lignes = ration.alimentMutableList.map { aliment ->
+                val marque = aliment.aliment?.brand?.takeIf { it.isNotBlank() }?.let { "$it, " } ?: ""
+                val nom = aliment.aliment?.nom ?: "Aliment"
+                val quantite = "${NumberUtils.format(aliment.quantite.coerceAtLeast(0.0), 1)} g"
+                val unite = calculerQuantiteEnUnites(aliment)?.let { " ($it)" } ?: ""
+                "- $marque$nom : $quantite$unite"
+        }
+        val titre = "Ration : ${ration.name}"
+        return (listOf(titre) + lignes).joinToString("\n")
 }
 
 /**

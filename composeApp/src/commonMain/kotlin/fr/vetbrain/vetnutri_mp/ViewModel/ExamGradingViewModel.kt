@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 class ExamGradingViewModel(
     private val repository: ExamGradingRepository
@@ -51,7 +50,8 @@ class ExamGradingViewModel(
         val grades = perAnimal.values.mapNotNull { consultations ->
             val latest = consultations.maxByOrNull { it.rawDate ?: kotlinx.datetime.LocalDate(1900,1,1) } ?: return@mapNotNull null
             val detail = evaluate(ruleSet, latest)
-            val autoScore = detailTotal(detail).coerceIn(0.0, 20.0)
+            val maxScore = ruleSet.autoScoreMax.coerceAtLeast(0.0)
+            val autoScore = detailTotal(detail).coerceIn(0.0, maxScore)
             ExamGrade(
                 examId = examId,
                 exerciseId = exerciseId,
@@ -94,12 +94,15 @@ class ExamGradingViewModel(
         return ExamGradingRuleSet(
             examId = examId,
             exerciseId = exerciseId,
+            label = exerciseId,
+            autoScoreMax = 20.0,
             ingredientRule = IngredientRule(points = 5),
             rationQuantityRule = MinMaxPointsRule(points = 5),
             energyDensityRule = MinMaxPointsRule(points = 5),
             nutrientRules = emptyList(),
             referenceRule = ReferenceRule(points = 0),
-            adviceRule = AdviceRule(points = 3)
+            adviceRule = AdviceRule(points = 3),
+            customCriteria = emptyList()
         )
     }
 
@@ -191,6 +194,10 @@ class ExamGradingViewModel(
             }
         val advicePoints = if (adviceOk) rule.adviceRule.points else 0
 
+        val customCriteriaResults = rule.customCriteria.map { criterion ->
+            evaluateCustomCriterion(criterion, item)
+        }
+
         return ExamGradeDetail(
             ingredientOk = ingredientOk,
             ingredientPoints = ingredientPoints,
@@ -205,12 +212,133 @@ class ExamGradingViewModel(
             referenceOk = referenceOk,
             referencePoints = referencePoints,
             adviceOk = adviceOk,
-            advicePoints = advicePoints
+            advicePoints = advicePoints,
+            customCriteriaResults = customCriteriaResults
         )
     }
 
     private fun detailTotal(detail: ExamGradeDetail): Double {
         val nutrientPoints = detail.nutrientResults.sumOf { it.points }
-        return (detail.ingredientPoints + detail.rationPoints + detail.energyPoints + nutrientPoints + detail.referencePoints + detail.advicePoints).toDouble()
+        val customPoints = detail.customCriteriaResults.sumOf { it.pointsAwarded }
+        return (detail.ingredientPoints + detail.rationPoints + detail.energyPoints + nutrientPoints + detail.referencePoints + detail.advicePoints).toDouble() + customPoints
+    }
+
+    private fun evaluateCustomCriterion(
+        criterion: FlexibleCriterionRule,
+        item: CrossConsultationAnalysisViewModel.ConsultationItem
+    ): FlexibleCriterionResult {
+        val criterionId = criterion.id.ifBlank { "${criterion.metric.name}:${criterion.label}" }
+        if (!criterion.enabled) {
+            return FlexibleCriterionResult(
+                id = criterionId,
+                label = criterion.label,
+                metric = criterion.metric,
+                rationScope = criterion.rationScope
+            )
+        }
+
+        val rations = selectRationsByScope(item, criterion.rationScope)
+        val ingredientText = rations.flatMap { ration -> ration.ingredients }.joinToString(" | ") { ingredient -> ingredient.name }
+        val adviceText = item.adviceText
+        val referenceId = item.referenceId.orEmpty()
+
+        return when (criterion.metric) {
+            FlexibleMetricKind.TOTAL_RATION_QUANTITY -> {
+                val value = rations.sumOf { it.quantity }
+                buildNumericResult(criterionId, criterion, value)
+            }
+            FlexibleMetricKind.ENERGY_DENSITY -> {
+                val totalQty = rations.sumOf { it.quantity }
+                val value = if (totalQty > 0.0) rations.sumOf { it.energyDensity * it.quantity } / totalQty else null
+                buildNumericResult(criterionId, criterion, value)
+            }
+            FlexibleMetricKind.NUTRIENT_TOTAL -> {
+                val nutrient = criterion.nutrientLabel.trim()
+                val value = if (nutrient.isBlank()) null else rations.sumOf { it.nutrientValues[nutrient] ?: 0.0 }
+                buildNumericResult(criterionId, criterion, value)
+            }
+            FlexibleMetricKind.RATION_COUNT -> {
+                val value = rations.size.toDouble()
+                buildNumericResult(criterionId, criterion, value)
+            }
+            FlexibleMetricKind.INGREDIENT_KEYWORDS -> {
+                buildTextResult(criterionId, criterion, ingredientText)
+            }
+            FlexibleMetricKind.ADVICE_KEYWORDS -> {
+                buildTextResult(criterionId, criterion, adviceText)
+            }
+            FlexibleMetricKind.REFERENCE_ID -> {
+                buildTextResult(criterionId, criterion, referenceId, exactTokenMatch = true)
+            }
+        }
+    }
+
+    private fun selectRationsByScope(
+        item: CrossConsultationAnalysisViewModel.ConsultationItem,
+        scope: RationScope
+    ): List<CrossConsultationAnalysisViewModel.RationSummary> {
+        return when (scope) {
+            RationScope.ALL -> item.rations
+            RationScope.CURRENT_ONLY -> item.rations.filter { it.actual }
+            RationScope.PROPOSED_ONLY -> item.rations.filter { !it.actual }
+            RationScope.FIRST_PROPOSED -> item.rations.firstOrNull { !it.actual }?.let { listOf(it) } ?: emptyList()
+        }
+    }
+
+    private fun buildNumericResult(
+        id: String,
+        criterion: FlexibleCriterionRule,
+        value: Double?
+    ): FlexibleCriterionResult {
+        val hasBounds = criterion.min != null || criterion.max != null
+        val ok = if (!hasBounds || value == null || !value.isFinite()) {
+            false
+        } else {
+            (criterion.min == null || value >= criterion.min) &&
+                (criterion.max == null || value <= criterion.max)
+        }
+        return FlexibleCriterionResult(
+            id = id,
+            label = criterion.label,
+            metric = criterion.metric,
+            rationScope = criterion.rationScope,
+            measuredNumber = value,
+            measuredText = value?.toString().orEmpty(),
+            ok = ok,
+            pointsAwarded = if (ok) criterion.points else 0.0
+        )
+    }
+
+    private fun buildTextResult(
+        id: String,
+        criterion: FlexibleCriterionRule,
+        sourceText: String,
+        exactTokenMatch: Boolean = false
+    ): FlexibleCriterionResult {
+        val normalizedText = sourceText.lowercase()
+        val includes = criterion.includes.map { it.trim().lowercase() }.filter { it.isNotBlank() }
+        val excludes = criterion.excludes.map { it.trim().lowercase() }.filter { it.isNotBlank() }
+        val includesOk =
+            when {
+                includes.isEmpty() -> true
+                criterion.requireAllIncludes -> includes.all { tokenMatch(normalizedText, it, exactTokenMatch) }
+                else -> includes.any { tokenMatch(normalizedText, it, exactTokenMatch) }
+            }
+        val excludesOk = excludes.none { tokenMatch(normalizedText, it, exactTokenMatch) }
+        val hasCondition = includes.isNotEmpty() || excludes.isNotEmpty()
+        val ok = hasCondition && includesOk && excludesOk
+        return FlexibleCriterionResult(
+            id = id,
+            label = criterion.label,
+            metric = criterion.metric,
+            rationScope = criterion.rationScope,
+            measuredText = sourceText,
+            ok = ok,
+            pointsAwarded = if (ok) criterion.points else 0.0
+        )
+    }
+
+    private fun tokenMatch(text: String, token: String, exactTokenMatch: Boolean): Boolean {
+        return if (exactTokenMatch) text.trim() == token else text.contains(token)
     }
 }
