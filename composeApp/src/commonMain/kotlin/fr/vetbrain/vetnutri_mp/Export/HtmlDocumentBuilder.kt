@@ -21,6 +21,53 @@ import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
 object HtmlDocumentBuilder {
+    private fun formatAlimentDisplayName(aliment: fr.vetbrain.vetnutri_mp.Data.AlimentEv?): String {
+        if (aliment == null) return "?"
+        fun debugChars(input: String): String =
+            input.map { c -> "${c.code.toString(16).padStart(4, '0')}(${c})" }.joinToString(" ")
+        fun clean(value: String?): String? {
+            if (value == null) return null
+            var normalized = value.trim()
+            while (normalized.length >= 2 &&
+                ((normalized.startsWith("\"") && normalized.endsWith("\"")) ||
+                    (normalized.startsWith("'") && normalized.endsWith("'")))) {
+                normalized = normalized.substring(1, normalized.length - 1).trim()
+            }
+            normalized =
+                normalized
+                    .replace('\u00A0', ' ')
+                    .replace(Regex("""^[\s"'`]+|[\s"'`]+$"""), "")
+            if (normalized.isBlank()) return null
+            val semantic =
+                normalized.lowercase().replace(Regex("""[^\p{L}\p{N}]+"""), "")
+            if (semantic == "null" || semantic == "none" || semantic == "na") return null
+            return normalized
+        }
+        if ((aliment.brand ?: "").contains("null", ignoreCase = true) ||
+            (aliment.gamme ?: "").contains("null", ignoreCase = true) ||
+            (aliment.nom ?: "").contains("null", ignoreCase = true)) {
+            println(
+                "[ORDO_ALIMENT_DEBUG] raw brand='${aliment.brand}' gamme='${aliment.gamme}' nom='${aliment.nom}'"
+            )
+            println(
+                "[ORDO_ALIMENT_DEBUG] raw gamme chars: ${
+                    aliment.gamme?.let { debugChars(it) } ?: "<null>"
+                }"
+            )
+        }
+        val parts = listOf(
+            clean(aliment.brand),
+            clean(aliment.gamme),
+            clean(aliment.nom)
+        )
+        val result = if (parts.isEmpty()) "?" else parts.joinToString(", ")
+        if (result.contains(", null,", ignoreCase = true) || result.contains(" null", ignoreCase = true)) {
+            println(
+                "[ORDO_ALIMENT_DEBUG] cleaned parts=$parts result='$result' for uuid='${aliment.uuid}'"
+            )
+        }
+        return result
+    }
 
     /**
      * Obtient le nom traduit d'un nutriment selon son type en utilisant les traductions JSON
@@ -304,6 +351,7 @@ object HtmlDocumentBuilder {
         return """
             <div class='section'>
                 <h2>Animal</h2>
+                <div><b>ID:</b> ${animal.id}</div>
                 <div><b>Nom:</b> ${animal.nom}</div>
                 <div><b>Espèce:</b> ${espece}</div>
                 <div class='small muted'><b>UUID:</b> ${animal.uuid}</div>
@@ -315,7 +363,7 @@ object HtmlDocumentBuilder {
         if (ration == null) return ""
         val rows =
                 ration.alimentMutableList.joinToString("\n") { a ->
-                    val nom = a.aliment?.nom ?: "?"
+                    val nom = formatAlimentDisplayName(a.aliment)
                     val qte = TextUtils.formatDecimal(a.quantite.toDouble(), 1)
                     val quantiteUnites = calculerQuantiteEnUnites(a)
 

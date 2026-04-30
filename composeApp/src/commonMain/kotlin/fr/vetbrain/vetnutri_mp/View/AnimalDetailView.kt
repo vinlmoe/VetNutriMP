@@ -52,6 +52,7 @@ import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.copyToClipboardComposable
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailSection
 import fr.vetbrain.vetnutri_mp.exportApiEnvelopeToFile
@@ -68,8 +69,68 @@ import fr.vetbrain.vetnutri_mp.Components.ShareLinkDialog
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Components.AnonymizationDialog
 import fr.vetbrain.vetnutri_mp.Utils.anonymizeExportJson
+import kotlin.math.roundToInt
 
 typealias RecipeRepo = fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
+
+private data class PractitionerContact(
+        val nom: String = "",
+        val numeroOrdre: String = "",
+        val adressePostale: String = "",
+        val codePostal: String = "",
+        val ville: String = "",
+        val telephone: String = "",
+        val email: String = ""
+)
+
+private fun formatAlimentDisplayName(aliment: AlimentEv?): String {
+        if (aliment == null) return "Ingredient"
+        fun debugChars(input: String): String =
+                input.map { c -> "${c.code.toString(16).padStart(4, '0')}(${c})" }.joinToString(" ")
+        fun clean(value: String?): String? {
+                if (value == null) return null
+                var normalized = value.trim()
+                while (normalized.length >= 2 &&
+                        ((normalized.startsWith("\"") && normalized.endsWith("\"")) ||
+                                (normalized.startsWith("'") && normalized.endsWith("'")))) {
+                        normalized = normalized.substring(1, normalized.length - 1).trim()
+                }
+                normalized =
+                        normalized
+                                .replace('\u00A0', ' ')
+                                .replace(Regex("""^[\s"'`]+|[\s"'`]+$"""), "")
+                if (normalized.isBlank()) return null
+                val semantic =
+                        normalized.lowercase().replace(Regex("""[^\p{L}\p{N}]+"""), "")
+                if (semantic == "null" || semantic == "none" || semantic == "na") return null
+                return normalized
+        }
+        if ((aliment.brand ?: "").contains("null", ignoreCase = true) ||
+                        (aliment.gamme ?: "").contains("null", ignoreCase = true) ||
+                        (aliment.nom ?: "").contains("null", ignoreCase = true)) {
+                println(
+                        "[CR_ALIMENT_DEBUG] raw brand='${aliment.brand}' gamme='${aliment.gamme}' nom='${aliment.nom}'"
+                )
+                println(
+                        "[CR_ALIMENT_DEBUG] raw gamme chars: ${
+                                aliment.gamme?.let { debugChars(it) } ?: "<null>"
+                        }"
+                )
+        }
+        val parts =
+                listOf(
+                        clean(aliment.brand),
+                        clean(aliment.gamme),
+                        clean(aliment.nom)
+                )
+        val result = if (parts.isEmpty()) "Ingredient" else parts.joinToString(", ")
+        if (result.contains(", null,", ignoreCase = true) || result.contains(" null", ignoreCase = true)) {
+                println(
+                        "[CR_ALIMENT_DEBUG] cleaned parts=$parts result='$result' for uuid='${aliment.uuid}'"
+                )
+        }
+        return result
+}
 
 /**
  * Génère un nom de fichier par défaut pour l'export PDF
@@ -80,6 +141,295 @@ private fun generateDefaultPdfFileName(animal: AnimalEv?, consultation: Consulta
     val animalName = animal?.nom ?: translate(AnimalDetail.UNKNOWN_NAME)
     val consultationDate = consultation?.date?.toString() ?: translate(AnimalDetail.UNKNOWN_DATE)
     return "${animalId}_${animalName}_${consultationDate}.pdf"
+}
+
+private fun buildCompteRenduText(
+        animal: AnimalEv?,
+        consultation: ConsultationEv?,
+        practitionerContact: PractitionerContact?,
+        anamnese: String,
+        examenClinique: String,
+        facteurNutritionnelClef: String,
+        additionalText: String,
+        selectedConseils: List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>
+): String {
+        fun text(value: String?): String = value?.takeIf { it.isNotBlank() } ?: "-"
+
+        fun formatRationDetails(ration: Ration): String {
+                val rationName = if (ration.name.isBlank()) "Sans nom" else ration.name
+                val ingredients = ration.alimentMutableList.joinToString("\n") { alimentRation ->
+                        val ingredientName = formatAlimentDisplayName(alimentRation.aliment)
+                        val quantity = (alimentRation.quantite * 10.0).roundToInt() / 10.0
+                        "- $ingredientName: $quantity g"
+                }
+                val details = if (ingredients.isBlank()) "- Aucun ingredient" else ingredients
+                return "- $rationName\n$details"
+        }
+
+        fun formatConseilDetails(section: fr.vetbrain.vetnutri_mp.Export.HtmlSection): String {
+                val body =
+                        section.content.blocks.joinToString("\n") { block ->
+                                when (block) {
+                                        is fr.vetbrain.vetnutri_mp.Export.TextBlock.Paragraph ->
+                                                block.text
+                                        is fr.vetbrain.vetnutri_mp.Export.TextBlock.Heading ->
+                                                block.text
+                                        is fr.vetbrain.vetnutri_mp.Export.TextBlock.ListBlock ->
+                                                block.items.joinToString("\n") { "- $it" }
+                                        is fr.vetbrain.vetnutri_mp.Export.TextBlock.TableBlock -> {
+                                                val headers = if (block.headers.isNotEmpty()) {
+                                                        block.headers.joinToString(" | ")
+                                                } else {
+                                                        ""
+                                                }
+                                                val rows =
+                                                        block.rows.joinToString("\n") { row ->
+                                                                row.joinToString(" | ")
+                                                        }
+                                                listOf(headers, rows)
+                                                        .filter { it.isNotBlank() }
+                                                        .joinToString("\n")
+                                        }
+                                        is fr.vetbrain.vetnutri_mp.Export.TextBlock.RawHtml ->
+                                                block.html
+                                }
+                        }
+                return "- ${section.title}\n${if (body.isBlank()) "-" else body}"
+        }
+
+        val currentRations =
+                consultation?.rations
+                        ?.filter { it.actual }
+                        ?.joinToString("\n\n") { formatRationDetails(it) } ?: ""
+        val proposedRations =
+                consultation?.rations
+                        ?.filter { !it.actual }
+                        ?.joinToString("\n\n") { formatRationDetails(it) } ?: ""
+        val conseilsText = selectedConseils.joinToString("\n\n") { formatConseilDetails(it) }
+
+        return buildString {
+                appendLine("Compte rendu nutritionnel")
+                appendLine("ID animal: ${animal?.id?.takeIf { it.isNotBlank() } ?: "-"}")
+                appendLine("Date de consultation: ${consultation?.date?.toString() ?: "-"}")
+                appendLine("Objet de consultation: ${consultation?.objectConsult?.takeIf { it.isNotBlank() } ?: "-"}")
+                appendLine()
+                appendLine("Identification animal")
+                appendLine("Nom: ${text(animal?.nom)}")
+                appendLine("Proprietaire: ${text(animal?.ownerName)}")
+                appendLine("Sexe: ${text(animal?.getSex()?.displayName)}")
+                appendLine("Espece: ${text(animal?.getEspece()?.label)}")
+                appendLine("Race: ${text(animal?.race)}")
+                appendLine("Date de naissance: ${text(animal?.birthdate?.toString())}")
+                appendLine("Poids consultation: ${consultation?.effectiveWeight?.let { "${(it * 10.0).roundToInt() / 10.0} kg" } ?: "-"}")
+                appendLine("UUID: ${text(animal?.uuid)}")
+                appendLine()
+                appendLine("Coordonnees veterinaire")
+                appendLine("Nom: ${practitionerContact?.nom?.ifBlank { "-" } ?: "-"}")
+                appendLine("N° ordre: ${practitionerContact?.numeroOrdre?.ifBlank { "-" } ?: "-"}")
+                appendLine("Adresse: ${practitionerContact?.adressePostale?.ifBlank { "-" } ?: "-"}")
+                appendLine("Code postal: ${practitionerContact?.codePostal?.ifBlank { "-" } ?: "-"}")
+                appendLine("Ville: ${practitionerContact?.ville?.ifBlank { "-" } ?: "-"}")
+                appendLine("Telephone: ${practitionerContact?.telephone?.ifBlank { "-" } ?: "-"}")
+                appendLine("Email: ${practitionerContact?.email?.ifBlank { "-" } ?: "-"}")
+                appendLine()
+                appendLine("Anamnèse")
+                appendLine(if (anamnese.isBlank()) "-" else anamnese)
+                appendLine()
+                appendLine("Examen clinique")
+                appendLine(if (examenClinique.isBlank()) "-" else examenClinique)
+                appendLine()
+                appendLine("Rations actuelles")
+                appendLine(if (currentRations.isBlank()) "-" else currentRations)
+                appendLine()
+                appendLine("Facteur nutritionnel clef")
+                appendLine(if (facteurNutritionnelClef.isBlank()) "-" else facteurNutritionnelClef)
+                appendLine()
+                appendLine("Rations proposees")
+                appendLine(if (proposedRations.isBlank()) "-" else proposedRations)
+                appendLine()
+                appendLine("Conseils ordonnance")
+                appendLine(if (conseilsText.isBlank()) "-" else conseilsText)
+                appendLine()
+                appendLine("Texte additionnel ordonnance")
+                appendLine(if (additionalText.isBlank()) "-" else additionalText)
+        }
+}
+
+private fun escapeHtml(value: String): String =
+        value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+private fun buildCompteRenduHtml(
+        animal: AnimalEv?,
+        consultation: ConsultationEv?,
+        practitionerContact: PractitionerContact?,
+        anamnese: String,
+        examenClinique: String,
+        facteurNutritionnelClef: String,
+        additionalText: String,
+        selectedConseils: List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>
+): String {
+        fun textOrDash(value: String): String = if (value.isBlank()) "-" else escapeHtml(value)
+
+        fun rationBlock(title: String, rations: List<Ration>): String {
+                if (rations.isEmpty()) {
+                        return """
+                            <div class='section'>
+                                <h2>$title</h2>
+                                <div class='muted'>-</div>
+                            </div>
+                        """.trimIndent()
+                }
+                val cards = rations.joinToString("\n") { ration ->
+                        val rationName = if (ration.name.isBlank()) "Sans nom" else escapeHtml(ration.name)
+                        val rows = ration.alimentMutableList.joinToString("\n") { ar ->
+                                val ingredient = formatAlimentDisplayName(ar.aliment)
+                                val quantity = (ar.quantite * 10.0).roundToInt() / 10.0
+                                "<tr><td>${escapeHtml(ingredient)}</td><td style='text-align:right'>${quantity} g</td></tr>"
+                        }
+                        val body =
+                                if (rows.isBlank()) {
+                                        "<tr><td colspan='2' class='muted'>Aucun ingredient</td></tr>"
+                                } else {
+                                        rows
+                                }
+                        """
+                            <div class='card'>
+                                <h3>$rationName</h3>
+                                <table>
+                                    <thead><tr><th>Ingredient</th><th>Quantite</th></tr></thead>
+                                    <tbody>$body</tbody>
+                                </table>
+                            </div>
+                        """.trimIndent()
+                }
+                return """
+                    <div class='section'>
+                        <h2>$title</h2>
+                        $cards
+                    </div>
+                """.trimIndent()
+        }
+
+        fun conseilBody(section: fr.vetbrain.vetnutri_mp.Export.HtmlSection): String {
+                val lines = section.content.blocks.mapNotNull { block ->
+                        when (block) {
+                                is fr.vetbrain.vetnutri_mp.Export.TextBlock.Paragraph ->
+                                        block.text.takeIf { it.isNotBlank() }?.let { "<p>${escapeHtml(it)}</p>" }
+                                is fr.vetbrain.vetnutri_mp.Export.TextBlock.Heading ->
+                                        block.text.takeIf { it.isNotBlank() }?.let { "<p><b>${escapeHtml(it)}</b></p>" }
+                                is fr.vetbrain.vetnutri_mp.Export.TextBlock.ListBlock -> {
+                                        if (block.items.isEmpty()) null
+                                        else {
+                                                val tag = if (block.isOrdered) "ol" else "ul"
+                                                val items = block.items.joinToString("") { "<li>${escapeHtml(it)}</li>" }
+                                                "<$tag>$items</$tag>"
+                                        }
+                                }
+                                is fr.vetbrain.vetnutri_mp.Export.TextBlock.TableBlock -> {
+                                        val headers = if (block.headers.isNotEmpty()) {
+                                                "<tr>${block.headers.joinToString("") { "<th>${escapeHtml(it)}</th>" }}</tr>"
+                                        } else ""
+                                        val rows = block.rows.joinToString("") { row ->
+                                                "<tr>${row.joinToString("") { "<td>${escapeHtml(it)}</td>" }}</tr>"
+                                        }
+                                        "<table><thead>$headers</thead><tbody>$rows</tbody></table>"
+                                }
+                                is fr.vetbrain.vetnutri_mp.Export.TextBlock.RawHtml -> block.html
+                        }
+                }
+                return if (lines.isEmpty()) "<p class='muted'>-</p>" else lines.joinToString("\n")
+        }
+
+        val conseilsHtml =
+                if (selectedConseils.isEmpty()) {
+                        "<div class='muted'>-</div>"
+                } else {
+                        selectedConseils.joinToString("\n") { section ->
+                                """
+                                    <div class='card'>
+                                        <h3>${escapeHtml(section.title)}</h3>
+                                        ${conseilBody(section)}
+                                    </div>
+                                """.trimIndent()
+                        }
+                }
+
+        return """
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; color:#1f2937; margin:24px; }
+                    h1 { margin:0 0 8px 0; color:#0f172a; border-bottom:2px solid #0ea5e9; padding-bottom:8px; }
+                    h2 { margin:0 0 10px 0; color:#0f172a; }
+                    h3 { margin:0 0 8px 0; color:#1e3a8a; }
+                    .meta { color:#475569; margin-bottom:16px; }
+                    .section { margin:16px 0; padding:14px; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; }
+                    .card { margin:10px 0; padding:10px; border:1px solid #cbd5e1; border-radius:8px; background:white; }
+                    .muted { color:#64748b; }
+                    table { width:100%; border-collapse:collapse; margin-top:6px; }
+                    th, td { border:1px solid #e2e8f0; padding:6px 8px; }
+                    th { background:#f1f5f9; text-align:left; }
+                </style>
+            </head>
+            <body>
+                <h1>Compte rendu nutritionnel</h1>
+                <div class='meta'><b>ID animal:</b> ${escapeHtml(animal?.id?.takeIf { it.isNotBlank() } ?: "-")} | <b>Nom:</b> ${escapeHtml(animal?.nom ?: "-")}</div>
+                <div class='meta'><b>Date de consultation:</b> ${escapeHtml(consultation?.date?.toString() ?: "-")} | <b>Objet:</b> ${escapeHtml(consultation?.objectConsult?.takeIf { it.isNotBlank() } ?: "-")}</div>
+
+                <div class='section'>
+                    <h2>Identification animal</h2>
+                    <div><b>Nom:</b> ${escapeHtml(animal?.nom?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>Proprietaire:</b> ${escapeHtml(animal?.ownerName?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>Sexe:</b> ${escapeHtml(animal?.getSex()?.displayName?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>Espece:</b> ${escapeHtml(animal?.getEspece()?.label?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>Race:</b> ${escapeHtml(animal?.race?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>Date de naissance:</b> ${escapeHtml(animal?.birthdate?.toString() ?: "-")}</div>
+                    <div><b>Poids consultation:</b> ${escapeHtml(consultation?.effectiveWeight?.let { "${(it * 10.0).roundToInt() / 10.0} kg" } ?: "-")}</div>
+                    <div><b>UUID:</b> ${escapeHtml(animal?.uuid ?: "-")}</div>
+                </div>
+
+                <div class='section'>
+                    <h2>Coordonnees veterinaire</h2>
+                    <div><b>Nom:</b> ${escapeHtml(practitionerContact?.nom?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>N° ordre:</b> ${escapeHtml(practitionerContact?.numeroOrdre?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>Adresse:</b> ${escapeHtml(practitionerContact?.adressePostale?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>Code postal:</b> ${escapeHtml(practitionerContact?.codePostal?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>Ville:</b> ${escapeHtml(practitionerContact?.ville?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>Telephone:</b> ${escapeHtml(practitionerContact?.telephone?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>Email:</b> ${escapeHtml(practitionerContact?.email?.ifBlank { "-" } ?: "-")}</div>
+                </div>
+
+                <div class='section'>
+                    <h2>Anamnese</h2>
+                    <p>${textOrDash(anamnese)}</p>
+                </div>
+
+                <div class='section'>
+                    <h2>Examen clinique</h2>
+                    <p>${textOrDash(examenClinique)}</p>
+                </div>
+
+                ${rationBlock("Rations actuelles", consultation?.rations?.filter { it.actual } ?: emptyList())}
+
+                <div class='section'>
+                    <h2>Facteur nutritionnel clef</h2>
+                    <p>${textOrDash(facteurNutritionnelClef)}</p>
+                </div>
+
+                ${rationBlock("Rations proposees", consultation?.rations?.filter { !it.actual } ?: emptyList())}
+
+                <div class='section'>
+                    <h2>Conseils ordonnance</h2>
+                    $conseilsHtml
+                </div>
+
+                <div class='section'>
+                    <h2>Texte additionnel ordonnance</h2>
+                    <p>${textOrDash(additionalText)}</p>
+                </div>
+            </body>
+            </html>
+        """.trimIndent()
 }
 
 /**
@@ -392,6 +742,8 @@ private suspend fun partagerAnimalEnLigne(
  */
 private fun handlePdfExport(
     previewHtml: String,
+    previewMode: String,
+    compteRenduText: String,
     animalDetails: AnimalEv,
     selectedConsultation: ConsultationEv?,
     selectedRation: Ration?,
@@ -404,13 +756,23 @@ private fun handlePdfExport(
     equationRepository: EquationRepository,
     scope: CoroutineScope
 ) {
+    if (previewMode == "CR") {
+        scope.launch(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.IO) {
+            PdfExporter.exportHtmlDocument(
+                html = previewHtml,
+                defaultFileName = "${generateDefaultPdfFileName(animalDetails, selectedConsultation).removeSuffix(".pdf")}_CR.pdf"
+            )
+        }
+        return
+    }
+
     val isPrescription = previewHtml.contains(translate(AnimalDetail.PRESCRIPTION_TITLE))
     if (isPrescription) {
         val rationsForPrescription: List<Ration> = selectedRationsForPrescription ?: selectedConsultation?.rations?.toList()
                 ?: emptyList()
         val prefsStorage = createPreferencesStorage()
         val prefsRepo = PreferencesRepository(prefsStorage)
-        scope.launch(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.Main) {
+        scope.launch(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.IO) {
             try {
                 prefsRepo.loadPreferences()
                 val prefs = prefsRepo.preferences
@@ -826,7 +1188,12 @@ private fun WideScreenLayout(
         var isLoadingConseils by remember { mutableStateOf(true) }
         var searchQuery by remember { mutableStateOf("") }
         var showSearchDialog by remember { mutableStateOf(false) }
+        var pendingCopyText by remember { mutableStateOf<String?>(null) }
+        var anamneseText by remember { mutableStateOf("") }
+        var examenCliniqueText by remember { mutableStateOf("") }
+        var facteurNutritionnelClefText by remember { mutableStateOf("") }
         var additionalText by remember { mutableStateOf("") }
+        var practitionerContact by remember { mutableStateOf(PractitionerContact()) }
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
         var selectedRationIdsForPrescription by remember(selectedConsultation?.uuid) {
                 val initialSelection: Set<String> =
@@ -848,6 +1215,10 @@ private fun WideScreenLayout(
                                 delay(400)
                                 val updatedConsultation =
                                         consultation.copy(
+                                                prescriptionAnamnese = anamneseText,
+                                                prescriptionExamenClinique = examenCliniqueText,
+                                                prescriptionFacteurNutritionnelClef =
+                                                        facteurNutritionnelClefText,
                                                 prescriptionAdditionalText = additionalText,
                                                 prescriptionSelectedConseilIds =
                                                         selectedConseils
@@ -868,12 +1239,18 @@ private fun WideScreenLayout(
         LaunchedEffect(selectedConsultation?.uuid) {
                 val consultation = selectedConsultation
                 if (consultation == null) {
+                        anamneseText = ""
+                        examenCliniqueText = ""
+                        facteurNutritionnelClefText = ""
                         additionalText = ""
                         localHtmlSections = emptyList()
                         selectedConseils = emptyList()
                         selectedRationIdsForPrescription = emptySet()
                         return@LaunchedEffect
                 }
+                anamneseText = consultation.prescriptionAnamnese
+                examenCliniqueText = consultation.prescriptionExamenClinique
+                facteurNutritionnelClefText = consultation.prescriptionFacteurNutritionnelClef
                 additionalText = consultation.prescriptionAdditionalText
                 localHtmlSections = consultation.prescriptionLocalHtmlSections
                 if (consultation.prescriptionSelectedRationIds.isNotEmpty()) {
@@ -921,6 +1298,24 @@ private fun WideScreenLayout(
                         isLoadingConseils = false
                 }
         }
+        LaunchedEffect(Unit) {
+                try {
+                        val prefsStorage = createPreferencesStorage()
+                        val prefsRepo = PreferencesRepository(prefsStorage)
+                        prefsRepo.loadPreferences()
+                        val prefs = prefsRepo.preferences
+                        practitionerContact =
+                                PractitionerContact(
+                                        nom = prefs.nomUtilisateur,
+                                        numeroOrdre = prefs.numeroOrdre,
+                                        adressePostale = prefs.adressePostale,
+                                        codePostal = prefs.codePostal,
+                                        ville = prefs.ville,
+                                        telephone = prefs.telephone,
+                                        email = prefs.email
+                                )
+                } catch (_: Exception) {}
+        }
         
         // Variables pour la prévisualisation et l'export
         var showPreview by remember {
@@ -929,6 +1324,8 @@ private fun WideScreenLayout(
         var previewHtml by remember {
                 mutableStateOf("")
         }
+        var previewMode by remember { mutableStateOf("PRESCRIPTION") }
+        var previewCompteRenduText by remember { mutableStateOf("") }
         
         // Fonction pour récupérer les conseils sélectionnés (conseils + sections locales)
         val getSelectedConseils:
@@ -1994,6 +2391,47 @@ private fun WideScreenLayout(
 
                                                 item {
                                                         OutlinedTextField(
+                                                                value = anamneseText,
+                                                                onValueChange = {
+                                                                        anamneseText = it
+                                                                        schedulePrescriptionSave()
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                label = { Text("Anamnese") },
+                                                                maxLines = 6
+                                                        )
+                                                        }
+
+                                                item {
+                                                        OutlinedTextField(
+                                                                value = examenCliniqueText,
+                                                                onValueChange = {
+                                                                        examenCliniqueText = it
+                                                                        schedulePrescriptionSave()
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                label = { Text("Examen clinique") },
+                                                                maxLines = 6
+                                                        )
+                                                        }
+
+                                                item {
+                                                        OutlinedTextField(
+                                                                value = facteurNutritionnelClefText,
+                                                                onValueChange = {
+                                                                        facteurNutritionnelClefText = it
+                                                                        schedulePrescriptionSave()
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                label = {
+                                                                        Text("Facteur nutritionnel clef")
+                                                                },
+                                                                maxLines = 4
+                                                        )
+                                                        }
+
+                                                item {
+                                                        OutlinedTextField(
                                                                 value = additionalText,
                                                                 onValueChange = {
                                                                         additionalText = it
@@ -2016,6 +2454,43 @@ private fun WideScreenLayout(
                                                                                 AppSizes.paddingSmall
                                                                         )
                                                         ) {
+                                                                val compteRenduText =
+                                                                        buildCompteRenduText(
+                                                                                animal = animalDetails,
+                                                                                consultation = selectedConsultation,
+                                                                                practitionerContact = practitionerContact,
+                                                                                anamnese = anamneseText,
+                                                                                examenClinique = examenCliniqueText,
+                                                                                facteurNutritionnelClef = facteurNutritionnelClefText,
+                                                                                additionalText = additionalText,
+                                                                                selectedConseils = selectedConseils
+                                                                        )
+                                                                OutlinedButton(
+                                                                        onClick = {
+                                                                                pendingCopyText = compteRenduText
+                                                                                scope.launch {
+                                                                                        snackbarHostState.showSnackbar("CR copié dans le presse-papiers")
+                                                                                }
+                                                                        }
+                                                                ) { Text("Copier le CR") }
+                                                                OutlinedButton(
+                                                                        onClick = {
+                                                                                previewMode = "CR"
+                                                                                previewCompteRenduText = compteRenduText
+                                                                                previewHtml =
+                                                                                        buildCompteRenduHtml(
+                                                                                                animal = animalDetails,
+                                                                                                consultation = selectedConsultation,
+                                                                                                practitionerContact = practitionerContact,
+                                                                                                anamnese = anamneseText,
+                                                                                                examenClinique = examenCliniqueText,
+                                                                                                facteurNutritionnelClef = facteurNutritionnelClefText,
+                                                                                                additionalText = additionalText,
+                                                                                                selectedConseils = selectedConseils
+                                                                                        )
+                                                                                showPreview = true
+                                                                        }
+                                                                ) { Text("Compte rendu") }
                                                                 Button(
                                                                         onClick = {
                                                                                 val prefsStorage = createPreferencesStorage()
@@ -2073,6 +2548,8 @@ private fun WideScreenLayout(
                                                                                                                                 besoinEnergetiqueEntretien = null
                                                                                                                         )
                                                                                                                 )
+                                                                                                previewMode = "PRESCRIPTION"
+                                                                                                previewCompteRenduText = ""
                                                                                                 showPreview = true
                                                                                         } catch (e: Exception) {
                                                                                                 val selectedRationsForPrescription: List<Ration> =
@@ -2103,6 +2580,8 @@ private fun WideScreenLayout(
                                                                                                                 besoinEnergetiqueEntretien = null
                                                                                                         )
                                                                                                 )
+                                                                                                previewMode = "PRESCRIPTION"
+                                                                                                previewCompteRenduText = ""
                                                                                                 showPreview = true
                                                                                         }
                                                                                 }
@@ -2137,6 +2616,8 @@ private fun WideScreenLayout(
                                                                                                 ?: emptyList()
                                                                         handlePdfExport(
                                                                                 previewHtml = previewHtml,
+                                                                                previewMode = previewMode,
+                                                                                compteRenduText = previewCompteRenduText,
                                                                                 animalDetails = animalDetails,
                                                                                 selectedConsultation = selectedConsultation,
                                                                                 selectedRation = selectedRation,
@@ -2153,6 +2634,10 @@ private fun WideScreenLayout(
                                                                 },
                                                                 onDismiss = { showPreview = false }
                                                         )
+                                        if (pendingCopyText != null) {
+                                                copyToClipboardComposable(pendingCopyText!!)
+                                                LaunchedEffect(pendingCopyText) { pendingCopyText = null }
+                                        }
                                 }
                         }
 
@@ -2368,7 +2853,12 @@ private fun NarrowScreenLayout(
         var isLoadingConseils by remember { mutableStateOf(true) }
         var searchQuery by remember { mutableStateOf("") }
         var showSearchDialog by remember { mutableStateOf(false) }
+        var pendingCopyText by remember { mutableStateOf<String?>(null) }
+        var anamneseText by remember { mutableStateOf("") }
+        var examenCliniqueText by remember { mutableStateOf("") }
+        var facteurNutritionnelClefText by remember { mutableStateOf("") }
         var additionalText by remember { mutableStateOf("") }
+        var practitionerContact by remember { mutableStateOf(PractitionerContact()) }
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
         var selectedRationIdsForPrescription by remember(selectedConsultation?.uuid) {
                 val initialSelection: Set<String> =
@@ -2390,6 +2880,10 @@ private fun NarrowScreenLayout(
                                 delay(400)
                                 val updatedConsultation =
                                         consultation.copy(
+                                                prescriptionAnamnese = anamneseText,
+                                                prescriptionExamenClinique = examenCliniqueText,
+                                                prescriptionFacteurNutritionnelClef =
+                                                        facteurNutritionnelClefText,
                                                 prescriptionAdditionalText = additionalText,
                                                 prescriptionSelectedConseilIds =
                                                         selectedConseils
@@ -2410,12 +2904,18 @@ private fun NarrowScreenLayout(
         LaunchedEffect(selectedConsultation?.uuid) {
                 val consultation = selectedConsultation
                 if (consultation == null) {
+                        anamneseText = ""
+                        examenCliniqueText = ""
+                        facteurNutritionnelClefText = ""
                         additionalText = ""
                         localHtmlSections = emptyList()
                         selectedConseils = emptyList()
                         selectedRationIdsForPrescription = emptySet()
                         return@LaunchedEffect
                 }
+                anamneseText = consultation.prescriptionAnamnese
+                examenCliniqueText = consultation.prescriptionExamenClinique
+                facteurNutritionnelClefText = consultation.prescriptionFacteurNutritionnelClef
                 additionalText = consultation.prescriptionAdditionalText
                 localHtmlSections = consultation.prescriptionLocalHtmlSections
                 if (consultation.prescriptionSelectedRationIds.isNotEmpty()) {
@@ -2462,6 +2962,24 @@ private fun NarrowScreenLayout(
                 } finally {
                         isLoadingConseils = false
                 }
+        }
+        LaunchedEffect(Unit) {
+                try {
+                        val prefsStorage = createPreferencesStorage()
+                        val prefsRepo = PreferencesRepository(prefsStorage)
+                        prefsRepo.loadPreferences()
+                        val prefs = prefsRepo.preferences
+                        practitionerContact =
+                                PractitionerContact(
+                                        nom = prefs.nomUtilisateur,
+                                        numeroOrdre = prefs.numeroOrdre,
+                                        adressePostale = prefs.adressePostale,
+                                        codePostal = prefs.codePostal,
+                                        ville = prefs.ville,
+                                        telephone = prefs.telephone,
+                                        email = prefs.email
+                                )
+                } catch (_: Exception) {}
         }
 
         // Variables pour la prévisualisation et l'export
@@ -3099,6 +3617,8 @@ private fun NarrowScreenLayout(
                                                         var previewHtml by remember {
                                                                 mutableStateOf("")
                                                         }
+                                                        var previewMode by remember { mutableStateOf("PRESCRIPTION") }
+                                                        var previewCompteRenduText by remember { mutableStateOf("") }
 
                                                         // Dialogue de prévisualisation HTML
                                                         HtmlPreviewDialog(
@@ -3117,6 +3637,8 @@ private fun NarrowScreenLayout(
                                                                                                 ?: emptyList()
                                                                         handlePdfExport(
                                                                                 previewHtml = previewHtml,
+                                                                                previewMode = previewMode,
+                                                                                compteRenduText = previewCompteRenduText,
                                                                                 animalDetails = animalDetails,
                                                                                 selectedConsultation = selectedConsultation,
                                                                                 selectedRation = selectedRation,
@@ -3716,6 +4238,45 @@ private fun NarrowScreenLayout(
 
                                                                         item {
                                                                         OutlinedTextField(
+                                                                                value = anamneseText,
+                                                                                onValueChange = {
+                                                                                        anamneseText = it
+                                                                                        schedulePrescriptionSave()
+                                                                                },
+                                                                                modifier = Modifier.fillMaxWidth(),
+                                                                                label = { Text("Anamnese") },
+                                                                                maxLines = 6
+                                                                        )
+                                                                                }
+
+                                                                        item {
+                                                                        OutlinedTextField(
+                                                                                value = examenCliniqueText,
+                                                                                onValueChange = {
+                                                                                        examenCliniqueText = it
+                                                                                        schedulePrescriptionSave()
+                                                                                },
+                                                                                modifier = Modifier.fillMaxWidth(),
+                                                                                label = { Text("Examen clinique") },
+                                                                                maxLines = 6
+                                                                        )
+                                                                                }
+
+                                                                        item {
+                                                                        OutlinedTextField(
+                                                                                value = facteurNutritionnelClefText,
+                                                                                onValueChange = {
+                                                                                        facteurNutritionnelClefText = it
+                                                                                        schedulePrescriptionSave()
+                                                                                },
+                                                                                modifier = Modifier.fillMaxWidth(),
+                                                                                label = { Text("Facteur nutritionnel clef") },
+                                                                                maxLines = 4
+                                                                        )
+                                                                                }
+
+                                                                        item {
+                                                                        OutlinedTextField(
                                                                                 value = additionalText,
                                                                                 onValueChange = {
                                                                                         additionalText = it
@@ -3739,6 +4300,47 @@ private fun NarrowScreenLayout(
                                                                                                         AppSizes.paddingSmall
                                                                                                 )
                                                                         ) {
+                                                                                val compteRenduText =
+                                                                                        buildCompteRenduText(
+                                                                                                animal = animalDetails,
+                                                                                                consultation = selectedConsultation,
+                                                                                                practitionerContact = practitionerContact,
+                                                                                                anamnese = anamneseText,
+                                                                                                examenClinique = examenCliniqueText,
+                                                                                                facteurNutritionnelClef = facteurNutritionnelClefText,
+                                                                                                additionalText = additionalText,
+                                                                                                selectedConseils = selectedConseils
+                                                                                        )
+                                                                                OutlinedButton(
+                                                                                        onClick = {
+                                                                                                pendingCopyText = compteRenduText
+                                                                                                scope.launch {
+                                                                                                        snackbarHostState.showSnackbar("CR copié dans le presse-papiers")
+                                                                                                }
+                                                                                        }
+                                                                                ) {
+                                                                                        Text("Copier le CR")
+                                                                                }
+                                                                                OutlinedButton(
+                                                                                        onClick = {
+                                                                                                previewMode = "CR"
+                                                                                                previewCompteRenduText = compteRenduText
+                                                                                                previewHtml =
+                                                                                                        buildCompteRenduHtml(
+                                                                                                                animal = animalDetails,
+                                                                                                                consultation = selectedConsultation,
+                                                                                                                practitionerContact = practitionerContact,
+                                                                                                                anamnese = anamneseText,
+                                                                                                                examenClinique = examenCliniqueText,
+                                                                                                                facteurNutritionnelClef = facteurNutritionnelClefText,
+                                                                                                                additionalText = additionalText,
+                                                                                                                selectedConseils = selectedConseils
+                                                                                                        )
+                                                                                                showPreview = true
+                                                                                        }
+                                                                                ) {
+                                                                                        Text("Compte rendu")
+                                                                                }
 
                                                                                 Button(
                                                                                         onClick = {
@@ -3785,8 +4387,10 @@ private fun NarrowScreenLayout(
                                                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                                                                                                                                 poidsMetabolique = null,
                                                                                                                                                 besoinEnergetiqueEntretien = null
-                                                                                                                                        )
-                                                                                                                                )
+                                                                                                                )
+                                                                                                        )
+                                                                                                                previewMode = "PRESCRIPTION"
+                                                                                                                previewCompteRenduText = ""
                                                                                                                 showPreview = true
                                                                                                         } catch (e: Exception) {
                                                                                                                 val selectedRationsForPrescription: List<Ration> =
@@ -3815,8 +4419,10 @@ private fun NarrowScreenLayout(
                                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                                                                                                                 poidsMetabolique = null,
                                                                                                                                 besoinEnergetiqueEntretien = null
-                                                                                                                        )
                                                                                                                 )
+                                                                                                                )
+                                                                                                                previewMode = "PRESCRIPTION"
+                                                                                                                previewCompteRenduText = ""
                                                                                                                 showPreview = true
                                                                                                         }
                                                                                                 }
@@ -3831,6 +4437,11 @@ private fun NarrowScreenLayout(
                                                 }
                                         }
                                 }
+                        }
+
+                        if (pendingCopyText != null) {
+                                copyToClipboardComposable(pendingCopyText!!)
+                                LaunchedEffect(pendingCopyText) { pendingCopyText = null }
                         }
 
                         // Dialogue de recherche et sélection des conseils

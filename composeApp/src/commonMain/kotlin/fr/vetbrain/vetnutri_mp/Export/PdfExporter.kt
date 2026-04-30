@@ -7,4 +7,10 @@ expect object PdfExporter {
             data: ExportData,
             defaultFileName: String = "document.pdf"
     ): Boolean
+
+    /** Exporte un HTML déjà construit en PDF. */
+    suspend fun exportHtmlDocument(
+            html: String,
+            defaultFileName: String = "document.pdf"
+    ): Boolean
 }

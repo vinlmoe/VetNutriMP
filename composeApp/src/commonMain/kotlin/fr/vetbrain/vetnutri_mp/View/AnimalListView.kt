@@ -202,7 +202,7 @@ fun AnimalListView(
                                         if (isCompact) {
                                                 General.SEARCH.translate()
                                         } else {
-                                                "${General.SEARCH.translate()} (${Animal.NAME.translate()}, ${Animal.OWNER.translate()}, ${Animal.BREED.translate()})"
+                                                "${General.SEARCH.translate()} (ID, ${Animal.NAME.translate()}, ${Animal.OWNER.translate()}, ${Animal.BREED.translate()})"
                                         }
                                 val especeNullLabel =
                                         if (isCompact) Animal.SPECIES.translate()

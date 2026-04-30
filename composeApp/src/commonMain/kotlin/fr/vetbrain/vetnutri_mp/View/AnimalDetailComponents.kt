@@ -71,6 +71,7 @@ fun ConsultationCard(
         isSelected: Boolean,
         onEdit: () -> Unit,
         onDelete: () -> Unit,
+        onDuplicate: () -> Unit = {},
         isDeleteEnabled: Boolean = true,
         onClick: () -> Unit = {},
         modifier: Modifier = Modifier
@@ -252,6 +253,17 @@ fun ConsultationCard(
                                         imageVector = AppIcons.Edit,
                                         contentDescription = "Modifier la consultation",
                                         tooltip = "Modifier la consultation",
+                                        tint = VetNutriColors.Primary,
+                                        iconModifier = Modifier.size(AppSizes.iconSizeSmall)
+                                )
+
+                                // Bouton de duplication
+                                IconButtonWithTooltip(
+                                        onClick = onDuplicate,
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium),
+                                        imageVector = AppIcons.ContentCopy,
+                                        contentDescription = "Dupliquer la consultation",
+                                        tooltip = "Dupliquer la consultation",
                                         tint = VetNutriColors.Primary,
                                         iconModifier = Modifier.size(AppSizes.iconSizeSmall)
                                 )

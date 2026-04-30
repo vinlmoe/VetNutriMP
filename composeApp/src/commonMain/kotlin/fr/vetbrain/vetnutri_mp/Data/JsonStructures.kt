@@ -93,6 +93,9 @@ data class ConsultationEvJson(
         val newRation: List<RationJson> = listOf(),
         val keywords: List<String> = listOf(),
         // Ordonnance: état sauvegardé par consultation
+        val prescriptionAnamnese: String = "",
+        val prescriptionExamenClinique: String = "",
+        val prescriptionFacteurNutritionnelClef: String = "",
         val prescriptionAdditionalText: String = "",
         val prescriptionSelectedConseilIds: List<String> = listOf(),
         val prescriptionLocalHtmlSections: List<HtmlSection> = listOf(),

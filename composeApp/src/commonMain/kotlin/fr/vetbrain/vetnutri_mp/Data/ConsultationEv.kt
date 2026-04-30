@@ -45,6 +45,9 @@ data class ConsultationEv(
         var keywordIds: MutableList<String> = mutableListOf(),
         var coefficientAjustement: Double = 1.0,
         // Ordonnance: état sauvegardé par consultation
+        var prescriptionAnamnese: String = "",
+        var prescriptionExamenClinique: String = "",
+        var prescriptionFacteurNutritionnelClef: String = "",
         var prescriptionAdditionalText: String = "",
         var prescriptionSelectedConseilIds: MutableList<String> = mutableListOf(),
         var prescriptionLocalHtmlSections: MutableList<HtmlSection> = mutableListOf(),

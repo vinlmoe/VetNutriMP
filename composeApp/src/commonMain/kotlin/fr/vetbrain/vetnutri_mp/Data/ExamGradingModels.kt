@@ -21,6 +21,10 @@ data class ExamGradingRuleSet(
 enum class FlexibleMetricKind {
     TOTAL_RATION_QUANTITY,
     ENERGY_DENSITY,
+    BEE_KCAL,
+    ENERGY_INTAKE_KCAL,
+    PROTEIN_INTAKE_G,
+    ANIMAL_WEIGHT_KG,
     NUTRIENT_TOTAL,
     RATION_COUNT,
     INGREDIENT_KEYWORDS,
@@ -143,4 +147,47 @@ data class ExamGrade(
     val manualScore: Double?,
     val finalScore: Double,
     val detail: ExamGradeDetail
+)
+
+@Serializable
+data class ExamCsvRow(
+    val nom: String = "",
+    val prenom: String = "",
+    val email: String = "",
+    val binId: String
+)
+
+@Serializable
+data class ExamCopyImportEntry(
+    val nom: String = "",
+    val prenom: String = "",
+    val email: String = "",
+    val binId: String,
+    val success: Boolean,
+    val fromCache: Boolean = false,
+    val error: String = "",
+    val importedAtEpochMs: Long
+)
+
+@Serializable
+data class ExamCopyImportSession(
+    val sessionId: String = "",
+    val examId: String,
+    val exerciseId: String,
+    val sourceFileName: String = "moodle.csv",
+    val importedAtEpochMs: Long,
+    val forceRefresh: Boolean = false,
+    val offlineOnly: Boolean = false,
+    val entries: List<ExamCopyImportEntry> = emptyList()
+) {
+    val total: Int get() = entries.size
+    val successCount: Int get() = entries.count { it.success }
+    val errorCount: Int get() = entries.count { !it.success }
+}
+
+@Serializable
+data class RuleSnapshotEntry(
+    val snapshotId: String,
+    val savedAtEpochMs: Long,
+    val rule: ExamGradingRuleSet
 )

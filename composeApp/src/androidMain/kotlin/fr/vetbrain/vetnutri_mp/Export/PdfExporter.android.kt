@@ -18,6 +18,23 @@ actual object PdfExporter {
                 val activity: Activity? = AndroidContext.getCurrentActivityOrNull()
                 if (activity == null) return false
                 val html: String = HtmlDocumentBuilder.buildHtml(documentType, data)
+                return exportHtmlInternal(activity, html, defaultFileName)
+        }
+
+    actual suspend fun exportHtmlDocument(
+            html: String,
+            defaultFileName: String
+    ): Boolean {
+                val activity: Activity? = AndroidContext.getCurrentActivityOrNull()
+                if (activity == null) return false
+                return exportHtmlInternal(activity, html, defaultFileName)
+        }
+
+    private fun exportHtmlInternal(
+            activity: Activity,
+            html: String,
+            defaultFileName: String
+    ): Boolean {
                 try {
                         val webView = WebView(activity)
                         webView.settings.javaScriptEnabled = false
@@ -65,5 +82,5 @@ actual object PdfExporter {
                 } catch (t: Throwable) {
                         return false
                 }
-        }
+    }
 }

@@ -224,6 +224,9 @@ private fun ConsultationsMainView(
                                             onConsultationToDelete(consultation)
                                             onShowDeleteConfirmation(true)
                                         },
+                                        onDuplicate = {
+                                            viewModel.duplicateConsultation(consultation)
+                                        },
                                         isDeleteEnabled = canDeleteConsultation,
                                         onClick = {
                                             viewModel.selectConsultation(consultation)

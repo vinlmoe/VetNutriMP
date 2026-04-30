@@ -163,6 +163,9 @@ data class ConsultationEntity(
         val keywordsJson: String? = null,
         val coefficientAjustement: Double = 1.0,
         // Ordonnance: état sauvegardé par consultation
+        val prescriptionAnamnese: String? = null,
+        val prescriptionExamenClinique: String? = null,
+        val prescriptionFacteurNutritionnelClef: String? = null,
         val prescriptionAdditionalText: String? = null,
         val prescriptionSelectedConseilIdsJson: String? = null,
         val prescriptionLocalHtmlSectionsJson: String? = null,
