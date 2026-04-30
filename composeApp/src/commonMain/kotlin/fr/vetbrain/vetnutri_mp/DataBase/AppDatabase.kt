@@ -41,7 +41,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ExamGradeEntity::class,
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class],
-        version = 31,
+        version = 32,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -109,7 +109,8 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         // Migration 28→29 : Ajout des champs examen pour les animaux
                         createMigration28to29(),
                         createMigration29to30(),
-                        createMigration30to31()
+                        createMigration30to31(),
+                        createMigration31to32()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -573,6 +574,30 @@ fun createMigration30to31(): Migration {
                 runStatementIgnoreIfExists(
                         connection,
                         "CREATE TABLE IF NOT EXISTS EXAM_GRADES (examId TEXT NOT NULL, exerciseId TEXT NOT NULL, studentId TEXT NOT NULL, animalId TEXT, animalName TEXT NOT NULL, consultationId TEXT, autoScore REAL NOT NULL, manualScore REAL, finalScore REAL NOT NULL, detailsJson TEXT NOT NULL, updatedAtEpochMs INTEGER NOT NULL, PRIMARY KEY(examId, exerciseId, studentId))"
+                )
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 31 → 32 : Ajout de champs CR ordonnance pour les consultations */
+fun createMigration31to32(): Migration {
+    return object : Migration(31, 32) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionAnamnese TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionExamenClinique TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionFacteurNutritionnelClef TEXT"
                 )
             } catch (e: Exception) {
                 throw e

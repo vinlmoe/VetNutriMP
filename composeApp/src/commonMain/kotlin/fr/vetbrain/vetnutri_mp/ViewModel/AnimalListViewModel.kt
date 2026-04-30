@@ -162,15 +162,20 @@ class AnimalListViewModel(
         return animals
                 .filter { animal ->
                     val matchesExam =
-                            examSession == null ||
-                                    (animal.exam &&
-                                            (examSession.studentId.isBlank() ||
-                                                    animal.examStudentId == examSession.studentId) &&
-                                            (examSession.studentNumber.isBlank() ||
-                                                    animal.examStudentNumber == examSession.studentNumber))
+                            if (examSession == null) {
+                                // Hors mode examen, masquer les animaux d'examen de la recherche standard.
+                                animal.examExerciseId.isNullOrBlank()
+                            } else {
+                                !animal.examExerciseId.isNullOrBlank() &&
+                                    (examSession.studentId.isBlank() ||
+                                        animal.examStudentId == examSession.studentId) &&
+                                    (examSession.studentNumber.isBlank() ||
+                                        animal.examStudentNumber == examSession.studentNumber)
+                            }
 
                     val matchesQuery =
                             trimmedQuery.isBlank() ||
+                                    animal.id.orEmpty().contains(trimmedQuery, ignoreCase = true) ||
                                     animal.nom.contains(trimmedQuery, ignoreCase = true) ||
                                     animal.ownerName.contains(trimmedQuery, ignoreCase = true) ||
                                     animal.race.contains(trimmedQuery, ignoreCase = true)
@@ -195,7 +200,7 @@ class AnimalListViewModel(
                 val allAnimals = animalRepository.getAllAnimals()
                 val examAnimals =
                         allAnimals.filter { animal ->
-                            animal.exam &&
+                            !animal.examExerciseId.isNullOrBlank() &&
                                     (session.studentId.isBlank() || animal.examStudentId == session.studentId) &&
                                     (session.studentNumber.isBlank() || animal.examStudentNumber == session.studentNumber)
                         }

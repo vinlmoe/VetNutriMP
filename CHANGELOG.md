@@ -2,6 +2,32 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## 3.2.45
+
+### Added
+- Section Ordonnance enrichie avec des champs persistés par consultation : **Anamnèse**, **Examen clinique**, **Facteur nutritionnel clef**.
+- Nouveau **Compte rendu (CR)** depuis la section Ordonnance :
+  - bouton **Compte rendu** (prévisualisation HTML),
+  - bouton **Copier le CR** (copie texte dans le presse-papiers).
+- Contenu CR enrichi avec :
+  - identification complète de l'animal (ID, nom, propriétaire, sexe, espèce, race, date de naissance, UUID),
+  - date et objet de consultation,
+  - poids de consultation,
+  - coordonnées du vétérinaire,
+  - rations actuelles/proposées détaillées (ingrédients + quantités),
+  - conseils d'ordonnance détaillés.
+
+### Changed
+- Prévisualisation CR retravaillée avec une mise en forme structurée (sections/cartes/tableaux), inspirée de l'ordonnance.
+- Export PDF du CR aligné sur la prévisualisation : export du **même HTML** (fidélité visuelle).
+- Recherche de la liste des animaux étendue : prise en charge de la recherche par **ID animal**.
+- Bloc "Animal" de l'ordonnance enrichi avec l'**ID animal**.
+- Mémorisation du dernier dossier d'enregistrement desktop, avec persistance via la couche KMP de préférences (`PreferencesStorage`).
+
+### Fixed
+- Correction d'un mauvais routage d'export : l'export depuis la prévisualisation CR ne génère plus une analyse de ration.
+- Correction d'appels `@Composable` hors contexte dans l'action de copie presse-papiers.
+
 ## 3.2.40
 
 ### Changed

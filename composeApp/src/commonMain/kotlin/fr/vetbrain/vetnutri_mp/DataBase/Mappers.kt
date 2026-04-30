@@ -121,6 +121,11 @@ object Mappers {
                                 referencesMaladiesJson = this.referencesMaladies.joinToString(","),
                                 keywordsJson = this.keywordIds.joinToString(","),
                                 coefficientAjustement = this.coefficientAjustement,
+                                prescriptionAnamnese = this.prescriptionAnamnese.ifBlank { "" },
+                                prescriptionExamenClinique =
+                                        this.prescriptionExamenClinique.ifBlank { "" },
+                                prescriptionFacteurNutritionnelClef =
+                                        this.prescriptionFacteurNutritionnelClef.ifBlank { "" },
                                 prescriptionAdditionalText =
                                         this.prescriptionAdditionalText.ifBlank { "" },
                                 prescriptionSelectedConseilIdsJson =
@@ -258,6 +263,10 @@ object Mappers {
                                         mutableListOf()
                                 },
                         coefficientAjustement = this.coefficientAjustement,
+                        prescriptionAnamnese = this.prescriptionAnamnese ?: "",
+                        prescriptionExamenClinique = this.prescriptionExamenClinique ?: "",
+                        prescriptionFacteurNutritionnelClef =
+                                this.prescriptionFacteurNutritionnelClef ?: "",
                         prescriptionAdditionalText = this.prescriptionAdditionalText ?: "",
                         prescriptionSelectedConseilIds = prescriptionSelectedConseilIds,
                         prescriptionLocalHtmlSections = prescriptionLocalHtmlSections,

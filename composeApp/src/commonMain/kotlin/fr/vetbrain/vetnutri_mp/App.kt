@@ -193,7 +193,13 @@ fun App(appDatabase: AppDatabase) {
         ) 
     }
 
-    val examGradingViewModel = remember { ExamGradingViewModel(examGradingRepository) }
+    val examGradingViewModel = remember {
+        ExamGradingViewModel(
+            repository = examGradingRepository,
+            exportImportRepository = exportImportRepository,
+            fileService = fileService
+        )
+    }
 
 
     val animalDetailViewModel = remember {

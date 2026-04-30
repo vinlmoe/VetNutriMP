@@ -38,6 +38,13 @@ actual object PdfExporter {
                 val html: String = HtmlDocumentBuilder.buildHtml(documentType, data)
                 return imprimerDocument(html)
         }
+
+        actual suspend fun exportHtmlDocument(
+                html: String,
+                defaultFileName: String
+        ): Boolean {
+                return imprimerDocument(html)
+        }
         
         private fun imprimerDocument(html: String): Boolean {
                 return try {

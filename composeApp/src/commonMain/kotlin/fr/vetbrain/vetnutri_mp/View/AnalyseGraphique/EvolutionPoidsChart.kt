@@ -31,6 +31,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.KoalaPlotExtensions
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.Export.PdfExporter
 import fr.vetbrain.vetnutri_mp.Export.DocumentType
@@ -316,9 +317,9 @@ fun EvolutionPoidsChart(
                             var endAgeMonthsCalculated = startAgeMonths + (semainesProjection * 7 / 30.44f)
                             var endWeightCalculated = endWeight26Weeks
 
-                            if (targetW != null && effectivePercentage != 0f) {
+                            if (targetW != null && effectivePercentage != 0f && startWeight > 0f) {
                                 val weeksToTarget = (targetW / startWeight - 1f) / effectivePercentage
-                                if (weeksToTarget > 0) {
+                                if (weeksToTarget > 0 && weeksToTarget.isFinite()) {
                                     val daysToTarget = (weeksToTarget * 7).toInt()
                                     val targetDate = coneState.startDate.plus(DatePeriod(days = daysToTarget))
                                     val targetAgeDays = birthDate.daysUntil(targetDate)
@@ -894,10 +895,10 @@ fun ConeZoomView(
             var finalWeeks = weeksDuration.toFloat()
             var finalWeight = (startWeight * (1 + effectivePercentage * weeksDuration)).toFloat()
 
-            if (targetWeight != null && effectivePercentage != 0f) {
+            if (targetWeight != null && effectivePercentage != 0f && startWeight > 0) {
                 val weeksToTarget = ((targetWeight / startWeight - 1.0) / effectivePercentage).toFloat()
                 // Si l'objectif est atteint dans le futur, on arrête la ligne à l'objectif
-                if (weeksToTarget > 0) {
+                if (weeksToTarget > 0 && weeksToTarget.isFinite()) {
                     finalWeeks = weeksToTarget
                     finalWeight = targetWeight.toFloat()
                 }
@@ -1009,7 +1010,7 @@ fun ConeZoomView(
                         ),
                         isLandscape = true
                     )
-                    scope.launch {
+                    scope.launch(AppDispatchers.IO) {
                         PdfExporter.exportDocument(
                             DocumentType.RATION_ANALYSIS,
                             exportData,
@@ -1113,8 +1114,11 @@ fun generateConeGraphSvg(
     val yMin = yRange.start
     val yMax = yRange.endInclusive
     
-    fun scaleX(x: Float): Double = padding + (x - xMin) / (xMax - xMin) * graphWidth
-    fun scaleY(y: Float): Double = height - padding - (y - yMin) / (yMax - yMin) * graphHeight
+    val xSpan = (xMax - xMin).takeIf { it > 0f } ?: 1f
+    val ySpan = (yMax - yMin).takeIf { it > 0f } ?: 1f
+
+    fun scaleX(x: Float): Double = padding + (x - xMin) / xSpan * graphWidth
+    fun scaleY(y: Float): Double = height - padding - (y - yMin) / ySpan * graphHeight
     
     val sb = StringBuilder()
     sb.append("<svg width='100%' height='100%' viewBox='0 0 $width $height' xmlns='http://www.w3.org/2000/svg' version='1.1'>")
@@ -1128,15 +1132,15 @@ fun generateConeGraphSvg(
     
     // Grille et labels Y (Calcul de pas "intelligent")
     val yRangeSpan = yMax - yMin
-    val targetYSteps = 5.0
-    val rawYStep = yRangeSpan / targetYSteps
-    val magY = 10.0.pow(floor(log10(rawYStep.toDouble())))
+    val targetYSteps = 5f
+    val rawYStep = (yRangeSpan / targetYSteps).takeIf { it > 0f && it.isFinite() } ?: 1f
+    val magY = 10.0.pow(floor(log10(rawYStep.toDouble()))).toFloat()
     val normY = rawYStep / magY
     val yStep = (when {
-        normY < 1.5 -> 1.0
-        normY < 3.5 -> 2.0
-        normY < 7.5 -> 5.0
-        else -> 10.0
+        normY < 1.5f -> 1f
+        normY < 3.5f -> 2f
+        normY < 7.5f -> 5f
+        else -> 10f
     } * magY).toFloat()
 
     val startY = (ceil(yMin / yStep) * yStep).toFloat()
@@ -1394,7 +1398,7 @@ fun GrowthZoomView(
                                                 isLandscape = true
                                         )
 
-                                scope.launch {
+                                scope.launch(AppDispatchers.IO) {
                                         PdfExporter.exportDocument(
                                                 DocumentType.RATION_ANALYSIS,
                                                 exportData,
@@ -1489,9 +1493,12 @@ fun generateGrowthGraphSvg(
     val yMin = yRange.start
     val yMax = yRange.endInclusive
 
-    fun scaleX(x: Float): Double = padding + (x - xMin) / (xMax - xMin) * graphWidth
+    val xSpan = (xMax - xMin).takeIf { it > 0f } ?: 1f
+    val ySpan = (yMax - yMin).takeIf { it > 0f } ?: 1f
+
+    fun scaleX(x: Float): Double = padding + (x - xMin) / xSpan * graphWidth
     fun scaleY(y: Float): Double =
-            height - padding - (y - yMin) / (yMax - yMin) * graphHeight
+            height - padding - (y - yMin) / ySpan * graphHeight
 
     val sb = StringBuilder()
     sb.append(
@@ -1508,16 +1515,16 @@ fun generateGrowthGraphSvg(
     )
 
     val yRangeSpan = yMax - yMin
-    val targetYSteps = 5.0
-    val rawYStep = yRangeSpan / targetYSteps
-    val magY = 10.0.pow(floor(log10(rawYStep.toDouble())))
+    val targetYSteps = 5f
+    val rawYStep = (yRangeSpan / targetYSteps).takeIf { it > 0f && it.isFinite() } ?: 1f
+    val magY = 10.0.pow(floor(log10(rawYStep.toDouble()))).toFloat()
     val normY = rawYStep / magY
     val yStep =
             (when {
-                        normY < 1.5 -> 1.0
-                        normY < 3.5 -> 2.0
-                        normY < 7.5 -> 5.0
-                        else -> 10.0
+                        normY < 1.5f -> 1f
+                        normY < 3.5f -> 2f
+                        normY < 7.5f -> 5f
+                        else -> 10f
                 } * magY)
                     .toFloat()
 

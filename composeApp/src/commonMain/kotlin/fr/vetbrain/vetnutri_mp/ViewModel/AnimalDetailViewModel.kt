@@ -898,7 +898,49 @@ class AnimalDetailViewModel(
 
             // Désélectionner la consultation supprimée
             if (_selectedConsultation.value?.uuid == consultation.uuid) {
-                _selectedConsultation.value = null
+                // Sélectionner une autre consultation si disponible
+                updatedConsultations.maxByOrNull { it.date ?: kotlinx.datetime.LocalDate(2000, 1, 1) }?.let {
+                    selectConsultation(it)
+                } ?: run {
+                    _selectedConsultation.value = null
+                    _selectedRation.value = null
+                }
+            }
+        }
+    }
+
+    fun duplicateConsultation(consultation: ConsultationEv) {
+        viewModelScope.launch {
+            try {
+                // Date d'aujourd'hui
+                val today = kotlinx.datetime.Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date
+                
+                // Nouvel UUID pour la consultation
+                val newConsultationUuid = fr.vetbrain.vetnutri_mp.Utils.genUUID()
+
+                // Copie profonde de la consultation avec la date d'aujourd'hui
+                val duplicatedConsultation = consultation.copy(
+                    uuid = newConsultationUuid,
+                    date = today,
+                    rations = consultation.rations.map { ration ->
+                        val newRationUuid = fr.vetbrain.vetnutri_mp.Utils.genUUID()
+                        ration.copy(
+                            uuid = newRationUuid,
+                            idConsult = newConsultationUuid,
+                            alimentMutableList = ration.alimentMutableList.map { aliment ->
+                                aliment.copy(
+                                    uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(),
+                                    refRation = newRationUuid
+                                )
+                            }.toMutableList()
+                        )
+                    }.toMutableList()
+                )
+
+                // Ajouter la consultation dupliquée
+                addConsultation(duplicatedConsultation)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

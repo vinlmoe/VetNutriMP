@@ -490,19 +490,37 @@ actual suspend fun exportPdfDocument(
     data: fr.vetbrain.vetnutri_mp.Export.ExportData,
     defaultFileName: String
 ): Boolean {
-    val html: String = fr.vetbrain.vetnutri_mp.Export.HtmlDocumentBuilder.buildHtml(documentType, data)
-    return try {
-        val baos = java.io.ByteArrayOutputStream()
-        com.openhtmltopdf.pdfboxout.PdfRendererBuilder().withHtmlContent(html, null).toStream(baos).run()
-        val bytes = baos.toByteArray()
-        
-        // Appel direct comme dans exportJsonToFile
-        fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveBinaryFileDialog(
-            bytes = bytes,
-            defaultFileName = defaultFileName.ifBlank { "document.pdf" }
-        )
-    } catch (t: Throwable) {
-        t.printStackTrace()
-        false
+    val html: String =
+        fr.vetbrain.vetnutri_mp.Export.HtmlDocumentBuilder.buildHtml(documentType, data)
+    return withContext(Dispatchers.IO) {
+        try {
+            val baos = java.io.ByteArrayOutputStream()
+            com.openhtmltopdf.pdfboxout.PdfRendererBuilder()
+                .withHtmlContent(html, null)
+                .toStream(baos)
+                .run()
+            val bytes = baos.toByteArray()
+
+            var result = false
+            if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+                result =
+                    fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveBinaryFileDialog(
+                        bytes = bytes,
+                        defaultFileName = defaultFileName.ifBlank { "document.pdf" }
+                    )
+            } else {
+                javax.swing.SwingUtilities.invokeAndWait {
+                    result =
+                        fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveBinaryFileDialog(
+                            bytes = bytes,
+                            defaultFileName = defaultFileName.ifBlank { "document.pdf" }
+                        )
+                }
+            }
+            result
+        } catch (t: Throwable) {
+            t.printStackTrace()
+            false
+        }
     }
 }
