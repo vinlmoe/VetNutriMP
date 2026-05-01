@@ -7,43 +7,43 @@ import androidx.core.view.WindowInsetsCompat
 
 /**
  * Gestionnaire pour la configuration plein écran de l'application Android.
- * Masque les barres de statut et de navigation pour une expérience immersive.
+ * Masque les barres de statut et de navigation pour une expérience immersive,
+ * sauf sur Chrome OS où les apps tournent en fenêtres gérées par l'OS.
  */
 object FullscreenManager {
-    
+
     private var isCurrentlyFullscreen: Boolean = false
-    
+
+    /** Renvoie true si l'app tourne dans l'ARC de Chrome OS. */
+    private fun isRunningOnChromeOS(activity: Activity): Boolean =
+        activity.packageManager.hasSystemFeature("org.chromium.arc")
+
     /**
      * Configure l'application en mode plein écran sans barres système.
-     * 
-     * @param activity L'activité à configurer
+     * Sur Chrome OS, cette méthode est un no-op : la gestion des barres
+     * appartient au window manager de Chrome OS.
      */
     fun enableFullscreen(activity: Activity): Unit {
+        // Chrome OS gère ses propres barres système — forcer le fullscreen
+        // cacherait la barre de tâches et rendrait la fenêtre non déplaçable.
+        if (isRunningOnChromeOS(activity)) return
+
         val window = activity.window
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
-        
-        // Désactive l'ajustement automatique des fenêtres aux barres système
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        
-        // Masque les barres de statut et de navigation
+
         windowInsetsController.hide(
             WindowInsetsCompat.Type.statusBars() or
             WindowInsetsCompat.Type.navigationBars()
         )
-        
-        // Configure le comportement des barres système pour qu'elles apparaissent temporairement au swipe
-        windowInsetsController.systemBarsBehavior = 
+
+        windowInsetsController.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            
+
         isCurrentlyFullscreen = true
     }
     
-    /**
-     * Active ou désactive le mode plein écran.
-     * 
-     * @param activity L'activité à configurer
-     * @param isFullscreen true pour activer, false pour désactiver
-     */
     fun toggleFullscreen(activity: Activity, isFullscreen: Boolean): Unit {
         if (isFullscreen) {
             enableFullscreen(activity)
@@ -52,23 +52,11 @@ object FullscreenManager {
             isCurrentlyFullscreen = false
         }
     }
-    
-    /**
-     * Vérifie si l'application est actuellement en mode plein écran.
-     * 
-     * @param activity L'activité à vérifier
-     * @return true si en mode plein écran, false sinon
-     */
-    fun isFullscreen(activity: Activity): Boolean {
-        return isCurrentlyFullscreen
-    }
-    
-    /**
-     * Affiche temporairement les barres système.
-     * 
-     * @param activity L'activité concernée
-     */
+
+    fun isFullscreen(activity: Activity): Boolean = isCurrentlyFullscreen
+
     fun showSystemBars(activity: Activity): Unit {
+        if (isRunningOnChromeOS(activity)) return
         val window = activity.window
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         windowInsetsController.show(
@@ -76,13 +64,9 @@ object FullscreenManager {
             WindowInsetsCompat.Type.navigationBars()
         )
     }
-    
-    /**
-     * Masque les barres système.
-     * 
-     * @param activity L'activité concernée
-     */
+
     fun hideSystemBars(activity: Activity): Unit {
+        if (isRunningOnChromeOS(activity)) return
         val window = activity.window
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         windowInsetsController.hide(
