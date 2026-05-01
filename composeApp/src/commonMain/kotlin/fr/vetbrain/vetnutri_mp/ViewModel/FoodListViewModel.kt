@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -27,6 +28,17 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         // Scope dédié (pas de ViewModel Android ici)
         private val job = SupervisorJob()
         private val viewModelScope = CoroutineScope(AppDispatchers.Main + job)
+
+        // Index normalisé pour la recherche textuelle (champs lowercase pré-calculés)
+        private data class NormalizedFood(
+                val aliment: AlimentEv,
+                val nomLower: String,
+                val brandLower: String,
+                val gammeLower: String,
+                val ingredientsLower: String,
+                val especeStrings: Set<String>  // valeurs lowercase préparées pour le match espèce
+        )
+        private var normalizedIndex: List<NormalizedFood> = emptyList()
 
         // Liste des aliments (non filtrée)
         private val _allFoods = MutableStateFlow<List<AlimentEv>>(emptyList())
@@ -80,16 +92,10 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                 foodRepository
                         .observeAllFoods()
                         .onEach { allFoods ->
-                                // Stocker tous les aliments non filtrés
                                 _allFoods.value = allFoods
-
-                                // Filtrer les aliments selon les critères actuels
-                                val filteredFoods = filterFoods(allFoods)
-
-                                // Mettre à jour l'état filtré
-                                _foods.value = filteredFoods
-
-                                // Mettre à jour les listes de valeurs disponibles pour les filtres
+                                // Construire l'index normalisé une seule fois par chargement
+                                normalizedIndex = buildNormalizedIndex(allFoods)
+                                _foods.value = filterFoods(allFoods)
                                 updateAvailableFilterValues(allFoods)
                         }
                         .catch { e ->
@@ -98,13 +104,31 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                                 _foods.value = emptyList()
                         }
                         .launchIn(viewModelScope)
+
+                // Debouncing sur la recherche textuelle : évite un refiltre à chaque frappe
+                _searchQuery
+                        .debounce(300)
+                        .onEach { refreshFilteredFoods() }
+                        .launchIn(viewModelScope)
         }
+
+        /** Construit un index avec champs lowercase pré-calculés pour le filtrage rapide */
+        private fun buildNormalizedIndex(foods: List<AlimentEv>): List<NormalizedFood> =
+                foods.map { a ->
+                        NormalizedFood(
+                                aliment = a,
+                                nomLower = a.nom?.lowercase() ?: "",
+                                brandLower = a.brand?.lowercase() ?: "",
+                                gammeLower = a.gamme?.lowercase() ?: "",
+                                ingredientsLower = a.ingredients?.lowercase() ?: "",
+                                especeStrings = a.especes.map { it.lowercase() }.toSet()
+                        )
+                }
 
         /** Charge la liste des aliments depuis le repository (maintenu pour compatibilité) */
         fun loadFoods() {
                 viewModelScope.launch {
-                        val allFoodsLight = foodRepository.getAllFoodsLight()
-                        val allFoods = allFoodsLight.map { light ->
+                        val allFoods = foodRepository.getAllFoodsLight().map { light ->
                                 fr.vetbrain.vetnutri_mp.Data.AlimentEv(
                                         uuid = light.uuid,
                                         nom = light.nom,
@@ -119,55 +143,15 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                                         valMap = mutableMapOf()
                                 )
                         }
-
-                        // Stocker tous les aliments non filtrés
                         _allFoods.value = allFoods
-
-                        // Filtrer les aliments selon les critères actuels
-                        val filteredFoods = filterFoods(allFoods)
-
-                        // Mettre à jour l'état filtré
-                        _foods.value = filteredFoods
-
-                        // Mettre à jour les listes de valeurs disponibles pour les filtres
+                        normalizedIndex = buildNormalizedIndex(allFoods)
+                        _foods.value = filterFoods(allFoods)
                         updateAvailableFilterValues(allFoods)
                 }
         }
 
         /** Force le rechargement des données depuis le repository */
-        fun forceRefresh() {
-                viewModelScope.launch {
-                        // Forcer le rechargement des données (version light pour éviter les nutriments)
-                        val allFoodsLight = foodRepository.getAllFoodsLight()
-                        val allFoods = allFoodsLight.map { light ->
-                                fr.vetbrain.vetnutri_mp.Data.AlimentEv(
-                                        uuid = light.uuid,
-                                        nom = light.nom,
-                                        brand = light.brand,
-                                        group = light.group,
-                                        typeAliment = light.typeAliment,
-                                        gamme = light.gamme,
-                                        deprecated = light.deprecated,
-                                        dataB = light.dataB,
-                                        especes = light.especes.toMutableList(),
-                                        indicat = light.indicat.toMutableList(),
-                                        valMap = mutableMapOf()
-                                )
-                        }
-
-                        // Stocker tous les aliments non filtrés
-                        _allFoods.value = allFoods
-
-                        // Filtrer les aliments selon les critères actuels
-                        val filteredFoods = filterFoods(allFoods)
-
-                        // Mettre à jour l'état filtré
-                        _foods.value = filteredFoods
-
-                        // Mettre à jour les listes de valeurs disponibles pour les filtres
-                        updateAvailableFilterValues(allFoods)
-                }
-        }
+        fun forceRefresh() = loadFoods()
 
         /** Met à jour les listes de valeurs disponibles pour les filtres */
         private fun updateAvailableFilterValues(allFoods: List<AlimentEv>) {
@@ -184,10 +168,9 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                 _availableIndications.value = listOf(null) + indications
         }
 
-        /** Définit le filtre de recherche */
+        /** Définit le filtre de recherche — le debounce gère le refiltre */
         fun setSearchQuery(query: String) {
                 _searchQuery.value = query
-                viewModelScope.launch { refreshFilteredFoods() }
         }
 
         /** Définit le filtre par type d'aliment */
@@ -226,188 +209,63 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                 _foods.value = filterFoods(_allFoods.value)
         }
 
-        /** Filtre les aliments selon les critères de recherche */
+        /** Filtre les aliments selon les critères de recherche — utilise l'index normalisé */
         private fun filterFoods(foods: List<AlimentEv>): List<AlimentEv> {
-                return foods
-                        .filter { aliment ->
-                                // Filtre par recherche textuelle avec recherche multi-mots (OR)
-                                val matchesSearch =
-                                        if (searchQuery.value.isEmpty()) true
-                                        else {
-                                                val searchWords =
-                                                        searchQuery
-                                                                .value
-                                                                .trim()
-                                                                .split("\\s+".toRegex())
-                                                                .filter { it.isNotEmpty() }
-                                                                .map { it.lowercase() }
+                val query = searchQuery.value
+                val searchWords = if (query.isBlank()) emptyList()
+                else query.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }.map { it.lowercase() }
 
-                                                if (searchWords.isEmpty()) true
-                                                else {
-                                                        // Au moins un mot doit être trouvé dans au
-                                                        // moins un des champs
-                                                        searchWords.any { word ->
-                                                                aliment.nom
-                                                                        ?.lowercase()
-                                                                        ?.contains(word) == true ||
-                                                                        aliment.brand
-                                                                                ?.lowercase()
-                                                                                ?.contains(word) ==
-                                                                                true ||
-                                                                        aliment.gamme
-                                                                                ?.lowercase()
-                                                                                ?.contains(word) ==
-                                                                                true ||
-                                                                        aliment.ingredients
-                                                                                ?.lowercase()
-                                                                                ?.contains(word) ==
-                                                                                true
-                                                        }
-                                                }
-                                        }
+                val targetEspece = selectedEspece.value
+                val filterEspece = targetEspece != null && targetEspece != Espece.CH
+                // Pré-calculer les identifiants lowercase de l'espèce sélectionnée
+                val especeKeys: Set<String> = if (filterEspece && targetEspece != null) {
+                        setOfNotNull(
+                                targetEspece.name.lowercase(),
+                                targetEspece.label.lowercase(),
+                                targetEspece.id.lowercase()
+                        )
+                } else emptySet()
 
-                                // Filtre par type d'aliment
-                                val matchesFoodType =
-                                        selectedFoodType.value == null ||
-                                                selectedFoodType.value == FoodKind.ALL ||
-                                                aliment.typeAliment == selectedFoodType.value
+                // Utiliser l'index normalisé si disponible, sinon la liste brute
+                val source = if (normalizedIndex.size == foods.size) normalizedIndex
+                             else buildNormalizedIndex(foods)
 
-                                // Filtre par groupe d'aliment
-                                val matchesFoodGroup =
-                                        selectedFoodGroup.value == null ||
-                                                selectedFoodGroup.value == GroupAlim.ALL ||
-                                                aliment.group == selectedFoodGroup.value
+                return source
+                        .filter { norm ->
+                                val aliment = norm.aliment
 
-                                // Filtre par espèce avec traitement amélioré
-                                val matchesEspece =
-                                        if (selectedEspece.value == null ||
-                                                        selectedEspece.value == Espece.CH
-                                        ) {
-                                                true // Aucun filtre d'espèce sélectionné ou toutes
-                                                // les espèces acceptées
-                                        } else {
-                                                aliment.especes.any { especeStr ->
-                                                        try {
-                                                                // 1. Vérifier correspondance
-                                                                // directe avec le nom de l'enum ou
-                                                                // label
-                                                                if (especeStr ==
-                                                                                selectedEspece
-                                                                                        .value
-                                                                                        ?.name ||
-                                                                                especeStr ==
-                                                                                        selectedEspece
-                                                                                                .value
-                                                                                                ?.label ||
-                                                                                especeStr ==
-                                                                                        selectedEspece
-                                                                                                .value
-                                                                                                ?.id ||
-                                                                                especeStr ==
-                                                                                        selectedEspece
-                                                                                                .value
-                                                                                                ?.ordinal
-                                                                                                .toString()
-                                                                ) {
-                                                                        return@any true
-                                                                }
+                                // Filtre textuel sur champs pré-normalisés
+                                val matchesSearch = searchWords.isEmpty() || searchWords.any { word ->
+                                        norm.nomLower.contains(word) ||
+                                        norm.brandLower.contains(word) ||
+                                        norm.gammeLower.contains(word) ||
+                                        norm.ingredientsLower.contains(word)
+                                }
 
-                                                                // 2. Vérifier correspondance
-                                                                // insensible à la casse
-                                                                if (especeStr.equals(
-                                                                                selectedEspece
-                                                                                        .value
-                                                                                        ?.name,
-                                                                                ignoreCase = true
-                                                                        ) ||
-                                                                                especeStr.equals(
-                                                                                        selectedEspece
-                                                                                                .value
-                                                                                                ?.label,
-                                                                                        ignoreCase =
-                                                                                                true
-                                                                                )
-                                                                ) {
-                                                                        return@any true
-                                                                }
+                                val matchesFoodType = selectedFoodType.value == null ||
+                                        selectedFoodType.value == FoodKind.ALL ||
+                                        aliment.typeAliment == selectedFoodType.value
 
-                                                                // 3. Utiliser la fonction
-                                                                // centralisée pour obtenir
-                                                                // l'énumération
-                                                                val especeEnum =
-                                                                        Espece.getFromString(
-                                                                                especeStr
-                                                                        )
+                                val matchesFoodGroup = selectedFoodGroup.value == null ||
+                                        selectedFoodGroup.value == GroupAlim.ALL ||
+                                        aliment.group == selectedFoodGroup.value
 
-                                                                // 4. Comparer l'énumération
-                                                                // récupérée avec celle sélectionnée
-                                                                if (especeEnum != null &&
-                                                                                especeEnum ==
-                                                                                        selectedEspece
-                                                                                                .value
-                                                                ) {
-                                                                        return@any true
-                                                                }
+                                // Filtre espèce sans try-catch : lookup dans les clés pré-calculées
+                                val matchesEspece = !filterEspece || norm.especeStrings.any { s ->
+                                        especeKeys.contains(s) || Espece.getFromString(s) == targetEspece
+                                }
 
-                                                                false // Aucune correspondance
-                                                                // trouvée
-                                                        } catch (e: Exception) {
-                                                                // En cas d'erreur dans les
-                                                                // conversions, on vérifie
-                                                                // simplement l'égalité des chaînes
-                                                                especeStr ==
-                                                                        selectedEspece
-                                                                                .value
-                                                                                ?.name ||
-                                                                        especeStr ==
-                                                                                selectedEspece
-                                                                                        .value
-                                                                                        ?.label ||
-                                                                        especeStr.equals(
-                                                                                selectedEspece
-                                                                                        .value
-                                                                                        ?.name,
-                                                                                ignoreCase = true
-                                                                        ) ||
-                                                                        especeStr.equals(
-                                                                                selectedEspece
-                                                                                        .value
-                                                                                        ?.label,
-                                                                                ignoreCase = true
-                                                                        )
-                                                        }
-                                                }
-                                        }
+                                val matchesIndication = selectedIndication.value == null ||
+                                        selectedIndication.value == AlimIndic.ALL ||
+                                        aliment.indicat.any { it == selectedIndication.value }
 
-                                // Filtre par indication
-                                val matchesIndication =
-                                        if (selectedIndication.value == null ||
-                                                        selectedIndication.value == AlimIndic.ALL
-                                        ) {
-                                                true // Aucun filtre d'indication sélectionné ou
-                                                // toutes les indications acceptées
-                                        } else {
-                                                aliment.indicat.any { indication ->
-                                                        indication == selectedIndication.value
-                                                }
-                                        }
+                                val matchesDataB = selectedDataB.value.isNullOrEmpty() ||
+                                        aliment.dataB?.trim() == selectedDataB.value?.trim()
 
-                                // Filtre par base de données
-                                val matchesDataB =
-                                        if (selectedDataB.value == null || selectedDataB.value == ""
-                                        ) {
-                                                true // Aucun filtre de base de données sélectionné
-                                        } else {
-                                                aliment.dataB?.trim() == selectedDataB.value?.trim()
-                                        }
-
-                                matchesSearch &&
-                                        matchesFoodType &&
-                                        matchesFoodGroup &&
-                                        matchesEspece &&
-                                        matchesIndication &&
-                                        matchesDataB
+                                matchesSearch && matchesFoodType && matchesFoodGroup &&
+                                        matchesEspece && matchesIndication && matchesDataB
                         }
+                        .map { it.aliment }
                         .sortedBy { it.nom }
         }
 

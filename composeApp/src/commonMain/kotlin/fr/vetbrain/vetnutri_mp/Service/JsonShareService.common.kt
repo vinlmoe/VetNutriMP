@@ -30,9 +30,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
     
     private val baseUrl = "https://api.jsonbin.io/v3"
 
-    private fun log(message: String) {
-        println("JsonShareService: $message")
-    }
+    private fun log(@Suppress("UNUSED_PARAMETER") message: String) = Unit
 
     @Serializable
     private data class EncryptedPayload(

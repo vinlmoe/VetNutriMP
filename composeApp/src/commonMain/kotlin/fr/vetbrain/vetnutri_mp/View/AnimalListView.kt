@@ -503,7 +503,6 @@ fun AnimalListView(
                                     val result =
                                         viewModel.importFromJsonBin(quickImportInput.trim())
                                     viewModel.setImportResult(result)
-                                    println("[QUICK_IMPORT] Result set: ${result::class.simpleName}")
                                     if (result is AnimalListViewModel.ImportResult.Success &&
                                         result.animalIds.size == 1
                                     ) {
@@ -640,17 +639,9 @@ fun AnimalListView(
                             viewModel.resetImportResult()
                             if (shouldOpen) {
                                 coroutineScope.launch {
-                                    println("[QUICK_IMPORT] Attempt auto-open for animalId=$id")
                                     val animal = viewModel.getAnimalById(id!!)
-                                    if (animal != null) {
-                                        println("[QUICK_IMPORT] Auto-open success for animalId=$id")
-                                        onSelectAnimal(animal)
-                                    } else {
-                                        println("[QUICK_IMPORT] Auto-open failed: animal not found for id=$id")
-                                    }
+                                    if (animal != null) onSelectAnimal(animal)
                                 }
-                            } else {
-                                println("[QUICK_IMPORT] Auto-open skipped: shouldOpen=$shouldOpen id=$id")
                             }
                         }
                     ) { Text("OK") }

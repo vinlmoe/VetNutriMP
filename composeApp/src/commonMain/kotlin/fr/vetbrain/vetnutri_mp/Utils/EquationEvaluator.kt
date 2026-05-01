@@ -51,11 +51,6 @@ object EquationEvaluator {
             referenceEv: ReferenceEv?
     ) {
         if (referenceEv == null) return
-        try {
-            println(
-                    "VN_DEBUG_ENA: injecterNutrimentsDepuisReference start ref='${referenceEv.nom}' ENERGIE=${variables["ENERGIE"] ?: 0.0} PROTEINE=${variables["PROTEINE"] ?: 0.0} LIPIDE=${variables["LIPIDE"] ?: 0.0} ENA=${variables["ENA"] ?: 0.0}"
-            )
-        } catch (_: Throwable) {}
         val equationsComplementaires =
                 referenceEv.equationsNut.filter {
                     it.kind == fr.vetbrain.vetnutri_mp.Enumer.EquationKind.COMPLEMENTARY_NUTRIENT &&
@@ -69,22 +64,10 @@ object EquationEvaluator {
             val listeEquations = equationsParNutriment[label] ?: emptyList()
             if (listeEquations.isEmpty()) return@forEach
             val valeurExistante = variables[label] ?: 0.0
-            if (valeurExistante > 0.0) {
-                try {
-                    println(
-                            "VN_DEBUG_ENA: ENA déjà définie (${valeurExistante}) pour ref='${referenceEv.nom}', aucune équation appliquée"
-                    )
-                } catch (_: Throwable) {}
-                return@forEach
-            }
+            if (valeurExistante > 0.0) return@forEach
             var accumulation: Double? = null
             listeEquations.forEach { eq ->
                 val res = ExpressionMathematique.evaluer(eq.equationScript, variables) ?: 0.0
-                try {
-                    println(
-                            "VN_DEBUG_ENA: évaluation équation ENA uuid=${eq.uuid} ratio=${eq.ratio} res=$res"
-                    )
-                } catch (_: Throwable) {}
                 accumulation =
                         if (eq.ratio) {
                             res
@@ -95,11 +78,6 @@ object EquationEvaluator {
             val valeurFinale = accumulation
             if (valeurFinale != null && !valeurFinale.isNaN() && !valeurFinale.isInfinite()) {
                 variables[label] = valeurFinale
-                try {
-                    println(
-                            "VN_DEBUG_ENA: ENA injectée depuis ReferenceEv ref='${referenceEv.nom}' valeur=$valeurFinale"
-                    )
-                } catch (_: Throwable) {}
             }
         }
     }
@@ -511,13 +489,6 @@ object EquationEvaluator {
                         )
                 if (enaFromRefEv != null && enaFromRefEv > 0.0) {
                     variables[NutrientMain.ENA.label] = enaFromRefEv
-                    println(
-                            "VN_DEBUG_ENA: Energie100g override ENA depuis ReferenceEv alim='${alimentEv?.nom}' ENA_100g=$enaFromRefEv ref='${referenceEv.nom}'"
-                    )
-                } else {
-                    println(
-                            "VN_DEBUG_ENA: Energie100g ENA via ReferenceEv indisponible ou nulle pour alim='${alimentEv?.nom}' ref='${referenceEv.nom}' (ENA=${enaFromRefEv ?: 0.0})"
-                    )
                 }
             } catch (_: Throwable) {}
         }

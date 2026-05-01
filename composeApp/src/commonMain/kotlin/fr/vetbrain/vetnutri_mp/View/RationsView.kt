@@ -1225,7 +1225,8 @@ fun RationsView(
                                                                                 items(
                                                                                         selectedConsultation
                                                                                                 ?.rations
-                                                                                                ?: emptyList()
+                                                                                                ?: emptyList(),
+                                                                                        key = { ration -> ration.uuid }
                                                                                 ) { ration ->
                                                                                         RationItem(
                                                                                                 ration =
