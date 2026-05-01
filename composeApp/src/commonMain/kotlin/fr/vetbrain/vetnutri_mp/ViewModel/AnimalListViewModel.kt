@@ -347,11 +347,9 @@ class AnimalListViewModel(
         return try {
             startApiImport()
             appendApiImportLog("🔄 Début de l'import depuis jsonbin.io...")
-            println("[QUICK_IMPORT] Start importFromJsonBin input=$binIdOrUrl")
             val preImportIds = try {
                 animalRepository.getAllAnimals().map { it.uuid }.toSet()
-            } catch (e: Exception) {
-                println("[QUICK_IMPORT] Pre-import animal list failed: ${e.message}")
+            } catch (_: Exception) {
                 emptySet()
             }
 
@@ -365,7 +363,6 @@ class AnimalListViewModel(
                 binIdOrUrl.contains("jsonbin.io") -> {
                     shareService.extractBinIdFromUrl(binIdOrUrl) ?: run {
                         finishApiImport()
-                        println("[QUICK_IMPORT] Failed to extract binId from URL=$binIdOrUrl")
                         return ImportResult.Error("Impossible d'extraire l'ID du bin depuis l'URL: $binIdOrUrl")
                     }
                 }
@@ -376,7 +373,6 @@ class AnimalListViewModel(
             if (qrPayload != null) {
                 appendApiImportLog("🔐 QR chiffré détecté (bin: $binId)")
             }
-            println("[QUICK_IMPORT] Parsed binId=$binId hasKey=${qrPayload != null}")
 
             appendApiImportLog("📥 Téléchargement du bin: $binId")
             updateApiImportProgress(0.1)
@@ -398,10 +394,8 @@ class AnimalListViewModel(
                             val obj = element as? JsonObject ?: return@mapNotNull null
                             obj["uuid"]?.jsonPrimitive?.content
                         }
-                    println("[QUICK_IMPORT] Parsed animals array size=${animalsArray.size} ids=$ids")
                     ids
-                } catch (e: Exception) {
-                    println("[QUICK_IMPORT] Envelope parse failed: ${e.message}")
+                } catch (_: Exception) {
                     emptyList()
                 }
 
@@ -445,20 +439,14 @@ class AnimalListViewModel(
                     }
                 )
             )
-            println("[QUICK_IMPORT] Import counts: animals=${importCounts.animals}")
-
             val postImportIds = try {
                 animalRepository.getAllAnimals().map { it.uuid }.toSet()
-            } catch (e: Exception) {
-                println("[QUICK_IMPORT] Post-import animal list failed: ${e.message}")
+            } catch (_: Exception) {
                 emptySet()
             }
             val newIds = (postImportIds - preImportIds).toList()
             val resolvedAnimalIds =
                 if (importedAnimalIds.isNotEmpty()) importedAnimalIds else newIds
-            println(
-                "[QUICK_IMPORT] Resolved animalIds=${resolvedAnimalIds} (newIds=${newIds.size})"
-            )
 
             updateApiImportProgress(1.0)
 

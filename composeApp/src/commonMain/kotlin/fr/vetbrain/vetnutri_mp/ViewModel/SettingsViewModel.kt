@@ -556,7 +556,6 @@ class SettingsViewModel(
         val logMessages = mutableListOf<String>()
         fun log(message: String) {
             logMessages.add(message)
-            println("[IMPORT] $message")
         }
         
         return try {

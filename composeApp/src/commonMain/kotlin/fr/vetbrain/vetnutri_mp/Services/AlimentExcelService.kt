@@ -698,17 +698,9 @@ class AlimentExcelService {
     /**
      * Fonctions de logging pour le débogage
      */
-    private fun logInfo(message: String) {
-        println("[CSV_IMPORT][INFO] $message")
-    }
-    
-    private fun logError(message: String) {
-        println("[CSV_IMPORT][ERROR] $message")
-    }
-    
-    private fun logWarning(message: String) {
-        println("[CSV_IMPORT][WARN] $message")
-    }
+    private fun logInfo(@Suppress("UNUSED_PARAMETER") message: String) = Unit
+    private fun logError(@Suppress("UNUSED_PARAMETER") message: String) = Unit
+    private fun logWarning(@Suppress("UNUSED_PARAMETER") message: String) = Unit
 
     /**
      * Résultat de l'import

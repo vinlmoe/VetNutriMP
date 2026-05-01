@@ -187,7 +187,12 @@ android {
     }
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             versionNameSuffix = rootProject.extra["releaseVersionNameSuffix"] as String
             // AGP 8.5.1+ applique automatiquement l'alignement 16KB lors du packaging
             // Référence: https://developer.android.com/guide/practices/page-sizes?hl=fr#compile-16-kb-alignment
