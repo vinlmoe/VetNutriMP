@@ -11,6 +11,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -87,6 +92,12 @@ fun <T> AutocompleteTextField(
                         placeholder = placeholder?.let { { Text(it) } },
                         modifier = Modifier
                                 .fillMaxWidth()
+                                .onPreviewKeyEvent { keyEvent ->
+                                        if (keyEvent.key == Key.Escape && keyEvent.type == KeyEventType.KeyDown && expanded) {
+                                                expanded = false
+                                                true
+                                        } else false
+                                }
                                 .onFocusChanged { focusState ->
                                         val wasFocused = isFocused
                                         isFocused = focusState.isFocused
