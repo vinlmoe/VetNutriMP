@@ -203,6 +203,11 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                 viewModelScope.launch { refreshFilteredFoods() }
         }
 
+        /** Rafraîchit la liste filtrée immédiatement, sans attendre le debounce (ex: touche Enter) */
+        fun forceRefreshSearch() {
+                viewModelScope.launch { refreshFilteredFoods() }
+        }
+
         /** Rafraîchit la liste filtrée des aliments */
         private suspend fun refreshFilteredFoods() {
                 // Appliquer les filtres sur les données stockées localement

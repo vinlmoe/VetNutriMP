@@ -22,7 +22,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -87,7 +89,8 @@ fun FoodSearchComponent(
         onFiltersChange: (FoodSearchFilters) -> Unit,
         config: FoodSearchConfig = FoodSearchConfig(),
         modifier: Modifier = Modifier,
-        allFoods: List<AlimentEv>? = null
+        allFoods: List<AlimentEv>? = null,
+        onSearchSubmit: (() -> Unit)? = null
 ) {
         // État pour stocker les nutriments chargés depuis la base de données
         var loadedNutrients by remember { 
@@ -388,6 +391,7 @@ fun FoodSearchComponent(
                                 filteredFoods = filteredFoods,
                                 filters = filters,
                                 onFiltersChange = onFiltersChange,
+                                onSearchSubmit = onSearchSubmit,
                                 config = config,
                                 modifier = modifier
                         )
@@ -397,6 +401,7 @@ fun FoodSearchComponent(
                                 filteredFoods = filteredFoods,
                                 filters = filters,
                                 onFiltersChange = onFiltersChange,
+                                onSearchSubmit = onSearchSubmit,
                                 config = config,
                                 modifier = modifier
                         )
@@ -406,6 +411,7 @@ fun FoodSearchComponent(
                                 filteredFoods = filteredFoods,
                                 filters = filters,
                                 onFiltersChange = onFiltersChange,
+                                onSearchSubmit = onSearchSubmit,
                                 config = config,
                                 modifier = modifier
                         )
@@ -420,6 +426,7 @@ private fun VerticalLayout(
         filteredFoods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
+        onSearchSubmit: (() -> Unit)? = null,
         config: FoodSearchConfig,
         modifier: Modifier
 ) {
@@ -434,6 +441,7 @@ private fun VerticalLayout(
                                 onSearchQueryChange = {
                                         onFiltersChange(filters.copy(searchQuery = it))
                                 },
+                                onSearch = onSearchSubmit,
                                 modifier = Modifier.fillMaxWidth()
                         )
                 }
@@ -465,6 +473,7 @@ private fun HorizontalLayout(
         filteredFoods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
+        onSearchSubmit: (() -> Unit)? = null,
         config: FoodSearchConfig,
         modifier: Modifier
 ) {
@@ -483,6 +492,7 @@ private fun HorizontalLayout(
                                         foods = allFoods,
                                         filters = filters,
                                         onFiltersChange = onFiltersChange,
+                                        onSearchSubmit = onSearchSubmit,
                                         modifier = Modifier.fillMaxWidth()
                                 )
                         }
@@ -514,6 +524,7 @@ private fun CompactLayout(
         filteredFoods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
+        onSearchSubmit: (() -> Unit)? = null,
         config: FoodSearchConfig,
         modifier: Modifier
 ) {
@@ -532,6 +543,7 @@ private fun CompactLayout(
                                         onSearchQueryChange = {
                                                 onFiltersChange(filters.copy(searchQuery = it))
                                         },
+                                        onSearch = onSearchSubmit,
                                         modifier = Modifier.weight(1f)
                                 )
                         }
@@ -561,6 +573,7 @@ private fun CompactLayout(
 private fun SearchBar(
         searchQuery: String,
         onSearchQueryChange: (String) -> Unit,
+        onSearch: (() -> Unit)? = null,
         modifier: Modifier = Modifier
 ) {
         BasicAppTextField(
@@ -570,6 +583,8 @@ private fun SearchBar(
                 leadingIcon = Icons.Default.Search,
                 trailingIcon = if (searchQuery.isNotEmpty()) Icons.Default.Clear else null,
                 onTrailingIconClick = { onSearchQueryChange("") },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch?.invoke() }),
                 modifier = modifier.height(40.dp)
         )
 }
@@ -705,6 +720,7 @@ private fun FiltersCard(
         foods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
+        onSearchSubmit: (() -> Unit)? = null,
         modifier: Modifier = Modifier
 ) {
         var showAdvancedSortDialog by remember { mutableStateOf(false) }
@@ -726,6 +742,7 @@ private fun FiltersCard(
                                                 onSearchQueryChange = {
                                                         onFiltersChange(filters.copy(searchQuery = it))
                                                 },
+                                                onSearch = onSearchSubmit,
                                                 modifier = Modifier.weight(1f)
                                         )
                                         IconButtonWithTooltip(
