@@ -136,6 +136,27 @@ kotlin {
     }
 }
 
+// Génère AppSecretsGenerated.kt dans build/ (ignoré par git) depuis local.properties
+val generateSecrets by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/secrets/commonMain/fr/vetbrain/vetnutri_mp/Utils")
+    outputs.dir(outputDir)
+    inputs.property("createKey", jsonbinCreateKey)
+    inputs.property("readKey", jsonbinReadKey)
+    doLast {
+        outputDir.get().asFile.mkdirs()
+        File(outputDir.get().asFile, "AppSecretsGenerated.kt").writeText(
+            """
+            package fr.vetbrain.vetnutri_mp.Utils
+
+            internal const val JSONBIN_CREATE_KEY_VALUE: String = "$jsonbinCreateKey"
+            internal const val JSONBIN_READ_KEY_VALUE: String   = "$jsonbinReadKey"
+            """.trimIndent()
+        )
+    }
+}
+kotlin.sourceSets["commonMain"].kotlin
+    .srcDir(generateSecrets.map { it.outputs.files })
+
 android {
     namespace = "fr.vetbrain.vetnutri_mp"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -154,9 +175,6 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 245
         versionName = "3.2.45"
-
-        buildConfigField("String", "JSONBIN_CREATE_KEY", "\"$jsonbinCreateKey\"")
-        buildConfigField("String", "JSONBIN_READ_KEY",   "\"$jsonbinReadKey\"")
 
         // Configuration de Room
 
@@ -221,10 +239,6 @@ dependencies { debugImplementation(compose.uiTooling) }
 compose.desktop {
     application {
         mainClass = "fr.vetbrain.vetnutri_mp.MainKt"
-
-        // Injection des secrets comme propriétés JVM (run + distributions natives)
-        if (jsonbinCreateKey.isNotBlank()) jvmArgs("-Djsonbin.create.key=$jsonbinCreateKey")
-        if (jsonbinReadKey.isNotBlank())   jvmArgs("-Djsonbin.read.key=$jsonbinReadKey")
 
         buildTypes.release { proguard { isEnabled.set(false) } }
 
