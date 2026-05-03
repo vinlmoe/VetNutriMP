@@ -2,6 +2,14 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.gradle.jvm.tasks.Jar
 
+// Lecture des secrets depuis local.properties (ignoré par git)
+val localProps = java.util.Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
+}
+val jsonbinCreateKey: String = localProps.getProperty("jsonbin.create.key", "")
+val jsonbinReadKey: String   = localProps.getProperty("jsonbin.read.key", "")
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
@@ -147,6 +155,9 @@ android {
         versionCode = 245
         versionName = "3.2.45"
 
+        buildConfigField("String", "JSONBIN_CREATE_KEY", "\"$jsonbinCreateKey\"")
+        buildConfigField("String", "JSONBIN_READ_KEY",   "\"$jsonbinReadKey\"")
+
         // Configuration de Room
 
         // Configuration pour la compatibilité avec les pages mémoire de 16KB (Android 15+)
@@ -210,6 +221,10 @@ dependencies { debugImplementation(compose.uiTooling) }
 compose.desktop {
     application {
         mainClass = "fr.vetbrain.vetnutri_mp.MainKt"
+
+        // Injection des secrets comme propriétés JVM (run + distributions natives)
+        if (jsonbinCreateKey.isNotBlank()) jvmArgs("-Djsonbin.create.key=$jsonbinCreateKey")
+        if (jsonbinReadKey.isNotBlank())   jvmArgs("-Djsonbin.read.key=$jsonbinReadKey")
 
         buildTypes.release { proguard { isEnabled.set(false) } }
 
