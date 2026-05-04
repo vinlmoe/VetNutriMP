@@ -26,6 +26,9 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.uuid.ExperimentalUuidApi
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * ViewModel liste animaux.
@@ -44,6 +47,12 @@ class AnimalListViewModel(
     internal val consultationRepository: fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository? = null,
     internal val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null
 ) : ViewModel() {
+    enum class AnimalSortOrder {
+        LAST_CONSULTATION,
+        NAME_ASC,
+        AGE
+    }
+
     // Instance statique de Json pour éviter la création redondante
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -53,6 +62,8 @@ class AnimalListViewModel(
 
     private val _selectedEspece = MutableStateFlow<Espece?>(null)
     val selectedEspece: StateFlow<Espece?> = _selectedEspece
+    private val _sortOrder = MutableStateFlow(AnimalSortOrder.NAME_ASC)
+    val sortOrder: StateFlow<AnimalSortOrder> = _sortOrder.asStateFlow()
 
     private val _keywordIncludeIds = MutableStateFlow<Set<String>>(emptySet())
     val keywordIncludeIds: StateFlow<Set<String>> = _keywordIncludeIds.asStateFlow()
@@ -84,7 +95,8 @@ class AnimalListViewModel(
             val espece: Espece?,
             val keywordMap: Map<String, Set<String>>,
             val includeIds: Set<String>,
-            val examSession: ExamSession?
+            val examSession: ExamSession?,
+            val sortOrder: AnimalSortOrder
     )
 
     val animals: StateFlow<List<AnimalEv>> =
@@ -95,7 +107,10 @@ class AnimalListViewModel(
                             _animalKeywordIds,
                             _keywordIncludeIds
                     ) { all, query, espece, keywordMap, includeIds ->
-                        AnimalFilterState(all, query, espece, keywordMap, includeIds, null)
+                        AnimalFilterState(all, query, espece, keywordMap, includeIds, null, AnimalSortOrder.NAME_ASC)
+                    }
+                    .combine(_sortOrder) { state, sortOrder ->
+                        state.copy(sortOrder = sortOrder)
                     }
                     .combine(_examSession) { state, examSession ->
                         state.copy(examSession = examSession)
@@ -108,7 +123,8 @@ class AnimalListViewModel(
                                 state.keywordMap,
                                 state.includeIds,
                                 excludeIds,
-                                state.examSession
+                                state.examSession,
+                                state.sortOrder
                         )
                     }
                     .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -144,6 +160,10 @@ class AnimalListViewModel(
         _selectedEspece.value = espece
     }
 
+    fun setSortOrder(sortOrder: AnimalSortOrder) {
+        _sortOrder.value = sortOrder
+    }
+
     fun setExamSession(session: ExamSession?) {
         _examSession.value = session
     }
@@ -155,11 +175,13 @@ class AnimalListViewModel(
             keywordMap: Map<String, Set<String>>,
             includeIds: Set<String>,
             excludeIds: Set<String>,
-            examSession: ExamSession?
+            examSession: ExamSession?,
+            sortOrder: AnimalSortOrder
     ): List<AnimalEv> {
         val trimmedQuery = query.trim()
 
-        return animals
+        val filteredAnimals =
+                animals
                 .filter { animal ->
                     val matchesExam =
                             if (examSession == null) {
@@ -191,7 +213,24 @@ class AnimalListViewModel(
 
                     matchesExam && matchesQuery && matchesEspece && matchesKeywordInclude && matchesKeywordExclude
                 }
-                .sortedBy { it.nom }
+
+        return when (sortOrder) {
+            AnimalSortOrder.LAST_CONSULTATION ->
+                filteredAnimals.sortedWith(
+                    compareByDescending<AnimalEv> {
+                        it.consultations.mapNotNull { consultation -> consultation.date }.maxOrNull()
+                    }.thenBy { it.nom.lowercase() }
+                )
+            AnimalSortOrder.AGE -> {
+                val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+                filteredAnimals.sortedWith(
+                    compareByDescending<AnimalEv> { animal ->
+                        animal.birthdate?.let { birthdate -> today.year - birthdate.year }
+                    }.thenBy { it.nom.lowercase() }
+                )
+            }
+            AnimalSortOrder.NAME_ASC -> filteredAnimals.sortedBy { it.nom.lowercase() }
+        }
     }
 
     suspend fun exportExamAnimalsToJsonBin(session: ExamSession): Result<fr.vetbrain.vetnutri_mp.Service.ShareLink> {

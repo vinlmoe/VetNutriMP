@@ -9,7 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseVersionManager
+import fr.vetbrain.vetnutri_mp.Utils.AppLogo
 import fr.vetbrain.vetnutri_mp.Utils.TermsAcceptanceStorage
 import fr.vetbrain.vetnutri_mp.Utils.UpdateChecker
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
@@ -576,11 +576,11 @@ fun StartupScreen(
                                 }
 
                                 // Logo et titre
-                                Icon(
-                                        imageVector = Icons.Default.Storage,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(80.dp),
-                                        tint = VetNutriColors.Primary
+                                AppLogo(
+                                        modifier = Modifier,
+                                        size = 80.dp,
+                                        tint = VetNutriColors.Primary,
+                                        contentDescription = null
                                 )
 
                                 Spacer(modifier = Modifier.height(24.dp))

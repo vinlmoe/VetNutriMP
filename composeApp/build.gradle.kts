@@ -1,14 +1,19 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.gradle.jvm.tasks.Jar
+import java.util.Properties
 
 // Lecture des secrets depuis local.properties (ignoré par git)
-val localProps = java.util.Properties().apply {
+val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) load(f.inputStream())
 }
-val jsonbinCreateKey: String = localProps.getProperty("jsonbin.create.key", "")
-val jsonbinReadKey: String   = localProps.getProperty("jsonbin.read.key", "")
+val jsonbinCreateKey: String = localProps.getProperty("jsonbin.create.key")
+    ?: System.getenv("JSONBIN_CREATE_KEY")
+    ?: ""
+val jsonbinReadKey: String = localProps.getProperty("jsonbin.read.key")
+    ?: System.getenv("JSONBIN_READ_KEY")
+    ?: ""
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -122,6 +127,7 @@ kotlin {
                 implementation("com.openhtmltopdf:openhtmltopdf-svg-support:1.0.10")
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.slf4j.simple)
                 implementation("io.github.g0dkar:qrcode-kotlin:4.5.0")
             }
         }
@@ -143,13 +149,24 @@ val generateSecrets by tasks.registering {
     inputs.property("createKey", jsonbinCreateKey)
     inputs.property("readKey", jsonbinReadKey)
     doLast {
+        fun escapeKotlinString(value: String): String =
+            value
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("$", "\\$")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+
+        val escapedCreateKey = escapeKotlinString(jsonbinCreateKey)
+        val escapedReadKey = escapeKotlinString(jsonbinReadKey)
+
         outputDir.get().asFile.mkdirs()
         File(outputDir.get().asFile, "AppSecretsGenerated.kt").writeText(
             """
             package fr.vetbrain.vetnutri_mp.Utils
 
-            internal const val JSONBIN_CREATE_KEY_VALUE: String = "$jsonbinCreateKey"
-            internal const val JSONBIN_READ_KEY_VALUE: String   = "$jsonbinReadKey"
+            internal const val JSONBIN_CREATE_KEY_VALUE: String = "$escapedCreateKey"
+            internal const val JSONBIN_READ_KEY_VALUE: String   = "$escapedReadKey"
             """.trimIndent()
         )
     }
@@ -173,8 +190,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 245
-        versionName = "3.2.45"
+        versionCode = 246
+        versionName = "3.2.46"
 
         // Configuration de Room
 
@@ -245,7 +262,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "VetNutriMP"
-            packageVersion = "3.2.45"
+            packageVersion = "3.2.46"
             description = "Application de nutrition vétérinaire multiplateforme"
             copyright = "© 2026 VetBrain"
             vendor = "VetBrain"

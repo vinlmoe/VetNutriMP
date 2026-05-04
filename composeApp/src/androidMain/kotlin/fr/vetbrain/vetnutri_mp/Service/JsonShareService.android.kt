@@ -2,10 +2,27 @@ package fr.vetbrain.vetnutri_mp.Service
 
 import io.ktor.client.*
 import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.*
+import io.ktor.http.*
 
 actual class JsonShareService {
     private val helper = JsonShareServiceHelper(
-        httpClient = HttpClient(Android.create())
+        httpClient = HttpClient(Android.create()) {
+            install(HttpTimeout) {
+                requestTimeoutMillis = 60_000
+                connectTimeoutMillis = 30_000
+                socketTimeoutMillis = 60_000
+            }
+            install(HttpRequestRetry) {
+                maxRetries = 2
+                retryOnServerErrors(maxRetries)
+                exponentialDelay()
+                retryIf { _, response -> response.status.value == 429 }
+                retryOnExceptionIf { _, cause ->
+                    cause is HttpRequestTimeoutException || cause is java.net.SocketTimeoutException
+                }
+            }
+        }
     )
     
     actual suspend fun uploadJson(

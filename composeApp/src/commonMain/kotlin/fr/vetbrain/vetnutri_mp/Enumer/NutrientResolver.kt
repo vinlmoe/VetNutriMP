@@ -16,7 +16,12 @@ object NutrientResolver {
             NutrientLipid.entries.forEach { put(it.label.uppercase(), it) }
             NutrientVitam.entries.forEach { n ->
                 put(n.label.uppercase(), n)
-                n.altLabels.forEach { alt -> putIfAbsent(alt.uppercase(), n) }
+                n.altLabels.forEach { alt -> 
+                    val key = alt.uppercase()
+                    if (!containsKey(key)) {
+                        put(key, n)
+                    }
+                }
             }
             NutrientOther.entries.forEach { put(it.label.uppercase(), it) }
             AAEnum.entries.forEach { put(it.label.uppercase(), it) }
