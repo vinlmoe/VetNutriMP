@@ -4,7 +4,7 @@
 
 VetNutri MP permet aux vétérinaires et nutritionnistes de calculer et d'analyser les rations alimentaires des animaux de compagnie. Elle couvre la sélection des aliments, le calcul des besoins énergétiques, l'analyse nutritionnelle détaillée et l'export de rapports.
 
-> Version actuelle : **3.2.45**
+> Version actuelle : **3.2.46**
 
 ---
 
@@ -81,6 +81,28 @@ fr.vetbrain.vetnutri_mp/
 - Android SDK API 35
 - Xcode (iOS uniquement)
 - Gradle via wrapper (`./gradlew`)
+
+### Configuration JsonBin (Android / iOS / Desktop)
+
+Les clés API JsonBin sont injectées au build dans `commonMain`, donc partagées par toutes les plateformes.
+
+1. Créer/éditer `local.properties` (à la racine du repo, fichier ignoré par Git):
+
+```properties
+jsonbin.create.key=VOTRE_CLE_ECRITURE
+jsonbin.read.key=VOTRE_CLE_LECTURE
+```
+
+2. Alternative CI/CD (sans `local.properties`):
+
+```bash
+export JSONBIN_CREATE_KEY="VOTRE_CLE_ECRITURE"
+export JSONBIN_READ_KEY="VOTRE_CLE_LECTURE"
+```
+
+Priorité actuelle:
+- `local.properties`
+- puis variables d’environnement (`JSONBIN_CREATE_KEY`, `JSONBIN_READ_KEY`)
 
 ### Commandes
 

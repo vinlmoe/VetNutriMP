@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -210,6 +211,7 @@ suspend fun main(args: Array<String> = emptyArray()) {
                         appScope?.cancel()
                         exitApplication()
                     },
+                    icon = painterResource("icon.png"),
                     title = "VetNutri",
                     state = rememberWindowState(width = 1200.dp, height = 800.dp)
             ) { App(appDatabase) }

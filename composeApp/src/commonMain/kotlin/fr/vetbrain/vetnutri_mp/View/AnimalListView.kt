@@ -62,6 +62,7 @@ fun AnimalListView(
         val animals: List<AnimalEv> = viewModel.animals.collectAsState().value
         val searchQuery = viewModel.searchQuery.collectAsState().value
         val selectedEspece = viewModel.selectedEspece.collectAsState().value
+        val selectedSortOrder = viewModel.sortOrder.collectAsState().value
         val availableKeywords = viewModel.availableKeywords.collectAsState().value
         val keywordIncludeIds = viewModel.keywordIncludeIds.collectAsState().value
         val keywordExcludeIds = viewModel.keywordExcludeIds.collectAsState().value
@@ -290,6 +291,12 @@ fun AnimalListView(
                                                                 }
                                                         }
                                                 }
+
+                                                SortOrderDropdown(
+                                                        selectedSortOrder = selectedSortOrder,
+                                                        onSortOrderSelected = { viewModel.setSortOrder(it) },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                )
                                         }
                                 } else {
                                         Row(
@@ -365,6 +372,14 @@ fun AnimalListView(
                                                         }
                                                 }
                                         }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        SortOrderDropdown(
+                                                selectedSortOrder = selectedSortOrder,
+                                                onSortOrderSelected = { viewModel.setSortOrder(it) },
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
                                 }
                         }
 
@@ -660,6 +675,85 @@ fun AnimalListView(
                         onReset = { viewModel.clearKeywordFilters() },
                         onDismiss = { showKeywordFilterDialog = false }
                 )
+        }
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+private fun SortOrderDropdown(
+        selectedSortOrder: AnimalListViewModel.AnimalSortOrder,
+        onSortOrderSelected: (AnimalListViewModel.AnimalSortOrder) -> Unit,
+        modifier: Modifier = Modifier
+) {
+        var expanded by remember { mutableStateOf(false) }
+
+        val selectedLabel =
+                when (selectedSortOrder) {
+                        AnimalListViewModel.AnimalSortOrder.LAST_CONSULTATION ->
+                                "Tri: Dernière consultation"
+                        AnimalListViewModel.AnimalSortOrder.NAME_ASC ->
+                                "Tri: Nom (A-Z)"
+                        AnimalListViewModel.AnimalSortOrder.AGE ->
+                                "Tri: Âge"
+                }
+
+        ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = modifier
+        ) {
+                OutlinedTextField(
+                        value = selectedLabel,
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        trailingIcon = {
+                                Icon(
+                                        if (expanded) Icons.Default.KeyboardArrowUp
+                                        else Icons.Default.KeyboardArrowDown,
+                                        contentDescription = null
+                                )
+                        },
+                        colors =
+                                TextFieldDefaults.outlinedTextFieldColors(
+                                        focusedBorderColor = VetNutriColors.Primary,
+                                        unfocusedBorderColor = Color.Gray
+                                ),
+                        modifier = Modifier.fillMaxWidth()
+                )
+
+                DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = {
+                                if (!isIosPlatform) {
+                                        expanded = false
+                                }
+                        },
+                        modifier = Modifier.exposedDropdownSize()
+                ) {
+                        DropdownMenuItem(
+                                onClick = {
+                                        onSortOrderSelected(
+                                                AnimalListViewModel.AnimalSortOrder.LAST_CONSULTATION
+                                        )
+                                        expanded = false
+                                }
+                        ) { Text("Dernière consultation") }
+
+                        DropdownMenuItem(
+                                onClick = {
+                                        onSortOrderSelected(AnimalListViewModel.AnimalSortOrder.NAME_ASC)
+                                        expanded = false
+                                }
+                        ) { Text("Nom (A-Z)") }
+
+                        DropdownMenuItem(
+                                onClick = {
+                                        onSortOrderSelected(AnimalListViewModel.AnimalSortOrder.AGE)
+                                        expanded = false
+                                }
+                        ) { Text("Âge") }
+                }
         }
 }
 
