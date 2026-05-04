@@ -2,6 +2,14 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.gradle.jvm.tasks.Jar
 
+// Lecture des secrets depuis local.properties (ignoré par git)
+val localProps = java.util.Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
+}
+val jsonbinCreateKey: String = localProps.getProperty("jsonbin.create.key", "")
+val jsonbinReadKey: String   = localProps.getProperty("jsonbin.read.key", "")
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
@@ -128,6 +136,27 @@ kotlin {
     }
 }
 
+// Génère AppSecretsGenerated.kt dans build/ (ignoré par git) depuis local.properties
+val generateSecrets by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/secrets/commonMain/fr/vetbrain/vetnutri_mp/Utils")
+    outputs.dir(outputDir)
+    inputs.property("createKey", jsonbinCreateKey)
+    inputs.property("readKey", jsonbinReadKey)
+    doLast {
+        outputDir.get().asFile.mkdirs()
+        File(outputDir.get().asFile, "AppSecretsGenerated.kt").writeText(
+            """
+            package fr.vetbrain.vetnutri_mp.Utils
+
+            internal const val JSONBIN_CREATE_KEY_VALUE: String = "$jsonbinCreateKey"
+            internal const val JSONBIN_READ_KEY_VALUE: String   = "$jsonbinReadKey"
+            """.trimIndent()
+        )
+    }
+}
+kotlin.sourceSets["commonMain"].kotlin
+    .srcDir(generateSecrets.map { it.outputs.files })
+
 android {
     namespace = "fr.vetbrain.vetnutri_mp"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -187,7 +216,12 @@ android {
     }
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             versionNameSuffix = rootProject.extra["releaseVersionNameSuffix"] as String
             // AGP 8.5.1+ applique automatiquement l'alignement 16KB lors du packaging
             // Référence: https://developer.android.com/guide/practices/page-sizes?hl=fr#compile-16-kb-alignment

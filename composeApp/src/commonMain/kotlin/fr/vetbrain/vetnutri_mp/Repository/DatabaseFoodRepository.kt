@@ -183,9 +183,6 @@ class DatabaseFoodRepository(
             importOnlyIfNewer: Boolean = false
     ): FoodImportResult {
         return withContext(AppDispatchers.IO) {
-            println(
-                    "[CSV_DB_IMPORT][INFO] Début importFoodsDomain: aliments=${aliments.size}, mergeNutrients=$mergeNutrients, importOnlyIfNewer=$importOnlyIfNewer"
-            )
             var importCount: Int = 0
             var updateCount: Int = 0
             var errorCount: Int = 0
@@ -211,7 +208,6 @@ class DatabaseFoodRepository(
                         try {
                             if (aliment.uuid.isBlank()) {
                                 errorCount++
-                                println("[CSV_DB_IMPORT][ERROR] UUID vide détecté pendant le prétraitement")
                                 return@forEach
                             }
                             val belongs: Boolean = existingFoodUUIDs.contains(aliment.uuid)
@@ -225,11 +221,8 @@ class DatabaseFoodRepository(
                             } else {
                                 updateIds.add(aliment.uuid)
                             }
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             errorCount++
-                            println(
-                                    "[CSV_DB_IMPORT][ERROR] Prétraitement KO pour uuid=${aliment.uuid}: ${e.message}"
-                            )
                         }
                     }
 
@@ -260,11 +253,8 @@ class DatabaseFoodRepository(
                                     batchNutrientValues.addAll(
                                             aliment.valMap.toNutrientValueEntities(aliment.uuid)
                                     )
-                                } catch (e: Exception) {
+                                } catch (_: Exception) {
                                     errorCount++
-                                    println(
-                                            "[CSV_DB_IMPORT][ERROR] Préparation update KO pour uuid=${aliment.uuid}: ${e.message}"
-                                    )
                                 }
                             }
                         }
@@ -276,19 +266,13 @@ class DatabaseFoodRepository(
                             try {
                                 foodDao.insertFoods(part)
                                 importCount += part.size
-                            } catch (e: Exception) {
-                                println(
-                                        "[CSV_DB_IMPORT][ERROR] Insert batch KO (size=${part.size}): ${e.message}"
-                                )
+                            } catch (_: Exception) {
                                 part.forEach { entity ->
                                     try {
                                         foodDao.insertFoods(listOf(entity))
                                         importCount++
-                                    } catch (singleEx: Exception) {
+                                    } catch (_: Exception) {
                                         errorCount++
-                                        println(
-                                                "[CSV_DB_IMPORT][ERROR] Insert KO uuid=${entity.uuid}: ${singleEx.message}"
-                                        )
                                     }
                                 }
                             }
@@ -299,19 +283,13 @@ class DatabaseFoodRepository(
                             try {
                                 foodDao.updateFoods(part)
                                 updateCount += part.size
-                            } catch (e: Exception) {
-                                println(
-                                        "[CSV_DB_IMPORT][ERROR] Update batch KO (size=${part.size}): ${e.message}"
-                                )
+                            } catch (_: Exception) {
                                 part.forEach { entity ->
                                     try {
                                         foodDao.updateFoods(listOf(entity))
                                         updateCount++
-                                    } catch (singleEx: Exception) {
+                                    } catch (_: Exception) {
                                         errorCount++
-                                        println(
-                                                "[CSV_DB_IMPORT][ERROR] Update KO uuid=${entity.uuid}: ${singleEx.message}"
-                                        )
                                     }
                                 }
                             }
@@ -330,28 +308,18 @@ class DatabaseFoodRepository(
                                 allIds.chunked(500).forEach { part ->
                                     nutrientValueDao.deleteAllForAliments(part)
                                 }
-                            } catch (e: Exception) {
-                                println(
-                                        "[CSV_DB_IMPORT][WARN] Suppression nutriments existants KO: ${e.message}"
-                                )
+                            } catch (_: Exception) {
                             }
                         }
                         try {
                             batchNutrientValues.chunked(1000).forEach { chunk ->
                                 nutrientValueDao.insertNutrientValues(chunk)
                             }
-                        } catch (e: Exception) {
-                            println(
-                                    "[CSV_DB_IMPORT][WARN] Insert nutriments batch KO (size=${batchNutrientValues.size}): ${e.message}"
-                            )
+                        } catch (_: Exception) {
                             batchNutrientValues.forEach { nv ->
                                 try {
                                     nutrientValueDao.insertNutrientValues(listOf(nv))
-                                } catch (singleEx: Exception) {
-                                    println(
-                                            "[CSV_DB_IMPORT][WARN] Insert nutriment KO refAliment=${nv.refAliment}, nutrient=${nv.nutrientLabel}: ${singleEx.message}"
-                                    )
-                                }
+                                } catch (_: Exception) {}
                             }
                         }
                     }
@@ -385,10 +353,6 @@ class DatabaseFoodRepository(
                     nonResolvedNutrientsCount = nonResolvedNutrients.size,
                     nonResolvedNutrients = nonResolvedNutrients.keys.toList()
             )
-            println(
-                    "[CSV_DB_IMPORT][INFO] Fin importFoodsDomain: imported=$importCount, updated=$updateCount, errors=$errorCount"
-            )
-            
             return@withContext result
         }
     }
@@ -421,30 +385,28 @@ class DatabaseFoodRepository(
      */
     private suspend fun getAllFoodsFresh(): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
-            // Récupérer tous les aliments de la base de données
             val foodEntities = foodDao.getAllFoods()
+            if (foodEntities.isEmpty()) return@withContext emptyList()
 
-            // Transformer chaque entité en modèle de domaine avec ses valeurs nutritionnelles
-            val result =
-                    foodEntities.map { foodEntity ->
-                        val nutrientValues =
-                                if (nutrientValueDao != null) {
-                                    try {
-                                        nutrientValueDao.getNutrientValues(foodEntity.uuid)
-                                    } catch (_: Exception) {
-                                        emptyList()
-                                    }
-                                } else {
-                                    emptyList()
-                                }
-                        foodEntity.toAlimentEv(nutrientValues = nutrientValues)
-                    }
+            // Requête batch unique au lieu de N requêtes individuelles
+            val nutrientsByFood: Map<String, List<NutrientValueEntity>> =
+                if (nutrientValueDao != null) {
+                    try {
+                        val uuids = foodEntities.map { it.uuid }
+                        // Découper en lots de 500 pour éviter les limites SQL IN (...)
+                        uuids.chunked(500)
+                            .flatMap { chunk -> nutrientValueDao.getNutrientValuesForAliments(chunk) }
+                            .groupBy { it.refAliment }
+                    } catch (_: Exception) { emptyMap() }
+                } else emptyMap()
 
-            // Mettre à jour le cache avec les données fraîches
+            val result = foodEntities.map { foodEntity ->
+                foodEntity.toAlimentEv(nutrientValues = nutrientsByFood[foodEntity.uuid] ?: emptyList())
+            }
+
             val currentTime = Clock.System.now().toEpochMilliseconds()
             cachedFoods = result
             lastCacheTime = currentTime
-
             return@withContext result
         }
     }
@@ -522,36 +484,11 @@ class DatabaseFoodRepository(
     override suspend fun getAllFoods(): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
             val currentTime = Clock.System.now().toEpochMilliseconds()
-
-            // Vérifier si le cache est encore valide
             if (cachedFoods != null && (currentTime - lastCacheTime) < cacheValidityDuration) {
                 return@withContext cachedFoods!!
             }
-
-            // Récupérer tous les aliments de la base de données
-            val foodEntities = foodDao.getAllFoods()
-
-            // Transformer chaque entité en modèle de domaine avec ses valeurs nutritionnelles
-            val result =
-                    foodEntities.map { foodEntity ->
-                        val nutrientValues =
-                                if (nutrientValueDao != null) {
-                                    try {
-                                        nutrientValueDao.getNutrientValues(foodEntity.uuid)
-                                    } catch (_: Exception) {
-                                        emptyList()
-                                    }
-                                } else {
-                                    emptyList()
-                                }
-                        foodEntity.toAlimentEv(nutrientValues = nutrientValues)
-                    }
-
-            // Mettre à jour le cache
-            cachedFoods = result
-            lastCacheTime = currentTime
-
-            return@withContext result
+            // Déléguer à getAllFoodsFresh() qui utilise déjà la requête batch
+            getAllFoodsFresh()
         }
     }
 

@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.LocalTextStyle
@@ -64,6 +65,7 @@ fun AppTextField(
         isError: Boolean = false,
         errorMessage: String? = null,
         keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+        keyboardActions: KeyboardActions = KeyboardActions.Default,
         visualTransformation: VisualTransformation = VisualTransformation.None,
         singleLine: Boolean = false,
         maxLines: Int = Int.MAX_VALUE,
@@ -109,6 +111,7 @@ fun AppTextField(
                                 },
                         isError = isError,
                         keyboardOptions = keyboardOptions,
+                        keyboardActions = keyboardActions,
                         visualTransformation = visualTransformation,
                         singleLine = singleLine,
                         maxLines = maxLines,
@@ -157,6 +160,7 @@ fun NumberTextField(
         onTrailingIconClick: (() -> Unit)? = null,
         isError: Boolean = false,
         errorMessage: String? = null,
+        keyboardActions: KeyboardActions = KeyboardActions.Default,
         singleLine: Boolean = true,
         readOnly: Boolean = false,
         enabled: Boolean = true
@@ -173,6 +177,7 @@ fun NumberTextField(
                 isError = isError,
                 errorMessage = errorMessage,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardActions = keyboardActions,
                 singleLine = singleLine,
                 readOnly = readOnly,
                 enabled = enabled
@@ -218,6 +223,7 @@ fun BasicAppTextField(
         isError: Boolean = false,
         errorMessage: String? = null,
         keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+        keyboardActions: KeyboardActions = KeyboardActions.Default,
         singleLine: Boolean = true,
         maxLines: Int = Int.MAX_VALUE,
         readOnly: Boolean = false,
@@ -287,6 +293,7 @@ fun BasicAppTextField(
                                                         )
                                 ),
                         keyboardOptions = keyboardOptions,
+                        keyboardActions = keyboardActions,
                         visualTransformation = VisualTransformation.None,
                         singleLine = singleLine,
                         maxLines = maxLines,
@@ -327,6 +334,9 @@ fun BasicAppTextField(
                                                                                                         alpha =
                                                                                                                 0.3f
                                                                                                 )
+                                                                                isFocused ->
+                                                                                        VetNutriColors
+                                                                                                .Primary
                                                                                 else ->
                                                                                         MaterialTheme
                                                                                                 .colors
@@ -492,6 +502,7 @@ fun BasicNumberTextField(
         enabled: Boolean = true,
         allowDecimals: Boolean = true,
         allowNegative: Boolean = false,
+        keyboardActions: KeyboardActions = KeyboardActions.Default,
         focusRequester: FocusRequester? = null,
         selectAllOnFocus: Boolean = false
 ) {
@@ -520,6 +531,7 @@ fun BasicNumberTextField(
                 isError = isError,
                 errorMessage = errorMessage,
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                keyboardActions = keyboardActions,
                 singleLine = singleLine,
                 readOnly = readOnly,
                 enabled = enabled,

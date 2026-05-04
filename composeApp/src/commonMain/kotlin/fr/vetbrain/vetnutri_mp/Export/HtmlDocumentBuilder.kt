@@ -43,40 +43,12 @@ object HtmlDocumentBuilder {
             if (semantic == "null" || semantic == "none" || semantic == "na") return null
             return normalized
         }
-        if ((aliment.brand ?: "").contains("null", ignoreCase = true) ||
-            (aliment.gamme ?: "").contains("null", ignoreCase = true) ||
-            (aliment.nom ?: "").contains("null", ignoreCase = true)) {
-            println(
-                "[ORDO_ALIMENT_DEBUG] raw brand='${aliment.brand}' gamme='${aliment.gamme}' nom='${aliment.nom}'"
-            )
-            println(
-                "[ORDO_ALIMENT_DEBUG] raw gamme chars: ${
-                    aliment.gamme?.let { debugChars(it) } ?: "<null>"
-                }"
-            )
-        }
         val parts = listOf(
             clean(aliment.brand),
             clean(aliment.gamme),
             clean(aliment.nom)
         )
-            .filterNotNull()
-            .map { it.trim() }
-            .filter { value ->
-                val semantic =
-                    value.lowercase().replace(Regex("""[^\p{L}\p{N}]+"""), "")
-                value.isNotBlank() &&
-                    semantic != "null" &&
-                    semantic != "none" &&
-                    semantic != "na"
-            }
-        val result = if (parts.isEmpty()) "?" else parts.joinToString(", ")
-        if (result.contains(", null,", ignoreCase = true) || result.contains(" null", ignoreCase = true)) {
-            println(
-                "[ORDO_ALIMENT_DEBUG] cleaned parts=$parts result='$result' for uuid='${aliment.uuid}'"
-            )
-        }
-        return result
+        return if (parts.isEmpty()) "?" else parts.joinToString(", ")
     }
 
     /**

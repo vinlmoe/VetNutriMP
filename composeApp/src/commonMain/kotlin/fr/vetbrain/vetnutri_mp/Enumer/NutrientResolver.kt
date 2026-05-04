@@ -7,6 +7,27 @@ package fr.vetbrain.vetnutri_mp.Enumer
 /** Classe utilitaire permettant de résoudre les nutriments à partir de leur label. */
 object NutrientResolver {
 
+    // Lookup map O(1) construit une seule fois depuis toutes les énumérations
+    private val labelToNutrient: Map<String, Nutrient> by lazy {
+        buildMap {
+            NutrientMain.entries.forEach { put(it.label.uppercase(), it) }
+            NutrientMacro.entries.forEach { put(it.label.uppercase(), it) }
+            NutrientMin.entries.forEach { put(it.label.uppercase(), it) }
+            NutrientLipid.entries.forEach { put(it.label.uppercase(), it) }
+            NutrientVitam.entries.forEach { n ->
+                put(n.label.uppercase(), n)
+                n.altLabels.forEach { alt -> putIfAbsent(alt.uppercase(), n) }
+            }
+            NutrientOther.entries.forEach { put(it.label.uppercase(), it) }
+            AAEnum.entries.forEach { put(it.label.uppercase(), it) }
+            NutrientEnergy.entries.forEach { put(it.label.uppercase(), it) }
+            NutrientAnalysis.entries.forEach { put(it.label.uppercase(), it) }
+        }
+    }
+
+    // Cache des résultats de résolution (normalizedLabel → Nutrient?) pour éviter les répétitions
+    private val resolvedCache = HashMap<String, Nutrient?>(512)
+
     /**
      * Résout un nutriment à partir de son label. Cette fonction cherche dans toutes les classes
      * d'énumération de nutriments pour trouver celle qui correspond au label donné.
@@ -15,9 +36,20 @@ object NutrientResolver {
      * @return Le nutriment correspondant au label, ou null si aucun nutriment ne correspond
      */
     fun AllNutrientResolver(label: String): Nutrient? {
-        // Nettoyage plus approfondi du label
         val cleanedLabel = normalizeLabel(label)
 
+        // Cache hit — évite tout recalcul pour les labels déjà résolus
+        resolvedCache[cleanedLabel]?.let { return it }
+        if (resolvedCache.containsKey(cleanedLabel)) return null
+
+        val result = resolveNutrient(cleanedLabel)
+        resolvedCache[cleanedLabel] = result
+        return result
+    }
+
+    private fun resolveNutrient(cleanedLabel: String): Nutrient? {
+        // Lookup O(1) dans la map pré-construite
+        labelToNutrient[cleanedLabel.uppercase()]?.let { return it }
 
         // Traitement de cas spéciaux pour éviter les confusions connues ou gérer des alias
         when (cleanedLabel) {
@@ -67,77 +99,7 @@ object NutrientResolver {
             }
         }
 
-        // Approche robuste avec recherche automatique dans toutes les énumérations
-
-        // Vérifier dans NutrientMain (insensible à la casse)
-        val nutrientMain =
-                NutrientMain.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
-        if (nutrientMain != null) {
-            return nutrientMain
-        }
-
-        // Vérifier dans NutrientMacro (insensible à la casse)
-        val nutrientMacro =
-                NutrientMacro.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
-        if (nutrientMacro != null) {
-            return nutrientMacro
-        }
-
-        // Vérifier dans NutrientMin (insensible à la casse)
-        val nutrientMin =
-                NutrientMin.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
-        if (nutrientMin != null) {
-            return nutrientMin
-        }
-
-        // Vérifier dans NutrientLipid (insensible à la casse)
-        val nutrientLipid =
-                NutrientLipid.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
-        if (nutrientLipid != null) {
-            return nutrientLipid
-        }
-
-        // Vérifier dans NutrientVitam (insensible à la casse + recherche dans altLabels)
-        val nutrientVitam =
-                NutrientVitam.entries.find {
-                    it.label.equals(cleanedLabel, ignoreCase = true) ||
-                            it.altLabels.any { altLabel ->
-                                altLabel.equals(cleanedLabel, ignoreCase = true)
-                            }
-                }
-        if (nutrientVitam != null) {
-            return nutrientVitam
-        }
-
-        // Vérifier dans NutrientOther (insensible à la casse)
-        val nutrientOther =
-                NutrientOther.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
-        if (nutrientOther != null) {
-            return nutrientOther
-        }
-
-        // Vérifier dans AAEnum (insensible à la casse)
-        val aaEnum = AAEnum.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
-        if (aaEnum != null) {
-            return aaEnum
-        }
-
-        // Vérifier dans NutrientEnergy (insensible à la casse)
-        val nutrientEnergy =
-                NutrientEnergy.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
-        if (nutrientEnergy != null) {
-            return nutrientEnergy
-        }
-
-        // Vérifier dans NutrientAnalysis (insensible à la casse)
-        val nutrientAnalysis =
-                NutrientAnalysis.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
-        if (nutrientAnalysis != null) {
-            return nutrientAnalysis
-        }
-
-        // Si aucun nutriment n'a été trouvé avec une correspondance exacte, essayer une recherche
-        // plus flexible
+        // Fallback : recherche floue si le lookup exact a échoué
 
         // Essayer de trouver une correspondance avec une distance de Levenshtein (similarité de
         // chaîne)
@@ -578,20 +540,8 @@ object NutrientResolver {
      * @param normalizedLabel Le label normalisé à vérifier
      * @return true si le label correspond à un nutriment connu, false sinon
      */
-    private fun isKnownNutrient(normalizedLabel: String): Boolean {
-        // Vérifier dans toutes les énumérations de nutriments
-        return NutrientMain.entries.any { it.label.equals(normalizedLabel, ignoreCase = true) } ||
-                NutrientMacro.entries.any { it.label.equals(normalizedLabel, ignoreCase = true) } ||
-                NutrientMin.entries.any { it.label.equals(normalizedLabel, ignoreCase = true) } ||
-                NutrientLipid.entries.any { it.label.equals(normalizedLabel, ignoreCase = true) } ||
-                NutrientVitam.entries.any { it.label.equals(normalizedLabel, ignoreCase = true) } ||
-                NutrientOther.entries.any { it.label.equals(normalizedLabel, ignoreCase = true) } ||
-                AAEnum.entries.any { it.label.equals(normalizedLabel, ignoreCase = true) } ||
-                NutrientEnergy.entries.any {
-                    it.label.equals(normalizedLabel, ignoreCase = true)
-                } ||
-                NutrientAnalysis.entries.any { it.label.equals(normalizedLabel, ignoreCase = true) }
-    }
+    private fun isKnownNutrient(normalizedLabel: String): Boolean =
+        labelToNutrient.containsKey(normalizedLabel.uppercase())
 
     /** Obtient tous les labels de nutriments disponibles de toutes les énumérations */
     fun getAllNutrientLabels(): Set<String> {

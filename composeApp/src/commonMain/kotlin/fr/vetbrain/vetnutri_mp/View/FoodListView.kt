@@ -160,6 +160,7 @@ fun FoodListView(
                                         viewModel.setSelectedDataB(newFilters.dataB)
                                 },
                                 config = searchConfig,
+                                onSearchSubmit = { viewModel.forceRefreshSearch() },
                                 modifier = Modifier.fillMaxWidth()
                                 )
                 }
