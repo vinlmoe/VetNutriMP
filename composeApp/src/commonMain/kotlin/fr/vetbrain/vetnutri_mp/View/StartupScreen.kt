@@ -46,9 +46,7 @@ data class DatabaseStatus(
         val error: String? = null
 )
 
-private fun journaliserMiseAJour(message: String): Unit {
-        println("[StartupScreen] $message")
-}
+private fun journaliserMiseAJour(@Suppress("UNUSED_PARAMETER") message: String): Unit = Unit
 
 private fun extraireVersionJson(contenu: String): String? {
         val motif: Regex = "\"version\"\\s*:\\s*\"([^\"]+)\"".toRegex()

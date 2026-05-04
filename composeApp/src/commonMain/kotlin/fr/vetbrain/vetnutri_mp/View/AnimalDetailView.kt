@@ -105,18 +105,6 @@ private fun formatAlimentDisplayName(aliment: AlimentEv?): String {
                 if (semantic == "null" || semantic == "none" || semantic == "na") return null
                 return normalized
         }
-        if ((aliment.brand ?: "").contains("null", ignoreCase = true) ||
-                        (aliment.gamme ?: "").contains("null", ignoreCase = true) ||
-                        (aliment.nom ?: "").contains("null", ignoreCase = true)) {
-                println(
-                        "[CR_ALIMENT_DEBUG] raw brand='${aliment.brand}' gamme='${aliment.gamme}' nom='${aliment.nom}'"
-                )
-                println(
-                        "[CR_ALIMENT_DEBUG] raw gamme chars: ${
-                                aliment.gamme?.let { debugChars(it) } ?: "<null>"
-                        }"
-                )
-        }
         val parts =
                 listOf(
                                 clean(aliment.brand),
@@ -134,11 +122,6 @@ private fun formatAlimentDisplayName(aliment: AlimentEv?): String {
                                         semantic != "na"
                         }
         val result = if (parts.isEmpty()) "Ingredient" else parts.joinToString(", ")
-        if (result.contains(", null,", ignoreCase = true) || result.contains(" null", ignoreCase = true)) {
-                println(
-                        "[CR_ALIMENT_DEBUG] cleaned parts=$parts result='$result' for uuid='${aliment.uuid}'"
-                )
-        }
         return result
 }
 
@@ -2036,7 +2019,7 @@ private fun WideScreenLayout(
 
                                                         val currentConsultation: ConsultationEv? = selectedConsultation
                                                         if (currentConsultation != null && currentConsultation.rations.isNotEmpty()) {
-                                                                items(currentConsultation.rations) { ration ->
+                                                                items(currentConsultation.rations, key = { it.uuid }) { ration ->
                                                                 Row(
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth()
@@ -2697,7 +2680,7 @@ private fun WideScreenLayout(
                                                                 verticalArrangement =
                                                                         Arrangement.spacedBy(4.dp)
                                                         ) {
-                                                                items(filteredConseils) { conseil ->
+                                                                items(filteredConseils, key = { it.id ?: it.hashCode() }) { conseil ->
                                                                         val isAlreadySelected =
                                                                                 selectedConseils
                                                                                         .any {
@@ -3853,7 +3836,7 @@ private fun NarrowScreenLayout(
 
                                                                         val currentConsultation: ConsultationEv? = selectedConsultation
                                                                         if (currentConsultation != null && currentConsultation.rations.isNotEmpty()) {
-                                                                                items(currentConsultation.rations) { ration ->
+                                                                                items(currentConsultation.rations, key = { it.uuid }) { ration ->
                                                                                 Row(
                                                                                         modifier =
                                                                                                 Modifier.fillMaxWidth()
@@ -4500,7 +4483,7 @@ private fun NarrowScreenLayout(
                                                                 verticalArrangement =
                                                                         Arrangement.spacedBy(4.dp)
                                                         ) {
-                                                                items(filteredConseils) { conseil ->
+                                                                items(filteredConseils, key = { it.id ?: it.hashCode() }) { conseil ->
                                                                         val isAlreadySelected =
                                                                                 selectedConseils
                                                                                         .any {

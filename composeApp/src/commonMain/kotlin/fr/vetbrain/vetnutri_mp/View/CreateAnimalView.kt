@@ -12,9 +12,14 @@ import androidx.compose.material3.Text as M3Text
 import androidx.compose.material3.TextButton as M3TextButton
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
 import fr.vetbrain.vetnutri_mp.Components.AutocompleteTextField
 import fr.vetbrain.vetnutri_mp.Components.ComboBox
 import kotlinx.coroutines.launch
@@ -53,6 +58,13 @@ fun CreateAnimalView(
         var availableRaces by remember { mutableStateOf<List<String>>(emptyList()) }
         var showExamExerciseError by remember { mutableStateOf(false) }
         val coroutineScope = rememberCoroutineScope()
+
+        // FocusRequesters pour la navigation clavier entre champs (Tab / ImeAction.Next)
+        val focusId = remember { FocusRequester() }
+        val focusExamExercise = remember { FocusRequester() }
+        val focusNom = remember { FocusRequester() }
+        val focusProprietaire = remember { FocusRequester() }
+        val focusDate = remember { FocusRequester() }
 
         // Charger les races disponibles pour l'espèce actuelle
         LaunchedEffect(animal.specieId) {
@@ -139,7 +151,13 @@ fun CreateAnimalView(
                                         viewModel.updateAnimal(animal.copy(id = newId))
                                 },
                                 label = { Text(AnimalKeys.ID.translate()) },
-                                modifier = Modifier.fillMaxWidth()
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                keyboardActions = KeyboardActions(onNext = {
+                                        if (examSession != null) focusExamExercise.requestFocus()
+                                        else focusNom.requestFocus()
+                                }),
+                                modifier = Modifier.fillMaxWidth().focusRequester(focusId)
                         )
 
                         if (examSession != null) {
@@ -152,7 +170,10 @@ fun CreateAnimalView(
                                                 )
                                         },
                                         label = { Text(AnimalKeys.EXAM_EXERCISE_ID.translate()) },
-                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                        keyboardActions = KeyboardActions(onNext = { focusNom.requestFocus() }),
+                                        modifier = Modifier.fillMaxWidth().focusRequester(focusExamExercise),
                                         isError = showExamExerciseError
                                 )
                                 if (showExamExerciseError) {
@@ -170,7 +191,10 @@ fun CreateAnimalView(
                                         viewModel.updateAnimal(animal.copy(nom = newName))
                                 },
                                 label = { Text(AnimalKeys.NAME.translate()) },
-                                modifier = Modifier.fillMaxWidth()
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                keyboardActions = KeyboardActions(onNext = { focusProprietaire.requestFocus() }),
+                                modifier = Modifier.fillMaxWidth().focusRequester(focusNom)
                         )
 
                         OutlinedTextField(
@@ -179,7 +203,10 @@ fun CreateAnimalView(
                                         viewModel.updateAnimal(animal.copy(ownerName = newOwner))
                                 },
                                 label = { Text(AnimalKeys.OWNER.translate()) },
-                                modifier = Modifier.fillMaxWidth()
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                keyboardActions = KeyboardActions(onNext = { focusDate.requestFocus() }),
+                                modifier = Modifier.fillMaxWidth().focusRequester(focusProprietaire)
                         )
 
                         ComboBox(
@@ -224,7 +251,9 @@ fun CreateAnimalView(
                                         }
                                 },
                                 label = { Text(AnimalKeys.BIRTH_DATE.translate()) },
-                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                modifier = Modifier.fillMaxWidth().focusRequester(focusDate),
                                 isError = showDateError
                         )
 

@@ -10,6 +10,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.datetime.Clock
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.AppSecrets
 import fr.vetbrain.vetnutri_mp.Utils.CryptoUtils
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -20,19 +21,13 @@ import kotlinx.serialization.Serializable
  */
 internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
     
-    // Clés API jsonbin.io (optionnelles)
-    // Pour utiliser une clé API personnalisée, obtenez-la sur https://jsonbin.io/api-keys
-    // Utilisez X-Access-Key (pas X-Master-Key) pour les access keys
-    // - createUpdateApiKey : Clé d'accès en écriture (read/write)
-    // - readApiKey : Clé d'accès en lecture seule (read-only)
-    private val createUpdateApiKey: String? = "\$2a\$10\$MT3DjYFhsa1dDkM4CD.FVu/hgGmlbnPlKnJFo8BeoKlLjn01DUD7e"
-    private val readApiKey: String? = "\$2a\$10\$/HY9ayqrm63ps0vx5apI1.KG5tpNGdhsC3Hyx03SrwEpgnlrwD0Yq"
+    // Clés API jsonbin.io — injectées depuis local.properties (hors git)
+    private val createUpdateApiKey: String? = AppSecrets.jsonbinCreateKey
+    private val readApiKey: String?         = AppSecrets.jsonbinReadKey
     
     private val baseUrl = "https://api.jsonbin.io/v3"
 
-    private fun log(message: String) {
-        println("JsonShareService: $message")
-    }
+    private fun log(@Suppress("UNUSED_PARAMETER") message: String) = Unit
 
     @Serializable
     private data class EncryptedPayload(

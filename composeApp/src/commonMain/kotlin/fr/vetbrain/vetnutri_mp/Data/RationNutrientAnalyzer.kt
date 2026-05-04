@@ -322,13 +322,6 @@ suspend fun analyserValeursNutritionnellesRationAvecEquations(
                             equationRepository = equationRepository,
                             referenceEv = referenceEv
                     )
-                    if (nutriment == NutrientMain.ENA) {
-                        try {
-                            println(
-                                    "VN_DEBUG_ENA: RationAnalyse ingr='${alimentRation.aliment?.nom}' qte=${quantiteIngredient} ENA_100g=$valeurCalculee ref=${referenceEv?.nom} prefs=${preferencesPourCalcul != null}"
-                            )
-                        } catch (_: Throwable) {}
-                    }
                     valeurCalculee
                 }
 
@@ -610,14 +603,6 @@ suspend fun analyserValeursNutritionnellesRationSelective(
                                 equationRepository = equationRepository,
                                 referenceEv = referenceEv
                         )
-
-                if (nutriment == NutrientMain.ENA) {
-                    try {
-                        println(
-                                "VN_DEBUG_ENA: RationSelective ingr='${alimentRation.aliment?.nom}' qte=${quantiteIngredient} ENA_100g=$valeurPour100g ref=${referenceEv?.nom} prefs=${preferencesPourCalcul != null}"
-                        )
-                    } catch (_: Throwable) {}
-                }
 
                 if (valeurPour100g != null) {
                     val contributionIngredient =

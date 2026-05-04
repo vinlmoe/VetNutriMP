@@ -30,11 +30,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -178,9 +181,10 @@ class AnimalDetailViewModel(
     private val _speciesPreferences = MutableStateFlow<PreferencesEspece?>(null)
     val speciesPreferences: StateFlow<PreferencesEspece?> = _speciesPreferences.asStateFlow()
 
-    // StateFlow pour stocker le type d'expression des besoins
-    private val _typeExpressionBesoin = MutableStateFlow<TypeExpressionBesoin?>(null)
-    val typeExpressionBesoin: StateFlow<TypeExpressionBesoin?> = _typeExpressionBesoin.asStateFlow()
+    // Dérivé de speciesPreferences — recalculé automatiquement à chaque changement d'espèce
+    val typeExpressionBesoin: StateFlow<TypeExpressionBesoin?> = _speciesPreferences
+            .map { it?.getTypeExpressionBesoinEnum() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     // Override en mémoire (non sauvegardé) pour l'expression des besoins
     private val _typeExpressionBesoinOverride = MutableStateFlow<TypeExpressionBesoin?>(null)
     val typeExpressionBesoinOverride: StateFlow<TypeExpressionBesoin?> =
@@ -220,19 +224,28 @@ class AnimalDetailViewModel(
     private val _showFullScreenEdit = MutableStateFlow(false)
     val showFullScreenEdit: StateFlow<Boolean> = _showFullScreenEdit.asStateFlow()
 
-    // StateFlow pour les calculs métaboliques
-    private val _poidsMetabolique = MutableStateFlow<Double?>(null)
-    val poidsMetabolique: StateFlow<Double?> = _poidsMetabolique.asStateFlow()
+    // Groupe des calculs métaboliques — mis à jour atomiquement pour éviter les états partiels
+    private data class ValeursMetaboliques(
+            val referenceUtilisee: ReferenceEv? = null,
+            val poidsMetabolique: Double? = null,
+            val besoinEnergetiqueStandard: Double? = null,
+            val besoinEnergetiqueTotal: Double? = null
+    )
+    private val _valeursMetaboliques = MutableStateFlow(ValeursMetaboliques())
 
-    private val _besoinEnergetiqueStandard = MutableStateFlow<Double?>(null)
-    val besoinEnergetiqueStandard: StateFlow<Double?> = _besoinEnergetiqueStandard.asStateFlow()
-
-    private val _besoinEnergetiqueTotal = MutableStateFlow<Double?>(null)
-    val besoinEnergetiqueTotal: StateFlow<Double?> = _besoinEnergetiqueTotal.asStateFlow()
-
-    // StateFlow pour la référence utilisée dans les calculs
-    private val _referenceUtilisee = MutableStateFlow<ReferenceEv?>(null)
-    val referenceUtilisee: StateFlow<ReferenceEv?> = _referenceUtilisee.asStateFlow()
+    // API publique inchangée — chaque flow est dérivé du groupe
+    val referenceUtilisee: StateFlow<ReferenceEv?> = _valeursMetaboliques
+            .map { it.referenceUtilisee }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val poidsMetabolique: StateFlow<Double?> = _valeursMetaboliques
+            .map { it.poidsMetabolique }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val besoinEnergetiqueStandard: StateFlow<Double?> = _valeursMetaboliques
+            .map { it.besoinEnergetiqueStandard }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val besoinEnergetiqueTotal: StateFlow<Double?> = _valeursMetaboliques
+            .map { it.besoinEnergetiqueTotal }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     // ✨ États pour l'analyse graphique des aliments
     private val _alimentsSelectionnes = MutableStateFlow<List<AlimentEv>>(emptyList())
@@ -386,18 +399,16 @@ class AnimalDetailViewModel(
             _animal.value = originalAnimal
 
             // Charger les préférences de l'espèce de l'animal
+            // typeExpressionBesoin est dérivé automatiquement de _speciesPreferences
             try {
                 preferencesRepository.loadPreferences()
                 val preferences = preferencesRepository.getPreferencesForSpecies(animal.getEspece())
                 _speciesPreferences.value = preferences
-                _typeExpressionBesoin.value = preferences.getTypeExpressionBesoinEnum()
                 // Charger aussi les références disponibles pour que les références complémentaires
                 // soient prêtes lors de la sélection automatique de consultation
                 chargerReferencesDisponibles()
             } catch (e: Exception) {
-
                 _speciesPreferences.value = null
-                _typeExpressionBesoin.value = null
             }
 
             // Charger les consultations depuis la base de données
@@ -1558,29 +1569,24 @@ class AnimalDetailViewModel(
 
                 // 1. Charger la référence appropriée
                 val reference = obtenirReferenceActiveConsultation(consultation)
-                _referenceUtilisee.value = reference
 
                 if (reference == null) {
                     resetCalculsMetaboliques()
                     return@launch
                 }
 
-                // 2. Calculer le poids métabolique
+                // 2-4. Calculer toutes les valeurs puis mettre à jour atomiquement (évite
+                // les recompositions intermédiaires avec état partiel)
                 val poidsMetabolique = calculerPoidsMetabolique(consultation, reference)
-                _poidsMetabolique.value = poidsMetabolique
-
-                // 3. Calculer le BEE (Besoin Énergétique Standard)
                 val bee = calculerBesoinEnergetiqueStandard(consultation, reference)
-                _besoinEnergetiqueStandard.value = bee
-
-                if (bee == null) {}
-
-                // 4. Calculer le besoin énergétique total en multipliant le BEE avec tous les
-                // coefficients
                 val besoinTotal = bee?.let { calculerBesoinEnergetiqueTotal(consultation, it) }
-                _besoinEnergetiqueTotal.value = besoinTotal
 
-                // Vérifier les valeurs dans les StateFlow
+                _valeursMetaboliques.value = ValeursMetaboliques(
+                        referenceUtilisee = reference,
+                        poidsMetabolique = poidsMetabolique,
+                        besoinEnergetiqueStandard = bee,
+                        besoinEnergetiqueTotal = besoinTotal
+                )
             } catch (e: Exception) {
                 e.printStackTrace()
                 resetCalculsMetaboliques()
@@ -1792,10 +1798,7 @@ class AnimalDetailViewModel(
 
     /** Remet à zéro tous les calculs métaboliques */
     private fun resetCalculsMetaboliques() {
-        _poidsMetabolique.value = null
-        _besoinEnergetiqueStandard.value = null
-        _besoinEnergetiqueTotal.value = null
-        _referenceUtilisee.value = null
+        _valeursMetaboliques.value = ValeursMetaboliques()
     }
 
     /** Recalcule les valeurs métaboliques quand une consultation est sélectionnée */

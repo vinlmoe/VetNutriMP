@@ -470,39 +470,27 @@ class MathParserException(message: String) : Exception(message)
 object ExpressionMathematique {
     private val parser = MathParser()
 
-    /**
-     * Évalue une expression mathématique
-     *
-     * @param expression L'expression à évaluer
-     * @param variables Les variables disponibles
-     * @return Le résultat de l'évaluation ou null en cas d'erreur
-     */
+    // Cache des variables extraites par expression (l'expression est immuable, seules les valeurs varient)
+    private val variablesCache = HashMap<String, List<String>>(64)
+
+    // Cache des expressions nettoyées (suppression des espaces, coûteux sur les longues expressions)
+    private val cleanedExprCache = HashMap<String, String>(64)
+
     fun evaluer(expression: String, variables: Map<String, Double> = emptyMap()): Double? {
         return try {
             parser.evaluer(expression, variables)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
 
-    /**
-     * Vérifie si une expression est valide
-     *
-     * @param expression L'expression à vérifier
-     * @param variables Les variables disponibles
-     * @return true si l'expression est valide, false sinon
-     */
     fun estValide(expression: String, variables: Map<String, Double> = emptyMap()): Boolean {
         return parser.estValide(expression, variables)
     }
 
-    /**
-     * Extrait les variables d'une expression
-     *
-     * @param expression L'expression à analyser
-     * @return Liste des variables trouvées
-     */
     fun extraireVariables(expression: String): List<String> {
-        return parser.extraireVariables(expression)
+        return variablesCache.getOrPut(expression) {
+            parser.extraireVariables(expression)
+        }
     }
 }
