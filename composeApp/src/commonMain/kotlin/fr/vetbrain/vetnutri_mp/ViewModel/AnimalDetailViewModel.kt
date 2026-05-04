@@ -1825,6 +1825,31 @@ class AnimalDetailViewModel(
         }
     }
 
+    /** Met à jour le poids actuel et le poids idéal d'une consultation puis recalcule. */
+    fun updateConsultationWeights(
+            consultationId: String,
+            currentWeight: Double,
+            idealWeight: Double
+    ) {
+        viewModelScope.launch {
+            try {
+                val animalActuel = _animal.value
+                if (animalActuel != null) {
+                    val consultation = animalActuel.consultations.find { it.uuid == consultationId }
+                    if (consultation != null) {
+                        val consultationMiseAJour =
+                                consultation.copy(
+                                        weight = currentWeight,
+                                        idealWeight = idealWeight
+                                )
+                        updateConsultation(consultationMiseAJour)
+                        calculerValeursMetaboliques(consultationMiseAJour)
+                    }
+                }
+            } catch (e: Exception) {}
+        }
+    }
+
     /** Met à jour un coefficient K spécifique (K1-K5) et recalcule les valeurs métaboliques */
     fun updateCoefficient(
             consultationId: String,

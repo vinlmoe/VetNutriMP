@@ -2,6 +2,14 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## 3.2.46
+
+### Changed
+- Harmonisation de l'affichage entre les vues **Apport** et **Composition** dans l'analyse de ration.
+- Alignement des catégories et de leur ordre d'affichage entre les deux vues, avec prise en charge de la catégorie **Énergie**.
+- Alignement de la logique de filtrage des nutriments: en mode filtré, les ratios d'analyse restent visibles même à 0.
+- Uniformisation des libellés de catégories via les mêmes clés de traduction.
+
 ## 3.2.45
 
 ### Added
@@ -23,10 +31,12 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - Recherche de la liste des animaux étendue : prise en charge de la recherche par **ID animal**.
 - Bloc "Animal" de l'ordonnance enrichi avec l'**ID animal**.
 - Mémorisation du dernier dossier d'enregistrement desktop, avec persistance via la couche KMP de préférences (`PreferencesStorage`).
+- Affichage des aliments harmonisé dans CR et ordonnance au format : **marque, gamme, nom aliment** (si les champs existent).
 
 ### Fixed
 - Correction d'un mauvais routage d'export : l'export depuis la prévisualisation CR ne génère plus une analyse de ration.
 - Correction d'appels `@Composable` hors contexte dans l'action de copie presse-papiers.
+- Correction du rendu des champs de gamme absents : les valeurs `null` textuelles ne sont plus affichées dans le format des aliments.
 
 ## 3.2.40
 

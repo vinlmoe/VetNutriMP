@@ -704,6 +704,15 @@ fun RationsView(
                                                                 kCalcule = kCalcule,
                                                                energieAdditionnelle = energieAdditionnelle,
                                                                 referenceUtilisee = referenceUtilisee,
+                                                                onUpdateWeights = { currentWeight, idealWeight ->
+                                                                        selectedConsultation?.let { consultation ->
+                                                                                viewModel.updateConsultationWeights(
+                                                                                        consultation.uuid,
+                                                                                        currentWeight,
+                                                                                        idealWeight
+                                                                                )
+                                                                        }
+                                                                },
                                                                 onExpand = {
                                                                         showMetabolicValuesDialog =
                                                                                 true
@@ -1066,6 +1075,15 @@ fun RationsView(
                                                                         kCalcule = kCalcule,
                                                                          energieAdditionnelle = energieAdditionnelle,
                                                                         referenceUtilisee = referenceUtilisee,
+                                                                        onUpdateWeights = { currentWeight, idealWeight ->
+                                                                                selectedConsultation?.let { consultation ->
+                                                                                        viewModel.updateConsultationWeights(
+                                                                                                consultation.uuid,
+                                                                                                currentWeight,
+                                                                                                idealWeight
+                                                                                        )
+                                                                                }
+                                                                        },
                                                                         onExpand = {
                                                                                 showMetabolicValuesDialog =
                                                                                         true

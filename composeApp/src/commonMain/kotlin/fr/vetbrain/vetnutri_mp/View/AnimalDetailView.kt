@@ -119,10 +119,20 @@ private fun formatAlimentDisplayName(aliment: AlimentEv?): String {
         }
         val parts =
                 listOf(
-                        clean(aliment.brand),
-                        clean(aliment.gamme),
-                        clean(aliment.nom)
-                )
+                                clean(aliment.brand),
+                                clean(aliment.gamme),
+                                clean(aliment.nom)
+                        )
+                        .filterNotNull()
+                        .map { it.trim() }
+                        .filter { value ->
+                                val semantic =
+                                        value.lowercase().replace(Regex("""[^\p{L}\p{N}]+"""), "")
+                                value.isNotBlank() &&
+                                        semantic != "null" &&
+                                        semantic != "none" &&
+                                        semantic != "na"
+                        }
         val result = if (parts.isEmpty()) "Ingredient" else parts.joinToString(", ")
         if (result.contains(", null,", ignoreCase = true) || result.contains(" null", ignoreCase = true)) {
                 println(

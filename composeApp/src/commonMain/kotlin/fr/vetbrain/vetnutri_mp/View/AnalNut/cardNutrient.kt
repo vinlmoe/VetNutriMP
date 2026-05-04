@@ -57,6 +57,7 @@ private fun obtenirNomTraduitNutriment(nom: String, nutriment: Any): String {
         is NutrientVitam -> nutriment.translateEnum()
         is AAEnum -> nutriment.translateEnum()
         is NutrientAnalysis -> nutriment.translateEnum()
+        is NutrientEnergy -> nutriment.translateEnum()
         else -> nom // Fallback sur le nom original si le type n'est pas reconnu
     }
 }
@@ -411,7 +412,7 @@ fun AnalyseNutritionnelleCard(
                 
                 // Ordre d'affichage des catégories
                 val ordreCategories =
-                        listOf("BASE", "MACRO", "MIN", "VITAM", "LIPID", "AMA", "ANA", "OTHER")
+                        listOf("BASE", "MACRO", "MIN", "VITAM", "LIPID", "AMA", "ANA", "OTHER", "ENERGY")
 
                 ordreCategories.forEach { categorie ->
                     nutrimentsGroupes[categorie]?.let { nutriments ->
@@ -420,7 +421,10 @@ fun AnalyseNutritionnelleCard(
                                 if (afficherTousLesNutriments) {
                                     nutriments
                                 } else {
-                                    nutriments.filter { it.second.valeur > 0.0 }
+                                    nutriments.filter {
+                                        val isNutrientRatio = it.second.nutriment is NutrientAnalysis
+                                        isNutrientRatio || it.second.valeur > 0.0
+                                    }
                                 }
                         // Afficher la section uniquement si elle contient des nutriments après filtrage
                         if (nutrimentsAffiches.isNotEmpty()) {
@@ -762,33 +766,39 @@ private fun trierNutrimentsParOrdreEnum(
         categorie: String,
         nutriments: List<Pair<String, ValeurNutritionnelle>>
 ): List<Pair<String, ValeurNutritionnelle>> {
-    return when (categorie) {
-        "BASE" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentBase(nom) }
+    return nutriments.sortedBy { (_, valeur) -> ordreNutrimentParType(valeur.nutriment) }
+}
+
+private fun ordreNutrimentParType(nutriment: Nutrient): Int {
+    val categorieOffset =
+        when (nutriment) {
+            is NutrientMain -> 0
+            is NutrientMacro -> 1000
+            is NutrientMin -> 2000
+            is NutrientVitam -> 3000
+            is NutrientLipid -> 4000
+            is AAEnum -> 5000
+            is NutrientAnalysis -> 6000
+            is NutrientOther -> 7000
+            is NutrientEnergy -> 8000
+            else -> 9000
         }
-        "MACRO" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentMacro(nom) }
+
+    val index =
+        when (nutriment) {
+            is NutrientMain -> nutriment.ordinal
+            is NutrientMacro -> nutriment.ordinal
+            is NutrientMin -> nutriment.ordinal
+            is NutrientVitam -> nutriment.ordinal
+            is NutrientLipid -> nutriment.ordinal
+            is AAEnum -> nutriment.ordinal
+            is NutrientAnalysis -> nutriment.ordinal
+            is NutrientOther -> nutriment.ordinal
+            is NutrientEnergy -> nutriment.ordinal
+            else -> 999
         }
-        "MIN" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentMin(nom) }
-        }
-        "VITAM" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentVitam(nom) }
-        }
-        "LIPID" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentLipid(nom) }
-        }
-        "AMA" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentAA(nom) }
-        }
-        "ANA" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentAnalysis(nom) }
-        }
-        else -> {
-            // Pour les autres catégories, garder l'ordre alphabétique
-            nutriments.sortedBy { it.first }
-        }
-    }
+
+    return categorieOffset + index
 }
 
 /** Obtient l'ordre d'un nutriment de base selon l'enum NutrientMain */
@@ -938,46 +948,14 @@ private fun obtenirOrdreNutrimentAnalysis(nom: String): Int {
 /** Détermine la catégorie d'un nutriment selon son nom et son type */
 private fun determinerCategorieNutriment(nom: String, nutriment: Any): String {
     return when {
-        // Nutriments de base
-        nom in
-                listOf(
-                        "HUMIDITE",
-                        "PROTEINE",
-                        "LIPIDE",
-                        "GLUCIDE",
-                        "ENA",
-                        "CELLULOSE",
-                        "CENDRE",
-                        "ENERGIE",
-                        "SUCRE",
-                        "AMIDON",
-                        "FIBRESOL",
-                        "FIBRETOT",
-                        "NDF",
-                        "ADF"
-                ) -> "BASE"
-
-        // Macronutriments
-        nom in listOf("CAL", "PHOS", "MG", "NA", "K", "CHL") -> "MACRO"
-
-        // Minéraux
-        nom in listOf("FE", "CU", "ZN", "MN", "I", "SE") -> "MIN"
-
-        // Vitamines
-        nom.startsWith("VIT") || nom in listOf("CHOLINE", "RETINOL", "BETACAR") -> "VITAM"
-
-        // Lipides
-        nom in listOf("O3", "O6", "EPADHA", "AGSATURE", "AGMONO", "AGPOLY") ||
-                nom.startsWith("AG") -> "LIPID"
-
-        // Acides aminés
-        nom in listOf("LYSINE", "METHIONINE", "TRYPTOPHANE", "METHCYS", "PHENTYR") -> "AMA"
-
-        // Analyses/Ratios
-        nom in listOf("KNA", "CAP", "O6O3", "ZNCU", "nonOsPhos", "nonOsProt", "nonOsPP", "PROTP") ->
-                "ANA"
-
-        // Autres
+        nutriment is NutrientMain -> "BASE"
+        nutriment is NutrientMacro -> "MACRO"
+        nutriment is NutrientMin -> "MIN"
+        nutriment is NutrientVitam -> "VITAM"
+        nutriment is NutrientLipid -> "LIPID"
+        nutriment is AAEnum -> "AMA"
+        nutriment is NutrientAnalysis -> "ANA"
+        nutriment is NutrientEnergy -> "ENERGY"
         else -> "OTHER"
     }
 }
@@ -985,15 +963,16 @@ private fun determinerCategorieNutriment(nom: String, nutriment: Any): String {
 /** Traduit les codes de catégorie en titres lisibles */
 private fun obtenirTitreCategorie(categorie: String): String {
     return when (categorie) {
-        "BASE" -> "Nutriments de base"
-        "MACRO" -> "Macroéléments"
-        "MIN" -> "Oligoéléments"
-        "VITAM" -> "Vitamines"
-        "LIPID" -> "Acides gras"
-        "AMA" -> "Acides aminés"
-        "ANA" -> "Analyses/Ratios"
-        "OTHER" -> "Autres"
-        else -> "Divers"
+        "BASE" -> translate(LocalizationKeys.NutrientCategory.BASE_NAME)
+        "MACRO" -> translate(LocalizationKeys.NutrientCategory.MACRO_NAME)
+        "MIN" -> translate(LocalizationKeys.NutrientCategory.MIN_NAME)
+        "VITAM" -> translate(LocalizationKeys.NutrientCategory.VITAM_NAME)
+        "LIPID" -> translate(LocalizationKeys.NutrientCategory.LIPID_NAME)
+        "AMA" -> translate(LocalizationKeys.NutrientCategory.AMA_NAME)
+        "ANA" -> translate(LocalizationKeys.NutrientCategory.ANA_NAME)
+        "OTHER" -> translate(LocalizationKeys.NutrientCategory.OTHER_NAME)
+        "ENERGY" -> translate(LocalizationKeys.NutrientCategory.ENERGIE_NAME)
+        else -> categorie
     }
 }
 

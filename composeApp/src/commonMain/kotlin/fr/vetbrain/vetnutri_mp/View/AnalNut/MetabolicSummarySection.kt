@@ -39,11 +39,21 @@ fun SectionValeursMetaboliques(
         kCalcule: Double,
         energieAdditionnelle: Double? = null,
         referenceUtilisee: ReferenceEv? = null,
+        onUpdateWeights: ((currentWeight: Double, idealWeight: Double) -> Unit)? = null,
         onExpand: () -> Unit,
         modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier = modifier) {
         val isNarrow = maxWidth < 600.dp // aligner avec le seuil utilisé dans RationsView
+        var isEditingWeights by remember { mutableStateOf(false) }
+        var currentWeightText by
+                remember(selectedConsultation?.uuid, selectedConsultation?.weight) {
+                    mutableStateOf(selectedConsultation?.weight?.toString() ?: "")
+                }
+        var idealWeightText by
+                remember(selectedConsultation?.uuid, selectedConsultation?.effectiveWeight) {
+                    mutableStateOf(selectedConsultation?.effectiveWeight?.toString() ?: "")
+                }
 
         Column {
             Row(
@@ -72,22 +82,78 @@ fun SectionValeursMetaboliques(
                         horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
                 ) {
-                    LigneInfoLocaleCompacte(
-                            label = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
-                            value =
-                                    selectedConsultation?.weight?.let {
-                                        "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                    if (isEditingWeights) {
+                        BasicAppTextField(
+                                value = currentWeightText,
+                                onValueChange = { currentWeightText = normalizeDecimalInput(it) },
+                                placeholder = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
+                                modifier = Modifier.width(130.dp).height(50.dp)
+                        )
+                        BasicAppTextField(
+                                value = idealWeightText,
+                                onValueChange = { idealWeightText = normalizeDecimalInput(it) },
+                                placeholder = translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL),
+                                modifier = Modifier.width(130.dp).height(50.dp),
+                                trailingIcon = Icons.Filled.Check,
+                                onTrailingIconClick = {
+                                    val newCurrent = parsePositiveDecimal(currentWeightText)
+                                    val newIdeal = parsePositiveDecimal(idealWeightText)
+                                    if (newCurrent != null && newIdeal != null) {
+                                        onUpdateWeights?.invoke(newCurrent, newIdeal)
+                                        isEditingWeights = false
                                     }
-                                            ?: translate(LocalizationKeys.General.NOT_SPECIFIED)
-                    )
-                    LigneInfoLocaleCompacte(
-                            label = translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL),
-                            value =
-                                    selectedConsultation?.effectiveWeight?.let {
-                                        "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
-                                    }
-                                            ?: translate(LocalizationKeys.General.NOT_CALCULATED)
-                    )
+                                }
+                        )
+                        IconButton(
+                                onClick = {
+                                    currentWeightText = selectedConsultation?.weight?.toString() ?: ""
+                                    idealWeightText =
+                                            selectedConsultation?.effectiveWeight?.toString() ?: ""
+                                    isEditingWeights = false
+                                },
+                                modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                    Icons.Filled.Close,
+                                    contentDescription = translate(LocalizationKeys.General.CANCEL),
+                                    tint = Color.Red
+                            )
+                        }
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            LigneInfoLocaleCompacte(
+                                    label = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
+                                    value =
+                                            selectedConsultation?.weight?.let {
+                                                "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                            }
+                                                    ?: translate(LocalizationKeys.General.NOT_SPECIFIED)
+                            )
+                            LigneInfoLocaleCompacte(
+                                    label = translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL),
+                                    value =
+                                            selectedConsultation?.effectiveWeight?.let {
+                                                "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                            }
+                                                    ?: translate(LocalizationKeys.General.NOT_CALCULATED)
+                            )
+                            IconButton(
+                                    onClick = {
+                                        currentWeightText = selectedConsultation?.weight?.toString() ?: ""
+                                        idealWeightText =
+                                                selectedConsultation?.effectiveWeight?.toString() ?: ""
+                                        isEditingWeights = true
+                                    },
+                                    modifier = Modifier.size(20.dp)
+                            ) {
+                                Icon(
+                                        Icons.Filled.Edit,
+                                        contentDescription = translate(LocalizationKeys.General.EDIT),
+                                        modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
                     LigneInfoLocaleCompacte(
                             label = translate(LocalizationKeys.AnalNut.P_METABOLIC),
                             value = poidsMetabolique?.let {
@@ -123,22 +189,88 @@ fun SectionValeursMetaboliques(
             } else {
                 // Mode large : affichage aligné en lignes pour meilleure lisibilité
                 Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)) {
-                    LigneInfoLocaleCompacte(
-                            label = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
-                            value =
-                                    selectedConsultation?.weight?.let {
-                                        "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                    if (isEditingWeights) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            BasicAppTextField(
+                                    value = currentWeightText,
+                                    onValueChange = {
+                                        currentWeightText = normalizeDecimalInput(it)
+                                    },
+                                    placeholder = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
+                                    modifier = Modifier.width(140.dp).height(50.dp)
+                            )
+                            Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                            BasicAppTextField(
+                                    value = idealWeightText,
+                                    onValueChange = {
+                                        idealWeightText = normalizeDecimalInput(it)
+                                    },
+                                    placeholder = translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL),
+                                    modifier = Modifier.width(140.dp).height(50.dp),
+                                    trailingIcon = Icons.Filled.Check,
+                                    onTrailingIconClick = {
+                                        val newCurrent = parsePositiveDecimal(currentWeightText)
+                                        val newIdeal = parsePositiveDecimal(idealWeightText)
+                                        if (newCurrent != null && newIdeal != null) {
+                                            onUpdateWeights?.invoke(newCurrent, newIdeal)
+                                            isEditingWeights = false
+                                        }
                                     }
-                                            ?: translate(LocalizationKeys.General.NOT_SPECIFIED)
-                    )
-                    LigneInfoLocaleCompacte(
-                            label = translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL),
-                            value =
-                                    selectedConsultation?.effectiveWeight?.let {
-                                        "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
-                                    }
-                                            ?: translate(LocalizationKeys.General.NOT_CALCULATED)
-                    )
+                            )
+                            IconButton(
+                                    onClick = {
+                                        currentWeightText =
+                                                selectedConsultation?.weight?.toString() ?: ""
+                                        idealWeightText =
+                                                selectedConsultation?.effectiveWeight?.toString() ?: ""
+                                        isEditingWeights = false
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                        Icons.Filled.Close,
+                                        contentDescription = translate(LocalizationKeys.General.CANCEL),
+                                        tint = Color.Red
+                                )
+                            }
+                        }
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            LigneInfoLocaleCompacte(
+                                    label = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
+                                    value =
+                                            selectedConsultation?.weight?.let {
+                                                "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                            }
+                                                    ?: translate(LocalizationKeys.General.NOT_SPECIFIED)
+                            )
+                            Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                            LigneInfoLocaleCompacte(
+                                    label = translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL),
+                                    value =
+                                            selectedConsultation?.effectiveWeight?.let {
+                                                "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                            }
+                                                    ?: translate(LocalizationKeys.General.NOT_CALCULATED)
+                            )
+                            IconButton(
+                                    onClick = {
+                                        currentWeightText =
+                                                selectedConsultation?.weight?.toString() ?: ""
+                                        idealWeightText =
+                                                selectedConsultation?.effectiveWeight?.toString() ?: ""
+                                        isEditingWeights = true
+                                    },
+                                    modifier = Modifier.size(20.dp)
+                            ) {
+                                Icon(
+                                        Icons.Filled.Edit,
+                                        contentDescription = translate(LocalizationKeys.General.EDIT),
+                                        modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
                     LigneInfoLocaleCompacte(
                             label = translate(LocalizationKeys.AnalNut.WEIGHT_METABOLIC),
                             value = poidsMetabolique?.let {
