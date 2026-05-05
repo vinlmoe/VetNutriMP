@@ -11,6 +11,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodImportResult
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -55,6 +56,7 @@ class AnimalListViewModel(
 
     // Instance statique de Json pour éviter la création redondante
     private val json = Json { ignoreUnknownKeys = true }
+    private val preferencesStorage = createPreferencesStorage()
 
     private val _allAnimals = MutableStateFlow<List<AnimalEv>>(emptyList())
     private val _searchQuery = MutableStateFlow("")
@@ -75,6 +77,8 @@ class AnimalListViewModel(
     val availableKeywords: StateFlow<List<ConsultationKeyword>> = _availableKeywords.asStateFlow()
 
     private val _animalKeywordIds = MutableStateFlow<Map<String, Set<String>>>(emptyMap())
+    private val _animalLastConsultationDate =
+            MutableStateFlow<Map<String, kotlinx.datetime.LocalDate?>>(emptyMap())
 
     private val _examSession = MutableStateFlow<ExamSession?>(null)
     val examSession: StateFlow<ExamSession?> = _examSession.asStateFlow()
@@ -94,6 +98,7 @@ class AnimalListViewModel(
             val query: String,
             val espece: Espece?,
             val keywordMap: Map<String, Set<String>>,
+            val lastConsultationMap: Map<String, kotlinx.datetime.LocalDate?>,
             val includeIds: Set<String>,
             val examSession: ExamSession?,
             val sortOrder: AnimalSortOrder
@@ -105,9 +110,21 @@ class AnimalListViewModel(
                             _searchQuery,
                             _selectedEspece,
                             _animalKeywordIds,
-                            _keywordIncludeIds
-                    ) { all, query, espece, keywordMap, includeIds ->
-                        AnimalFilterState(all, query, espece, keywordMap, includeIds, null, AnimalSortOrder.NAME_ASC)
+                            _animalLastConsultationDate
+                    ) { all, query, espece, keywordMap, lastConsultationMap ->
+                        AnimalFilterState(
+                                all,
+                                query,
+                                espece,
+                                keywordMap,
+                                lastConsultationMap,
+                                emptySet(),
+                                null,
+                                AnimalSortOrder.NAME_ASC
+                        )
+                    }
+                    .combine(_keywordIncludeIds) { state, includeIds ->
+                        state.copy(includeIds = includeIds)
                     }
                     .combine(_sortOrder) { state, sortOrder ->
                         state.copy(sortOrder = sortOrder)
@@ -121,6 +138,7 @@ class AnimalListViewModel(
                                 state.query,
                                 state.espece,
                                 state.keywordMap,
+                                state.lastConsultationMap,
                                 state.includeIds,
                                 excludeIds,
                                 state.examSession,
@@ -145,6 +163,10 @@ class AnimalListViewModel(
     private val _apiImportLogs = MutableStateFlow<List<String>>(emptyList())
     val apiImportLogs: StateFlow<List<String>> = _apiImportLogs.asStateFlow()
 
+    init {
+        loadSavedSortOrder()
+    }
+
     fun loadAnimals() {
         viewModelScope.launch {
             _allAnimals.value = animalRepository.getAllAnimals()
@@ -162,6 +184,7 @@ class AnimalListViewModel(
 
     fun setSortOrder(sortOrder: AnimalSortOrder) {
         _sortOrder.value = sortOrder
+        saveSortOrder(sortOrder)
     }
 
     fun setExamSession(session: ExamSession?) {
@@ -173,6 +196,7 @@ class AnimalListViewModel(
             query: String,
             espece: Espece?,
             keywordMap: Map<String, Set<String>>,
+            lastConsultationMap: Map<String, kotlinx.datetime.LocalDate?>,
             includeIds: Set<String>,
             excludeIds: Set<String>,
             examSession: ExamSession?,
@@ -218,7 +242,8 @@ class AnimalListViewModel(
             AnimalSortOrder.LAST_CONSULTATION ->
                 filteredAnimals.sortedWith(
                     compareByDescending<AnimalEv> {
-                        it.consultations.mapNotNull { consultation -> consultation.date }.maxOrNull()
+                        lastConsultationMap[it.uuid]
+                                ?: it.consultations.mapNotNull { consultation -> consultation.date }.maxOrNull()
                     }.thenBy { it.nom.lowercase() }
                 )
             AnimalSortOrder.AGE -> {
@@ -316,6 +341,7 @@ class AnimalListViewModel(
 
         val animalIds = _allAnimals.value.map { it.uuid }
         val keywordMap = mutableMapOf<String, Set<String>>()
+        val lastConsultationMap = mutableMapOf<String, kotlinx.datetime.LocalDate?>()
 
         for (animalId in animalIds) {
             try {
@@ -326,11 +352,14 @@ class AnimalListViewModel(
                                 .filter { it.isNotBlank() }
                                 .toSet()
                 keywordMap[animalId] = keywordIds
+                lastConsultationMap[animalId] = consultations.mapNotNull { it.date }.maxOrNull()
             } catch (_: Exception) {
                 keywordMap[animalId] = emptySet()
+                lastConsultationMap[animalId] = null
             }
         }
         _animalKeywordIds.value = keywordMap
+        _animalLastConsultationDate.value = lastConsultationMap
     }
 
     fun deleteAnimal(animal: AnimalEv) {
@@ -338,6 +367,30 @@ class AnimalListViewModel(
             animalRepository.deleteAnimal(animal)
             loadAnimals() // Refresh the list after deletion
         }
+    }
+
+    private fun loadSavedSortOrder() {
+        viewModelScope.launch {
+            try {
+                val saved = preferencesStorage.getString(KEY_ANIMAL_SORT_ORDER, AnimalSortOrder.NAME_ASC.name)
+                val parsed = runCatching { AnimalSortOrder.valueOf(saved) }.getOrDefault(AnimalSortOrder.NAME_ASC)
+                _sortOrder.value = parsed
+            } catch (_: Exception) {
+                _sortOrder.value = AnimalSortOrder.NAME_ASC
+            }
+        }
+    }
+
+    private fun saveSortOrder(sortOrder: AnimalSortOrder) {
+        viewModelScope.launch {
+            try {
+                preferencesStorage.saveString(KEY_ANIMAL_SORT_ORDER, sortOrder.name)
+            } catch (_: Exception) {}
+        }
+    }
+
+    companion object {
+        private const val KEY_ANIMAL_SORT_ORDER = "animal_list.sort_order"
     }
 
     fun importAnimals(animalsJson: List<AnimalEvJson>) {

@@ -14,11 +14,13 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
@@ -83,6 +85,7 @@ fun AnimalListView(
         var shouldAutoOpenAfterDialog by remember { mutableStateOf(false) }
         var showKeywordFilterDialog by remember { mutableStateOf(false) }
         val hasKeywordFilter = keywordIncludeIds.isNotEmpty() || keywordExcludeIds.isNotEmpty()
+        val hasSortFilter = selectedSortOrder != AnimalListViewModel.AnimalSortOrder.NAME_ASC
         val isExamMode = examSession != null
 
         LaunchedEffect(Unit) { viewModel.loadAnimals() }
@@ -207,7 +210,7 @@ fun AnimalListView(
                                         }
                                 val especeNullLabel =
                                         if (isCompact) Animal.SPECIES.translate()
-                                        else "Toutes espèces"
+                                        else Espece.CH.translateEnum()
 
                                 if (isCompact) {
                                         Column(
@@ -267,12 +270,11 @@ fun AnimalListView(
                                                                 onClick = { showKeywordFilterDialog = true },
                                                                 modifier = Modifier.weight(1f)
                                                         ) {
-                                                                Text(
-                                                                        translate(AnimalList.KEYWORD_FILTER_BUTTON),
-                                                                        maxLines = 1,
-                                                                        overflow = TextOverflow.Ellipsis
+                                                                Icon(
+                                                                        Icons.Default.Tune,
+                                                                        contentDescription = "Tri et filtres"
                                                                 )
-                                                                if (hasKeywordFilter) {
+                                                                if (hasKeywordFilter || hasSortFilter) {
                                                                         Spacer(
                                                                                 modifier =
                                                                                         Modifier.width(
@@ -292,11 +294,6 @@ fun AnimalListView(
                                                         }
                                                 }
 
-                                                SortOrderDropdown(
-                                                        selectedSortOrder = selectedSortOrder,
-                                                        onSortOrderSelected = { viewModel.setSortOrder(it) },
-                                                        modifier = Modifier.fillMaxWidth()
-                                                )
                                         }
                                 } else {
                                         Row(
@@ -350,36 +347,27 @@ fun AnimalListView(
 
                                                 OutlinedButton(
                                                         onClick = { showKeywordFilterDialog = true },
-                                                        modifier = Modifier.weight(1f)
+                                                        modifier = Modifier.width(52.dp).height(56.dp),
+                                                        contentPadding = PaddingValues(0.dp)
                                                 ) {
-                                                        Text(translate(AnimalList.KEYWORD_FILTER_BUTTON))
-                                                        if (hasKeywordFilter) {
-                                                                Spacer(
-                                                                        modifier =
-                                                                                Modifier.width(
-                                                                                        AppSizes.paddingSmall
-                                                                                )
-                                                                )
+                                                        Icon(
+                                                                Icons.Default.Tune,
+                                                                contentDescription = "Tri et filtres"
+                                                        )
+                                                        if (hasKeywordFilter || hasSortFilter) {
+                                                                Spacer(modifier = Modifier.width(6.dp))
                                                                 Box(
                                                                         modifier =
                                                                                 Modifier.size(8.dp)
                                                                                         .background(
                                                                                                 VetNutriColors.Primary,
-                                                                                                shape =
-                                                                                                        MaterialTheme.shapes.small
+                                                                                                shape = MaterialTheme.shapes.small
                                                                                         )
                                                                 )
                                                         }
                                                 }
                                         }
 
-                                        Spacer(modifier = Modifier.height(8.dp))
-
-                                        SortOrderDropdown(
-                                                selectedSortOrder = selectedSortOrder,
-                                                onSortOrderSelected = { viewModel.setSortOrder(it) },
-                                                modifier = Modifier.fillMaxWidth()
-                                        )
                                 }
                         }
 
@@ -665,7 +653,9 @@ fun AnimalListView(
         }
 
         if (showKeywordFilterDialog) {
-                KeywordFilterDialog(
+                FilterSortDialog(
+                        selectedSortOrder = selectedSortOrder,
+                        onSortOrderSelected = { viewModel.setSortOrder(it) },
                         availableKeywords = availableKeywords,
                         includeIds = keywordIncludeIds,
                         excludeIds = keywordExcludeIds,
@@ -675,85 +665,6 @@ fun AnimalListView(
                         onReset = { viewModel.clearKeywordFilters() },
                         onDismiss = { showKeywordFilterDialog = false }
                 )
-        }
-}
-
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-private fun SortOrderDropdown(
-        selectedSortOrder: AnimalListViewModel.AnimalSortOrder,
-        onSortOrderSelected: (AnimalListViewModel.AnimalSortOrder) -> Unit,
-        modifier: Modifier = Modifier
-) {
-        var expanded by remember { mutableStateOf(false) }
-
-        val selectedLabel =
-                when (selectedSortOrder) {
-                        AnimalListViewModel.AnimalSortOrder.LAST_CONSULTATION ->
-                                "Tri: Dernière consultation"
-                        AnimalListViewModel.AnimalSortOrder.NAME_ASC ->
-                                "Tri: Nom (A-Z)"
-                        AnimalListViewModel.AnimalSortOrder.AGE ->
-                                "Tri: Âge"
-                }
-
-        ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
-                modifier = modifier
-        ) {
-                OutlinedTextField(
-                        value = selectedLabel,
-                        onValueChange = {},
-                        readOnly = true,
-                        singleLine = true,
-                        trailingIcon = {
-                                Icon(
-                                        if (expanded) Icons.Default.KeyboardArrowUp
-                                        else Icons.Default.KeyboardArrowDown,
-                                        contentDescription = null
-                                )
-                        },
-                        colors =
-                                TextFieldDefaults.outlinedTextFieldColors(
-                                        focusedBorderColor = VetNutriColors.Primary,
-                                        unfocusedBorderColor = Color.Gray
-                                ),
-                        modifier = Modifier.fillMaxWidth()
-                )
-
-                DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = {
-                                if (!isIosPlatform) {
-                                        expanded = false
-                                }
-                        },
-                        modifier = Modifier.exposedDropdownSize()
-                ) {
-                        DropdownMenuItem(
-                                onClick = {
-                                        onSortOrderSelected(
-                                                AnimalListViewModel.AnimalSortOrder.LAST_CONSULTATION
-                                        )
-                                        expanded = false
-                                }
-                        ) { Text("Dernière consultation") }
-
-                        DropdownMenuItem(
-                                onClick = {
-                                        onSortOrderSelected(AnimalListViewModel.AnimalSortOrder.NAME_ASC)
-                                        expanded = false
-                                }
-                        ) { Text("Nom (A-Z)") }
-
-                        DropdownMenuItem(
-                                onClick = {
-                                        onSortOrderSelected(AnimalListViewModel.AnimalSortOrder.AGE)
-                                        expanded = false
-                                }
-                        ) { Text("Âge") }
-                }
         }
 }
 
@@ -774,7 +685,7 @@ private fun EspeceDropdown(
                 modifier = modifier
         ) {
                 OutlinedTextField(
-                        value = selectedEspece?.label ?: nullLabel,
+                        value = selectedEspece?.translateEnum() ?: nullLabel,
                         onValueChange = {},
                         readOnly = true,
                         singleLine = true,
@@ -808,7 +719,7 @@ private fun EspeceDropdown(
                                                 onEspeceSelected(espece)
                                                 expanded = false
                                         }
-                                ) { Text(espece?.label ?: nullLabel) }
+                                ) { Text(espece?.translateEnum() ?: nullLabel) }
                         }
                 }
         }
@@ -837,6 +748,12 @@ private fun AnimalCard(
                         ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                         Text(text = animal.nom, style = MaterialTheme.typography.h6)
+                                        if (!animal.id.isNullOrBlank()) {
+                                                Text(
+                                                        text = "ID: ${animal.id}",
+                                                        style = MaterialTheme.typography.body2
+                                                )
+                                        }
                                         Text(
                                                 text =
                                                         "${Animal.SPECIES.translate()}: ${animal.getEspece().translateEnum()}",
@@ -898,7 +815,9 @@ private fun AnimalCard(
 }
 
 @Composable
-private fun KeywordFilterDialog(
+private fun FilterSortDialog(
+        selectedSortOrder: AnimalListViewModel.AnimalSortOrder,
+        onSortOrderSelected: (AnimalListViewModel.AnimalSortOrder) -> Unit,
         availableKeywords: List<ConsultationKeyword>,
         includeIds: Set<String>,
         excludeIds: Set<String>,
@@ -915,9 +834,61 @@ private fun KeywordFilterDialog(
 
         AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text(translate(AnimalList.KEYWORD_FILTER_TITLE)) },
+                title = { Text("Tri et filtres") },
                 text = {
-                        Column(modifier = Modifier.width(520.dp).height(480.dp)) {
+                        Column(modifier = Modifier.width(520.dp).height(520.dp)) {
+                                Text("Tri", style = MaterialTheme.typography.subtitle1)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                        SortChoice(
+                                                label = "Dernière consultation",
+                                                selected =
+                                                        selectedSortOrder ==
+                                                                AnimalListViewModel.AnimalSortOrder
+                                                                        .LAST_CONSULTATION,
+                                                onSelect = {
+                                                        onSortOrderSelected(
+                                                                AnimalListViewModel.AnimalSortOrder
+                                                                        .LAST_CONSULTATION
+                                                        )
+                                                }
+                                        )
+                                        SortChoice(
+                                                label = "Nom (A-Z)",
+                                                selected =
+                                                        selectedSortOrder ==
+                                                                AnimalListViewModel.AnimalSortOrder.NAME_ASC,
+                                                onSelect = {
+                                                        onSortOrderSelected(
+                                                                AnimalListViewModel.AnimalSortOrder
+                                                                        .NAME_ASC
+                                                        )
+                                                }
+                                        )
+                                        SortChoice(
+                                                label = "Âge",
+                                                selected =
+                                                        selectedSortOrder ==
+                                                                AnimalListViewModel.AnimalSortOrder.AGE,
+                                                onSelect = {
+                                                        onSortOrderSelected(
+                                                                AnimalListViewModel.AnimalSortOrder.AGE
+                                                        )
+                                                }
+                                        )
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Divider()
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                        translate(AnimalList.KEYWORD_FILTER_TITLE),
+                                        style = MaterialTheme.typography.subtitle1
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
                                 if (sortedKeywords.isEmpty()) {
                                         Text(translate(AnimalList.KEYWORD_FILTER_EMPTY))
                                 } else {
@@ -1003,4 +974,21 @@ private fun KeywordFilterDialog(
                         }
                 }
         )
+}
+
+@Composable
+private fun SortChoice(
+        label: String,
+        selected: Boolean,
+        onSelect: () -> Unit
+) {
+        Row(
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                RadioButton(
+                        selected = selected,
+                        onClick = onSelect
+                )
+                Text(label, modifier = Modifier.padding(start = 2.dp))
+        }
 }
