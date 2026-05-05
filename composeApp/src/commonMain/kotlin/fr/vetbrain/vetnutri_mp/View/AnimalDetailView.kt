@@ -1361,7 +1361,15 @@ private fun WideScreenLayout(
                                         )
                                 }
                                 Text(
-                                        text = animalDetails.getEspece().translateEnum(),
+                                        text =
+                                                buildString {
+                                                        append(animalDetails.getEspece().translateEnum())
+                                                        if (!animalDetails.id.isNullOrBlank()) {
+                                                                append(" (")
+                                                                append(animalDetails.id)
+                                                                append(")")
+                                                        }
+                                                },
                                         style = MaterialTheme.typography.subtitle1,
                                         color = Color.Gray
                                 )
@@ -3008,7 +3016,18 @@ private fun NarrowScreenLayout(
                                                 style = MaterialTheme.typography.h5
                                         )
                                         Text(
-                                                text = animalDetails.getEspece().translateEnum(),
+                                                text =
+                                                        buildString {
+                                                                append(
+                                                                        animalDetails.getEspece()
+                                                                                .translateEnum()
+                                                                )
+                                                                if (!animalDetails.id.isNullOrBlank()) {
+                                                                        append(" (")
+                                                                        append(animalDetails.id)
+                                                                        append(")")
+                                                                }
+                                                        },
                                                 style = MaterialTheme.typography.subtitle1,
                                                 color = Color.Gray
                                         )
