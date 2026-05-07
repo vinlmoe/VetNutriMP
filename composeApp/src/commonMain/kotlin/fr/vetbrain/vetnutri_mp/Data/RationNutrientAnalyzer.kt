@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrient
 import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
@@ -502,6 +503,15 @@ private fun obtenirTousLesNutriments(): List<Nutrient> {
     nutriments.addAll(AAEnum.entries)
     nutriments.addAll(NutrientOther.entries)
     nutriments.addAll(NutrientEnergy.entries)
+
+    // Ajouter les nutriments personnalisés présents dans les aliments de la ration
+    // à l'étape d'analyse (sinon ils restent invisibles dans les résultats).
+    // Ici, on garde uniquement ceux connus dans le resolver/registry de la session.
+    nutriments.addAll(
+            fr.vetbrain.vetnutri_mp.Enumer.CustomNutrientRegistry
+                    .all()
+                    .filter { custom -> nutriments.none { it.label == custom.label } }
+    )
 
     return nutriments
 }

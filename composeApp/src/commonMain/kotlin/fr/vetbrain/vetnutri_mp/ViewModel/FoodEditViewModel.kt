@@ -38,6 +38,7 @@ class FoodEditViewModel(
     init {
         // Charger tous les types de nutriments
         loadNutrients()
+        preloadCustomNutrientsFromRepository()
 
         // Si un UUID est fourni, charger l'aliment correspondant
         if (!alimentUuid.isNullOrBlank()) {
@@ -102,6 +103,13 @@ class FoodEditViewModel(
                 _allNutrients.add(nutrient)
             }
         }
+
+        // Nutriments personnalisés déjà connus dans la session
+        CustomNutrientRegistry.all().forEach { nutrient ->
+            if (!_allNutrients.any { it.label == nutrient.label }) {
+                _allNutrients.add(nutrient)
+            }
+        }
     }
 
     private fun loadAliment(uuid: String) {
@@ -124,6 +132,9 @@ class FoodEditViewModel(
                         if (nutrient.label !in existingLabels) {
                             _allNutrients.add(nutrient)
                         }
+                        if (nutrient is CustomNutrient) {
+                            CustomNutrientRegistry.register(nutrient)
+                        }
                     }
                 } else {}
             } catch (e: Exception) {
@@ -132,12 +143,60 @@ class FoodEditViewModel(
         }
     }
 
+    private fun preloadCustomNutrientsFromRepository() {
+        coroutineScope.launch {
+            try {
+                val foods = foodRepository.getAllFoods()
+                foods.forEach { food ->
+                    food.valMap.keys.forEach { nutrient ->
+                        if (nutrient is CustomNutrient) {
+                            CustomNutrientRegistry.register(nutrient)
+                        } else if (
+                            NutrientMain.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
+                            NutrientMacro.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
+                            NutrientMin.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
+                            NutrientLipid.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
+                            NutrientVitam.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
+                            NutrientOther.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
+                            AAEnum.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
+                            NutrientEnergy.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
+                            NutrientAnalysis.entries.none { it.label.equals(nutrient.label, ignoreCase = true) }
+                        ) {
+                            CustomNutrientRegistry.register(CustomNutrient.fromLabel(nutrient.label))
+                        }
+                    }
+                }
+                CustomNutrientRegistry.all().forEach { nutrient ->
+                    if (!_allNutrients.any { it.label == nutrient.label }) {
+                        _allNutrients.add(nutrient)
+                    }
+                }
+            } catch (_: Exception) {
+                // Ne bloque pas l'édition si le préchargement échoue
+            }
+        }
+    }
+
     fun getAllNutrients(): List<Nutrient> {
-        // Debug temporaire pour DM
+        CustomNutrientRegistry.all().forEach { nutrient ->
+            if (!_allNutrients.any { it.label == nutrient.label }) {
+                _allNutrients.add(nutrient)
+            }
+        }
         if (_allNutrients.isEmpty()) {
             return _alimentState.value.valMap.keys.toList()
         }
         return _allNutrients
+    }
+
+    fun addOrGetCustomNutrient(name: String, unit: String = "g"): Nutrient? {
+        val trimmedName = name.trim()
+        if (trimmedName.isBlank()) return null
+        val nutrient = CustomNutrientRegistry.registerFromRaw(trimmedName, unit)
+        if (!_allNutrients.any { it.label == nutrient.label }) {
+            _allNutrients.add(nutrient)
+        }
+        return nutrient
     }
 
     suspend fun saveAliment(aliment: AlimentEv) {

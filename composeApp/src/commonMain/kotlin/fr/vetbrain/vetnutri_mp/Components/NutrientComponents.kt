@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrient
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
@@ -213,6 +214,7 @@ private fun NutrientRow(
                         is NutrientOther -> (nutriment as NutrientOther).nameToString()
                         is NutrientVitam -> (nutriment as NutrientVitam).displayName
                         is AAEnum -> (nutriment as AAEnum).nom
+                        is CustomNutrient -> nutriment.nameToString()
                         else -> nutriment.toString()
                 }
 
