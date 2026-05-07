@@ -1,0 +1,47 @@
+name: Build Debian Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+      - revetBackUp
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for Gradle
+        run: chmod +x gradlew
+
+      - name: Build Debian package
+        run: ./gradlew --no-daemon :composeApp:packageReleaseDeb
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VetNutriMP-deb
+          path: composeApp/build/compose/binaries/main/deb/*.deb
+          if-no-files-found: error
+
+

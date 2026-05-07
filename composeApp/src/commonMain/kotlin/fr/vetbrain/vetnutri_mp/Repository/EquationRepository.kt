@@ -5,12 +5,15 @@ import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.EquationDao
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /** Interface définissant les opérations disponibles pour la gestion des équations */
 interface EquationRepository {
@@ -105,10 +108,11 @@ class DatabaseEquationRepository(
 ) : EquationRepository {
 
     private val equationsFlow = MutableStateFlow<List<Equation>>(emptyList())
+    private val scope = CoroutineScope(AppDispatchers.IO + SupervisorJob())
 
     init {
         // Retiré: insertion automatique d'équations de démonstration.
-        runBlocking { loadEquations() }
+        scope.launch { loadEquations() }
     }
 
     private suspend fun loadEquations() {

@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Repository
 import fr.vetbrain.vetnutri_mp.DataBase.HtmlSectionDao
 import fr.vetbrain.vetnutri_mp.DataBase.HtmlSectionEntity
 import fr.vetbrain.vetnutri_mp.Export.*
+import fr.vetbrain.vetnutri_mp.Utils.isDebugBuild
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.encodeToString
@@ -11,7 +12,7 @@ import kotlinx.serialization.json.Json
 /** Repository spécialisé pour la gestion des conseils personnalisés */
 class ConseilRepository(private val dao: HtmlSectionDao) {
 
-    private val json = Json { prettyPrint = true }
+    private val json = Json { prettyPrint = isDebugBuild() }
 
     /** Récupère tous les conseils actifs */
     suspend fun getConseilsActifs(): Result<List<HtmlSection>> {

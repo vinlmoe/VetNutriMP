@@ -145,6 +145,11 @@
         "barf": "БАРФ",
         "cracker": "Крекер",
         "can": "Консерва",
-        "dosette": "Мірна ложка"
+        "dosette": "Мірна ложка",
+        "enum.Espece.ALL": "Всі види",
+        "enum.FoodKind.all": "Всі типи",
+        "enum.GroupAlim.all": "Всі групи",
+        "enum.AlimIndic.All": "Всі показання",
+        "ration.currentName": "Поточний раціон"
     }
 }

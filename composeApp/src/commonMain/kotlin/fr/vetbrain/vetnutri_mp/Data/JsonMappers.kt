@@ -11,7 +11,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import kotlinx.datetime.LocalDate
 
-/** Fonctions d'extension pour convertir entre les classes de données et les structures JSON */
+/** Mappers JSON <-> domaine (aliments, animaux, rations, préférences, etc.). */
 
 // AlimentEv <-> AlimentEvJson
 fun AlimentEv.toJson(): AlimentEvJson {
@@ -28,6 +28,8 @@ fun AlimentEv.toJson(): AlimentEvJson {
             espece = 0, // À adapter selon votre logique
             Especes = this.especes,
             gamme = this.gamme ?: "",
+            dateMaj = this.lastUpdateDate ?: "",
+            imageRef = this.imageRef ?: "",
             presentation = "", // Non présent dans AlimentEv
             quantInt = this.quantInt ?: 0.0,
             cont = if (this.cont != null) this.cont.name else "NO",
@@ -73,17 +75,18 @@ fun AlimentEvJson.toData(): AlimentEv {
             val nutrientKey = nutrientQuantity.nut
             val value = nutrientQuantity.value
 
-            val nutrient = AllNutrientResolver(nutrientKey)
+            // Essayer d'abord la résolution directe
+            var nutrient = AllNutrientResolver(nutrientKey)
+            
+            // Si la résolution échoue, essayer de nettoyer la clé
+            if (nutrient == null) {
+                val cleanedKey = nutrientKey.trim().replace("_", " ")
+                nutrient = AllNutrientResolver(cleanedKey)
+            }
+            
+            // Si la résolution réussit, ajouter le nutriment
             if (nutrient != null) {
                 nutrientMap[nutrient] = NutrientQuantity(value, nutrient.label)
-            } else {
-                // Essayer de nettoyer la clé pour trouver une correspondance
-                val cleanedKey = nutrientKey.trim().replace("_", " ")
-                val nutrientAfterClean = AllNutrientResolver(cleanedKey)
-                if (nutrientAfterClean != null) {
-                    nutrientMap[nutrientAfterClean] =
-                            NutrientQuantity(value, nutrientAfterClean.label)
-                }
             }
         }
     }
@@ -112,6 +115,8 @@ fun AlimentEvJson.toData(): AlimentEv {
                     quantInt = this.quantInt,
                     deprecated = this.deprecated,
                     dataB = this.DataB,
+                    lastUpdateDate = this.dateMaj,
+                    imageRef = this.imageRef,
                     especes = especesConverties.toMutableList(),
                     indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
                     // Assurez-vous que valMap est mutable
@@ -136,17 +141,18 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
             val nutrientKey = nutrientQuantity.nut
             val value = nutrientQuantity.value
 
-            val nutrient = AllNutrientResolver(nutrientKey)
+            // Essayer d'abord la résolution directe
+            var nutrient = AllNutrientResolver(nutrientKey)
+            
+            // Si la résolution échoue, essayer de nettoyer la clé
+            if (nutrient == null) {
+                val cleanedKey = nutrientKey.trim().replace("_", " ")
+                nutrient = AllNutrientResolver(cleanedKey)
+            }
+            
+            // Si la résolution réussit, ajouter le nutriment
             if (nutrient != null) {
                 nutrientMap[nutrient] = NutrientQuantity(value, nutrient.label)
-            } else {
-                // Essayer de nettoyer la clé pour trouver une correspondance
-                val cleanedKey = nutrientKey.trim().replace("_", " ")
-                val nutrientAfterClean = AllNutrientResolver(cleanedKey)
-                if (nutrientAfterClean != null) {
-                    nutrientMap[nutrientAfterClean] =
-                            NutrientQuantity(value, nutrientAfterClean.label)
-                }
             }
         }
     }
@@ -173,6 +179,8 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
             quantInt = this.quantInt,
             deprecated = this.deprecated,
             dataB = this.DataB,
+            lastUpdateDate = this.dateMaj,
+            imageRef = this.imageRef,
             especes = especesConverties.toMutableList(),
             indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
             valMap = nutrientMap.toMutableMap(),
@@ -237,6 +245,11 @@ fun AnimalEv.toJson(): AnimalEvJson {
             dateNaiss = this.birthdate ?: LocalDate(2023, 1, 1),
             race = this.race,
             resume = this.summary,
+            jsonbinId = this.jsonbinId,
+            exam = this.exam,
+            examStudentId = this.examStudentId,
+            examStudentNumber = this.examStudentNumber,
+            examExerciseId = this.examExerciseId,
             listWeight = this.weightHistory.map { it.toJson() },
             list = ListConsultEvJson(consultations = this.consultations.map { it.toJson() })
     )
@@ -304,6 +317,11 @@ fun AnimalEvJson.toData(): AnimalEv {
             birthdate = this.dateNaiss,
             race = this.race,
             summary = this.resume,
+            jsonbinId = this.jsonbinId,
+            exam = this.exam,
+            examStudentId = this.examStudentId,
+            examStudentNumber = this.examStudentNumber,
+            examExerciseId = this.examExerciseId,
             weightHistory =
                     try {
                         this.listWeight.map { it.toData() }.toMutableList()
@@ -352,7 +370,15 @@ fun ConsultationEv.toJson(): ConsultationEvJson {
             k5value = this.k5Value ?: 1.0,
             rationList = this.rations.associateBy({ it.uuid }, { it.toJson() }),
             diseaseRef = listOf(), // Non présent dans ConsultationEv
-            svp = this.suppVarp.map { it.toJson() }
+            svp = this.suppVarp.map { it.toJson() },
+            keywords = this.keywordIds,
+            prescriptionAnamnese = this.prescriptionAnamnese,
+            prescriptionExamenClinique = this.prescriptionExamenClinique,
+            prescriptionFacteurNutritionnelClef = this.prescriptionFacteurNutritionnelClef,
+            prescriptionAdditionalText = this.prescriptionAdditionalText,
+            prescriptionSelectedConseilIds = this.prescriptionSelectedConseilIds,
+            prescriptionLocalHtmlSections = this.prescriptionLocalHtmlSections,
+            prescriptionSelectedRationIds = this.prescriptionSelectedRationIds
     )
 }
 
@@ -376,7 +402,15 @@ fun ConsultationEvJson.toData(): ConsultationEv {
             k4Value = this.k4value,
             k5Value = this.k5value,
             suppVarp = this.svp.map { it.toData() }.toMutableList(),
-            rations = this.rationList.values.map { it.toData() }.toMutableList()
+            rations = this.rationList.values.map { it.toData() }.toMutableList(),
+            keywordIds = this.keywords.toMutableList(),
+            prescriptionAnamnese = this.prescriptionAnamnese,
+            prescriptionExamenClinique = this.prescriptionExamenClinique,
+            prescriptionFacteurNutritionnelClef = this.prescriptionFacteurNutritionnelClef,
+            prescriptionAdditionalText = this.prescriptionAdditionalText,
+            prescriptionSelectedConseilIds = this.prescriptionSelectedConseilIds.toMutableList(),
+            prescriptionLocalHtmlSections = this.prescriptionLocalHtmlSections.toMutableList(),
+            prescriptionSelectedRationIds = this.prescriptionSelectedRationIds.toMutableList()
     )
 }
 

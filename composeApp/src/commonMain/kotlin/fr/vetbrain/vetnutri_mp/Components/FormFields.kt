@@ -22,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /** Composant d'affichage d'un champ de texte non modifiable pour les valeurs nutritionnelles */
@@ -86,7 +87,14 @@ fun ComboBox(
                         )
                 }
 
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = {
+                                if (!isIosPlatform) {
+                                        expanded = false
+                                }
+                        }
+                ) {
                         items.forEach { item ->
                                 DropdownMenuItem(
                                         content = { Text(itemLabelProvider(item)) },
@@ -143,7 +151,11 @@ fun <T> GenericDropdown(
 
                 DropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false },
+                        onDismissRequest = {
+                                if (!isIosPlatform) {
+                                        expanded = false
+                                }
+                        },
                         modifier = Modifier.exposedDropdownSize()
                 ) {
                         items.forEach { item ->

@@ -21,18 +21,24 @@ import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodListViewModel
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchComponent
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchConfig
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchFilters
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchLayout
+import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchComponent
+import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchConfig
+import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchLayout
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch
 
+/**
+ * Liste des aliments.
+ * - Utilise `FoodSearchComponent` pour filtrer côté UI à partir de `allFoods`.
+ * - Synchronise les filtres saisis avec le `FoodListViewModel` (flow interne).
+ */
 @OptIn(ExperimentalUuidApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun FoodListView(
@@ -44,6 +50,7 @@ fun FoodListView(
         modifier: Modifier = Modifier
 ) {
         val foods: List<AlimentEv> = viewModel.foods.collectAsState().value
+        val allFoods: List<AlimentEv> = viewModel.allFoods.collectAsState().value
         val searchQuery = viewModel.searchQuery.collectAsState().value
         val selectedFoodType = viewModel.selectedFoodType.collectAsState().value
         val selectedEspece = viewModel.selectedEspece.collectAsState().value
@@ -53,14 +60,17 @@ fun FoodListView(
         val availableIndications = viewModel.availableIndications.collectAsState().value
         val availableEspeces = viewModel.availableEspeces
         val coroutineScope = rememberCoroutineScope()
+        var advancedFilters by remember { mutableStateOf(FoodSearchFilters()) }
 
-        // Conversion des filtres du ViewModel vers FoodSearchFilters
+        // Conversion des filtres du ViewModel vers FoodSearchFilters (en conservant les filtres
+        // avancés en local)
         val filters = remember(
                 searchQuery,
                 selectedFoodType,
                 selectedEspece,
                 selectedIndication,
-                selectedDataB
+                selectedDataB,
+                advancedFilters
         ) {
                 FoodSearchFilters(
                         searchQuery = searchQuery,
@@ -68,23 +78,31 @@ fun FoodListView(
                         selectedFoodGroup = null, // Pas de filtre par groupe
                         selectedEspece = selectedEspece,
                         selectedIndications = if (selectedIndication != null) setOf(selectedIndication) else emptySet(),
-                        dataB = selectedDataB
+                        dataB = selectedDataB,
+                        includeDeprecated = advancedFilters.includeDeprecated,
+                        aminoOnly = advancedFilters.aminoOnly,
+                        nutrientFilters = advancedFilters.nutrientFilters,
+                        sortCriteria = advancedFilters.sortCriteria,
+                        sortOrder = advancedFilters.sortOrder
                 )
         }
 
         // Configuration pour FoodSearchComponent
         val searchConfig = remember {
                 FoodSearchConfig(
-                        layout = FoodSearchLayout.VERTICAL,
+                        layout = FoodSearchLayout.HORIZONTAL,
                         showFilters = true,
                         showSearchBar = true,
                         showResultsCount = true,
-                        availableActions = listOf("Éditer", "Supprimer"),
-                        onFoodAction = { aliment, action ->
-                                when (action) {
-                                        "Éditer" -> onEditFood(aliment.uuid)
-                                        "Supprimer" -> viewModel.deleteFood(aliment)
+                        availableActions = listOf(LocalizationKeys.General.EDIT, LocalizationKeys.General.DELETE),
+                        onFoodAction = { aliment, actionKey ->
+                                when (actionKey) {
+                                        LocalizationKeys.General.EDIT -> onEditFood(aliment.uuid)
+                                        LocalizationKeys.General.DELETE -> viewModel.deleteFood(aliment)
                                 }
+                        },
+                        onLoadNutrients = { foodUuids, nutrients ->
+                                viewModel.loadNutrientsForFoods(foodUuids, nutrients)
                         }
                 )
         }
@@ -95,7 +113,7 @@ fun FoodListView(
                 modifier = modifier,
                 topBar = {
                         TopBar(
-                                title = "Liste des aliments",
+                                title = translate(LocalizationKeys.Food.LIST_TITLE),
                                 onBackClick = onNavigateBack,
                                 onSettingsClick = onOpenSettings
                         )
@@ -123,13 +141,15 @@ fun FoodListView(
                                         .padding(AppSizes.paddingMedium),
                         horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                        // Utilisation du composant partagé FoodSearchComponent
+                        // Composant partagé FoodSearchComponent :
+                        // - allFoods (liste complète) en entrée
+                        // - filtrage géré côté composant, ViewModel conservant les filtres
                         FoodSearchComponent(
-                                foods = foods,
+                                foods = allFoods,
                                 filters = filters,
                                 onFiltersChange = { newFilters ->
+                                        advancedFilters = newFilters
                                         // Mettre à jour le ViewModel avec les nouveaux filtres
-                                        println("DEBUG FoodListView - onFiltersChange appelé avec dataB: ${newFilters.dataB}")
                                         viewModel.setSearchQuery(newFilters.searchQuery)
                                         viewModel.setSelectedFoodType(newFilters.selectedFoodType)
                                         // Pas de setSelectedFoodGroup car on ne filtre plus par groupe
@@ -138,10 +158,10 @@ fun FoodListView(
                                                 viewModel.setSelectedIndication(indication)
                                         } ?: viewModel.setSelectedIndication(null)
                                         viewModel.setSelectedDataB(newFilters.dataB)
-                                        println("DEBUG FoodListView - Mise à jour ViewModel terminée")
                                 },
                                 config = searchConfig,
-                                        modifier = Modifier.fillMaxWidth()
+                                onSearchSubmit = { viewModel.forceRefreshSearch() },
+                                modifier = Modifier.fillMaxWidth()
                                 )
                 }
         }

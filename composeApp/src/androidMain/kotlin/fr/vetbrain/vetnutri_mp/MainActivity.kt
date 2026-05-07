@@ -7,10 +7,14 @@ import fr.vetbrain.vetnutri_mp.DataBase.getDatabaseBuilder
 import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
+import fr.vetbrain.vetnutri_mp.Utils.FullscreenManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?): Unit {
         super.onCreate(savedInstanceState)
+
+        // Configuration plein écran
+        FullscreenManager.enableFullscreen(this)
 
         // Initialisation du contexte Android
         AndroidContext.appContext = applicationContext

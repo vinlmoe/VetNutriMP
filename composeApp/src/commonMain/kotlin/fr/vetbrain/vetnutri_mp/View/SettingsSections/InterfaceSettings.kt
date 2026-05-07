@@ -13,6 +13,8 @@ import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsSection
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.InfoSection
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlin.math.roundToInt
 
@@ -28,8 +30,8 @@ fun InterfaceSettings(viewModel: SettingsViewModel, modifier: Modifier = Modifie
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(24.dp)) {
         // Section pour l'échelle de l'interface
         SettingsSection(
-            title = "Échelle de l'interface",
-            subtitle = "Ajustez la taille des éléments de l'interface pour améliorer la lisibilité",
+            title = translate(LocalizationKeys.Settings.SCALE_TITLE),
+            subtitle = translate(LocalizationKeys.Settings.SCALE_SUBTITLE),
             icon = Icons.Default.ZoomIn,
             content = {
                 Column(
@@ -61,7 +63,7 @@ fun InterfaceSettings(viewModel: SettingsViewModel, modifier: Modifier = Modifie
                                 color = VetNutriColors.Primary
                             )
                             Text(
-                                text = "Taille actuelle",
+                                text = translate(LocalizationKeys.Settings.SCALE_CURRENT),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                             )
@@ -81,8 +83,8 @@ fun InterfaceSettings(viewModel: SettingsViewModel, modifier: Modifier = Modifie
 
                     // Informations sur l'échelle
                     InfoSection(
-                        title = "Informations sur l'échelle",
-                        message = "• Échelle minimale : 50% (0.5x)\n• Échelle maximale : 200% (2.0x)\n• Échelle par défaut : 100% (1.0x)"
+                        title = translate(LocalizationKeys.Settings.SCALE_INFO_TITLE),
+                        message = translate(LocalizationKeys.Settings.SCALE_INFO_MSG)
                     )
                 }
             }

@@ -145,6 +145,11 @@
         "barf": "BARF",
         "cracker": "Galleta",
         "can": "Lata",
-        "dosette": "Medidor"
+        "dosette": "Medidor",
+        "enum.Espece.ALL": "Todas especies",
+        "enum.FoodKind.all": "Todos tipos",
+        "enum.GroupAlim.all": "Todos grupos",
+        "enum.AlimIndic.All": "Todas indicaciones",
+        "ration.currentName": "Ración actual"
     }
 }

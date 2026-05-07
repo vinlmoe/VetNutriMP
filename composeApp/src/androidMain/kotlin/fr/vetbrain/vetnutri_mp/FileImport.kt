@@ -11,7 +11,10 @@ import kotlinx.coroutines.withContext
  * Implémentation Android de la fonction d'importation d'animaux depuis un fichier. Cette fonction
  * ouvre un sélecteur de fichier pour choisir un fichier JSON.
  */
-actual fun importAnimalsFromFile(viewModel: AnimalListViewModel) {
+actual fun importAnimalsFromFile(
+    viewModel: AnimalListViewModel,
+    clearFoodsBeforeImport: Boolean
+) {
     // Cette fonction sera appelée depuis un composable, mais nous ne pouvons pas
     // utiliser directement les fonctions de composition ici.
     // L'implémentation réelle est dans MainActivity.

@@ -43,7 +43,6 @@ class HtmlSectionViewModel(private val repository: HtmlSectionRepository) : View
                 val result = repository.getAllSections()
                 result.onSuccess { sections -> _sections.value = sections }.onFailure { error ->
                     // Gérer l'erreur (logging, message utilisateur, etc.)
-                    println("Erreur lors du chargement des sections: ${error.message}")
                 }
             } finally {
                 _isLoading.value = false
@@ -67,7 +66,6 @@ class HtmlSectionViewModel(private val repository: HtmlSectionRepository) : View
                     HtmlSection(id = "", title = title, content = content, category = category)
             val result = repository.saveSection(newSection)
             result.onSuccess { loadSections() }.onFailure { error ->
-                println("Erreur lors de la création de la section: ${error.message}")
             }
         }
     }
@@ -84,7 +82,6 @@ class HtmlSectionViewModel(private val repository: HtmlSectionRepository) : View
                         }
                     }
                     .onFailure { error ->
-                        println("Erreur lors de la mise à jour de la section: ${error.message}")
                     }
         }
     }
@@ -101,7 +98,6 @@ class HtmlSectionViewModel(private val repository: HtmlSectionRepository) : View
                         }
                     }
                     .onFailure { error ->
-                        println("Erreur lors de la suppression de la section: ${error.message}")
                     }
         }
     }
@@ -116,7 +112,6 @@ class HtmlSectionViewModel(private val repository: HtmlSectionRepository) : View
                         _selectedSection.value = duplicatedSection
                     }
                     .onFailure { error ->
-                        println("Erreur lors de la duplication de la section: ${error.message}")
                     }
         }
     }
@@ -131,7 +126,6 @@ class HtmlSectionViewModel(private val repository: HtmlSectionRepository) : View
                         _selectedSection.value = newSection
                     }
                     .onFailure { error ->
-                        println("Erreur lors de la création depuis le modèle: ${error.message}")
                     }
         }
     }

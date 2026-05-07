@@ -5,17 +5,14 @@ import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 
 /**
- * Préférences spécifiques à une espèce
- * @param espece L'espèce concernée
- * @param typeExpressionBesoinId ID du type d'expression des besoins (voir TypeExpressionBesoin.id)
- * @param nutrimentsSelectionnes Map des catégories de nutriments vers les listes de nutriments
- * sélectionnés
- * @param equationsComplementaires Map des nutriments vers les UUIDs des équations complémentaires
+ * Préférences par espèce (type d'expression des besoins, nutriments sélectionnés, équations compl.).
+ * - `nutrimentsSelectionnes`: clés = catégories (enum name), valeurs = coefs de nutriments.
+ * - `equationsComplementaires`: nutriment -> UUID d'équation complémentaire.
  */
 data class PreferencesEspece(
         val espece: String = Espece.CHIEN.name,
         val typeExpressionBesoinId: Int = TypeExpressionBesoin.DEFAULT.id,
-        val nutrimentsSelectionnes: Map<String, List<Int>> = getDefaultNutrients(),
+        val nutrimentsSelectionnes: Map<String, List<Int>> = DefaultPreferencesConfig.DefaultNutrients.toMap(),
         val equationsComplementaires: Map<String, String> = emptyMap() // nutriment -> equation UUID
 ) {
     /** Obtient l'énumération TypeExpressionBesoin correspondante */
@@ -157,7 +154,14 @@ data class PreferencesEspece(
 /** Ensemble des préférences de toutes les espèces */
 data class PreferencesApplication(
         val preferencesParEspece: Map<String, PreferencesEspece> = emptyMap(),
-        val versionPreferences: Int = DefaultPreferencesConfig.DEFAULT_VERSION
+        val versionPreferences: Int = DefaultPreferencesConfig.DEFAULT_VERSION,
+        val nomUtilisateur: String = "",
+        val numeroOrdre: String = "",
+        val adressePostale: String = "",
+        val codePostal: String = "",
+        val ville: String = "",
+        val telephone: String = "",
+        val email: String = ""
 ) {
     /** Obtient les préférences pour une espèce donnée */
     fun getPreferencesEspece(espece: Espece): PreferencesEspece {
@@ -170,7 +174,7 @@ data class PreferencesApplication(
         nouvellesPreferences[preferences.espece] = preferences
         return copy(preferencesParEspece = nouvellesPreferences)
     }
-    
+
     companion object {
         /** Crée une instance avec toutes les préférences par défaut */
         fun createDefault(): PreferencesApplication {

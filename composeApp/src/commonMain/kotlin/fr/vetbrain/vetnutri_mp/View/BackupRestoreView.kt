@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,10 +17,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Service.BackupService.BackupMetadata
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.ViewModel.BackupRestoreViewModel
 
 /**
- * Vue pour la gestion des sauvegardes et de la restauration
+ * Vue sauvegardes/restauration.
+ * - Liste les backups, création, suppression, restauration avec dialogues de confirmation.
+ * - Affiche progression/log et bilan de restauration.
  */
 @Composable
 fun BackupRestoreView(
@@ -56,9 +60,12 @@ fun BackupRestoreView(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
-                }
+                IconButtonWithTooltip(
+                    onClick = onBack,
+                    imageVector = Icons.AutoMirrored.Default.ArrowBack,
+                    contentDescription = "Retour",
+                    tooltip = "Retour"
+                )
                 Text("Sauvegardes et Restauration", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
             }
             

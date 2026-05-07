@@ -18,6 +18,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Export.*
 import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+import kotlinx.datetime.Clock
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.coroutines.launch
 
@@ -222,7 +223,7 @@ fun ConseilEditView(
                                         val conseil =
                                                 HtmlSection(
                                                         id = conseilId
-                                                                        ?: "conseil_${System.currentTimeMillis()}",
+                                                                        ?: "conseil_${Clock.System.now().toEpochMilliseconds()}",
                                                         title = conseilTitle,
                                                         content = content,
                                                         category = category,
