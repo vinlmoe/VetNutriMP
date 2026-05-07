@@ -7,6 +7,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
@@ -72,6 +73,9 @@ fun FoodEditView(
         val allNutrients = viewModel.getAllNutrients()
         val nutrientValues = remember { mutableStateMapOf<Nutrient, String>() }
         val nutrientErrors = remember { mutableStateMapOf<Nutrient, Boolean>() }
+        val customNutrientNameState = remember { mutableStateOf("") }
+        val customNutrientUnitState = remember { mutableStateOf("g") }
+        val customNutrientSelectedLabelState = remember { mutableStateOf("") }
 
         // État pour les onglets
         var selectedTabIndex by remember { mutableStateOf(0) }
@@ -448,7 +452,17 @@ fun FoodEditView(
                                                 NutritionInfoTab(
                                                         allNutrients = allNutrients,
                                                         nutrientValues = nutrientValues,
-                                                        nutrientErrors = nutrientErrors
+                                                        nutrientErrors = nutrientErrors,
+                                                        customNutrientNameState = customNutrientNameState,
+                                                        customNutrientUnitState = customNutrientUnitState,
+                                                        customNutrientSelectedLabelState = customNutrientSelectedLabelState,
+                                                        onAddCustomNutrient = { name, unit ->
+                                                                val nutrient =
+                                                                        viewModel.addOrGetCustomNutrient(name, unit)
+                                                                if (nutrient != null && nutrient !in nutrientValues) {
+                                                                        nutrientValues[nutrient] = ""
+                                                                }
+                                                        }
                                                 )
                                 }
                         }
@@ -741,7 +755,11 @@ private fun GeneralInfoTab(
 private fun NutritionInfoTab(
         allNutrients: List<Nutrient>,
         nutrientValues: SnapshotStateMap<Nutrient, String>,
-        nutrientErrors: SnapshotStateMap<Nutrient, Boolean>
+        nutrientErrors: SnapshotStateMap<Nutrient, Boolean>,
+        customNutrientNameState: MutableState<String>,
+        customNutrientUnitState: MutableState<String>,
+        customNutrientSelectedLabelState: MutableState<String>,
+        onAddCustomNutrient: (String, String) -> Unit
 ) {
         val scrollState = rememberScrollState()
 
@@ -752,6 +770,8 @@ private fun NutritionInfoTab(
         val minNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.MIN }
         val vitamNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.VITAM }
         val otherNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.OTHER }
+        val customNutrients = allNutrients.filter { it is CustomNutrient }.map { it as CustomNutrient }
+        var customDropdownExpanded by remember { mutableStateOf(false) }
         // Acides aminés
         val acidesAminesNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.AMA }
 
@@ -762,6 +782,90 @@ private fun NutritionInfoTab(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Utilisation des composants réutilisables pour chaque section de nutriments
+                Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
+                        Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                Text("Nutriments personnalisés", style = MaterialTheme.typography.h6)
+                                OutlinedTextField(
+                                        value = customNutrientNameState.value,
+                                        onValueChange = { customNutrientNameState.value = it },
+                                        label = { Text("Nom du nutriment") },
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                        value = customNutrientUnitState.value,
+                                        onValueChange = { customNutrientUnitState.value = it },
+                                        label = { Text("Unité (g, mg, µg, kcal)") },
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                Button(
+                                        onClick = {
+                                                onAddCustomNutrient(
+                                                        customNutrientNameState.value,
+                                                        customNutrientUnitState.value
+                                                )
+                                                customNutrientSelectedLabelState.value =
+                                                        customNutrientNameState.value.trim()
+                                        },
+                                        enabled = customNutrientNameState.value.isNotBlank()
+                                ) { Text("Ajouter") }
+                                if (customNutrients.isNotEmpty()) {
+                                        OutlinedTextField(
+                                                value = customNutrientSelectedLabelState.value,
+                                                onValueChange = {},
+                                                readOnly = true,
+                                                label = { Text("Sélectionner un nutriment existant") },
+                                                trailingIcon = {
+                                                        IconButton(
+                                                                onClick = {
+                                                                        customDropdownExpanded = !customDropdownExpanded
+                                                                }
+                                                        ) {
+                                                                Icon(
+                                                                        Icons.Default.ArrowDropDown,
+                                                                        contentDescription = null
+                                                                )
+                                                        }
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        DropdownMenu(
+                                                expanded = customDropdownExpanded,
+                                                onDismissRequest = { customDropdownExpanded = false }
+                                        ) {
+                                                customNutrients.forEach { nutrient ->
+                                                        DropdownMenuItem(
+                                                                onClick = {
+                                                                        customNutrientSelectedLabelState.value =
+                                                                                nutrient.nameToString()
+                                                                        customDropdownExpanded = false
+                                                                }
+                                                        ) {
+                                                                Text("${nutrient.nameToString()} (${nutrient.unite})")
+                                                        }
+                                                }
+                                        }
+                                        Button(
+                                                onClick = {
+                                                        val selected = customNutrients.firstOrNull {
+                                                                it.nameToString() == customNutrientSelectedLabelState.value
+                                                        }
+                                                        if (selected != null && selected !in nutrientValues) {
+                                                                nutrientValues[selected] = ""
+                                                        }
+                                                },
+                                                enabled = customNutrientSelectedLabelState.value.isNotBlank()
+                                        ) {
+                                                Icon(Icons.Default.Add, contentDescription = null)
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Utiliser ce nutriment")
+                                        }
+                                }
+                        }
+                }
+
                 // Section Principaux nutriments
                 if (mainNutrients.isNotEmpty()) {
                         NutrientSection(

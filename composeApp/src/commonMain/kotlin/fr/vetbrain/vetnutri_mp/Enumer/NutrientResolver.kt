@@ -27,6 +27,7 @@ object NutrientResolver {
             AAEnum.entries.forEach { put(it.label.uppercase(), it) }
             NutrientEnergy.entries.forEach { put(it.label.uppercase(), it) }
             NutrientAnalysis.entries.forEach { put(it.label.uppercase(), it) }
+            CustomNutrientRegistry.all().forEach { put(it.label.uppercase(), it) }
         }
     }
 
@@ -135,9 +136,9 @@ object NutrientResolver {
             return matchingNutrient
         }
 
-        // Aucun nutriment trouvé
-
-        return null
+        // Fallback final: créer/réutiliser un nutriment personnalisé
+        val custom = CustomNutrientRegistry.getByLabel(cleanedLabel) ?: CustomNutrient.fromLabel(cleanedLabel)
+        return CustomNutrientRegistry.register(custom)
     }
 
     /**
