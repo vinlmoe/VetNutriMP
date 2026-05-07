@@ -24,6 +24,8 @@ data class AlimentEv(
         var quantInt: Double? = null,
         var deprecated: Boolean = false,
         var dataB: String? = null,
+        var lastUpdateDate: String? = null,
+        var imageRef: String? = null,
         var especes: MutableList<String> = mutableListOf(),
         var indicat: MutableList<AlimIndic> = mutableListOf(),
         var valMap: MutableMap<Nutrient, NutrientQuantity> = mutableMapOf(),
@@ -43,12 +45,23 @@ data class AlimentEv(
                         return null
                 }
 
-                // Si c'est l'énergie (NutrientEnergy ou NutrientMain.ENERGIE) et qu'on a une
-                // référence avec des équations, utiliser les équations
-                if (referenceEv != null &&
-                                (nutrient is NutrientEnergy || nutrient == NutrientMain.ENERGIE)
-                ) {
-                        return calculerEnergieViaReference(referenceEv)
+                // Si c'est l'énergie (NutrientEnergy ou NutrientMain.ENERGIE), vérifier d'abord
+                // si l'aliment a une valeur d'énergie définie avant d'utiliser les équations
+                if (nutrient is NutrientEnergy || nutrient == NutrientMain.ENERGIE) {
+                        // D'abord vérifier si l'aliment a une valeur d'énergie définie
+                        val energieDefinie = valMap[nutrient]?.value
+                        if (energieDefinie != null && energieDefinie > 0.0) {
+                                return energieDefinie
+                        }
+                        
+                        // Si pas d'énergie définie et qu'on a une référence avec des équations,
+                        // utiliser les équations
+                        if (referenceEv != null) {
+                                return calculerEnergieViaReference(referenceEv)
+                        }
+                        
+                        // Si pas d'énergie définie et pas de référence, retourner null
+                        return null
                 }
 
                 // Sinon, retourner la valeur stockée
@@ -76,15 +89,10 @@ data class AlimentEv(
                         return null
                 }
 
-                // Créer les variables pour l'évaluation
-                val variables = mutableMapOf<String, Double>()
-
-                // Ajouter les nutriments principaux nécessaires aux formules
+                val variables: MutableMap<String, Double> = mutableMapOf()
                 valMap.forEach { (nutrient, quantity) ->
                         variables[nutrient.label] = quantity.value
                 }
-
-                // Évaluer l'équation
                 return try {
                         fr.vetbrain.vetnutri_mp.Utils.ExpressionMathematique.evaluer(
                                 equation.equationScript,

@@ -63,4 +63,8 @@ class CreateAnimalViewModel(private val animalRepository: AnimalRepository) : Vi
         val animalActuel = _animal.value
         _animal.value = animalActuel.copy(birthdate = today)
     }
+
+    suspend fun getRacesBySpecies(specieId: String): List<String> {
+        return animalRepository.getRacesBySpecies(specieId)
+    }
 }

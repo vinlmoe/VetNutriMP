@@ -37,53 +37,38 @@ class DatabaseReferenceEvRepository(
     }
 
     suspend fun saveReferenceEv(referenceEv: ReferenceEv): String {
-        println("💾 [SAVE] Début de la sauvegarde de la référence: ${referenceEv.nom} (UUID: ${referenceEv.uuid})")
         try {
             // 1. Sauvegarder l'entité principale
-            println("💾 [SAVE] Étape 1: Sauvegarde de l'entité principale")
             val entity = convertReferenceEvToEntity(referenceEv)
             referenceEvDao.insertReferenceEv(entity)
 
             // 2. Les références bibliographiques existent déjà, pas besoin de les sauvegarder à nouveau
-            println("💾 [SAVE] Étape 2: Références bibliographiques déjà existantes - pas de sauvegarde nécessaire")
 
             // 3. Les équations existent déjà, pas besoin de les sauvegarder à nouveau
-            println("💾 [SAVE] Étape 3: Équations déjà existantes - pas de sauvegarde nécessaire")
 
             // 4. Sauvegarder les relations avec les équations existantes
-            println("💾 [SAVE] Étape 4: Sauvegarde des relations équations")
             try {
                 saveEquationRelations(referenceEv)
-                println("💾 [SAVE] Relations équations sauvegardées avec succès")
             } catch (e: Exception) {
-                println("❌ [SAVE] Erreur lors de la sauvegarde des relations équations: ${e.message}")
                 throw e
             }
 
             // 5. Sauvegarder les coefficients
-            println("💾 [SAVE] Étape 5: Sauvegarde des coefficients")
             try {
                 saveCoefficients(referenceEv)
-                println("💾 [SAVE] Coefficients sauvegardés avec succès")
             } catch (e: Exception) {
-                println("❌ [SAVE] Erreur lors de la sauvegarde des coefficients: ${e.message}")
                 throw e
             }
 
             // 6. Sauvegarder les nutriments
-            println("💾 [SAVE] Étape 6: Sauvegarde des nutriments")
             try {
                 saveNutrients(referenceEv)
-                println("💾 [SAVE] Nutriments sauvegardés avec succès")
             } catch (e: Exception) {
-                println("❌ [SAVE] Erreur lors de la sauvegarde des nutriments: ${e.message}")
                 throw e
             }
 
-            println("✅ [SAVE] Sauvegarde terminée avec succès pour UUID: ${referenceEv.uuid}")
             return referenceEv.uuid
         } catch (e: Exception) {
-            println("❌ [SAVE] Erreur lors de la sauvegarde: ${e.message}")
             throw e
         }
     }
@@ -109,9 +94,7 @@ class DatabaseReferenceEvRepository(
             saveCoefficients(referenceEv)
             saveNutrients(referenceEv)
 
-            println("✅ [UPDATE_REPO] Mise à jour terminée avec succès")
         } catch (e: Exception) {
-            println("❌ [UPDATE_REPO] Erreur lors de la mise à jour: ${e.message}")
             throw e
         }
     }
@@ -160,7 +143,7 @@ class DatabaseReferenceEvRepository(
         val coefficients = mutableListOf<ReferenceEvCoefficientEntity>()
 
         // Sauvegarder les coefficients k1-k5 avec leurs UUIDs originaux
-        referenceEv.getModk1().forEach { coef ->
+        referenceEv.modk1.forEach { coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = coef.uuid, // ✅ UUID original préservé
@@ -173,7 +156,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk2().forEach { coef ->
+        referenceEv.modk2.forEach { coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = coef.uuid, // ✅ UUID original préservé
@@ -186,7 +169,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk3().forEach { coef ->
+        referenceEv.modk3.forEach { coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = coef.uuid, // ✅ UUID original préservé
@@ -199,7 +182,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk4().forEach { coef ->
+        referenceEv.modk4.forEach { coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = coef.uuid, // ✅ UUID original préservé
@@ -212,7 +195,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk5().forEach { coef ->
+        referenceEv.modk5.forEach { coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = coef.uuid, // ✅ UUID original préservé
@@ -427,7 +410,6 @@ class DatabaseReferenceEvRepository(
     // Méthodes privées pour sauvegarder les relations
 
     private suspend fun saveEquationRelations(referenceEv: ReferenceEv) {
-        println("🔗 [SAVE_RELATIONS] Début de la sauvegarde des relations pour référence: ${referenceEv.uuid}")
         val relations = mutableListOf<ReferenceEvEquationEntity>()
 
         referenceEv.equationBW?.let { equation ->
@@ -480,6 +462,23 @@ class DatabaseReferenceEvRepository(
             )
         }
 
+        // Si la référence est une maladie, l'énergie complémentaire est portée par une unique équation ENERCOMP
+        // On sérialise ce lien via le type d'équation "ENERCOMP" (unique)
+        if (referenceEv.maladie) {
+            val enercomp = referenceEv.equationsNut.firstOrNull {
+                it.kind == fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP
+            }
+            if (enercomp != null) {
+                relations.add(
+                        ReferenceEvEquationEntity(
+                                referenceEvId = referenceEv.uuid,
+                                equationId = enercomp.uuid,
+                                equationType = "ENERCOMP"
+                        )
+                )
+            }
+        }
+
         // Équations nutritionnelles additionnelles (complémentaires, etc.)
         // Nous utilisons equationType = uuid de l'équation pour permettre plusieurs lignes
         if (referenceEv.equationsNut.isNotEmpty()) {
@@ -498,11 +497,10 @@ class DatabaseReferenceEvRepository(
     }
 
     private suspend fun saveCoefficients(referenceEv: ReferenceEv) {
-        println("📊 [SAVE_COEFF] Début de la sauvegarde des coefficients pour référence: ${referenceEv.uuid}")
         val coefficients = mutableListOf<ReferenceEvCoefficientEntity>()
 
         // Sauvegarder les coefficients k1-k5
-        referenceEv.getModk1().forEachIndexed { index, coef ->
+        referenceEv.modk1.forEachIndexed { index, coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = "${referenceEv.uuid}_k1_$index",
@@ -515,7 +513,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk2().forEachIndexed { index, coef ->
+        referenceEv.modk2.forEachIndexed { index, coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = "${referenceEv.uuid}_k2_$index",
@@ -528,7 +526,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk3().forEachIndexed { index, coef ->
+        referenceEv.modk3.forEachIndexed { index, coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = "${referenceEv.uuid}_k3_$index",
@@ -541,7 +539,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk4().forEachIndexed { index, coef ->
+        referenceEv.modk4.forEachIndexed { index, coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = "${referenceEv.uuid}_k4_$index",
@@ -554,7 +552,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk5().forEachIndexed { index, coef ->
+        referenceEv.modk5.forEachIndexed { index, coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = "${referenceEv.uuid}_k5_$index",
@@ -571,7 +569,6 @@ class DatabaseReferenceEvRepository(
     }
 
     private suspend fun saveNutrients(referenceEv: ReferenceEv) {
-        println("🥗 [SAVE_NUT] Début de la sauvegarde des nutriments pour référence: ${referenceEv.uuid}")
         val nutrients = mutableListOf<ReferenceEvNutrientEntity>()
 
         // Sauvegarder les nutriments MIN
@@ -676,10 +673,10 @@ class DatabaseReferenceEvRepository(
 
         // Charger chaque groupe
         coefficientsByGroup["k1"]?.let { coefList ->
-            referenceEv.getModk1().clear()
+            referenceEv.modk1.clear()
             for (coefEntity in coefList) {
                 referenceEv
-                        .getModk1()
+                        .modk1
                         .add(
                                 CoefP(
                                         uuid = coefEntity.uuid,
@@ -692,10 +689,10 @@ class DatabaseReferenceEvRepository(
         }
 
         coefficientsByGroup["k2"]?.let { coefList ->
-            referenceEv.getModk2().clear()
+            referenceEv.modk2.clear()
             for (coefEntity in coefList) {
                 referenceEv
-                        .getModk2()
+                        .modk2
                         .add(
                                 CoefP(
                                         uuid = coefEntity.uuid,
@@ -708,10 +705,10 @@ class DatabaseReferenceEvRepository(
         }
 
         coefficientsByGroup["k3"]?.let { coefList ->
-            referenceEv.getModk3().clear()
+            referenceEv.modk3.clear()
             for (coefEntity in coefList) {
                 referenceEv
-                        .getModk3()
+                        .modk3
                         .add(
                                 CoefP(
                                         uuid = coefEntity.uuid,
@@ -724,10 +721,10 @@ class DatabaseReferenceEvRepository(
         }
 
         coefficientsByGroup["k4"]?.let { coefList ->
-            referenceEv.getModk4().clear()
+            referenceEv.modk4.clear()
             for (coefEntity in coefList) {
                 referenceEv
-                        .getModk4()
+                        .modk4
                         .add(
                                 CoefP(
                                         uuid = coefEntity.uuid,
@@ -740,10 +737,10 @@ class DatabaseReferenceEvRepository(
         }
 
         coefficientsByGroup["k5"]?.let { coefList ->
-            referenceEv.getModk5().clear()
+            referenceEv.modk5.clear()
             for (coefEntity in coefList) {
                 referenceEv
-                        .getModk5()
+                        .modk5
                         .add(
                                 CoefP(
                                         uuid = coefEntity.uuid,

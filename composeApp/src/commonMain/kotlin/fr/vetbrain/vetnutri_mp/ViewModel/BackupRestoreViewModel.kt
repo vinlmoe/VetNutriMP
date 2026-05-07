@@ -12,7 +12,10 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.toLocalDateTime
 
 /**
- * ViewModel pour la gestion des sauvegardes et de la restauration
+ * Gestion sauvegardes/restauration.
+ * - Charge la liste des backups via `BackupService`.
+ * - Pilote création, suppression et restauration avec suivi (progress, log, bilan).
+ * - Scope dédié (pas de ViewModel Android) sur le dispatcher plateforme.
  */
 class BackupRestoreViewModel(
     private val backupService: BackupService,

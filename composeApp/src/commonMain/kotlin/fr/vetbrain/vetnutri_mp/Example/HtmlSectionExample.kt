@@ -113,7 +113,7 @@ object HtmlSectionExample {
     /**
      * Exemple de génération HTML complète
      */
-    fun generateSampleHtml(): String {
+    suspend fun generateSampleHtml(): String {
         val exportData = createSampleExportData()
         return HtmlDocumentBuilder.buildHtml(DocumentType.RATION_ANALYSIS, exportData)
     }

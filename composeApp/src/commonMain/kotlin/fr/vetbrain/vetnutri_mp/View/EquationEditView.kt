@@ -27,6 +27,7 @@ import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Vue pour éditer une équation avec onglets d'édition et de test
@@ -83,6 +84,13 @@ fun EquationEditView(
             } else if (message.isNotEmpty()) {
                 showErrorAlert = true
             }
+        }
+    }
+
+    // Navigation explicite sur succès même sans message
+    LaunchedEffect(saveSuccessful) {
+        if (saveSuccessful) {
+            onNavigateBack()
         }
     }
 
@@ -210,6 +218,8 @@ private fun EquationEditTab(
                                         EquationType.INDICATOR
                                 fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED ->
                                         EquationType.NEED
+                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP ->
+                                    EquationType.ENERCOMP
                                 fr.vetbrain.vetnutri_mp.Enumer.EquationKind
                                         .COMPLEMENTARY_NUTRIENT ->
                                         EquationType.COMPLEMENTARY_NUTRIENT
@@ -255,7 +265,15 @@ private fun EquationEditTab(
                     options = listOf(null) + allNutrients,
                     onValueChange = { viewModel.updateNutrient(it) },
                     valueToString = { nutrient ->
-                        nutrient?.translateEnum() ?: "Aucun nutriment sélectionné"
+                        if (nutrient != null) {
+                            val translated = nutrient.translateEnum()
+                            // Debug temporaire pour DM
+                            if (nutrient.label == "DM") {
+                            }
+                            translated
+                        } else {
+                            "Aucun nutriment sélectionné"
+                        }
                     }
             )
 
@@ -344,8 +362,9 @@ private fun EquationEditTab(
                     }
             val nutrientsMain =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries.map {
-                        "${it.translateEnum()} - ${it.nameToString()}" to it.label
+                        "${it.translateEnum()} - ${it.label}" to it.label
                     }
+                  
             val nutrientsLipides =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries.map {
                         "${it.translateEnum()} - ${it.label}" to it.label
@@ -389,7 +408,7 @@ private fun EquationEditTab(
                     )
 
             // Combiner toutes les variables et les trier par nom d'affichage
-            (variableKindList +
+            val allVariables = (variableKindList +
                             nutrientsMain +
                             nutrientsLipides +
                             nutrientsVitamines +
@@ -400,6 +419,14 @@ private fun EquationEditTab(
                             nutrientsAnalysis +
                             systemVariables)
                     .sortedBy { it.first }
+            
+            // Debug temporaire pour voir si DM est dans la liste finale
+            val dmInList = allVariables.find { it.second == "DM" }
+            if (dmInList != null) {
+            } else {
+            }
+            
+            allVariables
         }
 
         Box {
@@ -417,7 +444,11 @@ private fun EquationEditTab(
             }
             DropdownMenu(
                     expanded = expandedVariables,
-                    onDismissRequest = { expandedVariables = false }
+                    onDismissRequest = {
+                        if (!isIosPlatform) {
+                            expandedVariables = false 
+                        }
+                    }
             ) {
                 allAvailableVariables.forEach { (displayName, variableCode) ->
                     DropdownMenuItem(
@@ -475,7 +506,11 @@ private fun EquationEditTab(
 
             DropdownMenu(
                     expanded = expandedBiblioRefs,
-                    onDismissRequest = { expandedBiblioRefs = false }
+                    onDismissRequest = {
+                        if (!isIosPlatform) {
+                            expandedBiblioRefs = false 
+                        }
+                    }
             ) {
                 if (biblioRefs.isEmpty()) {
                     DropdownMenuItem(onClick = { expandedBiblioRefs = false }) {

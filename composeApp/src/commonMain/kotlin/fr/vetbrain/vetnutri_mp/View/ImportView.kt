@@ -3,27 +3,29 @@ package fr.vetbrain.vetnutri_mp.View
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
-import fr.vetbrain.vetnutri_mp.ViewModel.rememberViewModel
 
+/**
+ * Vue d'import (animaux + références nutritionnelles).
+ * - Déclenche les imports plateforme via `ImportViewModel`.
+ * - Affiche les messages de résultat et confirmations (vider DB, import réf. .vbnr.json).
+ */
 @Composable
-fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack: () -> Unit) {
+fun ImportView(viewModel: ImportViewModel, onNavigateBack: () -> Unit) {
     var showImportDialog by remember { mutableStateOf(false) }
     var showClearAndImportDialog by remember { mutableStateOf(false) }
     var showNutritionalRequirementImportDialog by remember { mutableStateOf(false) }
 
-    val isImporting by remember { derivedStateOf { viewModel.isImporting } }
-    val isImportingNutritionalRequirements by remember {
-        derivedStateOf { viewModel.isImportingNutritionalRequirements }
-    }
-    val nutritionalRequirementImportResult by remember {
-        derivedStateOf { viewModel.nutritionalRequirementImportResultMessage }
-    }
+    val isImporting by viewModel.isImporting.collectAsState()
+    val isImportingNutritionalRequirements by
+            viewModel.isImportingNutritionalRequirements.collectAsState()
+    val nutritionalRequirementImportResult by
+            viewModel.nutritionalRequirementImportResultMessage.collectAsState()
 
     // Effet pour gérer l'importation lorsque showImportDialog devient true
     LaunchedEffect(showImportDialog) {
@@ -50,7 +52,7 @@ fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack:
                         title = { Text("Importer des données") },
                         navigationIcon = {
                             IconButton(onClick = onNavigateBack) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                                Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Retour")
                             }
                         }
                 )

@@ -26,9 +26,13 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.CenteredMessage
@@ -37,6 +41,14 @@ import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Data.convertirPreferencesVersLabelsNutriments
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnalNut
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.ConsultationEdit
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
@@ -46,6 +58,9 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
+import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
+import fr.vetbrain.vetnutri_mp.Utils.normalizeDecimalInput
+import fr.vetbrain.vetnutri_mp.Utils.parsePositiveDecimal
 import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseNutritionnelleCard
 import fr.vetbrain.vetnutri_mp.View.AnalNut.MultiNutrientAdjustmentView
 import fr.vetbrain.vetnutri_mp.View.AnalNut.NutrientDetailDialog
@@ -53,12 +68,11 @@ import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionAlimentsRation
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionBilanEnergetique
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionCoefficients
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionValeursMetaboliques
-import fr.vetbrain.vetnutri_mp.View.components.RecipeDialog
+import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseQuantitativeRationSection
+import fr.vetbrain.vetnutri_mp.View.Components.RecipeDialog
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import kotlinx.coroutines.launch
-
-// Constante pour l'exposant formaté
-private const val EXPOSANT_075 = "⁰·⁷⁵"
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 // Suppression du calcul local de DE : on utilisera EquationEvaluator avec nutriments
 // complémentaires
@@ -80,11 +94,10 @@ private fun LocalInfoRow(label: String, value: String) {
 }
 
 /**
- * Vue pour afficher les rations d'un animal
- *
- * @param viewModel ViewModel contenant les données de l'animal
- * @param showSnackbar Action à exécuter pour afficher un message snackbar
- * @param modifier Modificateur optionnel pour personnaliser l'apparence
+ * Rations d'un animal.
+ * - S'appuie sur `AnimalDetailViewModel` pour les consultations/rations/ref. nutritionnelles.
+ * - Calcule BE/K/énergie additionnelle et affiche les rations + analyses associées.
+ * - Gère export/partage et feedback via `showSnackbar`.
  */
 @Composable
 fun RationsView(
@@ -93,7 +106,7 @@ fun RationsView(
         modifier: Modifier = Modifier,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
-        foodRepository: FoodRepository
+        isExamMode: Boolean = false
 ) {
         val animal by viewModel.animal.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
@@ -118,29 +131,11 @@ fun RationsView(
         // Récupération des valeurs métaboliques calculées
         val poidsMetabolique by viewModel.poidsMetabolique.collectAsState()
         val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
-        val besoinEnergetiqueTotal by viewModel.besoinEnergetiqueTotal.collectAsState()
+        // Le BE final devient la seule valeur de BE utilisée dans la vue
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
 
         // L'énergie apportée sera calculée plus bas après chargement des préférences
         var energieApportee by remember { mutableStateOf(0.0) }
-
-        // Calcul du pourcentage de couverture avec le besoin énergétique total
-        val pourcentageCouverture =
-                remember(energieApportee, besoinEnergetiqueTotal) {
-                        besoinEnergetiqueTotal?.let { besoin ->
-                                if (besoin > 0) (energieApportee / besoin) * 100.0 else 0.0
-                        }
-                                ?: 0.0
-                }
-
-        // Calcul du K Observé avec le besoin énergétique de référence
-        val kObserve =
-                remember(energieApportee, besoinEnergetiqueStandard) {
-                        besoinEnergetiqueStandard?.let { besoin ->
-                                if (besoin > 0) energieApportee / besoin else 0.0
-                        }
-                                ?: 0.0
-                }
 
         // Calcul du K calculé (produit de tous les coefficients K + coefficient d'ajustement)
         val kCalcule =
@@ -157,25 +152,82 @@ fun RationsView(
                                 ?: 1.0
                 }
 
-        // Système de préférences pour le filtrage des nutriments avec logs de debug
+        // Système de préférences pour le filtrage des nutriments
         val preferencesStorage: PreferencesStorage = remember { createPreferencesStorage() }
-        val preferencesRepository: PreferencesRepository = remember {
-                PreferencesRepository(preferencesStorage)
-        }
-        var preferencesApplication by remember {
-                mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null)
-        }
-
-        // Charger les préférences au démarrage avec logs
+        val preferencesRepository: PreferencesRepository = remember { PreferencesRepository(preferencesStorage) }
+        var preferencesApplication by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null) }
         LaunchedEffect(Unit) {
                 preferencesRepository.loadPreferences()
                 preferencesApplication = preferencesRepository.preferences
+        }
 
-                // Log des préférences par espèce
-                preferencesApplication?.preferencesParEspece?.forEach { (espece, prefs) ->
-                        prefs.nutrimentsSelectionnes.forEach { (categorie, nutriments) -> }
+        // États pour énergie additionnelle (patho) et BE total (final)
+        var energieAdditionnelle by remember { mutableStateOf(0.0) }
+        var besoinEnergetiqueTotal by remember { mutableStateOf<Double?>(null) }
+
+        // Calcul du BE après K et de l'énergie additionnelle, puis du BE total final
+        val beApresK = remember(besoinEnergetiqueStandard, kCalcule) {
+                besoinEnergetiqueStandard?.let { beeVal -> beeVal * kCalcule }
+        }
+
+        LaunchedEffect(
+                selectedConsultation,
+                referenceUtilisee,
+                referencesMaladiesResolues,
+                preferencesApplication,
+                poidsMetabolique,
+                besoinEnergetiqueStandard,
+                selectedRation
+        ) {
+                val consultation = selectedConsultation
+                val ration = selectedRation
+                val prefsApp = preferencesApplication
+                val mw = poidsMetabolique
+                val bee = besoinEnergetiqueStandard
+                val beK = beApresK
+                val maladies = referencesMaladiesResolues
+                if (consultation != null && ration != null && prefsApp != null && mw != null && bee != null && beK != null) {
+                        try {
+                        } catch (_: Throwable) {}
+                        val prefsEspece = animal?.getEspece()?.let { prefsApp.getPreferencesEspece(it) }
+                        val add = EquationEvaluator.calculerEnergieAdditionnelle(
+                                referencesMaladies = maladies,
+                                poidsCorps = consultation.effectiveWeight?.toDouble() ?: consultation.weight?.toDouble() ?: 0.0,
+                                besoinEnergetiqueApresK = beK,
+                                besoinEnergetiqueStandard = bee,
+                                poidsMetabolique = mw,
+                                variablesSupp = consultation.suppVarp,
+                                ration = ration,
+                                preferences = prefsEspece,
+                                equationRepository = equationRepository
+                        )
+                        energieAdditionnelle = add
+                        besoinEnergetiqueTotal = beK.let { it + add }
+                        try {
+                        } catch (_: Throwable) {}
+                } else {
+                        energieAdditionnelle = 0.0
+                        besoinEnergetiqueTotal = beK
                 }
         }
+
+        // Calcul du pourcentage de couverture avec le BE total final
+        val pourcentageCouverture =
+                remember(energieApportee, besoinEnergetiqueTotal) {
+                        besoinEnergetiqueTotal?.let { besoin ->
+                                if (besoin > 0) (energieApportee / besoin) * 100.0 else 0.0
+                        }
+                                ?: 0.0
+                }
+
+        // Calcul du K Observé avec le besoin énergétique de référence
+        val kObserve =
+                remember(energieApportee, besoinEnergetiqueStandard) {
+                        besoinEnergetiqueStandard?.let { besoin ->
+                                if (besoin > 0) energieApportee / besoin else 0.0
+                        }
+                                ?: 0.0
+                }
 
         // Calcul de l'énergie totale apportée par la ration sélectionnée (avec nutriments
         // complémentaires)
@@ -201,7 +253,6 @@ fun RationsView(
                                 val densiteEnergetique =
                                         rationActuelle.getDensiteEnergetiqueMoyenne(
                                                 referenceEv = reference,
-                                                preferences = prefsEspece,
                                                 equationRepository = equationRepository
                                         )
                                 densiteEnergetique * rationActuelle.getQuantiteTotale()
@@ -217,6 +268,7 @@ fun RationsView(
 
         // Scope pour les coroutines locales dans le composable
         val coroutineScope = rememberCoroutineScope()
+        val focusManager = LocalFocusManager.current
 
         // États pour les dialogues de section agrandie
         var showMetabolicValuesDialog by remember { mutableStateOf(false) }
@@ -226,6 +278,161 @@ fun RationsView(
         var showNutrimentDetailDialog by remember { mutableStateOf(false) }
         var selectedNutrimentData by remember {
                 mutableStateOf<Triple<String, ValeurNutritionnelle, Ration>?>(null)
+        }
+
+        // Sélection locale (non sauvegardée) du type d'expression des besoins
+        val typeExpressionBesoinFromPrefs by viewModel.typeExpressionBesoin.collectAsState()
+        val typeExpressionBesoinOverride by viewModel.typeExpressionBesoinOverride.collectAsState()
+        var showTypeExpressionMenu by remember { mutableStateOf(false) }
+        val typeExpressionOptions = remember { TypeExpressionBesoin.getValidUnits() }
+
+        val effectiveTypeExpressionBesoin =
+                typeExpressionBesoinOverride
+                        ?: typeExpressionBesoinFromPrefs
+                        ?: TypeExpressionBesoin.DEFAULT
+        var showRationNutrientInspector by remember { mutableStateOf(false) }
+
+        val nutrimentsSelectionnesPreferences =
+                remember(animal, preferencesApplication) {
+                        val animalActuel = animal
+                        val prefsApp = preferencesApplication
+                        if (animalActuel != null && prefsApp != null) {
+                                val preferencesEspece =
+                                        prefsApp.getPreferencesEspece(animalActuel.getEspece())
+                                val nutrimentsLabels =
+                                        convertirPreferencesVersLabelsNutriments(preferencesEspece)
+                                if (nutrimentsLabels.isNotEmpty()) {
+                                        nutrimentsLabels
+                                } else {
+                                        listOf(
+                                                "PROTEINE",
+                                                "LIPIDE",
+                                                "ENA",
+                                                "CELLULOSE",
+                                                "CENDRE",
+                                                "CAL",
+                                                "PHOS"
+                                        )
+                                }
+                        } else {
+                                listOf(
+                                        "PROTEINE",
+                                        "LIPIDE",
+                                        "ENA",
+                                        "CELLULOSE",
+                                        "CENDRE",
+                                        "CAL",
+                                        "PHOS",
+                                        "FE",
+                                        "ZN",
+                                        "CU",
+                                        "MN",
+                                        "I",
+                                        "SE",
+                                        "NA",
+                                        "K",
+                                        "MG",
+                                        "CHL",
+                                        "VITA",
+                                        "VITD",
+                                        "VITE",
+                                        "VITB1",
+                                        "VITB2",
+                                        "VITB3",
+                                        "VITB5",
+                                        "VITB6",
+                                        "VITB8",
+                                        "VITB9",
+                                        "VITB12",
+                                        "O3",
+                                        "O6",
+                                        "AG205",
+                                        "AG226",
+                                        "EPADHA",
+                                        "AG60",
+                                        "AG80",
+                                        "AG100",
+                                        "LYSINE",
+                                        "METHIONINE",
+                                        "TRYPTOPHANE",
+                                        "CAP",
+                                        "O6O3",
+                                        "KNA",
+                                        "ZNCU",
+                                        "TAURINE",
+                                        "CARNITINE"
+                                )
+                        }
+                }
+
+        val typeExpressionSelector: @Composable RowScope.() -> Unit = {
+                Box {
+                        TextButton(
+                                onClick = { showTypeExpressionMenu = true },
+                                contentPadding =
+                                        PaddingValues(
+                                                horizontal = AppSizes.paddingSmall,
+                                                vertical = 0.dp
+                                        )
+                        ) {
+                                Text(
+                                        text =
+                                                effectiveTypeExpressionBesoin.unitReqEnum
+                                                        .translateEnum(),
+                                        style = MaterialTheme.typography.caption,
+                                        color = VetNutriColors.Primary
+                                )
+                                Icon(
+                                        imageVector = Icons.Filled.KeyboardArrowDown,
+                                        contentDescription = null,
+                                        tint = VetNutriColors.Primary
+                                )
+                        }
+                        DropdownMenu(
+                                expanded = showTypeExpressionMenu,
+                                onDismissRequest = { showTypeExpressionMenu = false }
+                        ) {
+                                typeExpressionOptions.forEach { type ->
+                                        DropdownMenuItem(
+                                                onClick = {
+                                                        viewModel.setTypeExpressionBesoinOverride(
+                                                                type
+                                                        )
+                                                        showTypeExpressionMenu = false
+                                                }
+                                        ) {
+                                                Row(
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically,
+                                                        horizontalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingXSmall
+                                                                )
+                                                ) {
+                                                        Text(
+                                                                text =
+                                                                        type.unitReqEnum
+                                                                                .translateEnum(),
+                                                                style =
+                                                                        MaterialTheme.typography.body2
+                                                        )
+                                                        if (type == effectiveTypeExpressionBesoin) {
+                                                                Icon(
+                                                                        imageVector =
+                                                                                Icons.Filled.Check,
+                                                                        contentDescription = null,
+                                                                        tint =
+                                                                                VetNutriColors
+                                                                                        .Primary,
+                                                                        modifier =
+                                                                                Modifier.size(16.dp)
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                }
         }
 
         // État pour le dialog d'ajustement multi-nutriments
@@ -239,10 +446,10 @@ fun RationsView(
         var rationToDelete by remember { mutableStateOf<Ration?>(null) }
 
         // Dialog de gestion des recettes
-        if (showRecipeDialog) {
+        if (!isExamMode && showRecipeDialog) {
                 RecipeDialog(
                         repository = recipeRepository,
-                        foodRepository = foodRepository,
+                        foodRepository = viewModel.foodRepository,
                         onApply = { recette ->
                                 viewModel.applyRecipeToRation(recette)
                                 showRecipeDialog = false
@@ -251,22 +458,22 @@ fun RationsView(
                 )
         }
 
-        if (showSaveRecipeDialog) {
+        if (!isExamMode && showSaveRecipeDialog) {
                 AlertDialog(
                         onDismissRequest = { showSaveRecipeDialog = false },
-                        title = { Text("Créer une recette") },
+                        title = { Text(translate(RationKeys.CREATE_RECIPE)) },
                         text = {
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         OutlinedTextField(
                                                 value = newRecipeName,
                                                 onValueChange = { newRecipeName = it },
-                                                label = { Text("Nom de la recette") },
+                                                label = { Text(translate(RationKeys.RECIPE_NAME)) },
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                         val especeLabel = selectedRation?.espece ?: ""
                                         if (especeLabel.isNotEmpty()) {
                                                 Text(
-                                                        "Espèce: $especeLabel",
+                                                        "${translate(Animal.SPECIES)}: $especeLabel",
                                                         style = MaterialTheme.typography.body2
                                                 )
                                         }
@@ -295,11 +502,11 @@ fun RationsView(
                                                                                         ration.alimentMutableList
                                                                                 )
                                                                         showSnackbar(
-                                                                                "Recette créée: $newRecipeName"
+                                                                                "${translate(RationKeys.RECIPE_CREATED)} $newRecipeName"
                                                                         )
                                                                 } catch (err: Exception) {
                                                                         showSnackbar(
-                                                                                "Erreur: ${err.message ?: "création recette"}"
+                                                                                "${translate(General.ERROR)}: ${err.message ?: translate(RationKeys.RECIPE_CREATE_ERROR_FALLBACK)}"
                                                                         )
                                                                 } finally {
                                                                         showSaveRecipeDialog = false
@@ -307,11 +514,11 @@ fun RationsView(
                                                         }
                                                 }
                                         }
-                                ) { Text("Créer") }
+                                ) { Text(translate(General.CREATE)) }
                         },
                         dismissButton = {
                                 OutlinedButton(onClick = { showSaveRecipeDialog = false }) {
-                                        Text("Annuler")
+                                        Text(translate(General.CANCEL))
                                 }
                         }
                 )
@@ -326,6 +533,7 @@ fun RationsView(
                                 showAddAlimentView = false
                                 rationForAddAliment = null
                         },
+                        equationRepository = equationRepository,
                         onAddAliment = { aliment, quantite ->
                                 // Ajout asynchrone pour garantir la version complète de l'aliment
                                 coroutineScope.launch {
@@ -391,15 +599,20 @@ fun RationsView(
                                                                 viewModel.selectRation(
                                                                         updatedRation
                                                                 )
+
+                                                                // Mettre à jour la référence locale
+                                                                // pour les ajouts suivants
+                                                                rationForAddAliment =
+                                                                        updatedRation
                                                         }
                                                 }
 
                                                 showSnackbar(
-                                                        "Aliment '${alimentComplet.nom}' ajouté à la ration (${quantite}g)"
+                                                        "${translate(RationKeys.ADD_FOOD_TO_RATION)} '${alimentComplet.nom}' (${quantite}g)"
                                                 )
                                         } else {
                                                 showSnackbar(
-                                                        "Erreur : aliment non trouvé dans la base complète"
+                                                        translate(RationKeys.FOOD_NOT_FOUND_ERROR)
                                                 )
                                         }
                                         // Ne pas fermer la vue pour permettre l'ajout multiple
@@ -416,7 +629,7 @@ fun RationsView(
                                 Box(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center
-                                ) { Text("Sélectionnez une consultation pour voir les rations") }
+                                ) { Text(translate(Consultation.SELECT_HINT)) }
                         } else {
                                 // En-tête avec nom de la consultation
                                 Card(
@@ -432,7 +645,7 @@ fun RationsView(
                                         ) {
                                                 Text(
                                                         text =
-                                                                "Consultation du " +
+                                                                "${translate(Consultation.OF_DATE)} " +
                                                                         (selectedConsultation?.date
                                                                                 ?: ""),
                                                         style =
@@ -489,6 +702,17 @@ fun RationsView(
                                                                         besoinEnergetiqueTotal,
                                                                 kObserve = kObserve,
                                                                 kCalcule = kCalcule,
+                                                               energieAdditionnelle = energieAdditionnelle,
+                                                                referenceUtilisee = referenceUtilisee,
+                                                                onUpdateWeights = { currentWeight, idealWeight ->
+                                                                        selectedConsultation?.let { consultation ->
+                                                                                viewModel.updateConsultationWeights(
+                                                                                        consultation.uuid,
+                                                                                        currentWeight,
+                                                                                        idealWeight
+                                                                                )
+                                                                        }
+                                                                },
                                                                 onExpand = {
                                                                         showMetabolicValuesDialog =
                                                                                 true
@@ -517,6 +741,8 @@ fun RationsView(
                                                                         pourcentageCouverture,
                                                                 kObserve = kObserve,
                                                                 kCalcule = kCalcule,
+                                                        
+                                                                beFinal = besoinEnergetiqueTotal,
                                                                 modifier = Modifier.fillMaxWidth()
                                                         )
                                                         Divider()
@@ -553,7 +779,7 @@ fun RationsView(
                                                                         ) {
                                                                                 Text(
                                                                                         text =
-                                                                                                "Rations de la consultation",
+                                                                                                translate(RationKeys.CONSULTATION_RATIONS),
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -567,7 +793,7 @@ fun RationsView(
                                                                                                 Icons.Filled
                                                                                                         .Add,
                                                                                         contentDescription =
-                                                                                                "Ajouter une ration",
+                                                                                                translate(AnalNut.ADD_RATION),
                                                                                         tint =
                                                                                                 VetNutriColors
                                                                                                         .Primary,
@@ -592,7 +818,7 @@ fun RationsView(
                                                                         ) {
                                                                                 CenteredMessage(
                                                                                         message =
-                                                                                                "Aucune ration disponible",
+                                                                                                translate(RationKeys.NO_RATION_AVAILABLE),
                                                                                         modifier =
                                                                                                 Modifier.fillMaxWidth()
                                                                                 )
@@ -619,6 +845,9 @@ fun RationsView(
                                                                                                                                 selectedRation
                                                                                                                                         ?.uuid,
                                                                                                                 onClick = {
+                                                                                                                        focusManager.clearFocus(
+                                                                                                                                force = true
+                                                                                                                        )
                                                                                                                         viewModel
                                                                                                                                 .selectRation(
                                                                                                                                         ration
@@ -636,7 +865,7 @@ fun RationsView(
                                                                                                                                         ration
                                                                                                                                 )
                                                                                                                         showSnackbar(
-                                                                                                                                "Ration '${ration.name}' dupliquée"
+                                                                                                                                "${translate(RationKeys.DUPLICATED)} '${ration.name}'"
                                                                                                                         )
                                                                                                                 },
                                                                                                                 onDelete = {
@@ -655,278 +884,243 @@ fun RationsView(
 
                                                         // Section 5: Liste des aliments de la
                                                         // ration sélectionnée
-                                                        SectionAlimentsRation(
-                                                                selectedRation = selectedRation,
-                                                                referenceUtilisee =
-                                                                        referenceUtilisee,
-                                                                besoinEnergetiqueTotal =
-                                                                        besoinEnergetiqueTotal,
-                                                                besoinEnergetiqueStandard =
-                                                                        besoinEnergetiqueStandard,
-                                                                viewModel = viewModel,
-                                                                onAddAliment = {
-                                                                        if (selectedRation != null
-                                                                        ) {
+                                                        if (selectedRation != null) {
+                                                                SectionAlimentsRation(
+                                                                        selectedRation = selectedRation,
+                                                                        referenceUtilisee =
+                                                                                referenceUtilisee,
+                                                                        besoinEnergetiqueTotal =
+                                                                                besoinEnergetiqueTotal,
+                                                                        besoinEnergetiqueStandard =
+                                                                                besoinEnergetiqueStandard,
+                                                                        viewModel = viewModel,
+                                                                        equationRepository = equationRepository,
+                                                                        onAddAliment = {
                                                                                 rationForAddAliment =
                                                                                         selectedRation
                                                                                 showAddAlimentView =
                                                                                         true
-                                                                        } else {
-                                                                                showSnackbar(
-                                                                                        "Sélectionnez d'abord une ration"
+                                                                        },
+                                                                        onMultiNutrientAdjustment = {
+                                                                                showMultiNutrientAdjustmentDialog =
+                                                                                        true
+                                                                        },
+                                                                        onOpenRecipeDialog = {
+                                                                                showRecipeDialog = true
+                                                                        },
+                                                                        onSaveRecipe = {
+                                                                                selectedRation?.let { r ->
+                                                                                        newRecipeName =
+                                                                                                r.name
+                                                                                        showSaveRecipeDialog =
+                                                                                                true
+                                                                                }
+                                                                        },
+                                                                        isExamMode = isExamMode,
+                                                                        showSnackbar = showSnackbar,
+                                                                        isCompact = isCompact,
+                                                                        modifier = Modifier.fillMaxWidth()
+                                                                )
+                                                        } else {
+                                                                Card(
+                                                                        modifier = Modifier.fillMaxWidth(),
+                                                                        elevation = AppSizes.elevationMedium
+                                                                ) {
+                                                                        Box(
+                                                                                modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
+                                                                                contentAlignment = Alignment.Center
+                                                                        ) {
+                                                                                Text(
+                                                                                        translate(RationKeys.SELECT_RATION_HINT),
+                                                                                        style = MaterialTheme.typography.body1,
+                                                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                                                                 )
                                                                         }
-                                                                },
-                                                                onMultiNutrientAdjustment = {
-                                                                        showMultiNutrientAdjustmentDialog =
-                                                                                true
-                                                                },
-                                                                onOpenRecipeDialog = {
-                                                                        showRecipeDialog = true
-                                                                },
-                                                                onSaveRecipe = {
-                                                                        selectedRation?.let { r ->
-                                                                                newRecipeName =
-                                                                                        r.name
-                                                                                showSaveRecipeDialog =
-                                                                                        true
-                                                                        }
-                                                                },
-                                                                showSnackbar = showSnackbar,
-                                                                isCompact = isCompact,
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        )
+                                                                }
+                                                        }
+
+                                                        if (selectedRation != null && showRationNutrientInspector) {
+                                                                Divider()
+                                                                AnalyseQuantitativeRationSection(
+                                                                        ration = selectedRation!!,
+                                                                        referenceUtilisee = referenceUtilisee,
+                                                                        equationRepository = equationRepository,
+                                                                        preferencesApplication = preferencesApplication,
+                                                                        animal = animal,
+                                                                        nutrimentsSelectionnes =
+                                                                                nutrimentsSelectionnesPreferences,
+                                                                        energieTotaleKcal = energieApportee,
+                                                                        isLargeView = !isCompact,
+                                                                        onContextBadgeClick = {
+                                                                                showRationNutrientInspector =
+                                                                                        false
+                                                                        },
+                                                                        modifier = Modifier.fillMaxWidth()
+                                                                )
+                                                        }
 
                                                         // Section 6: Analyse nutritionnelle (si une
                                                         // ration est sélectionnée)
-                                                        if (selectedRation != null) {
+                                                        if (selectedRation != null && !showRationNutrientInspector) {
                                                                 Divider()
-                                                                // Obtenir les nutriments
-                                                                // sélectionnés selon l'espèce avec
-                                                                // logs
-                                                                val nutrimentsSelectionnes =
-                                                                        remember(
-                                                                                animal,
-                                                                                preferencesApplication
-                                                                        ) {
-                                                                                val animalActuel =
-                                                                                        animal
-                                                                                val prefsApp =
-                                                                                        preferencesApplication
-                                                                                if (animalActuel !=
-                                                                                                null &&
-                                                                                                prefsApp !=
-                                                                                                        null
-                                                                                ) {
-                                                                                        val especeAnimal =
-                                                                                                animalActuel
-                                                                                                        .getEspece()
-                                                                                        val preferencesEspece =
-                                                                                                prefsApp.getPreferencesEspece(
-                                                                                                        especeAnimal
+                                                                if (referenceUtilisee != null) {
+                                                                        // Utiliser la version existante de
+                                                                        // AnalyseNutritionnelleCard
+                                                                        AnalyseNutritionnelleCard(
+                                                                                ration = selectedRation!!,
+                                                                                poidsMetabolique =
+                                                                                        poidsMetabolique,
+                                                                                referenceUtilisee =
+                                                                                        referenceUtilisee,
+                                                                                besoinEnergetiqueEntretien =
+                                                                                        besoinEnergetiqueStandard,
+                                                                                poidsAnimal =
+                                                                                        selectedConsultation
+                                                                                                ?.weight
+                                                                                                ?.toDouble(),
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(),
+                                                                                nutrimentsSelectionnes =
+                                                                                        nutrimentsSelectionnesPreferences,
+                                                                                onNutrimentClick = {
+                                                                                        nom,
+                                                                                        valeurNutritionnelle
+                                                                                        ->
+                                                                                        selectedNutrimentData =
+                                                                                                Triple(
+                                                                                                        nom,
+                                                                                                        valeurNutritionnelle,
+                                                                                                        selectedRation!!
                                                                                                 )
-                                                                                        val nutrimentsLabels =
-                                                                                                convertirPreferencesVersLabelsNutriments(
-                                                                                                        preferencesEspece
-                                                                                                )
-                                                                                        if (nutrimentsLabels
-                                                                                                        .isNotEmpty()
-                                                                                        ) {
-                                                                                                nutrimentsLabels
-                                                                                        } else {
-                                                                                                listOf(
-                                                                                                        "PROTEINE",
-                                                                                                        "LIPIDE",
-                                                                                                        "ENA",
-                                                                                                        "CELLULOSE",
-                                                                                                        "CENDRE",
-                                                                                                        "CAL",
-                                                                                                        "PHOS"
-                                                                                                )
-                                                                                        }
-                                                                                } else {
-                                                                                        listOf(
-                                                                                                "PROTEINE",
-                                                                                                "LIPIDE",
-                                                                                                "ENA",
-                                                                                                "CELLULOSE",
-                                                                                                "CENDRE",
-                                                                                                "CAL",
-                                                                                                "PHOS",
-                                                                                                "FE",
-                                                                                                "ZN",
-                                                                                                "CU",
-                                                                                                "MN",
-                                                                                                "I",
-                                                                                                "SE",
-                                                                                                "NA",
-                                                                                                "K",
-                                                                                                "MG",
-                                                                                                "CHL",
-                                                                                                "VITA",
-                                                                                                "VITD",
-                                                                                                "VITE",
-                                                                                                "VITB1",
-                                                                                                "VITB2",
-                                                                                                "VITB3",
-                                                                                                "VITB5",
-                                                                                                "VITB6",
-                                                                                                "VITB8",
-                                                                                                "VITB9",
-                                                                                                "VITB12",
-                                                                                                "O3",
-                                                                                                "O6",
-                                                                                                "AG205",
-                                                                                                "AG226",
-                                                                                                "EPADHA",
-                                                                                                "AG60",
-                                                                                                "AG80",
-                                                                                                "AG100",
-                                                                                                "LYSINE",
-                                                                                                "METHIONINE",
-                                                                                                "TRYPTOPHANE",
-                                                                                                "CAP",
-                                                                                                "O6O3",
-                                                                                                "KNA",
-                                                                                                "ZNCU",
-                                                                                                "TAURINE",
-                                                                                                "CARNITINE"
-                                                                                        )
-                                                                                }
-                                                                        }
-
-                                                                // Obtenir le type d'expression
-                                                                // selon l'espèce
-                                                                val typeExpressionBesoin =
-                                                                        remember(
-                                                                                animal,
-                                                                                preferencesApplication
-                                                                        ) {
-                                                                                val animalActuel =
-                                                                                        animal
-                                                                                val prefsApp =
-                                                                                        preferencesApplication
-                                                                                if (animalActuel !=
-                                                                                                null &&
-                                                                                                prefsApp !=
-                                                                                                        null
-                                                                                ) {
-                                                                                        val especeAnimal =
-                                                                                                animalActuel
-                                                                                                        .getEspece()
-                                                                                        val preferencesEspece =
-                                                                                                prefsApp.getPreferencesEspece(
-                                                                                                        especeAnimal
-                                                                                                )
-                                                                                        preferencesEspece
-                                                                                                .typeExpressionBesoinId
-                                                                                } else {
-                                                                                        0 // Par
-                                                                                        // défaut
-                                                                                }
-                                                                        }
-
-                                                                // Utiliser la version existante de
-                                                                // AnalyseNutritionnelleCard
-                                                                AnalyseNutritionnelleCard(
-                                                                        ration = selectedRation!!,
-                                                                        poidsMetabolique =
-                                                                                poidsMetabolique,
-                                                                        referenceUtilisee =
-                                                                                referenceUtilisee,
-                                                                        besoinEnergetiqueEntretien =
-                                                                                besoinEnergetiqueStandard,
-                                                                        poidsAnimal =
-                                                                                selectedConsultation
-                                                                                        ?.weight
-                                                                                        ?.toDouble(),
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        nutrimentsSelectionnes =
-                                                                                nutrimentsSelectionnes,
-                                                                        onNutrimentClick = {
-                                                                                nom,
-                                                                                valeurNutritionnelle
-                                                                                ->
-                                                                                selectedNutrimentData =
-                                                                                        Triple(
-                                                                                                nom,
-                                                                                                valeurNutritionnelle,
-                                                                                                selectedRation!!
-                                                                                        )
-                                                                                showNutrimentDetailDialog =
-                                                                                        true
-                                                                        },
-                                                                        animal = animal,
-                                                                        preferencesRepository =
-                                                                                preferencesRepository,
-                                                                        equationRepository =
-                                                                                equationRepository,
+                                                                                        showNutrimentDetailDialog =
+                                                                                                true
+                                                                                },
+                                                                                animal = animal,
+                                                                                preferencesRepository =
+                                                                                        preferencesRepository,
+                                                                                equationRepository =
+                                                                                        equationRepository,
                                                                         // Utiliser les préférences
                                                                         // pré-chargées du ViewModel
                                                                         typeExpressionBesoin =
-                                                                                viewModel
-                                                                                        .typeExpressionBesoin
-                                                                                        .collectAsState()
-                                                                                        .value,
+                                                                                effectiveTypeExpressionBesoin,
+                                                                        headerActions =
+                                                                                typeExpressionSelector,
+                                                                        titleOverride = "",
+                                                                        contextBadgeLabel =
+                                                                                translate(
+                                                                                        AnalNut
+                                                                                                .BADGE_INTAKES
+                                                                                ),
+                                                                        contextBadgeColor =
+                                                                                Color(0xFF3558A8),
+                                                                        contextBadgeOnClick = {
+                                                                                showRationNutrientInspector =
+                                                                                        true
+                                                                        },
+                                                                        contextBadgeTooltip =
+                                                                                translate(
+                                                                                        AnalNut
+                                                                                                .TOOLTIP_SWITCH_TO_COMPOSITION
+                                                                                ),
+                                                                        showDisplayModeText = false,
                                                                         isLargeView = !isCompact,
                                                                         referencesMaladies =
                                                                                 referencesMaladiesResolues
                                                                 )
+                                                                } else {
+                                                                        Card(
+                                                                                modifier = Modifier.fillMaxWidth(),
+                                                                                elevation = AppSizes.elevationMedium
+                                                                        ) {
+                                                                                Box(
+                                                                                        modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
+                                                                                        contentAlignment = Alignment.Center
+                                                                                ) {
+                                                                                        Text(
+                                                                                                translate(AnalNut.SELECT_REFERENCE_FOR_ANALYSIS),
+                                                                                                style = MaterialTheme.typography.body1,
+                                                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                }
                                                         }
                                                 }
                                         } else {
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement =
-                                                                Arrangement.spacedBy(
-                                                                        AppSizes.paddingMedium
+                                                if (selectedConsultation == null) {
+                                                        Box(
+                                                                modifier = Modifier.fillMaxSize(),
+                                                                contentAlignment = Alignment.Center
+                                                        ) { 
+                                                                Text(translate(Consultation.SELECT_HINT))
+                                                        }
+                                                } else {
+                                                        Row(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                horizontalArrangement =
+                                                                        Arrangement.spacedBy(
+                                                                                AppSizes.paddingMedium
+                                                                        )
+                                                        ) {
+                                                                SectionValeursMetaboliques(
+                                                                        selectedConsultation =
+                                                                                selectedConsultation,
+                                                                        poidsMetabolique = poidsMetabolique,
+                                                                        besoinEnergetiqueStandard =
+                                                                                besoinEnergetiqueStandard,
+                                                                        besoinEnergetiqueTotal =
+                                                                                besoinEnergetiqueTotal,
+                                                                        kObserve = kObserve,
+                                                                        kCalcule = kCalcule,
+                                                                         energieAdditionnelle = energieAdditionnelle,
+                                                                        referenceUtilisee = referenceUtilisee,
+                                                                        onUpdateWeights = { currentWeight, idealWeight ->
+                                                                                selectedConsultation?.let { consultation ->
+                                                                                        viewModel.updateConsultationWeights(
+                                                                                                consultation.uuid,
+                                                                                                currentWeight,
+                                                                                                idealWeight
+                                                                                        )
+                                                                                }
+                                                                        },
+                                                                        onExpand = {
+                                                                                showMetabolicValuesDialog =
+                                                                                        true
+                                                                        },
+                                                                        modifier = Modifier.weight(1f)
                                                                 )
-                                                ) {
-                                                        SectionValeursMetaboliques(
-                                                                selectedConsultation =
-                                                                        selectedConsultation,
-                                                                poidsMetabolique = poidsMetabolique,
-                                                                besoinEnergetiqueStandard =
-                                                                        besoinEnergetiqueStandard,
-                                                                besoinEnergetiqueTotal =
-                                                                        besoinEnergetiqueTotal,
-                                                                kObserve = kObserve,
-                                                                kCalcule = kCalcule,
-                                                                onExpand = {
-                                                                        showMetabolicValuesDialog =
-                                                                                true
-                                                                },
-                                                                modifier = Modifier.weight(1f)
-                                                        )
-                                                        Divider(
-                                                                modifier =
-                                                                        Modifier.width(1.dp)
-                                                                                .fillMaxHeight()
-                                                        )
-                                                        SectionCoefficients(
-                                                                selectedConsultation =
-                                                                        selectedConsultation,
-                                                                showCoefficientsDialog = {
-                                                                        showCoefficientsDialog =
-                                                                                true
-                                                                },
-                                                                viewModel = viewModel,
-                                                                modifier = Modifier.weight(1f)
-                                                        )
-                                                        Divider(
-                                                                modifier =
-                                                                        Modifier.width(1.dp)
-                                                                                .fillMaxHeight()
-                                                        )
-                                                        SectionBilanEnergetique(
-                                                                energieApportee = energieApportee,
-                                                                pourcentageCouverture =
-                                                                        pourcentageCouverture,
-                                                                kObserve = kObserve,
-                                                                kCalcule = kCalcule,
-                                                                modifier = Modifier.weight(1f)
-                                                        )
+                                                                Divider(
+                                                                        modifier =
+                                                                                Modifier.width(1.dp)
+                                                                                        .fillMaxHeight()
+                                                                )
+                                                                SectionCoefficients(
+                                                                        selectedConsultation =
+                                                                                selectedConsultation,
+                                                                        showCoefficientsDialog = {
+                                                                                showCoefficientsDialog =
+                                                                                        true
+                                                                        },
+                                                                        viewModel = viewModel,
+                                                                        modifier = Modifier.weight(1f)
+                                                                )
+                                                                Divider(
+                                                                        modifier =
+                                                                                Modifier.width(1.dp)
+                                                                                        .fillMaxHeight()
+                                                                )
+                                                                SectionBilanEnergetique(
+                                                                        energieApportee = energieApportee,
+                                                                        pourcentageCouverture =
+                                                                                pourcentageCouverture,
+                                                                        kObserve = kObserve,
+                                                                        kCalcule = kCalcule,
+                                                                       
+                                                                        beFinal = besoinEnergetiqueTotal,
+                                                                        modifier = Modifier.weight(1f)
+                                                                )
+                                                        }
                                                 }
                                         }
                                 }
@@ -984,7 +1178,7 @@ fun RationsView(
                                                                         // Card en-tête)
                                                                         Text(
                                                                                 text =
-                                                                                        "Rations de la consultation",
+                                                                                        translate(RationKeys.CONSULTATION_RATIONS),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -1002,7 +1196,7 @@ fun RationsView(
                                                                                         Icons.Filled
                                                                                                 .Add,
                                                                                 contentDescription =
-                                                                                        "Ajouter une ration",
+                                                                                        translate(AnalNut.ADD_RATION),
                                                                                 tint =
                                                                                         VetNutriColors
                                                                                                 .Primary,
@@ -1028,7 +1222,7 @@ fun RationsView(
                                                                 ) {
                                                                         CenteredMessage(
                                                                                 message =
-                                                                                        "Aucune ration disponible",
+                                                                                        translate(RationKeys.NO_RATION_AVAILABLE),
                                                                                 modifier =
                                                                                         Modifier.weight(
                                                                                                 1f
@@ -1049,7 +1243,8 @@ fun RationsView(
                                                                                 items(
                                                                                         selectedConsultation
                                                                                                 ?.rations
-                                                                                                ?: emptyList()
+                                                                                                ?: emptyList(),
+                                                                                        key = { ration -> ration.uuid }
                                                                                 ) { ration ->
                                                                                         RationItem(
                                                                                                 ration =
@@ -1059,6 +1254,9 @@ fun RationsView(
                                                                                                                 selectedRation
                                                                                                                         ?.uuid,
                                                                                                 onClick = {
+                                                                                                        focusManager.clearFocus(
+                                                                                                                force = true
+                                                                                                        )
                                                                                                         viewModel
                                                                                                                 .selectRation(
                                                                                                                         ration
@@ -1076,7 +1274,7 @@ fun RationsView(
                                                                                                                         ration
                                                                                                                 )
                                                                                                         showSnackbar(
-                                                                                                                "Ration '${ration.name}' dupliquée"
+                                                                                                                "${translate(RationKeys.DUPLICATED)} '${ration.name}'"
                                                                                                         )
                                                                                                 },
                                                                                                 onDelete = {
@@ -1094,48 +1292,56 @@ fun RationsView(
 
                                                 // Segment 3: Liste des aliments de la ration
                                                 // sélectionnée
-                                                SectionAlimentsRation(
-                                                        selectedRation = selectedRation,
-                                                        referenceUtilisee = referenceUtilisee,
-                                                        besoinEnergetiqueTotal =
-                                                                besoinEnergetiqueTotal,
-                                                        besoinEnergetiqueStandard =
-                                                                besoinEnergetiqueStandard,
-                                                        viewModel = viewModel,
-                                                        onAddAliment = {
-                                                                if (selectedRation != null) {
+                                                if (selectedRation != null) {
+                                                        SectionAlimentsRation(
+                                                                selectedRation = selectedRation,
+                                                                referenceUtilisee = referenceUtilisee,
+                                                                besoinEnergetiqueTotal =
+                                                                        besoinEnergetiqueTotal,
+                                                                besoinEnergetiqueStandard =
+                                                                        besoinEnergetiqueStandard,
+                                                                viewModel = viewModel,
+                                                                equationRepository = equationRepository,
+                                                                onAddAliment = {
                                                                         rationForAddAliment =
                                                                                 selectedRation
                                                                         showAddAlimentView = true
-                                                                } else {
-                                                                        showSnackbar(
-                                                                                "Sélectionnez d'abord une ration"
-                                                                        )
-                                                                }
-                                                        },
-                                                        onMultiNutrientAdjustment = {
-                                                                if (selectedRation != null) {
+                                                                },
+                                                                onMultiNutrientAdjustment = {
                                                                         showMultiNutrientAdjustmentDialog =
                                                                                 true
-                                                                } else {
-                                                                        showSnackbar(
-                                                                                "Sélectionnez d'abord une ration"
+                                                                },
+                                                                onOpenRecipeDialog = {
+                                                                        showRecipeDialog = true
+                                                                },
+                                                                onSaveRecipe = {
+                                                                        selectedRation?.let { r ->
+                                                                                newRecipeName = r.name
+                                                                                showSaveRecipeDialog = true
+                                                                        }
+                                                                },
+                                                                isExamMode = isExamMode,
+                                                                showSnackbar = showSnackbar,
+                                                                modifier =
+                                                                        Modifier.weight(1f).fillMaxWidth()
+                                                        )
+                                                } else {
+                                                        Card(
+                                                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                                                elevation = AppSizes.elevationMedium
+                                                        ) {
+                                                                Box(
+                                                                        modifier = Modifier.fillMaxSize(),
+                                                                        contentAlignment = Alignment.Center
+                                                                ) {
+                                                                        Text(
+                                                                                translate(RationKeys.SELECT_RATION_HINT),
+                                                                                style = MaterialTheme.typography.body1,
+                                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                                                         )
                                                                 }
-                                                        },
-                                                        onOpenRecipeDialog = {
-                                                                showRecipeDialog = true
-                                                        },
-                                                        onSaveRecipe = {
-                                                                selectedRation?.let { r ->
-                                                                        newRecipeName = r.name
-                                                                        showSaveRecipeDialog = true
-                                                                }
-                                                        },
-                                                        showSnackbar = showSnackbar,
-                                                        modifier =
-                                                                Modifier.weight(1f).fillMaxWidth()
-                                                )
+                                                        }
+                                                }
                                         }
 
                                         // Colonne droite (analyses) - 50% de l'espace
@@ -1148,117 +1354,100 @@ fun RationsView(
                                                 // Analyse nutritionnelle de la ration
                                                 // sélectionnée
                                                 if (selectedRation != null) {
-                                                        // Obtenir les nutriments
-                                                        // sélectionnés selon
-                                                        // l'espèce avec logs
-                                                        val nutrimentsSelectionnes =
-                                                                remember(
-                                                                        animal,
-                                                                        preferencesApplication
+                                                        if (showRationNutrientInspector) {
+                                                                AnalyseQuantitativeRationSection(
+                                                                        ration = selectedRation!!,
+                                                                        referenceUtilisee = referenceUtilisee,
+                                                                        equationRepository = equationRepository,
+                                                                        preferencesApplication = preferencesApplication,
+                                                                        animal = animal,
+                                                                        nutrimentsSelectionnes =
+                                                                                nutrimentsSelectionnesPreferences,
+                                                                        energieTotaleKcal = energieApportee,
+                                                                        isLargeView = true,
+                                                                        onContextBadgeClick = {
+                                                                                showRationNutrientInspector =
+                                                                                        false
+                                                                        },
+                                                                        modifier = Modifier.fillMaxSize()
+                                                                )
+                                                        } else if (referenceUtilisee != null) {
+                                                                AnalyseNutritionnelleCard(
+                                                                        ration = selectedRation!!,
+                                                                        poidsMetabolique = poidsMetabolique,
+                                                                        referenceUtilisee =
+                                                                                referenceUtilisee,
+                                                                        besoinEnergetiqueEntretien =
+                                                                                besoinEnergetiqueStandard,
+                                                                        poidsAnimal =
+                                                                                selectedConsultation
+                                                                                        ?.effectiveWeight
+                                                                                        ?.toDouble(),
+                                                                        modifier = Modifier.fillMaxWidth(),
+                                                                        nutrimentsSelectionnes =
+                                                                                nutrimentsSelectionnesPreferences,
+                                                                        onNutrimentClick = {
+                                                                                nom,
+                                                                                valeurNutritionnelle ->
+                                                                                selectedNutrimentData =
+                                                                                        Triple(
+                                                                                                nom,
+                                                                                                valeurNutritionnelle,
+                                                                                                selectedRation!!
+                                                                                        )
+                                                                                showNutrimentDetailDialog =
+                                                                                        true
+                                                                        },
+                                                                        animal = animal,
+                                                                        preferencesRepository =
+                                                                                preferencesRepository,
+                                                                        equationRepository =
+                                                                                equationRepository,
+                                                                        typeExpressionBesoin =
+                                                                                effectiveTypeExpressionBesoin,
+                                                                        headerActions =
+                                                                                typeExpressionSelector,
+                                                                        titleOverride = "",
+                                                                        contextBadgeLabel =
+                                                                                translate(
+                                                                                        AnalNut
+                                                                                                .BADGE_INTAKES
+                                                                                ),
+                                                                        contextBadgeColor =
+                                                                                Color(0xFF3558A8),
+                                                                        contextBadgeOnClick = {
+                                                                                showRationNutrientInspector =
+                                                                                        true
+                                                                        },
+                                                                        contextBadgeTooltip =
+                                                                                translate(
+                                                                                        AnalNut
+                                                                                                .TOOLTIP_SWITCH_TO_COMPOSITION
+                                                                                ),
+                                                                        showDisplayModeText = false,
+                                                                        isLargeView = true,
+                                                                        referencesMaladies =
+                                                                                referencesMaladiesResolues
+                                                                )
+                                                        } else {
+                                                                Card(
+                                                                        modifier = Modifier.fillMaxSize(),
+                                                                        elevation = AppSizes.elevationMedium
                                                                 ) {
-                                                                        val animalActuel = animal
-                                                                        val prefsApp =
-                                                                                preferencesApplication
-
-                                                                        if (animalActuel != null &&
-                                                                                        prefsApp !=
-                                                                                                null
+                                                                        Box(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxSize(),
+                                                                                contentAlignment =
+                                                                                        Alignment.Center
                                                                         ) {
-                                                                                val especeAnimal =
-                                                                                        animalActuel
-                                                                                                .getEspece()
-
-                                                                                val preferencesEspece =
-                                                                                        prefsApp.getPreferencesEspece(
-                                                                                                especeAnimal
-                                                                                        )
-
-                                                                                val nutrimentsLabels =
-                                                                                        convertirPreferencesVersLabelsNutriments(
-                                                                                                preferencesEspece
-                                                                                        )
-
-                                                                                if (nutrimentsLabels
-                                                                                                .isNotEmpty()
-                                                                                ) {
-                                                                                        nutrimentsLabels
-                                                                                } else {
-                                                                                        listOf(
-                                                                                                "PROTEINE",
-                                                                                                "LIPIDE",
-                                                                                                "ENA",
-                                                                                                "CELLULOSE",
-                                                                                                "CENDRE",
-                                                                                                "CAL",
-                                                                                                "PHOS"
-                                                                                        )
-                                                                                }
-                                                                        } else {
-                                                                                listOf(
-                                                                                        "PROTEINE",
-                                                                                        "LIPIDE",
-                                                                                        "ENA",
-                                                                                        "CELLULOSE",
-                                                                                        "CENDRE",
-                                                                                        "CAL",
-                                                                                        "PHOS",
-                                                                                        "FE",
-                                                                                        "ZN",
-                                                                                        "CU",
-                                                                                        "VITA",
-                                                                                        "VITD",
-                                                                                        "VITE",
-                                                                                        "VITB1",
-                                                                                        "VITB2"
+                                                                                Text(
+                                                                                        translate(AnalNut.SELECT_REFERENCE_FOR_ANALYSIS),
+                                                                                        style = MaterialTheme.typography.body1,
+                                                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                                                                 )
                                                                         }
                                                                 }
-
-                                                        AnalyseNutritionnelleCard(
-                                                                ration = selectedRation!!,
-                                                                poidsMetabolique = poidsMetabolique,
-                                                                referenceUtilisee =
-                                                                        referenceUtilisee,
-                                                                besoinEnergetiqueEntretien =
-                                                                        besoinEnergetiqueStandard,
-                                                                poidsAnimal =
-                                                                        selectedConsultation
-                                                                                ?.effectiveWeight
-                                                                                ?.toDouble(),
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                nutrimentsSelectionnes =
-                                                                        nutrimentsSelectionnes, // Utilisation des préférences
-                                                                onNutrimentClick = {
-                                                                        nom,
-                                                                        valeurNutritionnelle ->
-                                                                        selectedNutrimentData =
-                                                                                Triple(
-                                                                                        nom,
-                                                                                        valeurNutritionnelle,
-                                                                                        selectedRation!!
-                                                                                )
-                                                                        showNutrimentDetailDialog =
-                                                                                true
-                                                                },
-                                                                // Nouveaux paramètres pour
-                                                                // les
-                                                                // préférences
-                                                                animal = animal,
-                                                                preferencesRepository =
-                                                                        preferencesRepository,
-                                                                equationRepository =
-                                                                        equationRepository,
-                                                                // Utiliser les préférences
-                                                                // pré-chargées du ViewModel
-                                                                typeExpressionBesoin =
-                                                                        viewModel
-                                                                                .typeExpressionBesoin
-                                                                                .collectAsState()
-                                                                                .value,
-                                                                isLargeView = true,
-                                                                referencesMaladies =
-                                                                        referencesMaladiesResolues
-                                                        )
+                                                        }
                                                 } else {
                                                         Card(
                                                                 modifier = Modifier.fillMaxSize(),
@@ -1271,7 +1460,7 @@ fun RationsView(
                                                                                 Alignment.Center
                                                                 ) {
                                                                         Text(
-                                                                                "Sélectionnez une ration pour voir l'analyse nutritionnelle"
+                                                                                translate(AnalNut.SELECT_RATION_FOR_ANALYSIS)
                                                                         )
                                                                 }
                                                         }
@@ -1337,7 +1526,10 @@ fun RationsView(
                                                                 viewModel.selectRation(newRation)
 
                                                                 showSnackbar(
-                                                                        "Ration '${newRation.name}' créée"
+                                                                        translate(
+                                                                                RationKeys.CREATED,
+                                                                                newRation.name
+                                                                        )
                                                                 )
                                                         }
                                                 } else {
@@ -1345,7 +1537,10 @@ fun RationsView(
                                                         // existante
                                                         viewModel.updateRation(updatedRation)
                                                         showSnackbar(
-                                                                "Ration '${updatedRation.name}' mise à jour"
+                                                                translate(
+                                                                        RationKeys.UPDATED,
+                                                                        updatedRation.name
+                                                                )
                                                         )
                                                 }
 
@@ -1417,6 +1612,7 @@ fun RationsView(
                                 besoinEnergetiqueStandard = besoinEnergetiqueStandard!!,
                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                 poidsMetabolique = poidsMetabolique,
+                                equationRepository = equationRepository,
                                 onConfirm = { result ->
                                         if (result.success) {
                                                 // Appliquer les ajustements à la ration
@@ -1430,7 +1626,9 @@ fun RationsView(
                                                         }
                                                 }
                                         } else {
-                                                showSnackbar("Erreur: ${result.message}")
+                                                showSnackbar(
+                                                        "${translate(General.ERROR)}: ${result.message}"
+                                                )
                                         }
                                         showMultiNutrientAdjustmentDialog = false
                                 },
@@ -1439,55 +1637,64 @@ fun RationsView(
                 }
 
                 // Dialog de confirmation de suppression de ration
-                if (showDeleteRationDialog && rationToDelete != null) {
-                        AlertDialog(
-                                onDismissRequest = {
-                                        showDeleteRationDialog = false
-                                        rationToDelete = null
-                                },
-                                title = {
-                                        Text(
-                                                "Confirmer la suppression",
-                                                style = MaterialTheme.typography.h6,
-                                                color = VetNutriColors.Error
-                                        )
-                                },
-                                text = {
-                                        Text(
-                                                "Êtes-vous sûr de vouloir supprimer la ration '${rationToDelete!!.name}' ?\n\nCette action est irréversible.",
-                                                style = MaterialTheme.typography.body1
-                                        )
-                                },
-                                confirmButton = {
-                                        Button(
-                                                onClick = {
-                                                        viewModel.removeRationFromConsultation(
-                                                                rationToDelete!!
-                                                        )
-                                                        showSnackbar(
-                                                                "Ration '${rationToDelete!!.name}' supprimée"
-                                                        )
-                                                        showDeleteRationDialog = false
-                                                        rationToDelete = null
-                                                },
-                                                colors =
-                                                        ButtonDefaults.buttonColors(
-                                                                backgroundColor =
-                                                                        VetNutriColors.Error,
-                                                                contentColor =
-                                                                        VetNutriColors.OnError
-                                                        )
-                                        ) { Text("Supprimer") }
-                                },
-                                dismissButton = {
-                                        TextButton(
-                                                onClick = {
-                                                        showDeleteRationDialog = false
-                                                        rationToDelete = null
-                                                }
-                                        ) { Text("Annuler") }
-                                }
-                        )
+                if (showDeleteRationDialog) {
+                        val rationCible = rationToDelete
+                        if (rationCible != null) {
+                                AlertDialog(
+                                        onDismissRequest = {
+                                                showDeleteRationDialog = false
+                                                rationToDelete = null
+                                        },
+                                        title = {
+                                                Text(
+                                                        translate(RationKeys.DELETE_CONFIRM_TITLE),
+                                                        style = MaterialTheme.typography.h6,
+                                                        color = VetNutriColors.Error
+                                                )
+                                        },
+                                        text = {
+                                                Text(
+                                                        translate(
+                                                                RationKeys.DELETE_CONFIRM_MESSAGE,
+                                                                rationCible.name
+                                                        ),
+                                                        style = MaterialTheme.typography.body1
+                                                )
+                                        },
+                                        confirmButton = {
+                                                Button(
+                                                        onClick = {
+                                                                viewModel.removeRationFromConsultation(
+                                                                        rationCible
+                                                                )
+                                                                showSnackbar(
+                                                                        translate(
+                                                                                RationKeys.DELETED,
+                                                                                rationCible.name
+                                                                        )
+                                                                )
+                                                                showDeleteRationDialog = false
+                                                                rationToDelete = null
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors.Error,
+                                                                        contentColor =
+                                                                                VetNutriColors.OnError
+                                                                )
+                                                ) { Text(translate(General.DELETE)) }
+                                        },
+                                        dismissButton = {
+                                                TextButton(
+                                                        onClick = {
+                                                                showDeleteRationDialog = false
+                                                                rationToDelete = null
+                                                        }
+                                                ) { Text(translate(General.CANCEL)) }
+                                        }
+                                )
+                        }
                 }
         }
 }
@@ -1502,14 +1709,19 @@ fun RationsView(
 @Composable
 fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) -> Unit) {
         val isNewRation = ration == null
-        val title = if (isNewRation) "Créer une ration" else "Modifier la ration"
+        val title =
+                if (isNewRation) {
+                        translate(RationKeys.CREATE_TITLE)
+                } else {
+                        translate(RationKeys.EDIT_TITLE)
+                }
 
         // État éditable de la ration
         var editedRation by remember {
                 mutableStateOf(
                         ration?.copy()
                                 ?: Ration(
-                                        name = "Nouvelle ration",
+                                        name = translate(RationKeys.NEW_NAME),
                                         actual = false,
                                         alimentMutableList = mutableListOf()
                                 )
@@ -1532,7 +1744,7 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                         onValueChange = {
                                                 editedRation = editedRation.copy(name = it)
                                         },
-                                        label = { Text("Nom de la ration") },
+                                        label = { Text(translate(RationKeys.NAME_LABEL)) },
                                         modifier = Modifier.fillMaxWidth()
                                 )
 
@@ -1541,7 +1753,10 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                        Text("Type de ration:", modifier = Modifier.weight(1f))
+                                        Text(
+                                                translate(RationKeys.TYPE_LABEL),
+                                                modifier = Modifier.weight(1f)
+                                        )
 
                                         Switch(
                                                 checked = editedRation.actual,
@@ -1562,8 +1777,11 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
 
                                         Text(
                                                 text =
-                                                        if (editedRation.actual) "Actuelle"
-                                                        else "Proposée",
+                                                        if (editedRation.actual) {
+                                                                translate(RationKeys.ACTUAL)
+                                                        } else {
+                                                                translate(RationKeys.PROPOSED)
+                                                        },
                                                 style = MaterialTheme.typography.body2,
                                                 modifier =
                                                         Modifier.padding(
@@ -1578,7 +1796,7 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                         onValueChange = {
                                                 editedRation = editedRation.copy(description = it)
                                         },
-                                        label = { Text("Description") },
+                                        label = { Text(translate(RationKeys.DESCRIPTION)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         maxLines = 3,
                                         singleLine = false
@@ -1604,13 +1822,15 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                                                 )
                                                 }
                                         },
-                                        label = { Text("Coefficient de la ration") },
+                                        label = { Text(translate(RationKeys.COEFFICIENT_LABEL)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         keyboardOptions =
                                                 KeyboardOptions(
                                                         keyboardType = KeyboardType.Decimal
                                                 ),
-                                        placeholder = { Text("Ex: 1,0 ou 1.0") }
+                                        placeholder = {
+                                                Text(translate(RationKeys.COEFFICIENT_PLACEHOLDER))
+                                        }
                                 )
                         }
                 },
@@ -1622,9 +1842,9 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                                 backgroundColor = VetNutriColors.Primary,
                                                 contentColor = VetNutriColors.OnPrimary
                                         )
-                        ) { Text("Enregistrer") }
+                        ) { Text(translate(General.SAVE)) }
                 },
-                dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } }
+                dismissButton = { TextButton(onClick = onDismiss) { Text(translate(General.CANCEL)) } }
         )
 }
 
@@ -1664,7 +1884,7 @@ private fun MetabolicValuesDialog(
                 onDismissRequest = onDismiss,
                 title = {
                         Text(
-                                "Valeurs métaboliques détaillées",
+                                translate(AnalNut.METABOLIC_VALUES_TITLE),
                                 style = MaterialTheme.typography.h5,
                                 color = VetNutriColors.Primary
                         )
@@ -1672,61 +1892,64 @@ private fun MetabolicValuesDialog(
                 text = {
                         Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)) {
                                 LocalInfoRow(
-                                        label = "Poids actuel",
+                                        label = translate(AnalNut.WEIGHT_CURRENT),
                                         value =
                                                 selectedConsultation?.weight?.let {
                                                         "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                                 }
-                                                        ?: "Non renseigné"
+                                                        ?: translate(General.NOT_SPECIFIED)
                                 )
 
                                 LocalInfoRow(
-                                        label = "Poids idéal",
+                                        label = translate(AnalNut.WEIGHT_IDEAL),
                                         value =
                                                 selectedConsultation?.effectiveWeight?.let {
                                                         "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                                 }
-                                                        ?: "Non calculé"
+                                                        ?: translate(General.NOT_CALCULATED)
                                 )
 
                                 LocalInfoRow(
-                                        label = "Poids métabolique",
+                                        label = translate(AnalNut.WEIGHT_METABOLIC),
                                         value =
                                                 poidsMetabolique?.let {
-                                                        TextUtils.formatKgPuissance075(it)
+                                                        TextUtils.formatKgAvecPuissanceDynamique(
+                                                                it,
+                                                                referenceUtilisee?.equationBW?.equationScript
+                                                        )
                                                 }
-                                                        ?: "Non calculé"
+                                                        ?: translate(General.NOT_CALCULATED)
                                 )
 
                                 LocalInfoRow(
-                                        label = "Besoin énergétique standard (BEE)",
+                                        label = translate(AnalNut.ENERGY_STANDARD),
                                         value =
                                                 besoinEnergetiqueStandard?.let {
                                                         "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kcal/jour"
                                                 }
-                                                        ?: "Non calculé"
+                                                        ?: translate(General.NOT_CALCULATED)
                                 )
 
                                 LocalInfoRow(
-                                        label = "Besoin énergétique total",
+                                        label = translate(AnalNut.ENERGY_TOTAL),
                                         value =
                                                 besoinEnergetiqueTotal?.let {
                                                         "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kcal/jour"
                                                 }
-                                                        ?: "Non calculé"
+                                                        ?: translate(General.NOT_CALCULATED)
                                 )
 
                                 Divider()
 
                                 LocalInfoRow(
-                                        label = "K Observé",
+                                        label = translate(AnalNut.K_OBSERVED),
                                         value =
                                                 fr.vetbrain.vetnutri_mp.Utils.TextUtils
                                                         .formatDecimal(kObserve, 2)
                                 )
 
                                 LocalInfoRow(
-                                        label = "K Calculé",
+                                        label = translate(AnalNut.K_CALCULATED),
                                         value =
                                                 fr.vetbrain.vetnutri_mp.Utils.TextUtils
                                                         .formatDecimal(kCalcule, 2)
@@ -1735,14 +1958,19 @@ private fun MetabolicValuesDialog(
                                 referenceUtilisee?.let { reference ->
                                         Divider()
                                         Text(
-                                                "Référence utilisée: ${reference.nom}",
+                                                translate(
+                                                        AnalNut.REFERENCE_USED,
+                                                        reference.nom
+                                                ),
                                                 style = MaterialTheme.typography.caption,
                                                 color = VetNutriColors.Primary
                                         )
                                 }
                         }
                 },
-                confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } }
+                confirmButton = {
+                        TextButton(onClick = onDismiss) { Text(translate(General.CLOSE)) }
+                }
         )
 }
 
@@ -1759,11 +1987,12 @@ private fun CoefficientEditableRow(
         onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit
 ) {
         var showDropdown by remember { mutableStateOf(false) }
+        val customValueLabel = translate(RationKeys.CUSTOM_VALUE)
 
         // Vérifier si la valeur actuelle est personnalisée (pas dans la liste prédéfinie)
         val isCustomValue =
                 remember(currentValue, currentDescription, availableCoefficients) {
-                        currentDescription == "Valeur personnalisée" ||
+                        currentDescription == customValueLabel ||
                                 availableCoefficients.none {
                                         it.coef == currentValue &&
                                                 it.description == currentDescription
@@ -1806,23 +2035,25 @@ private fun CoefficientEditableRow(
                                                 val customCoef =
                                                         fr.vetbrain.vetnutri_mp.Data.CoefP(
                                                                 description =
-                                                                        "Valeur personnalisée",
+                                                                        customValueLabel,
                                                                 coef = value,
                                                                 groupUUID = null
                                                         )
                                                 onCoefficientSelected(customCoef)
                                         }
                                 },
-                                label = { Text("Coefficient") },
+                                label = { Text(translate(ConsultationEdit.COEF_SELECTOR_LABEL)) },
                                 modifier = Modifier.fillMaxWidth(),
                                 keyboardOptions =
                                         KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                placeholder = { Text("Ex: 1,2 ou 1.2") },
+                                placeholder = {
+                                        Text(translate(RationKeys.COEFFICIENT_PLACEHOLDER))
+                                },
                                 trailingIcon = {
                                         Row {
                                                 // Bouton de validation (uniquement en mode édition)
                                                 if (isEditing) {
-                                                        IconButton(
+                                                        IconButtonWithTooltip(
                                                                 onClick = {
                                                                         // Valider et sortir du mode
                                                                         // édition
@@ -1844,7 +2075,7 @@ private fun CoefficientEditableRow(
                                                                                                 .Data
                                                                                                 .CoefP(
                                                                                                         description =
-                                                                                                                "Valeur personnalisée",
+                                                                                                                customValueLabel,
                                                                                                         coef =
                                                                                                                 value,
                                                                                                         groupUUID =
@@ -1855,41 +2086,29 @@ private fun CoefficientEditableRow(
                                                                                 )
                                                                         }
                                                                         isEditing = false
-                                                                }
-                                                        ) {
-                                                                Icon(
-                                                                        imageVector =
-                                                                                Icons.Default.Check,
-                                                                        contentDescription =
-                                                                                "Valider",
-                                                                        tint =
-                                                                                VetNutriColors
-                                                                                        .Primary
-                                                                )
-                                                        }
+                                                                },
+                                                                imageVector = Icons.Default.Check,
+                                                                contentDescription =
+                                                                        translate(General.VALIDATE),
+                                                                tooltip = translate(General.VALIDATE),
+                                                                tint = VetNutriColors.Primary
+                                                        )
                                                 }
 
                                                 // Bouton dropdown (toujours présent)
-                                                IconButton(
+                                                IconButtonWithTooltip(
                                                         onClick = {
                                                                 showDropdown = true
                                                                 isEditing = false // Sortir du mode
                                                                 // édition si
                                                                 // on ouvre le dropdown
-                                                        }
-                                                ) {
-                                                        Icon(
-                                                                imageVector =
-                                                                        if (showDropdown)
-                                                                                Icons.Default
-                                                                                        .KeyboardArrowUp
-                                                                        else
-                                                                                Icons.Default
-                                                                                        .KeyboardArrowDown,
-                                                                contentDescription =
-                                                                        "Sélectionner un coefficient"
-                                                        )
-                                                }
+                                                        },
+                                                        imageVector = if (showDropdown) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                                        contentDescription =
+                                                                translate(ConsultationEdit.COEF_SELECTOR_NONE),
+                                                        tooltip =
+                                                                translate(ConsultationEdit.COEF_SELECTOR_NONE)
+                                                )
                                         }
                                 }
                         )
@@ -1922,24 +2141,25 @@ private fun CoefficientEditableRow(
                                                         }
                                                 },
                                         onValueChange = { /* Pas d'édition en mode lecture */},
-                                        label = { Text("Coefficient") },
+                                        label = {
+                                                Text(
+                                                        translate(
+                                                                ConsultationEdit.COEF_SELECTOR_LABEL
+                                                        )
+                                                )
+                                        },
                                         readOnly = true,
                                         modifier = Modifier.fillMaxWidth(),
                                         trailingIcon = {
                                                 // Bouton dropdown (toujours présent)
-                                                IconButton(onClick = { showDropdown = true }) {
-                                                        Icon(
-                                                                imageVector =
-                                                                        if (showDropdown)
-                                                                                Icons.Default
-                                                                                        .KeyboardArrowUp
-                                                                        else
-                                                                                Icons.Default
-                                                                                        .KeyboardArrowDown,
-                                                                contentDescription =
-                                                                        "Sélectionner un coefficient"
-                                                        )
-                                                }
+                                                IconButtonWithTooltip(
+                                                        onClick = { showDropdown = true },
+                                                        imageVector = if (showDropdown) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                                        contentDescription =
+                                                                translate(ConsultationEdit.COEF_SELECTOR_NONE),
+                                                        tooltip =
+                                                                translate(ConsultationEdit.COEF_SELECTOR_NONE)
+                                                )
                                         }
                                 )
 
@@ -1988,7 +2208,11 @@ private fun CoefficientEditableRow(
                 // DropdownMenu avec les coefficients disponibles
                 DropdownMenu(
                         expanded = showDropdown,
-                        onDismissRequest = { showDropdown = false },
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                showDropdown = false 
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth()
                 ) {
                         availableCoefficients.forEach { coef ->
@@ -2001,12 +2225,27 @@ private fun CoefficientEditableRow(
                                         Column {
                                                 Text(
                                                         text = coef.description
-                                                                        ?: "Sans description",
+                                                                        ?: translate(
+                                                                                ConsultationEdit
+                                                                                        .REF_COEF_NO_DESC
+                                                                        ),
                                                         style = MaterialTheme.typography.body1
                                                 )
                                                 Text(
                                                         text =
-                                                                "Coefficient: ${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal((coef.coef ?: 1.0).toDouble(), 2)}",
+                                                                translate(
+                                                                        ConsultationEdit.COEF_VAL_LABEL,
+                                                                        fr.vetbrain
+                                                                                .vetnutri_mp
+                                                                                .Utils
+                                                                                .TextUtils
+                                                                                .formatDecimal(
+                                                                                        (coef.coef
+                                                                                                ?: 1.0)
+                                                                                                .toDouble(),
+                                                                                        2
+                                                                                )
+                                                                ),
                                                         style = MaterialTheme.typography.body2,
                                                         color = Color.Gray
                                                 )
@@ -2041,7 +2280,7 @@ private fun CoefficientEditableRow(
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                                text = "Édition directe...",
+                                                text = translate(RationKeys.DIRECT_EDIT),
                                                 style = MaterialTheme.typography.body2,
                                                 fontStyle = FontStyle.Italic
                                         )
@@ -2060,6 +2299,7 @@ private fun CoefficientsDialog(
 ) {
         // Observer la référence utilisée pour récupérer les coefficients disponibles
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
+        val focusManager = LocalFocusManager.current
 
         // État pour l'édition du coefficient d'ajustement
         var isEditingCoefficient by remember { mutableStateOf(false) }
@@ -2069,12 +2309,15 @@ private fun CoefficientsDialog(
                                 selectedConsultation?.coefficientAjustement?.toString() ?: "1.0"
                         )
                 }
+        val coefficientValue = parsePositiveDecimal(coefficientText)
+        val isCoefficientValid = coefficientValue != null
+        val showCoefficientError = coefficientText.isNotBlank() && !isCoefficientValid
 
         AlertDialog(
                 onDismissRequest = onDismiss,
                 title = {
                         Text(
-                                "Coefficients détaillés",
+                                translate(RationKeys.COEFFICIENTS_DETAIL_TITLE),
                                 style = MaterialTheme.typography.h5,
                                 color = VetNutriColors.Primary
                         )
@@ -2086,7 +2329,7 @@ private fun CoefficientsDialog(
                         ) {
                                 item {
                                         Text(
-                                                "Coefficients K",
+                                                translate(RationKeys.COEFFICIENTS_K_TITLE),
                                                 style = MaterialTheme.typography.h6,
                                                 color = VetNutriColors.Primary,
                                                 fontWeight = FontWeight.Bold
@@ -2100,7 +2343,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k1Value,
                                                 currentDescription = selectedConsultation?.k1Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk1()
+                                                        referenceUtilisee?.modk1
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2122,7 +2365,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k2Value,
                                                 currentDescription = selectedConsultation?.k2Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk2()
+                                                        referenceUtilisee?.modk2
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2144,7 +2387,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k3Value,
                                                 currentDescription = selectedConsultation?.k3Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk3()
+                                                        referenceUtilisee?.modk3
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2166,7 +2409,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k4Value,
                                                 currentDescription = selectedConsultation?.k4Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk4()
+                                                        referenceUtilisee?.modk4
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2188,7 +2431,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k5Value,
                                                 currentDescription = selectedConsultation?.k5Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk5()
+                                                        referenceUtilisee?.modk5
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2213,7 +2456,7 @@ private fun CoefficientsDialog(
                                                 verticalAlignment = Alignment.CenterVertically
                                         ) {
                                                 Text(
-                                                        "Coefficient d'ajustement",
+                                                        translate(RationKeys.COEFFICIENT_ADJUST_LABEL),
                                                         style = MaterialTheme.typography.subtitle1
                                                 )
 
@@ -2225,51 +2468,79 @@ private fun CoefficientsDialog(
                                                                 OutlinedTextField(
                                                                         value = coefficientText,
                                                                         onValueChange = {
-                                                                                coefficientText = it
+                                                                                coefficientText = normalizeDecimalInput(it)
                                                                         },
                                                                         modifier =
                                                                                 Modifier.width(
                                                                                         100.dp
                                                                                 ),
                                                                         singleLine = true,
+                                                                        isError =
+                                                                                showCoefficientError,
                                                                         keyboardOptions =
                                                                                 KeyboardOptions(
                                                                                         keyboardType =
                                                                                                 KeyboardType
-                                                                                                        .Number
+                                                                                                        .Decimal,
+                                                                                        imeAction =
+                                                                                                ImeAction
+                                                                                                        .Done
+                                                                                ),
+                                                                        keyboardActions =
+                                                                                KeyboardActions(
+                                                                                        onDone = {
+                                                                                                coefficientValue
+                                                                                                        ?.let {
+                                                                                                                newValue
+                                                                                                                ->
+                                                                                                                selectedConsultation
+                                                                                                                        ?.let {
+                                                                                                                                consultation
+                                                                                                                                ->
+                                                                                                                                viewModel
+                                                                                                                                        .updateCoefficientAjustement(
+                                                                                                                                                consultation
+                                                                                                                                                        .uuid,
+                                                                                                                                                newValue
+                                                                                                                                        )
+                                                                                                                        }
+                                                                                                isEditingCoefficient =
+                                                                                                        false
+                                                                                                focusManager
+                                                                                                        .clearFocus()
+                                                                                                        }
+                                                                                        }
                                                                                 )
                                                                 )
-                                                                IconButton(
+                                                                IconButtonWithTooltip(
                                                                         onClick = {
-                                                                                coefficientText
-                                                                                        .toDoubleOrNull()
-                                                                                        ?.let {
-                                                                                                newValue
-                                                                                                ->
-                                                                                                selectedConsultation
-                                                                                                        ?.let {
-                                                                                                                consultation
-                                                                                                                ->
-                                                                                                                viewModel
-                                                                                                                        .updateCoefficientAjustement(
-                                                                                                                                consultation
-                                                                                                                                        .uuid,
-                                                                                                                                newValue
-                                                                                                                        )
-                                                                                                        }
+                                                                                coefficientValue
+                                                                                        ?.let { newValue ->
+                                                                                                selectedConsultation?.let {
+                                                                                                        consultation
+                                                                                                        ->
+                                                                                                        viewModel
+                                                                                                                .updateCoefficientAjustement(
+                                                                                                                        consultation
+                                                                                                                                .uuid,
+                                                                                                                        newValue
+                                                                                                                )
+                                                                                                }
                                                                                         }
                                                                                 isEditingCoefficient =
                                                                                         false
-                                                                        }
-                                                                ) {
-                                                                        Icon(
-                                                                                Icons.Filled.Check,
-                                                                                contentDescription =
-                                                                                        "Valider",
-                                                                                tint = Color.Green
-                                                                        )
-                                                                }
-                                                                IconButton(
+                                                                                focusManager
+                                                                                        .clearFocus()
+                                                                        },
+                                                                        imageVector = Icons.Filled.Check,
+                                                                        contentDescription =
+                                                                                translate(General.VALIDATE),
+                                                                        tooltip =
+                                                                                translate(General.VALIDATE),
+                                                                        enabled = isCoefficientValid,
+                                                                        tint = Color.Green
+                                                                )
+                                                                IconButtonWithTooltip(
                                                                         onClick = {
                                                                                 coefficientText =
                                                                                         selectedConsultation
@@ -2278,15 +2549,16 @@ private fun CoefficientsDialog(
                                                                                                 ?: "1.0"
                                                                                 isEditingCoefficient =
                                                                                         false
-                                                                        }
-                                                                ) {
-                                                                        Icon(
-                                                                                Icons.Filled.Close,
-                                                                                contentDescription =
-                                                                                        "Annuler",
-                                                                                tint = Color.Red
-                                                                        )
-                                                                }
+                                                                                focusManager
+                                                                                        .clearFocus()
+                                                                        },
+                                                                        imageVector = Icons.Filled.Close,
+                                                                        contentDescription =
+                                                                                translate(General.CANCEL),
+                                                                        tooltip =
+                                                                                translate(General.CANCEL),
+                                                                        tint = Color.Red
+                                                                )
                                                         }
                                                 } else {
                                                         Row(
@@ -2314,7 +2586,7 @@ private fun CoefficientsDialog(
                                                                         fontWeight =
                                                                                 FontWeight.Medium
                                                                 )
-                                                                IconButton(
+                                                                IconButtonWithTooltip(
                                                                         onClick = {
                                                                                 coefficientText =
                                                                                         selectedConsultation
@@ -2323,21 +2595,20 @@ private fun CoefficientsDialog(
                                                                                                 ?: "1.0"
                                                                                 isEditingCoefficient =
                                                                                         true
-                                                                        }
-                                                                ) {
-                                                                        Icon(
-                                                                                Icons.Filled.Edit,
-                                                                                contentDescription =
-                                                                                        "Éditer"
-                                                                        )
-                                                                }
+                                                                        },
+                                                                        imageVector = Icons.Filled.Edit,
+                                                                        contentDescription =
+                                                                                translate(General.EDIT),
+                                                                        tooltip =
+                                                                                translate(General.EDIT)
+                                                                )
                                                         }
                                                 }
                                         }
                                 }
                         }
                 },
-                confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } }
+                confirmButton = { TextButton(onClick = onDismiss) { Text(translate(General.CLOSE)) } }
         )
 }
 

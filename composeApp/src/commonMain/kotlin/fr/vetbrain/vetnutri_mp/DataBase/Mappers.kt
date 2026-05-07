@@ -8,7 +8,16 @@ import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+private val consultationPrescriptionJson = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+}
 
 object Mappers {
         // Animal Mappers avec relations
@@ -24,7 +33,12 @@ object Mappers {
                                 ownerName = this.ownerName,
                                 birthdate = this.birthdate?.toString() ?: "",
                                 race = this.race,
-                                summary = this.summary
+                                summary = this.summary,
+                                jsonbinId = this.jsonbinId,
+                                exam = this.exam,
+                                examStudentId = this.examStudentId,
+                                examStudentNumber = this.examStudentNumber,
+                                examExerciseId = this.examExerciseId
                         )
 
                 if (includeRelations) {
@@ -62,6 +76,11 @@ object Mappers {
                                 },
                         race = this.race ?: "",
                         summary = this.summary ?: "",
+                        jsonbinId = this.jsonbinId,
+                        exam = this.exam,
+                        examStudentId = this.examStudentId,
+                        examStudentNumber = this.examStudentNumber,
+                        examExerciseId = this.examExerciseId,
                         consultations = consultations.map { it.toData() }.toMutableList(),
                         weightHistory = weights.map { it.toData() }.toMutableList()
                 )
@@ -100,7 +119,27 @@ object Mappers {
                                 // Nouveaux champs pour les références nutritionnelles
                                 referenceGeneraleId = this.referenceGeneraleId,
                                 referencesMaladiesJson = this.referencesMaladies.joinToString(","),
-                                coefficientAjustement = this.coefficientAjustement
+                                keywordsJson = this.keywordIds.joinToString(","),
+                                coefficientAjustement = this.coefficientAjustement,
+                                prescriptionAnamnese = this.prescriptionAnamnese.ifBlank { "" },
+                                prescriptionExamenClinique =
+                                        this.prescriptionExamenClinique.ifBlank { "" },
+                                prescriptionFacteurNutritionnelClef =
+                                        this.prescriptionFacteurNutritionnelClef.ifBlank { "" },
+                                prescriptionAdditionalText =
+                                        this.prescriptionAdditionalText.ifBlank { "" },
+                                prescriptionSelectedConseilIdsJson =
+                                        consultationPrescriptionJson.encodeToString(
+                                                this.prescriptionSelectedConseilIds
+                                        ),
+                                prescriptionLocalHtmlSectionsJson =
+                                        consultationPrescriptionJson.encodeToString(
+                                                this.prescriptionLocalHtmlSections
+                                        ),
+                                prescriptionSelectedRationIdsJson =
+                                        consultationPrescriptionJson.encodeToString(
+                                                this.prescriptionSelectedRationIds
+                                        )
                         )
                         .apply {
                                 if (includeRelations) {
@@ -124,6 +163,51 @@ object Mappers {
                 rations: List<RationEntity> = emptyList(),
                 suppVars: List<SupplementalVariableEntity> = emptyList()
         ): ConsultationEv {
+                val prescriptionSelectedConseilIds: MutableList<String> =
+                        try {
+                                if (!this.prescriptionSelectedConseilIdsJson.isNullOrBlank()) {
+                                        consultationPrescriptionJson
+                                                .decodeFromString<List<String>>(
+                                                        this.prescriptionSelectedConseilIdsJson
+                                                )
+                                                .toMutableList()
+                                } else {
+                                        mutableListOf()
+                                }
+                        } catch (_: Exception) {
+                                mutableListOf()
+                        }
+
+                val prescriptionLocalHtmlSections: MutableList<HtmlSection> =
+                        try {
+                                if (!this.prescriptionLocalHtmlSectionsJson.isNullOrBlank()) {
+                                        consultationPrescriptionJson
+                                                .decodeFromString<List<HtmlSection>>(
+                                                        this.prescriptionLocalHtmlSectionsJson
+                                                )
+                                                .toMutableList()
+                                } else {
+                                        mutableListOf()
+                                }
+                        } catch (_: Exception) {
+                                mutableListOf()
+                        }
+
+                val prescriptionSelectedRationIds: MutableList<String> =
+                        try {
+                                if (!this.prescriptionSelectedRationIdsJson.isNullOrBlank()) {
+                                        consultationPrescriptionJson
+                                                .decodeFromString<List<String>>(
+                                                        this.prescriptionSelectedRationIdsJson
+                                                )
+                                                .toMutableList()
+                                } else {
+                                        mutableListOf()
+                                }
+                        } catch (_: Exception) {
+                                mutableListOf()
+                        }
+
                 return ConsultationEv(
                         uuid = this.uuid,
                         idAnim = this.idAnim,
@@ -172,7 +256,32 @@ object Mappers {
                                 } else {
                                         mutableListOf()
                                 },
-                        coefficientAjustement = this.coefficientAjustement
+                        keywordIds =
+                                if (!this.keywordsJson.isNullOrBlank()) {
+                                        this.keywordsJson.split(",").toMutableList()
+                                } else {
+                                        mutableListOf()
+                                },
+                        coefficientAjustement = this.coefficientAjustement,
+                        prescriptionAnamnese = this.prescriptionAnamnese ?: "",
+                        prescriptionExamenClinique = this.prescriptionExamenClinique ?: "",
+                        prescriptionFacteurNutritionnelClef =
+                                this.prescriptionFacteurNutritionnelClef ?: "",
+                        prescriptionAdditionalText = this.prescriptionAdditionalText ?: "",
+                        prescriptionSelectedConseilIds = prescriptionSelectedConseilIds,
+                        prescriptionLocalHtmlSections = prescriptionLocalHtmlSections,
+                        prescriptionSelectedRationIds = prescriptionSelectedRationIds
+                )
+        }
+
+        fun fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword.toEntity(): ConsultationKeywordEntity {
+                return ConsultationKeywordEntity(uuid = this.uuid, label = this.label)
+        }
+
+        fun ConsultationKeywordEntity.toData(): fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword {
+                return fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword(
+                        uuid = this.uuid,
+                        label = this.label
                 )
         }
 
@@ -273,6 +382,8 @@ object Mappers {
                         RefRation = safeRationUUID,
                         name = this.nom,
                         quantite = safeQuantInt,
+                        lastUpdateDate = this.lastUpdateDate,
+                        imageRef = this.imageRef,
                         especesJson =
                                 if (this.especes.isNotEmpty()) this.especes.joinToString(",")
                                 else null,
@@ -439,6 +550,8 @@ object Mappers {
                         gamme = this.gamme ?: "",
                         quantInt = this.quantityPres ?: 0.0,
                         dataB = this.DataB ?: "",
+                        lastUpdateDate = this.lastUpdateDate,
+                        imageRef = this.imageRef,
                         especes = especesList.toMutableList(),
                         indicat = indicatList.toMutableList(),
                         valMap = nutrientValues.toNutrientValueMap(),
@@ -526,7 +639,8 @@ object Mappers {
                         gamme = this.gamme ?: "",
                         especes = especesList,
                         indicat = indicatList,
-                        deprecated = this.deprecated == 1
+                        deprecated = this.deprecated == 1,
+                        dataB = this.DataB
                 )
         }
 
@@ -573,7 +687,7 @@ object Mappers {
         // Cette méthode est utilisée dans le processus d'import pour convertir les valeurs
         // nutritionnelles en entités de base de données.
         fun Map<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>.toNutrientValueEntities(
-                alimentUuid: String
+alimentUuid: String
         ): List<NutrientValueEntity> {
                 return mapNotNull { (nutrient, nutrientQuantity) ->
                         // Ne créer des entités que pour les valeurs strictement positives

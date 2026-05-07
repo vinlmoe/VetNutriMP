@@ -41,17 +41,13 @@ actual class PreferencesStorage(private val context: Context) {
 
 /** Fonction helper pour créer une instance de PreferencesStorage sur Android */
 actual fun createPreferencesStorage(): PreferencesStorage {
-    println("🔄 [Android] Création de PreferencesStorage")
     try {
         val context =
                 fr.vetbrain.vetnutri_mp.Localization.AndroidContext.appContext
                         ?: throw IllegalStateException("AndroidContext.appContext n'est pas initialisé")
-        println("✅ [Android] AndroidContext.appContext récupéré avec succès")
         val storage = PreferencesStorage(context)
-        println("✅ [Android] PreferencesStorage créé avec succès")
         return storage
     } catch (e: Exception) {
-        println("💥 [Android] Exception lors de la création de PreferencesStorage: ${e.message}")
         e.printStackTrace()
         throw e
     }

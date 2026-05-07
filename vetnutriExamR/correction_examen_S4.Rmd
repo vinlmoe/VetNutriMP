@@ -1,0 +1,1014 @@
+---
+title: "Correction Examen S4 — Nutrition (VetNutri)"
+author: "Dr Sébastien Lefebvre"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# --- Sources : package installé OU sources locales (dev) -----------------------
+if (requireNamespace("vetnutriExamR", quietly = TRUE)) {
+  library(vetnutriExamR)
+} else {
+  # cherche R/io.R depuis racine projet, inst/examples, etc.
+  candidates <- c("R/io.R", "../R/io.R", "../../R/io.R")
+  rdir <- candidates[file.exists(candidates)][1]
+  if (is.na(rdir)) stop("Impossible de trouver R/io.R - lancez ce Rmd depuis la racine du projet.")
+  base <- dirname(rdir)
+  source(file.path(base, "io.R"))
+  source(file.path(base, "grading.R"))
+  source(file.path(base, "nutrition.R"))
+  source(file.path(base, "batch_notation.R"))
+}
+
+library(jsonlite)
+if (!requireNamespace("httr2", quietly = TRUE)) {
+  stop("Installez httr2 : install.packages('httr2')")
+}
+has_ggplot2 <- requireNamespace("ggplot2", quietly = TRUE)
+
+# Opérateur %||% (fallback si non exporté par le package)
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(a, b) if (is.null(a)) b else a
+}
+```
+
+# 1. Paramètres généraux
+
+```{r params}
+# --- Fichier d'entrée (export Moodle) ----------------------------------------
+CSV_PATH <- "2025-2026 - Examen S4 – Elevage des animaux de compagnie EL AC-Nutrition avec VetNutri (6pts)-réponses.csv"
+
+# --- API JSONBin -------------------------------------------------------------
+API_KEY  <- Sys.getenv(
+  "JSONBIN_API_KEY",
+  unset = "$2a$10$fV1xZ85W47525pd19RcnR.gpGLX9fqwRMbkRapKQWCqGVow36vlKq"
+)
+
+# --- Cache local des bins (évite de re-télécharger à chaque knit) ------------
+CACHE_DIR     <- "cache_jsonbin"
+FORCE_REFRESH <- FALSE   # TRUE = re-télécharge TOUS les bins
+OFFLINE_ONLY  <- TRUE   # TRUE = utilise UNIQUEMENT le cache, ne télécharge rien
+                          #        (les bins sans fichier cache seront marqués en erreur)
+
+# --- Sortie -------------------------------------------------------------------
+OUTPUT_CSV_NOTES   <- "notes_examen_S4.csv"
+OUTPUT_CSV_DETAILS <- "notes_details_examen_S4.csv"
+
+# --- Bareme (total = 6 pts) ---------------------------------------------------
+# EX1 : 5 items à 0.6 pt = 3 pts | EX2 : 5 catégories à 0.6 pt = 3 pts
+PTS_EX1_POIDS    <- 0.60   # poids idéal = 25 kg
+PTS_EX1_BEC      <- 0.60   # besoin énergétique calculé
+PTS_EX1_ENERGIE  <- 0.60   # apport énergétique de la ration proposée
+PTS_EX1_DENSITE  <- 0.60   # densité énergétique de la ration proposée
+PTS_EX1_PROTEINE <- 0.60   # apport protéique de la ration proposée
+PTS_EX2_PAR_CATEGORIE <- 0.60   # 5 catégories x 0.6 = 3 pts
+
+# --- EX1 : valeurs cibles -----------------------------------------------------
+# Poids idéal attendu : 25 kg ± tolérance %
+IDEAL_WEIGHT_KG <- 25
+WEIGHT_TOL_PCT  <- 10  # ±10 %
+
+# Tolerance globale ±10 % (utilisée si on ne fournit pas de borne explicite)
+TOL_PCT <- 10
+
+# Bornes (low / high) à AJUSTER après la première analyse (cf. section 4).
+# Tant qu'elles valent NA, on tombe en mode "auto ±TOL_PCT autour de la médiane"
+# pour vous montrer rapidement où se situent les copies. Une fois les valeurs
+# pédagogiquement attendues fixées, remplacez les NA par des nombres.
+
+BEC_LOW  <- NA  # kcal/jour, ex : 1080
+BEC_HIGH <- NA  # ex : 1320
+
+ENERGIE_INTAKE_LOW  <- NA  # apport énergétique ration proposée (kcal), ex : 1080
+ENERGIE_INTAKE_HIGH <- NA  # ex : 1320
+
+DENSITE_LOW  <- NA  # kcal / 100 g (matiere brute) ex : 350
+DENSITE_HIGH <- NA  # ex : 430
+
+PROTEINE_LOW  <- NA  # g / ration  ex : 60
+PROTEINE_HIGH <- NA  # ex : 90
+
+# --- Champs candidats pour le POIDS IDÉAL dans le JSON VetNutri --------------
+# Le champ canonique de l'export VetNutri est `PoidsIdeal`. Le booléen
+# `PoidsIdealex` indique si la valeur est effectivement renseignée par
+# l'étudiant : si `PoidsIdealex == FALSE`, on considère qu'aucun poids idéal
+# n'a été saisi (l'item est noté 0). Les autres noms ci-dessous sont des
+# fallbacks au cas où.
+IDEAL_WEIGHT_FIELDS <- c(
+  "PoidsIdeal", "poidsIdeal", "poids_ideal", "PoidsIdeal_kg",
+  "idealWeightKg", "weightIdealKg", "weight_ideal_kg",
+  "idealWeight", "targetWeightKg", "ideal_weight",
+  "bcsIdealWeight", "bodyConditionIdealWeight"
+)
+IDEAL_WEIGHT_FLAG_FIELD <- "PoidsIdealex"   # NA si vous voulez désactiver la vérif
+
+# --- Politique de calcul (cf. section "Audit") -------------------------------
+# Recalcule ENA = 100 - HUMIDITE - PROTEINE - LIPIDE - CELLULOSE - CENDRE
+# quand il manque dans un aliment.
+HYDRATE_ENA <- TRUE
+
+# Force le calcul Atwater (4*ENA + 4*PROTEINE + 9*LIPIDE) au lieu d'utiliser
+# `ENERGIE` stockée dans l'aliment quand elle est présente. À mettre à TRUE
+# si l'examen demande explicitement le calcul Atwater.
+FORCE_ATWATER <- TRUE
+
+# Quand plusieurs rations PROPOSEE existent pour un même animal, en prendre
+# une seule (la 1re). FALSE = laisser le code échouer/sommer (déconseillé).
+PICK_FIRST_PROPOSED <- TRUE
+
+# --- EX2 : catégories d'ingrédients & mots-clés ------------------------------
+# Le matching est fait sur le NOM de l'aliment (insensible à la casse, accents
+# ignorés). Ajoutez/retirez des mots-clés selon votre catalogue VetNutri.
+INGREDIENT_KEYWORDS <- list(
+  proteine_animale = c(
+    "poulet", "dinde", "boeuf", "veau", "agneau", "lapin", "porc",
+    "jambon", "cheval", "canard", "thon", "saumon", "poisson",
+    "cabillaud", "merlu", "oeuf", "œuf", "viande", "filet"
+  ),
+  feculent = c(
+    "riz", "pates", "pâtes", "ble", "blé", "semoule", "pomme de terre",
+    "patate", "boulgour", "quinoa", "flocon", "avoine", "mais", "maïs",
+    "tapioca", "orge"
+  ),
+  legume = c(
+    "courgette", "carotte", "haricot", "epinard", "épinard", "brocoli",
+    "chou", "courge", "potiron", "concombre", "tomate", "salade",
+    "petits pois", "pois", "legume", "légume"
+  ),
+  huile = c(
+    "huile", "olive", "colza", "tournesol", "lin", "saumon (huile)",
+    "poisson (huile)", "matiere grasse", "matière grasse"
+  ),
+  cmv = c(
+    "cmv", "complement", "complément", "mineral", "minéral", "vitamine",
+    "vitamines", "vit-i-min", "calcium", "carbonate", "phosphate",
+    "premix", "pet-phos", "nutri-mix", "nutri mix", "vetcomplex"
+  )
+)
+
+# Petit utilitaire : suppression d'accents + minuscule
+normalize_str <- function(s) {
+  s <- as.character(s)
+  s <- iconv(s, from = "UTF-8", to = "ASCII//TRANSLIT")
+  tolower(s)
+}
+```
+
+# 2. Lecture du CSV des réponses
+
+```{r read-csv}
+stopifnot(file.exists(CSV_PATH))
+
+reponses <- utils::read.csv(
+  CSV_PATH,
+  stringsAsFactors = FALSE,
+  fileEncoding = "UTF-8",
+  check.names = FALSE
+)
+
+# Nettoyer les noms de colonnes (BOM éventuel)
+names(reponses) <- gsub("^\ufeff", "", names(reponses))
+
+# Renommer la colonne "Réponse 1" (= bin id) en bin_id
+col_rep <- grep("^R[ée]ponse", names(reponses), value = TRUE)[1]
+if (is.na(col_rep)) stop("Colonne 'Réponse 1' introuvable.")
+names(reponses)[names(reponses) == col_rep] <- "bin_id"
+
+# Filtrer les copies effectivement rendues + bin_id non vide
+reponses$bin_id <- trimws(reponses$bin_id)
+copies <- reponses[nzchar(reponses$bin_id), ]
+
+cat(sprintf(
+  "Lecture CSV : %d lignes, %d copies avec bin_id.\n",
+  nrow(reponses), nrow(copies)
+))
+head(copies[, c("Nom de famille", "Prénom", "Adresse de courriel", "bin_id")], 5)
+```
+
+# 3. Téléchargement des JSONBin (cache)
+
+```{r fetch}
+if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, showWarnings = FALSE)
+
+# Inventaire du cache existant : utile pour savoir ce qu'on relit vs ce qu'on
+# va télécharger.
+cache_existing <- list.files(CACHE_DIR, pattern = "\\.json$", full.names = FALSE)
+cache_existing_ids <- sub("\\.json$", "", cache_existing)
+cat(sprintf("Cache : %d fichier(s) JSON déjà présent(s) dans '%s'.\n",
+            length(cache_existing), CACHE_DIR))
+
+# Renvoie un objet R représentant le bin (déjà déballé du wrapper {record:...})
+# Stratégie :
+#   1. Si FORCE_REFRESH = TRUE                 -> télécharger
+#   2. Sinon, si fichier cache existe & non vide -> lire le cache (HORS LIGNE)
+#   3. Sinon, si OFFLINE_ONLY = TRUE           -> erreur "absent du cache"
+#   4. Sinon                                   -> télécharger puis cacher
+fetch_bin_cached <- function(bin_id, api_key = "", cache_dir = CACHE_DIR,
+                             force = FALSE, offline = FALSE) {
+  cache_file <- file.path(cache_dir, paste0(bin_id, ".json"))
+
+  # 1) Lecture cache si possible
+  if (!force && file.exists(cache_file) && file.info(cache_file)$size > 0) {
+    obj <- jsonlite::fromJSON(cache_file, simplifyVector = FALSE)
+    if (is.list(obj) && !is.null(obj$record)) obj <- obj$record
+    attr(obj, "from_cache") <- TRUE
+    return(obj)
+  }
+
+  # 2) Mode hors-ligne : on n'essaie pas le réseau
+  if (offline) {
+    stop("Bin absent du cache et OFFLINE_ONLY=TRUE : ", bin_id, call. = FALSE)
+  }
+
+  # 3) Téléchargement
+  url <- sprintf("https://api.jsonbin.io/v3/b/%s/latest", bin_id)
+  req <- httr2::request(url)
+  if (nzchar(api_key)) req <- httr2::req_headers(req, "X-Master-Key" = api_key)
+
+  resp <- tryCatch(httr2::req_perform(req), error = function(e) e)
+  if (inherits(resp, "error")) stop("Fetch error: ", conditionMessage(resp))
+  if (httr2::resp_status(resp) >= 400) {
+    stop("HTTP ", httr2::resp_status(resp), " : ", httr2::resp_body_string(resp))
+  }
+
+  txt <- httr2::resp_body_string(resp)
+  writeLines(txt, cache_file, useBytes = TRUE)
+  obj <- jsonlite::fromJSON(txt, simplifyVector = FALSE)
+  if (is.list(obj) && !is.null(obj$record)) obj <- obj$record
+  attr(obj, "from_cache") <- FALSE
+  obj
+}
+
+# Boucle sur toutes les copies + comptage cache vs téléchargement
+fetched      <- vector("list", nrow(copies))
+fetch_errors <- character(nrow(copies))
+fetch_origin <- character(nrow(copies))   # "cache" / "download" / ""
+
+pb <- utils::txtProgressBar(min = 0, max = nrow(copies), style = 3)
+for (i in seq_len(nrow(copies))) {
+  utils::setTxtProgressBar(pb, i)
+  bid <- copies$bin_id[i]
+  res <- tryCatch(
+    fetch_bin_cached(bid, API_KEY, CACHE_DIR,
+                     force = FORCE_REFRESH, offline = OFFLINE_ONLY),
+    error = function(e) e
+  )
+  if (inherits(res, "error")) {
+    fetch_errors[i] <- conditionMessage(res)
+  } else {
+    fetched[[i]]      <- res
+    fetch_origin[i]   <- if (isTRUE(attr(res, "from_cache"))) "cache" else "download"
+  }
+}
+close(pb)
+
+cat(sprintf(
+  "\nOK %d / %d copies (%d cache, %d téléchargées, %d erreurs).\n",
+  sum(!nzchar(fetch_errors)), nrow(copies),
+  sum(fetch_origin == "cache"),
+  sum(fetch_origin == "download"),
+  sum(nzchar(fetch_errors))
+))
+
+if (any(nzchar(fetch_errors))) {
+  cat("\nErreurs :\n")
+  print(utils::head(data.frame(
+    bin_id = copies$bin_id[nzchar(fetch_errors)],
+    error  = fetch_errors[nzchar(fetch_errors)],
+    stringsAsFactors = FALSE
+  ), 20))
+}
+```
+
+# 4. Extraction des métriques par copie
+
+```{r extract-metrics}
+# Pour une copie (objet JSON), retourne un data.frame 1 ligne avec toutes les
+# métriques utiles à la notation.
+as_num_safe <- function(v, default = NA_real_) {
+  if (is.null(v) || length(v) == 0) return(default)
+  out <- suppressWarnings(as.numeric(v[[1]]))
+  if (is.na(out)) default else out
+}
+
+# --- B2 : hydrate les aliments en calculant ENA si manquant ------------------
+# ENA = 100 - HUMIDITE - PROTEINE - LIPIDE - CELLULOSE - CENDRE (matière brute)
+# B4 : si FORCE_ATWATER, on supprime aussi ENERGIE pour forcer le recalcul.
+hydrate_foods <- function(x,
+                          ena_fill = HYDRATE_ENA,
+                          force_atwater = FORCE_ATWATER) {
+  if (is.null(x$foods) || !is.list(x$foods)) return(x)
+  needed <- c("HUMIDITE", "PROTEINE", "LIPIDE", "CELLULOSE", "CENDRE")
+  fixed_ena <- 0L; missing_ena <- 0L; cleared_energie <- 0L
+  for (i in seq_along(x$foods)) {
+    f <- x$foods[[i]]
+    n <- f$nutrients %||% f$valMap
+    if (is.null(n) || !is.list(n)) next
+
+    # B4 : force le recalcul Atwater
+    if (isTRUE(force_atwater) && !is.null(n$ENERGIE)) {
+      n$ENERGIE <- NULL
+      cleared_energie <- cleared_energie + 1L
+    }
+
+    # B2 : ENA depuis la formule de fermeture
+    if (isTRUE(ena_fill) && (is.null(n$ENA) || !is.finite(as_num_safe(n$ENA)))) {
+      vals <- vapply(needed, function(k) as_num_safe(n[[k]], NA_real_), numeric(1))
+      if (all(!is.na(vals))) {
+        n$ENA <- max(0, 100 - sum(vals))
+        fixed_ena <- fixed_ena + 1L
+      } else {
+        missing_ena <- missing_ena + 1L
+      }
+    }
+    if (!is.null(f$nutrients)) x$foods[[i]]$nutrients <- n
+    else                        x$foods[[i]]$valMap   <- n
+  }
+  attr(x, "hydration") <- c(
+    fixed_ena = fixed_ena,
+    missing_ena = missing_ena,
+    cleared_energie = cleared_energie
+  )
+  x
+}
+
+# --- Lire les coefficients k1..k5 + ky sur une consultation ------------------
+# Renvoie un vecteur nommé c(k1, k2, k3, k4, k5, ky) — défaut 1 si absent.
+read_consult_k <- function(consult) {
+  k <- c(k1 = 1, k2 = 1, k3 = 1, k4 = 1, k5 = 1, ky = 1)
+  if (is.null(consult) || !is.list(consult)) return(k)
+  k["k1"] <- as_num_safe(consult$k1Value %||% consult$k1value, 1)
+  k["k2"] <- as_num_safe(consult$k2Value %||% consult$k2value, 1)
+  k["k3"] <- as_num_safe(consult$k3Value %||% consult$k3value, 1)
+  k["k4"] <- as_num_safe(consult$k4Value %||% consult$k4value, 1)
+  k["k5"] <- as_num_safe(consult$k5Value %||% consult$k5value, 1)
+  k["ky"] <- as_num_safe(consult$coefficientAjustement %||% consult$ky, 1)
+  k
+}
+
+# --- B1 : recalcule le BEC à partir du poids (idéal ou actuel en fallback) ---
+# Reproduit ce que VetNutri fait : eq(BW = weight) * k1*k2*k3*k4*k5*ky
+# Renvoie list(value, equation_id, k, k_total).
+compute_bec_from_weight <- function(x, animal_id, consultation_id, weight_kg) {
+  k <- c(k1 = 1, k2 = 1, k3 = 1, k4 = 1, k5 = 1, ky = 1)
+  if (is.null(x$animals) || !is.finite(weight_kg)) {
+    return(list(value = NA_real_, equation_id = NA_character_,
+                k = k, k_total = NA_real_))
+  }
+  consult <- NULL; ref_id <- ""
+  for (a in x$animals) {
+    if (!identical(a$uuid %||% "", animal_id)) next
+    if (!is.list(a$consultations)) next
+    for (cc in a$consultations) {
+      if (identical(cc$uuid %||% cc$UUID %||% "", consultation_id)) {
+        consult <- cc
+        ref_id  <- cc$referenceGeneraleId %||% cc$RefString %||% ""
+        k <- read_consult_k(cc)
+        break
+      }
+    }
+    break
+  }
+  if (is.null(consult)) {
+    return(list(value = NA_real_, equation_id = NA_character_,
+                k = k, k_total = NA_real_))
+  }
+  # localiser l'équation BEE
+  ref <- NULL
+  if (is.list(x$references)) {
+    for (r in x$references) if (identical(r$uuid %||% "", ref_id)) { ref <- r; break }
+  }
+  eq_id <- if (!is.null(ref)) (ref$equationBEE %||% "") else ""
+  eq <- NULL
+  if (is.list(x$equations)) {
+    for (e in x$equations) if (identical(e$uuid %||% "", eq_id)) { eq <- e; break }
+  }
+  # fallback : 1re équation ENERGYNEED
+  if (is.null(eq) && is.list(x$equations)) {
+    for (e in x$equations) if (!is.null(e$kind) && e$kind == "ENERGYNEED") { eq <- e; break }
+  }
+  if (is.null(eq)) {
+    return(list(value = NA_real_, equation_id = NA_character_,
+                k = k, k_total = prod(k)))
+  }
+  # eval_script vient de R/nutrition.R (sourcé en setup)
+  base <- eval_script(eq$script %||% "", list(BW = weight_kg))
+  list(
+    value       = if (is.finite(base)) base * prod(k) else NA_real_,
+    equation_id = eq$uuid %||% "",
+    k           = k,
+    k_total     = prod(k)
+  )
+}
+
+# Alias rétro-compatible
+compute_bec_from_ideal <- compute_bec_from_weight
+
+# Cherche le poids idéal en explorant : (1) la consultation, (2) l'animal, sur
+# tous les noms de champs candidats. Renvoie une liste : valeur + champ trouvé
+# + flag (PoidsIdealex). Si le flag existe et vaut FALSE, on renvoie NA pour
+# que le poids ne soit pas pris en compte.
+find_ideal_weight <- function(consult, animal,
+                              candidates = IDEAL_WEIGHT_FIELDS,
+                              flag_field = IDEAL_WEIGHT_FLAG_FIELD) {
+  containers <- list(consultation = consult, animal = animal)
+  for (cn in names(containers)) {
+    obj <- containers[[cn]]
+    if (is.null(obj)) next
+
+    # Vérifier le flag PoidsIdealex (s'il existe)
+    flag_val <- NA
+    if (!is.na(flag_field) && nzchar(flag_field) && !is.null(obj[[flag_field]])) {
+      raw <- obj[[flag_field]]
+      if (is.list(raw)) raw <- raw[[1]]
+      flag_val <- suppressWarnings(as.logical(raw))
+      if (is.na(flag_val)) flag_val <- isTRUE(as.logical(as.character(raw)))
+    }
+    if (isTRUE(!is.na(flag_val) && !flag_val)) {
+      # explicitement absent
+      return(list(value = NA_real_, field = NA_character_,
+                  where = cn, flag = FALSE))
+    }
+
+    for (f in candidates) {
+      if (!is.null(obj[[f]])) {
+        v <- as_num_safe(obj[[f]])
+        if (!is.na(v) && v > 0) {
+          return(list(value = v, field = f, where = cn,
+                      flag = if (is.na(flag_val)) NA else flag_val))
+        }
+      }
+    }
+  }
+  list(value = NA_real_, field = NA_character_, where = NA_character_, flag = NA)
+}
+
+extract_metrics_one <- function(x) {
+  out <- list(
+    # EX1
+    ex1_present              = FALSE,
+    ex1_weight_ideal_kg      = NA_real_,   # poids idéal si présent (sinon NA)
+    ex1_weight_field         = NA_character_,
+    ex1_weight_actual_kg     = NA_real_,   # poids actuel (weightKg)
+    ex1_weight_used_kg       = NA_real_,   # poids effectivement utilisé pour le BEC
+    ex1_weight_source        = NA_character_, # "ideal", "actual_fallback", "none"
+    ex1_ideal_flag           = NA,         # valeur brute de PoidsIdealex
+    # Coefficients k1..k5 + ky (coefficient d'ajustement)
+    ex1_k1                   = NA_real_,
+    ex1_k2                   = NA_real_,
+    ex1_k3                   = NA_real_,
+    ex1_k4                   = NA_real_,
+    ex1_k5                   = NA_real_,
+    ex1_ky                   = NA_real_,
+    ex1_k_total              = NA_real_,
+    ex1_bec_kcal             = NA_real_,
+    ex1_energy_intake_kcal   = NA_real_,
+    ex1_dens_kcal_100        = NA_real_,
+    ex1_proteine_g           = NA_real_,
+    ex1_food_names           = NA_character_,
+    ex1_n_proposed_rations   = NA_integer_,
+    # EX2
+    ex2_present       = FALSE,
+    ex2_food_names    = NA_character_,
+    ex2_categories_ok = NA_character_,  # liste séparée par ;
+    # Diagnostic global
+    n_foods_missing_ena      = NA_integer_,
+    n_items_missing_energy   = NA_integer_,
+    n_items_missing_proteine = NA_integer_
+  )
+
+  if (is.null(x) || !is.list(x)) return(as.data.frame(out, stringsAsFactors = FALSE))
+
+  # --- B2/B4 : hydrater les aliments avant tout calcul -----------------------
+  x <- hydrate_foods(x)
+  hyd <- attr(x, "hydration")
+  if (!is.null(hyd)) out$n_foods_missing_ena <- as.integer(hyd["missing_ena"])
+
+  # --- pré-calculs avec le moteur du package ---------------------------------
+  needs   <- tryCatch(vn_compute_energy_needs(x), error = function(e) data.frame())
+  intakes <- tryCatch(vn_compute_ration_intakes(x), error = function(e) NULL)
+
+  ration_energy   <- if (!is.null(intakes)) intakes$ration_energy    else data.frame()
+  ration_nutr     <- if (!is.null(intakes)) intakes$ration_nutrients else data.frame()
+  item_intakes    <- if (!is.null(intakes)) intakes$item_intakes     else data.frame()
+
+  # diagnostics : items sans énergie / sans protéine après hydratation
+  if (is.data.frame(item_intakes) && nrow(item_intakes) > 0) {
+    items_unique <- item_intakes[!duplicated(item_intakes[, c("ration_id", "item_uuid")]), ]
+    out$n_items_missing_energy <- as.integer(sum(!is.finite(items_unique$energy_intake_kcal)))
+    # items sans PROTEINE = items qui n'ont AUCUNE ligne PROTEINE dans item_intakes
+    items_with_prot <- unique(item_intakes[item_intakes$nutrient == "PROTEINE",
+                                           c("ration_id", "item_uuid")])
+    has_prot <- paste(items_unique$ration_id, items_unique$item_uuid) %in%
+                paste(items_with_prot$ration_id, items_with_prot$item_uuid)
+    out$n_items_missing_proteine <- as.integer(sum(!has_prot))
+  }
+
+  # --- helpers ---------------------------------------------------------------
+  pick_proposed <- function(df) {
+    if (!is.data.frame(df) || nrow(df) == 0) return(df)
+    df[df$ration_type == "PROPOSEE", , drop = FALSE]
+  }
+
+  food_list_proposed <- function(animal_id) {
+    if (!is.data.frame(item_intakes) || nrow(item_intakes) == 0) return(character(0))
+    sub <- item_intakes[item_intakes$animal_id == animal_id &
+                        item_intakes$ration_type == "PROPOSEE", , drop = FALSE]
+    unique(sub$food_name[nzchar(sub$food_name)])
+  }
+
+  # --- EX1 : poids idéal, BEC, apport énergie, densité, protéine + ingrédients
+  ex1_rows <- if (nrow(needs) > 0) {
+    needs[grepl("^EX ?1$", needs$exam_exercise_id, ignore.case = TRUE), , drop = FALSE]
+  } else {
+    data.frame()
+  }
+  if (nrow(ex1_rows) > 0) {
+    out$ex1_present  <- TRUE
+
+    aid <- ex1_rows$animal_id[1]
+    cid <- ex1_rows$consultation_id[1]
+
+    # --- Poids IDÉAL (et non poids actuel) ------------------------------------
+    consult_obj <- NULL
+    animal_obj  <- NULL
+    if (!is.null(x$animals) && is.list(x$animals)) {
+      for (a in x$animals) {
+        if (identical(a$uuid %||% "", aid)) {
+          animal_obj <- a
+          if (!is.null(a$consultations) && is.list(a$consultations)) {
+            for (cc in a$consultations) {
+              if (identical(cc$uuid %||% cc$UUID %||% "", cid)) {
+                consult_obj <- cc
+                break
+              }
+            }
+          }
+          break
+        }
+      }
+    }
+    iw <- find_ideal_weight(consult_obj, animal_obj)
+    out$ex1_weight_ideal_kg <- iw$value
+    out$ex1_weight_field    <- iw$field
+    out$ex1_ideal_flag      <- iw$flag
+
+    # Poids actuel (fallback)
+    actual_w <- NA_real_
+    if (!is.null(consult_obj)) {
+      actual_w <- as_num_safe(consult_obj$weightKg %||% consult_obj$Poids, NA_real_)
+    }
+    out$ex1_weight_actual_kg <- actual_w
+
+    # --- Extraction k1..k5 + ky (coefficient d'ajustement) ---------------------
+    k_vec <- read_consult_k(consult_obj)
+    out$ex1_k1      <- unname(k_vec["k1"])
+    out$ex1_k2      <- unname(k_vec["k2"])
+    out$ex1_k3      <- unname(k_vec["k3"])
+    out$ex1_k4      <- unname(k_vec["k4"])
+    out$ex1_k5      <- unname(k_vec["k5"])
+    out$ex1_ky      <- unname(k_vec["ky"])
+    out$ex1_k_total <- prod(k_vec)
+
+    # --- B1 : BEC RECALCULÉ depuis le poids idéal (ou fallback poids actuel) --
+    # Si poids idéal absent : on utilise le poids actuel pour ne pas bloquer la
+    # chaîne, MAIS on le signale via ex1_weight_source = "actual_fallback".
+    # L'item "poids idéal" restera noté 0 (cf. section 6) car
+    # ex1_weight_ideal_kg est NA.
+    if (is.finite(iw$value)) {
+      out$ex1_weight_used_kg <- iw$value
+      out$ex1_weight_source  <- "ideal"
+      bec_info <- compute_bec_from_weight(x, aid, cid, iw$value)
+      out$ex1_bec_kcal <- bec_info$value
+    } else if (is.finite(actual_w)) {
+      out$ex1_weight_used_kg <- actual_w
+      out$ex1_weight_source  <- "actual_fallback"
+      bec_info <- compute_bec_from_weight(x, aid, cid, actual_w)
+      out$ex1_bec_kcal <- bec_info$value
+    } else {
+      out$ex1_weight_source  <- "none"
+    }
+
+    # --- B3 : sélectionner UNE seule ration PROPOSEE (la 1re) -----------------
+    re_all <- pick_proposed(ration_energy)
+    re_all <- re_all[re_all$animal_id == aid, , drop = FALSE]
+    out$ex1_n_proposed_rations <- nrow(re_all)
+
+    chosen_ration_id <- if (isTRUE(PICK_FIRST_PROPOSED) && nrow(re_all) > 0) {
+      re_all$ration_id[1]
+    } else if (nrow(re_all) > 0) {
+      re_all$ration_id[1]
+    } else {
+      NA_character_
+    }
+
+    # --- Apport énergétique de la ration proposée (kcal) ----------------------
+    if (!is.na(chosen_ration_id)) {
+      re_one <- re_all[re_all$ration_id == chosen_ration_id, , drop = FALSE]
+      kcal_total <- sum(re_one$energy_intake_kcal, na.rm = FALSE)
+      out$ex1_energy_intake_kcal <- kcal_total
+
+      # --- Densité énergétique : kcal totaux / masse totale * 100 -------------
+      if (is.finite(kcal_total) && nrow(item_intakes) > 0) {
+        items_chosen <- unique(item_intakes[
+          item_intakes$animal_id == aid &
+          item_intakes$ration_id  == chosen_ration_id,
+          c("ration_id", "item_uuid", "quantity_g")
+        ])
+        mass_g <- sum(items_chosen$quantity_g, na.rm = FALSE)
+        if (is.finite(mass_g) && mass_g > 0) {
+          out$ex1_dens_kcal_100 <- 100 * kcal_total / mass_g
+        }
+      }
+
+      # --- Apport protéique de la ration proposée (g) -------------------------
+      rn_one <- ration_nutr[
+        ration_nutr$animal_id == aid &
+        ration_nutr$ration_id  == chosen_ration_id &
+        toupper(ration_nutr$nutrient) == "PROTEINE", , drop = FALSE
+      ]
+      if (nrow(rn_one) > 0) {
+        out$ex1_proteine_g <- sum(rn_one$intake, na.rm = FALSE)
+      }
+
+      # --- Liste d'ingrédients (ration choisie) -------------------------------
+      sub <- item_intakes[item_intakes$animal_id == aid &
+                          item_intakes$ration_id  == chosen_ration_id, , drop = FALSE]
+      out$ex1_food_names <- paste(unique(sub$food_name[nzchar(sub$food_name)]),
+                                  collapse = " | ")
+    }
+  }
+
+  # --- EX2 : liste d'ingrédients de la ration PROPOSÉE ----------------------
+  ex2_animal_ids <- character(0)
+  if (!is.null(x$animals) && is.list(x$animals)) {
+    for (a in x$animals) {
+      if (!is.null(a$examExerciseId) && grepl("^EX ?2$", a$examExerciseId, ignore.case = TRUE)) {
+        ex2_animal_ids <- c(ex2_animal_ids, a$uuid %||% "")
+      }
+    }
+  }
+  if (length(ex2_animal_ids) > 0) {
+    out$ex2_present <- TRUE
+    aid2 <- ex2_animal_ids[1]
+    foods <- food_list_proposed(aid2)
+    out$ex2_food_names <- paste(foods, collapse = " | ")
+
+    # Détection de catégories par mots-clés
+    norm_foods <- normalize_str(foods)
+    cats_found <- character(0)
+    for (cat_name in names(INGREDIENT_KEYWORDS)) {
+      kw <- normalize_str(INGREDIENT_KEYWORDS[[cat_name]])
+      pat <- paste(kw, collapse = "|")
+      if (length(norm_foods) > 0 && any(grepl(pat, norm_foods))) {
+        cats_found <- c(cats_found, cat_name)
+      }
+    }
+    out$ex2_categories_ok <- paste(cats_found, collapse = ";")
+  }
+
+  as.data.frame(out, stringsAsFactors = FALSE)
+}
+
+# Boucle sur toutes les copies
+metrics_rows <- vector("list", nrow(copies))
+for (i in seq_len(nrow(copies))) {
+  if (is.null(fetched[[i]])) {
+    metrics_rows[[i]] <- extract_metrics_one(NULL)
+  } else {
+    metrics_rows[[i]] <- tryCatch(
+      extract_metrics_one(fetched[[i]]),
+      error = function(e) {
+        df <- extract_metrics_one(NULL)
+        attr(df, "err") <- conditionMessage(e)
+        df
+      }
+    )
+  }
+}
+metrics <- do.call(rbind, metrics_rows)
+
+# Joindre l'identité étudiant
+metrics <- cbind(
+  copies[, c("Nom de famille", "Prénom", "Adresse de courriel", "bin_id")],
+  metrics,
+  stringsAsFactors = FALSE
+)
+names(metrics)[1:3] <- c("nom", "prenom", "email")
+
+# Aperçu numérique
+print(head(metrics[, c(
+  "nom", "prenom",
+  "ex1_present",
+  "ex1_weight_ideal_kg", "ex1_weight_actual_kg", "ex1_weight_source",
+  "ex1_k1", "ex1_k2", "ex1_k3", "ex1_k4", "ex1_k5", "ex1_ky", "ex1_k_total",
+  "ex1_bec_kcal",
+  "ex1_energy_intake_kcal", "ex1_dens_kcal_100", "ex1_proteine_g",
+  "ex2_present"
+)], 10))
+
+# Diagnostic sur la source du poids utilisé
+cat("\n--- Source du poids utilisé pour le BEC ---\n")
+print(table(metrics$ex1_weight_source, useNA = "ifany"))
+n_fallback <- sum(metrics$ex1_weight_source == "actual_fallback", na.rm = TRUE)
+if (n_fallback > 0) {
+  cat(sprintf(
+    "ATTENTION : %d copie(s) sans poids idéal -> BEC calculé sur le poids actuel.\n",
+    n_fallback
+  ))
+}
+
+# Aperçu listes d'ingrédients EX1 + EX2
+cat("\n--- Ingrédients EX1 (5 premières copies) ---\n")
+for (i in seq_len(min(5, nrow(metrics)))) {
+  cat(sprintf("[%s %s] %s\n",
+              metrics$nom[i], metrics$prenom[i],
+              metrics$ex1_food_names[i] %||% "(rien)"))
+}
+cat("\n--- Ingrédients EX2 (5 premières copies) ---\n")
+for (i in seq_len(min(5, nrow(metrics)))) {
+  cat(sprintf("[%s %s] cat=%s | %s\n",
+              metrics$nom[i], metrics$prenom[i],
+              metrics$ex2_categories_ok[i] %||% "(rien)",
+              metrics$ex2_food_names[i] %||% "(rien)"))
+}
+
+# Diagnostic : champ "poids idéal" effectivement trouvé dans les bins
+cat("\n--- Champs 'poids idéal' rencontrés ---\n")
+print(table(metrics$ex1_weight_field, useNA = "ifany"))
+```
+
+# 5. Distribution des valeurs (à utiliser pour fixer les seuils)
+
+```{r distribution}
+num_summary <- function(v, label) {
+  v <- v[is.finite(v)]
+  if (length(v) == 0) return(data.frame(metric = label, n = 0))
+  data.frame(
+    metric = label,
+    n      = length(v),
+    min    = round(min(v), 2),
+    p10    = round(stats::quantile(v, 0.10, names = FALSE), 2),
+    median = round(stats::median(v), 2),
+    mean   = round(mean(v), 2),
+    p90    = round(stats::quantile(v, 0.90, names = FALSE), 2),
+    max    = round(max(v), 2)
+  )
+}
+
+dist_tbl <- rbind(
+  num_summary(metrics$ex1_weight_ideal_kg,    "EX1 - poids idéal (kg)"),
+  num_summary(metrics$ex1_bec_kcal,           "EX1 - BEC (kcal)"),
+  num_summary(metrics$ex1_energy_intake_kcal, "EX1 - apport énergie ration prop. (kcal)"),
+  num_summary(metrics$ex1_dens_kcal_100,      "EX1 - densité (kcal/100g)"),
+  num_summary(metrics$ex1_proteine_g,         "EX1 - protéine (g)")
+)
+print(dist_tbl)
+
+if (has_ggplot2) {
+  long <- rbind(
+    data.frame(metric = "Poids idéal (kg)",                     value = metrics$ex1_weight_ideal_kg),
+    data.frame(metric = "BEC (kcal)",                           value = metrics$ex1_bec_kcal),
+    data.frame(metric = "Apport énergie ration prop. (kcal)",   value = metrics$ex1_energy_intake_kcal),
+    data.frame(metric = "Densité (kcal/100g)",                  value = metrics$ex1_dens_kcal_100),
+    data.frame(metric = "Protéine (g)",                         value = metrics$ex1_proteine_g)
+  )
+  long <- long[is.finite(long$value), ]
+  if (nrow(long) > 0) {
+    p <- ggplot2::ggplot(long, ggplot2::aes(x = value)) +
+      ggplot2::geom_histogram(bins = 25, fill = "#2C7FB8", color = "white") +
+      ggplot2::facet_wrap(~ metric, scales = "free") +
+      ggplot2::theme_minimal() +
+      ggplot2::labs(title = "Distribution des valeurs étudiants (EX1)",
+                    x = NULL, y = "Nombre de copies")
+    print(p)
+  }
+}
+```
+
+> **Workflow pédagogique** : regardez la table et les histogrammes ci‑dessus,
+> puis remplissez `BEC_LOW/HIGH`, `DENSITE_LOW/HIGH`, `PROTEINE_LOW/HIGH`
+> dans la section *Paramètres* (haut du document) avec vos bornes
+> pédagogiquement attendues, puis re‑knit le document.
+
+# 6. Notation
+
+```{r grading}
+# Si une borne n'est pas fixée, on retombe sur "médiane ±TOL_PCT" pour ne pas
+# bloquer le knit dès la première exécution (l'objectif final est que VOUS
+# fixiez les bornes).
+auto_bounds <- function(v, low, high, tol_pct = TOL_PCT) {
+  if (!is.na(low) && !is.na(high)) return(c(low = low, high = high))
+  v <- v[is.finite(v)]
+  if (length(v) == 0) return(c(low = NA_real_, high = NA_real_))
+  med <- stats::median(v)
+  c(low = med * (1 - tol_pct / 100), high = med * (1 + tol_pct / 100))
+}
+
+bec_b      <- auto_bounds(metrics$ex1_bec_kcal,           BEC_LOW,            BEC_HIGH)
+energie_b  <- auto_bounds(metrics$ex1_energy_intake_kcal, ENERGIE_INTAKE_LOW, ENERGIE_INTAKE_HIGH)
+dens_b     <- auto_bounds(metrics$ex1_dens_kcal_100,      DENSITE_LOW,        DENSITE_HIGH)
+prot_b     <- auto_bounds(metrics$ex1_proteine_g,         PROTEINE_LOW,       PROTEINE_HIGH)
+
+cat("Bornes appliquées :\n")
+cat(sprintf("  Poids idéal : %.1f kg ±%g %% (fixé)\n", IDEAL_WEIGHT_KG, WEIGHT_TOL_PCT))
+cat(sprintf("  BEC          : [%.1f ; %.1f] kcal %s\n", bec_b[1], bec_b[2],
+            ifelse(is.na(BEC_LOW), "(AUTO médiane ±10%)", "(fixées)")))
+cat(sprintf("  Apport éner. : [%.1f ; %.1f] kcal %s\n", energie_b[1], energie_b[2],
+            ifelse(is.na(ENERGIE_INTAKE_LOW), "(AUTO médiane ±10%)", "(fixées)")))
+cat(sprintf("  Densité      : [%.1f ; %.1f] kcal/100g %s\n", dens_b[1], dens_b[2],
+            ifelse(is.na(DENSITE_LOW), "(AUTO médiane ±10%)", "(fixées)")))
+cat(sprintf("  Protéine     : [%.1f ; %.1f] g %s\n", prot_b[1], prot_b[2],
+            ifelse(is.na(PROTEINE_LOW), "(AUTO médiane ±10%)", "(fixées)")))
+
+in_range <- function(v, b) is.finite(v) & v >= b["low"] & v <= b["high"]
+
+# --- EX1 ---------------------------------------------------------------------
+poids_ok    <- abs(metrics$ex1_weight_ideal_kg - IDEAL_WEIGHT_KG) <=
+               IDEAL_WEIGHT_KG * WEIGHT_TOL_PCT / 100
+poids_ok[is.na(poids_ok)] <- FALSE
+
+bec_ok      <- in_range(metrics$ex1_bec_kcal,           bec_b)
+energie_ok  <- in_range(metrics$ex1_energy_intake_kcal, energie_b)
+densite_ok  <- in_range(metrics$ex1_dens_kcal_100,      dens_b)
+proteine_ok <- in_range(metrics$ex1_proteine_g,         prot_b)
+
+pts_poids    <- ifelse(poids_ok,    PTS_EX1_POIDS,    0)
+pts_bec      <- ifelse(bec_ok,      PTS_EX1_BEC,      0)
+pts_energie  <- ifelse(energie_ok,  PTS_EX1_ENERGIE,  0)
+pts_densite  <- ifelse(densite_ok,  PTS_EX1_DENSITE,  0)
+pts_proteine <- ifelse(proteine_ok, PTS_EX1_PROTEINE, 0)
+
+# --- EX2 : 5 catégories d'ingrédients ---------------------------------------
+cat_names <- names(INGREDIENT_KEYWORDS)
+cats_per_student <- strsplit(metrics$ex2_categories_ok %||% "", ";")
+cats_per_student[lengths(cats_per_student) == 0] <- list(character(0))
+
+cat_flags <- vapply(cat_names, function(cn) {
+  vapply(cats_per_student, function(v) cn %in% v, logical(1))
+}, logical(nrow(metrics)))
+if (is.null(dim(cat_flags))) cat_flags <- matrix(cat_flags, nrow = nrow(metrics))
+colnames(cat_flags) <- paste0("ex2_cat_", cat_names)
+
+n_cats_ok <- rowSums(cat_flags)
+pts_ex2   <- n_cats_ok * PTS_EX2_PAR_CATEGORIE
+
+# --- Total -------------------------------------------------------------------
+total_pts <- pts_poids + pts_bec + pts_energie + pts_densite + pts_proteine + pts_ex2
+total_pts[!metrics$ex1_present & !metrics$ex2_present] <- 0
+
+notes <- data.frame(
+  nom    = metrics$nom,
+  prenom = metrics$prenom,
+  email  = metrics$email,
+  bin_id = metrics$bin_id,
+
+  ex1_present            = metrics$ex1_present,
+  ex1_weight_ideal_kg    = round(metrics$ex1_weight_ideal_kg, 2),
+  ex1_weight_field       = metrics$ex1_weight_field,
+  ex1_weight_actual_kg   = round(metrics$ex1_weight_actual_kg, 2),
+  ex1_weight_used_kg     = round(metrics$ex1_weight_used_kg, 2),
+  ex1_weight_source      = metrics$ex1_weight_source,
+  ex1_poids_ok           = poids_ok,
+  ex1_k1                 = round(metrics$ex1_k1, 3),
+  ex1_k2                 = round(metrics$ex1_k2, 3),
+  ex1_k3                 = round(metrics$ex1_k3, 3),
+  ex1_k4                 = round(metrics$ex1_k4, 3),
+  ex1_k5                 = round(metrics$ex1_k5, 3),
+  ex1_ky                 = round(metrics$ex1_ky, 3),
+  ex1_k_total            = round(metrics$ex1_k_total, 3),
+  ex1_bec_kcal           = round(metrics$ex1_bec_kcal, 1),
+  ex1_bec_ok             = bec_ok,
+  ex1_energy_intake_kcal = round(metrics$ex1_energy_intake_kcal, 1),
+  ex1_energie_ok         = energie_ok,
+  ex1_dens_kcal_100      = round(metrics$ex1_dens_kcal_100, 1),
+  ex1_densite_ok         = densite_ok,
+  ex1_proteine_g         = round(metrics$ex1_proteine_g, 1),
+  ex1_proteine_ok        = proteine_ok,
+  ex1_food_names         = metrics$ex1_food_names,
+
+  ex2_present  = metrics$ex2_present,
+  cat_flags,
+  ex2_n_categories_ok = n_cats_ok,
+
+  pts_poids    = pts_poids,
+  pts_bec      = pts_bec,
+  pts_energie  = pts_energie,
+  pts_densite  = pts_densite,
+  pts_proteine = pts_proteine,
+  pts_ex2      = pts_ex2,
+  note_sur_6   = round(total_pts, 2),
+
+  stringsAsFactors = FALSE
+)
+
+print(head(notes[, c("nom", "prenom",
+                     "ex1_poids_ok", "ex1_bec_ok", "ex1_energie_ok",
+                     "ex1_densite_ok", "ex1_proteine_ok",
+                     "ex2_n_categories_ok", "note_sur_6")], 15))
+
+cat("\nDistribution des notes /6 :\n")
+print(summary(notes$note_sur_6))
+```
+
+```{r notes-distribution-plot}
+if (has_ggplot2) {
+  p <- ggplot2::ggplot(notes, ggplot2::aes(x = note_sur_6)) +
+    ggplot2::geom_histogram(binwidth = 0.5, fill = "#41AB5D", color = "white") +
+    ggplot2::scale_x_continuous(breaks = seq(0, 6, 0.5), limits = c(-0.25, 6.25)) +
+    ggplot2::labs(title = "Distribution des notes /6", x = "Note /6", y = "Effectif") +
+    ggplot2::theme_minimal()
+  print(p)
+}
+```
+
+# 7. Détails par copie (tableau complet)
+
+```{r details}
+details <- cbind(
+  notes,
+  data.frame(
+    ex1_food_names = metrics$ex1_food_names,
+    ex2_food_names = metrics$ex2_food_names,
+    stringsAsFactors = FALSE
+  )
+)
+print(utils::head(details, 20))
+```
+
+# 8. Export
+
+```{r export}
+utils::write.csv(notes,   OUTPUT_CSV_NOTES,   row.names = FALSE, fileEncoding = "UTF-8")
+utils::write.csv(details, OUTPUT_CSV_DETAILS, row.names = FALSE, fileEncoding = "UTF-8")
+cat(sprintf("Notes      : %s\n", normalizePath(OUTPUT_CSV_NOTES,   mustWork = FALSE)))
+cat(sprintf("Détails    : %s\n", normalizePath(OUTPUT_CSV_DETAILS, mustWork = FALSE)))
+```
+
+# 9. Diagnostic — copies, champs, structure
+
+```{r diagnostic}
+manquants <- notes[!notes$ex1_present | !notes$ex2_present, c("nom", "prenom", "ex1_present", "ex2_present", "bin_id")]
+if (nrow(manquants) == 0) {
+  cat("Toutes les copies contiennent EX1 et EX2.\n")
+} else {
+  cat(sprintf("%d copie(s) avec EX1 ou EX2 manquant :\n", nrow(manquants)))
+  print(manquants)
+}
+
+# Diagnostic : si AUCUN poids idéal n'a été trouvé, on dump les clés
+# de la 1re consultation EX1 du 1er bin valide pour identifier le bon champ.
+if (all(is.na(metrics$ex1_weight_ideal_kg)) || all(is.na(metrics$ex1_weight_field))) {
+  cat("\n!! Aucun champ 'poids idéal' détecté avec IDEAL_WEIGHT_FIELDS actuel.\n")
+  cat("Voici les clés des consultations / animaux du 1er bin valide :\n\n")
+  for (i in seq_along(fetched)) {
+    x <- fetched[[i]]
+    if (is.null(x) || is.null(x$animals) || !is.list(x$animals)) next
+    for (a in x$animals) {
+      cat("ANIMAL keys:", paste(names(a), collapse = ", "), "\n")
+      if (!is.null(a$consultations) && is.list(a$consultations)) {
+        for (cc in a$consultations) {
+          cat("  CONSULT keys:", paste(names(cc), collapse = ", "), "\n")
+          # détecter automatiquement les clés contenant "ideal", "poids", "weight"
+          cand <- names(cc)[grepl("ideal|poids|weight", names(cc), ignore.case = TRUE)]
+          if (length(cand) > 0) {
+            cat("  -> candidates poids:", paste(cand, collapse = ", "), "\n")
+            for (k in cand) cat("     ", k, "=", utils::capture.output(str(cc[[k]])), "\n")
+          }
+        }
+      }
+    }
+    break  # premier bin valide suffit
+  }
+  cat("\nAjoutez le bon nom de champ dans IDEAL_WEIGHT_FIELDS (section 1).\n")
+} else {
+  cat(sprintf("\nPoids idéal détecté pour %d/%d copies via les champs : %s\n",
+              sum(!is.na(metrics$ex1_weight_ideal_kg)),
+              sum(metrics$ex1_present),
+              paste(unique(stats::na.omit(metrics$ex1_weight_field)), collapse = ", ")))
+}
+```
+
+# 10. Aliments rencontrés (aide à enrichir les mots-clés)
+
+```{r food-vocabulary}
+all_foods <- c()
+for (m in seq_len(nrow(metrics))) {
+  all_foods <- c(all_foods,
+                 strsplit(metrics$ex1_food_names[m] %||% "", " \\| ")[[1]],
+                 strsplit(metrics$ex2_food_names[m] %||% "", " \\| ")[[1]])
+}
+all_foods <- all_foods[!is.na(all_foods) & nzchar(all_foods)]
+top_foods <- sort(table(all_foods), decreasing = TRUE)
+print(utils::head(top_foods, 50))
+```
+
+> Si certains aliments fréquents ne sont pas captés par vos mots-clés
+> `INGREDIENT_KEYWORDS`, ajoutez-les dans la section *Paramètres* puis re-knit.

@@ -39,7 +39,11 @@ interface FoodRepository {
      * @param foods Liste des aliments à importer
      * @return Résultat détaillé de l'importation
      */
-    suspend fun importFoods(foods: List<AlimentEvJson>): FoodImportResult
+    suspend fun importFoods(
+            foods: List<AlimentEvJson>,
+            mergeNutrients: Boolean = false,
+            importOnlyIfNewer: Boolean = false
+    ): FoodImportResult
 
     /**
      * Insère un aliment avec ses propriétés associées (espèces, indications, valeurs de nutriments)

@@ -149,6 +149,7 @@
         "enum.Espece.ALL": "Всі види",
         "enum.FoodKind.all": "Всі типи",
         "enum.GroupAlim.all": "Всі групи",
-        "enum.AlimIndic.All": "Всі показання"
+        "enum.AlimIndic.All": "Всі показання",
+        "ration.currentName": "Поточний раціон"
     }
 }

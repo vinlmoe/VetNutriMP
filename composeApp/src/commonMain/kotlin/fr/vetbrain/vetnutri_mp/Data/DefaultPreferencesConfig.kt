@@ -4,30 +4,29 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 
 /**
- * Configuration des préférences par défaut de l'application
- * 
- * Ce fichier centralise toutes les valeurs par défaut pour faciliter
- * la personnalisation des préférences initiales de l'application.
+ * Configuration centralisée des préférences par défaut (versionnée).
+ * - Type d'expression par défaut, sélections de nutriments par catégorie, version.
  */
 object DefaultPreferencesConfig {
-    
+
     /** Version des préférences par défaut */
     const val DEFAULT_VERSION = 1
-    
+
     /** Type d'expression des besoins par défaut */
     val DEFAULT_EXPRESSION_TYPE = TypeExpressionBesoin.PAR_KCAL
-    
+
     /** Nutriments par défaut sélectionnés par catégorie */
     object DefaultNutrients {
         /** Nutriments de base sélectionnés par défaut */
-        val BASE = listOf(
-            0,
-            1,  // Protéines
-            2,  // Lipides
-            4,  // ENA (Extrait non azoté)
-            6,
-            7   // Cendres
-        )
+        val BASE =
+                listOf(
+                        0,
+                        1, // Protéines
+                        2, // Lipides
+                        4, // ENA (Extrait non azoté)
+                        6,
+                        7 // Cendres
+                )
         // Nutriments de base non sélectionnés par défaut :
         // 0,  // Humidité
         // 3,  // Glucides
@@ -39,18 +38,19 @@ object DefaultPreferencesConfig {
         // 12, // Fibre totale
         // 13, // NDF (Fibres neutres détergentes)
         // 14  // ADF (Fibres acides détergentes)
-        
+
         /** Macronutriments sélectionnés par défaut */
-        val MACRO = listOf(
-            0,  // Calcium (Ca)
-            1,  // Phosphore (P)
-            2,  // Magnésium (Mg)
-            3   // Sodium (Na)
-        )
+        val MACRO =
+                listOf(
+                        0, // Calcium (Ca)
+                        1, // Phosphore (P)
+                        2, // Magnésium (Mg)
+                        3 // Sodium (Na)
+                )
         // Macronutriments non sélectionnés par défaut :
         // 4,  // Potassium (K)
         // 5   // Chlore (Cl)
-        
+
         /** Minéraux sélectionnés par défaut */
         val MIN: List<Int> = emptyList()
         // Minéraux non sélectionnés par défaut :
@@ -60,13 +60,18 @@ object DefaultPreferencesConfig {
         // 3,  // Manganèse (Mn)
         // 4,  // Iode (I)
         // 5   // Sélénium (Se)
-        
+
         /** Vitamines sélectionnées par défaut */
-        val VITAM = listOf(
-            0,  // Vitamine A
-            2,  // Vitamine D
-            3   // Vitamine E
-        )
+        val VITAM =
+                listOf(
+                        0, // Vitamine A
+                        2, // Vitamine D
+                        3, // Vitamine E
+                        5,  // Thiamine (B1)
+                        10, // Biotine (B8)
+         11, // Acide folique (B9)
+        12 // Cyanocobalamine (B12)
+                )
         // Vitamines non sélectionnées par défaut :
         // 1,  // Vitamine C
         // 4,  // Vitamine K
@@ -81,12 +86,19 @@ object DefaultPreferencesConfig {
         // 13, // Choline
         // 14, // Rétinol
         // 15  // Bêta-carotène
-        
+
         /** Acides gras sélectionnés par défaut */
-        val LIPID = listOf(
-            0   // Acides gras saturés
-        )
+        val LIPID =
+                listOf(
+                      15, // EPA (C20:5-n3)
+         16, // DHA (C22:6-n3)
+         17, // Cholestérol
+         18, // Oméga 3
+         19, // Oméga 6
+         20  // EPA+DHA
+                )
         // Acides gras non sélectionnés par défaut :
+        //  0 // Acides gras saturés
         // 1,  // Acides gras mono-insaturés
         // 2,  // Acides gras poly-insaturés
         // 3,  // C4:0 (Butyrique)
@@ -107,38 +119,39 @@ object DefaultPreferencesConfig {
         // 18, // Oméga 3
         // 19, // Oméga 6
         // 20  // EPA+DHA
-        
+
         /** Acides aminés sélectionnés par défaut */
-        val AMA = listOf(
-            0,  // Alanine
-            1,  // Arginine
-            2,  // Asparagine
-            3,  // Asparate
-            4,  // Cystéine
-            5,  // Glutamate
-            6,  // Glutamine
-            7,  // Glycine
-            8,  // Histidine
-            9,  // Isoleucine
-            10, // Leucine
-            11, // Lysine
-            12, // Méthionine
-            13, // Phénylalanine
-            14, // Proline
-            15, // Pyrrolysine
-            16, // Sélénocystéine
-            17, // Sérine
-            18, // Thréonine
-            19, // Tryptophane
-            20, // Tyrosine
-            21  // Valine
-        )
+        val AMA =
+                listOf(
+                        0, // Alanine
+                        1, // Arginine
+                        2, // Asparagine
+                        3, // Asparate
+                        4, // Cystéine
+                        5, // Glutamate
+                        6, // Glutamine
+                        7, // Glycine
+                        8, // Histidine
+                        9, // Isoleucine
+                        10, // Leucine
+                        11, // Lysine
+                        12, // Méthionine
+                        13, // Phénylalanine
+                        14, // Proline
+                        15, // Pyrrolysine
+                        16, // Sélénocystéine
+                        17, // Sérine
+                        18, // Thréonine
+                        19, // Tryptophane
+                        20, // Tyrosine
+                        21 // Valine
+                )
         // Tous les acides aminés essentiels sont sélectionnés par défaut
-        
+
         /** Acides aminés non essentiels (vide par défaut) */
         // Tous les acides aminés (0-21) sont sélectionnés par défaut dans AMA
         // Voir la liste complète dans AAEnum.kt
-        
+
         /** Autres nutriments (vide par défaut) */
         val OTHER: List<Int> = emptyList()
         // Autres nutriments disponibles (non sélectionnés par défaut) :
@@ -154,17 +167,17 @@ object DefaultPreferencesConfig {
         // 10, // Galactose
         // 11, // Glucose
         // 12  // Dextrose
-        
+
         /** Indicateurs (vide par défaut) */
         val INDICAT: List<Int> = emptyList()
         // Indicateurs disponibles (non sélectionnés par défaut) :
         // Aucun indicateur spécifique défini actuellement
-        
+
         /** Ingrédients (vide par défaut) */
         val INGREDIENT: List<Int> = emptyList()
         // Ingrédients disponibles (non sélectionnés par défaut) :
         // Aucun ingrédient spécifique défini actuellement
-        
+
         /** Énergie (vide par défaut) */
         val ENERGIE: List<Int> = emptyList()
         // Énergie disponible (non sélectionnée par défaut) :
@@ -172,12 +185,17 @@ object DefaultPreferencesConfig {
         // 1,  // iDE (Énergie digestible)
         // 2,  // DEDM (Densité énergétique matière sèche)
         // 4,  // K, PERC, BEE, BE, MW, KPRED (coefficients)
-        
-        /** NutrientAnalysis (Analyses et ratios - vide par défaut) */
-        val ANA: List<Int> = emptyList()
+
+        /** NutrientAnalysis (Analyses et ratios - CAP sélectionné par défaut) */
+        val ANA: List<Int> =
+                listOf(
+                        1, // P/Ca (Rapport phosphocalcique) - CAP
+                        0,  // K/Na (Rapport potassium/sodium)
+         2,  // O6/O3 (Rapport oméga 6/oméga 3)
+         3  // Zn/Cu (Rapport zinc/cuivre)
+                )
         // NutrientAnalysis disponibles (non sélectionnés par défaut) :
         // 0,  // K/Na (Rapport potassium/sodium)
-        // 1,  // P/Ca (Rapport phosphocalcique)
         // 2,  // O6/O3 (Rapport oméga 6/oméga 3)
         // 3,  // Zn/Cu (Rapport zinc/cuivre)
         // 4,  // Prot/P (Rapport protéines/phosphore)
@@ -186,195 +204,230 @@ object DefaultPreferencesConfig {
         // 7,  // Phosphore non osseux (%)
         // 8,  // Protéine non osseuse (%)
         // 9   // Ratio Prot/Phos non osseux
+
+        /** Retourne une Map des nutriments par défaut pour compatibilité avec l'ancienne API */
+        fun toMap(): Map<String, List<Int>> {
+            return mapOf(
+                "BASE" to BASE,
+                "MACRO" to MACRO,
+                "MIN" to MIN,
+                "VITAM" to VITAM,
+                "LIPID" to LIPID,
+                "AMA" to AMA,
+                "ANA" to ANA,
+                "OTHER" to OTHER,
+                "INDICAT" to INDICAT,
+                "INGREDIENT" to INGREDIENT,
+                "ENERGIE" to ENERGIE
+            )
+        }
     }
-    
+
     /** Équations complémentaires par défaut (vide par défaut) */
     val DEFAULT_EQUATIONS = emptyMap<String, String>()
-    
+
     /** Préférences spécifiques par espèce */
     object SpeciesSpecificDefaults {
-        
+
         /** Préférences par défaut pour les chiens */
-        val CHIEN = PreferencesEspece(
-            espece = Espece.CHIEN.name,
-            typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
-            nutrimentsSelectionnes = mapOf(
-                "BASE" to DefaultNutrients.BASE,
-                "MACRO" to DefaultNutrients.MACRO,
-                "MIN" to DefaultNutrients.MIN,
-                "VITAM" to DefaultNutrients.VITAM,
-                "LIPID" to DefaultNutrients.LIPID,
-                "AMA" to DefaultNutrients.AMA,
-                "ANA" to DefaultNutrients.ANA,
-                "OTHER" to DefaultNutrients.OTHER,
-                "INDICAT" to DefaultNutrients.INDICAT,
-                "INGREDIENT" to DefaultNutrients.INGREDIENT,
-                "ENERGIE" to DefaultNutrients.ENERGIE
-            ),
-            equationsComplementaires = DEFAULT_EQUATIONS
-        )
-        
+        val CHIEN =
+                PreferencesEspece(
+                        espece = Espece.CHIEN.name,
+                        typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
+                        nutrimentsSelectionnes =
+                                mapOf(
+                                        "BASE" to DefaultNutrients.BASE,
+                                        "MACRO" to DefaultNutrients.MACRO,
+                                        "MIN" to DefaultNutrients.MIN,
+                                        "VITAM" to DefaultNutrients.VITAM,
+                                        "LIPID" to DefaultNutrients.LIPID,
+                                        "AMA" to DefaultNutrients.AMA,
+                                        "ANA" to DefaultNutrients.ANA,
+                                        "OTHER" to DefaultNutrients.OTHER,
+                                        "INDICAT" to DefaultNutrients.INDICAT,
+                                        "INGREDIENT" to DefaultNutrients.INGREDIENT,
+                                        "ENERGIE" to DefaultNutrients.ENERGIE
+                                ),
+                        equationsComplementaires = DEFAULT_EQUATIONS
+                )
+
         /** Préférences par défaut pour les chats */
-        val CHAT = PreferencesEspece(
-            espece = Espece.CHAT.name,
-            typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
-            nutrimentsSelectionnes = mapOf(
-                "BASE" to DefaultNutrients.BASE,
-                "MACRO" to DefaultNutrients.MACRO,
-                "MIN" to DefaultNutrients.MIN,
-                "VITAM" to DefaultNutrients.VITAM,
-                "LIPID" to DefaultNutrients.LIPID,
-                "AMA" to DefaultNutrients.AMA,
-                "ANA" to DefaultNutrients.ANA,
-                "OTHER" to DefaultNutrients.OTHER,
-                "INDICAT" to DefaultNutrients.INDICAT,
-                "INGREDIENT" to DefaultNutrients.INGREDIENT,
-                "ENERGIE" to DefaultNutrients.ENERGIE
-            ),
-            equationsComplementaires = DEFAULT_EQUATIONS
-        )
-        
+        val CHAT =
+                PreferencesEspece(
+                        espece = Espece.CHAT.name,
+                        typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
+                        nutrimentsSelectionnes =
+                                mapOf(
+                                        "BASE" to DefaultNutrients.BASE,
+                                        "MACRO" to DefaultNutrients.MACRO,
+                                        "MIN" to DefaultNutrients.MIN,
+                                        "VITAM" to DefaultNutrients.VITAM,
+                                        "LIPID" to DefaultNutrients.LIPID,
+                                        "AMA" to DefaultNutrients.AMA,
+                                        "ANA" to DefaultNutrients.ANA,
+                                        "OTHER" to DefaultNutrients.OTHER,
+                                        "INDICAT" to DefaultNutrients.INDICAT,
+                                        "INGREDIENT" to DefaultNutrients.INGREDIENT,
+                                        "ENERGIE" to DefaultNutrients.ENERGIE
+                                ),
+                        equationsComplementaires = DEFAULT_EQUATIONS
+                )
+
         /** Préférences par défaut pour les chevaux */
-        val CHEVAL = PreferencesEspece(
-            espece = Espece.CHEVAL.name,
-            typeExpressionBesoinId = TypeExpressionBesoin.PAR_KG_METABOLIQUE.id,
-            nutrimentsSelectionnes = mapOf(
-                "BASE" to DefaultNutrients.BASE,
-                "MACRO" to DefaultNutrients.MACRO,
-                "MIN" to DefaultNutrients.MIN,
-                "VITAM" to DefaultNutrients.VITAM,
-                "LIPID" to DefaultNutrients.LIPID,
-                "AMA" to DefaultNutrients.AMA,
-                "ANA" to DefaultNutrients.ANA,
-                "OTHER" to DefaultNutrients.OTHER,
-                "INDICAT" to DefaultNutrients.INDICAT,
-                "INGREDIENT" to DefaultNutrients.INGREDIENT,
-                "ENERGIE" to DefaultNutrients.ENERGIE
-            ),
-            equationsComplementaires = DEFAULT_EQUATIONS
-        )
-        
+        val CHEVAL =
+                PreferencesEspece(
+                        espece = Espece.CHEVAL.name,
+                        typeExpressionBesoinId = TypeExpressionBesoin.PAR_KG_METABOLIQUE.id,
+                        nutrimentsSelectionnes =
+                                mapOf(
+                                        "BASE" to DefaultNutrients.BASE,
+                                        "MACRO" to DefaultNutrients.MACRO,
+                                        "MIN" to DefaultNutrients.MIN,
+                                        "VITAM" to DefaultNutrients.VITAM,
+                                        "LIPID" to DefaultNutrients.LIPID,
+                                        "AMA" to DefaultNutrients.AMA,
+                                        "ANA" to DefaultNutrients.ANA,
+                                        "OTHER" to DefaultNutrients.OTHER,
+                                        "INDICAT" to DefaultNutrients.INDICAT,
+                                        "INGREDIENT" to DefaultNutrients.INGREDIENT,
+                                        "ENERGIE" to DefaultNutrients.ENERGIE
+                                ),
+                        equationsComplementaires = DEFAULT_EQUATIONS
+                )
+
         /** Préférences par défaut pour les lapins */
-        val LAPIN = PreferencesEspece(
-            espece = Espece.LAPIN.name,
-            typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
-            nutrimentsSelectionnes = mapOf(
-                "BASE" to DefaultNutrients.BASE,
-                "MACRO" to DefaultNutrients.MACRO,
-                "MIN" to DefaultNutrients.MIN,
-                "VITAM" to DefaultNutrients.VITAM,
-                "LIPID" to DefaultNutrients.LIPID,
-                "AMA" to DefaultNutrients.AMA,
-                "ANA" to DefaultNutrients.ANA,
-                "OTHER" to DefaultNutrients.OTHER,
-                "INDICAT" to DefaultNutrients.INDICAT,
-                "INGREDIENT" to DefaultNutrients.INGREDIENT,
-                "ENERGIE" to DefaultNutrients.ENERGIE
-            ),
-            equationsComplementaires = DEFAULT_EQUATIONS
-        )
-        
+        val LAPIN =
+                PreferencesEspece(
+                        espece = Espece.LAPIN.name,
+                        typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
+                        nutrimentsSelectionnes =
+                                mapOf(
+                                        "BASE" to DefaultNutrients.BASE,
+                                        "MACRO" to DefaultNutrients.MACRO,
+                                        "MIN" to DefaultNutrients.MIN,
+                                        "VITAM" to DefaultNutrients.VITAM,
+                                        "LIPID" to DefaultNutrients.LIPID,
+                                        "AMA" to DefaultNutrients.AMA,
+                                        "ANA" to DefaultNutrients.ANA,
+                                        "OTHER" to DefaultNutrients.OTHER,
+                                        "INDICAT" to DefaultNutrients.INDICAT,
+                                        "INGREDIENT" to DefaultNutrients.INGREDIENT,
+                                        "ENERGIE" to DefaultNutrients.ENERGIE
+                                ),
+                        equationsComplementaires = DEFAULT_EQUATIONS
+                )
+
         /** Préférences par défaut pour les furets */
-        val FURET = PreferencesEspece(
-            espece = Espece.FURET.name,
-            typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
-            nutrimentsSelectionnes = mapOf(
-                "BASE" to DefaultNutrients.BASE,
-                "MACRO" to DefaultNutrients.MACRO,
-                "MIN" to DefaultNutrients.MIN,
-                "VITAM" to DefaultNutrients.VITAM,
-                "LIPID" to DefaultNutrients.LIPID,
-                "AMA" to DefaultNutrients.AMA,
-                "ANA" to DefaultNutrients.ANA,
-                "OTHER" to DefaultNutrients.OTHER,
-                "INDICAT" to DefaultNutrients.INDICAT,
-                "INGREDIENT" to DefaultNutrients.INGREDIENT,
-                "ENERGIE" to DefaultNutrients.ENERGIE
-            ),
-            equationsComplementaires = DEFAULT_EQUATIONS
-        )
-        
+        val FURET =
+                PreferencesEspece(
+                        espece = Espece.FURET.name,
+                        typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
+                        nutrimentsSelectionnes =
+                                mapOf(
+                                        "BASE" to DefaultNutrients.BASE,
+                                        "MACRO" to DefaultNutrients.MACRO,
+                                        "MIN" to DefaultNutrients.MIN,
+                                        "VITAM" to DefaultNutrients.VITAM,
+                                        "LIPID" to DefaultNutrients.LIPID,
+                                        "AMA" to DefaultNutrients.AMA,
+                                        "ANA" to DefaultNutrients.ANA,
+                                        "OTHER" to DefaultNutrients.OTHER,
+                                        "INDICAT" to DefaultNutrients.INDICAT,
+                                        "INGREDIENT" to DefaultNutrients.INGREDIENT,
+                                        "ENERGIE" to DefaultNutrients.ENERGIE
+                                ),
+                        equationsComplementaires = DEFAULT_EQUATIONS
+                )
+
         /** Préférences par défaut pour les rongeurs (rats, souris) */
-        val RONGEURS = PreferencesEspece(
-            espece = Espece.RAT.name, // Utilisé comme modèle pour tous les rongeurs
-            typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
-            nutrimentsSelectionnes = mapOf(
-                "BASE" to DefaultNutrients.BASE,
-                "MACRO" to DefaultNutrients.MACRO,
-                "MIN" to DefaultNutrients.MIN,
-                "VITAM" to DefaultNutrients.VITAM,
-                "LIPID" to DefaultNutrients.LIPID,
-                "AMA" to DefaultNutrients.AMA,
-                "ANA" to DefaultNutrients.ANA,
-                "OTHER" to DefaultNutrients.OTHER,
-                "INDICAT" to DefaultNutrients.INDICAT,
-                "INGREDIENT" to DefaultNutrients.INGREDIENT,
-                "ENERGIE" to DefaultNutrients.ENERGIE
-            ),
-            equationsComplementaires = DEFAULT_EQUATIONS
-        )
-        
+        val RONGEURS =
+                PreferencesEspece(
+                        espece = Espece.RAT.name, // Utilisé comme modèle pour tous les rongeurs
+                        typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
+                        nutrimentsSelectionnes =
+                                mapOf(
+                                        "BASE" to DefaultNutrients.BASE,
+                                        "MACRO" to DefaultNutrients.MACRO,
+                                        "MIN" to DefaultNutrients.MIN,
+                                        "VITAM" to DefaultNutrients.VITAM,
+                                        "LIPID" to DefaultNutrients.LIPID,
+                                        "AMA" to DefaultNutrients.AMA,
+                                        "ANA" to DefaultNutrients.ANA,
+                                        "OTHER" to DefaultNutrients.OTHER,
+                                        "INDICAT" to DefaultNutrients.INDICAT,
+                                        "INGREDIENT" to DefaultNutrients.INGREDIENT,
+                                        "ENERGIE" to DefaultNutrients.ENERGIE
+                                ),
+                        equationsComplementaires = DEFAULT_EQUATIONS
+                )
+
         /** Préférences par défaut pour les primates */
-        val PRIMATE = PreferencesEspece(
-            espece = Espece.PRIMATE.name,
-            typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
-            nutrimentsSelectionnes = mapOf(
-                "BASE" to DefaultNutrients.BASE,
-                "MACRO" to DefaultNutrients.MACRO,
-                "MIN" to DefaultNutrients.MIN,
-                "VITAM" to DefaultNutrients.VITAM,
-                "LIPID" to DefaultNutrients.LIPID,
-                "AMA" to DefaultNutrients.AMA,
-                "ANA" to DefaultNutrients.ANA,
-                "OTHER" to DefaultNutrients.OTHER,
-                "INDICAT" to DefaultNutrients.INDICAT,
-                "INGREDIENT" to DefaultNutrients.INGREDIENT,
-                "ENERGIE" to DefaultNutrients.ENERGIE
-            ),
-            equationsComplementaires = DEFAULT_EQUATIONS
-        )
-        
+        val PRIMATE =
+                PreferencesEspece(
+                        espece = Espece.PRIMATE.name,
+                        typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
+                        nutrimentsSelectionnes =
+                                mapOf(
+                                        "BASE" to DefaultNutrients.BASE,
+                                        "MACRO" to DefaultNutrients.MACRO,
+                                        "MIN" to DefaultNutrients.MIN,
+                                        "VITAM" to DefaultNutrients.VITAM,
+                                        "LIPID" to DefaultNutrients.LIPID,
+                                        "AMA" to DefaultNutrients.AMA,
+                                        "ANA" to DefaultNutrients.ANA,
+                                        "OTHER" to DefaultNutrients.OTHER,
+                                        "INDICAT" to DefaultNutrients.INDICAT,
+                                        "INGREDIENT" to DefaultNutrients.INGREDIENT,
+                                        "ENERGIE" to DefaultNutrients.ENERGIE
+                                ),
+                        equationsComplementaires = DEFAULT_EQUATIONS
+                )
+
         /** Préférences par défaut pour les herbivores */
-        val HERBIVORE = PreferencesEspece(
-            espece = Espece.HERBIVORE.name,
-            typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
-            nutrimentsSelectionnes = mapOf(
-                "BASE" to DefaultNutrients.BASE,
-                "MACRO" to DefaultNutrients.MACRO,
-                "MIN" to DefaultNutrients.MIN,
-                "VITAM" to DefaultNutrients.VITAM,
-                "LIPID" to DefaultNutrients.LIPID,
-                "AMA" to DefaultNutrients.AMA,
-                "ANA" to DefaultNutrients.ANA,
-                "OTHER" to DefaultNutrients.OTHER,
-                "INDICAT" to DefaultNutrients.INDICAT,
-                "INGREDIENT" to DefaultNutrients.INGREDIENT,
-                "ENERGIE" to DefaultNutrients.ENERGIE
-            ),
-            equationsComplementaires = DEFAULT_EQUATIONS
-        )
-        
+        val HERBIVORE =
+                PreferencesEspece(
+                        espece = Espece.HERBIVORE.name,
+                        typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
+                        nutrimentsSelectionnes =
+                                mapOf(
+                                        "BASE" to DefaultNutrients.BASE,
+                                        "MACRO" to DefaultNutrients.MACRO,
+                                        "MIN" to DefaultNutrients.MIN,
+                                        "VITAM" to DefaultNutrients.VITAM,
+                                        "LIPID" to DefaultNutrients.LIPID,
+                                        "AMA" to DefaultNutrients.AMA,
+                                        "ANA" to DefaultNutrients.ANA,
+                                        "OTHER" to DefaultNutrients.OTHER,
+                                        "INDICAT" to DefaultNutrients.INDICAT,
+                                        "INGREDIENT" to DefaultNutrients.INGREDIENT,
+                                        "ENERGIE" to DefaultNutrients.ENERGIE
+                                ),
+                        equationsComplementaires = DEFAULT_EQUATIONS
+                )
+
         /** Préférences par défaut pour les folivores */
-        val FOLIVORE = PreferencesEspece(
-            espece = Espece.FOLIVORE.name,
-            typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
-            nutrimentsSelectionnes = mapOf(
-                "BASE" to DefaultNutrients.BASE,
-                "MACRO" to DefaultNutrients.MACRO,
-                "MIN" to DefaultNutrients.MIN,
-                "VITAM" to DefaultNutrients.VITAM,
-                "LIPID" to DefaultNutrients.LIPID,
-                "AMA" to DefaultNutrients.AMA,
-                "ANA" to DefaultNutrients.ANA,
-                "OTHER" to DefaultNutrients.OTHER,
-                "INDICAT" to DefaultNutrients.INDICAT,
-                "INGREDIENT" to DefaultNutrients.INGREDIENT,
-                "ENERGIE" to DefaultNutrients.ENERGIE
-            ),
-            equationsComplementaires = DEFAULT_EQUATIONS
-        )
+        val FOLIVORE =
+                PreferencesEspece(
+                        espece = Espece.FOLIVORE.name,
+                        typeExpressionBesoinId = TypeExpressionBesoin.PAR_KCAL.id,
+                        nutrimentsSelectionnes =
+                                mapOf(
+                                        "BASE" to DefaultNutrients.BASE,
+                                        "MACRO" to DefaultNutrients.MACRO,
+                                        "MIN" to DefaultNutrients.MIN,
+                                        "VITAM" to DefaultNutrients.VITAM,
+                                        "LIPID" to DefaultNutrients.LIPID,
+                                        "AMA" to DefaultNutrients.AMA,
+                                        "ANA" to DefaultNutrients.ANA,
+                                        "OTHER" to DefaultNutrients.OTHER,
+                                        "INDICAT" to DefaultNutrients.INDICAT,
+                                        "INGREDIENT" to DefaultNutrients.INGREDIENT,
+                                        "ENERGIE" to DefaultNutrients.ENERGIE
+                                ),
+                        equationsComplementaires = DEFAULT_EQUATIONS
+                )
     }
-    
+
     /** Obtient les préférences par défaut pour une espèce donnée */
     fun getDefaultPreferencesForSpecies(espece: Espece): PreferencesEspece {
         return when (espece) {
@@ -386,25 +439,36 @@ object DefaultPreferencesConfig {
             Espece.RAT, Espece.SOURIS -> SpeciesSpecificDefaults.RONGEURS
             Espece.PRIMATE -> SpeciesSpecificDefaults.PRIMATE
             Espece.HERBIVORE -> SpeciesSpecificDefaults.HERBIVORE
-            Espece.FELIN -> SpeciesSpecificDefaults.CHAT // Utilise les mêmes préférences que les chats
-            Espece.CANIN -> SpeciesSpecificDefaults.CHIEN // Utilise les mêmes préférences que les chiens
+            Espece.FELIN ->
+                    SpeciesSpecificDefaults.CHAT // Utilise les mêmes préférences que les chats
+            Espece.CANIN ->
+                    SpeciesSpecificDefaults.CHIEN // Utilise les mêmes préférences que les chiens
             Espece.FOLIVORE -> SpeciesSpecificDefaults.FOLIVORE
-            Espece.CH -> SpeciesSpecificDefaults.CHIEN // Espèce générique, utilise les préférences des chiens
+            Espece.CH ->
+                    SpeciesSpecificDefaults
+                            .CHIEN // Espèce générique, utilise les préférences des chiens
         }
     }
-    
+
     /** Obtient toutes les préférences par défaut pour toutes les espèces */
     fun getAllDefaultPreferences(): Map<String, PreferencesEspece> {
         return Espece.valuesExcept().associate { espece ->
             espece.name to getDefaultPreferencesForSpecies(espece)
         }
     }
-    
+
     /** Crée une instance PreferencesApplication avec toutes les préférences par défaut */
     fun createDefaultPreferencesApplication(): PreferencesApplication {
         return PreferencesApplication(
-            preferencesParEspece = getAllDefaultPreferences(),
-            versionPreferences = DEFAULT_VERSION
+                preferencesParEspece = getAllDefaultPreferences(),
+                versionPreferences = DEFAULT_VERSION,
+                nomUtilisateur = "",
+                numeroOrdre = "",
+                adressePostale = "",
+                codePostal = "",
+                ville = "",
+                telephone = "",
+                email = ""
         )
     }
 }

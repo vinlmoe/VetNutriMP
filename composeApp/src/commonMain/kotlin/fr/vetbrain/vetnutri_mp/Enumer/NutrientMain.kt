@@ -17,7 +17,6 @@ enum class NutrientMain(
     LIPIDE("Lipides", 2, "g", UnitEnum.BUg, "LIPIDE", "#F8FF5D"),
     GLUCIDE("Glucides", 3, "g", UnitEnum.BUg, "GLUCIDE", "#FF5D5D"),
     ENA("ENA", 4, "g", UnitEnum.BUg, "ENA", "#FF5D5D"),
-    FIBRE("Fibres brutes", 5, "g", UnitEnum.BUg, "FIBRE", "#4BE715"),
     CELLULOSE("Cellulose brute", 6, "g", UnitEnum.BUg, "CELLULOSE", "#4BE715"),
     CENDRE("Cendres", 7, "g", UnitEnum.BUg, "CENDRE", "#820326"),
     ENERGIE("Énergie", 8, "kcal", UnitEnum.KCAL, "ENERGIE", "#FF8C00"),
@@ -26,21 +25,24 @@ enum class NutrientMain(
     FIBRESOL("Fibre soluble", 11, "g", UnitEnum.BUg, "FIBRESOL", "#20C300"),
     FIBRETOT("Fibre totale", 12, "g", UnitEnum.BUg, "FIBRETOT", "#1A7D07"),
     NDF("NDF", 13, "g", UnitEnum.BUg, "NDF", "#20C300"),
-    ADF("ADFe", 14, "g", UnitEnum.BUg, "ADF", "#1A7D07");
-
+    ADF("ADFe", 14, "g", UnitEnum.BUg, "ADF", "#1A7D07"),
+    DM("Matière sèche", 15, "g", UnitEnum.BUg, "DM", "#5DFFFA");
     companion object {
+        // Maps statiques optimisées - accès O(1)
         private val coefMap by lazy { entries.associateBy { it.coef } }
         private val labelMap by lazy { entries.associateBy { it.label.lowercase() } }
 
-        fun getByCoef(coef: Int) = coefMap[coef]
+        /** Recherche par coefficient - O(1) thread-safe */
+        fun getByCoef(coef: Int): NutrientMain? = coefMap[coef]
 
-        fun getByLabel(label: String): NutrientMain {
-            return labelMap[label.lowercase()] ?: PROTEINE
-        }
+        /** Recherche par label - O(1) thread-safe */
+        fun getByLabel(label: String): NutrientMain? = labelMap[label.lowercase()]
 
-        fun isByLabel(label: String) = entries.any { it.label.equals(label, ignoreCase = true) }
+        /** Vérification d'existence par label - O(1) */
+        fun isByLabel(label: String): Boolean = labelMap.containsKey(label.lowercase())
 
-        fun size() = entries.size
+        /** Taille de l'énumération */
+        fun size(): Int = entries.size
     }
 
     override fun getMNE() = MainNutrientEnum.BASE

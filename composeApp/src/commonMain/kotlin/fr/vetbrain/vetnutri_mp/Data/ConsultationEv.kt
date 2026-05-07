@@ -1,8 +1,15 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.datetime.LocalDate
 
+/**
+ * Consultation d'un animal.
+ * - Données cliniques (poids, BCS, coefficients K, observations).
+ * - Rations associées et références nutritionnelles (générale + maladies).
+ * - Fournit `effectiveWeight` (poids idéal prioritaire) avec cache simple.
+ */
 data class ConsultationEv(
         var uuid: String = genUUID(),
         var idAnim: String = "",
@@ -35,42 +42,42 @@ data class ConsultationEv(
         var rations: MutableList<Ration> = mutableListOf(),
         var referenceGeneraleId: String? = null,
         var referencesMaladies: MutableList<String> = mutableListOf(),
-        var coefficientAjustement: Double = 1.0
+        var keywordIds: MutableList<String> = mutableListOf(),
+        var coefficientAjustement: Double = 1.0,
+        // Ordonnance: état sauvegardé par consultation
+        var prescriptionAnamnese: String = "",
+        var prescriptionExamenClinique: String = "",
+        var prescriptionFacteurNutritionnelClef: String = "",
+        var prescriptionAdditionalText: String = "",
+        var prescriptionSelectedConseilIds: MutableList<String> = mutableListOf(),
+        var prescriptionLocalHtmlSections: MutableList<HtmlSection> = mutableListOf(),
+        var prescriptionSelectedRationIds: MutableList<String> = mutableListOf()
 ) {
+
+        // Cache pour la propriété calculée
+        private var cachedEffectiveWeight: Double? = null
+        private var lastWeight: Double? = null
+        private var lastIdealWeight: Double? = null
 
         // Propriété calculée qui retourne le poids idéal si défini, sinon le poids actuel
         val effectiveWeight: Double?
-                get() = idealWeight ?: weight
-        constructor() :
-                this(
-                        uuid = genUUID(),
-                        date = null,
-                        objectConsult = "",
-                        observation = "",
-                        cRendu = "",
-                        weight = null,
-                        idealWeight = null,
-                        water = null,
-                        bodyFat = null,
-                        methodAnalysis = "",
-                        BCS = null,
-                        k1Id = null,
-                        k1Value = null,
-                        k2Id = null,
-                        k2Value = null,
-                        k3Id = null,
-                        k3Value = null,
-                        k4Id = null,
-                        k4Value = null,
-                        k5Id = null,
-                        k5Value = null,
-                        nLittle = null,
-                        pAdult = null,
-                        coefGes = null,
-                        coefLact = null,
-                        idAnim = "",
-                        MCS = null
-                )
+                get() {
+                    // Utiliser le cache si les valeurs n'ont pas changé
+                    if (cachedEffectiveWeight != null &&
+                        lastWeight == weight &&
+                        lastIdealWeight == idealWeight) {
+                        return cachedEffectiveWeight
+                    }
+
+                    val result = idealWeight ?: weight
+
+                    // Mettre en cache
+                    cachedEffectiveWeight = result
+                    lastWeight = weight
+                    lastIdealWeight = idealWeight
+
+                    return result
+                }
 
         fun getRationByID(uuid: String): Ration {
                 return rations.last { ration: Ration -> ration.uuid == uuid }
@@ -95,5 +102,19 @@ data class ConsultationEv(
                 referenceGeneraleId?.let { toutesReferences.add(it) }
                 toutesReferences.addAll(referencesMaladies)
                 return toutesReferences
+        }
+
+        fun ajouterMotCle(keywordId: String) {
+                if (!keywordIds.contains(keywordId)) {
+                        keywordIds.add(keywordId)
+                }
+        }
+
+        fun supprimerMotCle(keywordId: String) {
+                keywordIds.remove(keywordId)
+        }
+
+        fun contientMotCle(keywordId: String): Boolean {
+                return keywordIds.contains(keywordId)
         }
 }

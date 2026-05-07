@@ -10,28 +10,22 @@ actual class PreferencesStorage {
     private val userDefaults = NSUserDefaults.standardUserDefaults
 
     actual suspend fun saveString(key: String, value: String) {
-        println("🔄 [iOS] Sauvegarde de la clé '$key' avec la valeur '$value'")
         withContext(Dispatchers.Main) {
             try {
                 userDefaults.setObject(value, key)
                 userDefaults.synchronize()
-                println("✅ [iOS] Clé '$key' sauvegardée avec succès")
             } catch (e: Exception) {
-                println("💥 [iOS] Exception lors de la sauvegarde de '$key': ${e.message}")
                 throw e
             }
         }
     }
 
     actual suspend fun getString(key: String, defaultValue: String): String {
-        println("🔄 [iOS] Lecture de la clé '$key' avec valeur par défaut '$defaultValue'")
         return withContext(Dispatchers.Main) { 
             try {
                 val value = userDefaults.stringForKey(key) ?: defaultValue
-                println("✅ [iOS] Clé '$key' lue avec succès: '$value'")
                 value
             } catch (e: Exception) {
-                println("💥 [iOS] Exception lors de la lecture de '$key': ${e.message}")
                 defaultValue
             }
         }

@@ -90,6 +90,33 @@ interface ConsultationDao {
 
         @Query("DELETE FROM SUPPLEMENTAL_VARIABLES WHERE idConsult = :consultationId")
         suspend fun deleteSupplementalVariablesForConsultation(consultationId: String)
+
+        @Query("SELECT * FROM CONSULTATION_KEYWORDS ORDER BY label")
+        suspend fun getAllConsultationKeywords(): List<ConsultationKeywordEntity>
+
+        @Query("SELECT * FROM CONSULTATION_KEYWORDS WHERE label = :label LIMIT 1")
+        suspend fun getConsultationKeywordByLabel(label: String): ConsultationKeywordEntity?
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertConsultationKeyword(keyword: ConsultationKeywordEntity)
+}
+
+@Dao
+interface ExamGradingDao {
+        @Query("SELECT * FROM EXAM_GRADING_RULES WHERE examId = :examId AND exerciseId = :exerciseId")
+        suspend fun getRule(examId: String, exerciseId: String): ExamGradingRuleEntity?
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsertRule(rule: ExamGradingRuleEntity)
+
+        @Query("SELECT * FROM EXAM_GRADES WHERE examId = :examId AND exerciseId = :exerciseId")
+        suspend fun getGrades(examId: String, exerciseId: String): List<ExamGradeEntity>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsertGrades(grades: List<ExamGradeEntity>)
+
+        @Query("DELETE FROM EXAM_GRADES WHERE examId = :examId AND exerciseId = :exerciseId")
+        suspend fun deleteGrades(examId: String, exerciseId: String)
 }
 
 @Dao
@@ -194,12 +221,35 @@ interface FoodDao {
 
         @Query("SELECT * FROM FOOD WHERE deprecated = 0 LIMIT :limit")
         suspend fun getActiveFoods(limit: Int = 100): List<FoodEntity>
+
+        @Query(
+                """
+                SELECT * FROM FOOD
+                WHERE
+                    (:query = '' OR nameDef LIKE '%' || :query || '%' OR name LIKE '%' || :query || '%' OR brand LIKE '%' || :query || '%')
+                    AND (:groupAlim IS NULL OR groupAlim = :groupAlim)
+                    AND (:especeText IS NULL OR especesJson LIKE '%' || :especeText || '%')
+                LIMIT :limit
+                """
+        )
+        suspend fun searchFoodsFiltered(
+                query: String,
+                groupAlim: Int?,
+                especeText: String?,
+                limit: Int = 5000
+        ): List<FoodEntity>
 }
 
 @Dao
 interface NutrientValueDao {
         @Query("SELECT * FROM NUTRIENT_VALUES WHERE refAliment = :alimentUuid")
         suspend fun getNutrientValues(alimentUuid: String): List<NutrientValueEntity>
+
+        @Query("SELECT * FROM NUTRIENT_VALUES WHERE refAliment IN (:alimentUuids)")
+        suspend fun getNutrientValuesForAliments(alimentUuids: List<String>): List<NutrientValueEntity>
+
+        @Query("SELECT * FROM NUTRIENT_VALUES WHERE refAliment IN (:alimentUuids) AND nutrientLabel = :nutrientLabel")
+        suspend fun getNutrientValueForAliments(alimentUuids: List<String>, nutrientLabel: String): List<NutrientValueEntity>
 
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertNutrientValues(values: List<NutrientValueEntity>)

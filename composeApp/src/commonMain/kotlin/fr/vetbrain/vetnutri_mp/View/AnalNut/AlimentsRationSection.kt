@@ -8,7 +8,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Balance
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.*
@@ -16,13 +16,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import fr.vetbrain.vetnutri_mp.Components.AlimentItem
 import fr.vetbrain.vetnutri_mp.Components.CenteredMessage
+import fr.vetbrain.vetnutri_mp.Components.IconWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
+import fr.vetbrain.vetnutri_mp.Components.genererTexteRationPressePapier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.material.icons.filled.Assignment
 import kotlinx.coroutines.launch
 
 /**
@@ -46,16 +53,19 @@ fun SectionAlimentsRation(
         besoinEnergetiqueTotal: Double?,
         besoinEnergetiqueStandard: Double?,
         viewModel: AnimalDetailViewModel,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?,
         onAddAliment: () -> Unit,
         onMultiNutrientAdjustment: () -> Unit,
         onOpenRecipeDialog: () -> Unit,
         onSaveRecipe: () -> Unit,
+        isExamMode: Boolean = false,
         showSnackbar: (String) -> Unit,
         isCompact: Boolean = false,
         modifier: Modifier = Modifier
 ) {
         var editingAlimentId by remember { mutableStateOf<String?>(null) }
         val coroutineScope = rememberCoroutineScope()
+        val clipboardManager = LocalClipboardManager.current
 
         Card(
                 modifier = modifier.fillMaxWidth(),
@@ -73,7 +83,7 @@ fun SectionAlimentsRation(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Aliments de la ration",
+                                        text = translate(LocalizationKeys.AnalNut.RATION_ALIMENTS_TITLE),
                                         style = MaterialTheme.typography.subtitle2,
                                         color = VetNutriColors.Primary
                                 )
@@ -82,35 +92,56 @@ fun SectionAlimentsRation(
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingXSmall)
                                 ) {
-                                        // Sauvegarder la ration comme recette
-                                        Icon(
-                                                imageVector = Icons.Filled.Save,
-                                                contentDescription = "Enregistrer comme recette",
-                                                tint =
-                                                        if (selectedRation?.alimentMutableList
-                                                                        ?.isNotEmpty() == true
-                                                        )
-                                                                VetNutriColors.Primary
-                                                        else
-                                                                VetNutriColors.Primary.copy(
-                                                                        alpha = 0.5f
-                                                                ),
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(
-                                                                        enabled =
-                                                                                selectedRation
-                                                                                        ?.alimentMutableList
-                                                                                        ?.isNotEmpty() ==
-                                                                                        true,
-                                                                        onClick = onSaveRecipe
+                                        if (!isExamMode) {
+                                                // Sauvegarder la ration comme recette
+                                                IconWithTooltip(
+                                                        imageVector = Icons.Filled.Save,
+                                                        contentDescription = translate(LocalizationKeys.AnalNut.SAVE_AS_RECIPE),
+                                                        tint =
+                                                                if (selectedRation?.alimentMutableList
+                                                                                ?.isNotEmpty() == true
                                                                 )
-                                        )
+                                                                        VetNutriColors.Primary
+                                                                else
+                                                                        VetNutriColors.Primary.copy(
+                                                                                alpha = 0.5f
+                                                                        ),
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.AnalNut.SAVE_AS_RECIPE),
+                                                        enabled =
+                                                                selectedRation
+                                                                        ?.alimentMutableList
+                                                                        ?.isNotEmpty() ==
+                                                                        true,
+                                                        onClick = onSaveRecipe
+                                                )
+                                        }
+
+                                        if (!isExamMode) {
+                                                IconWithTooltip(
+                                                        imageVector = Icons.Filled.Assignment,
+                                                        contentDescription = translate(LocalizationKeys.General.COPY),
+                                                        tint = if (selectedRation?.alimentMutableList?.isNotEmpty() == true)
+                                                                        VetNutriColors.Primary
+                                                                else
+                                                                        VetNutriColors.Primary.copy(alpha = 0.5f),
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.General.COPY),
+                                                        enabled = selectedRation?.alimentMutableList?.isNotEmpty() == true,
+                                                        onClick = {
+                                                                selectedRation?.let { ration ->
+                                                                        val text = genererTexteRationPressePapier(ration)
+                                                                        clipboardManager.setText(AnnotatedString(text))
+                                                                        showSnackbar("Ration copiée dans le presse-papier")
+                                                                }
+                                                        }
+                                                )
+                                        }
 
                                         // Bouton pour l'ajustement multi-nutriments
-                                        Icon(
+                                        IconWithTooltip(
                                                 imageVector = Icons.Filled.Tune,
-                                                contentDescription = "Ajustement multi-nutriments",
+                                                contentDescription = translate(LocalizationKeys.AnalNut.MULTI_NUTRIENT_ADJUSTMENT),
                                                 tint =
                                                         if (selectedRation?.alimentMutableList
                                                                         ?.isNotEmpty() == true
@@ -120,24 +151,21 @@ fun SectionAlimentsRation(
                                                                 VetNutriColors.Primary.copy(
                                                                         alpha = 0.5f
                                                                 ),
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(
-                                                                        enabled =
-                                                                                selectedRation
-                                                                                        ?.alimentMutableList
-                                                                                        ?.isNotEmpty() ==
-                                                                                        true,
-                                                                        onClick =
-                                                                                onMultiNutrientAdjustment
-                                                                )
+                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                tooltip = translate(LocalizationKeys.AnalNut.MULTI_NUTRIENT_ADJUSTMENT),
+                                                enabled =
+                                                        selectedRation
+                                                                ?.alimentMutableList
+                                                                ?.isNotEmpty() ==
+                                                                true,
+                                                onClick = onMultiNutrientAdjustment
                                         )
 
                                         // Bouton pour ajustement rapide multi-nutriments
-                                        Icon(
+                                        IconWithTooltip(
                                                 imageVector = Icons.Filled.Balance,
                                                 contentDescription =
-                                                        "Ajustement rapide multi-nutriments",
+                                                        translate(LocalizationKeys.AnalNut.QUICK_MULTI_NUTRIENT_ADJUSTMENT),
                                                 tint =
                                                         if (selectedRation != null &&
                                                                         referenceUtilisee != null &&
@@ -150,18 +178,17 @@ fun SectionAlimentsRation(
                                                                 VetNutriColors.Primary.copy(
                                                                         alpha = 0.5f
                                                                 ),
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(
-                                                                        enabled =
-                                                                                selectedRation !=
-                                                                                        null &&
-                                                                                        referenceUtilisee !=
-                                                                                                null &&
-                                                                                        (selectedRation
-                                                                                                .alimentMutableList
-                                                                                                .isNotEmpty()),
-                                                                        onClick = {
+                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                tooltip = translate(LocalizationKeys.AnalNut.QUICK_MULTI_NUTRIENT_ADJUSTMENT),
+                                                enabled =
+                                                        selectedRation !=
+                                                                null &&
+                                                                referenceUtilisee !=
+                                                                        null &&
+                                                                (selectedRation
+                                                                        .alimentMutableList
+                                                                        .isNotEmpty()),
+                                                onClick = {
                                                                                 if (selectedRation !=
                                                                                                 null &&
                                                                                                 referenceUtilisee !=
@@ -212,7 +239,9 @@ fun SectionAlimentsRation(
                                                                                                                                 poidsAnimal =
                                                                                                                                         null, // Valeur par défaut
                                                                                                                                 poidsMetabolique =
-                                                                                                                                        null // Valeur par défaut
+                                                                                                                                        null, // Valeur par défaut
+                                                                                                                                equationRepository =
+                                                                                                                                        equationRepository
                                                                                                                         )
 
                                                                                                                 if (result.success
@@ -227,47 +256,46 @@ fun SectionAlimentsRation(
                                                                                                                                                         adjustedAliments
                                                                                                                                                 )
                                                                                                                                         showSnackbar(
-                                                                                                                                                "Ajustement rapide réussi : ${result.message}"
+                                                                                                                                                translate(LocalizationKeys.AnalNut.QUICK_ADJUST_SUCCESS, result.message)
                                                                                                                                         )
                                                                                                                                 }
                                                                                                                 } else {
                                                                                                                         showSnackbar(
-                                                                                                                                "Erreur lors de l'ajustement : ${result.message}"
+                                                                                                                                translate(LocalizationKeys.AnalNut.ADJUST_ERROR, result.message)
                                                                                                                         )
                                                                                                                 }
                                                                                                         } catch (
                                                                                                                 e:
                                                                                                                         Exception) {
                                                                                                                 showSnackbar(
-                                                                                                                        "Erreur lors de l'ajustement : ${e.message}"
+                                                                                                                        translate(LocalizationKeys.AnalNut.ADJUST_ERROR, e.message ?: "Unknown error")
                                                                                                                 )
                                                                                                         }
                                                                                                 }
                                                                                 }
                                                                         }
-                                                                )
                                         )
 
-                                        // Ouvrir le gestionnaire de recettes
-                                        Icon(
-                                                imageVector = Icons.Filled.MenuBook,
-                                                contentDescription = "Ouvrir les recettes",
-                                                tint = VetNutriColors.Primary,
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(
-                                                                        onClick = onOpenRecipeDialog
-                                                                )
-                                        )
+                                        if (!isExamMode) {
+                                                // Ouvrir le gestionnaire de recettes
+                                                IconWithTooltip(
+                                                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                                                        contentDescription = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
+                                                        tint = VetNutriColors.Primary,
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
+                                                        onClick = onOpenRecipeDialog
+                                                )
+                                        }
 
                                         // Bouton pour ajouter un aliment
-                                        Icon(
+                                        IconWithTooltip(
                                                 imageVector = Icons.Filled.Add,
-                                                contentDescription = "Ajouter un aliment",
+                                                contentDescription = translate(LocalizationKeys.AnalNut.ADD_ALIMENT),
                                                 tint = VetNutriColors.Primary,
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(onClick = onAddAliment)
+                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                tooltip = translate(LocalizationKeys.AnalNut.ADD_ALIMENT),
+                                                onClick = onAddAliment
                                         )
                                 }
                         }
@@ -275,9 +303,14 @@ fun SectionAlimentsRation(
                         Divider()
 
                         // Liste des aliments
-                        if (selectedRation?.alimentMutableList.isNullOrEmpty()) {
+                        if (selectedRation == null) {
                                 CenteredMessage(
-                                        message = "Aucun aliment dans cette ration",
+                                        message = translate(LocalizationKeys.AnalNut.NO_RATION_SELECTED),
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                        } else if (selectedRation.alimentMutableList.isEmpty()) {
+                                CenteredMessage(
+                                        message = translate(LocalizationKeys.AnalNut.NO_ALIMENT_IN_RATION),
                                         modifier = Modifier.fillMaxWidth()
                                 )
                         } else {
@@ -288,42 +321,43 @@ fun SectionAlimentsRation(
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingSmall)
                                         ) {
-                                                selectedRation?.alimentMutableList?.forEach {
-                                                        aliment ->
-                                                        AlimentItem(
-                                                                aliment = aliment,
-                                                                isEditing =
-                                                                        editingAlimentId ==
-                                                                                aliment.uuid,
-                                                                onStartEditing = {
-                                                                        if (editingAlimentId !=
-                                                                                        null &&
-                                                                                        editingAlimentId !=
-                                                                                                aliment.uuid
-                                                                        ) {
-                                                                                editingAlimentId =
-                                                                                        null
-                                                                        }
-                                                                        editingAlimentId =
-                                                                                aliment.uuid
-                                                                },
-                                                                onQuantityChange = { newQuantity ->
-                                                                        viewModel
-                                                                                .updateAlimentQuantity(
+                                                selectedRation.alimentMutableList.forEach { aliment ->
+                                                        key("${aliment.uuid}-${aliment.quantite}") {
+                                                                AlimentItem(
+                                                                        aliment = aliment,
+                                                                        isEditing =
+                                                                                editingAlimentId ==
                                                                                         aliment.uuid,
-                                                                                        newQuantity
-                                                                                )
-                                                                },
-                                                                onFinishEditing = {
-                                                                        editingAlimentId = null
-                                                                },
-                                                                onDelete = {
-                                                                        viewModel
-                                                                                .removeAlimentFromRation(
+                                                                        onStartEditing = {
+                                                                                if (editingAlimentId !=
+                                                                                                null &&
+                                                                                                editingAlimentId !=
+                                                                                                        aliment.uuid
+                                                                                ) {
+                                                                                        editingAlimentId =
+                                                                                                null
+                                                                                }
+                                                                                editingAlimentId =
                                                                                         aliment.uuid
-                                                                                )
-                                                                }
-                                                        )
+                                                                        },
+                                                                        onQuantityChange = { newQuantity ->
+                                                                                viewModel
+                                                                                        .updateAlimentQuantity(
+                                                                                                aliment.uuid,
+                                                                                                newQuantity
+                                                                                        )
+                                                                        },
+                                                                        onFinishEditing = {
+                                                                                editingAlimentId = null
+                                                                        },
+                                                                        onDelete = {
+                                                                                viewModel
+                                                                                        .removeAlimentFromRation(
+                                                                                                aliment.uuid
+                                                                                        )
+                                                                        }
+                                                                )
+                                                        }
                                                 }
                                         }
                                 } else {
@@ -334,8 +368,8 @@ fun SectionAlimentsRation(
                                                         Arrangement.spacedBy(AppSizes.paddingSmall)
                                         ) {
                                                 items(
-                                                        selectedRation?.alimentMutableList
-                                                                ?: emptyList()
+                                                        selectedRation.alimentMutableList,
+                                                        key = { "${it.uuid}-${it.quantite}" }
                                                 ) { aliment ->
                                                         AlimentItem(
                                                                 aliment = aliment,

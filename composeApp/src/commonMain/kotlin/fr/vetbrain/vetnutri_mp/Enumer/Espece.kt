@@ -34,146 +34,114 @@ enum class Espece(override val label: String, val categorie: Int, val id: String
 
     companion object {
         /**
-         * Récupère une espèce à partir d'une chaîne, en essayant plusieurs formats possibles. Cette
-         * méthode nettoie automatiquement la chaîne d'entrée (crochets, guillemets, espaces) et
-         * gère l'insensibilité à la casse.
+         * Récupère une espèce à partir d'une chaîne, en essayant plusieurs formats possibles.
+         * Version optimisée avec maps pré-calculées pour accès O(1).
          *
          * @param value La chaîne à convertir en espèce
          * @return L'espèce correspondante ou null si aucune correspondance n'est trouvée
          */
         fun getFromString(value: String): Espece? {
+            if (value.isBlank()) return null
+
             // Nettoyer la chaîne d'entrée
-            val cleanedValue = value.replace("[", "").replace("]", "").replace("\"", "").trim()
+            val cleanedValue = value.trim().replace("[\\[\\]\"]".toRegex(), "")
 
-            if (cleanedValue.isEmpty()) {
-                return null
-            }
+            // Maps optimisées pour accès O(1)
+            val labelMap = entries.associateBy { it.label.lowercase() }
+            val idMap = entries.associateBy { it.id }
 
-            // Vérifier si c'est un nom d'énumération (CHIEN, CHAT, etc.) - insensible à la casse
-            try {
-                val upperCaseValue = cleanedValue.uppercase()
-                return valueOf(upperCaseValue)
-            } catch (e: Exception) {
-                // Pas un nom d'énumération valide
-            }
-
-            // Vérifier si c'est un label (DOG, CAT, etc.) - insensible à la casse
-            val byLabel = entries.find { it.label.equals(cleanedValue, ignoreCase = true) }
-            if (byLabel != null) {
-                return byLabel
-            }
-
-            // Vérifier si c'est un ID sous forme de chaîne
-            val byId = entries.find { it.id == cleanedValue }
-            if (byId != null) {
-                return byId
-            }
-
-            // Vérifier si c'est un ID numérique
-            val intValue = cleanedValue.toIntOrNull()
-            if (intValue != null) {
-                return getEnumFromInt(intValue)
-            }
-
-            // Aucune correspondance trouvée
-            return null
+            return labelMap[cleanedValue.lowercase()]
+                    ?: idMap[cleanedValue] ?: cleanedValue.toIntOrNull()?.let { getEnumFromInt(it) }
+                            ?: run {
+                        // Fallback : essayer de matcher par nom d'énumération
+                        try {
+                            valueOf(cleanedValue.uppercase())
+                        } catch (e: IllegalArgumentException) {
+                            null
+                        }
+                    }
         }
 
         /**
-         * Retourne le nom de l'espèce correspondant à l'identifiant numérique.
+         * Retourne le nom de l'espèce correspondant à l'identifiant numérique. Version optimisée
+         * avec map O(1).
          * @param id L'identifiant numérique de l'espèce
          * @return Le nom de l'espèce
          */
         fun getStringFromInt(id: Int): String {
-            var str = CHIEN.nameToString()
-            for (espe in values()) {
-                if (id == espe.categorie) {
-                    str = espe.nameToString()
-                }
-            }
-            return str
-        }
-
-        fun getStringFromId(id: String): String {
-            var str = CHIEN.nameToString()
-            for (espe in values()) {
-                if (id == espe.id) {
-                    str = espe.nameToString()
-                }
-            }
-            return str
+            val categoryMap = entries.associateBy { it.categorie }
+            return categoryMap[id]?.label ?: CHIEN.label
         }
 
         /**
-         * Retourne l'énumération correspondant à l'identifiant numérique.
+         * Retourne le nom de l'espèce correspondant à l'ID. Version optimisée avec map O(1).
+         * @param id L'ID de l'espèce
+         * @return Le nom de l'espèce
+         */
+        fun getStringFromId(id: String): String {
+            val idMap = entries.associateBy { it.id }
+            return idMap[id]?.label ?: CHIEN.label
+        }
+
+        /**
+         * Retourne l'énumération correspondant à l'identifiant numérique. Version optimisée avec
+         * maps O(1).
          * @param id L'identifiant numérique de l'espèce
          * @return L'énumération correspondante
          */
         fun getEnumFromInt(id: Int): Espece {
-            // Chercher d'abord par id (s'il correspond à une chaîne numérique)
-            val idStr = id.toString()
-            val especeById = entries.find { it.id == idStr }
-            if (especeById != null) {
-                return especeById
-            }
-
-            // Sinon chercher par catégorie
-            return entries.find { it.categorie == id } ?: CHIEN
+            val categoryMap = entries.associateBy { it.categorie }
+            val idMap = entries.associateBy { it.id }
+            return categoryMap[id] ?: idMap[id.toString()] ?: CHIEN
         }
 
         /**
-         * Retourne l'énumération correspondant au nom.
+         * Retourne l'énumération correspondant au nom. Version optimisée avec map O(1).
          * @param id Le nom de l'espèce
          * @return L'énumération correspondante
          */
         fun getEnumFromString(id: String): Espece {
-            var esp = CHIEN
-            for (espe in values()) {
-                if (id == espe.nameToString()) {
-                    esp = espe
-                }
-            }
-            return esp
+            return getFromString(id) ?: CHIEN
         }
 
         /**
-         * Retourne toutes les valeurs de l'énumération sauf CH.
-         * @return Une liste contenant toutes les valeurs sauf CH
+         * Retourne toutes les valeurs de l'énumération sauf CH. Version optimisée sans boucles.
+         * @return Une liste immuable contenant toutes les valeurs sauf CH
          */
         fun valuesExcept(): List<Espece> {
-            val es = mutableListOf<Espece>()
-            for (e in values()) {
-                if (e != CH) {
-                    es.add(e)
-                }
-            }
-            return es
+            return entries.filter { it != CH }
         }
 
         /**
-         * Variante de valuesExcept qui prend plusieurs exceptions en paramètre.
+         * Variante de valuesExcept qui prend plusieurs exceptions en paramètre. Version optimisée
+         * avec Set pour O(1) lookup.
          * @param exceptions Les énumérations à exclure
          * @return Une liste sans les énumérations spécifiées
          */
-        fun valuesExcept(vararg exceptions: Espece): List<Espece> =
-                entries.filter { it !in exceptions }
-
-        /**
-         * Retourne l'énumération correspondant à l'identifiant de label.
-         * @param i L'identifiant de label
-         * @return L'énumération correspondante
-         */
-        fun getEnumFromStringId(i: String): Espece? {
-            return map[i]
+        fun valuesExcept(vararg exceptions: Espece): List<Espece> {
+            val exceptionSet = exceptions.toSet()
+            return entries.filter { it !in exceptionSet }
         }
 
         /**
-         * Retourne l'énumération correspondant au label.
+         * Retourne l'énumération correspondant à l'identifiant de label. Version optimisée avec map
+         * O(1).
+         * @param label L'identifiant de label
+         * @return L'énumération correspondante
+         */
+        fun getEnumFromStringId(label: String): Espece? {
+            val labelMap = entries.associateBy { it.label }
+            return labelMap[label]
+        }
+
+        /**
+         * Retourne l'énumération correspondant au label. Version optimisée avec map O(1).
          * @param label Le label à rechercher
          * @return L'énumération correspondante ou null si non trouvée
          */
-        fun getByLabel(label: String): Espece? = entries.find { it.label == label }
-
-        private val map = values().associateBy { it.label }
+        fun getByLabel(label: String): Espece? {
+            val labelMap = entries.associateBy { it.label }
+            return labelMap[label]
+        }
     }
 }
