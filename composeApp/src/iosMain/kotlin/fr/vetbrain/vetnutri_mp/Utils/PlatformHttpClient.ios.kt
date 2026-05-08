@@ -18,7 +18,10 @@ import platform.Foundation.dataTaskWithRequest
  * Utilise NSURLSession pour récupérer le XML de mise à jour.
  */
 actual object PlatformHttpClient {
-    actual suspend fun fetchXml(url: String): String {
+    actual suspend fun fetchJson(url: String): String = fetchContent(url)
+    actual suspend fun fetchXml(url: String): String = fetchContent(url)
+
+    private suspend fun fetchContent(url: String): String {
         return suspendCancellableCoroutine { continuation ->
             val nsUrl: NSURL? = NSURL(string = url)
             if (nsUrl == null) {
