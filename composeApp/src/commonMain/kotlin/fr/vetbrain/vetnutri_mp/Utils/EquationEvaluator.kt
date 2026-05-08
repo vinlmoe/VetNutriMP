@@ -7,6 +7,8 @@ import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrient
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrientRegistry
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
@@ -121,9 +123,10 @@ object EquationEvaluator {
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
             variables[nutrient.label] = v
         }
+        addCustomNutrientVarsFromRation(ration, variables)
 
         val res = ExpressionMathematique.evaluer(expression, variables)
-        // 
+        //
         return res
     }
 
@@ -172,6 +175,7 @@ object EquationEvaluator {
         for (n in NutrientVitam.entries) variables[n.label] = sommeRation(n)
         for (n in NutrientMacro.entries) variables[n.label] = sommeRation(n)
         for (n in NutrientMin.entries) variables[n.label] = sommeRation(n)
+        addCustomNutrientVarsFromRation(ration, variables)
         return ExpressionMathematique.evaluer(expression, variables)
     }
 
@@ -219,6 +223,7 @@ object EquationEvaluator {
         for (nutrient in NutrientMain.entries) {
             variables[nutrient.label] = aliment.getNutrient(nutrient)?.toDouble() ?: 0.0
         }
+        aliment.aliment?.let { addCustomNutrientVarsFromAliment(it, variables) }
 
         return ExpressionMathematique.evaluer(expression, variables)
     }
@@ -246,6 +251,7 @@ object EquationEvaluator {
                     ?: 0.0
         }
         for (n in NutrientMain.entries) variables[n.label] = valueOf(n)
+        aliment.aliment?.let { addCustomNutrientVarsFromAliment(it, variables) }
         return ExpressionMathematique.evaluer(expression, variables)
     }
 
@@ -292,6 +298,7 @@ object EquationEvaluator {
         for (n in NutrientVitam.entries) variables[n.label] = nv(n)
         for (n in NutrientMacro.entries) variables[n.label] = nv(n)
         for (n in NutrientMin.entries) variables[n.label] = nv(n)
+        aliment.aliment?.let { addCustomNutrientVarsFromAliment(it, variables) }
 
         // Choisir explicitement l'équation ReferenceEv: DEcom pour COMPLET/COMPLEMENTAIRE, DEraw
         // sinon
@@ -406,6 +413,7 @@ object EquationEvaluator {
                     alim.getNutrient(n)?.toDouble() ?: 0.0
             for (n in NutrientMin.entries) variables[n.label] =
                     alim.getNutrient(n)?.toDouble() ?: 0.0
+            addCustomNutrientVarsFromAliment(alim, variables)
         }
 
         val r = ExpressionMathematique.evaluer(expression, variables)
@@ -450,6 +458,7 @@ object EquationEvaluator {
         for (n in NutrientVitam.entries) variables[n.label] = valueOf(n)
         for (n in NutrientMacro.entries) variables[n.label] = valueOf(n)
         for (n in NutrientMin.entries) variables[n.label] = valueOf(n)
+        aliment.aliment?.let { addCustomNutrientVarsFromAliment(it, variables) }
         return ExpressionMathematique.evaluer(expression, variables)
     }
 
@@ -578,9 +587,48 @@ object EquationEvaluator {
             NutrientMacro.entries.forEach { nutrient -> variablesTest[nutrient.label] = 2.0 }
             NutrientMin.entries.forEach { nutrient -> variablesTest[nutrient.label] = 0.5 }
             AAEnum.entries.forEach { nutrient -> variablesTest[nutrient.label] = 3.0 }
+            CustomNutrientRegistry.all().forEach { nutrient -> variablesTest[nutrient.label] = 1.0 }
         }
 
         return ExpressionMathematique.evaluer(expression, variablesTest)
+    }
+
+    /**
+     * Injecte les nutriments personnalisés d'un aliment dans la map de variables.
+     * Utilise les valeurs brutes du valMap (pas de calcul complémentaire).
+     */
+    private fun addCustomNutrientVarsFromAliment(
+        alim: fr.vetbrain.vetnutri_mp.Data.AlimentEv,
+        variables: MutableMap<String, Double>
+    ) {
+        alim.valMap.forEach { (nutrient, nq) ->
+            if (nutrient is CustomNutrient) variables[nutrient.label] = nq.value
+        }
+    }
+
+    /**
+     * Injecte les nutriments personnalisés d'une ration dans la map de variables.
+     * Somme les contributions de chaque aliment (label-based pour robustesse).
+     */
+    private fun addCustomNutrientVarsFromRation(
+        ration: Ration,
+        variables: MutableMap<String, Double>
+    ) {
+        val seen = mutableSetOf<String>()
+        for (alim in ration.alimentMutableList) {
+            alim.aliment?.valMap?.forEach { (nutrient, _) ->
+                if (nutrient is CustomNutrient && seen.add(nutrient.label)) {
+                    var sum = 0.0
+                    for (a in ration.alimentMutableList) {
+                        val v = a.aliment?.valMap?.entries
+                            ?.find { it.key.label.equals(nutrient.label, ignoreCase = true) }
+                            ?.value?.value ?: 0.0
+                        sum += (v * a.quantite) / 100.0
+                    }
+                    variables[nutrient.label] = sum
+                }
+            }
+        }
     }
 }
 
