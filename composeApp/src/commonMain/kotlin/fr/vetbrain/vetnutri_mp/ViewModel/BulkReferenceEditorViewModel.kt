@@ -24,6 +24,24 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+data class ConsistencyError(
+        val refUuid: String,
+        val nutrientLabel: String,
+        val violation: String
+)
+
+val BULK_EDITABLE_CATEGORIES =
+        listOf(
+                MainNutrientEnum.MACRO,
+                MainNutrientEnum.MIN,
+                MainNutrientEnum.VITAM,
+                MainNutrientEnum.LIPID,
+                MainNutrientEnum.AMA,
+                MainNutrientEnum.OTHER,
+                MainNutrientEnum.ANA,
+                MainNutrientEnum.BASE
+        )
+
 class BulkReferenceEditorViewModel(
         private val referenceEvRepository: DatabaseReferenceEvRepository,
         private val biblioRefRepository: BiblioRefRepository,
@@ -46,6 +64,13 @@ class BulkReferenceEditorViewModel(
     private val _editedValues = MutableStateFlow<Map<String, String>>(emptyMap())
     val editedValues: StateFlow<Map<String, String>> = _editedValues.asStateFlow()
 
+    // Incrémenté après chaque copyColumn() pour forcer la réinitialisation des états locaux
+    private val _copyVersion = MutableStateFlow(0)
+    val copyVersion: StateFlow<Int> = _copyVersion.asStateFlow()
+
+    private val _consistencyErrors = MutableStateFlow<List<ConsistencyError>>(emptyList())
+    val consistencyErrors: StateFlow<List<ConsistencyError>> = _consistencyErrors.asStateFlow()
+
     private val _availableBiblioRefs = MutableStateFlow<List<BiblioRef>>(emptyList())
     val availableBiblioRefs: StateFlow<List<BiblioRef>> = _availableBiblioRefs.asStateFlow()
 
@@ -63,6 +88,7 @@ class BulkReferenceEditorViewModel(
                 val loaded = ids.mapNotNull { referenceEvRepository.getById(it) }
                 _references.value = loaded
                 _editedValues.value = emptyMap()
+                _consistencyErrors.value = emptyList()
             } catch (e: Exception) {
                 _error.value = "Erreur lors du chargement : ${e.message ?: "Erreur inconnue"}"
             } finally {
@@ -84,13 +110,33 @@ class BulkReferenceEditorViewModel(
         _editedValues.value = _editedValues.value + (key to newValue)
     }
 
-    fun getCellValue(refUuid: String, nutrientLabel: String): String {
-        val key = cellKey(refUuid, nutrientLabel, _selectedLevel.value)
+    fun getCellValue(refUuid: String, nutrientLabel: String): String =
+            getCellValueForLevel(refUuid, nutrientLabel, _selectedLevel.value)
+
+    fun getCellValueForLevel(refUuid: String, nutrientLabel: String, level: Reflevel): String {
+        val key = cellKey(refUuid, nutrientLabel, level)
         _editedValues.value[key]?.let { return it }
         val ref = _references.value.find { it.uuid == refUuid } ?: return ""
-        val nutrient = findNutrientByLabel(nutrientLabel, _selectedCategory.value) ?: return ""
-        val v = ref.obtenirNutriment(nutrient, _selectedLevel.value)
+        val nutrient =
+                findNutrientByLabel(nutrientLabel, _selectedCategory.value)
+                        ?: findNutrientByLabelAllCategories(nutrientLabel) ?: return ""
+        val v = ref.obtenirNutriment(nutrient, level)
         return if (v == -1.0) "" else v.toString()
+    }
+
+    /** Copie toutes les valeurs du niveau courant de [fromRefUuid] vers [toRefUuid]. */
+    fun copyColumn(fromRefUuid: String, toRefUuid: String) {
+        val category = _selectedCategory.value
+        val level = _selectedLevel.value
+        val newEdits = _editedValues.value.toMutableMap()
+        getNutrientsForCategory(category).forEach { nutrient ->
+            val value = getCellValueForLevel(fromRefUuid, nutrient.label, level)
+            if (value.isNotEmpty()) {
+                newEdits[cellKey(toRefUuid, nutrient.label, level)] = value
+            }
+        }
+        _editedValues.value = newEdits
+        _copyVersion.value++
     }
 
     fun getNutrientsForCategory(category: MainNutrientEnum): List<Nutrient> {
@@ -107,6 +153,73 @@ class BulkReferenceEditorViewModel(
                     NutrientMain.entries.filter { it.label.contains("Energie") }
             else -> emptyList()
         }
+    }
+
+    fun hasConsistencyError(refUuid: String, nutrientLabel: String): String? =
+            _consistencyErrors.value
+                    .firstOrNull { it.refUuid == refUuid && it.nutrientLabel == nutrientLabel }
+                    ?.violation
+
+    fun clearConsistencyErrors() {
+        _consistencyErrors.value = emptyList()
+    }
+
+    fun validateConsistency() {
+        val errors = mutableListOf<ConsistencyError>()
+        _references.value.forEach { ref ->
+            BULK_EDITABLE_CATEGORIES.forEach { category ->
+                getNutrientsForCategory(category).forEach { nutrient ->
+                    val min = getCellValueForLevel(ref.uuid, nutrient.label, Reflevel.MIN).toDoubleOrNull()
+                    val max = getCellValueForLevel(ref.uuid, nutrient.label, Reflevel.MAX).toDoubleOrNull()
+                    val optimin = getCellValueForLevel(ref.uuid, nutrient.label, Reflevel.OPTIMIN).toDoubleOrNull()
+                    val optimax = getCellValueForLevel(ref.uuid, nutrient.label, Reflevel.OPTIMAX).toDoubleOrNull()
+
+                    if (min != null && max != null && min > max)
+                        errors.add(ConsistencyError(ref.uuid, nutrient.label, "MIN ($min) > MAX ($max)"))
+                    if (min != null && optimin != null && min > optimin)
+                        errors.add(ConsistencyError(ref.uuid, nutrient.label, "MIN ($min) > OPTIMIN ($optimin)"))
+                    if (optimin != null && optimax != null && optimin > optimax)
+                        errors.add(ConsistencyError(ref.uuid, nutrient.label, "OPTIMIN ($optimin) > OPTIMAX ($optimax)"))
+                    if (optimax != null && max != null && optimax > max)
+                        errors.add(ConsistencyError(ref.uuid, nutrient.label, "OPTIMAX ($optimax) > MAX ($max)"))
+                }
+            }
+        }
+        _consistencyErrors.value = errors
+    }
+
+    /**
+     * Génère un CSV avec toutes les catégories, tous les niveaux et toutes les références.
+     * Format : Catégorie;Nutriment;RefA - MIN;RefA - MAX;...;RefB - MIN;...
+     */
+    fun generateCsv(): String {
+        val refs = _references.value
+        val sb = StringBuilder()
+
+        // En-tête
+        sb.append("Catégorie;Nutriment")
+        refs.forEach { ref ->
+            Reflevel.values().forEach { level ->
+                sb.append(";${ref.nom} - ${level.name}")
+            }
+        }
+        sb.append("\n")
+
+        // Lignes de données
+        BULK_EDITABLE_CATEGORIES.forEach { category ->
+            getNutrientsForCategory(category).forEach { nutrient ->
+                sb.append("${category.label};${nutrient.label}")
+                refs.forEach { ref ->
+                    Reflevel.values().forEach { level ->
+                        val v = getCellValueForLevel(ref.uuid, nutrient.label, level)
+                        sb.append(";$v")
+                    }
+                }
+                sb.append("\n")
+            }
+        }
+
+        return sb.toString()
     }
 
     fun saveAll() {
