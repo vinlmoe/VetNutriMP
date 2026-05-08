@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Components.calculerValeursNutritionnelles
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrient
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
@@ -24,7 +25,8 @@ data class AnalyseResultat(
         val ratios: Map<String, Double> = mapOf(),
         val completude: Double = 0.0,
         val equilibre: Double = 0.0,
-        val alertes: List<String> = listOf()
+        val alertes: List<String> = listOf(),
+        val customNutriments: Map<String, Double> = mapOf()
 )
 
 /** Classe utilitaire pour effectuer des analyses nutritionnelles sur les rations */
@@ -54,6 +56,12 @@ class RationAnalyzer {
 
         // Liste complète des nutriments à analyser
         val tousNutriments = macronutriments + mineraux + vitamines + lipides + ratiosNutriments
+
+        // Nutriments personnalisés présents dans la ration (union des valMaps de tous les aliments)
+        val customNutrients: List<CustomNutrient> = ration.alimentMutableList
+            .flatMap { it.aliment?.valMap?.keys ?: emptySet() }
+            .filterIsInstance<CustomNutrient>()
+            .distinctBy { it.label }
 
         // Calcul des valeurs nutritionnelles de la ration
         val valeurs = calculerValeursNutritionnelles(ration.alimentMutableList, tousNutriments)
@@ -178,6 +186,14 @@ class RationAnalyzer {
                     0.0
                 }
 
+        // Calcul des nutriments personnalisés
+        val customNutrimentsMap: Map<String, Double> = if (customNutrients.isNotEmpty()) {
+            val valeursCustom = calculerValeursNutritionnelles(ration.alimentMutableList, customNutrients)
+            customNutrients.associate { it.label to (valeursCustom[it] ?: 0.0) }
+        } else {
+            mapOf()
+        }
+
         return AnalyseResultat(
                 rationId = ration.uuid,
                 rationName = ration.name,
@@ -190,7 +206,8 @@ class RationAnalyzer {
                 ratios = ratiosMap,
                 completude = completude,
                 equilibre = equilibre,
-                alertes = alertes
+                alertes = alertes,
+                customNutriments = customNutrimentsMap
         )
     }
 

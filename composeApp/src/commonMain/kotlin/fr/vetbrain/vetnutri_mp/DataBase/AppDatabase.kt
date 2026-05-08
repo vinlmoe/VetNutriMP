@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteException
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import fr.vetbrain.vetnutri_mp.DataBase.*
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
@@ -31,13 +32,17 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         NutrientValueEntity::class,
                         BiblioRefEntity::class,
                         EquationEntity::class,
+                        ConsultationKeywordEntity::class,
                         ReferenceEvEntity::class,
                         ReferenceEvEquationEntity::class,
                         ReferenceEvCoefficientEntity::class,
                         ReferenceEvNutrientEntity::class,
+                        ExamGradingRuleEntity::class,
+                        ExamGradeEntity::class,
                         HtmlSectionEntity::class,
-                        HtmlSectionLibraryEntity::class],
-        version = 24,
+                        HtmlSectionLibraryEntity::class,
+                        CustomNutrientEntity::class],
+        version = 34,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -48,10 +53,12 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun consultationDao(): ConsultationDao
     abstract fun recipeDao(): RecipeDao
     abstract fun nutrientValueDao(): NutrientValueDao
+    abstract fun customNutrientDao(): CustomNutrientDao
     abstract fun biblioRefDao(): BiblioRefDao
     abstract fun equationDao(): EquationDao
     abstract fun referenceEvDao(): ReferenceEvDao
     abstract fun htmlSectionDao(): HtmlSectionDao
+    abstract fun examGradingDao(): ExamGradingDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
@@ -92,7 +99,24 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         createMigration22to23(),
                         // Migration 23→24 : Ajout des tables HTML_SECTIONS et
                         // HTML_SECTION_LIBRARIES
-                        createMigration23to24()
+                        createMigration23to24(),
+                        // Migration 24→25 : Ajout du champ jsonbinId à la table ANIMALS
+                        createMigration24to25(),
+                        // Migration 25→26 : Ajout des mots-clés pour les consultations
+                        createMigration25to26(),
+                        // Migration 26→27 : Ajout des champs de mise à jour et image produit
+                        createMigration26to27(),
+                        // Migration 27→28 : Ajout des champs ordonnance pour les consultations
+                        createMigration27to28(),
+                        // Migration 28→29 : Ajout des champs examen pour les animaux
+                        createMigration28to29(),
+                        createMigration29to30(),
+                        createMigration30to31(),
+                        createMigration31to32(),
+                        // Migration 32→33 : CASCADE DELETE sur NUTRIENT_VALUES (clé étrangère vers FOOD)
+                        createMigration32to33(),
+                        // Migration 33→34 : Table CUSTOM_NUTRIENTS pour persister les métadonnées des nutriments personnalisés
+                        createMigration33to34()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -405,4 +429,246 @@ fun createMigration23to24(): Migration {
             }
         }
     }
+}
+
+/** Migration 24 → 25 : Ajout du champ jsonbinId à la table ANIMALS */
+fun createMigration24to25(): Migration {
+    return object : Migration(24, 25) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                // Ajouter la colonne jsonbinId (nullable TEXT)
+                connection.prepare(
+                    "ALTER TABLE ANIMALS ADD COLUMN jsonbinId TEXT"
+                ).use { statement -> 
+                    statement.step() 
+                }
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 25 → 26 : Ajout des mots-clés pour les consultations */
+fun createMigration25to26(): Migration {
+    return object : Migration(25, 26) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN keywordsJson TEXT"
+                )
+
+                runStatementIgnoreIfExists(
+                        connection,
+                        """
+                        CREATE TABLE CONSULTATION_KEYWORDS (
+                            uuid TEXT NOT NULL PRIMARY KEY,
+                            label TEXT NOT NULL
+                        )
+                        """
+                )
+
+                runStatementIgnoreIfExists(
+                        connection,
+                        "CREATE UNIQUE INDEX index_CONSULTATION_KEYWORDS_label ON CONSULTATION_KEYWORDS(label)"
+                )
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 26 → 27 : Ajout de la date de mise à jour et de la référence image */
+fun createMigration26to27(): Migration {
+    return object : Migration(26, 27) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE FOOD ADD COLUMN lastUpdateDate TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE FOOD ADD COLUMN imageRef TEXT"
+                )
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 27 → 28 : Ajout des champs ordonnance pour les consultations */
+fun createMigration27to28(): Migration {
+    return object : Migration(27, 28) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionAdditionalText TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionSelectedConseilIdsJson TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionLocalHtmlSectionsJson TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionSelectedRationIdsJson TEXT"
+                )
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 28 → 29 : Ajout des champs examen pour les animaux */
+fun createMigration28to29(): Migration {
+    return object : Migration(28, 29) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE ANIMALS ADD COLUMN exam INTEGER NOT NULL DEFAULT 0"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE ANIMALS ADD COLUMN examStudentId TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE ANIMALS ADD COLUMN examStudentNumber TEXT"
+                )
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 29 → 30 : Ajout de l'ID d'exercice pour les animaux */
+fun createMigration29to30(): Migration {
+    return object : Migration(29, 30) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE ANIMALS ADD COLUMN examExerciseId TEXT"
+                )
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 30 → 31 : Ajout des tables de notation d'examen */
+fun createMigration30to31(): Migration {
+    return object : Migration(30, 31) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "CREATE TABLE IF NOT EXISTS EXAM_GRADING_RULES (examId TEXT NOT NULL, exerciseId TEXT NOT NULL, rulesJson TEXT NOT NULL, updatedAtEpochMs INTEGER NOT NULL, PRIMARY KEY(examId, exerciseId))"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "CREATE TABLE IF NOT EXISTS EXAM_GRADES (examId TEXT NOT NULL, exerciseId TEXT NOT NULL, studentId TEXT NOT NULL, animalId TEXT, animalName TEXT NOT NULL, consultationId TEXT, autoScore REAL NOT NULL, manualScore REAL, finalScore REAL NOT NULL, detailsJson TEXT NOT NULL, updatedAtEpochMs INTEGER NOT NULL, PRIMARY KEY(examId, exerciseId, studentId))"
+                )
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 31 → 32 : Ajout de champs CR ordonnance pour les consultations */
+fun createMigration31to32(): Migration {
+    return object : Migration(31, 32) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionAnamnese TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionExamenClinique TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionFacteurNutritionnelClef TEXT"
+                )
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+fun createMigration32to33(): Migration {
+    return object : Migration(32, 33) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            // Recréer NUTRIENT_VALUES avec ON DELETE CASCADE sur la clé étrangère vers FOOD
+            connection.prepare("ALTER TABLE NUTRIENT_VALUES RENAME TO NUTRIENT_VALUES_OLD").use { it.step() }
+            connection.prepare("""
+                CREATE TABLE NUTRIENT_VALUES (
+                    refAliment TEXT NOT NULL,
+                    nutrientLabel TEXT NOT NULL,
+                    value REAL NOT NULL,
+                    PRIMARY KEY(refAliment, nutrientLabel),
+                    FOREIGN KEY(refAliment) REFERENCES FOOD(uuid) ON DELETE CASCADE
+                )
+            """.trimIndent()).use { it.step() }
+            connection.prepare(
+                "CREATE INDEX IF NOT EXISTS index_NUTRIENT_VALUES_refAliment ON NUTRIENT_VALUES(refAliment)"
+            ).use { it.step() }
+            connection.prepare(
+                "INSERT INTO NUTRIENT_VALUES SELECT * FROM NUTRIENT_VALUES_OLD"
+            ).use { it.step() }
+            connection.prepare("DROP TABLE NUTRIENT_VALUES_OLD").use { it.step() }
+        }
+    }
+}
+
+fun createMigration33to34(): Migration {
+    return object : Migration(33, 34) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS CUSTOM_NUTRIENTS (
+                    label TEXT NOT NULL PRIMARY KEY,
+                    displayName TEXT NOT NULL,
+                    unite TEXT NOT NULL,
+                    ueCode TEXT NOT NULL,
+                    categoryCode TEXT NOT NULL
+                )
+            """.trimIndent()).use { it.step() }
+        }
+    }
+}
+
+private fun runStatementIgnoreIfExists(
+        connection: androidx.sqlite.SQLiteConnection,
+        sql: String
+) {
+    try {
+        connection.prepare(sql).use { statement ->
+            statement.step()
+        }
+    } catch (e: SQLiteException) {
+        if (!shouldIgnoreSqliteExistsError(e)) {
+            throw e
+        }
+    }
+}
+
+private fun shouldIgnoreSqliteExistsError(e: SQLiteException): Boolean {
+    val message = e.message?.lowercase() ?: return false
+    return message.contains("already exists") || message.contains("duplicate column")
 }

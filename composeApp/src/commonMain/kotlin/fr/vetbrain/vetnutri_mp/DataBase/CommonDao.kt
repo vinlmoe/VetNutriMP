@@ -262,6 +262,25 @@ interface EquationDao {
         suspend fun getEquationsBySpecie(specie: String): List<EquationEntity>
 }
 
+/** DAO pour persister les métadonnées des nutriments personnalisés */
+@Dao
+interface CustomNutrientDao {
+        @Query("SELECT * FROM CUSTOM_NUTRIENTS")
+        suspend fun getAll(): List<CustomNutrientEntity>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertOrReplace(entity: CustomNutrientEntity)
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertOrReplaceAll(entities: List<CustomNutrientEntity>)
+
+        @Delete
+        suspend fun delete(entity: CustomNutrientEntity)
+
+        @Query("DELETE FROM CUSTOM_NUTRIENTS")
+        suspend fun deleteAll()
+}
+
 /** DAO pour accéder aux références évaluées dans la base de données */
 @Dao
 interface ReferenceEvDao {
