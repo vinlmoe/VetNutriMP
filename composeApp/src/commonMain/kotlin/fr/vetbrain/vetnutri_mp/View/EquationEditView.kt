@@ -374,6 +374,10 @@ private fun EquationEditTab(
                     fr.vetbrain.vetnutri_mp.Enumer.AAEnum.entries.map {
                         "${it.translateEnum()} - ${it.label}" to it.label
                     }
+            val customNutrients =
+                    fr.vetbrain.vetnutri_mp.Enumer.CustomNutrientRegistry.all().map {
+                        "${it.nameToString()} - ${it.label}" to it.label
+                    }
 
             // Variables système
             val systemVariables =
@@ -398,6 +402,7 @@ private fun EquationEditTab(
                             nutrientsOther +
                             acideAmines +
                             nutrientsAnalysis +
+                            customNutrients +
                             systemVariables)
                     .sortedBy { it.first }
         }
@@ -493,6 +498,51 @@ private fun EquationEditTab(
                                     "${biblioRef.firstAuthor} (${biblioRef.year}) - ${biblioRef.completeRef.take(30)}${if (biblioRef.completeRef.length > 30) "..." else ""}"
                             )
                         }
+                    }
+                }
+            }
+        }
+
+        // Section multi-références (uniquement pour COMPLEMENTARY_NUTRIENT)
+        if (currentEquation.kind == EquationKind.COMPLEMENTARY_NUTRIENT) {
+            val allReferences by viewModel.allReferences.collectAsState()
+            val equations by viewModel.equations.collectAsState()
+            val isSaved = equations.any { it.uuid == currentEquation.uuid }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                    "Assigner aux références :",
+                    style = MaterialTheme.typography.subtitle1,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            if (!isSaved) {
+                Text(
+                        "Enregistrez d'abord l'équation pour l'assigner aux références.",
+                        style = MaterialTheme.typography.caption,
+                        color = Color.Gray
+                )
+            } else if (allReferences.isEmpty()) {
+                Text(
+                        "Aucune référence disponible.",
+                        style = MaterialTheme.typography.caption,
+                        color = Color.Gray
+                )
+            } else {
+                allReferences.forEach { reference ->
+                    val isAssociated = reference.equationsNut.any { it.uuid == currentEquation.uuid }
+                    Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                    ) {
+                        Checkbox(
+                                checked = isAssociated,
+                                onCheckedChange = {
+                                    viewModel.toggleEquationForReference(currentEquation, reference)
+                                }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(reference.nom)
                     }
                 }
             }

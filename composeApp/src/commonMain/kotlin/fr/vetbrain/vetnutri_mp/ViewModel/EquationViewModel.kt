@@ -6,9 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.Equation
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrient
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrientRegistry
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
@@ -82,6 +85,10 @@ class EquationViewModel(
     // Liste des équations disponibles
     private val _equations = MutableStateFlow<List<Equation>>(emptyList())
     val equations: StateFlow<List<Equation>> = _equations.asStateFlow()
+
+    // Toutes les références disponibles (pour l'assignation multi-références)
+    private val _allReferences = MutableStateFlow<List<ReferenceEv>>(emptyList())
+    val allReferences: StateFlow<List<ReferenceEv>> = _allReferences.asStateFlow()
 
     // Équations spécifiques actuellement sélectionnées (pour les combobox)
     private val _equationBW = MutableStateFlow<Equation?>(null)
@@ -161,6 +168,12 @@ class EquationViewModel(
             return "${variable} (${variable})"
         }
 
+        // Nutriments personnalisés
+        val customNutrient = CustomNutrientRegistry.getByLabel(variable)
+        if (customNutrient != null) {
+            return "${customNutrient.nameToString()} (${variable})"
+        }
+
         // Variables système avec leurs descriptions
         return when (variable) {
             else -> {
@@ -181,6 +194,7 @@ class EquationViewModel(
     init {
         loadEquations()
         loadBiblioRefs()
+        loadAllReferences()
     }
 
     /** Charge la liste des équations disponibles */
@@ -228,6 +242,15 @@ class EquationViewModel(
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    /** Charge toutes les références nutritionnelles pour l'assignation multi-références */
+    fun loadAllReferences() {
+        coroutineScope.launch(AppDispatchers.IO) {
+            try {
+                _allReferences.value = referenceRepository.getAll()
+            } catch (_: Exception) { }
         }
     }
 
@@ -503,7 +526,8 @@ class EquationViewModel(
                 nutrientsMacro +
                 nutrientsMin +
                 nutrientAnalysis +
-                acideAmines
+                acideAmines +
+                CustomNutrientRegistry.all()
     }
 
     /** Ajoute une variable à l'équation */
@@ -535,6 +559,30 @@ class EquationViewModel(
     fun clearOperationMessage() {
         _operationMessage.value = null
         _saveSuccessful.value = false
+    }
+
+    /**
+     * Associe ou dissocie une équation de la liste equationsNut d'une référence.
+     * Persiste le changement et rafraîchit allReferences.
+     */
+    fun toggleEquationForReference(equation: Equation, reference: ReferenceEv) {
+        coroutineScope.launch(AppDispatchers.IO) {
+            try {
+                val isAssociated = reference.equationsNut.any { it.uuid == equation.uuid }
+                val updated = reference.copy()
+                if (isAssociated) {
+                    updated.equationsNut = ArrayList(updated.equationsNut.filter { it.uuid != equation.uuid })
+                } else {
+                    val list = ArrayList(updated.equationsNut)
+                    list.add(equation)
+                    updated.equationsNut = list
+                }
+                referenceRepository.update(updated)
+                loadAllReferences()
+            } catch (e: Exception) {
+                _operationMessage.value = "Erreur références: ${e.message}"
+            }
+        }
     }
 
     /** Sauvegarde l'équation courante, retourne true si succès, false sinon */
