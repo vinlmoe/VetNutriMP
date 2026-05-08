@@ -261,6 +261,12 @@ interface NutrientValueDao {
 
         @Query("DELETE FROM NUTRIENT_VALUES WHERE refAliment IN (:alimentUuids)")
         suspend fun deleteAllForAliments(alimentUuids: List<String>)
+
+        @Transaction
+        suspend fun replaceNutrientValues(alimentUuid: String, values: List<NutrientValueEntity>) {
+                deleteAllNutrientValuesForAliment(alimentUuid)
+                if (values.isNotEmpty()) insertNutrientValues(values)
+        }
 }
 
 /** DAO pour accéder aux références bibliographiques dans la base de données */

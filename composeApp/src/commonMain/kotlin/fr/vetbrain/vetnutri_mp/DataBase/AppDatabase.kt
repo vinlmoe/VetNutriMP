@@ -41,7 +41,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ExamGradeEntity::class,
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class],
-        version = 32,
+        version = 33,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -110,7 +110,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         createMigration28to29(),
                         createMigration29to30(),
                         createMigration30to31(),
-                        createMigration31to32()
+                        createMigration31to32(),
+                        // Migration 32→33 : CASCADE DELETE sur NUTRIENT_VALUES (clé étrangère vers FOOD)
+                        createMigration32to33()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -602,6 +604,31 @@ fun createMigration31to32(): Migration {
             } catch (e: Exception) {
                 throw e
             }
+        }
+    }
+}
+
+fun createMigration32to33(): Migration {
+    return object : Migration(32, 33) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            // Recréer NUTRIENT_VALUES avec ON DELETE CASCADE sur la clé étrangère vers FOOD
+            connection.prepare("ALTER TABLE NUTRIENT_VALUES RENAME TO NUTRIENT_VALUES_OLD").use { it.step() }
+            connection.prepare("""
+                CREATE TABLE NUTRIENT_VALUES (
+                    refAliment TEXT NOT NULL,
+                    nutrientLabel TEXT NOT NULL,
+                    value REAL NOT NULL,
+                    PRIMARY KEY(refAliment, nutrientLabel),
+                    FOREIGN KEY(refAliment) REFERENCES FOOD(uuid) ON DELETE CASCADE
+                )
+            """.trimIndent()).use { it.step() }
+            connection.prepare(
+                "CREATE INDEX IF NOT EXISTS index_NUTRIENT_VALUES_refAliment ON NUTRIENT_VALUES(refAliment)"
+            ).use { it.step() }
+            connection.prepare(
+                "INSERT INTO NUTRIENT_VALUES SELECT * FROM NUTRIENT_VALUES_OLD"
+            ).use { it.step() }
+            connection.prepare("DROP TABLE NUTRIENT_VALUES_OLD").use { it.step() }
         }
     }
 }

@@ -308,7 +308,8 @@ class DatabaseFoodRepository(
                                 allIds.chunked(500).forEach { part ->
                                     nutrientValueDao.deleteAllForAliments(part)
                                 }
-                            } catch (_: Exception) {
+                            } catch (e: Exception) {
+                                e.printStackTrace()
                             }
                         }
                         try {
@@ -1164,6 +1165,7 @@ class DatabaseFoodRepository(
                 if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
                     nutrientValueDao.insertNutrientValues(nutrientValues)
                 }
+                clearCache()
             } catch (e: Exception) {
                 e.printStackTrace()
                 throw e
@@ -1251,7 +1253,7 @@ class DatabaseFoodRepository(
     // Cette zone de code gère la mise à jour des propriétés de l'aliment et de ses valeurs
     // nutritionnelles.
     override suspend fun updateFood(food: AlimentEv) {
-        return withContext(AppDispatchers.IO) {
+        withContext(AppDispatchers.IO) {
             try {
                 // Vérifier que l'aliment existe
                 val existingFood = foodDao.getFoodById(food.uuid)
@@ -1293,27 +1295,12 @@ class DatabaseFoodRepository(
                     e.printStackTrace()
                 }
 
-                // Supprimer toutes les anciennes valeurs nutritionnelles quelle que soit la
-                // situation
-                if (nutrientValueDao != null) {
-                    nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
-                } else {}
-
-                // Seulement si des valeurs nutritionnelles existent et que le DAO existe, les
-                // ajouter
-                val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
-
-                // Insérer les nouvelles valeurs nutritionnelles
-                if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
-                    try {
-                        nutrientValueDao.insertNutrientValues(nutrientValues)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        throw e
-                    }
-                } else {}
-
-                return@withContext
+                // Remplacer atomiquement les valeurs nutritionnelles (delete + insert en 1 transaction)
+                nutrientValueDao?.replaceNutrientValues(
+                        food.uuid,
+                        food.valMap.toNutrientValueEntities(food.uuid)
+                )
+                clearCache()
             } catch (e: Exception) {
                 e.printStackTrace()
                 throw e

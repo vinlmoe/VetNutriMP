@@ -525,7 +525,8 @@ data class AlimentReferenceEntity(
                         ForeignKey(
                                 entity = FoodEntity::class,
                                 parentColumns = ["uuid"],
-                                childColumns = ["refAliment"]
+                                childColumns = ["refAliment"],
+                                onDelete = ForeignKey.CASCADE
                         )],
         indices = [Index("refAliment")],
         primaryKeys = ["refAliment", "nutrientLabel"]
