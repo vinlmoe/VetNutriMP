@@ -556,6 +556,16 @@ class AnimalDetailViewModel(
         analyse.ratios.forEach { (ratio, valeur) -> rapport.append("$ratio: $valeur\n") }
         rapport.append("\n")
 
+        // Nutriments personnalisés
+        if (analyse.customNutriments.isNotEmpty()) {
+            rapport.append("NUTRIMENTS PERSONNALISÉS\n")
+            rapport.append("------------------------\n")
+            analyse.customNutriments.forEach { (nutriment, valeur) ->
+                rapport.append("$nutriment: $valeur\n")
+            }
+            rapport.append("\n")
+        }
+
         // Alertes
         if (analyse.alertes.isNotEmpty()) {
             rapport.append("ALERTES\n")

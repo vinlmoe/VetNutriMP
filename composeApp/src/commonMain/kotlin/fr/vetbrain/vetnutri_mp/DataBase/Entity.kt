@@ -485,6 +485,17 @@ data class NutrientValueEntity(
         val value: Double
 )
 
+/** Entité persistant les métadonnées des nutriments personnalisés créés par l'utilisateur */
+@Serializable
+@Entity(tableName = "CUSTOM_NUTRIENTS")
+data class CustomNutrientEntity(
+        @PrimaryKey val label: String,
+        val displayName: String,
+        val unite: String,
+        val ueCode: String,
+        val categoryCode: String
+)
+
 /** Entité pour la table des références bibliographiques */
 @Serializable
 @Entity(tableName = "BIBLIO_REFS")
