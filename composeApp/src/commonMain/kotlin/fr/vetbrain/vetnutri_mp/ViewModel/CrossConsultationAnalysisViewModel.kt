@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
  * Sélection/filtrage de consultations multi-animaux pour analyse croisée (phase 1).
@@ -106,6 +107,15 @@ class CrossConsultationAnalysisViewModel(
             val referenceLabel: String?,
             val nutrientLabel: String,
             val value: Double
+    )
+
+    data class NutrientStat(
+            val name: String,
+            val mean: Double,
+            val stdDev: Double,
+            val median: Double,
+            val min: Double,
+            val max: Double
     )
 
     private data class FilterState(
@@ -275,6 +285,31 @@ class CrossConsultationAnalysisViewModel(
      * Placeholder : à remplacer par une logique de recommandations.
      */
     fun getProposedConsultations(): List<ConsultationItem> = emptyList()
+
+    /** Calcule les statistiques descriptives sur les nutriments des rations sélectionnées. */
+    fun computeNutrientStats(actualOnly: Boolean?): List<NutrientStat> {
+        val rations = getSelectedRations(actualOnly)
+        if (rations.isEmpty()) return emptyList()
+        val allKeys = rations.flatMap { it.nutrientValues.keys }.distinct().sorted()
+        return allKeys.mapNotNull { key ->
+            val values = rations.mapNotNull { it.nutrientValues[key] }.filter { it > 0.0 }
+            if (values.isEmpty()) return@mapNotNull null
+            val mean = values.average()
+            val stdDev = sqrt(values.map { (it - mean).pow(2) }.average())
+            val sorted = values.sorted()
+            val median = if (sorted.size % 2 == 0)
+                (sorted[sorted.size / 2 - 1] + sorted[sorted.size / 2]) / 2.0
+            else sorted[sorted.size / 2]
+            NutrientStat(
+                    name = key,
+                    mean = mean,
+                    stdDev = stdDev,
+                    median = median,
+                    min = sorted.first(),
+                    max = sorted.last()
+            )
+        }
+    }
 
     fun loadConsultations() {
         viewModelScope.launch {

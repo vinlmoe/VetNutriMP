@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,7 +23,10 @@ import androidx.compose.material.Divider
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Icon
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
+import androidx.compose.material.Tab
+import androidx.compose.material.TabRow
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -38,8 +42,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.TooltipBubble
@@ -50,8 +56,11 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
+import fr.vetbrain.vetnutri_mp.ExcelPlatform.isCsvFileOperationsSupported
+import fr.vetbrain.vetnutri_mp.ExcelPlatform.saveCsvFileForExport
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import fr.vetbrain.vetnutri_mp.ViewModel.CrossConsultationAnalysisViewModel
 import kotlin.math.roundToInt
 import kotlin.math.floor
@@ -254,74 +263,88 @@ fun CrossConsultationResultsView(
                     modifier = Modifier.weight(0.65f).fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
             ) {
-                Text(
-                        "Aperçu graphique (KoalaPlot)",
-                        style = androidx.compose.material.MaterialTheme.typography.subtitle1
-                )
-                Row(
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                        verticalAlignment = Alignment.CenterVertically
+                var rightTabIndex by remember { mutableStateOf(0) }
+                TabRow(
+                        selectedTabIndex = rightTabIndex,
+                        backgroundColor = MaterialTheme.colors.surface,
+                        contentColor = VetNutriColors.Primary
                 ) {
-                    Text("Nutriment / rapport :")
-                    Box {
-                        OutlinedButton(onClick = { metricMenuExpanded = true }) {
-                            Text("${selectedMetric.label} (${selectedMetric.unit})")
-                        }
-                        DropdownMenu(
-                                expanded = metricMenuExpanded,
-                                onDismissRequest = { metricMenuExpanded = false },
-                                modifier = Modifier.heightIn(max = 360.dp)
-                        ) {
-                            metricOptions.forEach { option ->
-                                DropdownMenuItem(
-                                        onClick = {
-                                            selectedMetricKey = option.key
-                                            metricMenuExpanded = false
-                                        }
-                                ) { Text("${option.label} (${option.unit})") }
+                    Tab(selected = rightTabIndex == 0, onClick = { rightTabIndex = 0 },
+                            text = { Text("Graphique") })
+                    Tab(selected = rightTabIndex == 1, onClick = { rightTabIndex = 1 },
+                            text = { Text("Statistiques") })
+                }
+
+                if (rightTabIndex == 0) {
+                    // --- Onglet Graphique ---
+                    Row(
+                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                            verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Nutriment / rapport :")
+                        Box {
+                            OutlinedButton(onClick = { metricMenuExpanded = true }) {
+                                Text("${selectedMetric.label} (${selectedMetric.unit})")
+                            }
+                            DropdownMenu(
+                                    expanded = metricMenuExpanded,
+                                    onDismissRequest = { metricMenuExpanded = false },
+                                    modifier = Modifier.heightIn(max = 360.dp)
+                            ) {
+                                metricOptions.forEach { option ->
+                                    DropdownMenuItem(
+                                            onClick = {
+                                                selectedMetricKey = option.key
+                                                metricMenuExpanded = false
+                                            }
+                                    ) { Text("${option.label} (${option.unit})") }
+                                }
                             }
                         }
                     }
-                }
-                DropdownField(
-                        label = "Expression des apports",
-                        selectedValue = selectedExpression,
-                        options = ApportExpression.entries,
-                        onValueChange = { selectedExpression = it },
-                        valueToString = { it.label },
-                        modifier = Modifier.fillMaxWidth()
-                )
-                Row(
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                ) {
-                    OutlinedButton(
-                            onClick = { showBoxplot = false },
-                            enabled = showBoxplot
-                    ) { Text("Barres") }
-                    OutlinedButton(
-                            onClick = { showBoxplot = true },
-                            enabled = !showBoxplot
-                    ) { Text("Boxplots") }
-                    if (showBoxplot) {
-                        OutlinedButton(
-                                onClick = { showPoints = !showPoints }
-                        ) { Text(if (showPoints) "Points: on" else "Points: off") }
-                    }
-                }
-                if (showBoxplot) {
-                    BoxPlotChart(
-                            actualItems = actualRations,
-                            proposedItems = proposedRations,
-                            showPoints = showPoints,
-                            metric = selectedMetric,
-                            expression = selectedExpression,
-                            modifier = Modifier.fillMaxWidth().weight(1f)
+                    DropdownField(
+                            label = "Expression des apports",
+                            selectedValue = selectedExpression,
+                            options = ApportExpression.entries,
+                            onValueChange = { selectedExpression = it },
+                            valueToString = { it.label },
+                            modifier = Modifier.fillMaxWidth()
                     )
+                    Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
+                        OutlinedButton(onClick = { showBoxplot = false }, enabled = showBoxplot) {
+                            Text("Barres")
+                        }
+                        OutlinedButton(onClick = { showBoxplot = true }, enabled = !showBoxplot) {
+                            Text("Boxplots")
+                        }
+                        if (showBoxplot) {
+                            OutlinedButton(onClick = { showPoints = !showPoints }) {
+                                Text(if (showPoints) "Points: on" else "Points: off")
+                            }
+                        }
+                    }
+                    if (showBoxplot) {
+                        BoxPlotChart(
+                                actualItems = actualRations,
+                                proposedItems = proposedRations,
+                                showPoints = showPoints,
+                                metric = selectedMetric,
+                                expression = selectedExpression,
+                                modifier = Modifier.fillMaxWidth().weight(1f)
+                        )
+                    } else {
+                        ConsultationBarChart(
+                                items = displayedRations,
+                                metric = selectedMetric,
+                                expression = selectedExpression,
+                                modifier = Modifier.fillMaxWidth().weight(1f)
+                        )
+                    }
                 } else {
-                    ConsultationBarChart(
-                            items = displayedRations,
-                            metric = selectedMetric,
-                            expression = selectedExpression,
+                    // --- Onglet Statistiques ---
+                    NutrientStatsPanel(
+                            viewModel = viewModel,
+                            showActual = showActual,
                             modifier = Modifier.fillMaxWidth().weight(1f)
                     )
                 }
@@ -856,4 +879,100 @@ private fun PointWithTooltip(
             )
         }
     }
+}
+
+@Composable
+private fun NutrientStatsPanel(
+        viewModel: CrossConsultationAnalysisViewModel,
+        showActual: Boolean,
+        modifier: Modifier = Modifier
+) {
+    val stats = remember(viewModel.selectedIds.collectAsState().value, showActual) {
+        viewModel.computeNutrientStats(actualOnly = showActual)
+    }
+
+    Column(modifier = modifier) {
+        if (isCsvFileOperationsSupported()) {
+            Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                    horizontalArrangement = Arrangement.End
+            ) {
+                OutlinedButton(
+                        onClick = {
+                            val csv = buildStatsCsv(stats)
+                            saveCsvFileForExport(csv, "statistiques_nutriments.csv")
+                        },
+                        enabled = stats.isNotEmpty()
+                ) {
+                    Text("Exporter statistiques CSV", fontSize = 12.sp)
+                }
+            }
+        }
+
+        if (stats.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                        "Aucune donnée disponible. Sélectionnez des rations.",
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.body2
+                )
+            }
+            return@Column
+        }
+
+        // En-tête
+        Row(
+                modifier = Modifier.fillMaxWidth()
+                        .background(MaterialTheme.colors.surface)
+                        .padding(vertical = 4.dp, horizontal = 8.dp)
+        ) {
+            Text("Nutriment", fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                    modifier = Modifier.weight(2.5f))
+            Text("Moy ± ET", fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                    modifier = Modifier.weight(2f))
+            Text("Médiane", fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                    modifier = Modifier.weight(1.5f))
+            Text("Min", fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                    modifier = Modifier.weight(1f))
+            Text("Max", fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                    modifier = Modifier.weight(1f))
+        }
+        Divider()
+
+        LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            items(stats) { stat ->
+                Row(
+                        modifier = Modifier.fillMaxWidth()
+                                .padding(vertical = 3.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(stat.name, fontSize = 11.sp, modifier = Modifier.weight(2.5f),
+                            maxLines = 2)
+                    Text(
+                            "${formatStatValue(stat.mean)} ± ${formatStatValue(stat.stdDev)}",
+                            fontSize = 11.sp, modifier = Modifier.weight(2f)
+                    )
+                    Text(formatStatValue(stat.median), fontSize = 11.sp,
+                            modifier = Modifier.weight(1.5f))
+                    Text(formatStatValue(stat.min), fontSize = 11.sp,
+                            modifier = Modifier.weight(1f))
+                    Text(formatStatValue(stat.max), fontSize = 11.sp,
+                            modifier = Modifier.weight(1f))
+                }
+                Divider(color = Color.LightGray, thickness = 0.5.dp)
+            }
+        }
+    }
+}
+
+private fun formatStatValue(v: Double): String =
+        if (v < 10.0) NumberUtils.format(v, 2) else NumberUtils.format(v, 1)
+
+private fun buildStatsCsv(stats: List<CrossConsultationAnalysisViewModel.NutrientStat>): String {
+    val sb = StringBuilder()
+    sb.appendLine("Nutriment;Moyenne;Écart-type;Médiane;Min;Max")
+    stats.forEach { s ->
+        sb.appendLine("${s.name};${s.mean};${s.stdDev};${s.median};${s.min};${s.max}")
+    }
+    return sb.toString()
 }

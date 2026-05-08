@@ -15,6 +15,7 @@ class UpdateException(message: String, cause: Throwable? = null) : Exception(mes
  */
 expect object PlatformHttpClient {
     suspend fun fetchXml(url: String): String
+    suspend fun fetchJson(url: String): String
 }
 
 /**
