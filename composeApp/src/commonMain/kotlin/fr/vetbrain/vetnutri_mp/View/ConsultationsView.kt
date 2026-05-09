@@ -53,6 +53,7 @@ fun ConsultationsView(
     // Affichage conditionnel : vue plein écran ou vue normale
     if (showFullScreenEdit) {
         val availableReferences by viewModel.availableReferences.collectAsState()
+        val availableKeywords by viewModel.availableKeywords.collectAsState()
         var showNoReferenceDialog by remember { mutableStateOf(false) }
 
         ConsultationFullScreenEditView(
@@ -60,6 +61,7 @@ fun ConsultationsView(
                 animalName = animal?.nom ?: "",
                 animalEspece = animal?.getEspece(),
                 availableReferences = availableReferences,
+                availableKeywords = availableKeywords,
                 onBackPressed = { consultation -> viewModel.saveFromFullScreen(consultation) },
                 onCancel = {
                     // Annuler la création si la consultation venait d'être créée (uuid vide)
@@ -68,17 +70,19 @@ fun ConsultationsView(
                     }
                     viewModel.closeFullScreenEdit()
                 },
-                onLoadReferences = { viewModel.chargerReferencesDisponibles() }
+                onLoadReferences = { viewModel.chargerReferencesDisponibles() },
+                onLoadKeywords = { viewModel.chargerMotsClesConsultation() },
+                onCreateKeyword = { keyword -> viewModel.ajouterMotCleConsultation(keyword) }
         )
 
         // Dialog uniquement après clic sur Valider: on le pilote ici via la sélection
         if (showNoReferenceDialog) {
             AlertDialog(
                     onDismissRequest = { showNoReferenceDialog = false },
-                    title = { Text("Référence générale manquante") },
+                    title = { Text(translate(Consultation.MISSING_REF_TITLE)) },
                     text = {
                         Text(
-                                "Veuillez sélectionner une référence générale avant de valider la consultation."
+                                translate(Consultation.MISSING_REF_MESSAGE)
                         )
                     },
                     confirmButton = {
@@ -162,7 +166,7 @@ private fun ConsultationsMainView(
                 ) {
                     Icon(
                             imageVector = AppIcons.Add,
-                            contentDescription = "Ajouter une consultation",
+                            contentDescription = translate(Consultation.ADD),
                             tint = VetNutriColors.OnPrimary
                     )
                 }
@@ -183,7 +187,7 @@ private fun ConsultationsMainView(
                 )
 
                 Text(
-                        text = "Consultations",
+                        text = translate(Consultation.TITLE),
                         style = MaterialTheme.typography.h6,
                         color = VetNutriColors.Primary
                 )
@@ -195,7 +199,7 @@ private fun ConsultationsMainView(
                                 contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                    text = "Aucune consultation",
+                                    text = translate(Consultation.NONE),
                                     style = MaterialTheme.typography.body1,
                                     color = Color.Gray
                             )
@@ -219,6 +223,9 @@ private fun ConsultationsMainView(
                                         onDelete = {
                                             onConsultationToDelete(consultation)
                                             onShowDeleteConfirmation(true)
+                                        },
+                                        onDuplicate = {
+                                            viewModel.duplicateConsultation(consultation)
                                         },
                                         isDeleteEnabled = canDeleteConsultation,
                                         onClick = {
@@ -267,14 +274,15 @@ private fun ConsultationsMainView(
                                     }
                                     viewModel.stopEditingConsultation()
                                     onShowConsultationDetail(false)
-                                }
+                                },
+                                viewModel = viewModel
                         )
                     }
                 }
             } else {
                 // Message indiquant de sélectionner une consultation
                 CenteredMessage(
-                        message = "Sélectionnez une consultation pour afficher les détails",
+                        message = translate(Consultation.SELECT_DETAIL_HINT),
                         modifier = Modifier.weight(0.6f).fillMaxHeight()
                 )
             }

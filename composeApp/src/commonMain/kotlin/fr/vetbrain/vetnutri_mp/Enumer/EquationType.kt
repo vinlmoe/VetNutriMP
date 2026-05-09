@@ -17,6 +17,7 @@ enum class EquationType(
     MW("metabolicWeightDesc", "metabolicWeight", 2, "Poids métabolique"),
     INDICATOR("indicatorDesc", "indicator", 3, "Indicateur"),
     NEED("NeedDesc", "NeedEq", 4, "Besoin nutritionnel"),
+    ENERCOMP("energyCompDesc", "energyComp",  6, "Energie complémentaire"),
     COMPLEMENTARY_NUTRIENT("complementaryNutrientDesc", "complementaryNutrient", 5, "Nutriment complémentaire");
 
     companion object {
@@ -31,6 +32,7 @@ enum class EquationType(
             MW -> EquationKind.MW
             INDICATOR -> EquationKind.INDICATOR
             NEED -> EquationKind.NEED
+            ENERCOMP-> EquationKind.ENERCOMP
             COMPLEMENTARY_NUTRIENT -> EquationKind.COMPLEMENTARY_NUTRIENT
         }
     }

@@ -1,9 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
-/**
- * Classe pour gérer une liste de références de nutriments Basée sur la classe listNutrientRef du
- * projet Java original
- */
+/** Liste mutable de références de nutriments (NutrientRef), clonable. */
 class ListNutrientRef {
 
     private val references: MutableList<NutrientRef> = mutableListOf()

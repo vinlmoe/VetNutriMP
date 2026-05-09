@@ -17,6 +17,18 @@ object HtmlSectionParser {
         """.trimIndent()
     }
 
+    /** Convertit une section HTML en HTML pour l'export (sans titre) */
+    fun parseSectionToHtmlForExport(section: HtmlSection): String {
+        val contentHtml = parseContentToHtml(section.content)
+        return """
+            <div class='html-section' data-section-id='${section.id}' data-category='${section.category}'>
+                <div class='section-content'>
+                    $contentHtml
+                </div>
+            </div>
+        """.trimIndent()
+    }
+
     /** Convertit le contenu riche en HTML */
     fun parseContentToHtml(content: RichTextContent): String {
         return content.blocks.joinToString("\n") { parseBlockToHtml(it) }
@@ -29,6 +41,7 @@ object HtmlSectionParser {
             is TextBlock.Heading -> parseHeadingToHtml(block)
             is TextBlock.ListBlock -> parseListToHtml(block)
             is TextBlock.TableBlock -> parseTableToHtml(block)
+            is TextBlock.RawHtml -> block.html
         }
     }
 
@@ -211,6 +224,5 @@ object HtmlSectionParser {
         """.trimIndent()
     }
 }
-
 
 

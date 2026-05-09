@@ -289,7 +289,6 @@ private fun AlimentNutrientsDetails(
 ) {
     val coroutineScope = rememberCoroutineScope()
     var nutrientsData by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
-    // Nutriments personnalisés : Triple(displayName, valeur convertie, unité)
     var customNutrientsData by remember { mutableStateOf<List<Triple<String, Double, String>>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     

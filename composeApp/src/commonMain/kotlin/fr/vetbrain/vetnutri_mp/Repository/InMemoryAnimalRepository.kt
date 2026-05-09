@@ -107,6 +107,14 @@ class InMemoryAnimalRepository : AnimalRepository {
         animalsFlow.value = animals.toList()
     }
 
+    override suspend fun getRacesBySpecies(specieId: String): List<String> {
+        return animals
+                .filter { it.specieId == specieId && it.race.isNotBlank() }
+                .map { it.race }
+                .distinct()
+                .sorted()
+    }
+
     /**
      * Récupère le repository des aliments
      *

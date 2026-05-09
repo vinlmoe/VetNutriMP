@@ -18,6 +18,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.NutrientRefViewModel
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Vue pour l'édition des besoins nutritionnels d'une référence par catégorie
@@ -187,7 +188,11 @@ private fun NutrientRefItem(
 
             DropdownMenu(
                     expanded = showUnitEnumDropdown,
-                    onDismissRequest = { showUnitEnumDropdown = false }
+                    onDismissRequest = {
+                        if (!isIosPlatform) {
+                            showUnitEnumDropdown = false 
+                        }
+                    }
             ) {
                 compatibleUnits.forEach { unit ->
                     DropdownMenuItem(
@@ -209,7 +214,11 @@ private fun NutrientRefItem(
 
             DropdownMenu(
                     expanded = showUnitDropdown,
-                    onDismissRequest = { showUnitDropdown = false }
+                    onDismissRequest = {
+                        if (!isIosPlatform) {
+                            showUnitDropdown = false 
+                        }
+                    }
             ) {
                 UnitReqEnum.values().forEach { unit ->
                     DropdownMenuItem(
@@ -231,7 +240,11 @@ private fun NutrientRefItem(
 
             DropdownMenu(
                     expanded = showBiblioDropdown,
-                    onDismissRequest = { showBiblioDropdown = false }
+                    onDismissRequest = {
+                        if (!isIosPlatform) {
+                            showBiblioDropdown = false 
+                        }
+                    }
             ) {
                 // Option pour aucune référence
                 DropdownMenuItem(

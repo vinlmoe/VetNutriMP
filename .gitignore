@@ -16,3 +16,24 @@ captures
 !*.xcodeproj/project.xcworkspace/
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
+\n+# Artefacts de release et binaires (éviter les fichiers lourds dans Git)
+composeApp/release/
+**/outputs/
+**/archives/
+**/dist/
+**/Products/
+*.apk
+*.aab
+*.ipa
+*.xcarchive
+*.keystore
+*.jks
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.jar
+*.aar
+.notarization_config
+.Rproj.user

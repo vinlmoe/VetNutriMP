@@ -27,7 +27,10 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /** Données d'ajustement pour un aliment spécifique */
 data class AlimentAdjustmentData(
@@ -71,6 +74,28 @@ data class RationAdjustmentResult(
         val adjustedAliments: List<AlimentRation>? = null
 )
 
+/**
+ * Récupère la valeur CAP minimale depuis la référence nutritionnelle
+ * @param referenceUtilisee La référence nutritionnelle
+ * @return La valeur CAP OPTIMIN si disponible, sinon CAP MIN, sinon 1.0 par défaut
+ */
+private fun obtenirCapMinDepuisReference(referenceUtilisee: ReferenceEv): Double {
+        // Essayer d'abord CAP OPTIMIN (priorité maximale)
+        val capOptiminRef = referenceUtilisee.obtenirNutrimentRef(NutrientAnalysis.PCa, Reflevel.OPTIMIN)
+        if (capOptiminRef != null && capOptiminRef.quantite > 0) {
+                return capOptiminRef.quantite.toDouble()
+        }
+
+        // Si OPTIMIN n'existe pas, essayer CAP MIN
+        val capMinRef = referenceUtilisee.obtenirNutrimentRef(NutrientAnalysis.PCa, Reflevel.MIN)
+        if (capMinRef != null && capMinRef.quantite > 0) {
+                return capMinRef.quantite.toDouble()
+        }
+
+        // Valeur par défaut si aucune référence n'est trouvée
+        return 1.0
+}
+
 /** Vue complète pour l'ajustement multi-nutriments de la ration */
 @Composable
 fun MultiNutrientAdjustmentView(
@@ -80,6 +105,7 @@ fun MultiNutrientAdjustmentView(
         besoinEnergetiqueStandard: Double,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?,
         onConfirm: (RationAdjustmentResult) -> Unit,
         onDismiss: () -> Unit
 ) {
@@ -124,7 +150,7 @@ fun MultiNutrientAdjustmentView(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Ajustement Multi-Nutriments",
+                                        text = translate(LocalizationKeys.AnalNut.ADJUSTMENT_TITLE),
                                         style = MaterialTheme.typography.h5,
                                         fontWeight = FontWeight.Bold
                                 )
@@ -132,7 +158,7 @@ fun MultiNutrientAdjustmentView(
                                 IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                                         Icon(
                                                 imageVector = Icons.Default.Close,
-                                                contentDescription = "Fermer",
+                                                contentDescription = translate(LocalizationKeys.AnalNut.CLOSE),
                                                 tint = MaterialTheme.colors.onSurface
                                         )
                                 }
@@ -146,7 +172,7 @@ fun MultiNutrientAdjustmentView(
                         ) {
                                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                                         Text(
-                                                text = "Actions rapides",
+                                                text = translate(LocalizationKeys.AnalNut.QUICK_ACTIONS),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold,
                                                 modifier =
@@ -177,7 +203,7 @@ fun MultiNutrientAdjustmentView(
                                                                 imageVector =
                                                                         Icons.Default.LockPerson,
                                                                 contentDescription =
-                                                                        "Tout verrouiller",
+                                                                        translate(LocalizationKeys.AnalNut.LOCK_ALL),
                                                                 tint = VetNutriColors.Primary
                                                         )
                                                 }
@@ -199,7 +225,7 @@ fun MultiNutrientAdjustmentView(
                                                                 imageVector =
                                                                         Icons.Default.LockOpen,
                                                                 contentDescription =
-                                                                        "Tout déverrouiller",
+                                                                        translate(LocalizationKeys.AnalNut.UNLOCK_ALL),
                                                                 tint = VetNutriColors.Secondary
                                                         )
                                                 }
@@ -232,7 +258,7 @@ fun MultiNutrientAdjustmentView(
                                                                 imageVector =
                                                                         Icons.Default.AutoAwesome,
                                                                 contentDescription =
-                                                                        "Sélection automatique",
+                                                                        translate(LocalizationKeys.AnalNut.AUTO_SELECT),
                                                                 tint = VetNutriColors.Primary
                                                         )
                                                 }
@@ -269,7 +295,7 @@ fun MultiNutrientAdjustmentView(
                                                         Icon(
                                                                 imageVector = Icons.Default.Refresh,
                                                                 contentDescription =
-                                                                        "Réinitialiser",
+                                                                        translate(LocalizationKeys.AnalNut.RESET),
                                                                 tint = VetNutriColors.Error
                                                         )
                                                 }
@@ -285,7 +311,7 @@ fun MultiNutrientAdjustmentView(
                         ) {
                                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                                         Text(
-                                                text = "Configuration des aliments",
+                                                text = translate(LocalizationKeys.AnalNut.FOOD_CONFIG),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold,
                                                 modifier =
@@ -379,7 +405,7 @@ fun MultiNutrientAdjustmentView(
                                                 modifier = Modifier.padding(AppSizes.paddingMedium)
                                         ) {
                                                 Text(
-                                                        text = "Niveaux de référence par nutriment",
+                                                        text = translate(LocalizationKeys.AnalNut.REF_LEVELS_BY_NUTRIENT),
                                                         style = MaterialTheme.typography.subtitle1,
                                                         fontWeight = FontWeight.Bold,
                                                         modifier =
@@ -425,8 +451,12 @@ fun MultiNutrientAdjustmentView(
                                                                         DropdownMenu(
                                                                                 expanded = expanded,
                                                                                 onDismissRequest = {
+                                                                                    if (!isIosPlatform) {
+
                                                                                         expanded =
                                                                                                 false
+
+                                                                                    }
                                                                                 }
                                                                         ) {
                                                                                 Reflevel.entries
@@ -469,7 +499,7 @@ fun MultiNutrientAdjustmentView(
                         ) {
                                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                                         Text(
-                                                text = "Actions",
+                                                text = translate(LocalizationKeys.AnalNut.ACTIONS),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold,
                                                 modifier =
@@ -487,7 +517,7 @@ fun MultiNutrientAdjustmentView(
                                                                 scope.launch {
                                                                         isProcessing = true
                                                                         processingMessage =
-                                                                                "Calcul en cours..."
+                                                                                translate(LocalizationKeys.AnalNut.CALCULATING)
                                                                         preview =
                                                                                 calculerAjustement(
                                                                                         ration =
@@ -503,7 +533,9 @@ fun MultiNutrientAdjustmentView(
                                                                                         poidsAnimal =
                                                                                                 poidsAnimal,
                                                                                         poidsMetabolique =
-                                                                                                poidsMetabolique
+                                                                                                poidsMetabolique,
+                                                                                        equationRepository =
+                                                                                                equationRepository
                                                                                 )
                                                                         isProcessing = false
                                                                         processingMessage = ""
@@ -516,14 +548,14 @@ fun MultiNutrientAdjustmentView(
                                                                                         null
                                                                         },
                                                         modifier = Modifier.weight(1f)
-                                                ) { Text("Prévisualiser") }
+                                                ) { Text(translate(LocalizationKeys.AnalNut.PREVIEW)) }
 
                                                 Button(
                                                         onClick = {
                                                                 scope.launch {
                                                                         isProcessing = true
                                                                         processingMessage =
-                                                                                "Ajustement en cours..."
+                                                                                translate(LocalizationKeys.AnalNut.ADJUSTING_MSG)
                                                                         val result =
                                                                                 calculerAjustement(
                                                                                         ration =
@@ -539,7 +571,9 @@ fun MultiNutrientAdjustmentView(
                                                                                         poidsAnimal =
                                                                                                 poidsAnimal,
                                                                                         poidsMetabolique =
-                                                                                                poidsMetabolique
+                                                                                                poidsMetabolique,
+                                                                                        equationRepository =
+                                                                                                equationRepository
                                                                                 )
                                                                         isProcessing = false
                                                                         processingMessage = ""
@@ -553,7 +587,66 @@ fun MultiNutrientAdjustmentView(
                                                                                         null
                                                                         },
                                                         modifier = Modifier.weight(1f)
-                                                ) { Text("Ajuster") }
+                                                ) { Text(translate(LocalizationKeys.AnalNut.ADJUST)) }
+
+                                                // Nouveau bouton: Ajuster l'énergie en conservant les proportions (quantités égales)
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                scope.launch {
+                                                                        isProcessing = true
+                                                                        processingMessage = translate(LocalizationKeys.AnalNut.ADJUSTING_ENERGY_MSG)
+
+                                                                        try {
+                                                                                // Calculer l'énergie actuelle de la ration
+                                                                                var energieActuelle = 0.0
+                                                                                for (alimentRation in ration.alimentMutableList) {
+                                                                                        if (alimentRation.quantite > 0.0) {
+                                                                                                val e = alimentRation.getEnergie(
+                                                                                                        referenceUtilisee,
+                                                                                                        equationRepository
+                                                                                                )
+                                                                                                energieActuelle += e
+                                                                                        }
+                                                                                }
+
+                                                                                if (energieActuelle <= 0.0) {
+                                                                                        val result = RationAdjustmentResult(
+                                                                                                success = false,
+                                                                                                message = translate(LocalizationKeys.AnalNut.ENERGY_NULL_ERROR),
+                                                                                                adjustedAliments = null
+                                                                                        )
+                                                                                        preview = result
+                                                                                } else {
+                                                                                        val facteur = besoinEnergetiqueTotal / energieActuelle
+                                                                                        // Appliquer le même facteur à toutes les quantités
+                                                                                        val adjustedAliments = ration.alimentMutableList.map { ar ->
+                                                                                                val nouvelleQuantite = kotlin.math.round(ar.quantite * facteur)
+                                                                                                ar.copy(quantite = nouvelleQuantite.coerceAtLeast(0.0))
+                                                                                        }
+                                                                                        val result = RationAdjustmentResult(
+                                                                                                success = true,
+                                                                                                message = translate(LocalizationKeys.AnalNut.ADJUST_ENERGY_SUCCESS, TextUtils.formatDecimal(facteur, 3)),
+                                                                                                adjustedAliments = adjustedAliments
+                                                                                        )
+                                                                                        preview = result
+                                                                                        // Appliquer immédiatement comme l'action "Ajuster"
+                                                                                        onConfirm(result)
+                                                                                }
+                                                                        } catch (e: Exception) {
+                                                                                val result = RationAdjustmentResult(
+                                                                                        success = false,
+                                                                                        message = translate(LocalizationKeys.AnalNut.ADJUST_FAIL) + ": ${e.message}"
+                                                                                )
+                                                                                preview = result
+                                                                        } finally {
+                                                                                isProcessing = false
+                                                                                processingMessage = ""
+                                                                        }
+                                                                }
+                                                        },
+                                                        enabled = !isProcessing,
+                                                        modifier = Modifier.weight(1f)
+                                                ) { Text(translate(LocalizationKeys.AnalNut.ADJUST_ENERGY_EQUAL)) }
                                         }
 
                                         // Affichage du message de traitement
@@ -603,8 +696,8 @@ fun MultiNutrientAdjustmentView(
                                                 Text(
                                                         text =
                                                                 if (result.success)
-                                                                        "✅ Ajustement réussi"
-                                                                else "❌ Échec de l'ajustement",
+                                                                        translate(LocalizationKeys.AnalNut.ADJUST_SUCCESS)
+                                                                else translate(LocalizationKeys.AnalNut.ADJUST_FAIL),
                                                         fontWeight = FontWeight.Bold,
                                                         color =
                                                                 if (result.success)
@@ -723,8 +816,7 @@ private fun AlimentAdjustmentItem(
                 remember(aliment, referenceUtilisee) {
                         val labels = mutableSetOf<String>()
                         val valMap = aliment.valMap
-                        if (valMap != null) {
-                                for ((nutr, qty) in valMap.entries) {
+                        for ((nutr, qty) in valMap.entries) {
                                         if (qty.value > 0) {
                                                 // Vérifier que le nutriment a au moins une
                                                 // référence disponible
@@ -741,7 +833,6 @@ private fun AlimentAdjustmentItem(
                                                 }
                                         }
                                 }
-                        }
                         // Ajouter ÉNERGIE car elle peut maintenant être sélectionnée comme
                         // nutriment cible
                         // (l'énergie est toujours disponible, pas besoin de vérifier les
@@ -893,8 +984,8 @@ private fun AlimentAdjustmentItem(
                                                                 else Icons.Filled.LockOpen,
                                                         contentDescription =
                                                                 if (alimentData.isLocked)
-                                                                        "Déverrouiller"
-                                                                else "Verrouiller",
+                                                                        translate(LocalizationKeys.AnalNut.UNLOCK)
+                                                                else translate(LocalizationKeys.AnalNut.LOCK),
                                                         tint =
                                                                 if (alimentData.isLocked) Color.Gray
                                                                 else VetNutriColors.Primary
@@ -910,7 +1001,7 @@ private fun AlimentAdjustmentItem(
                         ) {
                                 Text(
                                         text =
-                                                "Quantité actuelle: ${alimentData.alimentRation.quantite}g",
+                                                translate(LocalizationKeys.AnalNut.CURRENT_QUANTITY, alimentData.alimentRation.quantite.toString()),
                                         style = MaterialTheme.typography.caption,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -918,7 +1009,7 @@ private fun AlimentAdjustmentItem(
 
                         if (!alimentData.isLocked) {
                                 DropdownField(
-                                        label = "Nutriment cible",
+                                        label = translate(LocalizationKeys.AnalNut.TARGET_NUTRIENT),
                                         selectedValue = alimentData.selectedNutrient,
                                         onValueChange = { value -> onNutrientChange(value) },
                                         options = availableNutrients,
@@ -928,7 +1019,7 @@ private fun AlimentAdjustmentItem(
                                 )
                         } else {
                                 Text(
-                                        text = "Verrouillé - Aucun ajustement",
+                                        text = translate(LocalizationKeys.AnalNut.LOCKED_NO_ADJUSTMENT),
                                         style = MaterialTheme.typography.caption,
                                         color = Color.Gray,
                                         modifier = Modifier.padding(vertical = 8.dp)
@@ -946,7 +1037,8 @@ suspend fun calculerAjustement(
         besoinEnergetiqueTotal: Double,
         besoinEnergetiqueStandard: Double,
         poidsAnimal: Double?,
-        poidsMetabolique: Double?
+        poidsMetabolique: Double?,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?
 ): RationAdjustmentResult {
         try {
                 // Créer une copie des aliments pour les ajustements
@@ -1023,10 +1115,17 @@ suspend fun calculerAjustement(
                         for (i in adjustedAliments.indices) {
                                 val alimentRation = adjustedAliments[i]
                                 val aliment = alimentRation.aliment ?: continue
-                                val quantiteNutriment: Double =
-                                        (aliment.valMap?.get(nutrient)?.value ?: 0.0).toDouble()
                                 val quantiteAliment: Double = alimentRation.quantite.toDouble()
-                                apportActuel += (quantiteNutriment * quantiteAliment) / 100.0
+                                
+                                // Pour l'énergie, utiliser getEnergie() qui sélectionne correctement equationDEcom ou equationDEraw
+                                val apportNutriment: Double = if (nutrient == NutrientMain.ENERGIE) {
+                                        alimentRation.getEnergie(referenceUtilisee, equationRepository)
+                                } else {
+                                        val quantiteNutriment: Double =
+                                                (aliment.valMap?.get(nutrient)?.value ?: 0.0).toDouble()
+                                        (quantiteNutriment * quantiteAliment) / 100.0
+                                }
+                                apportActuel += apportNutriment
                         }
 
                         val manque = besoinAbsoluGrammes - apportActuel
@@ -1043,7 +1142,7 @@ suspend fun calculerAjustement(
                                                 constraints = constraintByUuid,
                                                 referenceUtilisee = referenceUtilisee,
                                                 preferences = null,
-                                                equationRepository = null
+                                                equationRepository = equationRepository
                                         )
 
                                 if (!result.success) {
@@ -1054,13 +1153,16 @@ suspend fun calculerAjustement(
 
                         nutrimentsTraites.add(nutrientLabel)
                 }
-
                 // DEUXIÈME ÉTAPE : Ajuster l'énergie en recalculant l'apport total de la ration
                 // finale
                 if (processingOrder.contains("ENERGIE")) {
 
                         // Créer une ration temporaire avec les ajustements effectués
-                        val rationTemp = ration.copy()
+                        val rationTemp =
+                                ration.copy(
+                                        alimentMutableList =
+                                                adjustedAliments.map { it.copy() }.toMutableList()
+                                )
                         for (i in adjustedAliments.indices) {
                                 val alimentRation = adjustedAliments[i]
                                 val alimentRationTemp =
@@ -1091,8 +1193,7 @@ suspend fun calculerAjustement(
                                         val energieAliment =
                                                 alimentRation.getEnergie(
                                                         referenceUtilisee,
-                                                        null,
-                                                        null
+                                                        equationRepository
                                                 )
                                         apportEnergetiqueTotal += energieAliment
                                 }
@@ -1152,7 +1253,7 @@ suspend fun calculerAjustement(
                                                 constraints = constraintByUuid,
                                                 referenceUtilisee = referenceUtilisee,
                                                 preferences = null,
-                                                equationRepository = null
+                                                equationRepository = equationRepository
                                         )
 
                                 if (result.success) {
@@ -1163,7 +1264,7 @@ suspend fun calculerAjustement(
                                         return RationAdjustmentResult(
                                                 success = false,
                                                 message =
-                                                        "Échec de l'ajustement énergétique: ${result.message}",
+                                                        translate(LocalizationKeys.AnalNut.ADJUST_FAIL) + ": ${result.message}",
                                                 adjustedAliments = null
                                         )
                                 }
@@ -1187,10 +1288,129 @@ suspend fun calculerAjustement(
                 */
                 */
 
-                // Arrondi final pour stabiliser l'UI - arrondi au gramme
+                // TROISIÈME ÉTAPE : Ajustement final du ratio CAP après tous les ajustements
+                val calciumSelectionne: Boolean = adjustmentData.any { it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked }
+
+                if (calciumSelectionne) {
+                        val capMinRequis: Double = obtenirCapMinDepuisReference(referenceUtilisee)
+                        val alimentsCalcium = adjustmentData.filter { 
+                                it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked 
+                        }
+                        
+                        if (alimentsCalcium.isNotEmpty()) {
+                                // Ajustement itératif pour respecter le ratio CAP
+                                var iterations = 0
+                                val maxIterations = 10
+                                
+                        while (iterations < maxIterations) {
+                                // Utiliser la même logique que le système pour calculer les totaux
+                                var totalCalcium: Double = 0.0
+                                var totalPhosphore: Double = 0.0
+                                
+                                // Recalculer les totaux avec les quantités actuelles (même logique que calculerQuantiteTotaleNutriment)
+                                // Utiliser getNutrientWithComplementary pour être cohérent avec le reste du système
+                                for (i in adjustedAliments.indices) {
+                                        val alimentRation = adjustedAliments[i]
+                                        val quantite = alimentRation.quantite.toDouble()
+                                        
+                                        // Calcium - utiliser getNutrientWithComplementary pour être cohérent
+                                        val calPar100g = alimentRation.getNutrientWithComplementary(
+                                                nutrient = NutrientMacro.CAL,
+                                                preferences = null,
+                                                equationRepository = equationRepository,
+                                                referenceEv = referenceUtilisee
+                                        )
+                                        if (calPar100g != null) {
+                                                totalCalcium += (calPar100g * quantite) / 100.0
+                                        }
+                                        
+                                        // Phosphore - utiliser getNutrientWithComplementary pour être cohérent
+                                        val pPar100g = alimentRation.getNutrientWithComplementary(
+                                                nutrient = NutrientMacro.PHOS,
+                                                preferences = null,
+                                                equationRepository = equationRepository,
+                                                referenceEv = referenceUtilisee
+                                        )
+                                        if (pPar100g != null) {
+                                                totalPhosphore += (pPar100g * quantite) / 100.0
+                                        }
+                                }
+                                        
+                                        if (totalPhosphore > 0.0) {
+                                                val ratioActuel: Double = totalCalcium / totalPhosphore
+                                                
+                                                // Vérifier si le ratio est suffisant (avec une petite tolérance)
+                                                if (ratioActuel >= capMinRequis ) {
+                                                        break
+                                                }
+                                                
+                                                // Calculer le facteur d'ajustement nécessaire
+                                                val facteurAjustement: Double = capMinRequis / ratioActuel
+                                                
+                                                // Ajuster les aliments calcium proportionnellement
+                                                var ajustementEffectue = false
+                                                for (alimentData in alimentsCalcium) {
+                                                        val index = adjustedAliments.indexOfFirst { 
+                                                                it.uuid == alimentData.alimentRation.uuid 
+                                                        }
+                                                        if (index >= 0) {
+                                                                val alimentRation = adjustedAliments[index]
+                                                                val quantiteActuelle: Double = alimentRation.quantite.toDouble()
+                                                                // Utiliser getNutrientWithComplementary pour être cohérent
+                                                                val PhosAct: Double = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.PHOS,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                )?.let { (it * quantiteActuelle) / 100.0 } ?: 0.0
+                                                                val CalAct: Double = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.CAL,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                )?.let { (it * quantiteActuelle) / 100.0 } ?: 0.0
+                                                                val calPar100g = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.CAL,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                ) ?: 0.0
+                                                                val pPar100g = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.PHOS,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                ) ?: 0.0
+                                                                val nouvelleQuantite: Double = 1.2 * (capMinRequis * (totalPhosphore - PhosAct) - (totalCalcium - CalAct)) / ((calPar100g - capMinRequis * pPar100g) / 100.0)
+                                                                // Arrondir au centième de gramme pour éviter les erreurs de précision
+                                                                val quantiteArrondie: Double = kotlin.math.round(nouvelleQuantite * 100.0) / 100.0
+                                                                adjustedAliments[index] = adjustedAliments[index].copy(
+                                                                        quantite = quantiteArrondie.coerceAtLeast(0.0)
+                                                                )
+                                                                ajustementEffectue = true
+                                                        }
+                                                }
+                                                
+                                                if (!ajustementEffectue) {
+                                                        break
+                                                }
+                                        } else {
+                                                break
+                                        }
+                                        
+                                        iterations++
+                                }
+                                
+                                if (iterations >= maxIterations) {
+                                        // Maximum d'itérations atteint pour l'ajustement CAP
+                                }
+                        }
+                        
+                }
+
+                // Arrondi final selon règles métier
                 for (i in adjustedAliments.indices) {
-                        val q: Double = adjustedAliments[i].quantite.toDouble()
-                        val rounded: Double = kotlin.math.round(q)
+                        val rounded: Double = arrondirQuantiteSelonRegles(adjustedAliments[i], adjustedAliments[i].quantite.toDouble())
                         adjustedAliments[i] = adjustedAliments[i].copy(quantite = rounded)
                 }
 
@@ -1356,7 +1576,7 @@ private fun adjustRationForNutrient(
                 if (apportActuel <= 0) {
                         return RationAdjustmentResult(
                                 success = false,
-                                message = "Aucun apport en ${nutrient.label} détecté"
+                                message = translate(LocalizationKeys.AnalNut.NO_INTAKE_DETECTED, nutrient.label)
                         )
                 }
 
@@ -1373,9 +1593,9 @@ private fun adjustRationForNutrient(
                                 val quantiteActuelle: Double =
                                         alimentData.alimentRation.quantite.toDouble()
                                 val nouvelleQuantite: Double = quantiteActuelle * ratio
-                                // Arrondir au gramme
+                                // Arrondir selon règles
                                 val nouvelleQuantiteArrondie: Double =
-                                        kotlin.math.round(nouvelleQuantite)
+                                        arrondirQuantiteSelonRegles(adjustedAliments[index], nouvelleQuantite)
                                 adjustedAliments[index] =
                                         adjustedAliments[index].copy(
                                                 quantite = nouvelleQuantiteArrondie
@@ -1385,18 +1605,18 @@ private fun adjustRationForNutrient(
 
                 return RationAdjustmentResult(
                         success = true,
-                        message = "Ajustement pour ${nutrient.label} réussi"
+                        message = translate(LocalizationKeys.AnalNut.ADJUST_NUTRIENT_SUCCESS, nutrient.label)
                 )
         } catch (e: Exception) {
                 return RationAdjustmentResult(
                         success = false,
-                        message = "Erreur lors de l'ajustement: ${e.message}"
+                        message = translate(LocalizationKeys.AnalNut.ADJUST_FAIL) + ": ${e.message}"
                 )
         }
 }
 
 /** Ajuste les aliments pour couvrir le manque d'un nutriment spécifique */
-private fun ajusterAlimentsPourNutriment(
+private suspend fun ajusterAlimentsPourNutriment(
         nutriment: Nutrient,
         manque: Double,
         alimentsAjustables: List<AlimentAdjustmentData>,
@@ -1415,18 +1635,18 @@ private fun ajusterAlimentsPourNutriment(
                                         return@filter false
                                 val aliment = data.alimentRation.aliment ?: return@filter false
                                 if (nutriment == NutrientMain.ENERGIE) {
-                                        // Utiliser la référence pour déterminer la disponibilité
-                                        // énergétique
-                                        val energiePar100gRef: Double =
-                                                aliment.getNutrient(
-                                                        NutrientMain.ENERGIE,
-                                                        referenceUtilisee
-                                                )
-                                                        ?: 0.0
-                                        val densite: Double =
-                                                if (energiePar100gRef > 0.0)
-                                                        energiePar100gRef / 100.0
-                                                else data.alimentRation.densiteEnergetique
+                                        // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                                        // pour sélectionner correctement equationDEcom ou equationDEraw
+                                        val alimentRationTemp = AlimentRation(
+                                                aliment = data.alimentRation.aliment,
+                                                quantite = 100.0,
+                                                weight = 1.0
+                                        )
+                                        val energiePour100g = alimentRationTemp.getEnergie(
+                                                referenceUtilisee,
+                                                equationRepository
+                                        )
+                                        val densite: Double = energiePour100g / 100.0
                                         densite > 0.0
                                 } else {
                                         (aliment.valMap[nutriment]?.value ?: 0.0) > 0.0
@@ -1437,7 +1657,7 @@ private fun ajusterAlimentsPourNutriment(
                         return RationAdjustmentResult(
                                 success = false,
                                 message =
-                                        "Aucun aliment disponible pour le nutriment ${nutriment.label}"
+                                        translate(LocalizationKeys.AnalNut.NO_FOOD_FOR_NUTRIENT, nutriment.label)
                         )
                 }
 
@@ -1451,15 +1671,18 @@ private fun ajusterAlimentsPourNutriment(
                                 }
                         if (index < 0) continue
                         if (nutriment == NutrientMain.ENERGIE) {
-                                val energiePar100gRef: Double =
-                                        alimentData.alimentRation.aliment?.getNutrient(
-                                                NutrientMain.ENERGIE,
-                                                referenceUtilisee
-                                        )
-                                                ?: 0.0
-                                val densite: Double =
-                                        if (energiePar100gRef > 0.0) energiePar100gRef / 100.0
-                                        else adjustedAliments[index].densiteEnergetique
+                                // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                                // pour sélectionner correctement equationDEcom ou equationDEraw
+                                val alimentRationTemp = AlimentRation(
+                                        aliment = alimentData.alimentRation.aliment,
+                                        quantite = 100.0,
+                                        weight = 1.0
+                                )
+                                val energiePour100g = alimentRationTemp.getEnergie(
+                                        referenceUtilisee,
+                                        equationRepository
+                                )
+                                val densite: Double = energiePour100g / 100.0
                                 if (densite > 0.0) {
                                         val quantiteNecessaire = manque / densite
                                         contributions.add(
@@ -1486,7 +1709,7 @@ private fun ajusterAlimentsPourNutriment(
                         return RationAdjustmentResult(
                                 success = false,
                                 message =
-                                        "Aucune contribution possible pour le nutriment ${nutriment.label}"
+                                        translate(LocalizationKeys.AnalNut.NO_CONTRIBUTION_POSSIBLE, nutriment.label)
                         )
                 }
 
@@ -1513,16 +1736,18 @@ private fun ajusterAlimentsPourNutriment(
                                 contributions[indexContribution]
                         val quantiteAAjouter =
                                 if (nutriment == NutrientMain.ENERGIE) {
-                                        val energiePar100gRef: Double =
-                                                adjustedAliments[index].aliment?.getNutrient(
-                                                        NutrientMain.ENERGIE,
-                                                        referenceUtilisee
-                                                )
-                                                        ?: 0.0
-                                        val densite: Double =
-                                                if (energiePar100gRef > 0.0)
-                                                        energiePar100gRef / 100.0
-                                                else adjustedAliments[index].densiteEnergetique
+                                        // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                                        // pour sélectionner correctement equationDEcom ou equationDEraw
+                                        val alimentRationTemp = AlimentRation(
+                                                aliment = adjustedAliments[index].aliment,
+                                                quantite = 100.0,
+                                                weight = 1.0
+                                        )
+                                        val energiePour100g = alimentRationTemp.getEnergie(
+                                                referenceUtilisee,
+                                                equationRepository
+                                        )
+                                        val densite: Double = energiePour100g / 100.0
                                         if (densite <= 0.0) 0.0
                                         else if (indexContribution == contributions.size - 1) {
                                                 manqueRestant / densite
@@ -1568,9 +1793,9 @@ private fun ajusterAlimentsPourNutriment(
                                                 ?: Double.MAX_VALUE
                                 val nouvelleQuantite: Double =
                                         (quantiteActuelle + quantiteAAjouter).coerceIn(minQ, maxQ)
-                                // Arrondir au gramme
+                                // Arrondir selon règles
                                 val nouvelleQuantiteArrondie: Double =
-                                        kotlin.math.round(nouvelleQuantite)
+                                        arrondirQuantiteSelonRegles(adjustedAliments[index], nouvelleQuantite)
                                 adjustedAliments[index] =
                                         adjustedAliments[index].copy(
                                                 quantite = nouvelleQuantiteArrondie
@@ -1579,20 +1804,17 @@ private fun ajusterAlimentsPourNutriment(
                                 // Mettre à jour le manque restant
                                 val apportAjoute: Double =
                                         if (nutriment == NutrientMain.ENERGIE) {
-                                                val energiePar100gRef: Double =
-                                                        adjustedAliments[index].aliment
-                                                                ?.getNutrient(
-                                                                        NutrientMain.ENERGIE,
-                                                                        referenceUtilisee
-                                                                )
-                                                                ?: 0.0
-                                                val densite: Double =
-                                                        if (energiePar100gRef > 0.0)
-                                                                energiePar100gRef / 100.0
-                                                        else
-                                                                adjustedAliments[index]
-                                                                        .densiteEnergetique
-                                                densite * quantiteAAjouter
+                                                // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                                                // pour sélectionner correctement equationDEcom ou equationDEraw
+                                                val alimentRationTemp = AlimentRation(
+                                                        aliment = adjustedAliments[index].aliment,
+                                                        quantite = quantiteAAjouter,
+                                                        weight = 1.0
+                                                )
+                                                alimentRationTemp.getEnergie(
+                                                        referenceUtilisee,
+                                                        equationRepository
+                                                )
                                         } else {
                                                 val aliment = alimentData.alimentRation.aliment
                                                 val quantiteNutriment: Double =
@@ -1611,30 +1833,31 @@ private fun ajusterAlimentsPourNutriment(
                         return RationAdjustmentResult(
                                 success = false,
                                 message =
-                                        "Impossible de couvrir complètement le besoin en ${nutriment.label}. Manque: ${TextUtils.formatDecimal(manqueRestant, 2)}g, Ajouté: ${TextUtils.formatDecimal(totalAjoute, 2)}g"
+                                        translate(LocalizationKeys.AnalNut.IMPOSSIBLE_COVERAGE, nutriment.label, TextUtils.formatDecimal(manqueRestant, 2), TextUtils.formatDecimal(totalAjoute, 2))
                         )
                 }
 
                 return RationAdjustmentResult(
                         success = true,
                         message =
-                                "Ajustement réussi pour ${nutriment.label}: ajouté ${TextUtils.formatDecimal(totalAjoute, 2)}g"
+                                translate(LocalizationKeys.AnalNut.ADJUST_NUTRIENT_ADDED, nutriment.label, TextUtils.formatDecimal(totalAjoute, 2))
                 )
         } catch (e: Exception) {
                 return RationAdjustmentResult(
                         success = false,
                         message =
-                                "Erreur lors de l'ajustement pour ${nutriment.label}: ${e.message}"
+                                translate(LocalizationKeys.AnalNut.ADJUST_FAIL) + ": ${e.message}"
                 )
         }
 }
 
 /** Ajuste la ration pour plusieurs nutriments de manière séquentielle */
-private fun adjustRationForMultipleNutrients(
+private suspend fun adjustRationForMultipleNutrients(
         besoinsNutriments: Map<String, Double>,
         alimentsParNutriment: Map<String, List<AlimentAdjustmentData>>,
         adjustedAliments: MutableList<AlimentRation>,
-        referenceUtilisee: ReferenceEv
+        referenceUtilisee: ReferenceEv,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
 ): RationAdjustmentResult {
         try {
                 // Étape 1: Mettre tous les aliments à 0 (sauf ceux verrouillés)
@@ -1670,10 +1893,17 @@ private fun adjustRationForMultipleNutrients(
                         for (i in adjustedAliments.indices) {
                                 val alimentRation = adjustedAliments[i]
                                 val aliment = alimentRation.aliment ?: continue
-                                val quantiteNutriment: Double =
-                                        (aliment.valMap?.get(nutrient)?.value ?: 0.0).toDouble()
                                 val quantiteAliment: Double = alimentRation.quantite.toDouble()
-                                apportActuel += (quantiteNutriment * quantiteAliment) / 100.0
+                                
+                                // Pour l'énergie, utiliser getEnergie() qui sélectionne correctement equationDEcom ou equationDEraw
+                                val apportNutriment: Double = if (nutrient == NutrientMain.ENERGIE) {
+                                        alimentRation.getEnergie(referenceUtilisee, equationRepository)
+                                } else {
+                                        val quantiteNutriment: Double =
+                                                (aliment.valMap?.get(nutrient)?.value ?: 0.0).toDouble()
+                                        (quantiteNutriment * quantiteAliment) / 100.0
+                                }
+                                apportActuel += apportNutriment
                         }
 
                         // Étape 4: Calculer ce qui manque
@@ -1690,7 +1920,11 @@ private fun adjustRationForMultipleNutrients(
                                                 manque = manque,
                                                 alimentsAjustables = alimentsAjustables,
                                                 adjustedAliments = adjustedAliments,
-                                                alimentsVerrouilles = alimentsVerrouilles
+                                                alimentsVerrouilles = alimentsVerrouilles,
+                                                constraints = emptyMap(),
+                                                referenceUtilisee = referenceUtilisee,
+                                                preferences = null,
+                                                equationRepository = null
                                         )
 
                                 if (!result.success) {
@@ -1700,6 +1934,123 @@ private fun adjustRationForMultipleNutrients(
                         } else {}
 
                         nutrimentsTraites.add(nutrientLabel)
+                }
+
+                // Vérification et ajustement CAP après tous les nutriments
+                val calciumSelectionne: Boolean = alimentsParNutriment.keys.any { it == NutrientMacro.CAL.label }
+                if (calciumSelectionne) {
+                        val capMinRequis: Double = obtenirCapMinDepuisReference(referenceUtilisee)
+                        val alimentsCalcium = alimentsParNutriment[NutrientMacro.CAL.label] ?: emptyList()
+                        
+                        if (alimentsCalcium.isNotEmpty()) {
+                                // Ajustement itératif pour respecter le ratio CAP
+                                var iterations = 0
+                                val maxIterations = 10
+                                
+                        while (iterations < maxIterations) {
+                                // Utiliser la même logique que le système pour calculer les totaux
+                                var totalCalcium: Double = 0.0
+                                var totalPhosphore: Double = 0.0
+                                
+                                // Recalculer les totaux avec les quantités actuelles (même logique que calculerQuantiteTotaleNutriment)
+                                // Utiliser getNutrientWithComplementary pour être cohérent avec le reste du système
+                                for (i in adjustedAliments.indices) {
+                                        val alimentRation = adjustedAliments[i]
+                                        val quantite = alimentRation.quantite.toDouble()
+                                        
+                                        // Calcium - utiliser getNutrientWithComplementary pour être cohérent
+                                        val calPar100g = alimentRation.getNutrientWithComplementary(
+                                                nutrient = NutrientMacro.CAL,
+                                                preferences = null,
+                                                equationRepository = equationRepository,
+                                                referenceEv = referenceUtilisee
+                                        )
+                                        if (calPar100g != null) {
+                                                totalCalcium += (calPar100g * quantite) / 100.0
+                                        }
+                                        
+                                        // Phosphore - utiliser getNutrientWithComplementary pour être cohérent
+                                        val pPar100g = alimentRation.getNutrientWithComplementary(
+                                                nutrient = NutrientMacro.PHOS,
+                                                preferences = null,
+                                                equationRepository = equationRepository,
+                                                referenceEv = referenceUtilisee
+                                        )
+                                        if (pPar100g != null) {
+                                                totalPhosphore += (pPar100g * quantite) / 100.0
+                                        }
+                                }
+                                        
+                                        if (totalPhosphore > 0.0) {
+                                                val ratioActuel: Double = totalCalcium / totalPhosphore
+                                                
+                                                // Vérifier si le ratio est suffisant
+                                                if (ratioActuel >= capMinRequis) {
+                                                        break
+                                                }
+                                                
+                                                // Calculer le facteur d'ajustement nécessaire
+                                                val facteurAjustement: Double = capMinRequis / ratioActuel
+                                                
+                                                // Ajuster les aliments calcium proportionnellement
+                                                var ajustementEffectue = false
+                                                for (alimentData in alimentsCalcium) {
+                                                        val index = adjustedAliments.indexOfFirst { 
+                                                                it.uuid == alimentData.alimentRation.uuid 
+                                                        }
+                                                        if (index >= 0) {
+                                                                val alimentRation = adjustedAliments[index]
+                                                                val quantiteActuelle: Double = alimentRation.quantite.toDouble()
+                                                                // Utiliser getNutrientWithComplementary pour être cohérent
+                                                                val PhosAct: Double = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.PHOS,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                )?.let { (it * quantiteActuelle) / 100.0 } ?: 0.0
+                                                                val CalAct: Double = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.CAL,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                )?.let { (it * quantiteActuelle) / 100.0 } ?: 0.0
+                                                                val calPar100g = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.CAL,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                ) ?: 0.0
+                                                                val pPar100g = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.PHOS,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                ) ?: 0.0
+                                                                val nouvelleQuantite: Double = (capMinRequis * (totalPhosphore - PhosAct) - (totalCalcium - CalAct)) / ((calPar100g - capMinRequis * pPar100g) / 100.0)
+                                                                // Arrondir au centième de gramme pour éviter les erreurs de précision
+                                                                val quantiteArrondie: Double = kotlin.math.round(nouvelleQuantite * 100.0) / 100.0
+                                                                adjustedAliments[index] = adjustedAliments[index].copy(
+                                                                        quantite = quantiteArrondie.coerceAtLeast(0.0)
+                                                                )
+                                                                ajustementEffectue = true
+                                                        }
+                                                }
+                                                
+                                                if (!ajustementEffectue) {
+                                                        break
+                                                }
+                                        } else {
+                                                break
+                                        }
+                                        
+                                        iterations++
+                                }
+                        }
+                }
+
+                for (i in adjustedAliments.indices) {
+                        val quantiteClamped = adjustedAliments[i].quantite.toDouble().coerceAtLeast(0.0)
+                        adjustedAliments[i] = adjustedAliments[i].copy(quantite = quantiteClamped)
                 }
 
                 return RationAdjustmentResult(
@@ -1713,4 +2064,32 @@ private fun adjustRationForMultipleNutrients(
                         message = "Erreur lors de l'ajustement séquentiel: ${e.message}"
                 )
         }
+}
+
+/**
+ * Arrondit la quantité selon les règles métier
+ * @param alimentRation L'aliment concerné
+ * @param quantite La quantité à arrondir
+ * @return La quantité arrondie
+ */
+private fun arrondirQuantiteSelonRegles(alimentRation: AlimentRation, quantite: Double): Double {
+        val aliment = alimentRation.aliment
+        if (aliment != null) {
+                val cont = aliment.cont
+                val quantInt = aliment.quantInt
+                
+                // Règle contenant: si contenant défini et quantInt > 0, arrondir au multiple de quantInt/2
+                if (cont != null && cont != ContEnum.NO && quantInt != null && quantInt > 0.0) {
+                        val step = quantInt / 2.0
+                        return (kotlin.math.round(quantite / step) * step).coerceAtLeast(0.0)
+                }
+        }
+        
+        // Règles générales par défaut
+        val arrondie = when {
+                quantite < 20.0 -> kotlin.math.round(quantite) // Arrondi au gramme
+                quantite < 200.0 -> kotlin.math.round(quantite / 5.0) * 5.0 // Arrondi aux 5g
+                else -> kotlin.math.round(quantite / 25.0) * 25.0 // Arrondi aux 25g
+        }
+        return arrondie.coerceAtLeast(0.0)
 }

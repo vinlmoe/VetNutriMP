@@ -1,41 +1,46 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
-import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.ImportUtils
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * Import de données (animaux, références nutritionnelles).
+ * - Orchestration multiplateforme sans `ViewModel` Android, scope AppDispatchers.Main.
+ * - Délègue l'import animaux à `AnimalListViewModel` et expose messages/flags d'état.
+ * - Peut purger les aliments avant import selon le flag `shouldClearFoodsBeforeImport`.
+ */
 class ImportViewModel(
-        private val animalRepository: AnimalRepository,
+        private val animalListViewModel: AnimalListViewModel,
         val databaseReferenceEvRepository: DatabaseReferenceEvRepository? = null,
         val equationRepository: EquationRepository? = null,
         val biblioRefRepository: BiblioRefRepository? = null
 ) {
     // Scope des coroutines pour les opérations suspend
-    private val coroutineScope = CoroutineScope(AppDispatchers.Main)
+    private val job = SupervisorJob()
+    private val coroutineScope = CoroutineScope(AppDispatchers.Main + job)
 
     // Flag pour indiquer si les aliments doivent être supprimés avant l'importation
     var shouldClearFoodsBeforeImport: Boolean = false
 
-    // Créer une instance d'AnimalListViewModel pour utiliser ses fonctions d'importation
-    private val animalListViewModel = AnimalListViewModel(animalRepository)
+    val isImporting: StateFlow<Boolean> = animalListViewModel.isImportingAnimals
 
-    // Variables simples pour l'état d'importation
-    var isImporting: Boolean = false
-        private set
+    private val _isImportingNutritionalRequirements = MutableStateFlow(false)
+    val isImportingNutritionalRequirements: StateFlow<Boolean> =
+            _isImportingNutritionalRequirements.asStateFlow()
 
-    var isImportingNutritionalRequirements: Boolean = false
-        private set
-
-    var importResultMessage: String? = null
-        private set
-
-    var nutritionalRequirementImportResultMessage: String? = null
-        private set
+    private val _nutritionalRequirementImportResultMessage = MutableStateFlow<String?>(null)
+    val nutritionalRequirementImportResultMessage: StateFlow<String?> =
+            _nutritionalRequirementImportResultMessage.asStateFlow()
 
     /**
      * Importe des références nutritionnelles à partir d'une chaîne JSON avec sauvegarde automatique
@@ -43,8 +48,8 @@ class ImportViewModel(
      * @param jsonContent Le contenu JSON à désérialiser (.vbnr.json format)
      */
     fun importNutritionalRequirementsFromJson(jsonContent: String) {
-        isImportingNutritionalRequirements = true
-        nutritionalRequirementImportResultMessage = "🔄 Importation en cours..."
+        _isImportingNutritionalRequirements.value = true
+        _nutritionalRequirementImportResultMessage.value = "🔄 Importation en cours..."
 
         coroutineScope.launch {
             try {
@@ -137,25 +142,24 @@ class ImportViewModel(
                         )
                     }
 
-                    nutritionalRequirementImportResultMessage = message.toString()
+                    _nutritionalRequirementImportResultMessage.value = message.toString()
                 } else {
-                    nutritionalRequirementImportResultMessage =
+                    _nutritionalRequirementImportResultMessage.value =
                             "❌ Aucune référence nutritionnelle trouvée dans le fichier"
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                nutritionalRequirementImportResultMessage =
+                _nutritionalRequirementImportResultMessage.value =
                         "❌ Erreur lors de l'importation: ${e.message ?: "Erreur inconnue"}\n\nVérifiez que le fichier est au format .vbnr.json valide."
             } finally {
-                isImportingNutritionalRequirements = false
+                _isImportingNutritionalRequirements.value = false
             }
         }
     }
 
     /** Réinitialise les résultats d'importation */
     fun resetImportResult() {
-        importResultMessage = null
-        nutritionalRequirementImportResultMessage = null
+        _nutritionalRequirementImportResultMessage.value = null
         animalListViewModel.resetImportResult()
     }
 
@@ -165,13 +169,17 @@ class ImportViewModel(
      * @param message Le message d'erreur à afficher
      */
     fun setNutritionalRequirementImportError(message: String) {
-        nutritionalRequirementImportResultMessage = "❌ $message"
-        isImportingNutritionalRequirements = false
+        _nutritionalRequirementImportResultMessage.value = "❌ $message"
+        _isImportingNutritionalRequirements.value = false
     }
 
     /** Délègue l'importation des animaux à la fonction de plateforme spécifique */
     fun importAnimalsFromFileUI() {
-        fr.vetbrain.vetnutri_mp.importAnimalsFromFile(animalListViewModel)
+        fr.vetbrain.vetnutri_mp.importAnimalsFromFile(
+                animalListViewModel,
+                clearFoodsBeforeImport = shouldClearFoodsBeforeImport
+        )
+        shouldClearFoodsBeforeImport = false
     }
 
     /**
@@ -187,6 +195,10 @@ class ImportViewModel(
      * @param message Le nouveau message à afficher
      */
     fun updateNutritionalRequirementImportResultMessage(message: String) {
-        nutritionalRequirementImportResultMessage = message
+        _nutritionalRequirementImportResultMessage.value = message
+    }
+
+    fun clear() {
+        coroutineScope.cancel()
     }
 }

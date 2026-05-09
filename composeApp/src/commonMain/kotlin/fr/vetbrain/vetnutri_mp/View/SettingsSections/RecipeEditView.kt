@@ -9,11 +9,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -39,7 +41,6 @@ import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 @Composable
 fun RecipeEditView(
     viewModel: RecipeEditViewModel,
-    foodRepository: FoodRepository,
     modifier: Modifier = Modifier
 ) {
     val isEditMode = viewModel.isEditMode.value
@@ -58,7 +59,7 @@ fun RecipeEditView(
     if (showAddAlimentView) {
         // Afficher la vue d'ajout d'aliment en pleine page
         RecipeAddAlimentView(
-            foodRepository = foodRepository,
+            recipeEditViewModel = viewModel,
             onNavigateBack = {
                 showAddAlimentView = false
             },
@@ -128,7 +129,7 @@ fun RecipeEditView(
                         navigationIcon = {
                             IconButton(onClick = { viewModel.cancelEditing() }) {
                                 Icon(
-                                    Icons.Default.ArrowBack,
+                                    Icons.AutoMirrored.Default.ArrowBack,
                                     contentDescription = "Retour"
                                 )
                             }
@@ -246,7 +247,7 @@ private fun RecipeEditForm(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
             ) {
-                items(selectedIngredients) { ingredient ->
+                items(selectedIngredients, key = { it.uuid }) { ingredient ->
                     RecipeIngredientItem(
                         ingredient = ingredient,
                         onRemove = { viewModel.removeAlimentFromRecipe(ingredient) },
@@ -285,6 +286,20 @@ private fun RecipeIngredientItem(
     onUpdateQuantity: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var quantityText by remember(ingredient.uuid) {
+        mutableStateOf(ingredient.quantite.toString())
+    }
+    var isQuantityFocused by remember { mutableStateOf(false) }
+
+    LaunchedEffect(ingredient.quantite, isQuantityFocused) {
+        if (!isQuantityFocused) {
+            val newText = ingredient.quantite.toString()
+            if (newText != quantityText) {
+                quantityText = newText
+            }
+        }
+    }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = AppSizes.elevationSmall
@@ -323,10 +338,16 @@ private fun RecipeIngredientItem(
                 )
                 
                 BasicAppTextField(
-                    value = ingredient.quantite.toString(),
-                    onValueChange = onUpdateQuantity,
+                    value = quantityText,
+                    onValueChange = { newValue ->
+                        val normalized = newValue.replace(',', '.')
+                        quantityText = normalized
+                        onUpdateQuantity(normalized)
+                    },
                     placeholder = "100",
-                    modifier = Modifier.width(80.dp)
+                    modifier = Modifier.width(80.dp).onFocusChanged { state ->
+                        isQuantityFocused = state.isFocused
+                    }
                 )
                 
                 IconButton(

@@ -11,7 +11,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import kotlinx.serialization.Serializable
 
-/** Classe permettant d'analyser les rations alimentaires et leurs valeurs nutritionnelles */
+/** Analyse nutritionnelle d'une ration (densité, nutriments, ratios, alertes). */
 @Serializable
 data class AnalyseResultat(
         val rationId: String = "",
@@ -29,7 +29,7 @@ data class AnalyseResultat(
         val customNutriments: Map<String, Double> = mapOf()
 )
 
-/** Classe utilitaire pour effectuer des analyses nutritionnelles sur les rations */
+/** Utilitaire pour calculer les valeurs/ratios/alertes sur une ration. */
 class RationAnalyzer {
     /**
      * Analyse une ration et retourne un résultat détaillé

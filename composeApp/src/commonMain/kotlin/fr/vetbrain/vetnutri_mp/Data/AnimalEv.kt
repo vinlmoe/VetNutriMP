@@ -5,6 +5,12 @@ import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.datetime.LocalDate
 
+/**
+ * Modèle animal côté app.
+ * - Identité (uuid, nom, sexe, espèce), propriétaire, naissance.
+ * - Suivi : consultations et historique de poids.
+ * - Méthodes utilitaires pour convertir id/label vers enums.
+ */
 data class AnimalEv(
         var uuid: String = genUUID(),
         var nom: String = "",
@@ -16,6 +22,11 @@ data class AnimalEv(
         var birthdate: LocalDate? = null,
         var race: String = "",
         var summary: String = "",
+        var jsonbinId: String? = null, // ID du bin jsonbin.io pour le partage en ligne
+        var exam: Boolean = false, // Indique si l'animal a été créé en mode examen
+        var examStudentId: String? = null, // Identifiant de l'étudiant (mode examen)
+        var examStudentNumber: String? = null, // Numéro de l'étudiant (mode examen)
+        var examExerciseId: String? = null, // ID de l'exercice (mode examen)
         var consultations: MutableList<ConsultationEv> = mutableListOf(),
         var weightHistory: MutableList<WeightDate> = mutableListOf()
 ) {

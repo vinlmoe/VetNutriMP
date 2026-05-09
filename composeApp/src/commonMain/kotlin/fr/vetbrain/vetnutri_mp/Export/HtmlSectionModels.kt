@@ -80,6 +80,12 @@ sealed class TextBlock {
                 val headers: List<String>,
                 val rows: List<List<String>>
         ) : TextBlock()
+
+        @Serializable
+        data class RawHtml(
+                override val id: String,
+                val html: String
+        ) : TextBlock()
 }
 
 /** Formatage de texte pour les paragraphes */

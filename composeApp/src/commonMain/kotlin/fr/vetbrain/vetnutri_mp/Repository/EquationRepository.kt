@@ -5,12 +5,17 @@ import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.EquationDao
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** Interface définissant les opérations disponibles pour la gestion des équations */
 interface EquationRepository {
@@ -105,20 +110,25 @@ class DatabaseEquationRepository(
 ) : EquationRepository {
 
     private val equationsFlow = MutableStateFlow<List<Equation>>(emptyList())
+    private val scope = CoroutineScope(AppDispatchers.IO + SupervisorJob())
+    private val loadMutex = Mutex()
 
     init {
         // Retiré: insertion automatique d'équations de démonstration.
-        runBlocking { loadEquations() }
+        scope.launch { loadEquations() }
     }
 
     private suspend fun loadEquations() {
-        val equations =
-                equationDao.getAllEquations().mapNotNull { entity ->
-                    val biblioRef =
-                            entity.bibRef?.let { biblioRefDao.getBiblioRefById(it)?.toDomain() }
-                    entity.toDomain(biblioRef)
-                }
-        equationsFlow.value = equations
+        loadMutex.withLock {
+            val allBibs = biblioRefDao.getAllBiblioRefs().associateBy { it.uuid }
+            val equations =
+                    equationDao.getAllEquations().mapNotNull { entity ->
+                        val biblioRef =
+                                entity.bibRef?.let { allBibs[it]?.toDomain() }
+                        entity.toDomain(biblioRef)
+                    }
+            equationsFlow.value = equations
+        }
     }
 
     override suspend fun getAllEquations(): List<Equation> {

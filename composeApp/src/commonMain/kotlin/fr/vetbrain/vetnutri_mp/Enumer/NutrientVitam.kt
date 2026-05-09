@@ -94,16 +94,16 @@ enum class NutrientVitam(
         override fun getMNE() = MainNutrientEnum.VITAM
 
         companion object {
-                private val coefMap = values().associateBy { it.coef }
-                private val labelMap = values().associateBy { it.label }
+                private val coefMap by lazy { values().associateBy { it.coef } }
+                private val labelMap by lazy { values().associateBy { it.label } }
 
-                /** Map des labels alternatifs vers leur nutriment correspondant */
+                /** Map des labels alternatifs vers leur nutriment correspondant - optimisé pour réduire la complexité */
                 private val altLabelMap by lazy {
-                        val map = mutableMapOf<String, NutrientVitam>()
-                        values().forEach { nutrient ->
-                                nutrient.altLabels.forEach { altLabel -> map[altLabel] = nutrient }
+                        buildMap {
+                                values().forEach { nutrient ->
+                                        nutrient.altLabels.forEach { altLabel -> put(altLabel, nutrient) }
+                                }
                         }
-                        map
                 }
 
                 fun isByLabel(label: String): Boolean {

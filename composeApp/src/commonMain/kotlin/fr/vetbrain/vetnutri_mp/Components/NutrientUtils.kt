@@ -1,7 +1,9 @@
 package fr.vetbrain.vetnutri_mp.Components
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
+import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 
 /**
  * Calcule les valeurs nutritionnelles totales d'une ration
@@ -40,7 +42,16 @@ fun calculerValeursNutritionnelles(
                     // valeur réelle:
                     // valeur * quantité(g) / 1000
                     val quantiteEnKg = alimentRation.quantity / 1000.0
-                    val contributionNutriment = valeurNutritive * quantiteEnKg
+                    val contributionNutriment = if (nutriment is AAEnum) {
+                        // Pour les acides aminés, les valeurs sont en % de protéines
+                        // Il faut multiplier par la teneur en protéines de l'aliment
+                        val teneurProteines = aliment.getNutrient(NutrientMain.PROTEINE) ?: 0.0
+                        val valeurAminoAcideEnPourcentAliment = (valeurNutritive * teneurProteines) / 100.0
+                        valeurAminoAcideEnPourcentAliment * quantiteEnKg
+                    } else {
+                        // Pour les autres nutriments, calcul normal
+                        valeurNutritive * quantiteEnKg
+                    }
                     val valeurCourante = resultat[nutriment] ?: 0.0
                     val nouvelleValeur = valeurCourante + contributionNutriment
                     resultat[nutriment] = nouvelleValeur
@@ -100,7 +111,16 @@ fun calculerValeursNutritionnelles(
                         // valeur * quantité(g) / 1000
                         val quantiteEnKg = alimentRation.quantity / 1000.0
                         // Calcul sécurisé de la contribution
-                        val contributionNutriment = valeurNutriment * quantiteEnKg
+                        val contributionNutriment = if (nutriment is AAEnum) {
+                            // Pour les acides aminés, les valeurs sont en % de protéines
+                            // Il faut multiplier par la teneur en protéines de l'aliment
+                            val teneurProteines = aliment.getNutrient(NutrientMain.PROTEINE) ?: 0.0
+                            val valeurAminoAcideEnPourcentAliment = (valeurNutriment * teneurProteines) / 100.0
+                            valeurAminoAcideEnPourcentAliment * quantiteEnKg
+                        } else {
+                            // Pour les autres nutriments, calcul normal
+                            valeurNutriment * quantiteEnKg
+                        }
                         // Mise à jour sécurisée du résultat
                         val valeurCourante = resultat[nutriment] ?: 0.0
                         val nouvelleValeur = valeurCourante + contributionNutriment

@@ -439,7 +439,7 @@ class NutrientRefViewModel(
         val names =
                 when (type) {
                     MainNutrientEnum.BASE -> listOf("Énergie", "Eau", "Matière sèche")
-                    MainNutrientEnum.MACRO -> listOf("Protéines", "Lipides", "Glucides", "Fibres")
+                    MainNutrientEnum.MACRO -> listOf("Protéines", "Lipides", "Glucides", "Cellulose")
                     MainNutrientEnum.MIN ->
                             listOf("Calcium", "Phosphore", "Sodium", "Potassium", "Magnésium")
                     MainNutrientEnum.VITAM ->

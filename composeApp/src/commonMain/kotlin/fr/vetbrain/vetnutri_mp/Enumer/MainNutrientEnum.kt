@@ -70,7 +70,7 @@ enum class MainNutrientEnum(val id: Int, override val label: String, val coef: D
                                     "Tryptophane",
                                     "Valine"
                             )
-                    MACRO -> listOf("Protéines", "Matières grasses", "Glucides", "ENA", "Fibres")
+                    MACRO -> listOf("Protéines", "Matières grasses", "Glucides", "ENA", "Cellulose")
                     VITAM ->
                             listOf(
                                     "Vitamine A",
@@ -157,7 +157,7 @@ enum class MainNutrientEnum(val id: Int, override val label: String, val coef: D
             1 -> "Matières grasses"
             2 -> "Glucides"
             3 -> "ENA"
-            4 -> "Fibres"
+            4 -> "Cellulose"
             else -> "Macronutriment Inconnu"
         }
     }

@@ -1,12 +1,25 @@
 package fr.vetbrain.vetnutri_mp
 
-import android.content.Context
+import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
 import fr.vetbrain.vetnutri_mp.Service.FileService
 
-// Variables globales pour le contexte Android
-var androidContext: Context? = null
-
 actual fun createFileService(): FileService {
-    return androidContext?.let { FileService(it) }
+    return AndroidContext.appContext?.let { FileService(it) }
             ?: throw IllegalStateException("Android context not initialized")
+}
+
+actual fun performDatabaseFactoryReset(): String? {
+    return "Factory reset physique non pris en charge sur cette plateforme"
+}
+
+actual suspend fun exportPdfDocument(
+    documentType: fr.vetbrain.vetnutri_mp.Export.DocumentType,
+    data: fr.vetbrain.vetnutri_mp.Export.ExportData,
+    defaultFileName: String
+): Boolean {
+    return fr.vetbrain.vetnutri_mp.Export.PdfExporter.exportDocument(
+        documentType = documentType,
+        data = data,
+        defaultFileName = defaultFileName
+    )
 }

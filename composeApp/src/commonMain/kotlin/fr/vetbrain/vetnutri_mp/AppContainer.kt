@@ -48,7 +48,13 @@ fun rememberAppContainer(appDatabase: AppDatabase): AppContainer {
             )
         }
     val foodRepository =
-        remember { DatabaseFoodRepository(appDatabase.foodDao(), appDatabase.nutrientValueDao(), appDatabase.customNutrientDao()) }
+        remember { DatabaseFoodRepository(
+            appDatabase.foodDao(),
+            appDatabase.nutrientValueDao(),
+            appDatabase.customNutrientDao(),
+            appDatabase.alimentBiblioRefDao(),
+            appDatabase.biblioRefDao()
+        ) }
     val consultationRepository =
         remember { DatabaseConsultationRepository(appDatabase.consultationDao(), foodRepository) }
     val examGradingRepository = remember { ExamGradingRepository(appDatabase.examGradingDao()) }

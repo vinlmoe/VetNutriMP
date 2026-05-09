@@ -7,12 +7,14 @@ import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
-import kotlin.collections.ArrayList
+// import kotlin.collections.ArrayList - Remplacé par MutableList pour optimiser la mémoire
 import kotlin.collections.HashMap
 
 /**
- * Classe représentant une référence évaluée basée sur la classe ReferenceEv du projet Java original
- * Cette classe gère les références nutritionnelles pour les différents nutriments
+ * Référence nutritionnelle (espèce/stade, valeurs min/max/optimales + équations).
+ * - Stocke valeurs par nutriment et niveau (MIN/MAX/OPTIMIN/OPTIMAX) avec biblio/unités.
+ * - Contient équations énergétiques (BEE/BW/DEcom/DEraw/ME) et équations nutriments.
+ * - Fournit accès cache pour compter/savoir s'il y a des équations et des helpers d'accès.
  */
 data class ReferenceEv(
         val uuid: String = genUUID(),
@@ -30,20 +32,54 @@ data class ReferenceEv(
         private val refMapOMin: MutableMap<Nutrient, Nut4Ref> = HashMap()
         private val refMapOMax: MutableMap<Nutrient, Nut4Ref> = HashMap()
 
-        // Variable contenant les équations
+        // Variable contenant les équations - optimisé avec lazy loading pour réduire la complexité de compilation
         var equationBW: Equation? = null
         var equationBEE: Equation? = null
         var equationDEcom: Equation? = null
         var equationDEraw: Equation? = null
         var equationME: Equation? = null
-        var equationsNut: MutableList<Equation> = ArrayList()
+        var equationsNut: MutableList<Equation> = mutableListOf()
 
-        // Coefficients modificateurs
-        private val modk1: ArrayList<CoefP> = ArrayList()
-        private val modk2: ArrayList<CoefP> = ArrayList()
-        private val modk3: ArrayList<CoefP> = ArrayList()
-        private val modk4: ArrayList<CoefP> = ArrayList()
-        private val modk5: ArrayList<CoefP> = ArrayList()
+        // Cache pour les calculs fréquents
+        private var cachedEquationCount: Int? = null
+        private var cachedHasEquations: Boolean? = null
+
+        /**
+         * Méthode optimisée pour compter les équations avec cache
+         */
+        fun getEquationCount(): Int {
+            cachedEquationCount?.let { return it }
+
+            val count = equationsNut.size +
+                       listOfNotNull(equationBW, equationBEE, equationDEcom, equationDEraw, equationME).size
+
+            cachedEquationCount = count
+            return count
+        }
+
+        /**
+         * Méthode optimisée pour vérifier la présence d'équations avec cache
+         */
+        fun hasEquations(): Boolean {
+            cachedHasEquations?.let { return it }
+
+            val hasEq = equationsNut.isNotEmpty() ||
+                       equationBW != null || equationBEE != null ||
+                       equationDEcom != null || equationDEraw != null || equationME != null
+
+            cachedHasEquations = hasEq
+            return hasEq
+        }
+
+        /**
+         * Méthode pour invalider le cache quand les équations changent
+         */
+        private fun invalidateEquationCache() {
+            cachedEquationCount = null
+            cachedHasEquations = null
+        }
+
+        // Coefficients modificateurs - propriétés publiques avec lazy loading
 
         var nomk1: String = ""
         var nomk2: String = ""
@@ -51,14 +87,6 @@ data class ReferenceEv(
         var nomk4: String = ""
         var nomk5: String = ""
 
-        init {
-                // Initialisation des coefficients par défaut
-                modk1.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 0))
-                modk2.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 1))
-                modk3.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 2))
-                modk4.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 3))
-                modk5.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 4))
-        }
 
         // Constructeur secondaire pour compatibilité
         constructor(uuid: String? = null) : this(uuid = uuid ?: genUUID())
@@ -190,8 +218,8 @@ data class ReferenceEv(
          *
          * @return La liste des équations
          */
-        fun obtenirToutesEquations(): ArrayList<Equation> {
-                val listeEquations = ArrayList<Equation>()
+        fun obtenirToutesEquations(): MutableList<Equation> {
+                val listeEquations = mutableListOf<Equation>()
 
                 equationBEE?.let { if (it.name.isNotBlank()) listeEquations.add(it) }
                 equationBW?.let { if (it.name.isNotBlank()) listeEquations.add(it) }
@@ -209,8 +237,8 @@ data class ReferenceEv(
          *
          * @return La liste des références bibliographiques
          */
-        fun obtenirToutesBiblios(): ArrayList<BiblioRef> {
-                val resultat = ArrayList<BiblioRef>()
+        fun obtenirToutesBiblios(): MutableList<BiblioRef> {
+                val resultat = mutableListOf<BiblioRef>()
 
                 // Collecte des références des différentes maps
                 for (ref in refMapMin.values) {
@@ -262,9 +290,9 @@ data class ReferenceEv(
          * @return Le tableau mis à jour
          */
         private fun ajouterBiblioAuTableau(
-                resultat: ArrayList<BiblioRef>,
+                resultat: MutableList<BiblioRef>,
                 biblio: BiblioRef?
-        ): ArrayList<BiblioRef> {
+        ): MutableList<BiblioRef> {
                 if (biblio != null &&
                                 biblio.toString() != BiblioRef().toString() &&
                                 !resultat.contains(biblio)
@@ -274,22 +302,36 @@ data class ReferenceEv(
                 return resultat
         }
 
-        // Getters publics pour l'accès aux propriétés privées
+        // Propriétés publiques avec valeurs par défaut
+        var modk1: MutableList<CoefP> = mutableListOf(CoefP(description = "Normal", coef = 1.0, groupUUID = 0))
+        var modk2: MutableList<CoefP> = mutableListOf(CoefP(description = "Normal", coef = 1.0, groupUUID = 1))
+        var modk3: MutableList<CoefP> = mutableListOf(CoefP(description = "Normal", coef = 1.0, groupUUID = 2))
+        var modk4: MutableList<CoefP> = mutableListOf(CoefP(description = "Normal", coef = 1.0, groupUUID = 3))
+        var modk5: MutableList<CoefP> = mutableListOf(CoefP(description = "Normal", coef = 1.0, groupUUID = 4))
 
-        /** Récupère la liste des coefficients k1 */
-        fun getModk1(): ArrayList<CoefP> = modk1
+        /** Déduplique les coefficients K (K1..K5) par (description normalisée, valeur) */
+        fun deduplicateCoefficients() {
+                fun MutableList<CoefP>.dedupeInPlace() {
+                        val seen = mutableSetOf<Pair<String, Double>>()
+                        val iterator = this.listIterator()
+                        val retained = mutableListOf<CoefP>()
+                        while (iterator.hasNext()) {
+                                val c = iterator.next()
+                                val key = Pair((c.description ?: "").trim().lowercase(), (c.coef ?: 0.0))
+                                if (seen.add(key)) {
+                                        retained.add(c)
+                                }
+                        }
+                        clear()
+                        addAll(retained)
+                }
 
-        /** Récupère la liste des coefficients k2 */
-        fun getModk2(): ArrayList<CoefP> = modk2
-
-        /** Récupère la liste des coefficients k3 */
-        fun getModk3(): ArrayList<CoefP> = modk3
-
-        /** Récupère la liste des coefficients k4 */
-        fun getModk4(): ArrayList<CoefP> = modk4
-
-        /** Récupère la liste des coefficients k5 */
-        fun getModk5(): ArrayList<CoefP> = modk5
+                modk1.dedupeInPlace()
+                modk2.dedupeInPlace()
+                modk3.dedupeInPlace()
+                modk4.dedupeInPlace()
+                modk5.dedupeInPlace()
+        }
 
         /** Récupère la map des nutriments MIN */
         fun getRefMapMin(): MutableMap<Nutrient, Nut4Ref> = refMapMin
@@ -304,10 +346,10 @@ data class ReferenceEv(
         fun getRefMapOMax(): MutableMap<Nutrient, Nut4Ref> = refMapOMax
 
         /** Alias pour obtenirToutesEquations - pour compatibilité avec le code d'importation */
-        fun getAllEquations(): ArrayList<Equation> = obtenirToutesEquations()
+        fun getAllEquations(): MutableList<Equation> = obtenirToutesEquations()
 
         /** Alias pour obtenirToutesBiblios - pour compatibilité avec le code d'importation */
-        fun getAllBiblioRefs(): ArrayList<BiblioRef> = obtenirToutesBiblios()
+        fun getAllBiblioRefs(): MutableList<BiblioRef> = obtenirToutesBiblios()
 
         override fun toString(): String {
                 return nom

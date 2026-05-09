@@ -2,16 +2,26 @@ package fr.vetbrain.vetnutri_mp.Components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme as M3MaterialTheme
+import androidx.compose.material3.Text as M3Text
+import androidx.compose.material3.TextButton as M3TextButton
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import kotlinx.datetime.*
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * Composant de sélection de date avec un champ de texte et un dialogue de sélection
@@ -23,6 +33,7 @@ import kotlinx.datetime.*
  * @param isError Indique si le champ contient une erreur
  * @param errorMessage Message d'erreur à afficher
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppDatePicker(
         selectedDate: LocalDate?,
@@ -78,212 +89,47 @@ fun AppDatePicker(
         }
 
         if (showDatePicker) {
-                AppDatePickerDialog(
-                        onDismissRequest = { showDatePicker = false },
-                        onDateSelected = { date ->
-                                dateText = date.toString()
-                                onDateSelected(date)
-                                showDatePicker = false
-                        },
-                        selectedDate = selectedDate
-                                        ?: Clock.System.now()
-                                                .toLocalDateTime(TimeZone.currentSystemDefault())
-                                                .date
+                val pickerState = rememberDatePickerState()
+                val vetNutriColorScheme = lightColorScheme(
+                        primary = VetNutriColors.Primary,
+                        onPrimary = VetNutriColors.OnPrimary,
+                        secondary = VetNutriColors.Secondary,
+                        onSecondary = VetNutriColors.OnSecondary,
+                        error = VetNutriColors.Error,
+                        onError = VetNutriColors.OnError,
+                        background = VetNutriColors.Background,
+                        onBackground = VetNutriColors.OnBackground,
+                        surface = VetNutriColors.Background,
+                        onSurface = VetNutriColors.OnBackground,
+                        surfaceVariant = VetNutriColors.Background
                 )
+                M3MaterialTheme(colorScheme = vetNutriColorScheme) {
+                        DatePickerDialog(
+                                onDismissRequest = { showDatePicker = false },
+                                confirmButton = {
+                                        M3TextButton(
+                                                onClick = {
+                                                        val selected: Long? = pickerState.selectedDateMillis
+                                                        if (selected != null) {
+                                                                val date = Instant.fromEpochMilliseconds(selected)
+                                                                        .toLocalDateTime(TimeZone.currentSystemDefault())
+                                                                        .date
+                                                                dateText = date.toString()
+                                                                onDateSelected(date)
+                                                        }
+                                                        showDatePicker = false
+                                                }
+                                        ) { M3Text(General.VALIDATE.translate()) }
+                                },
+                                dismissButton = {
+                                        M3TextButton(onClick = { showDatePicker = false }) {
+                                                M3Text(General.CANCEL.translate())
+                                        }
+                                }
+                        ) {
+                                DatePicker(state = pickerState)
+                        }
+                }
         }
 }
 
-/**
- * Dialogue de sélection de date avec des contrôles pour l'année, le mois et le jour
- *
- * @param onDismissRequest Callback appelé lorsque le dialogue est fermé
- * @param onDateSelected Callback appelé lorsqu'une date est sélectionnée
- * @param selectedDate Date actuellement sélectionnée
- */
-@Composable
-private fun AppDatePickerDialog(
-        onDismissRequest: () -> Unit,
-        onDateSelected: (LocalDate) -> Unit,
-        selectedDate: LocalDate
-) {
-        var year by remember { mutableStateOf(selectedDate.year) }
-        var month by remember { mutableStateOf(selectedDate.monthNumber) }
-        var day by remember { mutableStateOf(selectedDate.dayOfMonth) }
-
-        AlertDialog(
-                onDismissRequest = onDismissRequest,
-                title = { Text(General.DATE_PICKER.translate()) },
-                text = {
-                        Column(
-                                modifier = Modifier.padding(AppSizes.paddingMedium),
-                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                        ) {
-                                // Année
-                                Row(
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.fillMaxWidth()
-                                ) {
-                                        Text(
-                                                General.YEAR.translate(),
-                                                style = MaterialTheme.typography.subtitle1
-                                        )
-                                        Row(
-                                                horizontalArrangement =
-                                                        Arrangement.spacedBy(AppSizes.paddingSmall),
-                                                verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                                IconButton(onClick = { year-- }) {
-                                                        Icon(
-                                                                AppIcons.ArrowDropDown,
-                                                                contentDescription =
-                                                                        General.PREVIOUS_YEAR
-                                                                                .translate(),
-                                                                modifier = Modifier.rotate(90f)
-                                                        )
-                                                }
-                                                Text(
-                                                        year.toString(),
-                                                        style = MaterialTheme.typography.h6
-                                                )
-                                                IconButton(onClick = { year++ }) {
-                                                        Icon(
-                                                                AppIcons.ArrowDropDown,
-                                                                contentDescription =
-                                                                        General.NEXT_YEAR
-                                                                                .translate(),
-                                                                modifier = Modifier.rotate(270f)
-                                                        )
-                                                }
-                                        }
-                                }
-
-                                // Mois
-                                Row(
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.fillMaxWidth()
-                                ) {
-                                        Text(
-                                                General.MONTH.translate(),
-                                                style = MaterialTheme.typography.subtitle1
-                                        )
-                                        Row(
-                                                horizontalArrangement =
-                                                        Arrangement.spacedBy(AppSizes.paddingSmall),
-                                                verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                                IconButton(onClick = { if (month > 1) month-- }) {
-                                                        Icon(
-                                                                AppIcons.ArrowDropDown,
-                                                                contentDescription =
-                                                                        General.PREVIOUS_MONTH
-                                                                                .translate(),
-                                                                modifier = Modifier.rotate(90f)
-                                                        )
-                                                }
-                                                Text(
-                                                        month.toString().padStart(2, '0'),
-                                                        style = MaterialTheme.typography.h6
-                                                )
-                                                IconButton(onClick = { if (month < 12) month++ }) {
-                                                        Icon(
-                                                                AppIcons.ArrowDropDown,
-                                                                contentDescription =
-                                                                        General.NEXT_MONTH
-                                                                                .translate(),
-                                                                modifier = Modifier.rotate(270f)
-                                                        )
-                                                }
-                                        }
-                                }
-
-                                // Jour
-                                Row(
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.fillMaxWidth()
-                                ) {
-                                        Text(
-                                                General.DAY.translate(),
-                                                style = MaterialTheme.typography.subtitle1
-                                        )
-                                        Row(
-                                                horizontalArrangement =
-                                                        Arrangement.spacedBy(AppSizes.paddingSmall),
-                                                verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                                IconButton(onClick = { if (day > 1) day-- }) {
-                                                        Icon(
-                                                                AppIcons.ArrowDropDown,
-                                                                contentDescription =
-                                                                        General.PREVIOUS_DAY
-                                                                                .translate(),
-                                                                modifier = Modifier.rotate(90f)
-                                                        )
-                                                }
-                                                Text(
-                                                        day.toString().padStart(2, '0'),
-                                                        style = MaterialTheme.typography.h6
-                                                )
-                                                IconButton(
-                                                        onClick = {
-                                                                val lastDayOfMonth =
-                                                                        LocalDate(year, month, 1)
-                                                                                .daysUntil(
-                                                                                        LocalDate(
-                                                                                                year,
-                                                                                                if (month <
-                                                                                                                12
-                                                                                                )
-                                                                                                        month +
-                                                                                                                1
-                                                                                                else
-                                                                                                        1,
-                                                                                                1
-                                                                                        )
-                                                                                )
-                                                                if (day < lastDayOfMonth) day++
-                                                        }
-                                                ) {
-                                                        Icon(
-                                                                AppIcons.ArrowDropDown,
-                                                                contentDescription =
-                                                                        General.NEXT_DAY
-                                                                                .translate(),
-                                                                modifier = Modifier.rotate(270f)
-                                                        )
-                                                }
-                                        }
-                                }
-                        }
-                },
-                confirmButton = {
-                        Button(
-                                onClick = {
-                                        try {
-                                                val date = LocalDate(year, month, day)
-                                                onDateSelected(date)
-                                        } catch (e: Exception) {
-                                                // Date invalide, ne rien faire
-                                        }
-                                },
-                                colors =
-                                        ButtonDefaults.buttonColors(
-                                                backgroundColor = VetNutriColors.Primary,
-                                                contentColor = VetNutriColors.OnPrimary
-                                        )
-                        ) { Text(General.VALIDATE.translate()) }
-                },
-                dismissButton = {
-                        Button(
-                                onClick = onDismissRequest,
-                                colors =
-                                        ButtonDefaults.buttonColors(
-                                                backgroundColor = VetNutriColors.Secondary,
-                                                contentColor = VetNutriColors.OnSecondary
-                                        )
-                        ) { Text(General.CANCEL.translate()) }
-                }
-        )
-}

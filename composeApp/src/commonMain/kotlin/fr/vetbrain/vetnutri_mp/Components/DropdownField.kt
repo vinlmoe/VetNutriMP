@@ -3,7 +3,10 @@ package fr.vetbrain.vetnutri_mp.Components
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.material.LocalTextStyle
@@ -11,13 +14,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
+import androidx.compose.ui.window.Dialog
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Composant générique de liste déroulante basé sur BasicTextField pour un contrôle total
@@ -187,7 +193,11 @@ fun <T> DropdownField(
 
                         DropdownMenu(
                                 expanded = expanded && enabled,
-                                onDismissRequest = { expanded = false },
+                                onDismissRequest = {
+                                        if (!isIosPlatform) {
+                                                expanded = false
+                                        }
+                                },
                                 modifier = Modifier.fillMaxWidth(0.9f)
                         ) {
                                 options.forEach { option ->
@@ -247,12 +257,23 @@ fun <T> MultiSelectDropdownField(
         borderWidth: Dp = 0.5.dp
 ) {
         var expanded by remember { mutableStateOf(false) }
+        // État local pour les valeurs temporaires pendant la sélection
+        var tempSelectedValues by remember(expanded, selectedValues) {
+                mutableStateOf(selectedValues)
+        }
+        
+        // Réinitialiser les valeurs temporaires quand le menu s'ouvre
+        LaunchedEffect(expanded) {
+                if (expanded) {
+                        tempSelectedValues = selectedValues
+                }
+        }
+        
         val displayValue =
                 if (selectedValues.isEmpty()) "Sélectionner"
                 else "${selectedValues.size} sélectionnée(s)"
 
         Column(modifier = modifier) {
-                Box {
                         BasicTextField(
                                 value = displayValue,
                                 onValueChange = {},
@@ -394,54 +415,125 @@ fun <T> MultiSelectDropdownField(
                                         }
                                 }
                         )
-                        DropdownMenu(
-                                expanded = expanded && enabled,
-                                onDismissRequest = { expanded = false },
-                                modifier = Modifier.fillMaxWidth(0.9f)
-                        ) {
-                                // Option "Tout désélectionner"
-                                DropdownMenuItem(
-                                        onClick = {
-                                                onValuesChange(emptySet())
+                // Dialog personnalisé pour la sélection multiple
+                if (expanded && enabled) {
+                        Dialog(onDismissRequest = { 
+                                // Réinitialiser les valeurs temporaires si on ferme sans valider
+                                tempSelectedValues = selectedValues
                                                 expanded = false
-                                        }
+                        }) {
+                                Surface(
+                                        shape = MaterialTheme.shapes.medium,
+                                        color = MaterialTheme.colors.surface,
+                                        elevation = 8.dp,
+                                        modifier = Modifier
+                                                .fillMaxWidth(0.9f)
+                                                .heightIn(max = 500.dp)
                                 ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Column(
+                                                modifier = Modifier.fillMaxSize()
+                                        ) {
+                                                // Liste des options avec scroll
+                                                Column(
+                                                        modifier = Modifier
+                                                                .weight(1f)
+                                                                .fillMaxWidth()
+                                                                .verticalScroll(rememberScrollState())
+                                                ) {
+                                                        // Option "Aucune sélection"
+                                                        Row(
+                                                                modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .clickable {
+                                                                                tempSelectedValues = emptySet()
+                                                                        }
+                                                                        .padding(16.dp),
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                        ) {
                                                 Icon(
-                                                        if (selectedValues.isEmpty())
+                                                                        if (tempSelectedValues.isEmpty())
                                                                 Icons.Default.Check
                                                         else Icons.Default.Clear,
                                                         contentDescription = null,
-                                                        modifier = Modifier.size(16.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text("Aucune sélection")
-                                        }
-                                }
+                                                                        modifier = Modifier.size(20.dp),
+                                                                        tint = if (tempSelectedValues.isEmpty())
+                                                                                VetNutriColors.Primary
+                                                                        else MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                                                )
+                                                                Spacer(modifier = Modifier.width(12.dp))
+                                                                Text(
+                                                                        "Aucune sélection",
+                                                                        style = MaterialTheme.typography.body1
+                                                                )
+                                                        }
+                                                        Divider()
                                 // Options individuelles
                                 options.forEach { option ->
-                                        DropdownMenuItem(
-                                                onClick = {
-                                                        onValuesChange(
-                                                                if (option in selectedValues)
-                                                                        selectedValues - option
-                                                                else selectedValues + option
-                                                        )
+                                                                Row(
+                                                                        modifier = Modifier
+                                                                                .fillMaxWidth()
+                                                                                .clickable {
+                                                                                        tempSelectedValues = if (option in tempSelectedValues)
+                                                                                                tempSelectedValues - option
+                                                                                        else tempSelectedValues + option
+                                                                                }
+                                                                                .padding(16.dp),
+                                                                        verticalAlignment = Alignment.CenterVertically
+                                                                ) {
+                                                                        Icon(
+                                                                                if (option in tempSelectedValues)
+                                                                                        Icons.Default.Check
+                                                                                else Icons.Default.Clear,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(20.dp),
+                                                                                tint = if (option in tempSelectedValues)
+                                                                                        VetNutriColors.Primary
+                                                                                else MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                                                        )
+                                                                        Spacer(modifier = Modifier.width(12.dp))
+                                                                        Text(
+                                                                                valueToString(option),
+                                                                                style = MaterialTheme.typography.body1
+                                                                        )
+                                                                }
+                                                                Divider()
+                                                        }
                                                 }
-                                        ) {
-                                                Row(
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
+                                                // Bouton de validation en bas
+                                                Surface(
+                                                        elevation = 4.dp,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Row(
+                                                                modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .padding(16.dp),
+                                                                horizontalArrangement = Arrangement.End
+                                                        ) {
+                                                                OutlinedButton(
+                                                                        onClick = {
+                                                                                tempSelectedValues = selectedValues
+                                                                                expanded = false
+                                                                        },
+                                                                        modifier = Modifier.padding(end = 8.dp)
+                                                                ) {
+                                                                        Text("Annuler")
+                                                                }
+                                                                FloatingActionButton(
+                                                                        onClick = {
+                                                                                onValuesChange(tempSelectedValues)
+                                                                                expanded = false
+                                                                        },
+                                                                        backgroundColor = VetNutriColors.Primary,
+                                                                        modifier = Modifier.size(48.dp)
                                                 ) {
                                                         Icon(
-                                                                if (option in selectedValues)
-                                                                        Icons.Default.Check
-                                                                else Icons.Default.Clear,
-                                                                contentDescription = null,
-                                                                modifier = Modifier.size(16.dp)
-                                                        )
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Text(valueToString(option))
+                                                                                Icons.Default.Check,
+                                                                                contentDescription = "Valider",
+                                                                                tint = MaterialTheme.colors.onPrimary
+                                                                        )
+                                                                }
+                                                        }
                                                 }
                                         }
                                 }

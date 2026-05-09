@@ -21,21 +21,39 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import fr.vetbrain.vetnutri_mp.Components.Section
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsHeader
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import fr.vetbrain.vetnutri_mp.Components.DropdownField
+import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.Equation
+import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.Data.Recette
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
+import fr.vetbrain.vetnutri_mp.Export.SectionCategory
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsTabs
-import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
-import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.AdministrationSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
+import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
+import fr.vetbrain.vetnutri_mp.Services.ExcelFoodService
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Settings
+import fr.vetbrain.vetnutri_mp.Localization.translate
+
+private data class FilterOption<T>(val label: String, val value: T?)
 
 /**
  * Dialogue simple pour les paramètres d'affichage
@@ -44,22 +62,22 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun SettingsDialog(
-    viewModel: SettingsViewModel, 
-    onDismiss: () -> Unit,
-    onBackupClick: () -> Unit = {}
+        viewModel: SettingsViewModel,
+        onDismiss: () -> Unit,
+        onBackupClick: () -> Unit = {}
 ) {
         val uiScale by viewModel.uiScale.collectAsState()
 
         AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("Paramètres d'affichage", style = MaterialTheme.typography.h6) },
+                title = { Text(translate(Settings.DISPLAY_SETTINGS), style = MaterialTheme.typography.h6) },
                 text = {
                         Column(
                                 modifier = Modifier.padding(AppSizes.paddingMedium),
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                         ) {
                                 Text(
-                                        "Taille de l'interface",
+                                        translate(Settings.UI_SCALE),
                                         style = MaterialTheme.typography.subtitle1
                                 )
 
@@ -95,12 +113,17 @@ fun SettingsDialog(
                                                 backgroundColor = VetNutriColors.Primary,
                                                 contentColor = Color.White
                                         )
-                        ) { Text("Fermer") }
+                        ) { Text(translate(Settings.CLOSE)) }
                 },
                 backgroundColor = MaterialTheme.colors.surface
         )
 }
 
+/**
+ * Écran des paramètres.
+ * - Regroupe les onglets Interface, Préférences et Import/Export.
+ * - S'appuie sur `SettingsViewModel` pour l'état UI et `ImportViewModel` pour les imports.
+ */
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SettingsView(
@@ -110,9 +133,11 @@ fun SettingsView(
         onBack: () -> Unit,
         onAnimalListRefresh: () -> Unit,
         onFoodListRefresh: () -> Unit,
+        onShowCrossAnalysis: () -> Unit,
         modifier: Modifier = Modifier,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {},
-        onBackupClick: () -> Unit = {}
+        onBackupClick: () -> Unit = {},
+        isExamMode: Boolean = false
 ) {
 
         // État pour le dialogue d'alerte d'importation des références nutritionnelles
@@ -124,14 +149,13 @@ fun SettingsView(
 
         // État pour l'onglet actuel
         var selectedTab by remember { mutableStateOf(0) }
-        
+
         // État pour le nombre de conseils
         var conseilsCount by remember { mutableStateOf(0) }
 
         // Observer le message d'importation des références nutritionnelles
-        val nutritionalRequirementMessage by remember {
-                derivedStateOf { importViewModel.nutritionalRequirementImportResultMessage }
-        }
+        val nutritionalRequirementMessage by
+                importViewModel.nutritionalRequirementImportResultMessage.collectAsState()
 
         // Afficher le dialogue d'alerte quand l'importation est terminée
         LaunchedEffect(nutritionalRequirementMessage) {
@@ -152,7 +176,8 @@ fun SettingsView(
         // Charger le nombre de conseils au démarrage
         LaunchedEffect(Unit) {
                 try {
-                        val count = viewModel.conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+                        val count =
+                                viewModel.conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
                         conseilsCount = count
                 } catch (e: Exception) {
                         // En cas d'erreur, garder 0
@@ -162,19 +187,49 @@ fun SettingsView(
 
         Column(modifier = modifier.fillMaxSize()) {
                 // En-tête avec bouton retour
-              
 
                 // Navigation par onglets
-                SettingsTabs(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+                SettingsTabs(
+                        selectedTab = selectedTab,
+                        onTabSelected = { selectedTab = it },
+                        isExamMode = isExamMode
+                )
 
                 // Contenu de l'onglet sélectionné
                 Box(modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium)) {
                         when (selectedTab) {
                                 0 -> { // Interface
-                                        InterfaceSettings(
-                                                viewModel = viewModel,
-                                                modifier = Modifier.fillMaxWidth()
-                                        )
+                                        Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingSmall)
+                                        ) {
+                                                Button(
+                                                        onClick = onShowCrossAnalysis,
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary,
+                                                                        contentColor =
+                                                                                VetNutriColors
+                                                                                        .OnPrimary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                translate(
+                                                                        LocalizationKeys
+                                                                                .AnimalList
+                                                                                .CROSS_ANALYSIS
+                                                                )
+                                                        )
+                                                }
+                                                InterfaceSettings(
+                                                        viewModel = viewModel,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                )
+                                        }
                                 }
                                 1 -> { // Préférences
                                         PreferencesSection(
@@ -183,688 +238,2381 @@ fun SettingsView(
                                         )
                                 }
                                 2 -> { // Importation
-                                                // Affichage du nombre de conseils
-                                                Card(
-                                                        modifier = Modifier.fillMaxWidth()
+                                        // Affichage du nombre de conseils
+                                        Card(
+                                                modifier =
+                                                        Modifier.fillMaxWidth()
                                                                 .padding(bottom = 8.dp),
-                                                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f)
+                                                backgroundColor =
+                                                        VetNutriColors.Primary.copy(alpha = 0.1f)
+                                        ) {
+                                                Row(
+                                                        modifier = Modifier.padding(12.dp),
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
                                                 ) {
-                                                        Row(
-                                                                modifier = Modifier.padding(12.dp),
-                                                                verticalAlignment = Alignment.CenterVertically
-                                                        ) {
-                                                                Icon(
-                                                                        imageVector = Icons.Default.Info,
-                                                                        contentDescription = "Conseils",
-                                                                        tint = VetNutriColors.Primary
+                                                        Icon(
+                                                                imageVector = Icons.Default.Info,
+                                                                contentDescription = "Conseils",
+                                                                tint = VetNutriColors.Primary
+                                                        )
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
+                                                                text =
+                                                                        "${translate(Settings.CONSEILS_COUNT)}$conseilsCount",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body2,
+                                                                color = VetNutriColors.Primary,
+                                                                fontWeight = FontWeight.Medium
+                                                        )
+                                                }
+                                        }
+                                        Column(
+                                                modifier =
+                                                        Modifier.fillMaxWidth()
+                                                                .verticalScroll(
+                                                                        rememberScrollState()
+                                                                ),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                                // Sélection export avancée
+                                                var selectedAnimalIds by remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedFoodIds by remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedEquationIds by remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedReferenceIds by remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedRecipeIds by remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedConseilIds by remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+
+                                                var showAnimalSelectionDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showFoodSelectionDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showEquationSelectionDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showReferenceSelectionDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showRecipeSelectionDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showConseilSelectionDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+
+                                                var availableAnimals by remember {
+                                                        mutableStateOf<List<AnimalEv>>(emptyList())
+                                                }
+                                                var availableFoods by remember {
+                                                        mutableStateOf<List<AlimentEv>>(emptyList())
+                                                }
+                                                var availableEquations by remember {
+                                                        mutableStateOf<List<Equation>>(emptyList())
+                                                }
+                                                var availableReferences by remember {
+                                                        mutableStateOf<List<ReferenceEv>>(emptyList())
+                                                }
+                                                var availableRecipes by remember {
+                                                        mutableStateOf<List<Recette>>(emptyList())
+                                                }
+                                                var availableConseils by remember {
+                                                        mutableStateOf<List<HtmlSection>>(emptyList())
+                                                }
+
+                                                var isLoadingAnimals by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingFoods by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingEquations by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingReferences by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingRecipes by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingConseils by remember {
+                                                        mutableStateOf(false)
+                                                }
+
+                                                var selectionLoadError by remember {
+                                                        mutableStateOf<String?>(null)
+                                                }
+
+                                                var foodSelectionFilters by remember {
+                                                        mutableStateOf(FoodSearchFilters())
+                                                }
+                                                var animalFilterEspece by remember {
+                                                        mutableStateOf(
+                                                                FilterOption<Espece>(
+                                                                        label = "Toutes",
+                                                                        value = null
                                                                 )
-                                                                Spacer(modifier = Modifier.width(8.dp))
+                                                        )
+                                                }
+                                                var equationFilterEspece by remember {
+                                                        mutableStateOf(
+                                                                FilterOption<Espece>(
+                                                                        label = "Toutes",
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
+                                                var equationFilterKind by remember {
+                                                        mutableStateOf(
+                                                                FilterOption<EquationKind>(
+                                                                        label = "Tous",
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
+                                                var referenceFilterEspece by remember {
+                                                        mutableStateOf(
+                                                                FilterOption<Espece>(
+                                                                        label = "Toutes",
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
+                                                var conseilFilterCategory by remember {
+                                                        mutableStateOf(
+                                                                FilterOption<SectionCategory>(
+                                                                        label = "Toutes",
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
+
+                                                var showAdvancedSelection by remember {
+                                                        mutableStateOf(false)
+                                                }
+
+                                                Card(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        backgroundColor = MaterialTheme.colors.surface
+                                                ) {
+                                                        Column(modifier = Modifier.padding(12.dp)) {
                                                                 Text(
-                                                                        text = "Conseils dans la base : $conseilsCount",
-                                                                        style = MaterialTheme.typography.body2,
-                                                                        color = VetNutriColors.Primary,
+                                                                        "Export API",
+                                                                        style = MaterialTheme.typography.subtitle1,
                                                                         fontWeight = FontWeight.Medium
                                                                 )
+                                                                Spacer(modifier = Modifier.height(6.dp))
+                                                                Text(
+                                                                        "Sélection avancée: animaux ${selectedAnimalIds.size}, aliments ${selectedFoodIds.size}, recettes ${selectedRecipeIds.size}, équations ${selectedEquationIds.size}, références ${selectedReferenceIds.size}, conseils ${selectedConseilIds.size}",
+                                                                        style = MaterialTheme.typography.body2,
+                                                                        color = Color.Gray
+                                                                )
+                                                                Spacer(modifier = Modifier.height(8.dp))
+                                                                OutlinedButton(
+                                                                        onClick = {
+                                                                                showAdvancedSelection =
+                                                                                        !showAdvancedSelection
+                                                                        }
+                                                                ) {
+                                                                        Text(
+                                                                                if (showAdvancedSelection)
+                                                                                        "Masquer la sélection avancée"
+                                                                                else "Afficher la sélection avancée"
+                                                                        )
+                                                                }
                                                         }
                                                 }
-                                                Column(
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .verticalScroll(
-                                                                                rememberScrollState()
-                                                                        ),
-                                                        verticalArrangement =
-                                                                Arrangement.spacedBy(8.dp)
-                                                ) {
-                                                        // Sélection export avancée
-                                                        var includeAnimals by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeFoods by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeEquations by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeRations by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeRecipes by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeConseils by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var selectedAnimalIds by remember {
-                                                                mutableStateOf(setOf<String>())
-                                                        }
-                                                        var selectedFoodIds by remember {
-                                                                mutableStateOf(setOf<String>())
-                                                        }
 
-                                                        // Bouton: choisir animaux à exporter (ouvre
-                                                        // un simple sélecteur basique)
-                                                        OutlinedButton(
-                                                                onClick = {
+                                                if (showAdvancedSelection) {
+                                                // Boutons: sélectionner les éléments à exporter
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showAnimalSelectionDialog = true
+                                                                if (availableAnimals.isEmpty() &&
+                                                                                !isLoadingAnimals
+                                                                ) {
                                                                         coroutineScope.launch {
+                                                                                isLoadingAnimals = true
+                                                                                selectionLoadError = null
                                                                                 try {
-                                                                                        val animals =
+                                                                                        availableAnimals =
                                                                                                 viewModel
                                                                                                         .animalRepository
                                                                                                         .getAllAnimals()
-                                                                                        // Simple
-                                                                                        // sélection: toggle tout si vide
-                                                                                        selectedAnimalIds =
-                                                                                                if (selectedAnimalIds
-                                                                                                                .isEmpty()
-                                                                                                )
-                                                                                                        animals
-                                                                                                                .map {
-                                                                                                                        it.uuid
-                                                                                                                }
-                                                                                                                .toSet()
-                                                                                                else
-                                                                                                        emptySet()
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {}
+                                                                                } catch (e: Exception) {
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement animaux: ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingAnimals = false
+                                                                                }
                                                                         }
                                                                 }
-                                                        ) {
-                                                                Text(
-                                                                        "Sélectionner animaux (toggle tout)"
-                                                                )
                                                         }
+                                                ) {
+                                                        Text(
+                                                                "${translate(Settings.SELECT_ANIMALS)} (${selectedAnimalIds.size})"
+                                                        )
+                                                }
 
-                                                        // Bouton: choisir aliments à exporter
-                                                        // (toggle tout)
-                                                        OutlinedButton(
-                                                                onClick = {
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showFoodSelectionDialog = true
+                                                                if (availableFoods.isEmpty() &&
+                                                                                !isLoadingFoods
+                                                                ) {
                                                                         coroutineScope.launch {
+                                                                                isLoadingFoods = true
+                                                                                selectionLoadError = null
                                                                                 try {
-                                                                                        val foods =
+                                                                                        availableFoods =
                                                                                                 viewModel
                                                                                                         .foodRepository
                                                                                                         .getAllFoods()
-                                                                                        selectedFoodIds =
-                                                                                                if (selectedFoodIds
-                                                                                                                .isEmpty()
-                                                                                                )
-                                                                                                        foods
-                                                                                                                .map {
-                                                                                                                        it.uuid
-                                                                                                                }
-                                                                                                                .toSet()
-                                                                                                else
-                                                                                                        emptySet()
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {}
+                                                                                } catch (e: Exception) {
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement aliments: ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingFoods = false
+                                                                                }
                                                                         }
                                                                 }
-                                                        ) {
-                                                                Text(
-                                                                        "Sélectionner aliments (toggle tout)"
-                                                                )
                                                         }
+                                                ) {
+                                                        Text(
+                                                                "${translate(Settings.SELECT_FOODS)} (${selectedFoodIds.size})"
+                                                        )
+                                                }
 
-                                                        // Cases à cocher d’inclusion
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeAnimals,
-                                                                        onCheckedChange = {
-                                                                                includeAnimals = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure animaux")
-                                                        }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeFoods,
-                                                                        onCheckedChange = {
-                                                                                includeFoods = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure aliments")
-                                                        }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeEquations,
-                                                                        onCheckedChange = {
-                                                                                includeEquations =
-                                                                                        it
-                                                                        }
-                                                                )
-                                                                Text("Inclure équations")
-                                                        }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeRations,
-                                                                        onCheckedChange = {
-                                                                                includeRations = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure rations (sommaire)")
-                                                        }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeRecipes,
-                                                                        onCheckedChange = {
-                                                                                includeRecipes = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure recettes")
-                                                        }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeConseils,
-                                                                        onCheckedChange = {
-                                                                                includeConseils = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure conseils")
-                                                        }
-                                                        // Affichage du message de résultat
-                                                        // d'importation des références
-                                                        // nutritionnelles
-                                                        nutritionalRequirementMessage?.let { message
-                                                                ->
-                                                                Card(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth()
-                                                                                        .padding(
-                                                                                                bottom =
-                                                                                                        8.dp
-                                                                                        ),
-                                                                        backgroundColor =
-                                                                                if (message.startsWith(
-                                                                                                "✅"
-                                                                                        )
-                                                                                )
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                                                .copy(
-                                                                                                        alpha =
-                                                                                                                0.1f
-                                                                                                )
-                                                                                else if (message.startsWith(
-                                                                                                "❌"
-                                                                                        )
-                                                                                )
-                                                                                        VetNutriColors
-                                                                                                .Error
-                                                                                                .copy(
-                                                                                                        alpha =
-                                                                                                                0.1f
-                                                                                                )
-                                                                                else
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                                                .copy(
-                                                                                                        alpha =
-                                                                                                                0.1f
-                                                                                                )
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showRecipeSelectionDialog = true
+                                                                if (availableRecipes.isEmpty() &&
+                                                                                !isLoadingRecipes
                                                                 ) {
-                                                                        Row(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxWidth()
-                                                                                                .padding(
-                                                                                                        12.dp
-                                                                                                ),
-                                                                                horizontalArrangement =
-                                                                                        Arrangement
-                                                                                                .SpaceBetween,
-                                                                                verticalAlignment =
-                                                                                        Alignment
-                                                                                                .CenterVertically
-                                                                        ) {
-                                                                                Text(
-                                                                                        message,
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .body2,
-                                                                                        color =
-                                                                                                if (message.startsWith(
-                                                                                                                "✅"
-                                                                                                        )
-                                                                                                )
-                                                                                                        VetNutriColors
-                                                                                                                .Primary
-                                                                                                else if (message.startsWith(
-                                                                                                                "❌"
-                                                                                                        )
-                                                                                                )
-                                                                                                        VetNutriColors
-                                                                                                                .Error
-                                                                                                else
-                                                                                                        Color.DarkGray,
-                                                                                        modifier =
-                                                                                                Modifier.weight(
-                                                                                                        1f
-                                                                                                )
-                                                                                )
-                                                                                IconButton(
-                                                                                        onClick = {
-                                                                                                importViewModel
-                                                                                                        .resetImportResult()
-                                                                                        }
-                                                                                ) {
-                                                                                        Icon(
-                                                                                                Icons.Default
-                                                                                                        .Close,
-                                                                                                contentDescription =
-                                                                                                        "Fermer",
-                                                                                                tint =
-                                                                                                        Color.Gray
-                                                                                        )
+                                                                        coroutineScope.launch {
+                                                                                isLoadingRecipes = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableRecipes =
+                                                                                                viewModel
+                                                                                                        .recipeRepository
+                                                                                                        ?.getAllRecipesAsRecette()
+                                                                                                        ?: emptyList()
+                                                                                } catch (e: Exception) {
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement recettes: ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingRecipes = false
                                                                                 }
                                                                         }
                                                                 }
                                                         }
+                                                ) { Text("Selectionner recettes (${selectedRecipeIds.size})") }
 
-                                                        Button(
-                                                                onClick = onImportAnimals,
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Importer des animaux",
-                                                                        color = Color.White
-                                                                )
-                                                        }
-
-                                                        // Export (nouveau format API)
-                                                        Button(
-                                                                onClick = {
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showEquationSelectionDialog = true
+                                                                if (availableEquations.isEmpty() &&
+                                                                                !isLoadingEquations
+                                                                ) {
                                                                         coroutineScope.launch {
+                                                                                isLoadingEquations = true
+                                                                                selectionLoadError = null
                                                                                 try {
-                                                                                        val exportRepo =
-                                                                                                ExportImportRepository(
-                                                                                                        animalRepository =
-                                                                                                                viewModel
-                                                                                                                        .animalRepository,
-                                                                                                        foodRepository =
-                                                                                                                viewModel
-                                                                                                                        .foodRepository,
-                                                                                                        equationRepository =
-                                                                                                                viewModel
-                                                                                                                        .equationRepository,
-                                                                                                        referenceRepository =
-                                                                                                                viewModel
-                                                                                                                        .referenceEvRepository,
-                                                                                                        biblioRepository =
-                                                                                                                viewModel
-                                                                                                                        .biblioRefRepository,
-                                                                                                        consultationRepository =
-                                                                                                                viewModel
-                                                                                                                        .consultationRepository,
-                                                                                                        recipeRepository =
-                                                                                                                viewModel
-                                                                                                                        .recipeRepository,
-                                                                                                        conseilRepository =
-                                                                                                                viewModel
-                                                                                                                        .conseilRepository
-                                                                                                )
-                                                                                        val json =
-                                                                                                exportRepo
-                                                                                                        .exportWithSelection(
-                                                                                                                ExportImportRepository
-                                                                                                                        .ExportSelectionOptions(
-                                                                                                                                includeAnimals =
-                                                                                                                                        includeAnimals,
-                                                                                                                                includeFoods =
-                                                                                                                                        includeFoods,
-                                                                                                                                includeRations =
-                                                                                                                                        includeRations,
-                                                                                                                                includeRecipes =
-                                                                                                                                        includeRecipes,
-                                                                                                                                includeEquations =
-                                                                                                                                        includeEquations,
-                                                                                                                                includeConseils =
-                                                                                                                                        includeConseils,
-                                                                                                                                animalIds =
-                                                                                                                                        selectedAnimalIds,
-                                                                                                                                foodIds =
-                                                                                                                                        selectedFoodIds
-                                                                                                                        )
-                                                                                                        )
-                                                                                        val ok =
-                                                                                                fr.vetbrain
-                                                                                                        .vetnutri_mp
-                                                                                                        .exportJsonToFile(
-                                                                                                                content =
-                                                                                                                        json,
-                                                                                                                defaultFileName =
-                                                                                                                        "vetnutri_export.json"
-                                                                                                        )
-                                                                                        // Export
-                                                                                        // terminé,
-                                                                                        // résultat
-                                                                                        // : $ok
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {
-                                                                                        // Erreur
-                                                                                        // d'export
-                                                                                        // gérée
+                                                                                        availableEquations =
+                                                                                                viewModel
+                                                                                                        .equationRepository
+                                                                                                        ?.getAllEquations()
+                                                                                                        ?: emptyList()
+                                                                                } catch (e: Exception) {
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement equations: ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingEquations = false
                                                                                 }
                                                                         }
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Exporter (nouveau format API)",
-                                                                        color = Color.White
-                                                                )
+                                                                }
                                                         }
+                                                ) { Text("Selectionner equations (${selectedEquationIds.size})") }
 
-                                                        // Import (nouveau format API) – aligné sur
-                                                        // import animaux
-                                                        Button(
-                                                                onClick = {
-                                                                        viewModel
-                                                                                .importApiFromFileUI()
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Importer (nouveau format API)",
-                                                                        color = Color.White
-                                                                )
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showReferenceSelectionDialog = true
+                                                                if (availableReferences.isEmpty() &&
+                                                                                !isLoadingReferences
+                                                                ) {
+                                                                        coroutineScope.launch {
+                                                                                isLoadingReferences = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableReferences =
+                                                                                                viewModel
+                                                                                                        .referenceEvRepository
+                                                                                                        ?.getAllReferenceEv()
+                                                                                                        ?: emptyList()
+                                                                                } catch (e: Exception) {
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement references: ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingReferences = false
+                                                                                }
+                                                                        }
+                                                                }
                                                         }
+                                                ) { Text("Selectionner references (${selectedReferenceIds.size})") }
 
-                                                        // Dialog de résultat pour l'import API
-                                                        val apiImportResult =
-                                                                viewModel.importResult
-                                                                        .collectAsState()
-                                                                        .value
-                                                        val apiImporting =
-                                                                viewModel.isApiImporting
-                                                                        .collectAsState()
-                                                                        .value
-                                                        val apiProgress =
-                                                                viewModel.apiImportProgress
-                                                                        .collectAsState()
-                                                                        .value
-                                                        val apiLogs =
-                                                                viewModel.apiImportLogs
-                                                                        .collectAsState()
-                                                                        .value
-                                                        if (apiImporting) {
-                                                                AlertDialog(
-                                                                        onDismissRequest = {},
-                                                                        title = {
-                                                                                Text(
-                                                                                        "Import API en cours…"
-                                                                                )
-                                                                        },
-                                                                        text = {
-                                                                                Column(
-                                                                                        verticalArrangement =
-                                                                                                Arrangement
-                                                                                                        .spacedBy(
-                                                                                                                8.dp
-                                                                                                        )
-                                                                                ) {
-                                                                                        LinearProgressIndicator(
-                                                                                                progress =
-                                                                                                        apiProgress
-                                                                                                                .toFloat()
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showConseilSelectionDialog = true
+                                                                if (availableConseils.isEmpty() &&
+                                                                                !isLoadingConseils
+                                                                ) {
+                                                                        coroutineScope.launch {
+                                                                                isLoadingConseils = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableConseils =
+                                                                                                viewModel
+                                                                                                        .conseilRepository
+                                                                                                        ?.getConseilsActifs()
+                                                                                                        ?.getOrThrow()
+                                                                                                        ?: emptyList()
+                                                                                } catch (e: Exception) {
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement conseils: ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingConseils = false
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                ) { Text("Selectionner conseils (${selectedConseilIds.size})") }
+
+                                                // Cases à cocher d’inclusion
+
+                                                if (showAnimalSelectionDialog) {
+                                                        Dialog(
+                                                                onDismissRequest = {
+                                                                        showAnimalSelectionDialog = false
+                                                                },
+                                                                properties =
+                                                                        DialogProperties(
+                                                                                usePlatformDefaultWidth =
+                                                                                        false
+                                                                        )
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .background
                                                                                         )
-                                                                                        Box(
+                                                                ) {
+                                                                        when {
+                                                                                isLoadingAnimals -> {
+                                                                                        Column(
                                                                                                 modifier =
-                                                                                                        Modifier.fillMaxWidth()
-                                                                                                                .height(
-                                                                                                                        120.dp
-                                                                                                                )
-                                                                                                                .background(
-                                                                                                                        Color(
-                                                                                                                                0xFFF5F5F5
-                                                                                                                        )
-                                                                                                                )
+                                                                                                        Modifier.fillMaxSize(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
                                                                                         ) {
-                                                                                                // Affichage simple des logs (limités)
-                                                                                                Column(
+                                                                                                CircularProgressIndicator()
+                                                                                                Spacer(
                                                                                                         modifier =
-                                                                                                                Modifier.padding(
-                                                                                                                        8.dp
+                                                                                                                Modifier.height(
+                                                                                                                        12.dp
                                                                                                                 )
-                                                                                                ) {
-                                                                                                        apiLogs.takeLast(
-                                                                                                                        10
-                                                                                                                )
-                                                                                                                .forEach {
-                                                                                                                        line
-                                                                                                                        ->
-                                                                                                                        Text(
-                                                                                                                                line
-                                                                                                                        )
-                                                                                                                }
-                                                                                                }
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Chargement des animaux..."
+                                                                                                )
                                                                                         }
                                                                                 }
-                                                                        },
-                                                                        confirmButton = {}
-                                                                )
-                                                        }
-                                                        var showApiImportDialog by remember {
-                                                                mutableStateOf(false)
-                                                        }
-                                                        LaunchedEffect(apiImportResult) {
-                                                                if (apiImportResult != null)
-                                                                        showApiImportDialog = true
-                                                        }
-                                                        if (showApiImportDialog) {
-                                                                AlertDialog(
-                                                                        onDismissRequest = {
-                                                                                showApiImportDialog =
-                                                                                        false
-                                                                                viewModel
-                                                                                        .resetImportResult()
-                                                                        },
-                                                                        title = {
-                                                                                Text(
-                                                                                        "Résultat de l'import API"
-                                                                                )
-                                                                        },
-                                                                        text = {
-                                                                                when (val r =
-                                                                                                apiImportResult
-                                                                                ) {
-                                                                                        is SettingsViewModel.ImportResult.Success -> {
-                                                                                                Column {
-                                                                                                        Text(
-                                                                                                                "Total pris en compte: ${r.count}"
-                                                                                                        )
-                                                                                                        Text(
-                                                                                                                "Importés: ${r.importedCount}"
-                                                                                                        )
-                                                                                                        if (r.updatedCount >
-                                                                                                                        0
-                                                                                                        )
-                                                                                                                Text(
-                                                                                                                        "Mises à jour: ${r.updatedCount}"
-                                                                                                                )
-                                                                                                        if (r.deletedCount >
-                                                                                                                        0
-                                                                                                        )
-                                                                                                                Text(
-                                                                                                                        "Supprimés: ${r.deletedCount}"
-                                                                                                                )
-                                                                                                        if (r.errorCount >
-                                                                                                                        0
-                                                                                                        )
-                                                                                                                Text(
-                                                                                                                        "Erreurs: ${r.errorCount}",
-                                                                                                                        color =
-                                                                                                                                MaterialTheme
-                                                                                                                                        .colors
-                                                                                                                                        .error
-                                                                                                                )
-                                                                                                        if (r.conseils >
-                                                                                                                        0
-                                                                                                        )
-                                                                                                                Text(
-                                                                                                                        "Conseils: ${r.conseils}"
-                                                                                                                )
-                                                                                                }
-                                                                                        }
-                                                                                        is SettingsViewModel.ImportResult.Error -> {
+                                                                                selectionLoadError != null -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
                                                                                                 Text(
-                                                                                                        "Erreur: ${r.message}",
+                                                                                                        selectionLoadError
+                                                                                                                ?: "Erreur inconnue",
                                                                                                         color =
                                                                                                                 MaterialTheme
                                                                                                                         .colors
-                                                                                                                        .error
+                                                                                                                        .error,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1
                                                                                                 )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showAnimalSelectionDialog =
+                                                                                                                        false
+                                                                                                                selectionLoadError =
+                                                                                                                        null
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
                                                                                         }
-                                                                                        null ->
-                                                                                                Text(
-                                                                                                        "Aucun résultat."
-                                                                                                )
                                                                                 }
-                                                                        },
-                                                                        confirmButton = {
-                                                                                Button(
-                                                                                        onClick = {
-                                                                                                showApiImportDialog =
-                                                                                                        false
-                                                                                                viewModel
-                                                                                                        .resetImportResult()
-                                                                                                // rafraîchit la liste des animaux si l'import a concerné des animaux
-                                                                                                onAnimalListRefresh()
+                                                                                availableAnimals.isEmpty() -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        "Aucun animal disponible."
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showAnimalSelectionDialog =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
                                                                                         }
-                                                                                ) { Text("OK") }
+                                                                                }
+                                                                                else -> {
+                                                                                        val animalById =
+                                                                                                remember(
+                                                                                                        availableAnimals
+                                                                                                ) {
+                                                                                                        availableAnimals
+                                                                                                                .associateBy {
+                                                                                                                        it.uuid
+                                                                                                                }
+                                                                                                }
+                                                                                        val animalFilterOptions =
+                                                                                                remember {
+                                                                                                        listOf<FilterOption<Espece>>(
+                                                                                                                FilterOption<Espece>(
+                                                                                                                        label =
+                                                                                                                                "Toutes",
+                                                                                                                        value = null
+                                                                                                                )
+                                                                                                        ) +
+                                                                                                                Espece
+                                                                                                                        .values()
+                                                                                                                        .map {
+                                                                                                                                FilterOption(
+                                                                                                                                        label =
+                                                                                                                                                it.label,
+                                                                                                                                        value =
+                                                                                                                                                it
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                }
+                                                                                        SelectionDialog(
+                                                                                                title =
+                                                                                                        "Selection des animaux",
+                                                                                                items =
+                                                                                                        availableAnimals.map {
+                                                                                                                SelectionItem(
+                                                                                                                        id =
+                                                                                                                                it.uuid,
+                                                                                                                        title =
+                                                                                                                                it.nom
+                                                                                                                                        .ifBlank {
+                                                                                                                                                "Sans nom"
+                                                                                                                                        },
+                                                                                                                        subtitle =
+                                                                                                                                it.ownerName
+                                                                                                                                        .ifBlank {
+                                                                                                                                                ""
+                                                                                                                                        }
+                                                                                                                )
+                                                                                                        },
+                                                                                                initialSelectedIds =
+                                                                                                        selectedAnimalIds,
+                                                                                                onConfirm = {
+                                                                                                        ids ->
+                                                                                                        selectedAnimalIds =
+                                                                                                                ids
+                                                                                                        showAnimalSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                onDismiss = {
+                                                                                                        showAnimalSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                confirmLabel =
+                                                                                                        "Valider la selection",
+                                                                                                emptyLabel =
+                                                                                                        "Aucun animal disponible.",
+                                                                                                filtersContent = {
+                                                                                                        DropdownField(
+                                                                                                                label =
+                                                                                                                        "Espece",
+                                                                                                                selectedValue =
+                                                                                                                        animalFilterEspece,
+                                                                                                                options =
+                                                                                                                        animalFilterOptions,
+                                                                                                                onValueChange = {
+                                                                                                                        animalFilterEspece =
+                                                                                                                                it
+                                                                                                                },
+                                                                                                                valueToString = {
+                                                                                                                        it.label
+                                                                                                                },
+                                                                                                                modifier =
+                                                                                                                        Modifier.fillMaxWidth()
+                                                                                                        )
+                                                                                                },
+                                                                                                filterPredicate = { item ->
+                                                                                                        val animal =
+                                                                                                                animalById[
+                                                                                                                        item.id
+                                                                                                                ]
+                                                                                                        val selected =
+                                                                                                                animalFilterEspece.value
+                                                                                                        selected == null ||
+                                                                                                                animal?.getEspece() ==
+                                                                                                                        selected
+                                                                                                }
+                                                                                        )
+                                                                                }
                                                                         }
-                                                                )
-                                                        }
 
-                                                        // Bouton pour importer des aliments
-                                                        Button(
-                                                                onClick = {
-                                                                        try {
-                                                                                // Utilisons la
-                                                                                // méthode du
-                                                                                // ViewModel qui
-                                                                                // encapsule l'appel
-                                                                                // à
-                                                                                // importFoodsFromFile
-                                                                                viewModel
-                                                                                        .importFoodsFromFileUI()
-                                                                        } catch (e: Exception) {
-                                                                                // Les erreurs sont
-                                                                                // gérées par le
-                                                                                // ViewModel
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        showAnimalSelectionDialog =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.align(
+                                                                                                Alignment.TopEnd
+                                                                                        )
+                                                                                                .padding(
+                                                                                                        16.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Default.Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer"
+                                                                                )
                                                                         }
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Importer des aliments",
-                                                                        color = Color.White
-                                                                )
-                                                        }
-
-                                                        // Bouton pour importer des références
-                                                        // nutritionnelles
-                                                        Button(
-                                                                onClick = {
-                                                                        try {
-                                                                                // Utilisons la
-                                                                                // méthode du
-                                                                                // ImportViewModel
-                                                                                // pour
-                                                                                // importer les
-                                                                                // références
-                                                                                // nutritionnelles
-                                                                                importViewModel
-                                                                                        .importNutritionalRequirementsFromFileUI()
-                                                                        } catch (e: Exception) {
-                                                                                // Les erreurs sont
-                                                                                // gérées par le
-                                                                                // ViewModel
-                                                                        }
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Importer des références nutritionnelles (.vbnr.json)",
-                                                                        color = Color.White
-                                                                )
+                                                                }
                                                         }
                                                 }
+
+                                                if (showFoodSelectionDialog) {
+                                                        Dialog(
+                                                                onDismissRequest = {
+                                                                        showFoodSelectionDialog = false
+                                                                },
+                                                                properties =
+                                                                        DialogProperties(
+                                                                                usePlatformDefaultWidth =
+                                                                                        false
+                                                                        )
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .background
+                                                                                        )
+                                                                ) {
+                                                                        when {
+                                                                                isLoadingFoods -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                CircularProgressIndicator()
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        12.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Chargement des aliments..."
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                                selectionLoadError != null -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        selectionLoadError
+                                                                                                                ?: "Erreur inconnue",
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .error,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showFoodSelectionDialog =
+                                                                                                                        false
+                                                                                                                selectionLoadError =
+                                                                                                                        null
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                availableFoods.isEmpty() -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        "Aucun aliment disponible."
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showFoodSelectionDialog =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                else -> {
+                                                                                        AnalyseSelectionAlimentsView(
+                                                                                                aliments =
+                                                                                                        availableFoods,
+                                                                                                onClose = {
+                                                                                                        showFoodSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                onPrimaryAction = {
+                                                                                                        aliments ->
+                                                                                                        selectedFoodIds =
+                                                                                                                aliments.map {
+                                                                                                                        it.uuid
+                                                                                                                }
+                                                                                                                        .toSet()
+                                                                                                        showFoodSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                primaryActionLabel =
+                                                                                                        "Valider la selection",
+                                                                                                alimentsInitialementSelectionnes =
+                                                                                                        availableFoods.filter {
+                                                                                                                selectedFoodIds.contains(
+                                                                                                                        it.uuid
+                                                                                                                )
+                                                                                                        },
+                                                                                                onSelectionChanged = {
+                                                                                                        selectedFoodIds =
+                                                                                                                it.map { al ->
+                                                                                                                        al.uuid
+                                                                                                                }
+                                                                                                                        .toSet()
+                                                                                                },
+                                                                                                filtersInitial =
+                                                                                                        foodSelectionFilters,
+                                                                                                onFiltersChange = {
+                                                                                                        foodSelectionFilters =
+                                                                                                                it
+                                                                                                },
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                        )
+                                                                                }
+                                                                        }
+
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        showFoodSelectionDialog =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.align(
+                                                                                                Alignment.TopEnd
+                                                                                        )
+                                                                                                .padding(
+                                                                                                        16.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Default.Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer"
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+
+                                                if (showEquationSelectionDialog) {
+                                                        Dialog(
+                                                                onDismissRequest = {
+                                                                        showEquationSelectionDialog = false
+                                                                },
+                                                                properties =
+                                                                        DialogProperties(
+                                                                                usePlatformDefaultWidth =
+                                                                                        false
+                                                                        )
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .background
+                                                                                        )
+                                                                ) {
+                                                                        when {
+                                                                                isLoadingEquations -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                CircularProgressIndicator()
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        12.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Chargement des equations..."
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                                selectionLoadError != null -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        selectionLoadError
+                                                                                                                ?: "Erreur inconnue",
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .error,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showEquationSelectionDialog =
+                                                                                                                        false
+                                                                                                                selectionLoadError =
+                                                                                                                        null
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                availableEquations.isEmpty() -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        "Aucune equation disponible."
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showEquationSelectionDialog =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                else -> {
+                                                                                        val equationById =
+                                                                                                remember(
+                                                                                                        availableEquations
+                                                                                                ) {
+                                                                                                        availableEquations
+                                                                                                                .associateBy {
+                                                                                                                        it.uuid
+                                                                                                                }
+                                                                                                }
+                                                                                        val equationSpecieOptions =
+                                                                                                remember {
+                                                                                                        listOf<FilterOption<Espece>>(
+                                                                                                                FilterOption<Espece>(
+                                                                                                                        label =
+                                                                                                                                "Toutes",
+                                                                                                                        value = null
+                                                                                                                )
+                                                                                                        ) +
+                                                                                                                Espece
+                                                                                                                        .values()
+                                                                                                                        .map {
+                                                                                                                                FilterOption(
+                                                                                                                                        label =
+                                                                                                                                                it.label,
+                                                                                                                                        value =
+                                                                                                                                                it
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                }
+                                                                                        val equationKindOptions =
+                                                                                                remember {
+                                                                                                        listOf<FilterOption<EquationKind>>(
+                                                                                                                FilterOption<EquationKind>(
+                                                                                                                        label =
+                                                                                                                                "Tous",
+                                                                                                                        value = null
+                                                                                                                )
+                                                                                                        ) +
+                                                                                                                EquationKind
+                                                                                                                        .values()
+                                                                                                                        .map {
+                                                                                                                                FilterOption(
+                                                                                                                                        label =
+                                                                                                                                                it.name,
+                                                                                                                                        value =
+                                                                                                                                                it
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                }
+                                                                                        SelectionDialog(
+                                                                                                title =
+                                                                                                        "Selection des equations",
+                                                                                                items =
+                                                                                                        availableEquations.map {
+                                                                                                                val specie =
+                                                                                                                        it.specie?.name
+                                                                                                                                ?: "ALL"
+                                                                                                                val kind =
+                                                                                                                        it.kind.name
+                                                                                                                SelectionItem(
+                                                                                                                        id =
+                                                                                                                                it.uuid,
+                                                                                                                        title =
+                                                                                                                                it.name.ifBlank {
+                                                                                                                                        it.description.ifBlank {
+                                                                                                                                                "Equation"
+                                                                                                                                        }
+                                                                                                                                },
+                                                                                                                        subtitle =
+                                                                                                                                "$kind - $specie"
+                                                                                                                )
+                                                                                                        },
+                                                                                                initialSelectedIds =
+                                                                                                        selectedEquationIds,
+                                                                                                onConfirm = {
+                                                                                                        ids ->
+                                                                                                        selectedEquationIds =
+                                                                                                                ids
+                                                                                                        showEquationSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                onDismiss = {
+                                                                                                        showEquationSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                confirmLabel =
+                                                                                                        "Valider la selection",
+                                                                                                emptyLabel =
+                                                                                                        "Aucune equation disponible.",
+                                                                                                filtersContent = {
+                                                                                                        Column(
+                                                                                                                verticalArrangement =
+                                                                                                                        Arrangement.spacedBy(
+                                                                                                                                8.dp
+                                                                                                                        )
+                                                                                                        ) {
+                                                                                                                DropdownField(
+                                                                                                                        label =
+                                                                                                                                "Espece",
+                                                                                                                        selectedValue =
+                                                                                                                                equationFilterEspece,
+                                                                                                                        options =
+                                                                                                                                equationSpecieOptions,
+                                                                                                                        onValueChange = {
+                                                                                                                                equationFilterEspece =
+                                                                                                                                        it
+                                                                                                                        },
+                                                                                                                        valueToString = {
+                                                                                                                                it.label
+                                                                                                                        },
+                                                                                                                        modifier =
+                                                                                                                                Modifier.fillMaxWidth()
+                                                                                                                )
+                                                                                                                DropdownField(
+                                                                                                                        label =
+                                                                                                                                "Type d'equation",
+                                                                                                                        selectedValue =
+                                                                                                                                equationFilterKind,
+                                                                                                                        options =
+                                                                                                                                equationKindOptions,
+                                                                                                                        onValueChange = {
+                                                                                                                                equationFilterKind =
+                                                                                                                                        it
+                                                                                                                        },
+                                                                                                                        valueToString = {
+                                                                                                                                it.label
+                                                                                                                        },
+                                                                                                                        modifier =
+                                                                                                                                Modifier.fillMaxWidth()
+                                                                                                                )
+                                                                                                        }
+                                                                                                },
+                                                                                                filterPredicate = { item ->
+                                                                                                        val equation =
+                                                                                                                equationById[
+                                                                                                                        item.id
+                                                                                                                ]
+                                                                                                        val selectedSpecie =
+                                                                                                                equationFilterEspece.value
+                                                                                                        val selectedKind =
+                                                                                                                equationFilterKind.value
+                                                                                                        val matchesSpecie =
+                                                                                                                selectedSpecie ==
+                                                                                                                        null ||
+                                                                                                                        equation?.specie ==
+                                                                                                                        selectedSpecie
+                                                                                                        val matchesKind =
+                                                                                                                selectedKind ==
+                                                                                                                        null ||
+                                                                                                                        equation?.kind ==
+                                                                                                                        selectedKind
+                                                                                                        matchesSpecie &&
+                                                                                                                matchesKind
+                                                                                                }
+                                                                                        )
+                                                                                }
+                                                                        }
+
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        showEquationSelectionDialog =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.align(
+                                                                                                Alignment.TopEnd
+                                                                                        )
+                                                                                                .padding(
+                                                                                                        16.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Default.Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer"
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+
+                                                if (showReferenceSelectionDialog) {
+                                                        Dialog(
+                                                                onDismissRequest = {
+                                                                        showReferenceSelectionDialog = false
+                                                                },
+                                                                properties =
+                                                                        DialogProperties(
+                                                                                usePlatformDefaultWidth =
+                                                                                        false
+                                                                        )
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .background
+                                                                                        )
+                                                                ) {
+                                                                        when {
+                                                                                isLoadingReferences -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                CircularProgressIndicator()
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        12.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Chargement des references..."
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                                selectionLoadError != null -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        selectionLoadError
+                                                                                                                ?: "Erreur inconnue",
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .error,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showReferenceSelectionDialog =
+                                                                                                                        false
+                                                                                                                selectionLoadError =
+                                                                                                                        null
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                availableReferences.isEmpty() -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        "Aucune reference disponible."
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showReferenceSelectionDialog =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                else -> {
+                                                                                        val referenceById =
+                                                                                                remember(
+                                                                                                        availableReferences
+                                                                                                ) {
+                                                                                                        availableReferences
+                                                                                                                .associateBy {
+                                                                                                                        it.uuid
+                                                                                                                }
+                                                                                                }
+                                                                                        val referenceSpecieOptions =
+                                                                                                remember {
+                                                                                                        listOf<FilterOption<Espece>>(
+                                                                                                                FilterOption<Espece>(
+                                                                                                                        label =
+                                                                                                                                "Toutes",
+                                                                                                                        value = null
+                                                                                                                )
+                                                                                                        ) +
+                                                                                                                Espece
+                                                                                                                        .values()
+                                                                                                                        .map {
+                                                                                                                                FilterOption(
+                                                                                                                                        label =
+                                                                                                                                                it.label,
+                                                                                                                                        value =
+                                                                                                                                                it
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                }
+                                                                                        SelectionDialog(
+                                                                                                title =
+                                                                                                        "Selection des references",
+                                                                                                items =
+                                                                                                        availableReferences.map {
+                                                                                                                SelectionItem(
+                                                                                                                        id =
+                                                                                                                                it.uuid,
+                                                                                                                        title =
+                                                                                                                                it.nom.ifBlank {
+                                                                                                                                        "Reference"
+                                                                                                                                },
+                                                                                                                        subtitle =
+                                                                                                                                it.espece.label
+                                                                                                                )
+                                                                                                        },
+                                                                                                initialSelectedIds =
+                                                                                                        selectedReferenceIds,
+                                                                                                onConfirm = {
+                                                                                                        ids ->
+                                                                                                        selectedReferenceIds =
+                                                                                                                ids
+                                                                                                        showReferenceSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                onDismiss = {
+                                                                                                        showReferenceSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                confirmLabel =
+                                                                                                        "Valider la selection",
+                                                                                                emptyLabel =
+                                                                                                        "Aucune reference disponible.",
+                                                                                                filtersContent = {
+                                                                                                        DropdownField(
+                                                                                                                label =
+                                                                                                                        "Espece",
+                                                                                                                selectedValue =
+                                                                                                                        referenceFilterEspece,
+                                                                                                                options =
+                                                                                                                        referenceSpecieOptions,
+                                                                                                                onValueChange = {
+                                                                                                                        referenceFilterEspece =
+                                                                                                                                it
+                                                                                                                },
+                                                                                                                valueToString = {
+                                                                                                                        it.label
+                                                                                                                },
+                                                                                                                modifier =
+                                                                                                                        Modifier.fillMaxWidth()
+                                                                                                        )
+                                                                                                },
+                                                                                                filterPredicate = { item ->
+                                                                                                        val reference =
+                                                                                                                referenceById[
+                                                                                                                        item.id
+                                                                                                                ]
+                                                                                                        val selected =
+                                                                                                                referenceFilterEspece.value
+                                                                                                        selected == null ||
+                                                                                                                reference?.espece ==
+                                                                                                                        selected
+                                                                                                }
+                                                                                        )
+                                                                                }
+                                                                        }
+
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        showReferenceSelectionDialog =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.align(
+                                                                                                Alignment.TopEnd
+                                                                                        )
+                                                                                                .padding(
+                                                                                                        16.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Default.Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer"
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+
+                                                if (showConseilSelectionDialog) {
+                                                        Dialog(
+                                                                onDismissRequest = {
+                                                                        showConseilSelectionDialog = false
+                                                                },
+                                                                properties =
+                                                                        DialogProperties(
+                                                                                usePlatformDefaultWidth =
+                                                                                        false
+                                                                        )
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .background
+                                                                                        )
+                                                                ) {
+                                                                        when {
+                                                                                isLoadingConseils -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                CircularProgressIndicator()
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        12.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Chargement des conseils..."
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                                selectionLoadError != null -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        selectionLoadError
+                                                                                                                ?: "Erreur inconnue",
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .error,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showConseilSelectionDialog =
+                                                                                                                        false
+                                                                                                                selectionLoadError =
+                                                                                                                        null
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                availableConseils.isEmpty() -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        "Aucun conseil disponible."
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showConseilSelectionDialog =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                else -> {
+                                                                                        val conseilById =
+                                                                                                remember(
+                                                                                                        availableConseils
+                                                                                                ) {
+                                                                                                        availableConseils
+                                                                                                                .associateBy {
+                                                                                                                        it.id
+                                                                                                                }
+                                                                                                }
+                                                                                        val conseilCategoryOptions =
+                                                                                                remember {
+                                                                                                        listOf(
+                                                                                                                FilterOption<SectionCategory>(
+                                                                                                                        label =
+                                                                                                                                "Toutes",
+                                                                                                                        value = null
+                                                                                                                )
+                                                                                                        ) +
+                                                                                                                SectionCategory
+                                                                                                                        .entries
+                                                                                                                        .filter {
+                                                                                                                                it.name.startsWith(
+                                                                                                                                        "CONSEIL"
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                        .map {
+                                                                                                                                FilterOption(
+                                                                                                                                        label =
+                                                                                                                                                it.name,
+                                                                                                                                        value =
+                                                                                                                                                it
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                }
+                                                                                        SelectionDialog(
+                                                                                                title =
+                                                                                                        "Selection des conseils",
+                                                                                                items =
+                                                                                                        availableConseils.map {
+                                                                                                                val tags =
+                                                                                                                        it.tags
+                                                                                                                                .takeIf {
+                                                                                                                                        tags ->
+                                                                                                                                        tags.isNotEmpty()
+                                                                                                                                }
+                                                                                                                                ?.joinToString(
+                                                                                                                                        ", "
+                                                                                                                                )
+                                                                                                                                ?: it.category.name
+                                                                                                                SelectionItem(
+                                                                                                                        id =
+                                                                                                                                it.id,
+                                                                                                                        title =
+                                                                                                                                it.title.ifBlank {
+                                                                                                                                        "Conseil"
+                                                                                                                                },
+                                                                                                                        subtitle =
+                                                                                                                                tags
+                                                                                                                )
+                                                                                                        },
+                                                                                                initialSelectedIds =
+                                                                                                        selectedConseilIds,
+                                                                                                onConfirm = {
+                                                                                                        ids ->
+                                                                                                        selectedConseilIds =
+                                                                                                                ids
+                                                                                                        showConseilSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                onDismiss = {
+                                                                                                        showConseilSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                confirmLabel =
+                                                                                                        "Valider la selection",
+                                                                                                emptyLabel =
+                                                                                                        "Aucun conseil disponible.",
+                                                                                                filtersContent = {
+                                                                                                        DropdownField(
+                                                                                                                label =
+                                                                                                                        "Categorie",
+                                                                                                                selectedValue =
+                                                                                                                        conseilFilterCategory,
+                                                                                                                options =
+                                                                                                                        conseilCategoryOptions,
+                                                                                                                onValueChange = {
+                                                                                                                        conseilFilterCategory =
+                                                                                                                                it
+                                                                                                                },
+                                                                                                                valueToString = {
+                                                                                                                        it.label
+                                                                                                                },
+                                                                                                                modifier =
+                                                                                                                        Modifier.fillMaxWidth()
+                                                                                                        )
+                                                                                                },
+                                                                                                filterPredicate = { item ->
+                                                                                                        val conseil =
+                                                                                                                conseilById[
+                                                                                                                        item.id
+                                                                                                                ]
+                                                                                                        val selected =
+                                                                                                                conseilFilterCategory
+                                                                                                                        .value
+                                                                                                        selected == null ||
+                                                                                                                conseil?.category ==
+                                                                                                                        selected
+                                                                                                }
+                                                                                        )
+                                                                                }
+                                                                        }
+
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        showConseilSelectionDialog =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.align(
+                                                                                                Alignment.TopEnd
+                                                                                        )
+                                                                                                .padding(
+                                                                                                        16.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Default.Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer"
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+
+                                                if (showRecipeSelectionDialog) {
+                                                        Dialog(
+                                                                onDismissRequest = {
+                                                                        showRecipeSelectionDialog = false
+                                                                },
+                                                                properties =
+                                                                        DialogProperties(
+                                                                                usePlatformDefaultWidth =
+                                                                                        false
+                                                                        )
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .background
+                                                                                        )
+                                                                ) {
+                                                                        when {
+                                                                                isLoadingRecipes -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize(),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                CircularProgressIndicator()
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        12.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Chargement des recettes..."
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                                selectionLoadError != null -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        selectionLoadError
+                                                                                                                ?: "Erreur inconnue",
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .error,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showRecipeSelectionDialog =
+                                                                                                                        false
+                                                                                                                selectionLoadError =
+                                                                                                                        null
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                availableRecipes.isEmpty() -> {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxSize()
+                                                                                                                .padding(
+                                                                                                                        24.dp
+                                                                                                                ),
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement.Center,
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment.CenterHorizontally
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        "Aucune recette disponible."
+                                                                                                )
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                Button(
+                                                                                                        onClick = {
+                                                                                                                showRecipeSelectionDialog =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) { Text("Fermer") }
+                                                                                        }
+                                                                                }
+                                                                                else -> {
+                                                                                        SelectionDialog(
+                                                                                                title =
+                                                                                                        "Selection des recettes",
+                                                                                                items =
+                                                                                                        availableRecipes.map {
+                                                                                                                SelectionItem(
+                                                                                                                        id =
+                                                                                                                                it.uuid,
+                                                                                                                        title =
+                                                                                                                                it.name
+                                                                                                                                        ?.ifBlank {
+                                                                                                                                                "Recette"
+                                                                                                                                        }
+                                                                                                                                        ?: "Recette",
+                                                                                                                        subtitle =
+                                                                                                                                it.description
+                                                                                                                                        ?: ""
+                                                                                                                )
+                                                                                                        },
+                                                                                                initialSelectedIds =
+                                                                                                        selectedRecipeIds,
+                                                                                                onConfirm = {
+                                                                                                        ids ->
+                                                                                                        selectedRecipeIds =
+                                                                                                                ids
+                                                                                                        showRecipeSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                onDismiss = {
+                                                                                                        showRecipeSelectionDialog =
+                                                                                                                false
+                                                                                                },
+                                                                                                confirmLabel =
+                                                                                                        "Valider la selection",
+                                                                                                emptyLabel =
+                                                                                                        "Aucune recette disponible."
+                                                                                        )
+                                                                                }
+                                                                        }
+
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        showRecipeSelectionDialog =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.align(
+                                                                                                Alignment.TopEnd
+                                                                                        )
+                                                                                                .padding(
+                                                                                                        16.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Default.Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer"
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                                }
+                                                // Affichage du message de résultat
+                                                // d'importation des références
+                                                // nutritionnelles
+                                                nutritionalRequirementMessage?.let { message ->
+                                                        Card(
+                                                                modifier =
+                                                                        Modifier.fillMaxWidth()
+                                                                                .padding(
+                                                                                        bottom =
+                                                                                                8.dp
+                                                                                ),
+                                                                backgroundColor =
+                                                                        if (message.startsWith("✅"))
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.1f
+                                                                                        )
+                                                                        else if (message.startsWith(
+                                                                                        "❌"
+                                                                                )
+                                                                        )
+                                                                                VetNutriColors.Error
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.1f
+                                                                                        )
+                                                                        else
+                                                                                VetNutriColors
+                                                                                        .Secondary
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.1f
+                                                                                        )
+                                                        ) {
+                                                                Row(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                                        .padding(
+                                                                                                12.dp
+                                                                                        ),
+                                                                        horizontalArrangement =
+                                                                                Arrangement
+                                                                                        .SpaceBetween,
+                                                                        verticalAlignment =
+                                                                                Alignment
+                                                                                        .CenterVertically
+                                                                ) {
+                                                                        Text(
+                                                                                message,
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .body2,
+                                                                                color =
+                                                                                        if (message.startsWith(
+                                                                                                        "✅"
+                                                                                                )
+                                                                                        )
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                        else if (message.startsWith(
+                                                                                                        "❌"
+                                                                                                )
+                                                                                        )
+                                                                                                VetNutriColors
+                                                                                                        .Error
+                                                                                        else
+                                                                                                Color.DarkGray,
+                                                                                modifier =
+                                                                                        Modifier.weight(
+                                                                                                1f
+                                                                                        )
+                                                                        )
+                                                                        IconButtonWithTooltip(
+                                                                                onClick = {
+                                                                                        importViewModel
+                                                                                                .resetImportResult()
+                                                                                },
+                                                                                imageVector = Icons.Default.Close,
+                                                                                contentDescription = "Fermer",
+                                                                                tooltip = "Fermer",
+                                                                                tint = Color.Gray
+                                                                        )
+                                                                }
+                                                        }
+                                                }
+
+                                                // Export (nouveau format API)
+                                                Button(
+                                                        onClick = {
+                                                                coroutineScope.launch {
+                                                                        try {
+                                                                                val exportRepo =
+                                                                                        ExportImportRepository(
+                                                                                                animalRepository =
+                                                                                                        viewModel
+                                                                                                                .animalRepository,
+                                                                                                foodRepository =
+                                                                                                        viewModel
+                                                                                                                .foodRepository,
+                                                                                                equationRepository =
+                                                                                                        viewModel
+                                                                                                                .equationRepository,
+                                                                                                referenceRepository =
+                                                                                                        viewModel
+                                                                                                                .referenceEvRepository,
+                                                                                                biblioRepository =
+                                                                                                        viewModel
+                                                                                                                .biblioRefRepository,
+                                                                                                consultationRepository =
+                                                                                                        viewModel
+                                                                                                                .consultationRepository,
+                                                                                                recipeRepository =
+                                                                                                        viewModel
+                                                                                                                .recipeRepository,
+                                                                                                conseilRepository =
+                                                                                                        viewModel
+                                                                                                                .conseilRepository
+                                                                                        )
+                                                                                val exportOptions =
+                                                                                        ExportImportRepository
+                                                                                                .ExportSelectionOptions(
+                                                                                                        includeAnimals =
+                                                                                                                false,
+                                                                                                        includeFoods =
+                                                                                                                false,
+                                                                                                        includeRations =
+                                                                                                                false,
+                                                                                                        includeRecipes =
+                                                                                                                false,
+                                                                                                        includeEquations =
+                                                                                                                false,
+                                                                                                        includeConseils =
+                                                                                                                false,
+                                                                                                        includeLinkedFromAnimals =
+                                                                                                                true,
+                                                                                                        animalIds =
+                                                                                                                selectedAnimalIds,
+                                                                                                        foodIds =
+                                                                                                                selectedFoodIds,
+                                                                                                        referenceIds =
+                                                                                                                selectedReferenceIds,
+                                                                                                        recipeIds =
+                                                                                                                selectedRecipeIds,
+                                                                                                        equationIds =
+                                                                                                                selectedEquationIds,
+                                                                                                        conseilIds =
+                                                                                                                selectedConseilIds
+                                                                                                )
+                                                                                val hasNoSelection =
+                                                                                        selectedAnimalIds.isEmpty() &&
+                                                                                                selectedFoodIds.isEmpty() &&
+                                                                                                selectedRecipeIds.isEmpty() &&
+                                                                                                selectedReferenceIds.isEmpty() &&
+                                                                                                selectedEquationIds.isEmpty() &&
+                                                                                                selectedConseilIds.isEmpty()
+                                                                                val effectiveOptions =
+                                                                                        if (hasNoSelection) {
+                                                                                                exportOptions.copy(
+                                                                                                        includeAnimals =
+                                                                                                                true,
+                                                                                                        includeFoods =
+                                                                                                                true,
+                                                                                                        includeRations =
+                                                                                                                true,
+                                                                                                        includeRecipes =
+                                                                                                                true,
+                                                                                                        includeEquations =
+                                                                                                                true,
+                                                                                                        includeConseils =
+                                                                                                                true,
+                                                                                                        includeLinkedFromAnimals =
+                                                                                                                true
+                                                                                                )
+                                                                                        } else {
+                                                                                                exportOptions.copy(
+                                                                                                        includeAnimals =
+                                                                                                                selectedAnimalIds.isNotEmpty(),
+                                                                                                        includeFoods =
+                                                                                                                selectedFoodIds.isNotEmpty(),
+                                                                                                        includeRecipes =
+                                                                                                                selectedRecipeIds.isNotEmpty(),
+                                                                                                        includeEquations =
+                                                                                                                selectedEquationIds.isNotEmpty(),
+                                                                                                        includeConseils =
+                                                                                                                selectedConseilIds.isNotEmpty(),
+                                                                                                        includeLinkedFromAnimals =
+                                                                                                                true
+                                                                                                )
+                                                                                        }
+                                                                                val ok =
+                                                                                        withContext(
+                                                                                                AppDispatchers.IO
+                                                                                        ) {
+                                                                                                val envelope =
+                                                                                                        exportRepo
+                                                                                                                .exportWithSelectionEnvelope(
+                                                                                                                        effectiveOptions
+                                                                                                                )
+                                                                                                fr.vetbrain
+                                                                                                        .vetnutri_mp
+                                                                                                        .exportApiEnvelopeToFile(
+                                                                                                                envelope =
+                                                                                                                        envelope,
+                                                                                                                defaultFileName =
+                                                                                                                        "vetnutri_export.json"
+                                                                                                        )
+                                                                                        }
+                                                                                // Export
+                                                                                // terminé,
+                                                                                // résultat
+                                                                                // : $ok
+                                                                        } catch (e: Exception) {
+                                                                                // Erreur
+                                                                                // d'export
+                                                                                // gérée
+                                                                        }
+                                                                }
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Secondary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                translate(Settings.EXPORT_API),
+                                                                color = Color.White
+                                                        )
+                                                }
+
+                                                // Import (nouveau format API) – aligné sur
+                                                // import animaux
+                                                Button(
+                                                        onClick = {
+                                                                viewModel.importApiFromFileUI()
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Secondary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                translate(Settings.IMPORT_API),
+                                                                color = Color.White
+                                                        )
+                                                }
+
+                                                // Dialog de résultat pour l'import API
+                                                val apiImportResult =
+                                                        viewModel.importResult.collectAsState()
+                                                                .value
+                                                val apiImporting =
+                                                        viewModel.isApiImporting.collectAsState()
+                                                                .value
+                                                val apiProgress =
+                                                        viewModel.apiImportProgress.collectAsState()
+                                                                .value
+                                                val apiLogs =
+                                                        viewModel.apiImportLogs.collectAsState()
+                                                                .value
+                                                if (apiImporting) {
+                                                        AlertDialog(
+                                                                onDismissRequest = {},
+                                                                title = {
+                                                                         Text(translate(Settings.IMPORT_RUNNING))
+                                                                },
+                                                                text = {
+                                                                        Column(
+                                                                                verticalArrangement =
+                                                                                        Arrangement
+                                                                                                .spacedBy(
+                                                                                                        8.dp
+                                                                                                )
+                                                                        ) {
+                                                                                LinearProgressIndicator(
+                                                                                        progress =
+                                                                                                apiProgress
+                                                                                                        .toFloat()
+                                                                                )
+                                                                                Box(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth()
+                                                                                                        .height(
+                                                                                                                120.dp
+                                                                                                        )
+                                                                                                        .background(
+                                                                                                                Color(
+                                                                                                                        0xFFF5F5F5
+                                                                                                                )
+                                                                                                        )
+                                                                                ) {
+                                                                                        // Affichage
+                                                                                        // simple
+                                                                                        // des logs
+                                                                                        // (limités)
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.padding(
+                                                                                                                8.dp
+                                                                                                        )
+                                                                                        ) {
+                                                                                                apiLogs.takeLast(
+                                                                                                                10
+                                                                                                        )
+                                                                                                        .forEach {
+                                                                                                                line
+                                                                                                                ->
+                                                                                                                Text(
+                                                                                                                        line
+                                                                                                                )
+                                                                                                        }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                },
+                                                                confirmButton = {}
+                                                        )
+                                                }
+                                                var showApiImportDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                LaunchedEffect(apiImportResult) {
+                                                        if (apiImportResult != null)
+                                                                showApiImportDialog = true
+                                                }
+                                                if (showApiImportDialog) {
+                                                        AlertDialog(
+                                                                onDismissRequest = {
+                                                                        showApiImportDialog = false
+                                                                        viewModel
+                                                                                .resetImportResult()
+                                                                },
+                                                                title = {
+                                                                        Text(
+                                                                                "Résultat de l'import API"
+                                                                        )
+                                                                },
+                                                                text = {
+                                                                        when (val r =
+                                                                                        apiImportResult
+                                                                        ) {
+                                                                                is SettingsViewModel.ImportResult.Success -> {
+                                                                                        Column {
+                                                                                                Text(
+                                                                                                        "Total pris en compte: ${r.count}"
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Importés: ${r.importedCount}"
+                                                                                                )
+                                                                                                if (r.updatedCount >
+                                                                                                                0
+                                                                                                )
+                                                                                                        Text(
+                                                                                                                "Mises à jour: ${r.updatedCount}"
+                                                                                                        )
+                                                                                                if (r.deletedCount >
+                                                                                                                0
+                                                                                                )
+                                                                                                        Text(
+                                                                                                                "Supprimés: ${r.deletedCount}"
+                                                                                                        )
+                                                                                                if (r.errorCount >
+                                                                                                                0
+                                                                                                )
+                                                                                                        Text(
+                                                                                                                "Erreurs: ${r.errorCount}",
+                                                                                                                color =
+                                                                                                                        MaterialTheme
+                                                                                                                                .colors
+                                                                                                                                .error
+                                                                                                        )
+                                                                                                if (r.conseils >
+                                                                                                                0
+                                                                                                )
+                                                                                                        Text(
+                                                                                                                "Conseils: ${r.conseils}"
+                                                                                                        )
+                                                                                        }
+                                                                                }
+                                                                                is SettingsViewModel.ImportResult.Error -> {
+                                                                                        Text(
+                                                                                                "Erreur: ${r.message}",
+                                                                                                color =
+                                                                                                        MaterialTheme
+                                                                                                                .colors
+                                                                                                                .error
+                                                                                        )
+                                                                                }
+                                                                                null ->
+                                                                                        Text(
+                                                                                                "Aucun résultat."
+                                                                                        )
+                                                                        }
+                                                                },
+                                                                confirmButton = {
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showApiImportDialog =
+                                                                                                false
+                                                                                        viewModel
+                                                                                                .resetImportResult()
+                                                                                        // rafraîchit la liste des animaux si l'import a concerné des animaux
+                                                                                        onAnimalListRefresh()
+                                                                                }
+                                                                        ) { Text("OK") }
+                                                                }
+                                                        )
+                                                }
+
+                                                var showFoodImportOptionsDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var mergeNutrients by remember {
+                                                        mutableStateOf(viewModel.importMergeNutrients)
+                                                }
+                                                var importOnlyIfNewer by remember {
+                                                        mutableStateOf(viewModel.importOnlyIfNewer)
+                                                }
+                                                LaunchedEffect(showFoodImportOptionsDialog) {
+                                                        if (showFoodImportOptionsDialog) {
+                                                                mergeNutrients =
+                                                                        viewModel.importMergeNutrients
+                                                                importOnlyIfNewer =
+                                                                        viewModel.importOnlyIfNewer
+                                                        }
+                                                }
+
+                                                // Bouton pour importer des aliments
+                                                Button(
+                                                        onClick = {
+                                                                showFoodImportOptionsDialog = true
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                "Importer des aliments",
+                                                                color = Color.White
+                                                        )
+                                                }
+
+                                                if (showFoodImportOptionsDialog) {
+                                                        AlertDialog(
+                                                                onDismissRequest = {
+                                                                        showFoodImportOptionsDialog =
+                                                                                false
+                                                                },
+                                                                title = {
+                                                                        Text(
+                                                                                "Options d'import des aliments"
+                                                                        )
+                                                                },
+                                                                text = {
+                                                                        Column {
+                                                                                Row(
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
+                                                                                ) {
+                                                                                        Checkbox(
+                                                                                                checked =
+                                                                                                        mergeNutrients,
+                                                                                                onCheckedChange = {
+                                                                                                        mergeNutrients =
+                                                                                                                it
+                                                                                                }
+                                                                                        )
+                                                                                        Text(
+                                                                                                "Fusionner les nutriments (ne pas supprimer ceux absents du fichier)"
+                                                                                        )
+                                                                                }
+                                                                                Spacer(
+                                                                                        modifier =
+                                                                                                Modifier
+                                                                                                        .height(
+                                                                                                                8.dp
+                                                                                                        )
+                                                                                )
+                                                                                Row(
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
+                                                                                ) {
+                                                                                        Checkbox(
+                                                                                                checked =
+                                                                                                        importOnlyIfNewer,
+                                                                                                onCheckedChange = {
+                                                                                                        importOnlyIfNewer =
+                                                                                                                it
+                                                                                                }
+                                                                                        )
+                                                                                        Text(
+                                                                                                "N'importer que si la date de dernière mise à jour est plus récente"
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                },
+                                                                confirmButton = {
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showFoodImportOptionsDialog =
+                                                                                                false
+                                                                                        viewModel.importMergeNutrients =
+                                                                                                mergeNutrients
+                                                                                        viewModel.importOnlyIfNewer =
+                                                                                                importOnlyIfNewer
+                                                                                        try {
+                                                                                                viewModel
+                                                                                                        .importFoodsFromFileUI()
+                                                                                        } catch (
+                                                                                                e: Exception
+                                                                                        ) {
+                                                                                                // Les erreurs sont gérées par le ViewModel
+                                                                                        }
+                                                                                }
+                                                                        ) { Text("Continuer") }
+                                                                },
+                                                                dismissButton = {
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showFoodImportOptionsDialog =
+                                                                                                false
+                                                                                }
+                                                                        ) { Text("Annuler") }
+                                                                }
+                                                        )
+                                                }
+
+                                                Button(
+                                                        onClick = onImportAnimals,
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                translate(Settings.IMPORT_ANIMALS),
+                                                                color = Color.White
+                                                        )
+                                                }
+
+                                                // Bouton pour importer des références
+                                                // nutritionnelles
+                                                Button(
+                                                        onClick = {
+                                                                try {
+                                                                        // Utilisons la
+                                                                        // méthode du
+                                                                        // ImportViewModel
+                                                                        // pour
+                                                                        // importer les
+                                                                        // références
+                                                                        // nutritionnelles
+                                                                        importViewModel
+                                                                                .importNutritionalRequirementsFromFileUI()
+                                                                } catch (e: Exception) {
+                                                                        // Les erreurs sont
+                                                                        // gérées par le
+                                                                        // ViewModel
+                                                                }
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Secondary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                "Importer des références nutritionnelles (.vbnr.json)",
+                                                                color = Color.White
+                                                        )
+                                                }
+                                        }
                                 }
                                 3 -> { // Excel Import/Export
+                                        val excelFoodService = remember {
+                                                viewModel.foodRepository?.let { foodRepo ->
+                                                        ExcelFoodService(foodRepo)
+                                                }
+                                        }
                                         ExcelImportExportSection(
-                                                modifier = Modifier.fillMaxWidth()
+                                                modifier = Modifier.fillMaxWidth(),
+                                                excelFoodService = excelFoodService,
+                                                foodRepository = viewModel.foodRepository
                                         )
                                 }
                                 4 -> { // Recettes
-                                        RecipeEditView(
-                                                viewModel = RecipeEditViewModel(
-                                                        recipeRepository = viewModel.recipeRepository
-                                                                ?: throw IllegalStateException(
-                                                                        "RecipeRepository not available"
-                                                                ),
-                                                        foodRepository = viewModel.foodRepository
-                                                                ?: throw IllegalStateException(
-                                                                        "FoodRepository not available"
-                                                                )
-                                                ),
-                                                foodRepository = viewModel.foodRepository
-                                                        ?: throw IllegalStateException(
-                                                                "FoodRepository not available"
-                                                        ),
-                                                modifier = Modifier.fillMaxWidth()
-                                        )
+                                        if (isExamMode) {
+                                                Box(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        contentAlignment = Alignment.Center
+                                                ) {
+                                                        Text(
+                                                                "Recettes indisponibles en mode examen."
+                                                        )
+                                                }
+                                        } else {
+                                                val recipeEditViewModel = remember(
+                                                        viewModel.recipeRepository,
+                                                        viewModel.foodRepository
+                                                ) {
+                                                        RecipeEditViewModel(
+                                                                recipeRepository =
+                                                                        viewModel.recipeRepository
+                                                                                ?: throw IllegalStateException(
+                                                                                        "RecipeRepository not available"
+                                                                                ),
+                                                                foodRepository =
+                                                                        viewModel.foodRepository
+                                                                                ?: throw IllegalStateException(
+                                                                                        "FoodRepository not available"
+                                                                                )
+                                                        )
+                                                }
+                                                DisposableEffect(recipeEditViewModel) {
+                                                        onDispose { recipeEditViewModel.clear() }
+                                                }
+                                                RecipeEditView(
+                                                        viewModel = recipeEditViewModel,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                )
+                                        }
                                 }
                                 5 -> { // Administration
                                         AdministrationSettings(
@@ -970,6 +2718,7 @@ private fun PreferencesContentWithPersistence(
 ) {
         // État pour les préférences chargées
         var preferencesLoaded by remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
         var currentPreferences by remember {
                 mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null)
         }
@@ -1005,9 +2754,145 @@ private fun PreferencesContentWithPersistence(
                 }
         } else if (preferencesLoaded && currentPreferences != null) {
                 Column(
-                        modifier = modifier.fillMaxWidth().padding(16.dp),
+                        modifier = modifier.fillMaxWidth().padding(16.dp).verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                        var nomUtilisateur by remember {
+                                mutableStateOf(currentPreferences!!.nomUtilisateur)
+                        }
+                        var numeroOrdre by remember {
+                                mutableStateOf(currentPreferences!!.numeroOrdre)
+                        }
+                        var adressePostale by remember {
+                                mutableStateOf(currentPreferences!!.adressePostale)
+                        }
+                        var codePostal by remember { mutableStateOf(currentPreferences!!.codePostal) }
+                        var ville by remember { mutableStateOf(currentPreferences!!.ville) }
+                        var telephone by remember { mutableStateOf(currentPreferences!!.telephone) }
+                        var email by remember { mutableStateOf(currentPreferences!!.email) }
+                        var isSavingUser by remember { mutableStateOf(false) }
+                        Text(
+                                text = "Informations utilisateur",
+                                style = MaterialTheme.typography.h6,
+                                color = VetNutriColors.Primary
+                        )
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                backgroundColor = Color.White,
+                                elevation = 2.dp
+                        ) {
+                                Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                        OutlinedTextField(
+                                                value = nomUtilisateur,
+                                                onValueChange = { nomUtilisateur = it },
+                                                label = { Text("Nom de l'utilisateur") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        OutlinedTextField(
+                                                value = numeroOrdre,
+                                                onValueChange = { numeroOrdre = it },
+                                                label = { Text("Numéro d'ordre") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        OutlinedTextField(
+                                                value = adressePostale,
+                                                onValueChange = { adressePostale = it },
+                                                label = { Text("Adresse postale") },
+                                                singleLine = false,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                OutlinedTextField(
+                                                        value = codePostal,
+                                                        onValueChange = { codePostal = it },
+                                                        label = { Text("Code postal") },
+                                                        singleLine = true,
+                                                        modifier = Modifier.weight(1f)
+                                                )
+                                                OutlinedTextField(
+                                                        value = ville,
+                                                        onValueChange = { ville = it },
+                                                        label = { Text("Ville") },
+                                                        singleLine = true,
+                                                        modifier = Modifier.weight(2f)
+                                                )
+                                        }
+                                        OutlinedTextField(
+                                                value = telephone,
+                                                onValueChange = { telephone = it },
+                                                label = { Text("Téléphone") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        OutlinedTextField(
+                                                value = email,
+                                                onValueChange = { email = it },
+                                                label = { Text("Email") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Button(
+                                                        onClick = {
+                                                                coroutineScope.launch {
+                                                                                try {
+                                                                                        isSavingUser =
+                                                                                                true
+                                                                                        val updated =
+                                                                                                currentPreferences!!
+                                                                                                        .copy(
+                                                                                                                nomUtilisateur =
+                                                                                                                        nomUtilisateur,
+                                                                                                                numeroOrdre =
+                                                                                                                        numeroOrdre,
+                                                                                                                adressePostale =
+                                                                                                                        adressePostale,
+                                                                                                                codePostal =
+                                                                                                                        codePostal,
+                                                                                                                ville = ville,
+                                                                                                                telephone =
+                                                                                                                        telephone,
+                                                                                                                email =
+                                                                                                                        email
+                                                                                                        )
+                                                                                        preferencesRepository
+                                                                                                .savePreferences(
+                                                                                                        updated
+                                                                                                )
+                                                                                        currentPreferences =
+                                                                                                updated
+                                                                                } catch (
+                                                                                        e:
+                                                                                                Exception) {} finally {
+                                                                                        isSavingUser =
+                                                                                                false
+                                                                                }
+                                                                        }
+                                                        },
+                                                        enabled = !isSavingUser,
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                )
+                                                ) { Text("Enregistrer", color = Color.White) }
+                                                if (isSavingUser) {
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        CircularProgressIndicator(
+                                                                modifier = Modifier.size(18.dp),
+                                                                color = VetNutriColors.Primary,
+                                                                strokeWidth = 2.dp
+                                                        )
+                                                }
+                                        }
+                                }
+                        }
                         Text(
                                 text = "Expression des besoins par espèce",
                                 style = MaterialTheme.typography.h6,
@@ -1088,6 +2973,7 @@ private fun SpeciesPreferenceCardWithPersistence(
 ) {
         var expanded by remember { mutableStateOf(false) }
         var isSaving by remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
 
         val speciesPreferences = currentPreferences.getPreferencesEspece(species)
         val currentExpressionType = speciesPreferences.getTypeExpressionBesoinEnum()
@@ -1128,15 +3014,12 @@ private fun SpeciesPreferenceCardWithPersistence(
                                         }
                                 }
 
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(
-                                                imageVector =
-                                                        if (expanded) Icons.Default.ExpandLess
-                                                        else Icons.Default.ExpandMore,
-                                                contentDescription =
-                                                        if (expanded) "Réduire" else "Développer"
-                                        )
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = { expanded = !expanded },
+                                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                        contentDescription = if (expanded) "Réduire" else "Développer",
+                                        tooltip = if (expanded) "Réduire" else "Développer"
+                                )
                         }
 
                         // Contenu développable
@@ -1164,8 +3047,7 @@ private fun SpeciesPreferenceCardWithPersistence(
                                                                         ) {
                                                                                 // Sauvegarder avec
                                                                                 // persistance
-                                                                                kotlinx.coroutines
-                                                                                        .GlobalScope
+                                                                                coroutineScope
                                                                                         .launch {
                                                                                                 try {
                                                                                                         isSaving =
@@ -1255,11 +3137,73 @@ private fun PreferencesContentSimplified(modifier: Modifier = Modifier) {
                         fr.vetbrain.vetnutri_mp.Enumer.Espece,
                         fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin>()
         }
+        var nomUtilisateur by remember { mutableStateOf("") }
+        var numeroOrdre by remember { mutableStateOf("") }
+        var adressePostale by remember { mutableStateOf("") }
+        var telephone by remember { mutableStateOf("") }
+        var email by remember { mutableStateOf("") }
 
         Column(
-                modifier = modifier.fillMaxWidth().padding(16.dp),
+                modifier = modifier.fillMaxWidth().padding(16.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+                Text(
+                        text = "Informations utilisateur",
+                        style = MaterialTheme.typography.h6,
+                        color = VetNutriColors.Primary
+                )
+                Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        backgroundColor = Color.White,
+                        elevation = 2.dp
+                ) {
+                        Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                OutlinedTextField(
+                                        value = nomUtilisateur,
+                                        onValueChange = { nomUtilisateur = it },
+                                        label = { Text("Nom de l'utilisateur") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                        value = numeroOrdre,
+                                        onValueChange = { numeroOrdre = it },
+                                        label = { Text("Numéro d'ordre") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                        value = adressePostale,
+                                        onValueChange = { adressePostale = it },
+                                        label = { Text("Adresse postale") },
+                                        singleLine = false,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                        value = telephone,
+                                        onValueChange = { telephone = it },
+                                        label = { Text("Téléphone") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                        value = email,
+                                        onValueChange = { email = it },
+                                        label = { Text("Email") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                Text(
+                                        text =
+                                                "Ces informations ne sont pas encore persistées dans ce mode.",
+                                        style = MaterialTheme.typography.caption,
+                                        color = Color.Gray
+                                )
+                        }
+                }
                 Text(
                         text = "Expression des besoins par espèce",
                         style = MaterialTheme.typography.h6,
@@ -1361,15 +3305,12 @@ private fun SpeciesPreferenceCardSimplified(
                                         )
                                 }
 
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(
-                                                imageVector =
-                                                        if (expanded) Icons.Default.ExpandLess
-                                                        else Icons.Default.ExpandMore,
-                                                contentDescription =
-                                                        if (expanded) "Réduire" else "Développer"
-                                        )
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = { expanded = !expanded },
+                                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                        contentDescription = if (expanded) "Réduire" else "Développer",
+                                        tooltip = if (expanded) "Réduire" else "Développer"
+                                )
                         }
 
                         // Contenu développable

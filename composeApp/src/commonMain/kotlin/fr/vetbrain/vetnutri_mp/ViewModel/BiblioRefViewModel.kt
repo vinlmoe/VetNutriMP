@@ -3,9 +3,12 @@ package fr.vetbrain.vetnutri_mp.ViewModel
 import androidx.compose.runtime.mutableStateOf
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
+import fr.vetbrain.vetnutri_mp.Service.CrossRefService
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +20,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     // Utilisation du dispatcher de la plateforme
     private val dispatcher = PlatformDispatcher().provideMainDispatcher()
-    private val viewModelScope = CoroutineScope(dispatcher)
+    private val job = SupervisorJob()
+    private val viewModelScope = CoroutineScope(dispatcher + job)
 
     // État de toutes les références bibliographiques
     val allBiblioRefs: StateFlow<List<BiblioRef>> =
@@ -46,6 +50,13 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     // Message d'erreur ou de succès
     private val _operationMessage = MutableStateFlow<String?>(null)
     val operationMessage: StateFlow<String?> = _operationMessage
+
+    // État DOI
+    private val _doiLoading = MutableStateFlow(false)
+    val doiLoading: StateFlow<Boolean> = _doiLoading
+
+    private val _doiError = MutableStateFlow("")
+    val doiError: StateFlow<String> = _doiError
 
     /** Force le rechargement des références depuis le repository */
     fun refreshBiblioRefs() {
@@ -143,6 +154,31 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     /** Met à jour la valeur du champ bibtex */
     fun updateBibtex(value: String) {
         bibtex.value = value
+    }
+
+    /** Pré-remplit le formulaire depuis un DOI via l'API CrossRef */
+    fun importFromDoi(doi: String) {
+        if (doi.isBlank()) return
+        viewModelScope.launch {
+            _doiLoading.value = true
+            _doiError.value = ""
+            try {
+                val result = CrossRefService.importDoi(doi)
+                firstAuthor.value = result.firstAuthor
+                year.value = if (result.year > 0) result.year.toString() else year.value
+                completeRef.value = result.completeRef
+                validateForm()
+            } catch (e: Exception) {
+                _doiError.value = "DOI introuvable ou API inaccessible"
+            } finally {
+                _doiLoading.value = false
+            }
+        }
+    }
+
+    /** Efface le message d'erreur DOI */
+    fun clearDoiError() {
+        _doiError.value = ""
     }
 
     /** Sauvegarde la référence bibliographique actuelle */
@@ -259,5 +295,9 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     /** Efface le message d'opération */
     fun clearOperationMessage() {
         _operationMessage.value = null
+    }
+
+    fun clear() {
+        viewModelScope.cancel()
     }
 }

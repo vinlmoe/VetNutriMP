@@ -3,7 +3,7 @@ package fr.vetbrain.vetnutri_mp.Components
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,7 +36,7 @@ fun TopBarWithActions(
         ) {
             IconButton(onClick = onNavigateBack, modifier = Modifier.size(AppSizes.iconSizeLarge)) {
                 Icon(
-                        Icons.Default.ArrowBack,
+                        Icons.AutoMirrored.Default.ArrowBack,
                         contentDescription = "Retour",
                         modifier = Modifier.size(AppSizes.iconSizeMedium)
                 )

@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.RichTextEditor
 import fr.vetbrain.vetnutri_mp.Export.*
 import fr.vetbrain.vetnutri_mp.ViewModel.HtmlSectionViewModel
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /** Écran principal pour gérer les sections HTML réutilisables */
 @Composable
@@ -48,7 +50,7 @@ fun HtmlSectionManagerView(viewModel: HtmlSectionViewModel, onNavigateBack: () -
         TopAppBar(
                 title = { Text("Gestionnaire de sections HTML") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Retour") }
+                    IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Default.ArrowBack, "Retour") }
                 },
                 actions = {
                     IconButton(onClick = { showCreateDialog = true }) {
@@ -85,7 +87,14 @@ fun HtmlSectionManagerView(viewModel: HtmlSectionViewModel, onNavigateBack: () -
                     )
                 }
 
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                expanded = false
+                            }
+                        }
+                ) {
                     DropdownMenuItem(
                             onClick = {
                                 selectedCategory = null
