@@ -403,7 +403,8 @@ object Mappers {
         fun FoodEntity.toAlimentEv(
                 especes: List<EspeceAlimentEntity> = emptyList(),
                 indications: List<IndicationAlimentEntity> = emptyList(),
-                nutrientValues: List<NutrientValueEntity> = emptyList()
+                nutrientValues: List<NutrientValueEntity> = emptyList(),
+                biblioRefs: List<fr.vetbrain.vetnutri_mp.Data.BiblioRef> = emptyList()
         ): AlimentEv {
                 val especesList = mutableListOf<String>()
 
@@ -556,7 +557,8 @@ object Mappers {
                         indicat = indicatList.toMutableList(),
                         valMap = nutrientValues.toNutrientValueMap(),
                         cont = fr.vetbrain.vetnutri_mp.Enumer.ContEnum.getByName(this.cont ?: "NO"),
-                        rationUUID = this.RefRation ?: ""
+                        rationUUID = this.RefRation ?: "",
+                        biblioRefs = biblioRefs
                 )
         }
         // FIN ZONE PROTÉGÉE

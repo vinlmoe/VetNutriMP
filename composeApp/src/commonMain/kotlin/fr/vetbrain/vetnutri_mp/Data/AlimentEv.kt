@@ -29,7 +29,8 @@ data class AlimentEv(
         var especes: MutableList<String> = mutableListOf(),
         var indicat: MutableList<AlimIndic> = mutableListOf(),
         var valMap: MutableMap<Nutrient, NutrientQuantity> = mutableMapOf(),
-        val rationUUID: String? = null
+        val rationUUID: String? = null,
+        val biblioRefs: List<BiblioRef> = emptyList()
 ) {
         /**
          * Obtient la valeur d'un nutriment dans cet aliment

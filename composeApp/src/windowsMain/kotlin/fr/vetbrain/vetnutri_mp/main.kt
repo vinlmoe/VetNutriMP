@@ -25,7 +25,12 @@ fun main(args: Array<String> = emptyArray()) {
     // Création du repository des animaux
     val animalRepository = DatabaseAnimalRepository(appDatabase.animalDao(), appDatabase.foodDao())
     val foodRepository =
-            DatabaseFoodRepository(appDatabase.foodDao(), appDatabase.nutrientValueDao())
+            DatabaseFoodRepository(
+                appDatabase.foodDao(),
+                appDatabase.nutrientValueDao(),
+                appDatabase.alimentBiblioRefDao(),
+                appDatabase.biblioRefDao()
+            )
 
     // Vérifier si nous avons des arguments en ligne de commande
     if (args.isNotEmpty()) {
