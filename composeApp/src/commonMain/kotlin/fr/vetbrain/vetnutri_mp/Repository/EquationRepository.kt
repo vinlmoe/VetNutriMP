@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** Interface définissant les opérations disponibles pour la gestion des équations */
 interface EquationRepository {
@@ -109,6 +111,7 @@ class DatabaseEquationRepository(
 
     private val equationsFlow = MutableStateFlow<List<Equation>>(emptyList())
     private val scope = CoroutineScope(AppDispatchers.IO + SupervisorJob())
+    private val loadMutex = Mutex()
 
     init {
         // Retiré: insertion automatique d'équations de démonstration.
@@ -116,13 +119,16 @@ class DatabaseEquationRepository(
     }
 
     private suspend fun loadEquations() {
-        val equations =
-                equationDao.getAllEquations().mapNotNull { entity ->
-                    val biblioRef =
-                            entity.bibRef?.let { biblioRefDao.getBiblioRefById(it)?.toDomain() }
-                    entity.toDomain(biblioRef)
-                }
-        equationsFlow.value = equations
+        loadMutex.withLock {
+            val allBibs = biblioRefDao.getAllBiblioRefs().associateBy { it.uuid }
+            val equations =
+                    equationDao.getAllEquations().mapNotNull { entity ->
+                        val biblioRef =
+                                entity.bibRef?.let { allBibs[it]?.toDomain() }
+                        entity.toDomain(biblioRef)
+                    }
+            equationsFlow.value = equations
+        }
     }
 
     override suspend fun getAllEquations(): List<Equation> {

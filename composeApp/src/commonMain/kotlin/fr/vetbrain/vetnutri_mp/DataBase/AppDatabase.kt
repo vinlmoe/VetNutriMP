@@ -623,12 +623,12 @@ fun createMigration32to33(): Migration {
                 )
             """.trimIndent()).use { it.step() }
             connection.prepare(
-                "CREATE INDEX IF NOT EXISTS index_NUTRIENT_VALUES_refAliment ON NUTRIENT_VALUES(refAliment)"
-            ).use { it.step() }
-            connection.prepare(
                 "INSERT INTO NUTRIENT_VALUES SELECT * FROM NUTRIENT_VALUES_OLD"
             ).use { it.step() }
             connection.prepare("DROP TABLE NUTRIENT_VALUES_OLD").use { it.step() }
+            connection.prepare(
+                "CREATE INDEX IF NOT EXISTS index_NUTRIENT_VALUES_refAliment ON NUTRIENT_VALUES(refAliment)"
+            ).use { it.step() }
         }
     }
 }
