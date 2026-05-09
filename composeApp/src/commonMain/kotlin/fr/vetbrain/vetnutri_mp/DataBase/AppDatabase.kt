@@ -649,8 +649,8 @@ fun createMigration33to34(): Migration {
                     FOREIGN KEY(biblioRefUuid) REFERENCES BIBLIO_REFS(uuid) ON DELETE CASCADE
                 )
             """.trimIndent()).use { it.step() }
-            connection.prepare("CREATE INDEX IF NOT EXISTS idx_aliment_biblio_aliment ON ALIMENT_BIBLIO_REFS(alimentUuid)").use { it.step() }
-            connection.prepare("CREATE INDEX IF NOT EXISTS idx_aliment_biblio_ref ON ALIMENT_BIBLIO_REFS(biblioRefUuid)").use { it.step() }
+            connection.prepare("CREATE INDEX IF NOT EXISTS index_ALIMENT_BIBLIO_REFS_alimentUuid ON ALIMENT_BIBLIO_REFS(alimentUuid)").use { it.step() }
+            connection.prepare("CREATE INDEX IF NOT EXISTS index_ALIMENT_BIBLIO_REFS_biblioRefUuid ON ALIMENT_BIBLIO_REFS(biblioRefUuid)").use { it.step() }
         }
     }
 }
