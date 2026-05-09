@@ -550,6 +550,33 @@ data class BiblioRefEntity(
         val consistent: Int
 )
 
+/** Table de jonction aliment ↔ référence bibliographique (relation many-to-many) */
+@Serializable
+@Entity(
+        tableName = "ALIMENT_BIBLIO_REFS",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = FoodEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["alimentUuid"],
+                                onDelete = ForeignKey.CASCADE
+                        ),
+                        ForeignKey(
+                                entity = BiblioRefEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["biblioRefUuid"],
+                                onDelete = ForeignKey.CASCADE
+                        )
+                ],
+        primaryKeys = ["alimentUuid", "biblioRefUuid"],
+        indices = [Index("alimentUuid"), Index("biblioRefUuid")]
+)
+data class AlimentBiblioRefEntity(
+        val alimentUuid: String,
+        val biblioRefUuid: String
+)
+
 @Serializable
 @Entity(
         tableName = "EQUATIONS",

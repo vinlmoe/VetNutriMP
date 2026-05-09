@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.ViewModel
 import androidx.compose.runtime.mutableStateListOf
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlin.uuid.ExperimentalUuidApi
@@ -21,7 +22,8 @@ import kotlinx.datetime.todayIn
 @OptIn(ExperimentalUuidApi::class)
 class FoodEditViewModel(
         private val foodRepository: FoodRepository,
-        private val alimentUuid: String? = null
+        private val alimentUuid: String? = null,
+        private val biblioRefRepository: BiblioRefRepository? = null
 ) {
     private val job = SupervisorJob()
     private val coroutineScope = CoroutineScope(AppDispatchers.Main + job)
@@ -32,6 +34,13 @@ class FoodEditViewModel(
     private val _alimentState: MutableStateFlow<AlimentEv> = MutableStateFlow(defaultAliment)
     val alimentState: StateFlow<AlimentEv> = _alimentState.asStateFlow()
 
+    // Références bibliographiques
+    private val _selectedBiblioRefs = MutableStateFlow<List<BiblioRef>>(emptyList())
+    val selectedBiblioRefs: StateFlow<List<BiblioRef>> = _selectedBiblioRefs.asStateFlow()
+
+    private val _availableBiblioRefs = MutableStateFlow<List<BiblioRef>>(emptyList())
+    val availableBiblioRefs: StateFlow<List<BiblioRef>> = _availableBiblioRefs.asStateFlow()
+
     // Liste des nutriments disponibles
     private val _allNutrients = mutableStateListOf<Nutrient>()
 
@@ -39,6 +48,7 @@ class FoodEditViewModel(
         // Charger tous les types de nutriments
         loadNutrients()
         preloadCustomNutrientsFromRepository()
+        loadAvailableBiblioRefs()
 
         // Si un UUID est fourni, charger l'aliment correspondant
         if (!alimentUuid.isNullOrBlank()) {
@@ -112,12 +122,23 @@ class FoodEditViewModel(
         }
     }
 
+    private fun loadAvailableBiblioRefs() {
+        coroutineScope.launch {
+            try {
+                biblioRefRepository?.getAllBiblioRefs()?.collect { refs ->
+                    _availableBiblioRefs.value = refs
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
     private fun loadAliment(uuid: String) {
         coroutineScope.launch {
             try {
                 val aliment = foodRepository.getFood(uuid)
                 if (aliment != null) {
                     _alimentState.value = aliment
+                    _selectedBiblioRefs.value = aliment.biblioRefs
 
                     // S'assurer que la liste des nutriments est chargée
                     if (_allNutrients.isEmpty()) {
@@ -189,6 +210,16 @@ class FoodEditViewModel(
         return _allNutrients
     }
 
+    fun addBiblioRef(ref: BiblioRef) {
+        if (_selectedBiblioRefs.value.none { it.uuid == ref.uuid }) {
+            _selectedBiblioRefs.value = _selectedBiblioRefs.value + ref
+        }
+    }
+
+    fun removeBiblioRef(ref: BiblioRef) {
+        _selectedBiblioRefs.value = _selectedBiblioRefs.value.filter { it.uuid != ref.uuid }
+    }
+
     fun addOrGetCustomNutrient(name: String, unit: String = "g"): Nutrient? {
         val trimmedName = name.trim()
         if (trimmedName.isBlank()) return null
@@ -202,7 +233,10 @@ class FoodEditViewModel(
     suspend fun saveAliment(aliment: AlimentEv) {
         try {
             val todayIso = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
-            val alimentWithDate = aliment.copy(lastUpdateDate = todayIso)
+            val alimentWithDate = aliment.copy(
+                lastUpdateDate = todayIso,
+                biblioRefs = _selectedBiblioRefs.value
+            )
 
             // Vérifier si c'est un nouvel aliment ou une mise à jour
             val existingAliment =

@@ -270,7 +270,8 @@ fun App(appDatabase: AppDatabase) {
             remember(selectedFoodUuid) {
                 FoodEditViewModel(
                         foodRepository = foodRepository,
-                        alimentUuid = selectedFoodUuid
+                        alimentUuid = selectedFoodUuid,
+                        biblioRefRepository = biblioRefRepository
                 )
             }
     DisposableEffect(foodEditViewModel) {
@@ -286,11 +287,20 @@ fun App(appDatabase: AppDatabase) {
     }
 
     // ViewModel pour la gestion des sauvegardes
-    val backupRestoreViewModel = remember(backupService) { 
+    val backupRestoreViewModel = remember(backupService) {
         backupService?.let { BackupRestoreViewModel(it, platformDispatcher) }
     }
 
+    val bulkReferenceEditorViewModel = remember {
+        BulkReferenceEditorViewModel(
+                referenceEvRepository = databaseReferenceEvRepository,
+                biblioRefRepository = biblioRefRepository,
+                platformDispatcher = platformDispatcher
+        )
+    }
+
     var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }
+    var selectedReferenceIdsForBulk by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectedAnimal by remember { mutableStateOf<AnimalEv?>(null) }
     var isEditing by remember { mutableStateOf(false) }
     var selectedSpecies by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Enumer.Espece?>(null) }
@@ -628,6 +638,12 @@ fun App(appDatabase: AppDatabase) {
                                         selectedReferenceEvId = referenceEvId
                                         currentScreen = Screen.ReferenceEvNutrient
                                     },
+                                    onBulkEdit = { ids ->
+                                        selectedReferenceIdsForBulk = ids
+                                        bulkReferenceEditorViewModel.loadReferences(ids)
+                                        bulkReferenceEditorViewModel.loadAvailableBiblioRefs()
+                                        currentScreen = Screen.BulkReferenceEditor
+                                    },
                                     modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -639,6 +655,13 @@ fun App(appDatabase: AppDatabase) {
                                     platformDispatcher = platformDispatcher,
                                     referenceEvId = selectedReferenceEvId ?: "",
                                     onNavigateBack = { currentScreen = Screen.EquationList },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.BulkReferenceEditor -> {
+                            BulkReferenceEditorView(
+                                    viewModel = bulkReferenceEditorViewModel,
+                                    onNavigateBack = { currentScreen = Screen.ReferenceEvList },
                                     modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -945,6 +968,7 @@ private sealed class Screen {
     object ReferenceEvList : Screen()
     object ReferenceEvNutrient : Screen()
     object ReferenceEvTabs : Screen()
+    object BulkReferenceEditor : Screen()
     object TestYellowBox : Screen()
     object NewReferenceEvEdit : Screen()
     object Settings : Screen()

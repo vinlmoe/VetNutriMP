@@ -11,8 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
+import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.BiblioRefViewModel
@@ -37,7 +39,11 @@ fun BiblioRefEditView(
         val isValid by viewModel.isValid
         val operationMessage by viewModel.operationMessage.collectAsState()
         val actionInProgress by viewModel.actionInProgress.collectAsState()
+        val doiLoading by viewModel.doiLoading.collectAsState()
+        val doiError by viewModel.doiError.collectAsState()
         val coroutineScope = rememberCoroutineScope()
+
+        var doiInput by remember { mutableStateOf("") }
 
         val scrollState = rememberScrollState()
 
@@ -86,6 +92,67 @@ fun BiblioRefEditView(
                                                         text = "Informations de la référence",
                                                         style = MaterialTheme.typography.h6
                                                 )
+
+                                                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+
+                                                // Section import DOI
+                                                Text(
+                                                        "Importer depuis un DOI",
+                                                        style = MaterialTheme.typography.subtitle2
+                                                )
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                        OutlinedTextField(
+                                                                value = doiInput,
+                                                                onValueChange = {
+                                                                        doiInput = it
+                                                                        if (doiError.isNotBlank()) viewModel.clearDoiError()
+                                                                },
+                                                                placeholder = { Text("10.xxxx/xxxx", fontSize = 12.sp) },
+                                                                singleLine = true,
+                                                                modifier = Modifier.weight(1f),
+                                                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                                                        focusedBorderColor = VetNutriColors.Primary,
+                                                                        unfocusedBorderColor = Color.Gray
+                                                                )
+                                                        )
+                                                        Button(
+                                                                onClick = { viewModel.importFromDoi(doiInput) },
+                                                                enabled = doiInput.isNotBlank() && !doiLoading,
+                                                                colors = ButtonDefaults.buttonColors(
+                                                                        backgroundColor = VetNutriColors.Primary
+                                                                )
+                                                        ) {
+                                                                if (doiLoading) {
+                                                                        CircularProgressIndicator(
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                color = VetNutriColors.OnPrimary,
+                                                                                strokeWidth = 2.dp
+                                                                        )
+                                                                } else {
+                                                                        Icon(
+                                                                                imageVector = AppIcons.Search,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = VetNutriColors.OnPrimary
+                                                                        )
+                                                                        Spacer(Modifier.width(4.dp))
+                                                                        Text("Remplir", color = VetNutriColors.OnPrimary)
+                                                                }
+                                                        }
+                                                }
+                                                if (doiError.isNotBlank()) {
+                                                        Text(
+                                                                doiError,
+                                                                color = MaterialTheme.colors.error,
+                                                                style = MaterialTheme.typography.caption
+                                                        )
+                                                }
+
+                                                Divider()
 
                                                 Spacer(
                                                         modifier =
