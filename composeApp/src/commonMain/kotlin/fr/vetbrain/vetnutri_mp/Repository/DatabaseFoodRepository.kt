@@ -3,8 +3,12 @@ package fr.vetbrain.vetnutri_mp.Repository
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvLight
+import fr.vetbrain.vetnutri_mp.DataBase.AlimentBiblioRefDao
+import fr.vetbrain.vetnutri_mp.DataBase.AlimentBiblioRefEntity
+import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEv
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEvLight
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toFoodEntity
@@ -38,7 +42,9 @@ import kotlinx.serialization.json.Json
  */
 class DatabaseFoodRepository(
         private val foodDao: FoodDao,
-        private val nutrientValueDao: NutrientValueDao?
+        private val nutrientValueDao: NutrientValueDao?,
+        private val alimentBiblioRefDao: AlimentBiblioRefDao? = null,
+        private val biblioRefDao: BiblioRefDao? = null
 ) : FoodRepository {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -1165,6 +1171,15 @@ class DatabaseFoodRepository(
                 if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
                     nutrientValueDao.insertNutrientValues(nutrientValues)
                 }
+
+                // Insérer les références bibliographiques associées
+                if (alimentBiblioRefDao != null && food.biblioRefs.isNotEmpty()) {
+                    val junctions = food.biblioRefs.map { ref ->
+                        AlimentBiblioRefEntity(alimentUuid = food.uuid, biblioRefUuid = ref.uuid)
+                    }
+                    alimentBiblioRefDao.insertAll(junctions)
+                }
+
                 clearCache()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -1215,9 +1230,18 @@ class DatabaseFoodRepository(
                         emptyList()
                     }
 
+            // Récupérer les références bibliographiques associées
+            val biblioRefs = if (alimentBiblioRefDao != null && biblioRefDao != null) {
+                try {
+                    alimentBiblioRefDao.getBiblioRefUuids(uuid)
+                        .mapNotNull { refUuid -> biblioRefDao.getBiblioRefById(refUuid)?.toDomain() }
+                } catch (_: Exception) { emptyList() }
+            } else emptyList()
+
             return@withContext foodEntity.toAlimentEv(
                     especes = especeEntities,
-                    nutrientValues = nutrientValues
+                    nutrientValues = nutrientValues,
+                    biblioRefs = biblioRefs
             )
         }
     }
@@ -1300,6 +1324,18 @@ class DatabaseFoodRepository(
                         food.uuid,
                         food.valMap.toNutrientValueEntities(food.uuid)
                 )
+
+                // Remplacer les références bibliographiques associées
+                if (alimentBiblioRefDao != null) {
+                    alimentBiblioRefDao.deleteForAliment(food.uuid)
+                    if (food.biblioRefs.isNotEmpty()) {
+                        val junctions = food.biblioRefs.map { ref ->
+                            AlimentBiblioRefEntity(alimentUuid = food.uuid, biblioRefUuid = ref.uuid)
+                        }
+                        alimentBiblioRefDao.insertAll(junctions)
+                    }
+                }
+
                 clearCache()
             } catch (e: Exception) {
                 e.printStackTrace()

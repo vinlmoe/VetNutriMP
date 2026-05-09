@@ -1,6 +1,8 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
@@ -8,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
@@ -21,6 +24,7 @@ import fr.vetbrain.vetnutri_mp.Components.MultiSelectionCard
 import fr.vetbrain.vetnutri_mp.Components.NutrientSection
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
@@ -77,11 +81,15 @@ fun FoodEditView(
         val customNutrientUnitState = remember { mutableStateOf("g") }
         val customNutrientSelectedLabelState = remember { mutableStateOf("") }
 
+        val selectedBiblioRefs by viewModel.selectedBiblioRefs.collectAsState()
+        val availableBiblioRefs by viewModel.availableBiblioRefs.collectAsState()
+
         // État pour les onglets
         var selectedTabIndex by remember { mutableStateOf(0) }
         val tabTitles = listOf(
                 translate(LocalizationKeys.FoodEdit.TAB_GENERAL),
-                translate(LocalizationKeys.FoodEdit.TAB_NUTRITION)
+                translate(LocalizationKeys.FoodEdit.TAB_NUTRITION),
+                "Bibliographie"
         )
 
         // Fonction de validation des nutriments
@@ -464,9 +472,155 @@ fun FoodEditView(
                                                                 }
                                                         }
                                                 )
+                                        2 ->
+                                                BiblioRefTab(
+                                                        selectedRefs = selectedBiblioRefs,
+                                                        availableRefs = availableBiblioRefs,
+                                                        onAdd = { viewModel.addBiblioRef(it) },
+                                                        onRemove = { viewModel.removeBiblioRef(it) }
+                                                )
                                 }
                         }
                 }
+        }
+}
+
+@Composable
+private fun BiblioRefTab(
+        selectedRefs: List<BiblioRef>,
+        availableRefs: List<BiblioRef>,
+        onAdd: (BiblioRef) -> Unit,
+        onRemove: (BiblioRef) -> Unit
+) {
+        var showPicker by remember { mutableStateOf(false) }
+        var searchQuery by remember { mutableStateOf("") }
+
+        Column(modifier = Modifier.fillMaxSize().padding(vertical = 8.dp)) {
+                Button(
+                        onClick = { showPicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary)
+                ) {
+                        Icon(Icons.Default.Add, contentDescription = null, tint = VetNutriColors.OnPrimary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Ajouter une référence", color = VetNutriColors.OnPrimary)
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                if (selectedRefs.isEmpty()) {
+                        Text(
+                                "Aucune référence bibliographique associée",
+                                style = MaterialTheme.typography.body2,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                } else {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                items(selectedRefs, key = { it.uuid }) { ref ->
+                                        Card(
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                                elevation = 2.dp
+                                        ) {
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                        Column(modifier = Modifier.weight(1f)) {
+                                                                Text(
+                                                                        "${ref.firstAuthor} (${ref.year})",
+                                                                        style = MaterialTheme.typography.subtitle2
+                                                                )
+                                                                if (ref.completeRef.isNotBlank()) {
+                                                                        Text(
+                                                                                ref.completeRef,
+                                                                                style = MaterialTheme.typography.caption,
+                                                                                color = Color.Gray,
+                                                                                maxLines = 2
+                                                                        )
+                                                                }
+                                                        }
+                                                        IconButton(onClick = { onRemove(ref) }) {
+                                                                Icon(
+                                                                        Icons.Default.Close,
+                                                                        contentDescription = "Supprimer",
+                                                                        tint = MaterialTheme.colors.error
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+
+        if (showPicker) {
+                val unselected = availableRefs.filter { avail ->
+                        selectedRefs.none { it.uuid == avail.uuid }
+                }
+                val filtered = if (searchQuery.isBlank()) unselected else unselected.filter { ref ->
+                        ref.firstAuthor.contains(searchQuery, ignoreCase = true) ||
+                                ref.completeRef.contains(searchQuery, ignoreCase = true) ||
+                                ref.year.toString().contains(searchQuery)
+                }
+                AlertDialog(
+                        onDismissRequest = { showPicker = false; searchQuery = "" },
+                        title = { Text("Choisir une référence") },
+                        text = {
+                                Column {
+                                        OutlinedTextField(
+                                                value = searchQuery,
+                                                onValueChange = { searchQuery = it },
+                                                placeholder = { Text("Rechercher…") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                                        focusedBorderColor = VetNutriColors.Primary,
+                                                        unfocusedBorderColor = Color.Gray
+                                                )
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        if (filtered.isEmpty()) {
+                                                Text("Aucune référence disponible", color = Color.Gray)
+                                        } else {
+                                                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+                                                        items(filtered, key = { it.uuid }) { ref ->
+                                                                TextButton(
+                                                                        onClick = {
+                                                                                onAdd(ref)
+                                                                                showPicker = false
+                                                                                searchQuery = ""
+                                                                        },
+                                                                        modifier = Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        Column(modifier = Modifier.fillMaxWidth()) {
+                                                                                Text(
+                                                                                        "${ref.firstAuthor} (${ref.year})",
+                                                                                        style = MaterialTheme.typography.subtitle2
+                                                                                )
+                                                                                if (ref.completeRef.isNotBlank()) {
+                                                                                        Text(
+                                                                                                ref.completeRef,
+                                                                                                style = MaterialTheme.typography.caption,
+                                                                                                color = Color.Gray,
+                                                                                                maxLines = 1
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                }
+                                                                Divider()
+                                                        }
+                                                }
+                                        }
+                                }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                                TextButton(onClick = { showPicker = false; searchQuery = "" }) {
+                                        Text("Fermer")
+                                }
+                        }
+                )
         }
 }
 
