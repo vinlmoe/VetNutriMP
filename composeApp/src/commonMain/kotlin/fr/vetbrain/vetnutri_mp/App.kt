@@ -270,7 +270,8 @@ fun App(appDatabase: AppDatabase) {
             remember(selectedFoodUuid) {
                 FoodEditViewModel(
                         foodRepository = foodRepository,
-                        alimentUuid = selectedFoodUuid
+                        alimentUuid = selectedFoodUuid,
+                        biblioRefRepository = biblioRefRepository
                 )
             }
     DisposableEffect(foodEditViewModel) {

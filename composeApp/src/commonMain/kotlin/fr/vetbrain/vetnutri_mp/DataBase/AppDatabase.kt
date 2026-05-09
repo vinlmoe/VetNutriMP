@@ -31,6 +31,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         FoodEntity::class,
                         NutrientValueEntity::class,
                         BiblioRefEntity::class,
+                        AlimentBiblioRefEntity::class,
                         EquationEntity::class,
                         ConsultationKeywordEntity::class,
                         ReferenceEvEntity::class,
@@ -41,7 +42,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ExamGradeEntity::class,
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class],
-        version = 33,
+        version = 34,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -53,6 +54,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recipeDao(): RecipeDao
     abstract fun nutrientValueDao(): NutrientValueDao
     abstract fun biblioRefDao(): BiblioRefDao
+    abstract fun alimentBiblioRefDao(): AlimentBiblioRefDao
     abstract fun equationDao(): EquationDao
     abstract fun referenceEvDao(): ReferenceEvDao
     abstract fun htmlSectionDao(): HtmlSectionDao
@@ -112,7 +114,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         createMigration30to31(),
                         createMigration31to32(),
                         // Migration 32→33 : CASCADE DELETE sur NUTRIENT_VALUES (clé étrangère vers FOOD)
-                        createMigration32to33()
+                        createMigration32to33(),
+                        // Migration 33→34 : Table de jonction aliment ↔ références bibliographiques
+                        createMigration33to34()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -629,6 +633,24 @@ fun createMigration32to33(): Migration {
                 "INSERT INTO NUTRIENT_VALUES SELECT * FROM NUTRIENT_VALUES_OLD"
             ).use { it.step() }
             connection.prepare("DROP TABLE NUTRIENT_VALUES_OLD").use { it.step() }
+        }
+    }
+}
+
+fun createMigration33to34(): Migration {
+    return object : Migration(33, 34) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS ALIMENT_BIBLIO_REFS (
+                    alimentUuid TEXT NOT NULL,
+                    biblioRefUuid TEXT NOT NULL,
+                    PRIMARY KEY(alimentUuid, biblioRefUuid),
+                    FOREIGN KEY(alimentUuid) REFERENCES FOOD(uuid) ON DELETE CASCADE,
+                    FOREIGN KEY(biblioRefUuid) REFERENCES BIBLIO_REFS(uuid) ON DELETE CASCADE
+                )
+            """.trimIndent()).use { it.step() }
+            connection.prepare("CREATE INDEX IF NOT EXISTS idx_aliment_biblio_aliment ON ALIMENT_BIBLIO_REFS(alimentUuid)").use { it.step() }
+            connection.prepare("CREATE INDEX IF NOT EXISTS idx_aliment_biblio_ref ON ALIMENT_BIBLIO_REFS(biblioRefUuid)").use { it.step() }
         }
     }
 }

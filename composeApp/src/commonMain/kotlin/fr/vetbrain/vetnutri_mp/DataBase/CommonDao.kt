@@ -448,6 +448,19 @@ interface ReferenceEvDao {
         @Query("DELETE FROM REFERENCE_EV_NUTRIENTS") suspend fun deleteAllNutrients()
 }
 
+/** DAO pour la table de jonction aliment ↔ référence bibliographique */
+@Dao
+interface AlimentBiblioRefDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(entities: List<AlimentBiblioRefEntity>)
+
+    @Query("DELETE FROM ALIMENT_BIBLIO_REFS WHERE alimentUuid = :alimentUuid")
+    suspend fun deleteForAliment(alimentUuid: String)
+
+    @Query("SELECT biblioRefUuid FROM ALIMENT_BIBLIO_REFS WHERE alimentUuid = :alimentUuid")
+    suspend fun getBiblioRefUuids(alimentUuid: String): List<String>
+}
+
 /** DAO pour accéder aux sections HTML réutilisables */
 @Dao
 interface HtmlSectionDao {
