@@ -14,14 +14,53 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import fr.vetbrain.vetnutri_mp.Data.*
-import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
+import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
+import fr.vetbrain.vetnutri_mp.Components.TooltipArea
+import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRation
+import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import io.github.koalaplot.core.pie.PieChart
+import io.github.koalaplot.core.pie.DefaultSlice
+import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
+import fr.vetbrain.vetnutri_mp.Data.NutrientPieData
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+
+/**
+ * Obtient le nom traduit d'un nutriment selon son type en utilisant les traductions JSON
+ */
+private fun obtenirNomTraduitNutriment(nom: String, nutriment: Any): String {
+    return when (nutriment) {
+        is NutrientLipid -> nutriment.translateEnum()
+        is NutrientMacro -> nutriment.translateEnum()
+        is NutrientMain -> nutriment.translateEnum()
+        is NutrientMin -> nutriment.translateEnum()
+        is NutrientOther -> nutriment.translateEnum()
+        is NutrientVitam -> nutriment.translateEnum()
+        is AAEnum -> nutriment.translateEnum()
+        is NutrientAnalysis -> nutriment.translateEnum()
+        is NutrientEnergy -> nutriment.translateEnum()
+        else -> nom // Fallback sur le nom original si le type n'est pas reconnu
+    }
+}
 
 /** Données pour un item de la grille (titre ou nutriment) */
 private sealed class GridItem {
@@ -46,6 +85,17 @@ fun AnalyseNutritionnelleCard(
         equationRepository: EquationRepository? = null,
         // Nouveau paramètre pour les préférences pré-chargées
         typeExpressionBesoin: TypeExpressionBesoin? = null,
+        // Actions supplémentaires à afficher dans l'en-tête (ex: sélection d'unité)
+        headerActions: @Composable RowScope.() -> Unit = {},
+        // Option pour personnaliser le titre (ex: "Analyse")
+        titleOverride: String? = null,
+        // Badge de contexte (ex: BESOINS)
+        contextBadgeLabel: String? = null,
+        contextBadgeColor: Color = VetNutriColors.Primary,
+        contextBadgeOnClick: (() -> Unit)? = null,
+        contextBadgeTooltip: String? = null,
+        // Option pour masquer l'indication d'expression des besoins
+        showDisplayModeText: Boolean = true,
         // Paramètre pour adapter la hauteur selon la vue (large ou compacte)
         isLargeView: Boolean = false,
         // Références de maladies pour le contrôle et les graphes
@@ -92,36 +142,71 @@ fun AnalyseNutritionnelleCard(
                 }
     }
 
-    val valeursNutritionnellesBase =
-            if (afficherTousLesNutriments ||
-                            nutrimentsSelectionnes == null ||
-                            nutrimentsSelectionnes.isEmpty()
+    var valeursNutritionnellesBase by remember {
+        mutableStateOf<Map<String, ValeurNutritionnelle>>(emptyMap())
+    }
+
+    var valeursNutritionnellesLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(
+        afficherTousLesNutriments,
+        nutrimentsSelectionnes,
+        ration,
+        referenceUtilisee,
+        equationRepository,
+        animal,
+        preferencesRepository
+    ) {
+        valeursNutritionnellesLoading = true
+
+        val shouldUseEquations = referenceUtilisee != null && equationRepository != null
+
+        val preferencesEspece = if (shouldUseEquations) {
+            if (animal != null && preferencesRepository != null) {
+                withContext(AppDispatchers.IO) {
+                    preferencesRepository.getPreferencesForSpecies(animal.getEspece())
+                }
+            } else {
+                PreferencesEspece()
+            }
+        } else {
+            null
+        }
+
+        val resultat = withContext(Dispatchers.Default) {
+            if (
+                afficherTousLesNutriments ||
+                nutrimentsSelectionnes == null ||
+                nutrimentsSelectionnes.isEmpty()
             ) {
-                // Utiliser les équations complémentaires depuis la ReferenceEv si disponible
-                if (referenceUtilisee != null && equationRepository != null) {
+                if (shouldUseEquations && preferencesEspece != null) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations(
-                            ration = ration,
-                            preferencesEspece = PreferencesEspece(),
-                            equationRepository = equationRepository,
-                            referenceEv = referenceUtilisee
+                        ration = ration,
+                        preferencesEspece = preferencesEspece,
+                        equationRepository = equationRepository,
+                        referenceEv = referenceUtilisee
                     )
                 } else {
                     analyserValeursNutritionnellesRation(ration)
                 }
             } else {
-                // Mode filtré: intégrer aussi les équations si disponibles via la ReferenceEv
-                if (referenceUtilisee != null && equationRepository != null) {
+                if (shouldUseEquations && preferencesEspece != null) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
-                            ration = ration,
-                            nutrimentsSelectionnes = nutrimentsSelectionnes,
-                            preferencesEspece = null,
-                            equationRepository = equationRepository,
-                            referenceEv = referenceUtilisee
+                        ration = ration,
+                        nutrimentsSelectionnes = nutrimentsSelectionnes,
+                        preferencesEspece = preferencesEspece,
+                        equationRepository = equationRepository,
+                        referenceEv = referenceUtilisee
                     )
                 } else {
                     analyserValeursNutritionnellesRationSelective(ration, nutrimentsSelectionnes)
                 }
             }
+        }
+
+        valeursNutritionnellesBase = resultat
+        valeursNutritionnellesLoading = false
+    }
 
     // Les équations complémentaires sont déjà appliquées dans analyserValeursNutritionnellesRationAvecEquations
     // via getNutrientWithComplementary, donc on utilise directement les valeurs de base
@@ -132,6 +217,14 @@ fun AnalyseNutritionnelleCard(
             remember(valeursNutritionnelles) {
                 grouperNutrimentsParCategorie(valeursNutritionnelles)
             }
+            
+    // Préparer les données pour les pie charts
+    val compositionData = remember(valeursNutritionnelles) {
+        generateCompositionData(valeursNutritionnelles)
+    }
+    val energyData = remember(valeursNutritionnelles) {
+        generateEnergyData(valeursNutritionnelles)
+    }
 
     Card(modifier = modifier, elevation = AppSizes.elevationSmall) {
         Column(
@@ -139,109 +232,202 @@ fun AnalyseNutritionnelleCard(
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
         ) {
             var afficherBullet by remember { mutableStateOf(false) }
-            // En-tête avec titre et bouton toggle
-            Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                            text = "Analyse nutritionnelle",
-                            style = MaterialTheme.typography.subtitle1,
-                            fontWeight = FontWeight.Bold,
-                            color = VetNutriColors.Primary
-                    )
-
-                    // Indicateur des préférences d'affichage
-                    finalTypeExpressionBesoin?.let { typeExpr ->
-                        Text(
-                                text = "Affichage: ${typeExpr.displayName}",
-                                style = MaterialTheme.typography.caption,
-                                color =
-                                        if (preferencesLoaded) VetNutriColors.Primary
-                                        else VetNutriColors.Error,
-                                modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
-                }
-
-                Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+            if (valeursNutritionnellesLoading) {
+                Box(
+                        modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingSmall),
+                        contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                            text = if (afficherTousLesNutriments) "Tous" else "Sélectionnés",
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                    )
+                    CircularProgressIndicator()
+                }
+            } else {
+                // En-tête avec titre et bouton toggle
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        val resolvedTitle =
+                                titleOverride
+                                        ?: translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE)
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement =
+                                        Arrangement.spacedBy(AppSizes.paddingXSmall)
+                        ) {
+                            if (resolvedTitle.isNotBlank()) {
+                                Text(
+                                        text = resolvedTitle,
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Primary
+                                )
+                            }
+                            contextBadgeLabel?.let { badge ->
+                                TooltipArea(
+                                        tooltip =
+                                                contextBadgeTooltip
+                                                        ?: translate(
+                                                                LocalizationKeys.AnalNut
+                                                                        .TOOLTIP_SWITCH_ANALYSIS
+                                                        )
+                                ) {
+                                    Surface(
+                                            modifier =
+                                                    if (contextBadgeOnClick != null) {
+                                                        Modifier.clickable {
+                                                            contextBadgeOnClick.invoke()
+                                                        }
+                                                    } else {
+                                                        Modifier
+                                                    },
+                                            color = contextBadgeColor.copy(alpha = 0.15f),
+                                            shape = MaterialTheme.shapes.small
+                                    ) {
+                                        Text(
+                                                text = badge,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                                style = MaterialTheme.typography.overline,
+                                                fontWeight = FontWeight.Bold,
+                                                color = contextBadgeColor
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
-                    IconButton(
-                            onClick = { afficherTousLesNutriments = !afficherTousLesNutriments },
-                            modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                                imageVector =
-                                        if (afficherTousLesNutriments) Icons.Filled.ToggleOn
-                                        else Icons.Filled.ToggleOff,
-                                contentDescription =
-                                        if (afficherTousLesNutriments)
-                                                "Afficher seulement les nutriments sélectionnés"
-                                        else "Afficher tous les nutriments",
-                                tint =
-                                        if (afficherTousLesNutriments) VetNutriColors.Primary
-                                        else MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
-                                modifier = Modifier.size(24.dp)
-                        )
+                        // Indicateur des préférences d'affichage
+                        if (showDisplayModeText) {
+                            finalTypeExpressionBesoin?.let { typeExpr ->
+                                Text(
+                                        text = translate(LocalizationKeys.AnalNut.DISPLAY_MODE, typeExpr.displayName),
+                                        style = MaterialTheme.typography.caption,
+                                        color =
+                                                if (preferencesLoaded) VetNutriColors.Primary
+                                                else VetNutriColors.Error,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
+                        }
                     }
 
-                    // Toggle d'affichage BulletGraph
-                    Text(
-                            text = if (afficherBullet) "Bullet" else "Cartes",
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                    )
-                    IconButton(
-                            onClick = { afficherBullet = !afficherBullet },
-                            modifier = Modifier.size(32.dp)
+                    Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
                     ) {
-                        Icon(
-                                imageVector =
-                                        if (afficherBullet) Icons.Filled.ToggleOn
-                                        else Icons.Filled.ToggleOff,
-                                contentDescription =
-                                        if (afficherBullet) "Afficher en cartes"
-                                        else "Afficher en bullet graphs",
-                                tint =
-                                        if (afficherBullet) VetNutriColors.Primary
-                                        else MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
-                                modifier = Modifier.size(24.dp)
+                        headerActions()
+                        Text(
+                                text = if (afficherTousLesNutriments) translate(LocalizationKeys.AnalNut.ALL) else translate(LocalizationKeys.AnalNut.SELECTED),
+                                style = MaterialTheme.typography.caption,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
+
+                        IconButton(
+                                onClick = { afficherTousLesNutriments = !afficherTousLesNutriments },
+                                modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                    imageVector =
+                                            if (afficherTousLesNutriments) Icons.Filled.ToggleOn
+                                            else Icons.Filled.ToggleOff,
+                                    contentDescription =
+                                            if (afficherTousLesNutriments)
+                                                    translate(LocalizationKeys.AnalNut.SHOW_SELECTED_ONLY)
+                                            else translate(LocalizationKeys.AnalNut.SHOW_ALL),
+                                    tint =
+                                            if (afficherTousLesNutriments) VetNutriColors.Primary
+                                            else MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        // Toggle d'affichage BulletGraph
+                        Text(
+                                text = if (afficherBullet) translate(LocalizationKeys.AnalNut.BULLET_VIEW) else translate(LocalizationKeys.AnalNut.CARDS_VIEW),
+                                style = MaterialTheme.typography.caption,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+                        IconButton(
+                                onClick = { afficherBullet = !afficherBullet },
+                                modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                    imageVector =
+                                            if (afficherBullet) Icons.Filled.ToggleOn
+                                            else Icons.Filled.ToggleOff,
+                                    contentDescription =
+                                            if (afficherBullet) translate(LocalizationKeys.AnalNut.SHOW_CARDS)
+                                            else translate(LocalizationKeys.AnalNut.SHOW_BULLETS),
+                                    tint =
+                                            if (afficherBullet) VetNutriColors.Primary
+                                            else MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
-            }
 
-            // Liste avec titres de section et grilles de nutriments
-            LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                    modifier =
-                            if (isLargeView) {
-                                // En vue large, utiliser une hauteur adaptative basée sur l'espace
-                                // disponible
-                                Modifier.fillMaxWidth().fillMaxHeight()
-                            } else {
-                                // En vue compacte, utiliser une hauteur fixe pour éviter les
-                                // conflits de scroll
-                                Modifier.fillMaxWidth().height(400.dp)
+                // Liste avec titres de section et grilles de nutriments
+                LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        modifier =
+                                if (isLargeView) {
+                                    // En vue large, utiliser une hauteur adaptative basée sur l'espace
+                                    // disponible
+                                    Modifier.fillMaxWidth().fillMaxHeight()
+                                } else {
+                                    // En vue compacte, utiliser une hauteur fixe pour éviter les
+                                    // conflits de scroll
+                                    Modifier.fillMaxWidth().height(400.dp)
+                                }
+                ) {
+                    // Ajouter les pie charts si mode bullet activé
+                    if (afficherBullet) {
+                        item {
+                            Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                            ) {
+                                if (compositionData.isNotEmpty()) {
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        PieChartCard(
+                                                title = translate(LocalizationKeys.AnalNut.COMPOSITION),
+                                                data = compositionData,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                                if (energyData.isNotEmpty()) {
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        PieChartCard(
+                                                title = translate(LocalizationKeys.AnalNut.ENERGY_ORIGIN),
+                                                data = energyData,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
                             }
-            ) {
+                        }
+                    }
+                
                 // Ordre d'affichage des catégories
                 val ordreCategories =
-                        listOf("BASE", "MACRO", "MIN", "VITAM", "LIPID", "AMA", "ANA", "OTHER")
+                        listOf("BASE", "MACRO", "MIN", "VITAM", "LIPID", "AMA", "ANA", "OTHER", "ENERGY")
 
                 ordreCategories.forEach { categorie ->
                     nutrimentsGroupes[categorie]?.let { nutriments ->
-                        if (nutriments.isNotEmpty()) {
+                        // Filtrer les nutriments à 0 si "tous" n'est pas sélectionné
+                        val nutrimentsAffiches =
+                                if (afficherTousLesNutriments) {
+                                    nutriments
+                                } else {
+                                    nutriments.filter {
+                                        val isNutrientRatio = it.second.nutriment is NutrientAnalysis
+                                        isNutrientRatio || it.second.valeur > 0.0
+                                    }
+                                }
+                        // Afficher la section uniquement si elle contient des nutriments après filtrage
+                        if (nutrimentsAffiches.isNotEmpty()) {
                             // Titre de section
                             item {
                                 TitreSectionCard(
@@ -258,7 +444,7 @@ fun AnalyseNutritionnelleCard(
                                             verticalArrangement =
                                                     Arrangement.spacedBy(AppSizes.paddingXSmall)
                                     ) {
-                                        nutriments.chunked(3).forEach { rangeeNutriments ->
+                                        nutrimentsAffiches.chunked(3).forEach { rangeeNutriments ->
                                             Row(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement =
@@ -281,7 +467,8 @@ fun AnalyseNutritionnelleCard(
                                                             },
                                                             typeExpressionBesoin =
                                                                     finalTypeExpressionBesoin,
-                                                            preferencesLoaded = preferencesLoaded
+                                                            preferencesLoaded = preferencesLoaded,
+                                                            referencesMaladies = referencesMaladies
                                                     )
                                                 }
                                                 repeat(3 - rangeeNutriments.size) {
@@ -293,8 +480,7 @@ fun AnalyseNutritionnelleCard(
                                 }
                             } else {
                                 // Liste de bullet graphs, un par nutriment
-                                items(items = nutriments.filter { it.second.valeur > 0.0 }) { pair
-                                    ->
+                                items(items = nutrimentsAffiches) { pair ->
                                     val nom = pair.first
                                     val valeur = pair.second
                                     val apport = valeur.valeur
@@ -303,46 +489,122 @@ fun AnalyseNutritionnelleCard(
                                                     ?: TypeExpressionBesoin.DEFAULT
                                     
                                     // Convertir la valeur selon l'unité des préférences pour le graphique bullet
-                                    val apportConverti = when (typeExpr) {
-                                        TypeExpressionBesoin.PAR_KG -> {
-                                            poidsAnimal?.let { poids ->
-                                                if (poids > 0) apport / poids else apport
-                                            } ?: apport
-                                        }
-                                        TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
-                                            poidsMetabolique?.let { poidsMetab ->
-                                                if (poidsMetab > 0) apport / poidsMetab else apport
-                                            } ?: apport
-                                        }
-                                        TypeExpressionBesoin.PAR_KCAL -> {
-                                            besoinEnergetiqueEntretien?.let { bee ->
-                                                if (bee > 0) (apport / bee) * 1000 else apport
-                                            } ?: apport
-                                        }
-                                        TypeExpressionBesoin.PAR_KJ -> {
-                                            besoinEnergetiqueEntretien?.let { bee ->
-                                                if (bee > 0) {
-                                                    val beeEnKj = bee * 4.184
-                                                    (apport / beeEnKj) * 1000
-                                                } else apport
-                                            } ?: apport
+                                    // Mais pas pour les ratios (CAP, KNA, O6O3, etc.) qui sont des valeurs pures
+                                    val isRatio = valeur.nutriment is NutrientAnalysis && valeur.unite.displayName.isBlank()
+                                    val apportConverti = if (isRatio) {
+                                        // Pour les ratios, utiliser la valeur brute sans conversion
+                                        apport
+                                    } else {
+                                        when (typeExpr) {
+                                            TypeExpressionBesoin.PAR_KG -> {
+                                                poidsAnimal?.let { poids ->
+                                                    if (poids > 0) apport / poids else apport
+                                                } ?: apport
+                                            }
+                                            TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
+                                                poidsMetabolique?.let { poidsMetab ->
+                                                    if (poidsMetab > 0) apport / poidsMetab else apport
+                                                } ?: apport
+                                            }
+                                            TypeExpressionBesoin.PAR_KCAL -> {
+                                                besoinEnergetiqueEntretien?.let { bee ->
+                                                    if (bee > 0) (apport / bee) * 1000 else apport
+                                                } ?: apport
+                                            }
+                                            TypeExpressionBesoin.PAR_KJ -> {
+                                                besoinEnergetiqueEntretien?.let { bee ->
+                                                    if (bee > 0) {
+                                                        val beeEnKj = bee * 4.184
+                                                        (apport / beeEnKj) * 1000
+                                                    } else apport
+                                                } ?: apport
+                                            }
                                         }
                                     }
                                     
                                     if (referenceUtilisee != null) {
+                                        // Obtenir l'icône de conformité pour déterminer la couleur
+                                        val iconeConformiteBullet = obtenirIconeConformite(
+                                                valeurNutritionnelle = valeur,
+                                                referenceUtilisee = referenceUtilisee,
+                                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                                poidsAnimal = poidsAnimal,
+                                                poidsMetabolique = poidsMetabolique,
+                                                referencesMaladies = referencesMaladies
+                                        )
+                                        
                                         Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
-                                            Text(
-                                                    text = nom,
-                                                    style = MaterialTheme.typography.caption,
-                                                    color =
-                                                            MaterialTheme.colors.onSurface.copy(
-                                                                    alpha = 0.8f
-                                                            ),
-                                                    modifier = Modifier.width(140.dp)
+                                            // Calculer l'affichage selon les préférences
+                                            val (valeurAffichee, uniteAffichee) = calculerAffichageNutriment(
+                                                    valeurNutritionnelle = valeur,
+                                                    typeExpressionBesoin = typeExpr,
+                                                    poidsMetabolique = poidsMetabolique,
+                                                    poidsAnimal = poidsAnimal,
+                                                    besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                                    referenceUtilisee = referenceUtilisee
                                             )
+                                            
+                                            // Couleur selon l'icône de conformité : violet pour maladie, bleu si une flèche, rouge si deux
+                                            val couleurTexte = when {
+                                                iconeConformiteBullet?.isMaladie == true -> Color(0xFF9C27B0) // Violet pour références de maladies
+                                                iconeConformiteBullet?.isCritical == true -> VetNutriColors.Error // Rouge pour deux flèches
+                                                iconeConformiteBullet != null -> Color(0xFF2196F3) // Bleu pour une flèche
+                                                else -> MaterialTheme.colors.onSurface // Noir par défaut si aucune flèche
+                                            }
+                                            
+                                            Column(
+                                                    modifier = Modifier.width(200.dp)
+                                            ) {
+                                                // Nom du nutriment avec icône si nécessaire
+                                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    Text(
+                                                            text = obtenirNomTraduitNutriment(nom, valeur.nutriment),
+                                                            style = MaterialTheme.typography.caption,
+                                                            color =
+                                                                    MaterialTheme.colors.onSurface.copy(
+                                                                            alpha = 0.8f
+                                                                    ),
+                                                            fontWeight = FontWeight.Bold
+                                                    )
+                                                    
+                                                    // Icône de conformité aux références (+ ou -)
+                                                    iconeConformiteBullet?.let { conformite ->
+                                                        if (conformite.isCritical && !conformite.isMaladie) {
+                                                            // Double icône pour les références critiques (sauf maladie)
+                                                            Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                                                                Icon(
+                                                                        imageVector = conformite.icone,
+                                                                        contentDescription = conformite.description,
+                                                                        tint = conformite.couleur,
+                                                                        modifier = Modifier.size(10.dp)
+                                                                )
+                                                                Icon(
+                                                                        imageVector = conformite.icone,
+                                                                        contentDescription = conformite.description,
+                                                                        tint = conformite.couleur,
+                                                                        modifier = Modifier.size(10.dp)
+                                                                )
+                                                            }
+                                                        } else {
+                                                            // Icône simple
+                                                            Icon(
+                                                                    imageVector = conformite.icone,
+                                                                    contentDescription = conformite.description,
+                                                                    tint = conformite.couleur,
+                                                                    modifier = Modifier.size(12.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                Text(
+                                                        text = "$valeurAffichee $uniteAffichee",
+                                                        style = MaterialTheme.typography.overline,
+                                                        color = couleurTexte
+                                                )
+                                            }
                                             Box(modifier = Modifier.weight(1f)) {
                                                 ReferenceBulletGraph(
                                                         valeurApport = apportConverti,
@@ -359,12 +621,79 @@ fun AnalyseNutritionnelleCard(
                                             }
                                         }
                                     } else {
-                                        Text(
-                                                text =
-                                                        "$nom: ${TextUtils.formatDecimal(apport.toDouble(), 2)} ${valeur.unite.displayName}",
-                                                style = MaterialTheme.typography.caption,
-                                                color = MaterialTheme.colors.onSurface
+                                        // Calculer l'affichage selon les préférences même sans référence
+                                        val (valeurAffichee, uniteAffichee) = calculerAffichageNutriment(
+                                                valeurNutritionnelle = valeur,
+                                                typeExpressionBesoin = typeExpr,
+                                                poidsMetabolique = poidsMetabolique,
+                                                poidsAnimal = poidsAnimal,
+                                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                                referenceUtilisee = null
                                         )
+                                        
+                                        // Obtenir l'icône de conformité pour déterminer la couleur (même sans référence principale)
+                                        val iconeConformiteBullet = obtenirIconeConformite(
+                                                valeurNutritionnelle = valeur,
+                                                referenceUtilisee = null,
+                                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                                poidsAnimal = poidsAnimal,
+                                                poidsMetabolique = poidsMetabolique,
+                                                referencesMaladies = referencesMaladies
+                                        )
+                                        
+                                        // Couleur selon l'icône de conformité : violet pour maladie, bleu si une flèche, rouge si deux
+                                        val couleurTexte = when {
+                                            iconeConformiteBullet?.isMaladie == true -> Color(0xFF9C27B0) // Violet pour références de maladies
+                                            iconeConformiteBullet?.isCritical == true -> VetNutriColors.Error // Rouge pour deux flèches
+                                            iconeConformiteBullet != null -> Color(0xFF2196F3) // Bleu pour une flèche
+                                            else -> MaterialTheme.colors.onSurface // Noir par défaut si aucune flèche
+                                        }
+                                        
+                                        Column {
+                                                // Nom du nutriment avec icône si nécessaire
+                                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    Text(
+                                                            text = obtenirNomTraduitNutriment(nom, valeur.nutriment),
+                                                            style = MaterialTheme.typography.caption,
+                                                            color = MaterialTheme.colors.onSurface,
+                                                            fontWeight = FontWeight.Bold
+                                                    )
+                                                    
+                                                    // Icône de conformité aux références (+ ou -)
+                                                    iconeConformiteBullet?.let { conformite ->
+                                                        if (conformite.isCritical && !conformite.isMaladie) {
+                                                            // Double icône pour les références critiques (sauf maladie)
+                                                            Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                                                                Icon(
+                                                                        imageVector = conformite.icone,
+                                                                        contentDescription = conformite.description,
+                                                                        tint = conformite.couleur,
+                                                                        modifier = Modifier.size(10.dp)
+                                                                )
+                                                                Icon(
+                                                                        imageVector = conformite.icone,
+                                                                        contentDescription = conformite.description,
+                                                                        tint = conformite.couleur,
+                                                                        modifier = Modifier.size(10.dp)
+                                                                )
+                                                            }
+                                                        } else {
+                                                            // Icône simple
+                                                            Icon(
+                                                                    imageVector = conformite.icone,
+                                                                    contentDescription = conformite.description,
+                                                                    tint = conformite.couleur,
+                                                                    modifier = Modifier.size(12.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                Text(
+                                                        text = "$valeurAffichee $uniteAffichee",
+                                                        style = MaterialTheme.typography.overline,
+                                                        color = couleurTexte
+                                                )
+                                        }
                                     }
                                     Divider(
                                             modifier = Modifier.fillMaxWidth(),
@@ -377,6 +706,7 @@ fun AnalyseNutritionnelleCard(
                             }
                         }
                     }
+                }
                 }
             }
         }
@@ -436,33 +766,39 @@ private fun trierNutrimentsParOrdreEnum(
         categorie: String,
         nutriments: List<Pair<String, ValeurNutritionnelle>>
 ): List<Pair<String, ValeurNutritionnelle>> {
-    return when (categorie) {
-        "BASE" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentBase(nom) }
+    return nutriments.sortedBy { (_, valeur) -> ordreNutrimentParType(valeur.nutriment) }
+}
+
+private fun ordreNutrimentParType(nutriment: Nutrient): Int {
+    val categorieOffset =
+        when (nutriment) {
+            is NutrientMain -> 0
+            is NutrientMacro -> 1000
+            is NutrientMin -> 2000
+            is NutrientVitam -> 3000
+            is NutrientLipid -> 4000
+            is AAEnum -> 5000
+            is NutrientAnalysis -> 6000
+            is NutrientOther -> 7000
+            is NutrientEnergy -> 8000
+            else -> 9000
         }
-        "MACRO" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentMacro(nom) }
+
+    val index =
+        when (nutriment) {
+            is NutrientMain -> nutriment.ordinal
+            is NutrientMacro -> nutriment.ordinal
+            is NutrientMin -> nutriment.ordinal
+            is NutrientVitam -> nutriment.ordinal
+            is NutrientLipid -> nutriment.ordinal
+            is AAEnum -> nutriment.ordinal
+            is NutrientAnalysis -> nutriment.ordinal
+            is NutrientOther -> nutriment.ordinal
+            is NutrientEnergy -> nutriment.ordinal
+            else -> 999
         }
-        "MIN" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentMin(nom) }
-        }
-        "VITAM" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentVitam(nom) }
-        }
-        "LIPID" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentLipid(nom) }
-        }
-        "AMA" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentAA(nom) }
-        }
-        "ANA" -> {
-            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentAnalysis(nom) }
-        }
-        else -> {
-            // Pour les autres catégories, garder l'ordre alphabétique
-            nutriments.sortedBy { it.first }
-        }
-    }
+
+    return categorieOffset + index
 }
 
 /** Obtient l'ordre d'un nutriment de base selon l'enum NutrientMain */
@@ -473,16 +809,15 @@ private fun obtenirOrdreNutrimentBase(nom: String): Int {
         "LIPIDE" -> 2
         "GLUCIDE" -> 3
         "ENA" -> 4
-        "FIBRE" -> 5
-        "CELLULOSE" -> 6
-        "CENDRE" -> 7
-        "ENERGIE" -> 8
-        "SUCRE" -> 9
-        "AMIDON" -> 10
-        "FIBRESOL" -> 11
-        "FIBRETOT" -> 12
-        "NDF" -> 13
-        "ADF" -> 14
+        "CELLULOSE" -> 5
+        "CENDRE" -> 6
+        "ENERGIE" -> 7
+        "SUCRE" -> 8
+        "AMIDON" -> 9
+        "FIBRESOL" -> 10
+        "FIBRETOT" -> 11
+        "NDF" -> 12
+        "ADF" -> 13
         else -> 999 // Pour les nutriments non définis dans l'enum
     }
 }
@@ -613,47 +948,14 @@ private fun obtenirOrdreNutrimentAnalysis(nom: String): Int {
 /** Détermine la catégorie d'un nutriment selon son nom et son type */
 private fun determinerCategorieNutriment(nom: String, nutriment: Any): String {
     return when {
-        // Nutriments de base
-        nom in
-                listOf(
-                        "HUMIDITE",
-                        "PROTEINE",
-                        "LIPIDE",
-                        "GLUCIDE",
-                        "ENA",
-                        "FIBRE",
-                        "CELLULOSE",
-                        "CENDRE",
-                        "ENERGIE",
-                        "SUCRE",
-                        "AMIDON",
-                        "FIBRESOL",
-                        "FIBRETOT",
-                        "NDF",
-                        "ADF"
-                ) -> "BASE"
-
-        // Macronutriments
-        nom in listOf("CAL", "PHOS", "MG", "NA", "K", "CHL") -> "MACRO"
-
-        // Minéraux
-        nom in listOf("FE", "CU", "ZN", "MN", "I", "SE") -> "MIN"
-
-        // Vitamines
-        nom.startsWith("VIT") || nom in listOf("CHOLINE", "RETINOL", "BETACAR") -> "VITAM"
-
-        // Lipides
-        nom in listOf("O3", "O6", "EPADHA", "AGSATURE", "AGMONO", "AGPOLY") ||
-                nom.startsWith("AG") -> "LIPID"
-
-        // Acides aminés
-        nom in listOf("LYSINE", "METHIONINE", "TRYPTOPHANE", "METHCYS", "PHENTYR") -> "AMA"
-
-        // Analyses/Ratios
-        nom in listOf("KNA", "CAP", "O6O3", "ZNCU", "nonOsPhos", "nonOsProt", "nonOsPP", "PROTP") ->
-                "ANA"
-
-        // Autres
+        nutriment is NutrientMain -> "BASE"
+        nutriment is NutrientMacro -> "MACRO"
+        nutriment is NutrientMin -> "MIN"
+        nutriment is NutrientVitam -> "VITAM"
+        nutriment is NutrientLipid -> "LIPID"
+        nutriment is AAEnum -> "AMA"
+        nutriment is NutrientAnalysis -> "ANA"
+        nutriment is NutrientEnergy -> "ENERGY"
         else -> "OTHER"
     }
 }
@@ -661,15 +963,16 @@ private fun determinerCategorieNutriment(nom: String, nutriment: Any): String {
 /** Traduit les codes de catégorie en titres lisibles */
 private fun obtenirTitreCategorie(categorie: String): String {
     return when (categorie) {
-        "BASE" -> "Nutriments de base"
-        "MACRO" -> "Macroéléments"
-        "MIN" -> "Oligoéléments"
-        "VITAM" -> "Vitamines"
-        "LIPID" -> "Acides gras"
-        "AMA" -> "Acides aminés"
-        "ANA" -> "Analyses/Ratios"
-        "OTHER" -> "Autres"
-        else -> "Divers"
+        "BASE" -> translate(LocalizationKeys.NutrientCategory.BASE_NAME)
+        "MACRO" -> translate(LocalizationKeys.NutrientCategory.MACRO_NAME)
+        "MIN" -> translate(LocalizationKeys.NutrientCategory.MIN_NAME)
+        "VITAM" -> translate(LocalizationKeys.NutrientCategory.VITAM_NAME)
+        "LIPID" -> translate(LocalizationKeys.NutrientCategory.LIPID_NAME)
+        "AMA" -> translate(LocalizationKeys.NutrientCategory.AMA_NAME)
+        "ANA" -> translate(LocalizationKeys.NutrientCategory.ANA_NAME)
+        "OTHER" -> translate(LocalizationKeys.NutrientCategory.OTHER_NAME)
+        "ENERGY" -> translate(LocalizationKeys.NutrientCategory.ENERGIE_NAME)
+        else -> categorie
     }
 }
 
@@ -715,7 +1018,7 @@ private fun NutrimentCard(
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                        text = nom,
+                        text = obtenirNomTraduitNutriment(nom, valeurNutritionnelle.nutriment),
                         style = MaterialTheme.typography.caption,
                         fontWeight = FontWeight.Bold,
                         color = VetNutriColors.Primary,
@@ -729,9 +1032,9 @@ private fun NutrimentCard(
                 ) {
                     // Icône de conformité aux références (+ ou -)
                     iconeConformite?.let { conformite ->
-                        if (conformite.isCritical) {
+                        if (conformite.isCritical && !conformite.isMaladie) {
                             // Double icône pour les références
-                            // critiques non respectées
+                            // critiques non respectées (sauf maladies qui utilisent une seule flèche)
                             Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
                                 Icon(
                                         imageVector = conformite.icone,
@@ -748,7 +1051,7 @@ private fun NutrimentCard(
                             }
                         } else {
                             // Icône simple pour les références
-                            // optimales
+                            // optimales ou les maladies
                             Icon(
                                     imageVector = conformite.icone,
                                     contentDescription = conformite.description,
@@ -778,13 +1081,21 @@ private fun NutrimentCard(
                                 typeExpressionBesoin = typeExpressionBesoin,
                                 poidsMetabolique = poidsMetabolique,
                                 poidsAnimal = poidsAnimal,
-                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
+                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                referenceUtilisee = referenceUtilisee
                         )
+                // Couleur selon l'icône de conformité : violet pour maladie, bleu si une flèche, rouge si deux
+                val couleurTexte = when {
+                    iconeConformite?.isMaladie == true -> Color(0xFF9C27B0) // Violet pour références de maladies
+                    iconeConformite?.isCritical == true -> VetNutriColors.Error // Rouge pour deux flèches
+                    iconeConformite != null -> Color(0xFF2196F3) // Bleu pour une flèche
+                    else -> MaterialTheme.colors.onSurface // Noir par défaut si aucune flèche
+                }
 
                 Text(
                         text = "$valeurAffichee $uniteAffichee",
                         style = MaterialTheme.typography.overline,
-                        color = MaterialTheme.colors.onSurface,
+                        color = couleurTexte,
                         maxLines = 2
                 )
             } else {
@@ -806,8 +1117,9 @@ private data class IconeConformite(
         val couleur: Color,
         val description: String,
         val isCritical:
-                Boolean // true pour MIN/MAX (double icône), false pour OPTIMIN/OPTIMAX (simple
+                Boolean, // true pour MIN/MAX (double icône), false pour OPTIMIN/OPTIMAX (simple
 // icône)
+        val isMaladie: Boolean = false // true pour les références de maladies (couleur violette)
 )
 
 /**
@@ -829,10 +1141,69 @@ private fun obtenirIconeConformite(
         referencesMaladies: List<ReferenceEv> = emptyList()
 ): IconeConformite? {
 
+    // Vérification des références de maladies (icône violette en cas de non-respect) - Prioritaire
+    referencesMaladies.forEach { refMaladie ->
+        val nutrient = valeurNutritionnelle.nutriment
+        val apportAbsolu = valeurNutritionnelle.valeur
+        
+        // Vérifier si c'est un nutriment de ratio pour les références de maladies aussi
+        val isNutrimentRatio = when (nutrient) {
+            is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis -> {
+                // Les nutriments d'analyse avec une unité vide sont des ratios
+                nutrient.unite.isEmpty()
+            }
+            else -> false
+        }
+        
+        // Contrôle MIN/MAX maladie
+        listOf(Reflevel.MIN, Reflevel.MAX).forEach { level ->
+            if (refMaladie.contientNutriment(nutrient, level)) {
+                val valeurRef = refMaladie.obtenirNutriment(nutrient, level)
+                val uniteRef =
+                        UnitReqEnum.getById(refMaladie.obtenirUniteNutriment(nutrient, level))
+                val besoinAbsolu = if (isNutrimentRatio) {
+                    // Pour les ratios, utiliser directement la valeur de référence
+                    // car ils ne dépendent pas du poids ou de l'énergie
+                    valeurRef
+                } else {
+                    calculerBesoinAbsoluLocal(
+                            valeurRef,
+                            uniteRef,
+                            besoinEnergetiqueEntretien,
+                            poidsAnimal,
+                            poidsMetabolique
+                    )
+                }
+                besoinAbsolu?.let { besoin ->
+                    val isCarence = level == Reflevel.MIN && apportAbsolu < besoin
+                    val isExces = level == Reflevel.MAX && apportAbsolu > besoin
+                    if (isCarence || isExces) {
+                        return IconeConformite(
+                                icone = if (isCarence) Icons.Filled.ArrowDownward else Icons.Filled.ArrowUpward,
+                                couleur = Color(0xFF9C27B0), // Violet
+                                description = if (isCarence) "Carence (réf. maladie)" else "Excès (réf. maladie)",
+                                isCritical = true,
+                                isMaladie = true
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     referenceUtilisee?.let { reference ->
         val nutrient = valeurNutritionnelle.nutriment
         val apportAbsolu = valeurNutritionnelle.valeur
         var hasReferences = false
+        
+        // Vérifier si c'est un nutriment de ratio (calculé par équation)
+        val isNutrimentRatio = when (nutrient) {
+            is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis -> {
+                // Les nutriments d'analyse avec une unité vide sont des ratios
+                nutrient.unite.isEmpty()
+            }
+            else -> false
+        }
 
         // Vérifier les minimums (MIN et OPTIMIN)
         listOf(Reflevel.MIN, Reflevel.OPTIMIN).forEach { level ->
@@ -841,22 +1212,24 @@ private fun obtenirIconeConformite(
                 val valeurRef = reference.obtenirNutriment(nutrient, level)
                 val uniteRef = UnitReqEnum.getById(reference.obtenirUniteNutriment(nutrient, level))
 
-                val besoinAbsolu =
-                        calculerBesoinAbsoluLocal(
-                                valeurRef,
-                                uniteRef,
-                                besoinEnergetiqueEntretien,
-                                poidsAnimal,
-                                poidsMetabolique
-                        )
+                val besoinAbsolu = if (isNutrimentRatio) {
+                    // Pour les ratios, utiliser directement la valeur de référence
+                    // car ils ne dépendent pas du poids ou de l'énergie
+                    valeurRef
+                } else {
+                    calculerBesoinAbsoluLocal(
+                            valeurRef,
+                            uniteRef,
+                            besoinEnergetiqueEntretien,
+                            poidsAnimal,
+                            poidsMetabolique
+                    )
+                }
 
                 besoinAbsolu?.let { besoin ->
                     if (apportAbsolu < besoin) {
                         return IconeConformite(
-                                icone = Icons.Filled.KeyboardArrowDown, // Icône
-                                // "↓"
-                                // pour
-                                // carence
+                                icone = Icons.Filled.ArrowDownward, // Icône "↓" pour carence
                                 couleur = VetNutriColors.Error,
                                 description =
                                         "Carence : apport inférieur au ${if (level == Reflevel.MIN) "minimum" else "optimal minimum"}",
@@ -874,22 +1247,24 @@ private fun obtenirIconeConformite(
                 val valeurRef = reference.obtenirNutriment(nutrient, level)
                 val uniteRef = UnitReqEnum.getById(reference.obtenirUniteNutriment(nutrient, level))
 
-                val besoinAbsolu =
-                        calculerBesoinAbsoluLocal(
-                                valeurRef,
-                                uniteRef,
-                                besoinEnergetiqueEntretien,
-                                poidsAnimal,
-                                poidsMetabolique
-                        )
+                val besoinAbsolu = if (isNutrimentRatio) {
+                    // Pour les ratios, utiliser directement la valeur de référence
+                    // car ils ne dépendent pas du poids ou de l'énergie
+                    valeurRef
+                } else {
+                    calculerBesoinAbsoluLocal(
+                            valeurRef,
+                            uniteRef,
+                            besoinEnergetiqueEntretien,
+                            poidsAnimal,
+                            poidsMetabolique
+                    )
+                }
 
                 besoinAbsolu?.let { besoin ->
                     if (apportAbsolu > besoin) {
                         return IconeConformite(
-                                icone = Icons.Filled.KeyboardArrowUp, // Icône
-                                // "↑"
-                                // pour
-                                // excès
+                                icone = Icons.Filled.ArrowUpward, // Icône "↑" pour excès
                                 couleur = VetNutriColors.Error,
                                 description =
                                         "Excès : apport supérieur au ${if (level == Reflevel.MAX) "maximum" else "optimal maximum"}",
@@ -900,49 +1275,10 @@ private fun obtenirIconeConformite(
             }
         }
 
-        // Si il y a des références et qu'aucune n'est violée, tout est conforme
+        // Si il y a des références et qu'aucune n'est violée, retourner null (noir)
+        // On ne retourne une icône que s'il y a une violation
         if (hasReferences) {
-            return IconeConformite(
-                    icone = Icons.Filled.Check, // Icône "✓" pour conformité
-                    couleur = Color.Green,
-                    description = "Conforme : toutes les références sont respectées",
-                    isCritical = false
-            )
-        }
-    }
-
-    // Vérification des références de maladies (icône violette en cas de non-respect)
-    referencesMaladies.forEach { refMaladie ->
-        val nutrient = valeurNutritionnelle.nutriment
-        val apportAbsolu = valeurNutritionnelle.valeur
-        // Contrôle MIN/MAX maladie
-        listOf(Reflevel.MIN, Reflevel.MAX).forEach { level ->
-            if (refMaladie.contientNutriment(nutrient, level)) {
-                val valeurRef = refMaladie.obtenirNutriment(nutrient, level)
-                val uniteRef =
-                        UnitReqEnum.getById(refMaladie.obtenirUniteNutriment(nutrient, level))
-                val besoinAbsolu =
-                        calculerBesoinAbsoluLocal(
-                                valeurRef,
-                                uniteRef,
-                                besoinEnergetiqueEntretien,
-                                poidsAnimal,
-                                poidsMetabolique
-                        )
-                besoinAbsolu?.let { besoin ->
-                    val violation =
-                            (level == Reflevel.MIN && apportAbsolu < besoin) ||
-                                    (level == Reflevel.MAX && apportAbsolu > besoin)
-                    if (violation) {
-                        return IconeConformite(
-                                icone = Icons.Filled.Warning,
-                                couleur = Color(0xFF9C27B0), // Violet
-                                description = "Non conforme (réf. maladie)",
-                                isCritical = true
-                        )
-                    }
-                }
-            }
+            return null // Toutes les normes respectées = pas d'icône = texte noir
         }
     }
 
@@ -972,7 +1308,6 @@ private fun calculerBesoinAbsoluLocal(
         UnitReqEnum.PERMS -> poidsMetabolique?.let { poidsMetab: Double -> valeurRef * poidsMetab }
         UnitReqEnum.ABSOLUTE -> valeurRef
         UnitReqEnum.RATIO -> null
-        else -> null
     }
 }
 
@@ -983,6 +1318,7 @@ private fun calculerBesoinAbsoluLocal(
  * @param poidsMetabolique Poids métabolique de l'animal
  * @param poidsAnimal Poids vif de l'animal
  * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien (BEE)
+ * @param referenceUtilisee Référence utilisée pour extraire la puissance de l'équation BW
  * @return Pair<valeur formatée, unité d'affichage>
  */
 private fun calculerAffichageNutriment(
@@ -990,7 +1326,8 @@ private fun calculerAffichageNutriment(
         typeExpressionBesoin: TypeExpressionBesoin?,
         poidsMetabolique: Double?,
         poidsAnimal: Double?,
-        besoinEnergetiqueEntretien: Double?
+        besoinEnergetiqueEntretien: Double?,
+        referenceUtilisee: ReferenceEv? = null
 ): Pair<String, String> {
 
     val valeurAbsolue = valeurNutritionnelle.valeur
@@ -999,11 +1336,12 @@ private fun calculerAffichageNutriment(
     // Cas spécial: nutriments d'analyse/ratio sans unité (ex: CAP, KNA, O6O3...)
     // - Ne pas afficher d'unité
     // - Ne pas appliquer de transformation UnitReqEnum
+    // - Utiliser 2 décimales pour les ratios pour une meilleure précision
     val isUnitEmpty = uniteOriginale.isBlank()
     val isAnalysis =
             valeurNutritionnelle.nutriment is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
     if (isAnalysis && isUnitEmpty) {
-        return Pair(TextUtils.formatDecimal(valeurAbsolue, 2), "")
+        return Pair(GraphFormattingUtils.formatDecimal(valeurAbsolue, 2), "")
     }
 
     // Si pas de type d'expression défini, affichage par défaut
@@ -1015,42 +1353,45 @@ private fun calculerAffichageNutriment(
             poidsAnimal?.let { poids ->
                 if (poids > 0) {
                     val valeurParKg = valeurAbsolue / poids
-                    Pair(TextUtils.formatDecimal(valeurParKg, 2), "$uniteOriginale/kg")
+                    Pair(GraphFormattingUtils.formatSmartDecimal(valeurParKg), "$uniteOriginale/kg")
                 } else {
                     // Si pas de poids disponible, garder l'unité originale mais indiquer le type
                     // d'expression
                     Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                             "$uniteOriginale (par kg si poids disponible)"
                     )
                 }
             }
                     ?: Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                             "$uniteOriginale (par kg si poids disponible)"
                     )
         }
         TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
-            // Par kg de poids métabolique (kg^0.75)
+            // Par kg de poids métabolique (kg^puissance)
+            val puissance = TextUtils.extrairePuissanceEquationBW(
+                    referenceUtilisee?.equationBW?.equationScript
+            )
             poidsMetabolique?.let { poidsMetab ->
                 if (poidsMetab > 0) {
                     val valeurParKgMetab = valeurAbsolue / poidsMetab
                     Pair(
-                            TextUtils.formatDecimal(valeurParKgMetab, 2),
-                            "$uniteOriginale/kg${TextUtils.toSuperscript("0.75")}"
+                            GraphFormattingUtils.formatSmartDecimal(valeurParKgMetab),
+                            "$uniteOriginale/kg${TextUtils.toSuperscript(puissance)}"
                     )
                 } else {
                     // Si pas de poids métabolique disponible, garder l'unité originale mais
                     // indiquer le type d'expression
                     Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
-                            "$uniteOriginale (par kg^0.75 si poids métabolique disponible)"
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
+                            "$uniteOriginale (par kg^$puissance si poids métabolique disponible)"
                     )
                 }
             }
                     ?: Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
-                            "$uniteOriginale (par kg^0.75 si poids métabolique disponible)"
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
+                            "$uniteOriginale (par kg^$puissance si poids métabolique disponible)"
                     )
         }
         TypeExpressionBesoin.PAR_KCAL -> {
@@ -1058,18 +1399,18 @@ private fun calculerAffichageNutriment(
             besoinEnergetiqueEntretien?.let { bee ->
                 if (bee > 0) {
                     val valeurPar1000Kcal = (valeurAbsolue / bee) * 1000
-                    Pair(TextUtils.formatDecimal(valeurPar1000Kcal, 2), "$uniteOriginale/1000 kcal")
+                    Pair(GraphFormattingUtils.formatSmartDecimal(valeurPar1000Kcal), "$uniteOriginale/1000 kcal")
                 } else {
                     // Si pas de BEE disponible, garder l'unité originale mais indiquer le type
                     // d'expression
                     Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                             "$uniteOriginale (par 1000 kcal si BEE disponible)"
                     )
                 }
             }
                     ?: Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                             "$uniteOriginale (par 1000 kcal si BEE disponible)"
                     )
         }
@@ -1079,20 +1420,200 @@ private fun calculerAffichageNutriment(
                 if (bee > 0) {
                     val beeEnKj = bee * 4.184 // Conversion kcal vers kJ
                     val valeurPar1000Kj = (valeurAbsolue / beeEnKj) * 1000
-                    Pair(TextUtils.formatDecimal(valeurPar1000Kj, 2), "$uniteOriginale/1000 kJ")
+                    Pair(GraphFormattingUtils.formatSmartDecimal(valeurPar1000Kj), "$uniteOriginale/1000 kJ")
                 } else {
                     // Si pas de BEE disponible, garder l'unité originale mais indiquer le type
                     // d'expression
                     Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                             "$uniteOriginale (par 1000 kJ si BEE disponible)"
                     )
                 }
             }
                     ?: Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                             "$uniteOriginale (par 1000 kJ si BEE disponible)"
                     )
         }
     }
+}
+
+@OptIn(ExperimentalKoalaPlotApi::class)
+@Composable
+private fun PieChartCard(
+    title: String,
+    data: List<NutrientPieData>,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        elevation = AppSizes.elevationSmall
+    ) {
+        Column(
+            modifier = Modifier.padding(AppSizes.paddingMedium),
+            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.subtitle2,
+                fontWeight = FontWeight.Bold,
+                color = VetNutriColors.Primary
+            )
+
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                 PieChart(
+                     values = data.map { it.value.toFloat() },
+                     slice = { index ->
+                         val sliceData = data[index]
+                         DefaultSlice(Color(sliceData.colorValue.toULong()))
+                     },
+                     modifier = Modifier.size(140.dp)
+                 )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 150.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                data.forEach { item ->
+                    PieChartLegendItem(
+                        name = item.name,
+                        color = Color(item.colorValue.toULong()),
+                        percentage = item.percentage
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PieChartLegendItem(
+    name: String,
+    color: Color,
+    percentage: Double
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .background(color, MaterialTheme.shapes.small)
+            )
+            Text(
+                text = name,
+                style = MaterialTheme.typography.caption,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        
+        Text(
+            text = "${TextUtils.formatDecimal(percentage, 1)}%",
+            style = MaterialTheme.typography.caption,
+            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+        )
+    }
+}
+
+private fun parseColor(hexColor: String): Color {
+    return try {
+        val cleanHex = hexColor.removePrefix("#")
+        val colorValue = cleanHex.toLong(16)
+        Color(colorValue or 0xFF000000L)
+    } catch (e: Exception) {
+        Color.Gray
+    }
+}
+
+private fun generateCompositionData(valeurs: Map<String, ValeurNutritionnelle>): List<NutrientPieData> {
+    val targetNutrients = listOf(
+        NutrientMain.HUMIDITE,
+        NutrientMain.PROTEINE,
+        NutrientMain.LIPIDE,
+        NutrientMain.ENA,
+        NutrientMain.CENDRE,
+        NutrientMain.CELLULOSE
+    )
+    
+    val data = mutableListOf<NutrientPieData>()
+    var total = 0.0
+    
+    targetNutrients.forEach { nutrient ->
+        val value = valeurs[nutrient.name]?.valeur ?: 0.0
+        if (value > 0) {
+            total += value
+        }
+    }
+    
+    if (total == 0.0) return emptyList()
+    
+    targetNutrients.forEach { nutrient ->
+        val value = valeurs[nutrient.name]?.valeur ?: 0.0
+        if (value > 0) {
+            data.add(NutrientPieData(
+                name = nutrient.translateEnum(),
+                value = value,
+                colorValue = parseColor(nutrient.color).value.toLong(),
+                percentage = (value / total) * 100.0
+            ))
+        }
+    }
+    return data
+}
+
+private fun generateEnergyData(valeurs: Map<String, ValeurNutritionnelle>): List<NutrientPieData> {
+    val prot = valeurs[NutrientMain.PROTEINE.name]?.valeur ?: 0.0
+    val lipid = valeurs[NutrientMain.LIPIDE.name]?.valeur ?: 0.0
+    val ena = valeurs[NutrientMain.ENA.name]?.valeur ?: 0.0
+    
+    val energyProt = prot * 3.5
+    val energyLipid = lipid * 8.5
+    val energyEna = ena * 3.5
+    
+    val total = energyProt + energyLipid + energyEna
+    
+    if (total == 0.0) return emptyList()
+    
+    val list = mutableListOf<NutrientPieData>()
+    
+    if (energyProt > 0) {
+        list.add(NutrientPieData(
+            name = NutrientMain.PROTEINE.translateEnum(),
+            value = energyProt,
+            colorValue = parseColor(NutrientMain.PROTEINE.color).value.toLong(),
+            percentage = (energyProt / total) * 100.0
+        ))
+    }
+    if (energyLipid > 0) {
+        list.add(NutrientPieData(
+            name = NutrientMain.LIPIDE.translateEnum(),
+            value = energyLipid,
+            colorValue = parseColor(NutrientMain.LIPIDE.color).value.toLong(),
+            percentage = (energyLipid / total) * 100.0
+        ))
+    }
+    if (energyEna > 0) {
+        list.add(NutrientPieData(
+            name = NutrientMain.ENA.translateEnum(),
+            value = energyEna,
+            colorValue = parseColor(NutrientMain.ENA.color).value.toLong(),
+            percentage = (energyEna / total) * 100.0
+        ))
+    }
+    
+    return list
 }

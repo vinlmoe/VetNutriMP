@@ -50,7 +50,9 @@ data class FoodEntity(
         val especesJson: String? = null,
         val indicationsJson: String? = null,
         val name: String? = null,
-        val quantite: Double = 0.0
+        val quantite: Double = 0.0,
+        val lastUpdateDate: String? = null,
+        val imageRef: String? = null
 )
 
 @Serializable
@@ -82,7 +84,37 @@ data class AnimalEntity(
         val ownerName: String?,
         val birthdate: String?,
         val race: String?,
-        val summary: String?
+        val summary: String?,
+        val jsonbinId: String? = null, // ID du bin jsonbin.io pour le partage en ligne
+        val exam: Boolean = false, // Indique si l'animal est lié à un examen
+        val examStudentId: String? = null, // Identifiant de l'étudiant
+        val examStudentNumber: String? = null, // Numéro de l'étudiant
+        val examExerciseId: String? = null // ID de l'exercice
+)
+
+@Serializable
+@Entity(tableName = "EXAM_GRADING_RULES", primaryKeys = ["examId", "exerciseId"])
+data class ExamGradingRuleEntity(
+        val examId: String,
+        val exerciseId: String,
+        val rulesJson: String,
+        val updatedAtEpochMs: Long
+)
+
+@Serializable
+@Entity(tableName = "EXAM_GRADES", primaryKeys = ["examId", "exerciseId", "studentId"])
+data class ExamGradeEntity(
+        val examId: String,
+        val exerciseId: String,
+        val studentId: String,
+        val animalId: String? = null,
+        val animalName: String = "",
+        val consultationId: String? = null,
+        val autoScore: Double = 0.0,
+        val manualScore: Double? = null,
+        val finalScore: Double = 0.0,
+        val detailsJson: String = "",
+        val updatedAtEpochMs: Long
 )
 
 @Serializable
@@ -128,7 +160,26 @@ data class ConsultationEntity(
         val MCS: Int = 0,
         val referenceGeneraleId: String? = null,
         val referencesMaladiesJson: String? = null,
-        val coefficientAjustement: Double = 1.0
+        val keywordsJson: String? = null,
+        val coefficientAjustement: Double = 1.0,
+        // Ordonnance: état sauvegardé par consultation
+        val prescriptionAnamnese: String? = null,
+        val prescriptionExamenClinique: String? = null,
+        val prescriptionFacteurNutritionnelClef: String? = null,
+        val prescriptionAdditionalText: String? = null,
+        val prescriptionSelectedConseilIdsJson: String? = null,
+        val prescriptionLocalHtmlSectionsJson: String? = null,
+        val prescriptionSelectedRationIdsJson: String? = null
+)
+
+@Serializable
+@Entity(
+        tableName = "CONSULTATION_KEYWORDS",
+        indices = [Index(value = ["label"], unique = true)]
+)
+data class ConsultationKeywordEntity(
+        @PrimaryKey val uuid: String,
+        val label: String
 )
 
 @Serializable
@@ -474,7 +525,8 @@ data class AlimentReferenceEntity(
                         ForeignKey(
                                 entity = FoodEntity::class,
                                 parentColumns = ["uuid"],
-                                childColumns = ["refAliment"]
+                                childColumns = ["refAliment"],
+                                onDelete = ForeignKey.CASCADE
                         )],
         indices = [Index("refAliment")],
         primaryKeys = ["refAliment", "nutrientLabel"]
@@ -507,6 +559,33 @@ data class BiblioRefEntity(
         val comments: String,
         val bibtex: String,
         val consistent: Int
+)
+
+/** Table de jonction aliment ↔ référence bibliographique (relation many-to-many) */
+@Serializable
+@Entity(
+        tableName = "ALIMENT_BIBLIO_REFS",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = FoodEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["alimentUuid"],
+                                onDelete = ForeignKey.CASCADE
+                        ),
+                        ForeignKey(
+                                entity = BiblioRefEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["biblioRefUuid"],
+                                onDelete = ForeignKey.CASCADE
+                        )
+                ],
+        primaryKeys = ["alimentUuid", "biblioRefUuid"],
+        indices = [Index("alimentUuid"), Index("biblioRefUuid")]
+)
+data class AlimentBiblioRefEntity(
+        val alimentUuid: String,
+        val biblioRefUuid: String
 )
 
 @Serializable

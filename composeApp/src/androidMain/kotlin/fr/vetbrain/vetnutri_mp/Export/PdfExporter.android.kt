@@ -10,14 +10,31 @@ import android.webkit.WebViewClient
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
 
 actual object PdfExporter {
-        actual fun exportDocument(
-                documentType: DocumentType,
-                data: ExportData,
-                defaultFileName: String
-        ): Boolean {
+    actual suspend fun exportDocument(
+            documentType: DocumentType,
+            data: ExportData,
+            defaultFileName: String
+    ): Boolean {
                 val activity: Activity? = AndroidContext.getCurrentActivityOrNull()
                 if (activity == null) return false
                 val html: String = HtmlDocumentBuilder.buildHtml(documentType, data)
+                return exportHtmlInternal(activity, html, defaultFileName)
+        }
+
+    actual suspend fun exportHtmlDocument(
+            html: String,
+            defaultFileName: String
+    ): Boolean {
+                val activity: Activity? = AndroidContext.getCurrentActivityOrNull()
+                if (activity == null) return false
+                return exportHtmlInternal(activity, html, defaultFileName)
+        }
+
+    private fun exportHtmlInternal(
+            activity: Activity,
+            html: String,
+            defaultFileName: String
+    ): Boolean {
                 try {
                         val webView = WebView(activity)
                         webView.settings.javaScriptEnabled = false
@@ -39,6 +56,7 @@ actual object PdfExporter {
                                                                 .setMediaSize(
                                                                         PrintAttributes.MediaSize
                                                                                 .ISO_A4
+                                                                                .asLandscape()
                                                                 )
                                                                 .setResolution(
                                                                         PrintAttributes.Resolution(
@@ -64,5 +82,5 @@ actual object PdfExporter {
                 } catch (t: Throwable) {
                         return false
                 }
-        }
+    }
 }

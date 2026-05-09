@@ -39,9 +39,12 @@ data class AlimentExcelRow(
         // Ration associée
         val rationUUID: String? = null,
 
+        // Date de dernière mise à jour (format libre, idéalement ISO 8601)
+        val lastUpdateDate: String? = null,
+
         // Nutriments - colonnes dynamiques pour chaque nutriment
-        // Le format sera : Map<nutrientLabel, Pair<valeur, unite>>
-        val nutriments: Map<String, Pair<Double?, String?>> = emptyMap()
+        // Le format sera : Map<nutrientLabel, valeur>
+        val nutriments: Map<String, Double?> = emptyMap()
 ) {
 
     companion object {
@@ -54,7 +57,6 @@ data class AlimentExcelRow(
                         "LIPIDE",
                         "GLUCIDE",
                         "ENA",
-                        "FIBRE",
                         "CELLULOSE",
                         "CENDRE",
                         "ENERGIE",
@@ -122,6 +124,30 @@ data class AlimentExcelRow(
                         "O6",
                         "EPADHA",
 
+                        // Acides aminés (AAEnum)
+                        "ALANINE",
+                        "ARGININE",
+                        "ASPARAGINE",
+                        "ASPARATE",
+                        "CYSTEINE",
+                        "GLUTAMATE",
+                        "GLUTAMINE",
+                        "GLYCINE",
+                        "HISTIDINE",
+                        "ISOLEUCINE",
+                        "LEUCINE",
+                        "LYSINE",
+                        "METHIONINE",
+                        "PHENYLALANINE",
+                        "PROLINE",
+                        "PYRROLYSINE",
+                        "SELENOCYSTEINE",
+                        "SERINE",
+                        "THREONINE",
+                        "TRYPTOPHANE",
+                        "TYROSINE",
+                        "VALINE",
+
                         // Autres (NutrientOther)
                         "TAURINE",
                         "CARNITINE",
@@ -139,11 +165,11 @@ data class AlimentExcelRow(
 
         /** Convertit un AlimentEv en AlimentExcelRow */
         fun fromAlimentEv(alimentEv: AlimentEv): AlimentExcelRow {
-            val nutrimentsMap = mutableMapOf<String, Pair<Double?, String?>>()
+            val nutrimentsMap = mutableMapOf<String, Double?>()
 
             // Ajouter tous les nutriments
             alimentEv.valMap.forEach { (nutrient, quantity) ->
-                nutrimentsMap[nutrient.label] = Pair(quantity.value, quantity.unit)
+                nutrimentsMap[nutrient.label] = quantity.value
             }
 
             return AlimentExcelRow(
@@ -161,92 +187,86 @@ data class AlimentExcelRow(
                     consistent = alimentEv.consistent,
                     deprecated = alimentEv.deprecated,
                     dataB = alimentEv.dataB,
+                    lastUpdateDate = alimentEv.lastUpdateDate,
                     especes = alimentEv.especes.joinToString(", "),
-                    indications = alimentEv.indicat.joinToString(", ") { it.label },
+                    indications = alimentEv.indicat.joinToString(", ") { it.nameToString() },
                     rationUUID = alimentEv.rationUUID,
                     nutriments = nutrimentsMap
             )
         }
 
-        /** Convertit un AlimentExcelRow en AlimentEv */
+        /** Convertit un AlimentExcelRow en AlimentEv avec logs détaillés */
         fun toAlimentEv(row: AlimentExcelRow): AlimentEv {
+            
+            // Conversion des enums avec logs
+            val group = row.groupAlim?.let { 
+                val result = GroupAlim.byName(it)
+                result
+            }
+            
+            val typeAliment = row.typeAliment?.let {
+                val result = FoodKind.values().find { fk -> fk.label == it }
+                result
+            }
+            
+            val cont = row.contEnum?.let {
+                val result = ContEnum.getByLabel(it)
+                result
+            }
+            
+            val especes = row.especes?.split(",")?.map { it.trim() }?.toMutableList() ?: mutableListOf()
+            
+            val indicat = row.indications?.split(",")?.mapNotNull { 
+                val trimmed = it.trim()
+                AlimIndic.getFromString(trimmed)
+            }?.toMutableList() ?: mutableListOf()
+            
             return AlimentEv(
                             uuid = row.uuid,
                             nom = row.nom,
                             brand = row.brand,
                             gamme = row.gamme,
                             ingredients = row.ingredients,
-                            group = row.groupAlim?.let { GroupAlim.byName(it) },
-                            typeAliment =
-                                    row.typeAliment?.let {
-                                        FoodKind.values().find { fk -> fk.label == it }
-                                    },
-                            cont = row.contEnum?.let { ContEnum.getByName(it) },
+                            group = group,
+                            typeAliment = typeAliment,
+                            cont = cont,
                             price = row.price,
                             categPrice = row.categPrice,
                             quantInt = row.quantInt,
                             consistent = row.consistent,
                             deprecated = row.deprecated,
                             dataB = row.dataB,
-                            especes = row.especes?.split(",")?.map { it.trim() }?.toMutableList()
-                                            ?: mutableListOf(),
-                            indicat =
-                                    row.indications
-                                            ?.split(",")
-                                            ?.mapNotNull { AlimIndic.getFromString(it.trim()) }
-                                            ?.toMutableList()
-                                            ?: mutableListOf(),
+                            lastUpdateDate = row.lastUpdateDate,
+                            especes = especes,
+                            indicat = indicat,
                             rationUUID = row.rationUUID
                     )
-                    .apply {
-                        // Ajouter les nutriments
-                        row.nutriments.forEach { (nutrientLabel, pair) ->
-                            val (valeur, unite) = pair
-                            if (valeur != null) {
-                                // Trouver le nutriment correspondant
-                                getNutrientFromLabel(nutrientLabel)?.let { nutrient ->
-                                    setNutrient(nutrient, valeur)
-                                    // Note: L'unité pourrait être utilisée pour validation si
-                                    // nécessaire
-                                }
-                            }
-                        }
+        .apply {
+            // Ajouter les nutriments avec logs
+            var nutrimentSuccessCount = 0
+            var nutrimentErrorCount = 0
+            
+            row.nutriments.forEach { (nutrientLabel, valeur) ->
+                if (valeur != null) {
+                    
+                    // Trouver le nutriment correspondant
+                    val nutrient = getNutrientFromLabel(nutrientLabel)
+                    if (nutrient != null) {
+                        setNutrient(nutrient, valeur)
+                        nutrimentSuccessCount++
+                    } else {
+                        nutrimentErrorCount++
                     }
+                }
+            }
+            
+        }
         }
 
         /** Trouve un nutriment par son label dans tous les enums */
         private fun getNutrientFromLabel(label: String): Nutrient? {
-            // Chercher dans NutrientMain
-            NutrientMain.getByLabel(label)?.let {
-                return it
-            }
-
-            // Chercher dans NutrientVitam
-            NutrientVitam.getByLabel(label)?.let {
-                return it
-            }
-
-            // Chercher dans NutrientMin
-            NutrientMin.getByLabel(label)?.let {
-                return it
-            }
-
-            // Chercher dans NutrientMacro
-            NutrientMacro.getByLabel(label)?.let {
-                return it
-            }
-
-            // Chercher dans NutrientLipid
-            NutrientLipid.getByLabel(label)?.let {
-                return it
-            }
-
-            // Chercher dans NutrientOther
-            NutrientOther.getByLabel(label)?.let {
-                return it
-            }
-
-            return null
+            // Utiliser le NutrientResolver qui gère tous les cas spéciaux et la normalisation
+            return NutrientResolver.AllNutrientResolver(label)
         }
     }
 }

@@ -8,7 +8,12 @@ object AppDispatchers {
     private val platformDispatcher = PlatformDispatcher()
     private var _io: CoroutineDispatcher = Dispatchers.IO
     private var _default: CoroutineDispatcher = Dispatchers.Default
-    private var _main: CoroutineDispatcher = platformDispatcher.provideMainDispatcher()
+    private var _main: CoroutineDispatcher = try {
+        platformDispatcher.provideMainDispatcher()
+    } catch (e: Exception) {
+        // Fallback pour éviter les erreurs Android sur desktop
+        Dispatchers.Main
+    }
 
     // Pour les opérations de base de données et I/O
     val IO: CoroutineDispatcher
@@ -20,7 +25,9 @@ object AppDispatchers {
 
     // Pour les opérations UI
     val Main: CoroutineDispatcher
-        get() = _main
+        get() {
+            return _main
+        }
 
     // Fonction pour injecter des dispatchers pour les tests
     internal fun setDispatchers(
@@ -37,6 +44,11 @@ object AppDispatchers {
     internal fun resetDispatchers() {
         _io = Dispatchers.IO
         _default = Dispatchers.Default
-        _main = platformDispatcher.provideMainDispatcher()
+        _main = try {
+            platformDispatcher.provideMainDispatcher()
+        } catch (e: Exception) {
+            // Fallback pour éviter les erreurs Android sur desktop
+            Dispatchers.Main
+        }
     }
 }

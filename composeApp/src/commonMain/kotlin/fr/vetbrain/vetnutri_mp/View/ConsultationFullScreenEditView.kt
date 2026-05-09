@@ -18,11 +18,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
 import fr.vetbrain.vetnutri_mp.Components.AppTextField
-import fr.vetbrain.vetnutri_mp.Components.NumberTextField
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
-import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.ConsultationEdit
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -37,9 +40,12 @@ fun ConsultationFullScreenEditView(
         animalName: String = "",
         animalEspece: fr.vetbrain.vetnutri_mp.Enumer.Espece? = null,
         availableReferences: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> = emptyList(),
+        availableKeywords: List<ConsultationKeyword> = emptyList(),
         onBackPressed: (ConsultationEv) -> Unit,
         onCancel: () -> Unit,
-        onLoadReferences: () -> Unit = {}
+        onLoadReferences: () -> Unit = {},
+        onLoadKeywords: () -> Unit = {},
+        onCreateKeyword: (ConsultationKeyword) -> Unit = {}
 ) {
         var editedConsultation by
                 remember(consultation) {
@@ -51,7 +57,7 @@ fun ConsultationFullScreenEditView(
                                 val defaultRation =
                                         fr.vetbrain.vetnutri_mp.Data.Ration(
                                                 idConsult = newConsultation.uuid,
-                                                name = "Ration principale",
+                                                name = translate(Ration.CURRENT_NAME),
                                                 actual = true, // Marquer comme ration actuelle par
                                                 // défaut
                                                 number = 1
@@ -72,9 +78,15 @@ fun ConsultationFullScreenEditView(
         var showMissingVariablesDialog by remember { mutableStateOf(false) }
         var missingVariables by remember { mutableStateOf<List<String>>(emptyList()) }
 
+        // États pour la confirmation de sortie et les avertissements de données manquantes
+        var showExitConfirmationDialog by remember { mutableStateOf(false) }
+        var showMissingDataDialog by remember { mutableStateOf(false) }
+        var missingDataMessage by remember { mutableStateOf("") }
+
         // États pour les dialogues de sélection de références
         var showReferenceGeneraleDialog by remember(consultation) { mutableStateOf(false) }
         var showReferenceMaladieDialog by remember(consultation) { mutableStateOf(false) }
+        var showKeywordDialog by remember(consultation) { mutableStateOf(false) }
 
         // États pour les dialogues de coefficients
         var showK1Dialog by remember { mutableStateOf(false) }
@@ -95,7 +107,7 @@ fun ConsultationFullScreenEditView(
                         }
                 }
 
-        // Filtrer les références de maladies par espèce
+        // Filtrer les références complémentaires par espèce
         val referencesMaladies =
                 remember(availableReferences, animalEspece) {
                         if (animalEspece != null) {
@@ -115,13 +127,26 @@ fun ConsultationFullScreenEditView(
                         }
                 }
 
-        // Charger les références au démarrage
-        LaunchedEffect(Unit) { onLoadReferences() }
+        val keywordsById =
+                remember(availableKeywords) { availableKeywords.associateBy { it.uuid } }
+
+        // Charger les références et mots-clés au démarrage
+        LaunchedEffect(Unit) {
+                onLoadReferences()
+                onLoadKeywords()
+        }
 
         // Fonction pour sauvegarder et retourner
         val saveAndGoBack = {
-                // Extraire les variables requises
-                val variablesRequises = extraireVariablesRequises(referenceGeneraleSelectionnee)
+                // Extraire les variables requises (inclure ENERCOMP des maladies sélectionnées)
+                val selectedDiseaseRefs = referencesMaladies.filter { maladieRef ->
+                        editedConsultation.referencesMaladies.contains(maladieRef.uuid)
+                }
+                val variablesRequises =
+                        extraireVariablesRequises(
+                                reference = referenceGeneraleSelectionnee,
+                                referencesMaladies = selectedDiseaseRefs
+                        )
 
                 // Vérifier les variables supplémentaires manquantes
                 val variablesManquantes =
@@ -146,7 +171,7 @@ fun ConsultationFullScreenEditView(
                 } else {
                         if (editedConsultation.date == null) {
                                 showDateError = true
-                                dateErrorMessage = "La date est obligatoire"
+                                dateErrorMessage = ConsultationEdit.DATE_REQUIRED.translate()
                         }
                         if (variablesManquantes.isNotEmpty()) {
                                 missingVariables = variablesManquantes.map { it.label }
@@ -172,16 +197,18 @@ fun ConsultationFullScreenEditView(
         }
 
         // Effet pour sauvegarder automatiquement quand le composant est détruit
+        var shouldAutoSave by remember { mutableStateOf(true) }
         DisposableEffect(Unit) {
                 onDispose {
-                        // Sauvegarder automatiquement les modifications en cours
-                        autoSave()
+                        // Sauvegarder automatiquement les modifications en cours sauf si l'utilisateur a validé ou annulé explicitement
+                        if (shouldAutoSave) {
+                                autoSave()
+                        }
                 }
         }
 
-        var showNoReferenceDialog by remember { mutableStateOf(false) }
-
         Scaffold(
+                modifier = Modifier.fillMaxSize(),
                 topBar = {
                         TopAppBar(
                                 title = {
@@ -192,8 +219,8 @@ fun ConsultationFullScreenEditView(
                                                                                 consultation.uuid
                                                                                         .isEmpty()
                                                                 )
-                                                                        "Nouvelle consultation"
-                                                                else "Modifier consultation",
+                                                                        ConsultationEdit.NEW_TITLE.translate()
+                                                                else ConsultationEdit.EDIT_TITLE.translate(),
                                                         style = MaterialTheme.typography.h6,
                                                         color = VetNutriColors.OnPrimary
                                                 )
@@ -211,18 +238,16 @@ fun ConsultationFullScreenEditView(
                                         }
                                 },
                                 navigationIcon = {
-                                        IconButton(
+                                        IconButtonWithTooltip(
                                                 onClick = {
-                                                        // Retour sans sauvegarde
-                                                        onCancel()
-                                                }
-                                        ) {
-                                                Icon(
-                                                        AppIcons.ArrowBack,
-                                                        contentDescription = "Retour",
-                                                        tint = VetNutriColors.OnPrimary
-                                                )
-                                        }
+                                                        // Demander confirmation avant d'annuler la saisie
+                                                        showExitConfirmationDialog = true
+                                                },
+                                                imageVector = AppIcons.ArrowBack,
+                                                contentDescription = ConsultationEdit.REF_SEARCH_TOOLTIP.translate(), // Using search tooltip for back for now if no generic back
+                                                tooltip = ConsultationEdit.REF_SEARCH_TOOLTIP.translate(),
+                                                tint = VetNutriColors.OnPrimary
+                                        )
                                 },
                                 actions = {},
                                 backgroundColor = VetNutriColors.Primary,
@@ -233,21 +258,32 @@ fun ConsultationFullScreenEditView(
                         FloatingActionButton(
                                 onClick = {
                                         // Empêcher la sauvegarde si aucune référence générale n'est
-                                        // sélectionnée
+                                        // sélectionnée et si aucun poids n'est saisi
                                         val hasGeneralRef =
                                                 !editedConsultation.referenceGeneraleId
                                                         .isNullOrBlank()
-                                        if (!hasGeneralRef) {
-                                                showNoReferenceDialog = true
+                                        val hasWeight = editedConsultation.weight != null
+                                        if (!hasGeneralRef || !hasWeight) {
+                                                missingDataMessage =
+                                                        when {
+                                                                !hasGeneralRef && !hasWeight ->
+                                                                        ConsultationEdit.VALIDATION_ERROR.translate()
+                                                                !hasGeneralRef ->
+                                                                        ConsultationEdit.VALIDATION_ERROR_REF.translate()
+                                                                else ->
+                                                                        ConsultationEdit.VALIDATION_ERROR_WEIGHT.translate()
+                                                        }
+                                                showMissingDataDialog = true
                                                 return@FloatingActionButton
                                         }
+                                        shouldAutoSave = false
                                         saveAndGoBack()
                                 },
                                 backgroundColor = VetNutriColors.Primary
                         ) {
                                 Icon(
                                         imageVector = AppIcons.Check,
-                                        contentDescription = "Valider la consultation",
+                                        contentDescription = ConsultationEdit.CONFIRM_VALIDE.translate(),
                                         tint = VetNutriColors.OnPrimary
                                 )
                         }
@@ -271,46 +307,81 @@ fun ConsultationFullScreenEditView(
                                         showDateError = false
                                         dateErrorMessage = null
                                 },
-                                label = Consultation.DATE.translate(),
+                                label = fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation.DATE.translate(),
                                 isError = showDateError,
                                 errorMessage = dateErrorMessage,
                                 modifier = Modifier.fillMaxWidth()
                         )
 
-                        // Poids
-                        NumberTextField(
-                                value = weightText,
-                                onValueChange = { newValue: String ->
-                                        weightText = newValue
-                                        try {
-                                                if (newValue.isNotEmpty()) {
-                                                        val weight = newValue.toDouble()
-                                                        editedConsultation =
-                                                                editedConsultation.copy(
-                                                                        weight = weight
-                                                                )
-                                                        showWeightError = false
-                                                        weightErrorMessage = null
-                                                } else {
-                                                        editedConsultation =
-                                                                editedConsultation.copy(
-                                                                        weight = null
-                                                                )
-                                                        showWeightError = false
-                                                        weightErrorMessage = null
+                        // Poids (grand clavier numérique via OutlinedTextField)
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedTextField(
+                                        value = weightText,
+                                        onValueChange = { newValue: String ->
+                                                // Filtrer pour n'accepter que les chiffres, point et virgule
+                                                val texteFiltre =
+                                                        newValue.filter { char ->
+                                                                char.isDigit() || char == '.' || char == ','
+                                                        }
+                                                // S'assurer qu'il n'y a qu'un seul séparateur décimal
+                                                val pointCount = texteFiltre.count { it == '.' }
+                                                val virguleCount = texteFiltre.count { it == ',' }
+                                                if (pointCount <= 1 &&
+                                                                virguleCount <= 1 &&
+                                                                pointCount + virguleCount <= 1
+                                                ) {
+                                                        weightText = texteFiltre
+                                                        val texteNormalise = texteFiltre.replace(',', '.')
+                                                        try {
+                                                                if (texteNormalise.isNotEmpty()) {
+                                                                        val weight = texteNormalise.toDouble()
+                                                                        editedConsultation =
+                                                                                editedConsultation.copy(
+                                                                                        weight = weight
+                                                                                )
+                                                                        showWeightError = false
+                                                                        weightErrorMessage = null
+                                                                } else {
+                                                                        editedConsultation =
+                                                                                editedConsultation.copy(
+                                                                                        weight = null
+                                                                                )
+                                                                        showWeightError = false
+                                                                        weightErrorMessage = null
+                                                                }
+                                                        } catch (e: Exception) {
+                                                                showWeightError = true
+                                                                weightErrorMessage =
+                                                                        ConsultationEdit.FORMAT_WEIGHT_ERROR.translate()
+                                                        }
                                                 }
-                                        } catch (e: Exception) {
-                                                showWeightError = true
-                                                weightErrorMessage =
-                                                        "Format de poids invalide (nombre décimal)"
-                                        }
-                                },
-                                label = Animal.WEIGHT.translate(),
-                                leadingIcon = AppIcons.Weight,
-                                isError = showWeightError,
-                                errorMessage = weightErrorMessage,
-                                modifier = Modifier.fillMaxWidth()
-                        )
+                                        },
+                                        label = { Text(Animal.WEIGHT.translate()) },
+                                        leadingIcon = {
+                                                Icon(
+                                                        imageVector = AppIcons.Weight,
+                                                        contentDescription = null
+                                                )
+                                        },
+                                        isError = showWeightError,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        keyboardOptions =
+                                                KeyboardOptions(
+                                                        keyboardType = KeyboardType.Text,
+                                                        imeAction = ImeAction.Done
+                                                ),
+                                        singleLine = true
+                                )
+                                val currentWeightErrorMessage = weightErrorMessage
+                                if (showWeightError && currentWeightErrorMessage != null) {
+                                        Text(
+                                                text = currentWeightErrorMessage,
+                                                color = MaterialTheme.colors.error,
+                                                style = MaterialTheme.typography.caption,
+                                                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                                        )
+                                }
+                        }
 
                         // Poids idéal
                         var idealWeightText by
@@ -341,42 +412,75 @@ fun ConsultationFullScreenEditView(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                         ) {
-                                // Champ de saisie du poids idéal
-                                NumberTextField(
-                                        value = idealWeightText,
-                                        onValueChange = { newValue: String ->
-                                                idealWeightText = newValue
-                                                try {
-                                                        if (newValue.isNotEmpty()) {
-                                                                val idealWeight =
-                                                                        newValue.toDouble()
-                                                                editedConsultation =
-                                                                        editedConsultation.copy(
-                                                                                idealWeight =
-                                                                                        idealWeight
-                                                                        )
-                                                                showIdealWeightError = false
-                                                                idealWeightErrorMessage = null
-                                                        } else {
-                                                                editedConsultation =
-                                                                        editedConsultation.copy(
-                                                                                idealWeight = null
-                                                                        )
-                                                                showIdealWeightError = false
-                                                                idealWeightErrorMessage = null
+                                // Champ de saisie du poids idéal (grand clavier numérique)
+                                Column(modifier = Modifier.weight(1f)) {
+                                        OutlinedTextField(
+                                                value = idealWeightText,
+                                                onValueChange = { newValue: String ->
+                                                        val texteFiltre =
+                                                                newValue.filter { char ->
+                                                                        char.isDigit() || char == '.' || char == ','
+                                                                }
+                                                        val pointCount = texteFiltre.count { it == '.' }
+                                                        val virguleCount = texteFiltre.count { it == ',' }
+                                                        if (pointCount <= 1 &&
+                                                                        virguleCount <= 1 &&
+                                                                        pointCount + virguleCount <= 1
+                                                        ) {
+                                                                idealWeightText = texteFiltre
+                                                                val texteNormalise = texteFiltre.replace(',', '.')
+                                                                try {
+                                                                        if (texteNormalise.isNotEmpty()) {
+                                                                                val idealWeight =
+                                                                                        texteNormalise.toDouble()
+                                                                                editedConsultation =
+                                                                                        editedConsultation.copy(
+                                                                                                idealWeight =
+                                                                                                        idealWeight
+                                                                                        )
+                                                                                showIdealWeightError = false
+                                                                                idealWeightErrorMessage = null
+                                                                        } else {
+                                                                                editedConsultation =
+                                                                                        editedConsultation.copy(
+                                                                                                idealWeight = null
+                                                                                        )
+                                                                                showIdealWeightError = false
+                                                                                idealWeightErrorMessage = null
+                                                                        }
+                                                                } catch (e: Exception) {
+                                                                        showIdealWeightError = true
+                                                                        idealWeightErrorMessage =
+                                                                                ConsultationEdit.FORMAT_IDEAL_WEIGHT_ERROR.translate()
+                                                                }
                                                         }
-                                                } catch (e: Exception) {
-                                                        showIdealWeightError = true
-                                                        idealWeightErrorMessage =
-                                                                "Format de poids idéal invalide (nombre décimal)"
-                                                }
-                                        },
-                                        label = "Poids idéal (kg)",
-                                        leadingIcon = AppIcons.Weight,
-                                        isError = showIdealWeightError,
-                                        errorMessage = idealWeightErrorMessage,
-                                        modifier = Modifier.weight(1f)
-                                )
+                                                },
+                                                label = { Text(ConsultationEdit.IDEAL_WEIGHT_LABEL.translate()) },
+                                                leadingIcon = {
+                                                        Icon(
+                                                                imageVector = AppIcons.Weight,
+                                                                contentDescription = null
+                                                        )
+                                                },
+                                                isError = showIdealWeightError,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                keyboardOptions =
+                                                        KeyboardOptions(
+                                                                keyboardType = KeyboardType.Text,
+                                                                imeAction = ImeAction.Done
+                                                        ),
+                                                singleLine = true
+                                        )
+                                        val currentIdealWeightErrorMessage = idealWeightErrorMessage
+                                        if (showIdealWeightError && currentIdealWeightErrorMessage != null) {
+                                                Text(
+                                                        text = currentIdealWeightErrorMessage,
+                                                        color = MaterialTheme.colors.error,
+                                                        style = MaterialTheme.typography.caption,
+                                                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                                                )
+                                        }
+                                }
 
                                 // Affichage de l'estimation
                                 if (estimatedIdealWeight != null) {
@@ -395,7 +499,7 @@ fun ConsultationFullScreenEditView(
                                                                 Alignment.CenterHorizontally
                                                 ) {
                                                         Text(
-                                                                text = "Estimation",
+                                                                text = ConsultationEdit.ESTIMATION.translate(),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,
@@ -428,14 +532,14 @@ fun ConsultationFullScreenEditView(
                                                                 Alignment.CenterHorizontally
                                                 ) {
                                                         Text(
-                                                                text = "Estimation",
+                                                                text = ConsultationEdit.ESTIMATION.translate(),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,
                                                                 color = Color.Gray
                                                         )
                                                         Text(
-                                                                text = "Nécessite poids + BCS",
+                                                                text = ConsultationEdit.ESTIMATION_REQUIRES.translate(),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,
@@ -453,7 +557,7 @@ fun ConsultationFullScreenEditView(
                                         editedConsultation =
                                                 editedConsultation.copy(objectConsult = newValue)
                                 },
-                                label = Consultation.OBJECTIVE.translate(),
+                                label = fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation.OBJECTIVE.translate(),
                                 leadingIcon = AppIcons.Info,
                                 modifier = Modifier.fillMaxWidth()
                         )
@@ -465,7 +569,7 @@ fun ConsultationFullScreenEditView(
                                         editedConsultation =
                                                 editedConsultation.copy(observation = newValue)
                                 },
-                                label = Consultation.OBSERVATION.translate(),
+                                label = fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation.OBSERVATION.translate(),
                                 leadingIcon = AppIcons.Info,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
                                 maxLines = 6,
@@ -484,7 +588,7 @@ fun ConsultationFullScreenEditView(
                                                 Arrangement.spacedBy(AppSizes.paddingMedium)
                                 ) {
                                         Text(
-                                                text = "Note d'État Corporel (BCS)",
+                                                text = ConsultationEdit.BCS_SECTION_TITLE.translate(),
                                                 style = MaterialTheme.typography.h6,
                                                 color = VetNutriColors.Primary
                                         )
@@ -493,7 +597,7 @@ fun ConsultationFullScreenEditView(
 
                                         // Sélecteur de BCS
                                         ScoreSelector(
-                                                label = "Note BCS (1-9)",
+                                                label = ConsultationEdit.BCS_SELECTOR_LABEL.translate(),
                                                 valeurSelectionnee =
                                                         editedConsultation.BCS?.toDouble(),
                                                 onScoreSelected = { score ->
@@ -506,23 +610,23 @@ fun ConsultationFullScreenEditView(
                                                 descriptions =
                                                         mapOf(
                                                                 1 to
-                                                                        "Très maigre - Côtes, vertèbres et os du bassin très saillants",
+                                                                        ConsultationEdit.BCS_DESC_1.translate(),
                                                                 2 to
-                                                                        "Maigre - Côtes facilement palpables, faible couverture graisseuse",
+                                                                        ConsultationEdit.BCS_DESC_2.translate(),
                                                                 3 to
-                                                                        "Mince - Côtes palpables avec légère couverture graisseuse",
+                                                                        ConsultationEdit.BCS_DESC_3.translate(),
                                                                 4 to
-                                                                        "Idéal inférieur - Côtes facilement palpables, taille visible",
+                                                                        ConsultationEdit.BCS_DESC_4.translate(),
                                                                 5 to
-                                                                        "Idéal - Côtes palpables sans excès de graisse, taille bien définie",
+                                                                        ConsultationEdit.BCS_DESC_5.translate(),
                                                                 6 to
-                                                                        "Idéal supérieur - Côtes palpables avec légère couverture graisseuse",
+                                                                        ConsultationEdit.BCS_DESC_6.translate(),
                                                                 7 to
-                                                                        "Surpoids - Côtes difficiles à palper, dépôts graisseux visibles",
+                                                                        ConsultationEdit.BCS_DESC_7.translate(),
                                                                 8 to
-                                                                        "Obèse - Côtes très difficiles à palper, importante couverture graisseuse",
+                                                                        ConsultationEdit.BCS_DESC_8.translate(),
                                                                 9 to
-                                                                        "Très obèse - Côtes non palpables, dépôts graisseux massifs"
+                                                                        ConsultationEdit.BCS_DESC_9.translate()
                                                         )
                                         )
                                 }
@@ -540,7 +644,7 @@ fun ConsultationFullScreenEditView(
                                                 Arrangement.spacedBy(AppSizes.paddingMedium)
                                 ) {
                                         Text(
-                                                text = "Références nutritionnelles",
+                                                text = ConsultationEdit.REF_SECTION_TITLE.translate(),
                                                 style = MaterialTheme.typography.h6,
                                                 color = VetNutriColors.Primary
                                         )
@@ -549,31 +653,28 @@ fun ConsultationFullScreenEditView(
 
                                         // Référence générale
                                         Text(
-                                                text = "Référence générale",
+                                                text = ConsultationEdit.REF_GENERAL_SUBTITLE.translate(),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold
                                         )
 
                                         OutlinedTextField(
                                                 value = referenceGeneraleSelectionnee?.nom
-                                                                ?: "Aucune référence sélectionnée",
+                                                                ?: ConsultationEdit.REF_GENERAL_NONE.translate(),
                                                 onValueChange = {},
-                                                label = { Text("Référence générale") },
+                                                label = { Text(ConsultationEdit.REF_GENERAL_SUBTITLE.translate()) },
                                                 readOnly = true,
                                                 modifier = Modifier.fillMaxWidth(),
                                                 trailingIcon = {
-                                                        IconButton(
+                                                        IconButtonWithTooltip(
                                                                 onClick = {
                                                                         showReferenceGeneraleDialog =
                                                                                 true
-                                                                }
-                                                        ) {
-                                                                Icon(
-                                                                        AppIcons.ArrowDropDown,
-                                                                        contentDescription =
-                                                                                "Sélectionner une référence"
-                                                                )
-                                                        }
+                                                                },
+                                                                imageVector = AppIcons.ArrowDropDown,
+                                                                contentDescription = ConsultationEdit.REF_SELECT_TOOLTIP.translate(),
+                                                                tooltip = ConsultationEdit.REF_SELECT_TOOLTIP.translate()
+                                                        )
                                                 }
                                         )
 
@@ -581,7 +682,7 @@ fun ConsultationFullScreenEditView(
 
                                         // Références liées aux maladies
                                         Text(
-                                                text = "Références liées aux maladies",
+                                                text = ConsultationEdit.REF_DISEASE_SUBTITLE.translate(),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold
                                         )
@@ -636,7 +737,7 @@ fun ConsultationFullScreenEditView(
                                                                                                         text =
                                                                                                                 referenceMaladie
                                                                                                                         ?.nom
-                                                                                                                        ?: "Référence inconnue",
+                                                                                                                        ?: ConsultationEdit.REF_UNKNOWN.translate(),
                                                                                                         style =
                                                                                                                 MaterialTheme
                                                                                                                         .typography
@@ -663,7 +764,7 @@ fun ConsultationFullScreenEditView(
                                                                                                         )
                                                                                                 }
                                                                                         }
-                                                                                        IconButton(
+                                                                                        IconButtonWithTooltip(
                                                                                                 onClick = {
                                                                                                         val nouvellesReferences =
                                                                                                                 editedConsultation
@@ -679,16 +780,12 @@ fun ConsultationFullScreenEditView(
                                                                                                                                 referencesMaladies =
                                                                                                                                         nouvellesReferences
                                                                                                                         )
-                                                                                                }
-                                                                                        ) {
-                                                                                                Icon(
-                                                                                                        AppIcons.Delete,
-                                                                                                        contentDescription =
-                                                                                                                "Supprimer la référence",
-                                                                                                        tint =
-                                                                                                                Color.Red
-                                                                                                )
-                                                                                        }
+                                                                                                },
+                                                                                                imageVector = AppIcons.Delete,
+                                                                                                contentDescription = ConsultationEdit.REF_DELETE_TOOLTIP.translate(),
+                                                                                                tooltip = ConsultationEdit.REF_DELETE_TOOLTIP.translate(),
+                                                                                                tint = Color.Red
+                                                                                        )
                                                                                 }
                                                                         }
                                                                 }
@@ -708,7 +805,7 @@ fun ConsultationFullScreenEditView(
                                                 Icon(
                                                         AppIcons.Add,
                                                         contentDescription =
-                                                                "Ajouter une référence de maladie",
+                                                                ConsultationEdit.REF_ADD_DISEASE.translate(),
                                                         modifier =
                                                                 Modifier.size(
                                                                         AppSizes.iconSizeSmall
@@ -720,20 +817,155 @@ fun ConsultationFullScreenEditView(
                                                                         AppSizes.paddingSmall
                                                                 )
                                                 )
-                                                Text("Ajouter une référence de maladie")
+                                                Text(ConsultationEdit.REF_ADD_DISEASE.translate())
+                                        }
+                                }
+                        }
+
+                        // Section Mots-clés
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = AppSizes.elevationSmall,
+                                backgroundColor = VetNutriColors.Surface
+                        ) {
+                                Column(
+                                        modifier = Modifier.padding(AppSizes.paddingLarge),
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingMedium)
+                                ) {
+                                        Text(
+                                                text = ConsultationEdit.KEYWORDS_SECTION_TITLE.translate(),
+                                                style = MaterialTheme.typography.h6,
+                                                color = VetNutriColors.Primary
+                                        )
+
+                                        Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
+
+                                        if (editedConsultation.keywordIds.isNotEmpty()) {
+                                                Column(
+                                                        verticalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                ) {
+                                                        editedConsultation.keywordIds.forEach {
+                                                                keywordId ->
+                                                                val keywordLabel =
+                                                                        keywordsById[keywordId]
+                                                                                ?.label
+                                                                                ?: ConsultationEdit.KEYWORDS_UNKNOWN.translate()
+
+                                                                Card(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Surface
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.7f
+                                                                                        ),
+                                                                        elevation = 2.dp
+                                                                ) {
+                                                                        Row(
+                                                                                modifier =
+                                                                                        Modifier.padding(
+                                                                                                AppSizes.paddingMedium
+                                                                                        ),
+                                                                                horizontalArrangement =
+                                                                                        Arrangement
+                                                                                                .SpaceBetween,
+                                                                                verticalAlignment =
+                                                                                        Alignment
+                                                                                                .CenterVertically
+                                                                        ) {
+                                                                                Text(
+                                                                                        text = keywordLabel,
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .body1,
+                                                                                        fontWeight =
+                                                                                                FontWeight
+                                                                                                        .Bold,
+                                                                                        modifier =
+                                                                                                Modifier.weight(
+                                                                                                        1f
+                                                                                                )
+                                                                                )
+                                                                                IconButtonWithTooltip(
+                                                                                        onClick = {
+                                                                                                val updatedKeywords =
+                                                                                                        editedConsultation
+                                                                                                                .keywordIds
+                                                                                                                .toMutableList()
+                                                                                                updatedKeywords.remove(
+                                                                                                        keywordId
+                                                                                                )
+                                                                                                editedConsultation =
+                                                                                                        editedConsultation
+                                                                                                                .copy(
+                                                                                                                        keywordIds =
+                                                                                                                                updatedKeywords
+                                                                                                                )
+                                                                                        },
+                                                                                        imageVector = AppIcons.Delete,
+                                                                                        contentDescription = ConsultationEdit.KEYWORDS_DELETE_TOOLTIP.translate(),
+                                                                                        tooltip = ConsultationEdit.KEYWORDS_DELETE_TOOLTIP.translate(),
+                                                                                        tint = Color.Red
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        } else {
+                                                Text(
+                                                        text = ConsultationEdit.KEYWORDS_NONE.translate(),
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = Color.Gray
+                                                )
+                                        }
+
+                                        OutlinedButton(
+                                                onClick = { showKeywordDialog = true },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors =
+                                                        ButtonDefaults.outlinedButtonColors(
+                                                                contentColor =
+                                                                        VetNutriColors.Primary
+                                                        )
+                                        ) {
+                                                Icon(
+                                                        AppIcons.Add,
+                                                        contentDescription =
+                                                                ConsultationEdit.KEYWORDS_ADD.translate(),
+                                                        modifier =
+                                                                Modifier.size(
+                                                                        AppSizes.iconSizeSmall
+                                                                )
+                                                )
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.width(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                )
+                                                Text(ConsultationEdit.KEYWORDS_ADD.translate())
                                         }
                                 }
                         }
 
                         // Section Variables Supplémentaires
-                        val variablesRequises =
-                                remember(referenceGeneraleSelectionnee) {
-                                        val variables =
-                                                extraireVariablesRequises(
-                                                        referenceGeneraleSelectionnee
-                                                )
-                                        variables
-                                }
+        val variablesRequises =
+                remember(referenceGeneraleSelectionnee, editedConsultation.referencesMaladies, referencesMaladies) {
+                        val selectedDiseaseRefs = referencesMaladies.filter { maladieRef ->
+                                editedConsultation.referencesMaladies.contains(maladieRef.uuid)
+                        }
+                        extraireVariablesRequises(
+                                reference = referenceGeneraleSelectionnee,
+                                referencesMaladies = selectedDiseaseRefs
+                        )
+                }
 
                         // Debug des équations disponibles
                         LaunchedEffect(referenceGeneraleSelectionnee) {
@@ -754,7 +986,7 @@ fun ConsultationFullScreenEditView(
                                                 modifier = Modifier.padding(AppSizes.paddingMedium)
                                         ) {
                                                 Text(
-                                                        text = "Variables supplémentaires",
+                                                        text = ConsultationEdit.SUPP_VAR_TITLE.translate(),
                                                         style = MaterialTheme.typography.h6,
                                                         color = VetNutriColors.Primary,
                                                         fontWeight = FontWeight.Bold
@@ -762,7 +994,7 @@ fun ConsultationFullScreenEditView(
 
                                                 Text(
                                                         text =
-                                                                "Ces variables sont requises par les équations de la référence sélectionnée.",
+                                                                ConsultationEdit.SUPP_VAR_DESC.translate(),
                                                         style = MaterialTheme.typography.body2,
                                                         color = Color.Gray,
                                                         modifier =
@@ -814,13 +1046,13 @@ fun ConsultationFullScreenEditView(
                                                                                         )
                                                                         }
 
-                                                                        editedConsultation =
-                                                                                editedConsultation
-                                                                                        .copy(
-                                                                                                suppVarp =
-                                                                                                        variablesModifiees
-                                                                                        )
-                                                                },
+                                                editedConsultation =
+                                                        editedConsultation
+                                                                .copy(
+                                                                        suppVarp =
+                                                                                variablesModifiees
+                                                                )
+                                        },
                                                                 modifier =
                                                                         Modifier.padding(
                                                                                 vertical =
@@ -846,7 +1078,7 @@ fun ConsultationFullScreenEditView(
                                         ) {
                                                 Text(
                                                         text =
-                                                                "Coefficients d'ajustement énergétique",
+                                                                ConsultationEdit.ADJUST_COEF_TITLE.translate(),
                                                         style = MaterialTheme.typography.h6,
                                                         color = VetNutriColors.Primary
                                                 )
@@ -872,14 +1104,14 @@ fun ConsultationFullScreenEditView(
                                                                                 ?.nomk1?.takeIf {
                                                                                 it.isNotBlank()
                                                                         }
-                                                                                ?: "Coefficient K1",
+                                                                                ?: ConsultationEdit.COEF_K1_FALLBACK.translate(),
                                                                 valeurSelectionnee =
                                                                         editedConsultation.k1Value,
                                                                 descriptionSelectionnee =
                                                                         editedConsultation.k1Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk1()
+                                                                                ?.modk1
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -900,14 +1132,14 @@ fun ConsultationFullScreenEditView(
                                                                                 ?.nomk2?.takeIf {
                                                                                 it.isNotBlank()
                                                                         }
-                                                                                ?: "Coefficient K2",
+                                                                                ?: ConsultationEdit.COEF_K2_FALLBACK.translate(),
                                                                 valeurSelectionnee =
                                                                         editedConsultation.k2Value,
                                                                 descriptionSelectionnee =
                                                                         editedConsultation.k2Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk2()
+                                                                                ?.modk2
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -928,14 +1160,14 @@ fun ConsultationFullScreenEditView(
                                                                                 ?.nomk3?.takeIf {
                                                                                 it.isNotBlank()
                                                                         }
-                                                                                ?: "Coefficient K3",
+                                                                                ?: ConsultationEdit.COEF_K3_FALLBACK.translate(),
                                                                 valeurSelectionnee =
                                                                         editedConsultation.k3Value,
                                                                 descriptionSelectionnee =
                                                                         editedConsultation.k3Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk3()
+                                                                                ?.modk3
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -956,14 +1188,14 @@ fun ConsultationFullScreenEditView(
                                                                                 ?.nomk4?.takeIf {
                                                                                 it.isNotBlank()
                                                                         }
-                                                                                ?: "Coefficient K4",
+                                                                                ?: ConsultationEdit.COEF_K4_FALLBACK.translate(),
                                                                 valeurSelectionnee =
                                                                         editedConsultation.k4Value,
                                                                 descriptionSelectionnee =
                                                                         editedConsultation.k4Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk4()
+                                                                                ?.modk4
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -984,14 +1216,14 @@ fun ConsultationFullScreenEditView(
                                                                                 ?.nomk5?.takeIf {
                                                                                 it.isNotBlank()
                                                                         }
-                                                                                ?: "Coefficient K5",
+                                                                                ?: ConsultationEdit.COEF_K5_FALLBACK.translate(),
                                                                 valeurSelectionnee =
                                                                         editedConsultation.k5Value,
                                                                 descriptionSelectionnee =
                                                                         editedConsultation.k5Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk5()
+                                                                                ?.modk5
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -1035,15 +1267,39 @@ fun ConsultationFullScreenEditView(
                                         editedConsultation.copy(
                                                 referencesMaladies = referenceId.toMutableList()
                                         )
-                                showReferenceMaladieDialog = false
                         },
                         onReferenceRemoved = { referenceId ->
                                 editedConsultation =
                                         editedConsultation.copy(
                                                 referencesMaladies = referenceId.toMutableList()
                                         )
-                                showReferenceMaladieDialog = false
-                        }
+                        },
+                        onDismiss = { showReferenceMaladieDialog = false }
+                )
+        }
+
+        if (showKeywordDialog) {
+                ConsultationKeywordDialog(
+                        selectedKeywordIds = editedConsultation.keywordIds,
+                        availableKeywords = availableKeywords,
+                        onKeywordsSelected = { keywordIds ->
+                                editedConsultation =
+                                        editedConsultation.copy(
+                                                keywordIds = keywordIds.toMutableList()
+                                        )
+                        },
+                        onKeywordCreated = { keyword ->
+                                onCreateKeyword(keyword)
+                                editedConsultation =
+                                        editedConsultation.copy(
+                                                keywordIds =
+                                                        (editedConsultation.keywordIds +
+                                                                        keyword.uuid)
+                                                                .distinct()
+                                                                .toMutableList()
+                                        )
+                        },
+                        onDismiss = { showKeywordDialog = false }
                 )
         }
 
@@ -1051,11 +1307,11 @@ fun ConsultationFullScreenEditView(
         if (showMissingVariablesDialog) {
                 AlertDialog(
                         onDismissRequest = { showMissingVariablesDialog = false },
-                        title = { Text("Variables supplémentaires requises") },
+                        title = { Text(ConsultationEdit.MISSING_VARS_TITLE.translate()) },
                         text = {
                                 Column {
                                         Text(
-                                                "Les variables supplémentaires suivantes sont requises par la référence sélectionnée :"
+                                                ConsultationEdit.MISSING_VARS_DESC.translate()
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         missingVariables.forEach { variableName ->
@@ -1067,7 +1323,7 @@ fun ConsultationFullScreenEditView(
                                         }
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                                "Veuillez saisir ces valeurs avant de pouvoir sauvegarder la consultation.",
+                                                ConsultationEdit.MISSING_VARS_FOOTER.translate(),
                                                 style = MaterialTheme.typography.body2,
                                                 color = Color.Gray
                                         )
@@ -1075,10 +1331,53 @@ fun ConsultationFullScreenEditView(
                         },
                         confirmButton = {
                                 TextButton(onClick = { showMissingVariablesDialog = false }) {
-                                        Text("OK")
+                                        Text(LocalizationKeys.General.CONFIRM.translate())
                                 }
                         }
                 )
+        }
+
+        // Dialogue de confirmation pour l'annulation de la saisie
+        if (showExitConfirmationDialog) {
+                AlertDialog(
+                        onDismissRequest = { showExitConfirmationDialog = false },
+                        title = { Text(ConsultationEdit.CANCEL_DIALOG_TITLE.translate()) },
+                        text = {
+                                Text(
+                                        ConsultationEdit.CANCEL_DIALOG_DESC.translate()
+                                )
+                        },
+                        confirmButton = {
+                                TextButton(
+                                        onClick = {
+                                                shouldAutoSave = false
+                                                showExitConfirmationDialog = false
+                                                onCancel()
+                                        }
+                                ) {
+                                        Text(ConsultationEdit.CANCEL_DIALOG_CONFIRM.translate())
+                                }
+                        },
+                        dismissButton = {
+                                TextButton(onClick = { showExitConfirmationDialog = false }) {
+                                        Text(ConsultationEdit.CANCEL_DIALOG_CONTINUE.translate())
+                                }
+                        }
+                )
+        }
+
+        // Dialogue d'avertissement pour référence ou poids manquants à la validation
+        if (showMissingDataDialog) {
+            AlertDialog(
+                    onDismissRequest = { showMissingDataDialog = false },
+                    title = { Text(ConsultationEdit.MISSING_DATA_TITLE.translate()) },
+                    text = { Text(missingDataMessage) },
+                    confirmButton = {
+                            TextButton(onClick = { showMissingDataDialog = false }) {
+                                    Text(LocalizationKeys.General.CONFIRM.translate())
+                            }
+                    }
+            )
         }
 }
 
@@ -1106,32 +1405,31 @@ private fun ScoreSelector(
                 OutlinedTextField(
                         value =
                                 if (valeurSelectionnee != null) {
-                                        "$valeurSelectionnee/9 - ${descriptions[valeurSelectionnee.toInt()] ?: "Description non disponible"}"
+                                        "$valeurSelectionnee/9 - ${descriptions[valeurSelectionnee.toInt()] ?: ConsultationEdit.REF_DESCRIPTION_NONE.translate()}"
                                 } else {
-                                        "Aucune note sélectionnée"
+                                        ConsultationEdit.BCS_NONE_SELECTED.translate()
                                 },
                         onValueChange = {},
-                        label = { Text("Note d'état corporel") },
+                        label = { Text(ConsultationEdit.BCS_FIELD_LABEL.translate()) },
                         readOnly = true,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
                                 Row {
                                         if (valeurSelectionnee != null) {
-                                                IconButton(onClick = { onScoreSelected(null) }) {
-                                                        Icon(
-                                                                AppIcons.Close,
-                                                                contentDescription =
-                                                                        "Effacer la note",
-                                                                tint = Color.Gray
-                                                        )
-                                                }
-                                        }
-                                        IconButton(onClick = { showDialog = true }) {
-                                                Icon(
-                                                        AppIcons.ArrowDropDown,
-                                                        contentDescription = "Sélectionner une note"
+                                                IconButtonWithTooltip(
+                                                        onClick = { onScoreSelected(null) },
+                                                        imageVector = AppIcons.Close,
+                                                        contentDescription = ConsultationEdit.BCS_CLEAR_TOOLTIP.translate(),
+                                                        tooltip = ConsultationEdit.BCS_CLEAR_TOOLTIP.translate(),
+                                                        tint = Color.Gray
                                                 )
                                         }
+                                        IconButtonWithTooltip(
+                                                onClick = { showDialog = true },
+                                                imageVector = AppIcons.ArrowDropDown,
+                                                contentDescription = ConsultationEdit.BCS_SELECT_TOOLTIP.translate(),
+                                                tooltip = ConsultationEdit.BCS_SELECT_TOOLTIP.translate()
+                                        )
                                 }
                         }
                 )
@@ -1164,7 +1462,7 @@ private fun ScoreSelectionDialog(
 ) {
         AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("Sélectionner $label") },
+                title = { Text(ConsultationEdit.BCS_DIALOG_TITLE.translate(label)) },
                 text = {
                         LazyColumn {
                                 items(plageScore.toList()) { score ->
@@ -1197,7 +1495,7 @@ private fun ScoreSelectionDialog(
                                                         )
                                                         Text(
                                                                 text = descriptions[score]
-                                                                                ?: "Description non disponible",
+                                                                                ?: ConsultationEdit.REF_DESCRIPTION_NONE.translate(),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,
@@ -1209,7 +1507,7 @@ private fun ScoreSelectionDialog(
                                 }
                         }
                 },
-                confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } }
+                confirmButton = { TextButton(onClick = onDismiss) { Text(LocalizationKeys.General.CLOSE.translate()) } }
         )
 }
 
@@ -1218,7 +1516,7 @@ private fun CoefficientSelector(
         nom: String,
         valeurSelectionnee: Double?,
         descriptionSelectionnee: String?,
-        coefficients: ArrayList<fr.vetbrain.vetnutri_mp.Data.CoefP>,
+        coefficients: List<fr.vetbrain.vetnutri_mp.Data.CoefP>,
         onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit,
         modifier: Modifier = Modifier
 ) {
@@ -1239,19 +1537,19 @@ private fun CoefficientSelector(
                                 if (valeurSelectionnee != null && descriptionSelectionnee != null) {
                                         "$descriptionSelectionnee (${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(valeurSelectionnee.toDouble(), 2)})"
                                 } else {
-                                        "Sélectionner un coefficient"
+                                        ConsultationEdit.COEF_SELECTOR_NONE.translate()
                                 },
                         onValueChange = {},
-                        label = { Text("Coefficient") },
+                        label = { Text(ConsultationEdit.COEF_SELECTOR_LABEL.translate()) },
                         readOnly = true,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
-                                IconButton(onClick = { showDialog = true }) {
-                                        Icon(
-                                                AppIcons.ArrowDropDown,
-                                                contentDescription = "Sélectionner un coefficient"
-                                        )
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = { showDialog = true },
+                                        imageVector = AppIcons.ArrowDropDown,
+                                        contentDescription = ConsultationEdit.COEF_SELECTOR_NONE.translate(),
+                                        tooltip = ConsultationEdit.COEF_SELECTOR_NONE.translate()
+                                )
                         }
                 )
         }
@@ -1274,14 +1572,14 @@ private fun CoefficientSelector(
 @Composable
 private fun CoefficientSelectionDialog(
         nom: String,
-        coefficients: ArrayList<fr.vetbrain.vetnutri_mp.Data.CoefP>,
+        coefficients: List<fr.vetbrain.vetnutri_mp.Data.CoefP>,
         descriptionSelectionnee: String?,
         onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit,
         onDismiss: () -> Unit
 ) {
         AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("Sélectionner $nom") },
+                title = { Text(ConsultationEdit.BCS_DIALOG_TITLE.translate(nom)) },
                 text = {
                         LazyColumn {
                                 items(coefficients) { coef ->
@@ -1301,14 +1599,14 @@ private fun CoefficientSelectionDialog(
                                                 Column {
                                                         Text(
                                                                 text = coef.description
-                                                                                ?: "Sans description",
+                                                                                ?: ConsultationEdit.REF_COEF_NO_DESC.translate(),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body1
                                                         )
                                                         Text(
                                                                 text =
-                                                                        "Coefficient: ${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal((coef.coef ?: 1.0).toDouble(), 2)}",
+                                                                        ConsultationEdit.COEF_VAL_LABEL.translate(coef.coef?.toString() ?: "0.0"),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,
@@ -1319,7 +1617,7 @@ private fun CoefficientSelectionDialog(
                                 }
                         }
                 },
-                confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } }
+                confirmButton = { TextButton(onClick = onDismiss) { Text(LocalizationKeys.General.CLOSE.translate()) } }
         )
 }
 
@@ -1350,18 +1648,18 @@ private fun ReferenceGeneraleDialog(
 
         AlertDialog(
                 onDismissRequest = { onValueChange(value) },
-                title = { Text("Sélectionner une référence générale") },
+                title = { Text(ConsultationEdit.REF_GENERAL_DIALOG_TITLE.translate()) },
                 text = {
                         Column(modifier = Modifier.width(500.dp).height(400.dp)) {
                                 // Barre de recherche
                                 OutlinedTextField(
                                         value = searchText,
                                         onValueChange = { searchText = it },
-                                        label = { Text("Rechercher une référence") },
+                                        label = { Text(ConsultationEdit.REF_SEARCH_LABEL.translate()) },
                                         leadingIcon = {
                                                 Icon(
                                                         AppIcons.Search,
-                                                        contentDescription = "Rechercher"
+                                                        contentDescription = ConsultationEdit.REF_SEARCH_TOOLTIP.translate()
                                                 )
                                         },
                                         modifier = Modifier.fillMaxWidth(),
@@ -1371,7 +1669,7 @@ private fun ReferenceGeneraleDialog(
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
-                                        text = "${filteredReferences.size} référence(s) trouvée(s)",
+                                        text = ConsultationEdit.REF_SEARCH_RESULTS.translate(filteredReferences.size.toString()),
                                         style = MaterialTheme.typography.caption,
                                         color = Color.Gray
                                 )
@@ -1395,7 +1693,7 @@ private fun ReferenceGeneraleDialog(
                                                         )
                                                         Spacer(modifier = Modifier.width(8.dp))
                                                         Text(
-                                                                text = "Aucune référence",
+                                                                text = ConsultationEdit.REF_NONE.translate(),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body1,
@@ -1427,7 +1725,7 @@ private fun ReferenceGeneraleDialog(
                                                                         text =
                                                                                 reference.nom
                                                                                         .ifBlank {
-                                                                                                "Référence sans nom"
+                                                                                                ConsultationEdit.REF_NO_NAME.translate()
                                                                                         },
                                                                         style =
                                                                                 MaterialTheme
@@ -1453,7 +1751,7 @@ private fun ReferenceGeneraleDialog(
                                                                 }
                                                                 Text(
                                                                         text =
-                                                                                "Espèce: ${reference.espece?.name ?: "Non spécifiée"}",
+                                                                                ConsultationEdit.REF_SPECIES_LABEL.translate(reference.espece?.name ?: ConsultationEdit.REF_SPECIES_UNSPECIFIED.translate()),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -1470,7 +1768,7 @@ private fun ReferenceGeneraleDialog(
                         }
                 },
                 confirmButton = {
-                        TextButton(onClick = { onValueChange(value) }) { Text("Fermer") }
+                        TextButton(onClick = { onValueChange(value) }) { Text(LocalizationKeys.General.CLOSE.translate()) }
                 }
         )
 }
@@ -1480,9 +1778,10 @@ private fun ReferenceMaladieDialog(
         references: List<String>,
         availableReferences: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv>,
         onReferenceSelected: (List<String>) -> Unit,
-        onReferenceRemoved: (List<String>) -> Unit
+        onReferenceRemoved: (List<String>) -> Unit,
+        onDismiss: () -> Unit
 ) {
-        // Les références arrivent déjà filtrées par espèce et maladie
+        // Les références arrivent déjà filtrées par espèce et type complémentaire
         var searchText by remember { mutableStateOf("") }
 
         // Filtrer les références selon le texte de recherche
@@ -1502,19 +1801,19 @@ private fun ReferenceMaladieDialog(
                 }
 
         AlertDialog(
-                onDismissRequest = { onReferenceSelected(references) },
-                title = { Text("Gérer les références de maladies") },
+                onDismissRequest = onDismiss,
+                title = { Text(ConsultationEdit.REF_DISEASE_DIALOG_TITLE.translate()) },
                 text = {
                         Column(modifier = Modifier.width(500.dp).height(400.dp)) {
                                 // Barre de recherche
                                 OutlinedTextField(
                                         value = searchText,
                                         onValueChange = { searchText = it },
-                                        label = { Text("Rechercher une référence de maladie") },
+                                        label = { Text(ConsultationEdit.REF_DISEASE_SEARCH_LABEL.translate()) },
                                         leadingIcon = {
                                                 Icon(
                                                         AppIcons.Search,
-                                                        contentDescription = "Rechercher"
+                                                        contentDescription = ConsultationEdit.REF_SEARCH_TOOLTIP.translate()
                                                 )
                                         },
                                         modifier = Modifier.fillMaxWidth(),
@@ -1525,7 +1824,7 @@ private fun ReferenceMaladieDialog(
 
                                 Text(
                                         text =
-                                                "${filteredReferences.size} référence(s) de maladie trouvée(s)",
+                                                ConsultationEdit.REF_DISEASE_SEARCH_RESULTS.translate(filteredReferences.size.toString()),
                                         style = MaterialTheme.typography.caption,
                                         color = Color.Gray
                                 )
@@ -1568,7 +1867,7 @@ private fun ReferenceMaladieDialog(
                                                                         text =
                                                                                 reference.nom
                                                                                         .ifBlank {
-                                                                                                "Référence sans nom"
+                                                                                                ConsultationEdit.REF_NO_NAME.translate()
                                                                                         },
                                                                         style =
                                                                                 MaterialTheme
@@ -1594,7 +1893,7 @@ private fun ReferenceMaladieDialog(
                                                                 }
                                                                 Text(
                                                                         text =
-                                                                                "Espèce: ${reference.espece?.name ?: "Non spécifiée"}",
+                                                                                ConsultationEdit.REF_SPECIES_LABEL.translate(reference.espece?.name ?: ConsultationEdit.REF_SPECIES_UNSPECIFIED.translate()),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -1611,14 +1910,215 @@ private fun ReferenceMaladieDialog(
                         }
                 },
                 confirmButton = {
-                        TextButton(onClick = { onReferenceSelected(references) }) { Text("Fermer") }
+                        TextButton(onClick = onDismiss) {
+                                Text(LocalizationKeys.General.CLOSE.translate())
+                        }
+                }
+        )
+}
+
+@Composable
+private fun ConsultationKeywordDialog(
+        selectedKeywordIds: List<String>,
+        availableKeywords: List<ConsultationKeyword>,
+        onKeywordsSelected: (List<String>) -> Unit,
+        onKeywordCreated: (ConsultationKeyword) -> Unit,
+        onDismiss: () -> Unit
+) {
+        var searchText by remember { mutableStateOf("") }
+        val trimmedSearch = searchText.trim()
+
+        val filteredKeywords =
+                remember(availableKeywords, searchText) {
+                        if (searchText.isBlank()) {
+                                availableKeywords
+                        } else {
+                                availableKeywords.filter { keyword ->
+                                        keyword.label.contains(searchText, ignoreCase = true)
+                                }
+                        }
+                }
+
+        val existingKeyword =
+                remember(availableKeywords, trimmedSearch) {
+                        if (trimmedSearch.isBlank()) {
+                                null
+                        } else {
+                                availableKeywords.firstOrNull {
+                                        it.label.equals(trimmedSearch, ignoreCase = true)
+                                }
+                        }
+                }
+
+        AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(ConsultationEdit.KEYWORDS_DIALOG_TITLE.translate()) },
+                text = {
+                        Column(modifier = Modifier.width(500.dp).height(420.dp)) {
+                                OutlinedTextField(
+                                        value = searchText,
+                                        onValueChange = { searchText = it },
+                                        label = { Text(ConsultationEdit.KEYWORDS_SEARCH_LABEL.translate()) },
+                                        leadingIcon = {
+                                                Icon(
+                                                        AppIcons.Search,
+                                                        contentDescription = ConsultationEdit.KEYWORDS_SEARCH_TOOLTIP.translate()
+                                                )
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true
+                                )
+
+                                if (trimmedSearch.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        if (existingKeyword == null) {
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                val newKeyword =
+                                                                        ConsultationKeyword(
+                                                                                label = trimmedSearch
+                                                                        )
+                                                                onKeywordCreated(newKeyword)
+                                                        },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        colors =
+                                                                ButtonDefaults.outlinedButtonColors(
+                                                                        contentColor =
+                                                                                VetNutriColors.Primary
+                                                                )
+                                                ) {
+                                                        Icon(
+                                                                AppIcons.Add,
+                                                                contentDescription =
+                                                                        ConsultationEdit.KEYWORDS_ADD_NEW.translate(
+                                                                                trimmedSearch
+                                                                        ),
+                                                                modifier =
+                                                                        Modifier.size(
+                                                                                AppSizes.iconSizeSmall
+                                                                        )
+                                                        )
+                                                        Spacer(
+                                                                modifier =
+                                                                        Modifier.width(
+                                                                                AppSizes.paddingSmall
+                                                                        )
+                                                        )
+                                                        Text(
+                                                                ConsultationEdit.KEYWORDS_ADD_NEW.translate(
+                                                                        trimmedSearch
+                                                                )
+                                                        )
+                                                }
+                                        } else {
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                onKeywordsSelected(
+                                                                        (selectedKeywordIds +
+                                                                                        existingKeyword.uuid)
+                                                                                .distinct()
+                                                                )
+                                                        },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        colors =
+                                                                ButtonDefaults.outlinedButtonColors(
+                                                                        contentColor =
+                                                                                VetNutriColors.Primary
+                                                                )
+                                                ) {
+                                                        Icon(
+                                                                AppIcons.Add,
+                                                                contentDescription =
+                                                                        ConsultationEdit.KEYWORDS_ADD_EXISTING.translate(
+                                                                                existingKeyword.label
+                                                                        ),
+                                                                modifier =
+                                                                        Modifier.size(
+                                                                                AppSizes.iconSizeSmall
+                                                                        )
+                                                        )
+                                                        Spacer(
+                                                                modifier =
+                                                                        Modifier.width(
+                                                                                AppSizes.paddingSmall
+                                                                        )
+                                                        )
+                                                        Text(
+                                                                ConsultationEdit.KEYWORDS_ADD_EXISTING.translate(
+                                                                        existingKeyword.label
+                                                                )
+                                                        )
+                                                }
+                                        }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                        text =
+                                                ConsultationEdit.KEYWORDS_SEARCH_RESULTS.translate(
+                                                        filteredKeywords.size.toString()
+                                                ),
+                                        style = MaterialTheme.typography.caption,
+                                        color = Color.Gray
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                                        items(filteredKeywords) { keyword ->
+                                                val isSelected =
+                                                        selectedKeywordIds.contains(keyword.uuid)
+
+                                                Row(
+                                                        modifier =
+                                                                Modifier.fillMaxWidth()
+                                                                        .padding(4.dp),
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        Checkbox(
+                                                                checked = isSelected,
+                                                                onCheckedChange = { checked ->
+                                                                        val updatedKeywords =
+                                                                                if (checked) {
+                                                                                        selectedKeywordIds +
+                                                                                                keyword
+                                                                                                        .uuid
+                                                                                } else {
+                                                                                        selectedKeywordIds -
+                                                                                                keyword
+                                                                                                        .uuid
+                                                                                }
+                                                                        onKeywordsSelected(
+                                                                                updatedKeywords
+                                                                        )
+                                                                }
+                                                        )
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
+                                                                text = keyword.label,
+                                                                style = MaterialTheme.typography.body1,
+                                                                fontWeight = FontWeight.Medium
+                                                        )
+                                                }
+                                                Divider(color = Color.LightGray.copy(alpha = 0.3f))
+                                        }
+                                }
+                        }
+                },
+                confirmButton = {
+                        TextButton(onClick = onDismiss) {
+                                Text(LocalizationKeys.General.CLOSE.translate())
+                        }
                 }
         )
 }
 
 /** Fonction pour extraire les variables requises par les équations d'une référence */
 private fun extraireVariablesRequises(
-        reference: fr.vetbrain.vetnutri_mp.Data.ReferenceEv?
+        reference: fr.vetbrain.vetnutri_mp.Data.ReferenceEv?,
+        referencesMaladies: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> = emptyList()
 ): List<fr.vetbrain.vetnutri_mp.Enumer.VariableKind> {
         if (reference == null) return emptyList()
 
@@ -1676,7 +2176,7 @@ private fun extraireVariablesRequises(
                 }
         }
 
-        // Extraire les variables des équations nutritionnelles
+        // Extraire les variables des équations nutritionnelles (référence générale)
         reference.equationsNut.forEach { equation ->
                 if (equation.equationScript.isNotBlank()) {
                         val variables =
@@ -1684,6 +2184,21 @@ private fun extraireVariablesRequises(
                                         equation.equationScript
                                 )
                         scriptVariables.addAll(variables)
+                }
+        }
+
+        // Inclure uniquement les variables des équations ENERCOMP des références maladies sélectionnées
+        referencesMaladies.forEach { refMaladie ->
+                refMaladie.equationsNut.forEach { eq ->
+                        if (eq.kind == fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP &&
+                                        eq.equationScript.isNotBlank()
+                        ) {
+                                val variables =
+                                        fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator.extraireVariables(
+                                                eq.equationScript
+                                        )
+                                scriptVariables.addAll(variables)
+                        }
                 }
         }
 
@@ -1698,8 +2213,11 @@ private fun extraireVariablesRequises(
                 } else {}
         }
 
-        // Exclure BW (Body Weight) car c'est le poids qui est déjà saisi
-        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BW)
+        // Exclure les variables calculées/pilotées par le système
+        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BW) // Poids saisi
+        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.MW) // Poids métabolique calculé
+        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BEE) // BEE calculé/résolu
+        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BE) // BE dérivé (après K et compl.)
 
         return variablesRequises.toList().sortedBy { it.label }
 }
@@ -1750,37 +2268,49 @@ private fun VariableSupplementaireField(
                                 )
                         }
 
-                        // Champ de saisie
+                        // Champ de saisie (grand clavier numérique)
                         OutlinedTextField(
                                 value = textValue,
                                 onValueChange = { newValue ->
-                                        textValue = newValue
-                                        try {
-                                                when {
-                                                        newValue.isEmpty() -> {
-                                                                onValeurChange(null)
-                                                                isError = false
-                                                        }
-                                                        newValue.toDoubleOrNull() != null -> {
-                                                                val doubleValue =
-                                                                        newValue.toDouble()
-                                                                if (doubleValue >= 0) {
-                                                                        onValeurChange(doubleValue)
+                                        val texteFiltre =
+                                                newValue.filter { char ->
+                                                        char.isDigit() || char == '.' || char == ','
+                                                }
+                                        val pointCount = texteFiltre.count { it == '.' }
+                                        val virguleCount = texteFiltre.count { it == ',' }
+                                        if (pointCount <= 1 &&
+                                                        virguleCount <= 1 &&
+                                                        pointCount + virguleCount <= 1
+                                        ) {
+                                                textValue = texteFiltre
+                                                try {
+                                                        val texteNormalise = texteFiltre.replace(',', '.')
+                                                        when {
+                                                                texteNormalise.isEmpty() -> {
+                                                                        onValeurChange(null)
                                                                         isError = false
-                                                                } else {
+                                                                }
+                                                                texteNormalise.toDoubleOrNull() != null -> {
+                                                                        val doubleValue =
+                                                                                texteNormalise.toDouble()
+                                                                        if (doubleValue >= 0) {
+                                                                                onValeurChange(doubleValue)
+                                                                                isError = false
+                                                                        } else {
+                                                                                isError = true
+                                                                        }
+                                                                }
+                                                                else -> {
                                                                         isError = true
                                                                 }
                                                         }
-                                                        else -> {
-                                                                isError = true
-                                                        }
+                                                } catch (e: NumberFormatException) {
+                                                        isError = true
                                                 }
-                                        } catch (e: NumberFormatException) {
-                                                isError = true
                                         }
                                 },
-                                label = { Text("Valeur") },
-                                placeholder = { Text("Saisir une valeur...") },
+                                label = { Text(ConsultationEdit.VAR_VALUE_LABEL.translate()) },
+                                placeholder = { Text(ConsultationEdit.VAR_VALUE_PLACEHOLDER.translate()) },
                                 leadingIcon = {
                                         Icon(
                                                 imageVector = AppIcons.Analysis,
@@ -1799,21 +2329,11 @@ private fun VariableSupplementaireField(
                                         ),
                                 keyboardOptions =
                                         KeyboardOptions(
-                                                keyboardType = KeyboardType.Number,
+                                                keyboardType = KeyboardType.Text,
                                                 imeAction = ImeAction.Done
                                         ),
                                 singleLine = true
                         )
-
-                        // Message d'erreur
-                        if (isError) {
-                                Text(
-                                        text = "Veuillez saisir une valeur numérique positive",
-                                        style = MaterialTheme.typography.caption,
-                                        color = MaterialTheme.colors.error,
-                                        modifier = Modifier.padding(top = 4.dp)
-                                )
-                        }
                 }
 
                 // (supprimé) pas de dialog ici; géré au niveau supérieur de l'écran
@@ -1824,18 +2344,18 @@ private fun VariableSupplementaireField(
 private fun getVariableDescription(variable: fr.vetbrain.vetnutri_mp.Enumer.VariableKind): String? {
         return when (variable) {
                 fr.vetbrain.vetnutri_mp.Enumer.VariableKind.AdultWeight ->
-                        "Poids adulte de l'animal (kg)"
+                        fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Variables.DESC_ADULT_WEIGHT.translate()
                 fr.vetbrain.vetnutri_mp.Enumer.VariableKind.LitterSize ->
-                        "Taille de la portée (nombre de petits)"
+                        fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Variables.DESC_LITTER_SIZE.translate()
                 fr.vetbrain.vetnutri_mp.Enumer.VariableKind.WeekGestation ->
-                        "Semaine de gestation (1-9)"
+                        fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Variables.DESC_WEEK_GESTATION.translate()
                 fr.vetbrain.vetnutri_mp.Enumer.VariableKind.WeekLactation ->
-                        "Semaine de lactation (1-8)"
+                        fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Variables.DESC_WEEK_LACTATION.translate()
                 fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BEE ->
-                        "Besoin énergétique à l'entretien (kcal)"
-                fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BE -> "Besoin énergétique total (kcal)"
-                fr.vetbrain.vetnutri_mp.Enumer.VariableKind.iBW -> "Poids corporel idéal (kg)"
-                fr.vetbrain.vetnutri_mp.Enumer.VariableKind.MW -> "Poids métabolique (kg^0.75)"
+                        fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Variables.DESC_BEE.translate()
+                fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BE -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Variables.DESC_BE.translate()
+                fr.vetbrain.vetnutri_mp.Enumer.VariableKind.iBW -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Variables.DESC_IBW.translate()
+                fr.vetbrain.vetnutri_mp.Enumer.VariableKind.MW -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Variables.DESC_MW.translate()
                 else -> null
         }
 }

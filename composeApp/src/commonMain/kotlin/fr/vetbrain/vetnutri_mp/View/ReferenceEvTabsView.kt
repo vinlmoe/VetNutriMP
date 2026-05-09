@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -17,6 +18,7 @@ import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Vue à onglets pour gérer les différents aspects d'une référence nutritionnelle.
@@ -240,10 +242,25 @@ fun EquationDropdown(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val displayText = selectedEquation?.name ?: "Sélectionner une équation"
+    
+    // Debug temporaire pour DM sélectionné
+    LaunchedEffect(selectedEquation) {
+        if (selectedEquation != null && (selectedEquation.name.contains("DM") || selectedEquation.equationScript.contains("DM"))) {
+            if (selectedEquation.nutrient != null) {
+                val nutrient = selectedEquation.nutrient!!
+            }
+        }
+    }
 
     // Débogage pour vérifier les équations disponibles
     LaunchedEffect(equations) {
         equations.forEachIndexed { index, equation ->
+            // Debug temporaire pour DM
+            if (equation.name.contains("DM") || equation.equationScript.contains("DM")) {
+                if (equation.nutrient != null) {
+                    val nutrient = equation.nutrient!!
+                }
+            }
         }
     }
 
@@ -260,7 +277,11 @@ fun EquationDropdown(
 
         DropdownMenu(
                 expanded = expanded,
-                onDismissRequest = { expanded = false },
+                onDismissRequest = {
+                    if (!isIosPlatform) {
+                        expanded = false 
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(0.9f)
         ) {
             // Option pour aucune équation

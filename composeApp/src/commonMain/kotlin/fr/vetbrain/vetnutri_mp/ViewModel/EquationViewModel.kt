@@ -33,7 +33,6 @@ import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.ResultatValidation
 import fr.vetbrain.vetnutri_mp.Utils.TypeEquationValidation
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -56,7 +55,7 @@ class EquationViewModel(
         private val biblioRepository: BiblioRefRepository,
         private val referenceRepository: DatabaseReferenceEvRepository
 ) : ViewModel() {
-    private val coroutineScope = CoroutineScope(AppDispatchers.Main)
+    private val coroutineScope = viewModelScope
 
     // État d'édition
     private val _currentEquation = MutableStateFlow(Equation())
@@ -136,8 +135,9 @@ class EquationViewModel(
 
     /** Obtient le nom d'affichage d'une variable sous le format "label (displayName)" */
     private fun getVariableDisplayName(variable: String): String? {
-        // Vérifier si c'est une variable VariableKind
-        val variableKind = VariableKind.entries.find { it.label == variable }
+        // Vérifier si c'est une variable VariableKind (par label court ou identifiant long)
+        val variableKind =
+                VariableKind.entries.find { it.label == variable || it.variable == variable }
         if (variableKind != null) {
             return "${variableKind.translateEnum()} (${variableKind.dup})"
         }
@@ -275,23 +275,28 @@ class EquationViewModel(
         coroutineScope.launch(AppDispatchers.IO) {
             try {
                 // Créer une duplication complète de l'équation avec un nouvel UUID
-                val duplicated = source.copy(
-                    uuid = genUUID(),
-                    name = source.name + " (Copie)",
-                    // Conserver tous les autres champs :
-                    description = source.description,
-                    equationScript = source.equationScript,
-                    bib = source.bib, // Garder la même référence bibliographique
-                    specie = source.specie,
-                    kind = source.kind,
-                    nutrient = source.nutrient,
-                    consistent = source.consistent,
-                    variables = source.variables.toMutableList(), // Copier la liste des variables
-                    correctionFactor = source.correctionFactor,
-                    ratio = source.ratio,
-                    creationDate = source.creationDate, // Garder la date de création originale
-                    lastUpdate = source.lastUpdate // Garder la dernière mise à jour originale
-                )
+                val duplicated =
+                        source.copy(
+                                uuid = genUUID(),
+                                name = source.name + " (Copie)",
+                                // Conserver tous les autres champs :
+                                description = source.description,
+                                equationScript = source.equationScript,
+                                bib = source.bib, // Garder la même référence bibliographique
+                                specie = source.specie,
+                                kind = source.kind,
+                                nutrient = source.nutrient,
+                                consistent = source.consistent,
+                                variables =
+                                        source.variables
+                                                .toMutableList(), // Copier la liste des variables
+                                correctionFactor = source.correctionFactor,
+                                ratio = source.ratio,
+                                creationDate =
+                                        source.creationDate, // Garder la date de création originale
+                                lastUpdate = source.lastUpdate // Garder la dernière mise à jour
+                                // originale
+                                )
 
                 equationRepository.saveEquation(duplicated)
                 loadEquations()
@@ -401,6 +406,10 @@ class EquationViewModel(
         val nutrientsMin = NutrientMin.entries.map { it.label }
         val acideAmines = AAEnum.entries.map { it.label }
 
+        // Debug temporaire pour DM
+        if (variable == "DM") {
+        }
+
         return variable in
                 (nutrientsMain +
                         nutrientsLipides +
@@ -442,12 +451,12 @@ class EquationViewModel(
         val typeValidation = mapEquationKindToValidationType(equation.kind)
 
         return when (typeValidation) {
-            TypeEquationValidation.BESOIN_ENERGETIQUE -> EquationEvaluator.toutesLesVariables
+            TypeEquationValidation.BESOIN_ENERGETIQUE -> EquationEvaluator.toutesLesVariables!!
             TypeEquationValidation.BESOIN_NUTRITIONNEL ->
-                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
+                    EquationEvaluator.toutesLesVariables!! + getNutrientsVariables()
             TypeEquationValidation.DENSITE_ENERGETIQUE -> getNutrientsVariables()
             TypeEquationValidation.GENERALE ->
-                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
+                    EquationEvaluator.toutesLesVariables!! + getNutrientsVariables()
         }
     }
 
@@ -519,6 +528,12 @@ class EquationViewModel(
         val nutrientsMin = NutrientMin.entries.toList()
         val acideAmines = AAEnum.entries.toList()
         val nutrientAnalysis = NutrientAnalysis.entries.toList()
+
+        // Debug temporaire pour DM
+        val dmNutrient = nutrientsMain.find { it.label == "DM" }
+        if (dmNutrient != null) {
+        } else {
+        }
 
         return nutrientsMain +
                 nutrientsLipides +
@@ -630,6 +645,9 @@ class EquationViewModel(
                         } else {
                             "Équation sauvegardée avec des variables non reconnues"
                         }
+                // Recharger immédiatement les listes utilisées par les écrans d'édition
+                loadEquations()
+                loadBiblioRefs()
             } catch (e: Exception) {
                 _operationMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
                 _saveSuccessful.value = false
@@ -687,8 +705,11 @@ class EquationViewModel(
             // Vérifier que toutes les variables sont reconnues
             val unrecognizedVariables =
                     variablesInExpression.filter { variable ->
-                        // Vérifier si la variable est reconnue dans VariableKind
-                        VariableKind.values().none { it.label == variable } &&
+                        // Vérifier si la variable est reconnue dans VariableKind (label court ou
+                        // identifiant long)
+                        VariableKind.values().none {
+                            it.label == variable || it.variable == variable
+                        } &&
                                 // Vérifier si c'est une variable de nutriment
                                 !isNutrientVariable(variable)
                     }

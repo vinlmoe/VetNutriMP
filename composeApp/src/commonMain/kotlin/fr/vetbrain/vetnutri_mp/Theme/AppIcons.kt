@@ -2,6 +2,8 @@ package fr.vetbrain.vetnutri_mp.Theme
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Check
@@ -42,17 +44,17 @@ object AppIcons {
     val Search: ImageVector = Icons.Default.Search
     val Settings: ImageVector = Icons.Default.Settings
     val Share: ImageVector = Icons.Default.Share
-    val ViewList: ImageVector = Icons.Default.List
+    val ViewList: ImageVector = Icons.AutoMirrored.Default.List
     val Warning: ImageVector = Icons.Default.Warning
     val Analytics: ImageVector = Icons.Default.Analytics
 
     // Icônes spécifiques à l'application
     val Animal: ImageVector = Icons.Default.Star
     val Consultation: ImageVector = Icons.Default.DateRange
-    val Ration: ImageVector = Icons.Default.List
+    val Ration: ImageVector = Icons.AutoMirrored.Default.List
     val Weight: ImageVector = Icons.Default.Star
-    val Export: ImageVector = Icons.Default.Send
-    val Import: ImageVector = Icons.Default.Send
+    val Export: ImageVector = Icons.AutoMirrored.Default.Send
+    val Import: ImageVector = Icons.AutoMirrored.Default.Send
     val Calculate: ImageVector = Icons.Default.Check
     val Save: ImageVector = Icons.Default.Done
     val Cancel: ImageVector = Icons.Default.Close
@@ -62,5 +64,5 @@ object AppIcons {
     val Nutrient: ImageVector = Icons.Default.Star
     val Complete: ImageVector = Icons.Default.Check
     val Incomplete: ImageVector = Icons.Default.Warning
-    val Analysis: ImageVector = Icons.Default.List
+    val Analysis: ImageVector = Icons.AutoMirrored.Default.List
 }

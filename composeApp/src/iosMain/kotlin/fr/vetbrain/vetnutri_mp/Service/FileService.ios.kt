@@ -1,48 +1,57 @@
 package fr.vetbrain.vetnutri_mp.Service
 
-import kotlinx.coroutines.Dispatchers
+import fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.withContext
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSUserDomainMask
-import java.io.File
 
-/**
- * Implémentation iOS du FileService
- */
+/** Implémentation iOS du FileService */
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
 actual class FileService {
-    actual suspend fun getBackupDirectory(): File {
-        return withContext(Dispatchers.IO) {
-            val documentsPath = NSFileManager.defaultManager.URLForDirectory(
-                NSDocumentDirectory,
-                NSUserDomainMask,
-                null,
-                null,
-                null
-            )?.path ?: ""
-            val backupDir = File(documentsPath, "VetNutriMP/backups")
-            backupDir.mkdirs()
+    private suspend fun resolveDocumentsPath(): String {
+        return withContext(AppDispatchers.IO) {
+            try {
+                val url =
+                        NSFileManager.defaultManager.URLForDirectory(
+                                NSDocumentDirectory,
+                                NSUserDomainMask,
+                                null,
+                                true,
+                                null
+                        )
+                val path = url?.path
+                if (path != null && path.isNotEmpty()) path else NSHomeDirectory() + "/Documents"
+            } catch (_: Exception) {
+                println("[FileService][iOS] Échec résolution URLForDirectory, utilisation de NSHomeDirectory/Documents")
+                NSHomeDirectory() + "/Documents"
+            }
+        }
+    }
+    actual suspend fun getBackupDirectory(): PlatformFile {
+        val documentsPath = resolveDocumentsPath()
+        return withContext(AppDispatchers.IO) {
+            val backupDir = PlatformFile.create("$documentsPath/VetNutriMP/backups")
+            if (!backupDir.exists()) backupDir.mkdirs()
+            println("[FileService][iOS] Répertoire backup existe=${backupDir.exists()} contenuCount=${backupDir.listFiles()?.size ?: 0}")
             backupDir
         }
     }
 
-    actual suspend fun getDataDirectory(): File {
-        return withContext(Dispatchers.IO) {
-            val documentsPath = NSFileManager.defaultManager.URLForDirectory(
-                NSDocumentDirectory,
-                NSUserDomainMask,
-                null,
-                null,
-                null
-            )?.path ?: ""
-            val dataDir = File(documentsPath, "VetNutriMP/data")
-            dataDir.mkdirs()
+    actual suspend fun getDataDirectory(): PlatformFile {
+        val documentsPath = resolveDocumentsPath()
+        return withContext(AppDispatchers.IO) {
+            val dataDir = PlatformFile.create("$documentsPath/VetNutriMP/data")
+            if (!dataDir.exists()) dataDir.mkdirs()
+            println("[FileService][iOS] Répertoire data existe=${dataDir.exists()} contenuCount=${dataDir.listFiles()?.size ?: 0}")
             dataDir
         }
     }
 
-    actual suspend fun createDirectoryIfNotExists(directory: File): Result<Unit> {
-        return withContext(Dispatchers.IO) {
+    actual suspend fun createDirectoryIfNotExists(directory: PlatformFile): Result<Unit> {
+        return withContext(AppDispatchers.IO) {
             try {
                 if (!directory.exists()) {
                     directory.mkdirs()
@@ -54,22 +63,24 @@ actual class FileService {
         }
     }
 
-    actual suspend fun fileExists(file: File): Boolean {
-        return withContext(Dispatchers.IO) {
-            file.exists()
+    actual suspend fun fileExists(file: PlatformFile): Boolean {
+        return withContext(AppDispatchers.IO) {
+            val exists = file.exists()
+            exists
         }
     }
 
-    actual suspend fun getFileSize(file: File): Long {
-        return withContext(Dispatchers.IO) {
-            if (file.exists()) file.length() else 0L
-        }
+    actual suspend fun getFileSize(file: PlatformFile): Long {
+        return withContext(AppDispatchers.IO) { if (file.exists()) file.length else 0L }
     }
 
-    actual suspend fun deleteFile(file: File): Result<Unit> {
-        return withContext(Dispatchers.IO) {
+    actual suspend fun deleteFile(file: PlatformFile): Result<Unit> {
+        return withContext(AppDispatchers.IO) {
             try {
-                if (file.exists()) file.delete()
+                if (file.exists()) {
+                    file.delete()
+                } else {
+                }
                 Result.success(Unit)
             } catch (e: Exception) {
                 Result.failure(e)
@@ -77,13 +88,17 @@ actual class FileService {
         }
     }
 
-    actual suspend fun listFiles(directory: File, pattern: String?): List<File> {
-        return withContext(Dispatchers.IO) {
+    actual suspend fun listFiles(directory: PlatformFile, pattern: String?): List<PlatformFile> {
+        return withContext(AppDispatchers.IO) {
             try {
                 if (!directory.exists()) emptyList()
                 else {
-                    val files = directory.listFiles()?.toList() ?: emptyList()
-                    if (pattern != null) files.filter { it.name.matches(pattern.toRegex()) } else files
+                    val files = directory.listFiles() ?: emptyList()
+                    val filtered =
+                            if (pattern != null) files.filter { it.name.matches(pattern.toRegex()) }
+                            else files
+                    println("[FileService][iOS] Listing: dir=${directory.absolutePath} total=${files.size} filtrés=${filtered.size} pattern=${pattern}")
+                    filtered
                 }
             } catch (_: Exception) {
                 emptyList()
@@ -91,10 +106,36 @@ actual class FileService {
         }
     }
 
-    actual suspend fun copyFile(source: File, destination: File): Result<Unit> {
-        return withContext(Dispatchers.IO) {
+    actual suspend fun copyFile(source: PlatformFile, destination: PlatformFile): Result<Unit> {
+        return withContext(AppDispatchers.IO) {
             try {
+                println("[FileService][iOS] Copie: ${source.absolutePath} => ${destination.absolutePath}")
                 source.copyTo(destination, overwrite = true)
+                Result.success(Unit)
+            } catch (e: Exception) {
+                println("[FileService][iOS] Erreur copie ${source.absolutePath} => ${destination.absolutePath}: ${e.message}")
+                Result.failure(e)
+            }
+        }
+    }
+
+    actual suspend fun moveFile(source: PlatformFile, destination: PlatformFile): Result<Unit> {
+        return withContext(AppDispatchers.IO) {
+            try {
+                println("[FileService][iOS] Déplacement: ${source.absolutePath} => ${destination.absolutePath}")
+                source.renameTo(destination)
+                Result.success(Unit)
+            } catch (e: Exception) {
+                println("[FileService][iOS] Erreur déplacement ${source.absolutePath} => ${destination.absolutePath}: ${e.message}")
+                Result.failure(e)
+            }
+        }
+    }
+
+    actual suspend fun writeText(file: PlatformFile, text: String): Result<Unit> {
+        return withContext(AppDispatchers.IO) {
+            try {
+                file.writeText(text)
                 Result.success(Unit)
             } catch (e: Exception) {
                 Result.failure(e)
@@ -102,11 +143,12 @@ actual class FileService {
         }
     }
 
-    actual suspend fun moveFile(source: File, destination: File): Result<Unit> {
-        return withContext(Dispatchers.IO) {
+    actual suspend fun readText(file: PlatformFile): Result<String> {
+        return withContext(AppDispatchers.IO) {
             try {
-                source.renameTo(destination)
-                Result.success(Unit)
+                val content = file.readText()
+                println("[FileService][iOS] Lecture OK: ${file.absolutePath} taille=${content.length}")
+                Result.success(content)
             } catch (e: Exception) {
                 Result.failure(e)
             }

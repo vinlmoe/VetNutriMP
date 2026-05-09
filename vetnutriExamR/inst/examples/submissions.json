@@ -1,0 +1,20 @@
+{
+  "submissions": [
+    {
+      "student_id": "etu_01",
+      "answers": {
+        "Q1": "A",
+        "Q2": 12.4,
+        "Q3": "CHIEN"
+      }
+    },
+    {
+      "student_id": "etu_02",
+      "answers": {
+        "Q1": "B",
+        "Q2": 12.5,
+        "Q3": "CHAT"
+      }
+    }
+  ]
+}

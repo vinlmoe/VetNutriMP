@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
@@ -29,7 +30,6 @@ import kotlinx.coroutines.launch
 fun SpeciesPreferencesView(
         species: Espece,
         preferencesRepository: PreferencesRepository,
-        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository,
         modifier: Modifier = Modifier
 ) {
         var currentPreferences by remember {
@@ -57,7 +57,7 @@ fun SpeciesPreferencesView(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 CircularProgressIndicator(color = VetNutriColors.Primary)
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Text("preferences.title".translate() + "...")
+                                Text("${LocalizationKeys.Preferences.TITLE.translate()}...")
                         }
                 }
         } else {
@@ -87,7 +87,7 @@ fun SpeciesPreferencesView(
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
                                                         text =
-                                                                "Personnalisez l'expression des besoins et les nutriments à afficher pour cette espèce",
+                                                                LocalizationKeys.Preferences.CUSTOMIZE_DESC.translate(),
                                                         style = MaterialTheme.typography.body2,
                                                         color = Color.Gray
                                                 )
@@ -110,12 +110,12 @@ fun SpeciesPreferencesView(
                                                         Icon(
                                                                 imageVector = Icons.Default.Info,
                                                                 contentDescription =
-                                                                        "Expression des besoins",
+                                                                        LocalizationKeys.Preferences.ENERGY_EXPRESSION_SECTION.translate(),
                                                                 tint = VetNutriColors.Primary
                                                         )
                                                         Spacer(modifier = Modifier.width(8.dp))
                                                         Text(
-                                                                text = "Expression des besoins",
+                                                                text = LocalizationKeys.Preferences.ENERGY_EXPRESSION_SECTION.translate(),
                                                                 style = MaterialTheme.typography.h6,
                                                                 fontWeight = FontWeight.Bold
                                                         )
@@ -125,7 +125,7 @@ fun SpeciesPreferencesView(
 
                                                 Text(
                                                         text =
-                                                                "Sélection actuelle: ${currentExpressionType.displayName}",
+                                                                LocalizationKeys.Preferences.CURRENT_SELECTION.translate(currentExpressionType.translateEnum()),
                                                         style = MaterialTheme.typography.subtitle1,
                                                         color = VetNutriColors.Primary,
                                                         fontWeight = FontWeight.Medium
@@ -213,7 +213,7 @@ fun SpeciesPreferencesView(
                                                                 ) {
                                                                         Text(
                                                                                 text =
-                                                                                        type.displayName,
+                                                                                        type.translateEnum(),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -246,7 +246,7 @@ fun SpeciesPreferencesView(
                                                                         )
                                                                         Text(
                                                                                 text =
-                                                                                        "Unité: ${type.unitReqEnum.translateEnum()}",
+                                                                                        LocalizationKeys.Preferences.UNIT_LABEL.translate(type.unitReqEnum.translateEnum()),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -304,108 +304,6 @@ fun SpeciesPreferencesView(
                         }
 
                         item {
-                                // Section Équations pour nutriments complémentaires
-                                Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        backgroundColor = Color.White,
-                                        elevation = 2.dp
-                                ) {
-                                        Column(modifier = Modifier.padding(16.dp)) {
-                                                Row(
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Icon(
-                                                                imageVector = Icons.Default.Info,
-                                                                contentDescription =
-                                                                        "Équations complémentaires",
-                                                                tint = VetNutriColors.Primary
-                                                        )
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Text(
-                                                                text =
-                                                                        "Équations de nutriments complémentaires",
-                                                                style = MaterialTheme.typography.h6,
-                                                                fontWeight = FontWeight.Bold
-                                                        )
-                                                }
-
-                                                Spacer(modifier = Modifier.height(16.dp))
-
-                                                Text(
-                                                        text =
-                                                                "Sélectionnez les équations pour calculer les nutriments complémentaires pour cette espèce",
-                                                        style = MaterialTheme.typography.body2,
-                                                        color = Color.Gray
-                                                )
-
-                                                Spacer(modifier = Modifier.height(16.dp))
-
-                                                ComplementaryNutrientEquationsSection(
-                                                        species = species,
-                                                        currentPreferences = currentPreferences,
-                                                        equationRepository = equationRepository,
-                                                        isSaving = isSaving,
-                                                        onEquationSelectionChanged = { updatedPrefs
-                                                                ->
-                                                                scope.launch {
-                                                                        try {
-                                                                                isSaving = true
-                                                                                
-
-                                                                                val speciesPrefsToSave =
-                                                                                        updatedPrefs
-                                                                                                .getPreferencesEspece(
-                                                                                                        species
-                                                                                                )
-                                                                                
-
-                                                                                preferencesRepository
-                                                                                        .savePreferences(
-                                                                                                updatedPrefs
-                                                                                        )
-                                                                                
-
-                                                                                // Recharger les
-                                                                                // préférences
-                                                                                // depuis le
-                                                                                // repository pour
-                                                                                // s'assurer de la
-                                                                                // cohérence
-                                                                                preferencesRepository
-                                                                                        .loadPreferences()
-                                                                                val reloadedPrefs =
-                                                                                        preferencesRepository
-                                                                                                .preferences
-
-                                                                                currentPreferences =
-                                                                                        reloadedPrefs
-                                                                                
-
-                                                                                // Vérifier que les
-                                                                                // préférences sont
-                                                                                // bien mises à jour
-                                                                                val verificationPrefs =
-                                                                                        currentPreferences
-                                                                                                ?.getPreferencesEspece(
-                                                                                                        species
-                                                                                                )
-                                                                                
-                                                                        } catch (e: Exception) {
-                                                                                
-                                                                                e.printStackTrace()
-                                                                        } finally {
-                                                                                isSaving = false
-                                                                                
-                                                                        }
-                                                                }
-                                                        }
-                                                )
-                                        }
-                                }
-                        }
-
-                        item {
                                 // Informations sur la persistance
                                 Card(
                                         modifier = Modifier.fillMaxWidth(),
@@ -426,7 +324,7 @@ fun SpeciesPreferencesView(
                                                         )
                                                         Spacer(modifier = Modifier.width(8.dp))
                                                         Text(
-                                                                text = "Sauvegarde automatique",
+                                                                text = LocalizationKeys.Preferences.AUTO_SAVE.translate(),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .subtitle2,
@@ -437,7 +335,7 @@ fun SpeciesPreferencesView(
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
                                                         text =
-                                                                "Toutes les modifications sont automatiquement sauvegardées et seront restaurées au prochain démarrage.",
+                                                                LocalizationKeys.Preferences.AUTO_SAVE_DESC.translate(),
                                                         style = MaterialTheme.typography.body2,
                                                         color = Color.Gray
                                                 )
@@ -448,138 +346,6 @@ fun SpeciesPreferencesView(
         }
 }
 
-/** Section pour la gestion des équations complémentaires spécifiques à une espèce */
-@Composable
-private fun ComplementaryNutrientEquationsSection(
-        species: fr.vetbrain.vetnutri_mp.Enumer.Espece,
-        currentPreferences: fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?,
-        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository,
-        isSaving: Boolean,
-        onEquationSelectionChanged: (fr.vetbrain.vetnutri_mp.Data.PreferencesApplication) -> Unit
-) {
-        var allEquations by remember {
-                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Data.Equation>>(emptyList())
-        }
-
-        // Charger seulement les équations de nutriments complémentaires pour cette espèce ou
-        // globales (CH)
-        LaunchedEffect(Unit) {
-                val allEquationsFromRepo = equationRepository.getAllEquations()
-                
-
-                allEquations =
-                        allEquationsFromRepo.filter { equation ->
-                                val isComplementary =
-                                        equation.kind ==
-                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind
-                                                        .COMPLEMENTARY_NUTRIENT
-                                val isCorrectSpecies =
-                                        equation.specie == species ||
-                                                equation.specie ==
-                                                        fr.vetbrain.vetnutri_mp.Enumer.Espece.CH
-
-                                isComplementary && isCorrectSpecies
-                        }
-
-                
-                allEquations.forEach { eq ->
-                        
-                }
-
-                // Vérifier les préférences actuelles
-                currentPreferences?.getPreferencesEspece(species)?.let { prefs ->
-                        val selectedUuids = prefs.getSelectedEquationUuids()
-                        
-                        val map = prefs.equationsComplementaires
-                        
-                }
-        }
-
-        Column(modifier = Modifier.fillMaxWidth()) {
-                // Liste de toutes les équations avec checkboxes
-                allEquations.forEach { equation ->
-                        val speciesPrefs = currentPreferences?.getPreferencesEspece(species)
-                        val isSelected = speciesPrefs?.isEquationSelected(equation.uuid) == true
-
-                        
-
-                        Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                        ) {
-                                Checkbox(
-                                        checked = isSelected,
-                                        onCheckedChange = { checked ->
-                                                
-
-                                                currentPreferences?.let { prefs ->
-                                                        
-                                                        val currentSpeciesPrefs =
-                                                                prefs.getPreferencesEspece(species)
-                                                        
-
-                                                        val updatedSpeciesPrefs =
-                                                                if (checked) {
-                                                                        
-                                                                        currentSpeciesPrefs
-                                                                                .addEquation(
-                                                                                        equation.uuid
-                                                                                )
-                                                                } else {
-                                                                        
-                                                                        currentSpeciesPrefs
-                                                                                .removeEquation(
-                                                                                        equation.uuid
-                                                                                )
-                                                                }
-
-                                                        
-
-                                                        val updatedPrefs =
-                                                                prefs.updatePreferencesEspece(
-                                                                        updatedSpeciesPrefs
-                                                                )
-
-                                                        
-                                                        onEquationSelectionChanged(updatedPrefs)
-                                                }
-                                        },
-                                        enabled = !isSaving
-                                )
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                                text = equation.name,
-                                                style = MaterialTheme.typography.body1,
-                                                fontWeight =
-                                                        if (isSelected) FontWeight.Bold
-                                                        else FontWeight.Normal,
-                                                color =
-                                                        if (isSelected) VetNutriColors.Primary
-                                                        else Color.Black
-                                        )
-
-                                        // Afficher le nutriment concerné entre parenthèses
-                                        val nutrientName = getNutrientNameForEquation(equation)
-                                        if (nutrientName != null) {
-                                                Text(
-                                                        text = "($nutrientName)",
-                                                        style = MaterialTheme.typography.body2,
-                                                        color = Color.Gray
-                                                )
-                                        }
-                                }
-                        }
-                }
-        }
-}
-
-/** Retourne le nom du nutriment concerné par une équation */
-private fun getNutrientNameForEquation(equation: fr.vetbrain.vetnutri_mp.Data.Equation): String? {
-        return equation.nutrient?.label
-}
 
 @Composable
 private fun NutrientCategoryCard(
@@ -631,7 +397,7 @@ private fun NutrientCategoryCard(
                                                         if (expanded) Icons.Default.ExpandLess
                                                         else Icons.Default.ExpandMore,
                                                 contentDescription =
-                                                        if (expanded) "Réduire" else "Développer"
+                                                        if (expanded) LocalizationKeys.General.REDUCE.translate() else LocalizationKeys.General.EXPAND.translate()
                                         )
                                 }
                         }
@@ -706,7 +472,7 @@ private fun NutrientCategoryCard(
                                                                         else Color.Black
                                                         )
                                                         Text(
-                                                                text = "Unité: ${nutrient.unite}",
+                                                                text = LocalizationKeys.Preferences.UNIT_LABEL.translate(nutrient.unite),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,
@@ -728,7 +494,10 @@ private fun NutrientCategoryCard(
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                         text =
-                                                "$selectedCount/${nutrients.size} nutriments sélectionnés",
+                                                LocalizationKeys.Preferences.NUTRIENTS_SELECTED_FORMAT.translate(
+                                                        selectedCount.toString(),
+                                                        nutrients.size.toString()
+                                                ),
                                         style = MaterialTheme.typography.caption,
                                         color = VetNutriColors.Primary,
                                         fontWeight = FontWeight.Medium

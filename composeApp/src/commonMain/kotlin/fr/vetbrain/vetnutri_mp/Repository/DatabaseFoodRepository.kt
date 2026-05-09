@@ -3,10 +3,14 @@ package fr.vetbrain.vetnutri_mp.Repository
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvLight
+import fr.vetbrain.vetnutri_mp.DataBase.AlimentBiblioRefDao
+import fr.vetbrain.vetnutri_mp.DataBase.AlimentBiblioRefEntity
+import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.CustomNutrientDao
 import fr.vetbrain.vetnutri_mp.DataBase.CustomNutrientEntity
 import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEv
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEvLight
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toFoodEntity
@@ -45,7 +49,9 @@ import kotlinx.serialization.json.Json
 class DatabaseFoodRepository(
         private val foodDao: FoodDao,
         private val nutrientValueDao: NutrientValueDao?,
-        private val customNutrientDao: CustomNutrientDao? = null
+        private val customNutrientDao: CustomNutrientDao? = null,
+        private val alimentBiblioRefDao: AlimentBiblioRefDao? = null,
+        private val biblioRefDao: BiblioRefDao? = null
 ) : FoodRepository {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -65,6 +71,7 @@ class DatabaseFoodRepository(
     init {
         coroutineScope.launch { loadCustomNutrientsFromDb() }
     }
+
 
     // Cache de recherche pour les filtres fréquents
     private val searchCache = mutableMapOf<String, List<AlimentEv>>()
@@ -118,6 +125,7 @@ class DatabaseFoodRepository(
             }
         if (entities.isNotEmpty()) dao.insertOrReplaceAll(entities)
     }
+
 
     private fun pruneSearchCacheIfNeeded() {
         if (searchCache.size <= maxSearchCacheEntries) return
@@ -1210,6 +1218,15 @@ class DatabaseFoodRepository(
                     nutrientValueDao.insertNutrientValues(nutrientValues)
                 }
                 saveCustomNutrientsFromFood(food)
+
+                // Insérer les références bibliographiques associées
+                if (alimentBiblioRefDao != null && food.biblioRefs.isNotEmpty()) {
+                    val junctions = food.biblioRefs.map { ref ->
+                        AlimentBiblioRefEntity(alimentUuid = food.uuid, biblioRefUuid = ref.uuid)
+                    }
+                    alimentBiblioRefDao.insertAll(junctions)
+                }
+
                 clearCache()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -1260,9 +1277,18 @@ class DatabaseFoodRepository(
                         emptyList()
                     }
 
+            // Récupérer les références bibliographiques associées
+            val biblioRefs = if (alimentBiblioRefDao != null && biblioRefDao != null) {
+                try {
+                    alimentBiblioRefDao.getBiblioRefUuids(uuid)
+                        .mapNotNull { refUuid -> biblioRefDao.getBiblioRefById(refUuid)?.toDomain() }
+                } catch (_: Exception) { emptyList() }
+            } else emptyList()
+
             return@withContext foodEntity.toAlimentEv(
                     especes = especeEntities,
-                    nutrientValues = nutrientValues
+                    nutrientValues = nutrientValues,
+                    biblioRefs = biblioRefs
             )
         }
     }
@@ -1346,6 +1372,18 @@ class DatabaseFoodRepository(
                         food.valMap.toNutrientValueEntities(food.uuid)
                 )
                 saveCustomNutrientsFromFood(food)
+
+                // Remplacer les références bibliographiques associées
+                if (alimentBiblioRefDao != null) {
+                    alimentBiblioRefDao.deleteForAliment(food.uuid)
+                    if (food.biblioRefs.isNotEmpty()) {
+                        val junctions = food.biblioRefs.map { ref ->
+                            AlimentBiblioRefEntity(alimentUuid = food.uuid, biblioRefUuid = ref.uuid)
+                        }
+                        alimentBiblioRefDao.insertAll(junctions)
+                    }
+                }
+
                 clearCache()
             } catch (e: Exception) {
                 e.printStackTrace()

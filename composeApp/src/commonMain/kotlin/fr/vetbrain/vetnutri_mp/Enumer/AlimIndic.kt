@@ -88,4 +88,10 @@ enum class AlimIndic(val coef: Int, override val label: String) : Labelable {
     }
 
     override fun toString() = label
+    
+    /**
+     * Retourne le nom de l'enum (ex: "OBES", "URO", etc.)
+     * Utile pour l'import/export Excel
+     */
+    fun nameToString() = name
 }

@@ -1,8 +1,9 @@
-package fr.vetbrain.vetnutri_mp.View.components
+package fr.vetbrain.vetnutri_mp.View.Components
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
 
 /**
  * Exemple d'utilisation du composant FoodSearchComponent

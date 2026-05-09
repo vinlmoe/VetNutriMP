@@ -42,6 +42,71 @@ actual open class ResourceReader actual constructor() {
             throw IllegalStateException("Failed to read resource $name: ${e.message}", e)
         }
     }
+    
+    /**
+     * Lit une ressource de manière optimisée pour les gros fichiers.
+     * Pour Desktop, utilise un buffer plus petit pour éviter les OutOfMemoryError.
+     */
+    actual open fun readResourceOptimized(name: String): String {
+        return try {
+            val classLoader = this::class.java.classLoader
+            val resourceStream = classLoader.getResourceAsStream(name)
+            if (resourceStream != null) {
+                return resourceStream.use { inputStream ->
+                    val buffer = ByteArray(8192) // Buffer de 8KB
+                    val output = StringBuilder()
+                    
+                    var bytesRead: Int
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        output.append(String(buffer, 0, bytesRead))
+                    }
+                    output.toString()
+                }
+            }
+            
+            // Fallback vers readResource pour les autres méthodes
+            readResource(name)
+        } catch (e: Exception) {
+            throw IllegalStateException("Failed to read resource $name: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Lit seulement le début d'une ressource JSON pour extraire la version.
+     * Évite de charger tout le fichier en mémoire.
+     */
+    actual open fun readJsonVersion(name: String): String? {
+        return try {
+            val classLoader = this::class.java.classLoader
+            val resourceStream = classLoader.getResourceAsStream(name)
+            if (resourceStream != null) {
+                return resourceStream.use { inputStream ->
+                    val buffer = ByteArray(4096) // Buffer de 4KB
+                    val bytesRead = inputStream.read(buffer)
+                    if (bytesRead > 0) {
+                        val partialContent = String(buffer, 0, bytesRead)
+                        extractVersionFromJson(partialContent)
+                    } else {
+                        null
+                    }
+                }
+            }
+            
+            // Fallback: lire le fichier complet et extraire la version
+            val content = readResource(name)
+            extractVersionFromJson(content)
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    /**
+     * Extrait la version d'un JSON en cherchant le pattern "version": "x.x.x"
+     */
+    private fun extractVersionFromJson(jsonContent: String): String? {
+        val versionPattern = """"version"\s*:\s*"([^"]+)"""".toRegex()
+        return versionPattern.find(jsonContent)?.groupValues?.get(1)
+    }
 
     /** Lit un fichier utilisateur dans le répertoire de l'application */
     actual open fun readUserFile(filename: String): String? {

@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -12,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
@@ -25,12 +27,15 @@ import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.View.*
 import fr.vetbrain.vetnutri_mp.View.StartupScreen
 import fr.vetbrain.vetnutri_mp.ViewModel.*
+import fr.vetbrain.vetnutri_mp.Data.ExamSession
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CoroutineScope
 
 // Fonctions d'importation de fichiers - implémentées par plateforme spécifique
-expect fun importAnimalsFromFile(viewModel: AnimalListViewModel)
+expect fun importAnimalsFromFile(
+    viewModel: AnimalListViewModel,
+    clearFoodsBeforeImport: Boolean
+)
 
 expect fun importFoodsFromFile(viewModel: SettingsViewModel)
 
@@ -41,152 +46,169 @@ expect fun importApiFromFile(viewModel: SettingsViewModel)
 
 // Export/Import génériques pour le nouveau format API
 expect fun exportJsonToFile(content: String, defaultFileName: String): Boolean
+expect fun exportApiEnvelopeToFile(envelope: ApiEnvelope, defaultFileName: String): Boolean
 
 expect fun openJsonFileContent(): String?
+
+// Réinitialisation physique de la base locale, puis relance éventuelle de l'application.
+// Retourne `null` si l'opération a été lancée, sinon un message d'erreur.
+expect fun performDatabaseFactoryReset(): String?
+
+// Export PDF - implémenté par plateforme
+expect suspend fun exportPdfDocument(
+    documentType: fr.vetbrain.vetnutri_mp.Export.DocumentType,
+    data: fr.vetbrain.vetnutri_mp.Export.ExportData,
+    defaultFileName: String
+): Boolean
 
 // Service de gestion des fichiers
 expect fun createFileService(): FileService
 
+private suspend fun ensureDefaultConsultationKeywords(
+    consultationRepository: ConsultationRepository
+) {
+    val defaultLabels =
+        listOf(
+            "MRC",
+            "IPE",
+            "Entéropathie chronique",
+            "Urolithiases",
+            "Insuffisance hépatique",
+            "Shunt portosystémique",
+            "Cardiomyopathie dilatée",
+            "Maladie valvulaire dégénérative",
+            "Cardiomyopathie hypertrophique",
+            "Hypothyroïdie",
+            "Hyperthyroïdie",
+            "Diabète sucré",
+            "Diabète insipide",
+            "Obésité",
+            "Cachexie",
+            "Travaux dirigés",
+            "Animal théorique"
+        )
+
+    val existingLabels =
+        consultationRepository.getAllKeywords().map { it.label.lowercase() }.toSet()
+    defaultLabels
+        .filter { label -> !existingLabels.contains(label.lowercase()) }
+        .forEach { label ->
+            try {
+                consultationRepository.saveKeyword(
+                    fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword(label = label)
+                )
+            } catch (_: Exception) {}
+        }
+}
+
+private suspend fun ensureDefaultBiblioRef(
+    biblioRefRepository: BiblioRefRepository
+) {
+    try {
+        val defaultUuid = "default-biblio"
+        val existingRef = biblioRefRepository.getBiblioRefById(defaultUuid)
+        if (existingRef == null) {
+            val defaultRef =
+                fr.vetbrain.vetnutri_mp.Data.BiblioRef(
+                    uuid = defaultUuid,
+                    firstAuthor = "Système VetNutri",
+                    year = 2024,
+                    completeRef = "Référence par défaut générée automatiquement",
+                    comments = "Créée automatiquement pour éviter les erreurs de clé étrangère",
+                    consistent = 1
+                )
+            biblioRefRepository.insertBiblioRef(defaultRef)
+        }
+    } catch (_: Exception) {}
+}
+
 @Composable
 fun App(appDatabase: AppDatabase) {
     // Initialisation de la localisation
-    LocalizationManager.initialize()
-
-    // Création des repositories avec la base de données
-    val animalRepository = remember {
-        DatabaseAnimalRepository(
-                appDatabase.animalDao(),
-                appDatabase.foodDao(),
-                appDatabase.nutrientValueDao()
-        )
+    LaunchedEffect(Unit) {
+        LocalizationManager.loadLocale()
     }
 
-    // Création du repository pour les aliments
-    val foodRepository = remember {
-        DatabaseFoodRepository(appDatabase.foodDao(), appDatabase.nutrientValueDao())
-    }
+    val appContainer = rememberAppContainer(appDatabase)
+    val animalRepository = appContainer.animalRepository
+    val foodRepository = appContainer.foodRepository
+    val consultationRepository = appContainer.consultationRepository
+    val examGradingRepository = appContainer.examGradingRepository
+    val recipeRepository = appContainer.recipeRepository
+    val biblioRefRepository = appContainer.biblioRefRepository
+    val equationRepository = appContainer.equationRepository
+    val conseilRepository = appContainer.conseilRepository
+    val databaseReferenceEvRepository = appContainer.referenceRepository
+    val exportImportRepository = appContainer.exportImportRepository
+    val fileService = appContainer.fileService
+    val startupService = appContainer.startupService
+    val preferencesRepository = appContainer.preferencesRepository
 
-    // Initialiser le repository statique AlimentRepository avec le DatabaseFoodRepository
-    AlimentRepository.initializeDatabaseFoodRepository(foodRepository)
-
-    val consultationRepository = remember {
-        DatabaseConsultationRepository(appDatabase.consultationDao(), foodRepository)
-    }
-
-    // Repository pour les recettes
-    val recipeRepository = remember {
-        RecipeRepository(appDatabase.recipeDao(), appDatabase.foodDao())
-    }
-
-    // Création du repository pour les références bibliographiques - version database directe
-    val biblioRefRepository = remember {
-        val repo = DatabaseBiblioRefRepository(appDatabase.biblioRefDao())
-
-        // S'assurer que la référence par défaut existe dès la création du repository
-        runBlocking {
-            try {
-                val defaultUuid = "default-biblio"
-                val existingRef = repo.getBiblioRefById(defaultUuid)
-
-                if (existingRef == null) {
-                    val defaultRef =
-                            fr.vetbrain.vetnutri_mp.Data.BiblioRef(
-                                    uuid = defaultUuid,
-                                    firstAuthor = "Système VetNutri",
-                                    year = 2024,
-                                    completeRef = "Référence par défaut générée automatiquement",
-                                    comments =
-                                            "Créée automatiquement pour éviter les erreurs de clé étrangère",
-                                    consistent = 1
-                            )
-                    repo.insertBiblioRef(defaultRef)
-                } else {}
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-
-        repo
-    }
-
-    // Création du repository pour les équations avec base de données
-    val equationRepository = remember {
-        DatabaseEquationRepository(appDatabase.equationDao(), appDatabase.biblioRefDao())
-    }
-
-    // Création du repository pour les conseils personnalisés
-    val conseilRepository = remember { ConseilRepository(appDatabase.htmlSectionDao()) }
-
-    // création des ViewModels (existant)...
-    // ViewModel et état pour les équations et références (déclarée avant AnimalDetailViewModel)
+    // ViewModel et état pour les équations et références
     val platformDispatcher = remember { PlatformDispatcher() }
-    val databaseReferenceEvRepository = remember {
-        DatabaseReferenceEvRepository(
-                appDatabase.referenceEvDao(),
-                appDatabase.equationDao(),
-                appDatabase.biblioRefDao()
-        )
-    }
-
-    // Création du repository d'export/import
-    val exportImportRepository = remember {
-        ExportImportRepository(
-            animalRepository = animalRepository,
-            foodRepository = foodRepository,
-            equationRepository = equationRepository,
-            referenceRepository = databaseReferenceEvRepository,
-            biblioRepository = biblioRefRepository,
-            consultationRepository = consultationRepository,
-            recipeRepository = recipeRepository,
-            conseilRepository = conseilRepository
-        )
-    }
 
     // Variables d'état pour l'interface
     var showStartupBackupDialog by remember { mutableStateOf(false) }
-
-    // Création des services de sauvegarde
-    val fileService = remember { createFileService() }
-    val startupService = remember { StartupService(exportImportRepository, fileService) }
+    var examSession by remember { mutableStateOf<ExamSession?>(null) }
     
     // État pour le service de sauvegarde
     var backupService by remember { mutableStateOf<BackupService?>(null) }
 
+    LaunchedEffect(consultationRepository) {
+        try {
+            ensureDefaultConsultationKeywords(consultationRepository)
+        } catch (_: Exception) {}
+    }
+
+    LaunchedEffect(biblioRefRepository) {
+        try {
+            ensureDefaultBiblioRef(biblioRefRepository)
+        } catch (_: Exception) {}
+    }
+
     // Initialisation des services au démarrage
     LaunchedEffect(Unit) {
-        println("DEBUG: Début de l'initialisation des services")
         startupService.initialize()
-        println("DEBUG: startupService.initialize() terminé")
-        
-        // Attendre que les services soient initialisés
-        delay(2000) // Augmenté à 2 secondes
-        println("DEBUG: Délai d'attente terminé")
-        
+
         // Récupérer le service de sauvegarde après initialisation
         val service = startupService.getBackupService()
         backupService = service
-        println("DEBUG: backupService initialisé: ${service != null}")
         
         // Vérifier s'il y a des sauvegardes disponibles au démarrage
         val availableBackups = startupService.getAvailableBackups()
-        println("DEBUG: Sauvegardes disponibles: ${availableBackups.size}")
         // Ne plus afficher automatiquement le dialog de restauration
     }
 
-    // Repository des préférences (global pour tous les ViewModels)
-    val preferencesRepository = remember {
-        fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository(createPreferencesStorage())
+    // Création des ViewModels
+    val animalListViewModel = remember { 
+        AnimalListViewModel(
+            animalRepository = animalRepository,
+            foodRepository = foodRepository,
+            recipeRepository = recipeRepository,
+            referenceEvRepository = databaseReferenceEvRepository,
+            equationRepository = equationRepository,
+            biblioRefRepository = biblioRefRepository,
+            consultationRepository = consultationRepository,
+            conseilRepository = conseilRepository
+        ) 
     }
 
-    // Création des ViewModels
-    val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
+    val examGradingViewModel = remember {
+        ExamGradingViewModel(
+            repository = examGradingRepository,
+            exportImportRepository = exportImportRepository,
+            fileService = fileService
+        )
+    }
+
 
     val animalDetailViewModel = remember {
         AnimalDetailViewModel(
                 consultationRepository,
                 animalRepository,
                 databaseReferenceEvRepository,
-                preferencesRepository
+                preferencesRepository,
+                foodRepository
         )
     }
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
@@ -210,13 +232,24 @@ fun App(appDatabase: AppDatabase) {
     var selectedBiblioRefId by remember { mutableStateOf<String?>(null) }
 
     val referenceEvViewModel = remember {
-        ReferenceEvViewModel(databaseReferenceEvRepository, platformDispatcher)
+        ReferenceEvViewModel(
+                repository = databaseReferenceEvRepository,
+                equationRepository = equationRepository,
+                platformDispatcher = platformDispatcher
+        )
     }
     var selectedReferenceEvId by remember { mutableStateOf<String?>(null) }
     var selectedConseilId by remember { mutableStateOf<String?>(null) }
 
     // État pour gérer l'onglet sélectionné dans CalculationTabsView
     var selectedCalculationTab by remember { mutableStateOf(0) }
+
+    LaunchedEffect(examSession) {
+        animalListViewModel.setExamSession(examSession)
+        if (examSession != null && selectedCalculationTab == 3) {
+            selectedCalculationTab = 0
+        }
+    }
 
     val equationViewModel = remember {
         EquationViewModel(
@@ -233,15 +266,17 @@ fun App(appDatabase: AppDatabase) {
     val conseilsViewModel = remember { ConseilsViewModel(conseilRepository, coroutineScope) }
 
     // Création des view models en fonction des besoins de la navigation
-    val foodEditViewModel by
+    val foodEditViewModel =
             remember(selectedFoodUuid) {
-                mutableStateOf(
-                        FoodEditViewModel(
-                                alimentRepository = AlimentRepository.getInstance(foodRepository),
-                                alimentUuid = selectedFoodUuid
-                        )
+                FoodEditViewModel(
+                        foodRepository = foodRepository,
+                        alimentUuid = selectedFoodUuid,
+                        biblioRefRepository = biblioRefRepository
                 )
             }
+    DisposableEffect(foodEditViewModel) {
+        onDispose { foodEditViewModel.clear() }
+    }
 
     val newReferenceEvViewModel = remember {
         NewReferenceEvViewModel(
@@ -252,11 +287,20 @@ fun App(appDatabase: AppDatabase) {
     }
 
     // ViewModel pour la gestion des sauvegardes
-    val backupRestoreViewModel = remember(backupService) { 
+    val backupRestoreViewModel = remember(backupService) {
         backupService?.let { BackupRestoreViewModel(it, platformDispatcher) }
     }
 
+    val bulkReferenceEditorViewModel = remember {
+        BulkReferenceEditorViewModel(
+                referenceEvRepository = databaseReferenceEvRepository,
+                biblioRefRepository = biblioRefRepository,
+                platformDispatcher = platformDispatcher
+        )
+    }
+
     var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }
+    var selectedReferenceIdsForBulk by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectedAnimal by remember { mutableStateOf<AnimalEv?>(null) }
     var isEditing by remember { mutableStateOf(false) }
     var selectedSpecies by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Enumer.Espece?>(null) }
@@ -272,11 +316,32 @@ fun App(appDatabase: AppDatabase) {
     // ViewModel pour l'importation avec tous les repositories nécessaires
     val importViewModel = remember {
         ImportViewModel(
-                animalRepository = animalRepository,
+                animalListViewModel = animalListViewModel,
                 databaseReferenceEvRepository = databaseReferenceEvRepository,
                 equationRepository = equationRepository,
                 biblioRefRepository = biblioRefRepository
         )
+    }
+
+    // Analyses croisées multi-consultations
+    val crossAnalysisViewModel = remember {
+        CrossConsultationAnalysisViewModel(
+                animalRepository = animalRepository,
+                consultationRepository = consultationRepository,
+                referenceEvRepository = databaseReferenceEvRepository,
+                equationRepository = equationRepository
+        )
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            animalDetailViewModel.clear()
+            foodListViewModel.clear()
+            biblioRefViewModel.clear()
+            referenceEvViewModel.clear()
+            newReferenceEvViewModel.clear()
+            importViewModel.clear()
+        }
     }
 
     LaunchedEffect(importResult) {
@@ -333,36 +398,42 @@ fun App(appDatabase: AppDatabase) {
     val onDatabaseReady: () -> Unit = { showStartupScreen = false }
 
     VetNutriTheme {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().imePadding()) {
             if (showStartupScreen) {
                 // Afficher l'écran de démarrage
                 StartupScreen(
-                        foodRepository = foodRepository,
                         referenceRepository = databaseReferenceEvRepository,
                         settingsViewModel = settingsViewModel,
                         onDatabaseReady = onDatabaseReady,
                         conseilRepository = settingsViewModel.conseilRepository,
-                        onShowBackupDialog = { showStartupBackupDialog = true }
+                        onShowBackupDialog = { showStartupBackupDialog = true },
+                        onStartExam = { session -> examSession = session }
                 )
             } else {
                 // Afficher l'application principale
                 Column(modifier = Modifier.fillMaxSize()) {
                     when (currentScreen) {
                         Screen.List -> {
-                            Column(modifier = Modifier.fillMaxSize()) {
+                            val examBorderModifier =
+                                    if (examSession != null) {
+                                        Modifier.border(1.dp, Color.Red)
+                                    } else {
+                                        Modifier
+                                    }
+                            Column(
+                                    modifier =
+                                            Modifier.fillMaxSize().then(examBorderModifier)
+                                                    .padding(if (examSession != null) 2.dp else 0.dp)
+                            ) {
+                                val examInfoTitle =
+                                        examSession?.let { session ->
+                                            "Liste des animaux — ID examen: ${session.studentNumber} | Étudiant: ${session.studentId}"
+                                        } ?: "Liste des animaux"
                                 TopBar(
-                                        title = "Liste des animaux",
+                                        title = examInfoTitle,
                                         onSettingsClick = { currentScreen = Screen.Settings }
                                 ) {
                                     // Boutons supprimés
-                                }
-
-                                // Ajout d'un LaunchedEffect pour recharger la liste lorsque l'écran
-                                // devient visible
-                                LaunchedEffect(currentScreen) {
-                                    if (currentScreen == Screen.List) {
-                                        animalListViewModel.loadAnimals()
-                                    }
                                 }
 
                                 AnimalListView(
@@ -388,6 +459,7 @@ fun App(appDatabase: AppDatabase) {
                                         onShowCalculationTabs = {
                                             currentScreen = Screen.CalculationTabs
                                         },
+                                        examSession = examSession,
                                         modifier = Modifier.fillMaxWidth().weight(1f)
                                 )
                             }
@@ -412,7 +484,14 @@ fun App(appDatabase: AppDatabase) {
                                             selectedAnimal = null
                                             currentScreen = Screen.List
                                         },
+                                        onAnimalCreated = { animal ->
+                                            isEditing = false
+                                            selectedAnimal = animal
+                                            animalDetailViewModel.setAnimal(animal)
+                                            currentScreen = Screen.Detail
+                                        },
                                         isEditing = isEditing,
+                                        examSession = examSession,
                                         modifier = Modifier.fillMaxWidth().weight(1f)
                                 )
                             }
@@ -427,8 +506,8 @@ fun App(appDatabase: AppDatabase) {
                                         modifier = Modifier.fillMaxWidth().weight(1f),
                                         equationRepository = equationRepository,
                                         recipeRepository = recipeRepository,
-                                        foodRepository = foodRepository,
-                                        conseilRepository = conseilRepository
+                                        conseilRepository = conseilRepository,
+                                        isExamMode = examSession != null
                                 )
                             }
                         }
@@ -485,6 +564,7 @@ fun App(appDatabase: AppDatabase) {
                                     selectedTab = selectedCalculationTab,
                                     onTabChanged = { selectedCalculationTab = it },
                                     modifier = Modifier.fillMaxSize(),
+                                    isExamMode = examSession != null,
                                     biblioRefRepository = biblioRefRepository,
                                     equationRepository = equationRepository,
                                     referenceEvRepository = databaseReferenceEvRepository,
@@ -558,6 +638,12 @@ fun App(appDatabase: AppDatabase) {
                                         selectedReferenceEvId = referenceEvId
                                         currentScreen = Screen.ReferenceEvNutrient
                                     },
+                                    onBulkEdit = { ids ->
+                                        selectedReferenceIdsForBulk = ids
+                                        bulkReferenceEditorViewModel.loadReferences(ids)
+                                        bulkReferenceEditorViewModel.loadAvailableBiblioRefs()
+                                        currentScreen = Screen.BulkReferenceEditor
+                                    },
                                     modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -569,6 +655,13 @@ fun App(appDatabase: AppDatabase) {
                                     platformDispatcher = platformDispatcher,
                                     referenceEvId = selectedReferenceEvId ?: "",
                                     onNavigateBack = { currentScreen = Screen.EquationList },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.BulkReferenceEditor -> {
+                            BulkReferenceEditorView(
+                                    viewModel = bulkReferenceEditorViewModel,
+                                    onNavigateBack = { currentScreen = Screen.ReferenceEvList },
                                     modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -658,15 +751,18 @@ fun App(appDatabase: AppDatabase) {
                                             // TODO: implémenter le rafraîchissement de la liste des
                                             // aliments
                                         },
+                                        onShowCrossAnalysis = {
+                                            currentScreen = Screen.CrossAnalysis
+                                        },
                                         modifier = Modifier.padding(paddingValues),
                                         onSpeciesClick = { species ->
                                             selectedSpecies = species
                                             currentScreen = Screen.SpeciesPreferences
                                         },
                                         onBackupClick = {
-                                            println("DEBUG: Bouton backup cliqué, backupRestoreViewModel: ${backupRestoreViewModel != null}")
                                             currentScreen = Screen.BackupRestore
-                                        }
+                                        },
+                                        isExamMode = examSession != null
                                 )
                             }
                         }
@@ -686,7 +782,6 @@ fun App(appDatabase: AppDatabase) {
                                     fr.vetbrain.vetnutri_mp.View.SpeciesPreferencesView(
                                             species = species,
                                             preferencesRepository = preferencesRepository,
-                                            equationRepository = equationRepository,
                                             modifier = Modifier.padding(paddingValues)
                                     )
                                 }
@@ -695,6 +790,29 @@ fun App(appDatabase: AppDatabase) {
                                         // Fallback si aucune espèce n'est sélectionnée
                                         currentScreen = Screen.Settings
                                     }
+                        }
+                        Screen.CrossAnalysis -> {
+                            CrossConsultationAnalysisView(
+                                    viewModel = crossAnalysisViewModel,
+                                    onNavigateBack = { currentScreen = Screen.List },
+                                    onOpenResults = { currentScreen = Screen.CrossAnalysisResults },
+                                    onOpenGrading = { currentScreen = Screen.CrossAnalysisGrading },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.CrossAnalysisGrading -> {
+                            CrossConsultationGradingView(
+                                    analysisViewModel = crossAnalysisViewModel,
+                                    gradingViewModel = examGradingViewModel,
+                                    onNavigateBack = { currentScreen = Screen.CrossAnalysis }
+                            )
+                        }
+                        Screen.CrossAnalysisResults -> {
+                            CrossConsultationResultsView(
+                                    viewModel = crossAnalysisViewModel,
+                                    onNavigateBack = { currentScreen = Screen.CrossAnalysis },
+                                    modifier = Modifier.fillMaxSize()
+                            )
                         }
                         Screen.BackupRestore -> {
                             backupRestoreViewModel?.let { viewModel ->
@@ -850,10 +968,14 @@ private sealed class Screen {
     object ReferenceEvList : Screen()
     object ReferenceEvNutrient : Screen()
     object ReferenceEvTabs : Screen()
+    object BulkReferenceEditor : Screen()
     object TestYellowBox : Screen()
     object NewReferenceEvEdit : Screen()
     object Settings : Screen()
     object SpeciesPreferences : Screen()
     object ConseilEdit : Screen()
     object BackupRestore : Screen()
+    object CrossAnalysis : Screen()
+    object CrossAnalysisResults : Screen()
+    object CrossAnalysisGrading : Screen()
 }

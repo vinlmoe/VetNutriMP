@@ -54,23 +54,16 @@ class DatabaseVersionManager {
      */
     suspend fun updateDatabaseVersion(newVersion: String, importSource: String) {
         try {
+            val previousVersion = getStoredDatabaseVersion()
             val storage = createPreferencesStorage()
-            
-            // Sauvegarder la nouvelle version
             storage.saveString(KEY_DB_VERSION, newVersion)
-            
-            // Sauvegarder la date de mise à jour
             val currentDate = getCurrentDate()
             storage.saveString(KEY_DB_LAST_UPDATE, currentDate)
-            
-            // Sauvegarder la source d'import
             storage.saveString(KEY_DB_IMPORT_SOURCE, importSource)
-            
-            // Mettre à jour les états locaux
             _currentVersion.value = newVersion
             _lastUpdateDate.value = currentDate
             _importSource.value = importSource
-            
+            DatabaseChangeNotifier.notifyVersionUpdate(previousVersion, newVersion)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -153,13 +146,8 @@ class DatabaseVersionManager {
 
                 if (version != null) {
                     _jsonVersion.value = version
-                    // Sauvegarder la version JSON lue
-                    val storage = createPreferencesStorage()
-                    storage.saveString(KEY_JSON_VERSION, version)
-
                     if (timestamp != null) {
                         _jsonTimestamp.value = timestamp
-                        storage.saveString(KEY_JSON_TIMESTAMP, timestamp.toString())
                     }
                 }
             }
@@ -194,7 +182,6 @@ class DatabaseVersionManager {
      * @return true si une mise à jour est nécessaire
      */
     suspend fun isJsonUpdateNeeded(jsonContent: String): Boolean {
-        println("🔄 [VERSION] Début de isJsonUpdateNeeded")
         try {
             // Lire la version du JSON intégré
             val jsonElement = kotlinx.serialization.json.Json.parseToJsonElement(jsonContent)
@@ -202,47 +189,67 @@ class DatabaseVersionManager {
                 val embeddedVersion = jsonElement["version"]?.toString()?.removeSurrounding("\"")
                 val embeddedTimestamp = jsonElement["generatedAtEpochMs"]?.toString()?.toLongOrNull()
 
-                println("🔄 [VERSION] Version intégrée: $embeddedVersion, Timestamp: $embeddedTimestamp")
 
                 if (embeddedVersion != null) {
                     // Récupérer la version déjà importée
                     val storedVersion = getStoredJsonVersion()
                     val storedTimestamp = getStoredJsonTimestamp()
 
-                    println("🔄 [VERSION] Version stockée: $storedVersion, Timestamp: $storedTimestamp")
 
                     // Si aucune version n'a été importée, une mise à jour est nécessaire
                     if (storedVersion == null) {
-                        println("✅ [VERSION] Aucune version stockée, mise à jour nécessaire")
                         return true
                     }
 
                     // Comparer les versions
                     val versionComparison = compareVersions(embeddedVersion, storedVersion)
-                    println("🔄 [VERSION] Comparaison des versions: $embeddedVersion vs $storedVersion = $versionComparison")
 
                     // Si les versions sont différentes
                     if (versionComparison > 0) {
-                        println("✅ [VERSION] Version intégrée plus récente, mise à jour nécessaire")
                         return true
                     }
 
                     // Si les versions sont identiques, comparer les timestamps
                     if (versionComparison == 0 && embeddedTimestamp != null && storedTimestamp != null) {
                         val timestampComparison = embeddedTimestamp > storedTimestamp
-                        println("🔄 [VERSION] Versions identiques, comparaison des timestamps: $timestampComparison")
                         return timestampComparison
                     }
 
                 }
             }
 
-            println("ℹ️ [VERSION] Aucune mise à jour nécessaire")
             return false
         } catch (e: Exception) {
-            println("💥 [VERSION] Exception dans isJsonUpdateNeeded: ${e.message}")
             e.printStackTrace()
             // En cas d'erreur, considérer qu'une mise à jour est nécessaire
+            return true
+        }
+    }
+
+    /**
+     * Vérifie si une mise à jour est nécessaire à partir d'une version déjà extraite.
+     * Utile pour éviter de charger et parser un gros JSON en mémoire.
+     */
+    suspend fun isJsonUpdateNeededByVersion(
+        embeddedVersion: String?,
+        embeddedTimestamp: Long? = null
+    ): Boolean {
+        try {
+            if (embeddedVersion == null) return true
+
+            val storedVersion = getStoredJsonVersion() ?: return true
+            val storedTimestamp = getStoredJsonTimestamp()
+
+            val versionComparison = compareVersions(embeddedVersion, storedVersion)
+            if (versionComparison > 0) return true
+
+            if (versionComparison == 0 && embeddedTimestamp != null && storedTimestamp != null) {
+                return embeddedTimestamp > storedTimestamp
+            }
+
+            return false
+        } catch (e: Exception) {
+            e.printStackTrace()
             return true
         }
     }
@@ -253,22 +260,62 @@ class DatabaseVersionManager {
      */
     suspend fun updateJsonVersionAfterImport(jsonContent: String) {
         try {
-            val jsonElement = kotlinx.serialization.json.Json.parseToJsonElement(jsonContent)
-            if (jsonElement is kotlinx.serialization.json.JsonObject) {
-                val version = jsonElement["version"]?.toString()?.removeSurrounding("\"")
-                val timestamp = jsonElement["generatedAtEpochMs"]?.toString()?.toLongOrNull()
+            val previousVersion = getStoredJsonVersion()
+            // Extraction légère pour éviter la création d'un arbre JSON en mémoire.
+            val head =
+                if (jsonContent.length > 200_000) jsonContent.substring(0, 200_000)
+                else jsonContent
+            val version =
+                """"version"\s*:\s*"([^"]+)"""".toRegex()
+                    .find(head)?.groupValues?.get(1)
+            val timestamp =
+                """"generatedAtEpochMs"\s*:\s*(\d+)""".toRegex()
+                    .find(head)?.groupValues?.get(1)
+                    ?.toLongOrNull()
 
-                if (version != null) {
-                    val storage = createPreferencesStorage()
-                    storage.saveString(KEY_JSON_VERSION, version)
-                    _jsonVersion.value = version
+            if (version != null) {
+                val storage = createPreferencesStorage()
+                storage.saveString(KEY_JSON_VERSION, version)
+                _jsonVersion.value = version
 
-                    if (timestamp != null) {
-                        storage.saveString(KEY_JSON_TIMESTAMP, timestamp.toString())
-                        _jsonTimestamp.value = timestamp
-                    }
+                if (timestamp != null) {
+                    storage.saveString(KEY_JSON_TIMESTAMP, timestamp.toString())
+                    _jsonTimestamp.value = timestamp
                 }
+
+                DatabaseChangeNotifier.notifyVersionUpdate(
+                    previousVersion ?: DEFAULT_VERSION,
+                    version
+                )
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * Met à jour la version du JSON après un import réussi à partir d'une version déjà extraite.
+     */
+    suspend fun updateJsonVersionAfterImport(
+        embeddedVersion: String?,
+        embeddedTimestamp: Long? = null
+    ) {
+        try {
+            if (embeddedVersion == null) return
+            val previousVersion = getStoredJsonVersion()
+            val storage = createPreferencesStorage()
+            storage.saveString(KEY_JSON_VERSION, embeddedVersion)
+            _jsonVersion.value = embeddedVersion
+
+            if (embeddedTimestamp != null) {
+                storage.saveString(KEY_JSON_TIMESTAMP, embeddedTimestamp.toString())
+                _jsonTimestamp.value = embeddedTimestamp
+            }
+
+            DatabaseChangeNotifier.notifyVersionUpdate(
+                previousVersion ?: DEFAULT_VERSION,
+                embeddedVersion
+            )
         } catch (e: Exception) {
             e.printStackTrace()
         }

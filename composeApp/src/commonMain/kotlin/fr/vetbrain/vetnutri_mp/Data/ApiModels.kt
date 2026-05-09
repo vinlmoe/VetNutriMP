@@ -1,12 +1,13 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
 /**
- * Modèles JSON actuels pour l’API (nouveau format, distinct des anciens JSON). Tous les modèles
- * sont stables et versionnés pour une future REST API.
+ * Modèles JSON (nouveau format API, versionné).
+ * Distinct des anciens JSON ; utilisés pour import/export et future REST.
  */
 @Serializable
 data class ApiEnvelope(
@@ -19,7 +20,8 @@ data class ApiEnvelope(
         val equations: List<EquationApi> = emptyList(),
         val biblioRefs: List<BiblioRefApi> = emptyList(),
         val references: List<ReferenceEvApi> = emptyList(),
-        val conseils: List<ConseilApi> = emptyList()
+        val conseils: List<ConseilApi> = emptyList(),
+        val consultationKeywords: List<ConsultationKeywordApi> = emptyList()
 )
 
 @Serializable
@@ -34,6 +36,10 @@ data class AnimalApi(
         @Serializable(with = LocalDateSerializer::class) val birthdate: LocalDate? = null,
         val breed: String,
         val summary: String,
+        val exam: Boolean = false,
+        val examStudentId: String? = null,
+        val examStudentNumber: String? = null,
+        val examExerciseId: String? = null,
         val weights: List<WeightEntryApi> = emptyList(),
         val consultations: List<ConsultationApi> = emptyList()
 )
@@ -76,8 +82,23 @@ data class ConsultationApi(
         val referenceGeneraleId: String? = null,
         val diseaseReferences: List<String> = emptyList(),
         val coefficientAjustement: Double = 1.0,
+        val keywords: List<String> = emptyList(),
+        // Ordonnance: état sauvegardé par consultation
+        val prescriptionAnamnese: String = "",
+        val prescriptionExamenClinique: String = "",
+        val prescriptionFacteurNutritionnelClef: String = "",
+        val prescriptionAdditionalText: String = "",
+        val prescriptionSelectedConseilIds: List<String> = emptyList(),
+        val prescriptionLocalHtmlSections: List<HtmlSection> = emptyList(),
+        val prescriptionSelectedRationIds: List<String> = emptyList(),
         val supplementalVariables: List<SupplementalVariableApi> = emptyList(),
         val rations: List<RationApi> = emptyList()
+)
+
+@Serializable
+data class ConsultationKeywordApi(
+        val uuid: String,
+        val label: String
 )
 
 @Serializable
@@ -247,8 +268,20 @@ fun FoodApi.toDomain(): AlimentEv {
                         rationUUID = rationId
                 )
         nutrients.forEach { (label, value) ->
-                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(label)?.let {
-                        aliment.setNutrient(it, value)
+                // Essayer d'abord la résolution directe
+                var nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(label)
+                
+                // Si la résolution échoue, essayer de nettoyer la clé
+                if (nutrient == null) {
+                        val cleanedKey = label.trim().replace("_", " ")
+                        nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(cleanedKey)
+                }
+                
+                // Si la résolution réussit, ajouter le nutriment
+                if (nutrient != null) {
+                        aliment.setNutrient(nutrient, value)
+                } else {
+                        // Log pour débogage - nutriment non résolu
                 }
         }
         return aliment
@@ -317,6 +350,10 @@ fun AnimalEv.toApi(): AnimalApi {
                 birthdate = birthdate,
                 breed = race,
                 summary = summary,
+                exam = exam,
+                examStudentId = examStudentId,
+                examStudentNumber = examStudentNumber,
+                examExerciseId = examExerciseId,
                 weights = weightHistory.map { it.toApi() },
                 consultations = consultations.map { it.toApi() }
         )
@@ -357,6 +394,14 @@ fun ConsultationEv.toApi(): ConsultationApi {
                 referenceGeneraleId = referenceGeneraleId,
                 diseaseReferences = referencesMaladies,
                 coefficientAjustement = coefficientAjustement,
+                keywords = keywordIds.toList(),
+                prescriptionAnamnese = prescriptionAnamnese,
+                prescriptionExamenClinique = prescriptionExamenClinique,
+                prescriptionFacteurNutritionnelClef = prescriptionFacteurNutritionnelClef,
+                prescriptionAdditionalText = prescriptionAdditionalText,
+                prescriptionSelectedConseilIds = prescriptionSelectedConseilIds.toList(),
+                prescriptionLocalHtmlSections = prescriptionLocalHtmlSections.toList(),
+                prescriptionSelectedRationIds = prescriptionSelectedRationIds.toList(),
                 supplementalVariables =
                         suppVarp.mapNotNull { sv ->
                                 sv.variable?.name?.let { vn ->
@@ -380,6 +425,10 @@ fun AnimalApi.toDomain(): AnimalEv {
                 birthdate = birthdate,
                 race = breed,
                 summary = summary,
+                exam = exam,
+                examStudentId = examStudentId,
+                examStudentNumber = examStudentNumber,
+                examExerciseId = examExerciseId,
                 consultations = consultations.map { it.toDomain() }.toMutableList(),
                 weightHistory = weights.map { it.toDomain() }.toMutableList()
         )
@@ -455,14 +504,42 @@ fun Equation.toApi(): EquationApi {
 
 // Mappers API -> domaine pour les équations
 fun EquationApi.toDomain(): Equation {
+        // Résolution robuste du kind (tolérant à la casse et aux alias)
+        val resolvedKind = run {
+                val raw = kind.trim()
+                // essayer directement
+                runCatching {
+                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.valueOf(raw)
+                }.getOrElse {
+                        // essayer en uppercase (pour des valeurs comme "ENErcomp")
+                        runCatching {
+                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.valueOf(raw.uppercase())
+                        }.getOrElse {
+                                // alias connus
+                                when (raw.lowercase()) {
+                                        "enercomp", "energycomp", "energycomposition", "energycompdesc" ->
+                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP
+                                        "complnut", "complementary", "complementarynutrient" ->
+                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.COMPLEMENTARY_NUTRIENT
+                                        "energyneed" -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED
+                                        "energydensity" -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYDENSITY
+                                        "mw", "metabolicweight" -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW
+                                        "indicator" -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.INDICATOR
+                                        "need", "needeq" -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED
+                                        else -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED
+                                }
+                        }
+                }
+        }
         return Equation(
                 uuid = uuid,
                 name = name,
                 specie = specie?.let { fr.vetbrain.vetnutri_mp.Enumer.Espece.valueOf(it) },
-                kind = fr.vetbrain.vetnutri_mp.Enumer.EquationKind.valueOf(kind),
+                kind = resolvedKind,
                 nutrient =
                         nutrient?.let {
-                                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.findNutrientByLabel(
+                                // Utiliser le resolver "global" qui couvre aussi NutrientAnalysis
+                                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
                                         it
                                 )
                         },
@@ -544,7 +621,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
         val coefficients = mutableListOf<ReferenceCoefficientApi>()
 
         // Ajouter les coefficients k1
-        getModk1().forEach { coef ->
+        modk1.forEach { coef ->
                 coefficients.add(
                         ReferenceCoefficientApi(
                                 uuid = coef.uuid,
@@ -557,7 +634,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
         }
 
         // Ajouter les coefficients k2
-        getModk2().forEach { coef ->
+        modk2.forEach { coef ->
                 coefficients.add(
                         ReferenceCoefficientApi(
                                 uuid = coef.uuid,
@@ -570,7 +647,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
         }
 
         // Ajouter les coefficients k3
-        getModk3().forEach { coef ->
+        modk3.forEach { coef ->
                 coefficients.add(
                         ReferenceCoefficientApi(
                                 uuid = coef.uuid,
@@ -583,7 +660,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
         }
 
         // Ajouter les coefficients k4
-        getModk4().forEach { coef ->
+        modk4.forEach { coef ->
                 coefficients.add(
                         ReferenceCoefficientApi(
                                 uuid = coef.uuid,
@@ -596,7 +673,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
         }
 
         // Ajouter les coefficients k5
-        getModk5().forEach { coef ->
+        modk5.forEach { coef ->
                 coefficients.add(
                         ReferenceCoefficientApi(
                                 uuid = coef.uuid,
@@ -724,7 +801,18 @@ fun ConsultationApi.toDomain(): ConsultationEv {
                                 .toMutableList(),
                 referenceGeneraleId = referenceGeneraleId,
                 referencesMaladies = diseaseReferences.toMutableList(),
-                coefficientAjustement = coefficientAjustement
+                keywordIds = keywords.toMutableList(),
+                coefficientAjustement = coefficientAjustement,
+                prescriptionAnamnese = prescriptionAnamnese,
+                prescriptionExamenClinique = prescriptionExamenClinique,
+                prescriptionFacteurNutritionnelClef = prescriptionFacteurNutritionnelClef,
+                prescriptionAdditionalText = prescriptionAdditionalText,
+                prescriptionSelectedConseilIds =
+                        prescriptionSelectedConseilIds.toMutableList(),
+                prescriptionLocalHtmlSections =
+                        prescriptionLocalHtmlSections.toMutableList(),
+                prescriptionSelectedRationIds =
+                        prescriptionSelectedRationIds.toMutableList()
         )
 }
 
@@ -853,6 +941,12 @@ sealed class TextBlockApi {
                 val headers: List<String>,
                 val rows: List<List<String>>
         ) : TextBlockApi()
+
+        @Serializable
+        data class RawHtml(
+                override val id: String,
+                val html: String
+        ) : TextBlockApi()
 }
 
 @Serializable
@@ -921,6 +1015,11 @@ fun fr.vetbrain.vetnutri_mp.Export.TextBlock.toApi(): TextBlockApi {
                                 headers = headers,
                                 rows = rows
                         )
+                is fr.vetbrain.vetnutri_mp.Export.TextBlock.RawHtml ->
+                        TextBlockApi.RawHtml(
+                                id = id,
+                                html = html
+                        )
         }
 }
 
@@ -986,6 +1085,11 @@ fun TextBlockApi.toDomain(): fr.vetbrain.vetnutri_mp.Export.TextBlock {
                                 id = id,
                                 headers = headers,
                                 rows = rows
+                        )
+                is TextBlockApi.RawHtml ->
+                        fr.vetbrain.vetnutri_mp.Export.TextBlock.RawHtml(
+                                id = id,
+                                html = html
                         )
         }
 }

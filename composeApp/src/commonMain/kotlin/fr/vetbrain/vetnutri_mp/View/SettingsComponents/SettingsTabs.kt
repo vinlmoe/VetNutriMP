@@ -10,10 +10,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.View.SettingsSection
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Settings
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Navigation par onglets pour les paramètres avec animations
@@ -22,36 +25,41 @@ import fr.vetbrain.vetnutri_mp.View.SettingsSection
  * @param modifier Modificateur appliqué au composant
  */
 @Composable
-fun SettingsTabs(selectedTab: Int, onTabSelected: (Int) -> Unit, modifier: Modifier = Modifier) {
+fun SettingsTabs(
+        selectedTab: Int,
+        onTabSelected: (Int) -> Unit,
+        modifier: Modifier = Modifier,
+        isExamMode: Boolean = false
+) {
     val tabs =
             listOf(
                     TabInfo(
-                            title = "Interface",
+                            title = translate(Settings.TAB_INTERFACE),
                             icon = Icons.Default.Settings,
                             section = SettingsSection.INTERFACE
                     ),
                     TabInfo(
-                            title = "Préférences",
+                            title = translate(Settings.TAB_PREFERENCES),
                             icon = Icons.Default.Person,
                             section = SettingsSection.PREFERENCES
                     ),
                     TabInfo(
-                            title = "Import/Export",
+                            title = translate(Settings.TAB_IMPORT),
                             icon = Icons.Default.Build,
                             section = SettingsSection.IMPORTATION
                     ),
                     TabInfo(
-                            title = "Excel",
+                            title = translate(Settings.TAB_EXCEL),
                             icon = Icons.Default.TableChart,
                             section = SettingsSection.EXCEL
                     ),
                     TabInfo(
-                            title = "Recettes",
+                            title = translate(Settings.TAB_RECIPES),
                             icon = Icons.Default.Restaurant,
                             section = SettingsSection.RECIPES
                     ),
                     TabInfo(
-                            title = "Administration",
+                            title = translate(Settings.TAB_ADMINISTRATION),
                             icon = Icons.Default.AdminPanelSettings,
                             section = SettingsSection.ADMINISTRATION
                     )
@@ -66,6 +74,8 @@ fun SettingsTabs(selectedTab: Int, onTabSelected: (Int) -> Unit, modifier: Modif
         ) {
             tabs.forEachIndexed { index, tab ->
                 val isSelected = selectedTab == index
+                val isRecipeTab = tab.section == SettingsSection.RECIPES
+                val isEnabled = !(isExamMode && isRecipeTab)
                 val scale by
                         animateFloatAsState(
                                 targetValue = if (isSelected) 1.05f else 1.0f,
@@ -75,7 +85,7 @@ fun SettingsTabs(selectedTab: Int, onTabSelected: (Int) -> Unit, modifier: Modif
 
                 Tab(
                         selected = isSelected,
-                        onClick = { onTabSelected(index) },
+                        onClick = { if (isEnabled) onTabSelected(index) },
                         modifier = Modifier.padding(vertical = 8.dp).scale(scale)
                 ) {
                     Row(
@@ -85,13 +95,15 @@ fun SettingsTabs(selectedTab: Int, onTabSelected: (Int) -> Unit, modifier: Modif
                         Icon(
                                 imageVector = tab.icon,
                                 contentDescription = null,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(20.dp),
+                                tint = if (isEnabled) VetNutriColors.Primary else Color.Gray
                         )
                         Text(
                                 text = tab.title,
                                 style = MaterialTheme.typography.body2,
                                 fontWeight =
-                                        if (isSelected) FontWeight.Medium else FontWeight.Normal
+                                        if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                                color = if (isEnabled) MaterialTheme.colors.onSurface else Color.Gray
                         )
                     }
                 }

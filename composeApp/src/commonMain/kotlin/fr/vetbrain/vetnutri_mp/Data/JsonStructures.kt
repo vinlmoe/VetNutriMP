@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
@@ -18,6 +19,8 @@ data class AlimentEvJson(
         val espece: Int,
         val Especes: List<String> = listOf(),
         val gamme: String = "",
+        val dateMaj: String = "",
+        val imageRef: String = "",
         val presentation: String = "",
         val quantInt: Double = 0.0,
         val cont: String = "NO",
@@ -41,6 +44,11 @@ data class AnimalEvJson(
         val dateNaiss: LocalDate = LocalDate(2023, 1, 1),
         val race: String = "",
         val resume: String = "",
+        val jsonbinId: String? = null, // ID du bin jsonbin.io pour le partage en ligne
+        val exam: Boolean = false, // Indique si l'animal a été créé en mode examen
+        val examStudentId: String? = null, // Identifiant de l'étudiant
+        val examStudentNumber: String? = null, // Numéro de l'étudiant
+        val examExerciseId: String? = null, // ID de l'exercice
         val listWeight: List<WeightDateJson> = listOf(),
         val list: ListConsultEvJson? = null,
         val consultations: List<ConsultationEvJson>? = null
@@ -82,7 +90,16 @@ data class ConsultationEvJson(
         val previousRation: RationJson? = null,
         val ky: Double = 0.0,
         val newBE: Double = 0.0,
-        val newRation: List<RationJson> = listOf()
+        val newRation: List<RationJson> = listOf(),
+        val keywords: List<String> = listOf(),
+        // Ordonnance: état sauvegardé par consultation
+        val prescriptionAnamnese: String = "",
+        val prescriptionExamenClinique: String = "",
+        val prescriptionFacteurNutritionnelClef: String = "",
+        val prescriptionAdditionalText: String = "",
+        val prescriptionSelectedConseilIds: List<String> = listOf(),
+        val prescriptionLocalHtmlSections: List<HtmlSection> = listOf(),
+        val prescriptionSelectedRationIds: List<String> = listOf()
 )
 
 /** Structure JSON pour BiblioRef */

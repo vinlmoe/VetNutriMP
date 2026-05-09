@@ -16,7 +16,9 @@ enum class VariableKind(
     BE(5, "EnergyNeed", "BE", "energyNeed"),
     BW(6, "BodyWeight", "BW", "bodyWeight"),
     iBW(7, "IdealBodyWeight", "iBW", "idealBodyWeight"),
-    MW(8, "MetabolicWeight", "MW", "metabolicWeight");
+    MW(8, "MetabolicWeight", "MW", "metabolicWeight"),
+ CW(9, "CarriedWeight", "CW", "CarriedWeiht"),
+ D(10, "Distance", "D", "Distance");
 
     companion object {
         fun getById(id: Int): VariableKind = entries.find { it.uuid == id } ?: AdultWeight

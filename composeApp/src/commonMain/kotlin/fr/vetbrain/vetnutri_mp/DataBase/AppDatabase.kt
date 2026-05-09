@@ -31,6 +31,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         FoodEntity::class,
                         NutrientValueEntity::class,
                         BiblioRefEntity::class,
+                        AlimentBiblioRefEntity::class,
                         EquationEntity::class,
                         ConsultationKeywordEntity::class,
                         ReferenceEvEntity::class,
@@ -42,7 +43,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class,
                         CustomNutrientEntity::class],
-        version = 34,
+        version = 35,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -55,6 +56,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun nutrientValueDao(): NutrientValueDao
     abstract fun customNutrientDao(): CustomNutrientDao
     abstract fun biblioRefDao(): BiblioRefDao
+    abstract fun alimentBiblioRefDao(): AlimentBiblioRefDao
     abstract fun equationDao(): EquationDao
     abstract fun referenceEvDao(): ReferenceEvDao
     abstract fun htmlSectionDao(): HtmlSectionDao
@@ -115,8 +117,10 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         createMigration31to32(),
                         // Migration 32→33 : CASCADE DELETE sur NUTRIENT_VALUES (clé étrangère vers FOOD)
                         createMigration32to33(),
-                        // Migration 33→34 : Table CUSTOM_NUTRIENTS pour persister les métadonnées des nutriments personnalisés
-                        createMigration33to34()
+                        // Migration 33→34 : Table de jonction aliment ↔ références bibliographiques
+                        createMigration33to34(),
+                        // Migration 34→35 : Table CUSTOM_NUTRIENTS pour persister les métadonnées des nutriments personnalisés
+                        createMigration34to35()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -627,18 +631,36 @@ fun createMigration32to33(): Migration {
                 )
             """.trimIndent()).use { it.step() }
             connection.prepare(
-                "CREATE INDEX IF NOT EXISTS index_NUTRIENT_VALUES_refAliment ON NUTRIENT_VALUES(refAliment)"
-            ).use { it.step() }
-            connection.prepare(
                 "INSERT INTO NUTRIENT_VALUES SELECT * FROM NUTRIENT_VALUES_OLD"
             ).use { it.step() }
             connection.prepare("DROP TABLE NUTRIENT_VALUES_OLD").use { it.step() }
+            connection.prepare(
+                "CREATE INDEX IF NOT EXISTS index_NUTRIENT_VALUES_refAliment ON NUTRIENT_VALUES(refAliment)"
+            ).use { it.step() }
         }
     }
 }
 
 fun createMigration33to34(): Migration {
     return object : Migration(33, 34) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS ALIMENT_BIBLIO_REFS (
+                    alimentUuid TEXT NOT NULL,
+                    biblioRefUuid TEXT NOT NULL,
+                    PRIMARY KEY(alimentUuid, biblioRefUuid),
+                    FOREIGN KEY(alimentUuid) REFERENCES FOOD(uuid) ON DELETE CASCADE,
+                    FOREIGN KEY(biblioRefUuid) REFERENCES BIBLIO_REFS(uuid) ON DELETE CASCADE
+                )
+            """.trimIndent()).use { it.step() }
+            connection.prepare("CREATE INDEX IF NOT EXISTS index_ALIMENT_BIBLIO_REFS_alimentUuid ON ALIMENT_BIBLIO_REFS(alimentUuid)").use { it.step() }
+            connection.prepare("CREATE INDEX IF NOT EXISTS index_ALIMENT_BIBLIO_REFS_biblioRefUuid ON ALIMENT_BIBLIO_REFS(biblioRefUuid)").use { it.step() }
+        }
+    }
+}
+
+fun createMigration34to35(): Migration {
+    return object : Migration(34, 35) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
             connection.prepare("""
                 CREATE TABLE IF NOT EXISTS CUSTOM_NUTRIENTS (
