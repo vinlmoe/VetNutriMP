@@ -119,63 +119,22 @@ class AnimalDetailViewModel(
     // StateFlow pour stocker les résultats d'analyse de la ration sélectionnée
     private val _rationAnalyseResultat = MutableStateFlow<AnalyseResultat?>(null)
 
-    // Cache pour éviter les calculs répétés d'analyse de rations avec gestion automatique
-    private val rationAnalysisCache = mutableMapOf<String, AnalyseResultat>()
+    private val cacheValidityDuration = 2 * 60 * 1000L
     private val analysisCacheTime = mutableMapOf<String, Long>()
-    private val cacheValidityDuration = 2 * 60 * 1000L // 2 minutes pour l'analyse
-    private val maxCacheSize = 50
-
-    // Cache pour les données d'animaux fréquemment utilisées avec nettoyage automatique
-    private val animalDataCache = mutableMapOf<String, Any>()
-    private val animalDataCacheTime = mutableMapOf<String, Long>()
-    private val maxAnimalCacheSize = 100
-
-    /** Nettoie automatiquement les caches pour éviter les fuites mémoire */
-    private fun cleanupCachesIfNeeded() {
-        val currentTime = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
-
-        // Nettoyer le cache d'analyse de rations
-        if (rationAnalysisCache.size > maxCacheSize) {
-            val entriesToRemove =
-                    analysisCacheTime
-                            .entries
-                            .sortedBy { it.value }
-                            .take(rationAnalysisCache.size - maxCacheSize / 2)
-                            .map { it.key }
-
-            entriesToRemove.forEach { key ->
-                rationAnalysisCache.remove(key)
-                analysisCacheTime.remove(key)
-            }
+    private val rationAnalysisCache: LinkedHashMap<String, AnalyseResultat> =
+        object : LinkedHashMap<String, AnalyseResultat>(51, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, AnalyseResultat>) =
+                size > 50
         }
 
-        // Nettoyer les entrées expirées du cache d'analyse
-        val expiredKeys =
-                analysisCacheTime.entries
-                        .filter { (key, time) ->
-                            currentTime - time >
-                                    cacheValidityDuration *
-                                            2 // Supprimer les entrées très anciennes
-                        }
-                        .map { it.key }
+    private fun cleanupCachesIfNeeded() {
+        val currentTime = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        val expiredKeys = analysisCacheTime.entries
+            .filter { (_, time) -> currentTime - time > cacheValidityDuration * 2 }
+            .map { it.key }
         expiredKeys.forEach { key ->
             analysisCacheTime.remove(key)
             rationAnalysisCache.remove(key)
-        }
-
-        // Nettoyer le cache de données d'animaux
-        if (animalDataCache.size > maxAnimalCacheSize) {
-            val entriesToRemove =
-                    animalDataCacheTime
-                            .entries
-                            .sortedBy { it.value }
-                            .take(animalDataCache.size - maxAnimalCacheSize / 2)
-                            .map { it.key }
-
-            entriesToRemove.forEach { key ->
-                animalDataCache.remove(key)
-                animalDataCacheTime.remove(key)
-            }
         }
     }
     val rationAnalyseResultat: StateFlow<AnalyseResultat?> = _rationAnalyseResultat.asStateFlow()
@@ -1285,8 +1244,7 @@ class AnimalDetailViewModel(
 
                 val resultat = cachedResult ?: rationAnalyzer.analyserRation(ration, consultation)
 
-                // Mettre en cache si pas déjà présent et si le cache n'est pas plein
-                if (cachedResult == null && rationAnalysisCache.size < maxCacheSize) {
+                if (cachedResult == null) {
                     rationAnalysisCache[cacheKey] = resultat
                     analysisCacheTime[cacheKey] =
                             kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
@@ -2117,7 +2075,6 @@ class AnimalDetailViewModel(
     fun clear() {
         rationAnalysisCache.clear()
         analysisCacheTime.clear()
-        animalDataCache.clear()
         viewModelScope.cancel()
     }
 }

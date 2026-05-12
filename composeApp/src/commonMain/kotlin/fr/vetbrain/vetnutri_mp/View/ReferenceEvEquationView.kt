@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
-import fr.vetbrain.vetnutri_mp.Components.TopBarWithActions
+import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -656,7 +656,7 @@ fun ReferenceEvEquationView(
         } else {
                 Scaffold(
                         topBar = {
-                                TopBarWithActions(
+                                TopBarSimple(
                                         title = "Équations pour ${currentReferenceEv.nom}",
                                         onNavigateBack = onNavigateBack,
                                         actions = {
