@@ -53,6 +53,31 @@ object NutrientResolver {
         return result
     }
 
+    /**
+     * Résolution stricte pour les labels déjà persistés en base.
+     * Évite volontairement le fuzzy matching pour ne pas remapper un label custom
+     * vers un nutriment standard (ex: BENAZPRIN -> K).
+     */
+    fun resolveStoredLabel(label: String): Nutrient {
+        val raw = label.trim().replace("[", "").replace("]", "").replace("\"", "")
+        val normalized = normalizeLabel(raw)
+
+        // 0) prioriser le registre live des nutriments personnalisés
+        // pour éviter d'utiliser une entrée obsolète du cache interne.
+        CustomNutrientRegistry.getByLabel(raw)?.let { return it }
+        CustomNutrientRegistry.getByLabel(normalized)?.let { return it }
+
+        // 1) match exact sur le label stocké (insensible casse)
+        labelToNutrient[raw.uppercase()]?.let { return it }
+
+        // 2) match exact sur la forme normalisée
+        labelToNutrient[normalized.uppercase()]?.let { return it }
+
+        // 3) fallback custom exact
+        val custom = CustomNutrientRegistry.getByLabel(raw) ?: CustomNutrient.fromLabel(raw)
+        return CustomNutrientRegistry.register(custom)
+    }
+
     private fun resolveNutrient(cleanedLabel: String): Nutrient? {
         // Lookup O(1) dans la map pré-construite
         labelToNutrient[cleanedLabel.uppercase()]?.let { return it }

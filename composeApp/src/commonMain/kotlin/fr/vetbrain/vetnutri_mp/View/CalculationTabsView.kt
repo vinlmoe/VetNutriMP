@@ -46,6 +46,7 @@ fun CalculationTabsView(
         onNavigateBack: () -> Unit,
         onEditReferenceEv: (String) -> Unit,
         onCreateReferenceEv: () -> Unit,
+        onBulkEditReferences: (List<String>) -> Unit = {},
         onEditConseil: (String) -> Unit,
         onCreateConseil: () -> Unit,
         selectedTab: Int = 0,
@@ -196,7 +197,8 @@ fun CalculationTabsView(
                                         onEditNutrients = { referenceEvId ->
                                                 selectedReferenceEvId = referenceEvId
                                                 isEditingReferenceEv = true
-                                        }
+                                        },
+                                        onBulkEdit = onBulkEditReferences
                                 )
                         3 ->
                                 if (isExamMode) {

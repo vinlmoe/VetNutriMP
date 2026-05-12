@@ -1190,6 +1190,10 @@ class DatabaseFoodRepository(
     override suspend fun insertFood(food: AlimentEv) {
         withContext(AppDispatchers.IO) {
             try {
+                println(
+                    "[FoodSaveDebug][Repo] insertFood start uuid=${food.uuid} " +
+                        "valMapCount=${food.valMap.size}"
+                )
                 // Convertir en FoodEntity et insérer
                 val foodEntity = food.toFoodEntity().copy(RefRation = null)
                 foodDao.insertFood(foodEntity)
@@ -1214,8 +1218,19 @@ class DatabaseFoodRepository(
 
                 // Traiter les valeurs nutritionnelles
                 val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
+                println(
+                    "[FoodSaveDebug][Repo] insertFood nutrientEntities uuid=${food.uuid} " +
+                        "count=${nutrientValues.size} " +
+                        "sample=${nutrientValues.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}"
+                )
                 if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
                     nutrientValueDao.insertNutrientValues(nutrientValues)
+                    val reloaded = nutrientValueDao.getNutrientValues(food.uuid)
+                    println(
+                        "[FoodSaveDebug][Repo] insertFood DB check uuid=${food.uuid} " +
+                            "dbCount=${reloaded.size} " +
+                            "sample=${reloaded.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}"
+                    )
                 }
                 saveCustomNutrientsFromFood(food)
 
@@ -1326,6 +1341,10 @@ class DatabaseFoodRepository(
     override suspend fun updateFood(food: AlimentEv) {
         withContext(AppDispatchers.IO) {
             try {
+                println(
+                    "[FoodSaveDebug][Repo] updateFood start uuid=${food.uuid} " +
+                        "valMapCount=${food.valMap.size}"
+                )
                 // Vérifier que l'aliment existe
                 val existingFood = foodDao.getFoodById(food.uuid)
                 if (existingFood == null) {
@@ -1367,10 +1386,24 @@ class DatabaseFoodRepository(
                 }
 
                 // Remplacer atomiquement les valeurs nutritionnelles (delete + insert en 1 transaction)
+                val replacing = food.valMap.toNutrientValueEntities(food.uuid)
+                println(
+                    "[FoodSaveDebug][Repo] updateFood replace values uuid=${food.uuid} " +
+                        "replaceCount=${replacing.size} " +
+                        "sample=${replacing.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}"
+                )
                 nutrientValueDao?.replaceNutrientValues(
                         food.uuid,
-                        food.valMap.toNutrientValueEntities(food.uuid)
+                        replacing
                 )
+                if (nutrientValueDao != null) {
+                    val reloaded = nutrientValueDao.getNutrientValues(food.uuid)
+                    println(
+                        "[FoodSaveDebug][Repo] updateFood DB check uuid=${food.uuid} " +
+                            "dbCount=${reloaded.size} " +
+                            "sample=${reloaded.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}"
+                    )
+                }
                 saveCustomNutrientsFromFood(food)
 
                 // Remplacer les références bibliographiques associées

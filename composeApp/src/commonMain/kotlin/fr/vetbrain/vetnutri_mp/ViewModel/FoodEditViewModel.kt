@@ -107,6 +107,20 @@ class FoodEditViewModel(
             }
         }
 
+        // Énergie
+        NutrientEnergy.entries.forEach { nutrient ->
+            if (!_allNutrients.contains(nutrient)) {
+                _allNutrients.add(nutrient)
+            }
+        }
+
+        // Analyse
+        NutrientAnalysis.entries.forEach { nutrient ->
+            if (!_allNutrients.contains(nutrient)) {
+                _allNutrients.add(nutrient)
+            }
+        }
+
         // Autres nutriments
         NutrientOther.entries.forEach { nutrient ->
             if (!_allNutrients.contains(nutrient)) {
@@ -223,6 +237,18 @@ class FoodEditViewModel(
     fun addOrGetCustomNutrient(name: String, unit: String = "g"): Nutrient? {
         val trimmedName = name.trim()
         if (trimmedName.isBlank()) return null
+        val resolvedUnitEnum = UnitEnum.fromDisplayName(unit)
+        if (resolvedUnitEnum == UnitEnum.NO || unit.isBlank()) return null
+
+        val normalizedCandidate = NutrientResolver.normalizeLabel(trimmedName)
+        val hasConflict =
+                _allNutrients.any { nutrient ->
+                    NutrientResolver.normalizeLabel(nutrient.label) == normalizedCandidate
+                } || CustomNutrientRegistry.all().any { nutrient ->
+                    NutrientResolver.normalizeLabel(nutrient.label) == normalizedCandidate
+                }
+        if (hasConflict) return null
+
         val nutrient = CustomNutrientRegistry.registerFromRaw(trimmedName, unit)
         if (!_allNutrients.any { it.label == nutrient.label }) {
             _allNutrients.add(nutrient)
@@ -230,8 +256,58 @@ class FoodEditViewModel(
         return nutrient
     }
 
+    fun updateCustomNutrient(
+        original: CustomNutrient,
+        newName: String,
+        newUnit: String
+    ): CustomNutrient? {
+        val trimmedName = newName.trim()
+        if (trimmedName.isBlank()) return null
+        val resolvedUnitEnum = UnitEnum.fromDisplayName(newUnit)
+        if (resolvedUnitEnum == UnitEnum.NO || newUnit.isBlank()) return null
+
+        val normalizedCandidate = NutrientResolver.normalizeLabel(trimmedName)
+        val hasConflict =
+            _allNutrients.any { nutrient ->
+                nutrient.label != original.label &&
+                    NutrientResolver.normalizeLabel(nutrient.label) == normalizedCandidate
+            } || CustomNutrientRegistry.all().any { nutrient ->
+                nutrient.label != original.label &&
+                    NutrientResolver.normalizeLabel(nutrient.label) == normalizedCandidate
+            }
+        if (hasConflict) return null
+
+        // Important: conserver le label technique existant pour éviter toute duplication
+        // (la persistance DB utilise ce label comme identifiant fonctionnel).
+        val updated = CustomNutrient(
+            displayName = trimmedName,
+            label = original.label,
+            unite = newUnit,
+            ue = resolvedUnitEnum,
+            category = original.getMNE()
+        )
+        CustomNutrientRegistry.removeByLabel(original.label)
+        CustomNutrientRegistry.register(updated)
+        _allNutrients.removeAll { it.label == original.label }
+        if (_allNutrients.none { it.label == updated.label }) {
+            _allNutrients.add(updated)
+        }
+        return updated
+    }
+
+    fun deleteCustomNutrient(nutrient: CustomNutrient): Boolean {
+        val removedRegistry = CustomNutrientRegistry.removeByLabel(nutrient.label)
+        _allNutrients.removeAll { it.label == nutrient.label }
+        return removedRegistry
+    }
+
     suspend fun saveAliment(aliment: AlimentEv) {
         try {
+            println(
+                "[FoodSaveDebug][VM] saveAliment start uuid=${aliment.uuid} " +
+                    "incomingValMap=${aliment.valMap.size} " +
+                    "sample=${aliment.valMap.entries.take(8).joinToString { "${it.key.label}=${it.value.value}" }}"
+            )
             val todayIso = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
             val alimentWithDate = aliment.copy(
                 lastUpdateDate = todayIso,
@@ -249,11 +325,20 @@ class FoodEditViewModel(
             // Sauvegarder l'aliment selon le cas
             if (existingAliment != null) {
                 // Aliment existant : mise à jour
+                println("[FoodSaveDebug][VM] update path uuid=${alimentWithDate.uuid}")
                 foodRepository.updateFood(alimentWithDate)
             } else {
                 // Nouvel aliment : insertion
+                println("[FoodSaveDebug][VM] insert path uuid=${alimentWithDate.uuid}")
                 foodRepository.insertFood(alimentWithDate)
             }
+
+            val reloaded = try { foodRepository.getFood(alimentWithDate.uuid) } catch (_: Exception) { null }
+            println(
+                "[FoodSaveDebug][VM] reload after save uuid=${alimentWithDate.uuid} " +
+                    "reloadedValMap=${reloaded?.valMap?.size ?: -1} " +
+                    "sample=${reloaded?.valMap?.entries?.take(8)?.joinToString { "${it.key.label}=${it.value.value}" }}"
+            )
 
             // Mettre à jour l'état local
             _alimentState.value = alimentWithDate

@@ -89,4 +89,8 @@ object CustomNutrientRegistry {
     fun getByLabel(label: String): CustomNutrient? = nutrientsByLabel[label.uppercase().trim()]
 
     fun all(): List<CustomNutrient> = nutrientsByLabel.values.toList()
+
+    fun removeByLabel(label: String): Boolean {
+        return nutrientsByLabel.remove(label.uppercase().trim()) != null
+    }
 }

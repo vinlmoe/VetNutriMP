@@ -1,0 +1,2132 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 35,
+    "identityHash": "ac444b4eeea145837cc9b12949c80758",
+    "entities": [
+      {
+        "tableName": "ANIMALS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `nom` TEXT, `dead` INTEGER NOT NULL, `id` TEXT, `sexId` INTEGER NOT NULL, `specieId` TEXT, `ownerName` TEXT, `birthdate` TEXT, `race` TEXT, `summary` TEXT, `jsonbinId` TEXT, `exam` INTEGER NOT NULL, `examStudentId` TEXT, `examStudentNumber` TEXT, `examExerciseId` TEXT, PRIMARY KEY(`uuid`))",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nom",
+            "columnName": "nom",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dead",
+            "columnName": "dead",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sexId",
+            "columnName": "sexId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "specieId",
+            "columnName": "specieId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ownerName",
+            "columnName": "ownerName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "birthdate",
+            "columnName": "birthdate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "race",
+            "columnName": "race",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "jsonbinId",
+            "columnName": "jsonbinId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "exam",
+            "columnName": "exam",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "examStudentId",
+            "columnName": "examStudentId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "examStudentNumber",
+            "columnName": "examStudentNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "examExerciseId",
+            "columnName": "examExerciseId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        }
+      },
+      {
+        "tableName": "CONSULTATIONS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `idAnim` TEXT NOT NULL, `date` TEXT, `objectConsult` TEXT, `observation` TEXT, `cRendu` TEXT, `weight` REAL NOT NULL, `idealWeight` REAL NOT NULL, `water` REAL NOT NULL, `bodyFat` REAL NOT NULL, `methodAnalysis` TEXT, `BCS` INTEGER NOT NULL, `k1Id` TEXT, `k1Value` REAL NOT NULL, `k2Id` TEXT, `k2Value` REAL NOT NULL, `k3Id` TEXT, `k3Value` REAL NOT NULL, `k4Id` TEXT, `k4Value` REAL NOT NULL, `k5Id` TEXT, `k5Value` REAL NOT NULL, `nLittle` INTEGER NOT NULL, `pAdult` REAL NOT NULL, `coefGes` INTEGER NOT NULL, `coefLact` INTEGER NOT NULL, `MCS` INTEGER NOT NULL, `referenceGeneraleId` TEXT, `referencesMaladiesJson` TEXT, `keywordsJson` TEXT, `coefficientAjustement` REAL NOT NULL, `prescriptionAnamnese` TEXT, `prescriptionExamenClinique` TEXT, `prescriptionFacteurNutritionnelClef` TEXT, `prescriptionAdditionalText` TEXT, `prescriptionSelectedConseilIdsJson` TEXT, `prescriptionLocalHtmlSectionsJson` TEXT, `prescriptionSelectedRationIdsJson` TEXT, PRIMARY KEY(`uuid`), FOREIGN KEY(`idAnim`) REFERENCES `ANIMALS`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idAnim",
+            "columnName": "idAnim",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "objectConsult",
+            "columnName": "objectConsult",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "observation",
+            "columnName": "observation",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "cRendu",
+            "columnName": "cRendu",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "weight",
+            "columnName": "weight",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idealWeight",
+            "columnName": "idealWeight",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "water",
+            "columnName": "water",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bodyFat",
+            "columnName": "bodyFat",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "methodAnalysis",
+            "columnName": "methodAnalysis",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "BCS",
+            "columnName": "BCS",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "k1Id",
+            "columnName": "k1Id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "k1Value",
+            "columnName": "k1Value",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "k2Id",
+            "columnName": "k2Id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "k2Value",
+            "columnName": "k2Value",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "k3Id",
+            "columnName": "k3Id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "k3Value",
+            "columnName": "k3Value",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "k4Id",
+            "columnName": "k4Id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "k4Value",
+            "columnName": "k4Value",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "k5Id",
+            "columnName": "k5Id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "k5Value",
+            "columnName": "k5Value",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nLittle",
+            "columnName": "nLittle",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pAdult",
+            "columnName": "pAdult",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coefGes",
+            "columnName": "coefGes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coefLact",
+            "columnName": "coefLact",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "MCS",
+            "columnName": "MCS",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "referenceGeneraleId",
+            "columnName": "referenceGeneraleId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "referencesMaladiesJson",
+            "columnName": "referencesMaladiesJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "keywordsJson",
+            "columnName": "keywordsJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "coefficientAjustement",
+            "columnName": "coefficientAjustement",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "prescriptionAnamnese",
+            "columnName": "prescriptionAnamnese",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "prescriptionExamenClinique",
+            "columnName": "prescriptionExamenClinique",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "prescriptionFacteurNutritionnelClef",
+            "columnName": "prescriptionFacteurNutritionnelClef",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "prescriptionAdditionalText",
+            "columnName": "prescriptionAdditionalText",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "prescriptionSelectedConseilIdsJson",
+            "columnName": "prescriptionSelectedConseilIdsJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "prescriptionLocalHtmlSectionsJson",
+            "columnName": "prescriptionLocalHtmlSectionsJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "prescriptionSelectedRationIdsJson",
+            "columnName": "prescriptionSelectedRationIdsJson",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_CONSULTATIONS_idAnim",
+            "unique": false,
+            "columnNames": [
+              "idAnim"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_CONSULTATIONS_idAnim` ON `${TABLE_NAME}` (`idAnim`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "ANIMALS",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "idAnim"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "WEIGHT",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `refAnimal` TEXT NOT NULL, `date` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`refAnimal`) REFERENCES `ANIMALS`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "refAnimal",
+            "columnName": "refAnimal",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_WEIGHT_refAnimal",
+            "unique": false,
+            "columnNames": [
+              "refAnimal"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_WEIGHT_refAnimal` ON `${TABLE_NAME}` (`refAnimal`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "ANIMALS",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "refAnimal"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "RATIONS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `idConsult` TEXT NOT NULL, `name` TEXT, `coef` REAL NOT NULL, `actual` INTEGER NOT NULL, `number` INTEGER NOT NULL, `espece` TEXT, `recette` INTEGER NOT NULL, `description` TEXT, PRIMARY KEY(`uuid`), FOREIGN KEY(`idConsult`) REFERENCES `CONSULTATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idConsult",
+            "columnName": "idConsult",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "coef",
+            "columnName": "coef",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actual",
+            "columnName": "actual",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "number",
+            "columnName": "number",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espece",
+            "columnName": "espece",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "recette",
+            "columnName": "recette",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_RATIONS_idConsult",
+            "unique": false,
+            "columnNames": [
+              "idConsult"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_RATIONS_idConsult` ON `${TABLE_NAME}` (`idConsult`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "CONSULTATIONS",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "idConsult"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "ALIMENTS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `refAlimUnif` TEXT NOT NULL, `refRation` TEXT NOT NULL, `quantity` REAL NOT NULL, `refTarget` INTEGER NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`refRation`) REFERENCES `RATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`refAlimUnif`) REFERENCES `FOOD`(`uuid`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "refAlimUnif",
+            "columnName": "refAlimUnif",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "refRation",
+            "columnName": "refRation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantity",
+            "columnName": "quantity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "refTarget",
+            "columnName": "refTarget",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ALIMENTS_refRation",
+            "unique": false,
+            "columnNames": [
+              "refRation"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ALIMENTS_refRation` ON `${TABLE_NAME}` (`refRation`)"
+          },
+          {
+            "name": "index_ALIMENTS_refAlimUnif",
+            "unique": false,
+            "columnNames": [
+              "refAlimUnif"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ALIMENTS_refAlimUnif` ON `${TABLE_NAME}` (`refAlimUnif`)"
+          },
+          {
+            "name": "index_ALIMENTS_refAlimUnif_refRation",
+            "unique": true,
+            "columnNames": [
+              "refAlimUnif",
+              "refRation"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_ALIMENTS_refAlimUnif_refRation` ON `${TABLE_NAME}` (`refAlimUnif`, `refRation`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "RATIONS",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "refRation"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          },
+          {
+            "table": "FOOD",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "refAlimUnif"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "RECETTES",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `name` TEXT, `number` INTEGER NOT NULL, `espece` TEXT, `description` TEXT, PRIMARY KEY(`uuid`))",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "number",
+            "columnName": "number",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espece",
+            "columnName": "espece",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        }
+      },
+      {
+        "tableName": "ALIMENTS_RECETTES",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `refAlimUnif` TEXT NOT NULL, `refRecipe` TEXT NOT NULL, `quantity` REAL NOT NULL, `refTarget` INTEGER NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`refRecipe`) REFERENCES `RECETTES`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`refAlimUnif`) REFERENCES `FOOD`(`uuid`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "refAlimUnif",
+            "columnName": "refAlimUnif",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "refRecipe",
+            "columnName": "refRecipe",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantity",
+            "columnName": "quantity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "refTarget",
+            "columnName": "refTarget",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ALIMENTS_RECETTES_refRecipe",
+            "unique": false,
+            "columnNames": [
+              "refRecipe"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ALIMENTS_RECETTES_refRecipe` ON `${TABLE_NAME}` (`refRecipe`)"
+          },
+          {
+            "name": "index_ALIMENTS_RECETTES_refAlimUnif",
+            "unique": false,
+            "columnNames": [
+              "refAlimUnif"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ALIMENTS_RECETTES_refAlimUnif` ON `${TABLE_NAME}` (`refAlimUnif`)"
+          },
+          {
+            "name": "index_ALIMENTS_RECETTES_refAlimUnif_refRecipe",
+            "unique": true,
+            "columnNames": [
+              "refAlimUnif",
+              "refRecipe"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_ALIMENTS_RECETTES_refAlimUnif_refRecipe` ON `${TABLE_NAME}` (`refAlimUnif`, `refRecipe`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "RECETTES",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "refRecipe"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          },
+          {
+            "table": "FOOD",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "refAlimUnif"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "ESPECES_ALIMENTS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `refAliment` TEXT NOT NULL, `espece` TEXT NOT NULL, FOREIGN KEY(`refAliment`) REFERENCES `FOOD`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "refAliment",
+            "columnName": "refAliment",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espece",
+            "columnName": "espece",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ESPECES_ALIMENTS_refAliment",
+            "unique": false,
+            "columnNames": [
+              "refAliment"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ESPECES_ALIMENTS_refAliment` ON `${TABLE_NAME}` (`refAliment`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "FOOD",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "refAliment"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "INDICATIONS_ALIMENTS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`refAliment` TEXT NOT NULL, `indication` INTEGER NOT NULL, PRIMARY KEY(`refAliment`, `indication`), FOREIGN KEY(`refAliment`) REFERENCES `FOOD`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "refAliment",
+            "columnName": "refAliment",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "indication",
+            "columnName": "indication",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "refAliment",
+            "indication"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_INDICATIONS_ALIMENTS_refAliment",
+            "unique": false,
+            "columnNames": [
+              "refAliment"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_INDICATIONS_ALIMENTS_refAliment` ON `${TABLE_NAME}` (`refAliment`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "FOOD",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "refAliment"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "SUPPLEMENTAL_VARIABLES",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`idConsult` TEXT NOT NULL, `variableKind` INTEGER NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`idConsult`, `variableKind`), FOREIGN KEY(`idConsult`) REFERENCES `CONSULTATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "idConsult",
+            "columnName": "idConsult",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "variableKind",
+            "columnName": "variableKind",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "idConsult",
+            "variableKind"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_SUPPLEMENTAL_VARIABLES_idConsult",
+            "unique": false,
+            "columnNames": [
+              "idConsult"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_SUPPLEMENTAL_VARIABLES_idConsult` ON `${TABLE_NAME}` (`idConsult`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "CONSULTATIONS",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "idConsult"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "FOOD",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `groupAlim` INTEGER NOT NULL, `typeAlim` INTEGER NOT NULL, `ingredients` TEXT NOT NULL, `price` REAL NOT NULL, `categPrice` TEXT NOT NULL, `brand` TEXT NOT NULL, `gamme` TEXT NOT NULL, `cont` TEXT NOT NULL, `unitPres` INTEGER NOT NULL, `quantityPres` REAL NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, `nameDef` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `deprecated` INTEGER NOT NULL, `DataB` TEXT NOT NULL, `RefRation` TEXT, `RefAlimUnif` TEXT, `especesJson` TEXT, `indicationsJson` TEXT, `name` TEXT, `quantite` REAL NOT NULL, `lastUpdateDate` TEXT, `imageRef` TEXT, PRIMARY KEY(`uuid`), FOREIGN KEY(`RefRation`) REFERENCES `RATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupAlim",
+            "columnName": "groupAlim",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "typeAlim",
+            "columnName": "typeAlim",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ingredients",
+            "columnName": "ingredients",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "price",
+            "columnName": "price",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categPrice",
+            "columnName": "categPrice",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "brand",
+            "columnName": "brand",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gamme",
+            "columnName": "gamme",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cont",
+            "columnName": "cont",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unitPres",
+            "columnName": "unitPres",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantityPres",
+            "columnName": "quantityPres",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nameDef",
+            "columnName": "nameDef",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consistent",
+            "columnName": "consistent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deprecated",
+            "columnName": "deprecated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "DataB",
+            "columnName": "DataB",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "RefRation",
+            "columnName": "RefRation",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "RefAlimUnif",
+            "columnName": "RefAlimUnif",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "especesJson",
+            "columnName": "especesJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "indicationsJson",
+            "columnName": "indicationsJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "quantite",
+            "columnName": "quantite",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdateDate",
+            "columnName": "lastUpdateDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "imageRef",
+            "columnName": "imageRef",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_FOOD_RefRation",
+            "unique": false,
+            "columnNames": [
+              "RefRation"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_FOOD_RefRation` ON `${TABLE_NAME}` (`RefRation`)"
+          },
+          {
+            "name": "index_FOOD_uuid",
+            "unique": true,
+            "columnNames": [
+              "uuid"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_FOOD_uuid` ON `${TABLE_NAME}` (`uuid`)"
+          },
+          {
+            "name": "index_FOOD_groupAlim",
+            "unique": false,
+            "columnNames": [
+              "groupAlim"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_FOOD_groupAlim` ON `${TABLE_NAME}` (`groupAlim`)"
+          },
+          {
+            "name": "index_FOOD_typeAlim",
+            "unique": false,
+            "columnNames": [
+              "typeAlim"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_FOOD_typeAlim` ON `${TABLE_NAME}` (`typeAlim`)"
+          },
+          {
+            "name": "index_FOOD_brand",
+            "unique": false,
+            "columnNames": [
+              "brand"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_FOOD_brand` ON `${TABLE_NAME}` (`brand`)"
+          },
+          {
+            "name": "index_FOOD_name",
+            "unique": false,
+            "columnNames": [
+              "name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_FOOD_name` ON `${TABLE_NAME}` (`name`)"
+          },
+          {
+            "name": "index_FOOD_especesJson",
+            "unique": false,
+            "columnNames": [
+              "especesJson"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_FOOD_especesJson` ON `${TABLE_NAME}` (`especesJson`)"
+          },
+          {
+            "name": "index_FOOD_deprecated",
+            "unique": false,
+            "columnNames": [
+              "deprecated"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_FOOD_deprecated` ON `${TABLE_NAME}` (`deprecated`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "RATIONS",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "RefRation"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "NUTRIENT_VALUES",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`refAliment` TEXT NOT NULL, `nutrientLabel` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`refAliment`, `nutrientLabel`), FOREIGN KEY(`refAliment`) REFERENCES `FOOD`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "refAliment",
+            "columnName": "refAliment",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutrientLabel",
+            "columnName": "nutrientLabel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "refAliment",
+            "nutrientLabel"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_NUTRIENT_VALUES_refAliment",
+            "unique": false,
+            "columnNames": [
+              "refAliment"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_NUTRIENT_VALUES_refAliment` ON `${TABLE_NAME}` (`refAliment`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "FOOD",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "refAliment"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "BIBLIO_REFS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `firstAuthor` TEXT NOT NULL, `year` INTEGER NOT NULL, `completeRef` TEXT NOT NULL, `comments` TEXT NOT NULL, `bibtex` TEXT NOT NULL, `consistent` INTEGER NOT NULL, PRIMARY KEY(`uuid`))",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstAuthor",
+            "columnName": "firstAuthor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completeRef",
+            "columnName": "completeRef",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "comments",
+            "columnName": "comments",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bibtex",
+            "columnName": "bibtex",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consistent",
+            "columnName": "consistent",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        }
+      },
+      {
+        "tableName": "ALIMENT_BIBLIO_REFS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`alimentUuid` TEXT NOT NULL, `biblioRefUuid` TEXT NOT NULL, PRIMARY KEY(`alimentUuid`, `biblioRefUuid`), FOREIGN KEY(`alimentUuid`) REFERENCES `FOOD`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`biblioRefUuid`) REFERENCES `BIBLIO_REFS`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "alimentUuid",
+            "columnName": "alimentUuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "biblioRefUuid",
+            "columnName": "biblioRefUuid",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "alimentUuid",
+            "biblioRefUuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ALIMENT_BIBLIO_REFS_alimentUuid",
+            "unique": false,
+            "columnNames": [
+              "alimentUuid"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ALIMENT_BIBLIO_REFS_alimentUuid` ON `${TABLE_NAME}` (`alimentUuid`)"
+          },
+          {
+            "name": "index_ALIMENT_BIBLIO_REFS_biblioRefUuid",
+            "unique": false,
+            "columnNames": [
+              "biblioRefUuid"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ALIMENT_BIBLIO_REFS_biblioRefUuid` ON `${TABLE_NAME}` (`biblioRefUuid`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "FOOD",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "alimentUuid"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          },
+          {
+            "table": "BIBLIO_REFS",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "biblioRefUuid"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "EQUATIONS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT NOT NULL, `equationScript` TEXT NOT NULL, `specie` TEXT, `kind` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `bibRef` TEXT, `variables` TEXT NOT NULL, `nutrient` TEXT, `ratio` INTEGER NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`bibRef`) REFERENCES `BIBLIO_REFS`(`uuid`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "equationScript",
+            "columnName": "equationScript",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "specie",
+            "columnName": "specie",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consistent",
+            "columnName": "consistent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bibRef",
+            "columnName": "bibRef",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "variables",
+            "columnName": "variables",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutrient",
+            "columnName": "nutrient",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ratio",
+            "columnName": "ratio",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_EQUATIONS_bibRef",
+            "unique": false,
+            "columnNames": [
+              "bibRef"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EQUATIONS_bibRef` ON `${TABLE_NAME}` (`bibRef`)"
+          },
+          {
+            "name": "index_EQUATIONS_uuid",
+            "unique": true,
+            "columnNames": [
+              "uuid"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_EQUATIONS_uuid` ON `${TABLE_NAME}` (`uuid`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "BIBLIO_REFS",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bibRef"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "CONSULTATION_KEYWORDS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `label` TEXT NOT NULL, PRIMARY KEY(`uuid`))",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "label",
+            "columnName": "label",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_CONSULTATION_KEYWORDS_label",
+            "unique": true,
+            "columnNames": [
+              "label"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_CONSULTATION_KEYWORDS_label` ON `${TABLE_NAME}` (`label`)"
+          }
+        ]
+      },
+      {
+        "tableName": "REFERENCE_EV",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `nom` TEXT NOT NULL, `description` TEXT NOT NULL, `maladie` INTEGER NOT NULL, `nomMaladie` TEXT NOT NULL, `nomEnergie` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `espece` TEXT NOT NULL, `stadePhysio` TEXT NOT NULL, `nomk1` TEXT NOT NULL, `nomk2` TEXT NOT NULL, `nomk3` TEXT NOT NULL, `nomk4` TEXT NOT NULL, `nomk5` TEXT NOT NULL, PRIMARY KEY(`uuid`))",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nom",
+            "columnName": "nom",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maladie",
+            "columnName": "maladie",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomMaladie",
+            "columnName": "nomMaladie",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomEnergie",
+            "columnName": "nomEnergie",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consistent",
+            "columnName": "consistent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espece",
+            "columnName": "espece",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stadePhysio",
+            "columnName": "stadePhysio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomk1",
+            "columnName": "nomk1",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomk2",
+            "columnName": "nomk2",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomk3",
+            "columnName": "nomk3",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomk4",
+            "columnName": "nomk4",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomk5",
+            "columnName": "nomk5",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_REFERENCE_EV_uuid",
+            "unique": true,
+            "columnNames": [
+              "uuid"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_REFERENCE_EV_uuid` ON `${TABLE_NAME}` (`uuid`)"
+          }
+        ]
+      },
+      {
+        "tableName": "REFERENCE_EV_EQUATIONS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`referenceEvId` TEXT NOT NULL, `equationId` TEXT NOT NULL, `equationType` TEXT NOT NULL, PRIMARY KEY(`referenceEvId`, `equationType`), FOREIGN KEY(`referenceEvId`) REFERENCES `REFERENCE_EV`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`equationId`) REFERENCES `EQUATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "referenceEvId",
+            "columnName": "referenceEvId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "equationId",
+            "columnName": "equationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "equationType",
+            "columnName": "equationType",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "referenceEvId",
+            "equationType"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_REFERENCE_EV_EQUATIONS_referenceEvId",
+            "unique": false,
+            "columnNames": [
+              "referenceEvId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_REFERENCE_EV_EQUATIONS_referenceEvId` ON `${TABLE_NAME}` (`referenceEvId`)"
+          },
+          {
+            "name": "index_REFERENCE_EV_EQUATIONS_equationId",
+            "unique": false,
+            "columnNames": [
+              "equationId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_REFERENCE_EV_EQUATIONS_equationId` ON `${TABLE_NAME}` (`equationId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "REFERENCE_EV",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "referenceEvId"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          },
+          {
+            "table": "EQUATIONS",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "equationId"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "REFERENCE_EV_COEFFICIENTS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `referenceEvId` TEXT NOT NULL, `groupType` TEXT NOT NULL, `description` TEXT NOT NULL, `coef` REAL NOT NULL, `groupUUID` INTEGER NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`referenceEvId`) REFERENCES `REFERENCE_EV`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "referenceEvId",
+            "columnName": "referenceEvId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupType",
+            "columnName": "groupType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coef",
+            "columnName": "coef",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupUUID",
+            "columnName": "groupUUID",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_REFERENCE_EV_COEFFICIENTS_referenceEvId",
+            "unique": false,
+            "columnNames": [
+              "referenceEvId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_REFERENCE_EV_COEFFICIENTS_referenceEvId` ON `${TABLE_NAME}` (`referenceEvId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "REFERENCE_EV",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "referenceEvId"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "REFERENCE_EV_NUTRIENTS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `referenceEvId` TEXT NOT NULL, `nutrientCode` TEXT NOT NULL, `reflevel` TEXT NOT NULL, `quantite` REAL NOT NULL, `uniteId` INTEGER NOT NULL, `uniteReqId` INTEGER NOT NULL, `biblioRefId` TEXT, PRIMARY KEY(`uuid`), FOREIGN KEY(`referenceEvId`) REFERENCES `REFERENCE_EV`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`biblioRefId`) REFERENCES `BIBLIO_REFS`(`uuid`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "referenceEvId",
+            "columnName": "referenceEvId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutrientCode",
+            "columnName": "nutrientCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reflevel",
+            "columnName": "reflevel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantite",
+            "columnName": "quantite",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uniteId",
+            "columnName": "uniteId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uniteReqId",
+            "columnName": "uniteReqId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "biblioRefId",
+            "columnName": "biblioRefId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_REFERENCE_EV_NUTRIENTS_referenceEvId",
+            "unique": false,
+            "columnNames": [
+              "referenceEvId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_REFERENCE_EV_NUTRIENTS_referenceEvId` ON `${TABLE_NAME}` (`referenceEvId`)"
+          },
+          {
+            "name": "index_REFERENCE_EV_NUTRIENTS_biblioRefId",
+            "unique": false,
+            "columnNames": [
+              "biblioRefId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_REFERENCE_EV_NUTRIENTS_biblioRefId` ON `${TABLE_NAME}` (`biblioRefId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "REFERENCE_EV",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "referenceEvId"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          },
+          {
+            "table": "BIBLIO_REFS",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "biblioRefId"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "EXAM_GRADING_RULES",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`examId` TEXT NOT NULL, `exerciseId` TEXT NOT NULL, `rulesJson` TEXT NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`examId`, `exerciseId`))",
+        "fields": [
+          {
+            "fieldPath": "examId",
+            "columnName": "examId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exerciseId",
+            "columnName": "exerciseId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rulesJson",
+            "columnName": "rulesJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMs",
+            "columnName": "updatedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "examId",
+            "exerciseId"
+          ]
+        }
+      },
+      {
+        "tableName": "EXAM_GRADES",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`examId` TEXT NOT NULL, `exerciseId` TEXT NOT NULL, `studentId` TEXT NOT NULL, `animalId` TEXT, `animalName` TEXT NOT NULL, `consultationId` TEXT, `autoScore` REAL NOT NULL, `manualScore` REAL, `finalScore` REAL NOT NULL, `detailsJson` TEXT NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`examId`, `exerciseId`, `studentId`))",
+        "fields": [
+          {
+            "fieldPath": "examId",
+            "columnName": "examId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exerciseId",
+            "columnName": "exerciseId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "studentId",
+            "columnName": "studentId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "animalId",
+            "columnName": "animalId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "animalName",
+            "columnName": "animalName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consultationId",
+            "columnName": "consultationId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "autoScore",
+            "columnName": "autoScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "manualScore",
+            "columnName": "manualScore",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "finalScore",
+            "columnName": "finalScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detailsJson",
+            "columnName": "detailsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMs",
+            "columnName": "updatedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "examId",
+            "exerciseId",
+            "studentId"
+          ]
+        }
+      },
+      {
+        "tableName": "HTML_SECTIONS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `contentJson` TEXT NOT NULL, `category` TEXT NOT NULL, `tagsJson` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `isTemplate` INTEGER NOT NULL, `priority` INTEGER NOT NULL, `isActive` INTEGER NOT NULL, `targetSpeciesJson` TEXT NOT NULL, `targetAgeGroupsJson` TEXT NOT NULL, `usageCount` INTEGER NOT NULL, `lastUsed` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentJson",
+            "columnName": "contentJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tagsJson",
+            "columnName": "tagsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isTemplate",
+            "columnName": "isTemplate",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "priority",
+            "columnName": "priority",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isActive",
+            "columnName": "isActive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetSpeciesJson",
+            "columnName": "targetSpeciesJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetAgeGroupsJson",
+            "columnName": "targetAgeGroupsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usageCount",
+            "columnName": "usageCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUsed",
+            "columnName": "lastUsed",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_HTML_SECTIONS_category",
+            "unique": false,
+            "columnNames": [
+              "category"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_HTML_SECTIONS_category` ON `${TABLE_NAME}` (`category`)"
+          },
+          {
+            "name": "index_HTML_SECTIONS_isTemplate",
+            "unique": false,
+            "columnNames": [
+              "isTemplate"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_HTML_SECTIONS_isTemplate` ON `${TABLE_NAME}` (`isTemplate`)"
+          },
+          {
+            "name": "index_HTML_SECTIONS_title",
+            "unique": false,
+            "columnNames": [
+              "title"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_HTML_SECTIONS_title` ON `${TABLE_NAME}` (`title`)"
+          }
+        ]
+      },
+      {
+        "tableName": "HTML_SECTION_LIBRARIES",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT NOT NULL, `sectionIdsJson` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sectionIdsJson",
+            "columnName": "sectionIdsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "CUSTOM_NUTRIENTS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`label` TEXT NOT NULL, `displayName` TEXT NOT NULL, `unite` TEXT NOT NULL, `ueCode` TEXT NOT NULL, `categoryCode` TEXT NOT NULL, PRIMARY KEY(`label`))",
+        "fields": [
+          {
+            "fieldPath": "label",
+            "columnName": "label",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unite",
+            "columnName": "unite",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ueCode",
+            "columnName": "ueCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryCode",
+            "columnName": "categoryCode",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "label"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ac444b4eeea145837cc9b12949c80758')"
+    ]
+  }
+}

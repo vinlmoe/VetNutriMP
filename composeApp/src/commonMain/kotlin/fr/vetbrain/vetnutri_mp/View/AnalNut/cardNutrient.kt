@@ -58,6 +58,7 @@ private fun obtenirNomTraduitNutriment(nom: String, nutriment: Any): String {
         is AAEnum -> nutriment.translateEnum()
         is NutrientAnalysis -> nutriment.translateEnum()
         is NutrientEnergy -> nutriment.translateEnum()
+        is CustomNutrient -> nutriment.nameToString()
         else -> nom // Fallback sur le nom original si le type n'est pas reconnu
     }
 }
@@ -159,6 +160,27 @@ fun AnalyseNutritionnelleCard(
     ) {
         valeursNutritionnellesLoading = true
 
+        val customLabelsPresentsInRation =
+                ration.alimentMutableList
+                        .mapNotNull { it.aliment }
+                        .flatMap { aliment ->
+                                aliment.valMap.entries.mapNotNull { (nutrient, quantity) ->
+                                        if (nutrient is CustomNutrient && quantity.value > 0.0) {
+                                                nutrient.label
+                                        } else {
+                                                null
+                                        }
+                                }
+                        }
+                        .distinct()
+
+        val effectiveSelectedNutrients =
+                if (nutrimentsSelectionnes.isNullOrEmpty()) {
+                        nutrimentsSelectionnes
+                } else {
+                        (nutrimentsSelectionnes + customLabelsPresentsInRation).distinct()
+                }
+
         val shouldUseEquations = referenceUtilisee != null && equationRepository != null
 
         val preferencesEspece = if (shouldUseEquations) {
@@ -176,8 +198,8 @@ fun AnalyseNutritionnelleCard(
         val resultat = withContext(Dispatchers.Default) {
             if (
                 afficherTousLesNutriments ||
-                nutrimentsSelectionnes == null ||
-                nutrimentsSelectionnes.isEmpty()
+                effectiveSelectedNutrients == null ||
+                effectiveSelectedNutrients.isEmpty()
             ) {
                 if (shouldUseEquations && preferencesEspece != null) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations(
@@ -193,13 +215,13 @@ fun AnalyseNutritionnelleCard(
                 if (shouldUseEquations && preferencesEspece != null) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
                         ration = ration,
-                        nutrimentsSelectionnes = nutrimentsSelectionnes,
+                        nutrimentsSelectionnes = effectiveSelectedNutrients,
                         preferencesEspece = preferencesEspece,
                         equationRepository = equationRepository,
                         referenceEv = referenceUtilisee
                     )
                 } else {
-                    analyserValeursNutritionnellesRationSelective(ration, nutrimentsSelectionnes)
+                    analyserValeursNutritionnellesRationSelective(ration, effectiveSelectedNutrients)
                 }
             }
         }
