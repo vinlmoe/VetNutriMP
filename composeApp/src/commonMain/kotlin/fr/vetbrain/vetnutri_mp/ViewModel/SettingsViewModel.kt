@@ -21,8 +21,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 
 /** ViewModel pour la gestion des paramètres de l'application */
 class SettingsViewModel(
@@ -745,7 +747,9 @@ class SettingsViewModel(
         onResult: (ImportResult) -> Unit
     ) {
         viewModelScope.launch {
-            val result = relaunchAutomaticImport(forceImport)
+            val result = withContext(AppDispatchers.IO) {
+                relaunchAutomaticImport(forceImport)
+            }
             onResult(result)
         }
     }

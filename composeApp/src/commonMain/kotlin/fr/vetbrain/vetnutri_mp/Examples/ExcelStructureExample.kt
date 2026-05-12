@@ -2,7 +2,7 @@ package fr.vetbrain.vetnutri_mp.Examples
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Enumer.*
-import fr.vetbrain.vetnutri_mp.Services.ExcelFoodService
+import fr.vetbrain.vetnutri_mp.Service.ExcelFoodService
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 
 /**

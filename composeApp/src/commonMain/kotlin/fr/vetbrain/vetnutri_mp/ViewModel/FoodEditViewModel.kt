@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
@@ -139,8 +140,10 @@ class FoodEditViewModel(
     private fun loadAvailableBiblioRefs() {
         coroutineScope.launch {
             try {
-                biblioRefRepository?.getAllBiblioRefs()?.collect { refs ->
-                    _availableBiblioRefs.value = refs
+                withContext(AppDispatchers.IO) {
+                    biblioRefRepository?.getAllBiblioRefs()?.collect { refs ->
+                        _availableBiblioRefs.value = refs
+                    }
                 }
             } catch (_: Exception) {}
         }

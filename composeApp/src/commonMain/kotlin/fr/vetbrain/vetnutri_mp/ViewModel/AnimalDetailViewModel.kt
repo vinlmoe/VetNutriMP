@@ -20,9 +20,11 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -67,7 +69,8 @@ class AnimalDetailViewModel(
         private val animalRepository: AnimalRepository,
         private val databaseReferenceEvRepository: DatabaseReferenceEvRepository,
         private val preferencesRepository: PreferencesRepository,
-        val foodRepository: FoodRepository
+        val foodRepository: FoodRepository,
+        private val equationRepository: EquationRepository? = null
 ) {
     private val job = SupervisorJob()
     private val viewModelScope = CoroutineScope(AppDispatchers.Main + job)
@@ -246,6 +249,10 @@ class AnimalDetailViewModel(
     val besoinEnergetiqueTotal: StateFlow<Double?> = _valeursMetaboliques
             .map { it.besoinEnergetiqueTotal }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // Énergie additionnelle issue des références maladies (calculée via EquationEvaluator)
+    private val _energieAdditionnelle = MutableStateFlow(0.0)
+    val energieAdditionnelle: StateFlow<Double> = _energieAdditionnelle.asStateFlow()
 
     // ✨ États pour l'analyse graphique des aliments
     private val _alimentsSelectionnes = MutableStateFlow<List<AlimentEv>>(emptyList())
@@ -1566,6 +1573,36 @@ class AnimalDetailViewModel(
     }
 
     // ===== MÉTHODES DE CALCUL MÉTABOLIQUE =====
+
+    /**
+     * Calcule l'énergie additionnelle issue des références maladies et met à jour le StateFlow.
+     * Doit être appelée depuis la View quand les dépendances changent.
+     */
+    fun updateEnergieAdditionnelle(
+            referencesMaladies: List<ReferenceEv>,
+            consultation: ConsultationEv,
+            ration: Ration,
+            speciesPreferences: PreferencesEspece?
+    ) {
+        viewModelScope.launch(AppDispatchers.IO) {
+            val bee = _valeursMetaboliques.value.besoinEnergetiqueStandard ?: return@launch
+            val mw = _valeursMetaboliques.value.poidsMetabolique ?: return@launch
+            val beK = _valeursMetaboliques.value.besoinEnergetiqueTotal ?: return@launch
+            val add = EquationEvaluator.calculerEnergieAdditionnelle(
+                    referencesMaladies = referencesMaladies,
+                    poidsCorps = consultation.effectiveWeight?.toDouble()
+                            ?: consultation.weight?.toDouble() ?: 0.0,
+                    besoinEnergetiqueApresK = beK,
+                    besoinEnergetiqueStandard = bee,
+                    poidsMetabolique = mw,
+                    variablesSupp = consultation.suppVarp,
+                    ration = ration,
+                    preferences = speciesPreferences,
+                    equationRepository = equationRepository
+            )
+            _energieAdditionnelle.value = add
+        }
+    }
 
     /**
      * Calcule les valeurs métaboliques (poids métabolique, BEE) pour une consultation donnée
