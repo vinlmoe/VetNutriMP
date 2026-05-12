@@ -553,6 +553,12 @@ fun App(appDatabase: AppDatabase) {
                                         selectedReferenceEvId = null
                                         currentScreen = Screen.NewReferenceEvEdit
                                     },
+                                    onBulkEditReferences = { ids ->
+                                        selectedReferenceIdsForBulk = ids
+                                        bulkReferenceEditorViewModel.loadReferences(ids)
+                                        bulkReferenceEditorViewModel.loadAvailableBiblioRefs()
+                                        currentScreen = Screen.BulkReferenceEditor
+                                    },
                                     onEditConseil = { conseilId ->
                                         selectedConseilId = conseilId
                                         currentScreen = Screen.ConseilEdit
@@ -661,7 +667,10 @@ fun App(appDatabase: AppDatabase) {
                         Screen.BulkReferenceEditor -> {
                             BulkReferenceEditorView(
                                     viewModel = bulkReferenceEditorViewModel,
-                                    onNavigateBack = { currentScreen = Screen.ReferenceEvList },
+                                    onNavigateBack = {
+                                        selectedCalculationTab = 2
+                                        currentScreen = Screen.CalculationTabs
+                                    },
                                     modifier = Modifier.fillMaxSize()
                             )
                         }

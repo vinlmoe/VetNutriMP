@@ -365,6 +365,11 @@ fun RationsView(
                         }
                 }
 
+        fun formatNutrientNameForDisplay(nutrientCode: String): String {
+                val nutrient = NutrientResolver.resolveStoredLabel(nutrientCode)
+                return if (nutrient is CustomNutrient) nutrient.nameToString() else nutrientCode
+        }
+
         val typeExpressionSelector: @Composable RowScope.() -> Unit = {
                 Box {
                         TextButton(
@@ -986,9 +991,13 @@ fun RationsView(
                                                                                         nom,
                                                                                         valeurNutritionnelle
                                                                                         ->
+                                                                                        val displayName =
+                                                                                                formatNutrientNameForDisplay(
+                                                                                                        nom
+                                                                                                )
                                                                                         selectedNutrimentData =
                                                                                                 Triple(
-                                                                                                        nom,
+                                                                                                        displayName,
                                                                                                         valeurNutritionnelle,
                                                                                                         selectedRation!!
                                                                                                 )

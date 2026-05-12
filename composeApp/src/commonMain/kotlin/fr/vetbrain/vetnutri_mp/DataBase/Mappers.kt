@@ -718,14 +718,12 @@ alimentUuid: String
                 MutableMap<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity> {
                 val result = mutableMapOf<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>()
                 forEach { entity ->
-                        val nutrient = NutrientResolver.AllNutrientResolver(entity.nutrientLabel)
-                        if (nutrient != null) {
-                                result[nutrient] =
-                                        fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
-                                                entity.value,
-                                                entity.nutrientLabel
-                                        )
-                        }
+                        val nutrient = NutrientResolver.resolveStoredLabel(entity.nutrientLabel)
+                        result[nutrient] =
+                                fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
+                                        entity.value,
+                                        entity.nutrientLabel
+                                )
                 }
                 return result
         }
