@@ -21,7 +21,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
-import fr.vetbrain.vetnutri_mp.Services.ExcelFoodService
+import fr.vetbrain.vetnutri_mp.Service.ExcelFoodService
 import fr.vetbrain.vetnutri_mp.ExcelPlatform.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping

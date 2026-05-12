@@ -1,4 +1,4 @@
-package fr.vetbrain.vetnutri_mp.Services
+package fr.vetbrain.vetnutri_mp.Service
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentExcelRow

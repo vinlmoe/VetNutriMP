@@ -58,7 +58,6 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
-import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.normalizeDecimalInput
 import fr.vetbrain.vetnutri_mp.Utils.parsePositiveDecimal
 import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseNutritionnelleCard
@@ -161,53 +160,35 @@ fun RationsView(
                 preferencesApplication = preferencesRepository.preferences
         }
 
-        // États pour énergie additionnelle (patho) et BE total (final)
-        var energieAdditionnelle by remember { mutableStateOf(0.0) }
-        var besoinEnergetiqueTotal by remember { mutableStateOf<Double?>(null) }
+        // Énergie additionnelle issue des références maladies (calculée dans le ViewModel)
+        val energieAdditionnelle by viewModel.energieAdditionnelle.collectAsState()
 
-        // Calcul du BE après K et de l'énergie additionnelle, puis du BE total final
+        // Calcul du BE après K et du BE total final (K déjà inclus dans besoinEnergetiqueTotal du VM)
         val beApresK = remember(besoinEnergetiqueStandard, kCalcule) {
                 besoinEnergetiqueStandard?.let { beeVal -> beeVal * kCalcule }
         }
+        val besoinEnergetiqueTotal = remember(beApresK, energieAdditionnelle) {
+                beApresK?.let { it + energieAdditionnelle }
+        }
 
+        // Délégue le calcul d'énergie additionnelle au ViewModel quand les dépendances changent
         LaunchedEffect(
                 selectedConsultation,
-                referenceUtilisee,
                 referencesMaladiesResolues,
                 preferencesApplication,
-                poidsMetabolique,
-                besoinEnergetiqueStandard,
                 selectedRation
         ) {
                 val consultation = selectedConsultation
                 val ration = selectedRation
                 val prefsApp = preferencesApplication
-                val mw = poidsMetabolique
-                val bee = besoinEnergetiqueStandard
-                val beK = beApresK
-                val maladies = referencesMaladiesResolues
-                if (consultation != null && ration != null && prefsApp != null && mw != null && bee != null && beK != null) {
-                        try {
-                        } catch (_: Throwable) {}
+                if (consultation != null && ration != null && prefsApp != null) {
                         val prefsEspece = animal?.getEspece()?.let { prefsApp.getPreferencesEspece(it) }
-                        val add = EquationEvaluator.calculerEnergieAdditionnelle(
-                                referencesMaladies = maladies,
-                                poidsCorps = consultation.effectiveWeight?.toDouble() ?: consultation.weight?.toDouble() ?: 0.0,
-                                besoinEnergetiqueApresK = beK,
-                                besoinEnergetiqueStandard = bee,
-                                poidsMetabolique = mw,
-                                variablesSupp = consultation.suppVarp,
+                        viewModel.updateEnergieAdditionnelle(
+                                referencesMaladies = referencesMaladiesResolues,
+                                consultation = consultation,
                                 ration = ration,
-                                preferences = prefsEspece,
-                                equationRepository = equationRepository
+                                speciesPreferences = prefsEspece
                         )
-                        energieAdditionnelle = add
-                        besoinEnergetiqueTotal = beK.let { it + add }
-                        try {
-                        } catch (_: Throwable) {}
-                } else {
-                        energieAdditionnelle = 0.0
-                        besoinEnergetiqueTotal = beK
                 }
         }
 

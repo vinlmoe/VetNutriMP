@@ -8,6 +8,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.withContext
 
 /** Repository pour la persistance des références évaluées avec Room Multiplatform */
 class DatabaseReferenceEvRepository(
@@ -19,122 +21,71 @@ class DatabaseReferenceEvRepository(
     // Méthodes principales du repository
 
     suspend fun getAllReferenceEv(): List<ReferenceEv> {
-        return try {
-            val entities = referenceEvDao.getAllReferenceEv()
-            entities.map { convertEntityToReferenceEv(it) }
-        } catch (e: Exception) {
-            emptyList()
+        return withContext(AppDispatchers.IO) {
+            try {
+                val entities = referenceEvDao.getAllReferenceEv()
+                entities.map { convertEntityToReferenceEv(it) }
+            } catch (e: Exception) {
+                emptyList()
+            }
         }
     }
 
     suspend fun getReferenceEvById(id: String): ReferenceEv? {
-        return try {
-            val entity = referenceEvDao.getReferenceEvById(id)
-            entity?.let { convertEntityToReferenceEv(it) }
-        } catch (e: Exception) {
-            null
+        return withContext(AppDispatchers.IO) {
+            try {
+                val entity = referenceEvDao.getReferenceEvById(id)
+                entity?.let { convertEntityToReferenceEv(it) }
+            } catch (e: Exception) {
+                null
+            }
         }
     }
 
     suspend fun saveReferenceEv(referenceEv: ReferenceEv): String {
-        try {
-            // 1. Sauvegarder l'entité principale
+        return withContext(AppDispatchers.IO) {
             val entity = convertReferenceEvToEntity(referenceEv)
             referenceEvDao.insertReferenceEv(entity)
-
-            // 2. Les références bibliographiques existent déjà, pas besoin de les sauvegarder à nouveau
-
-            // 3. Les équations existent déjà, pas besoin de les sauvegarder à nouveau
-
-            // 4. Sauvegarder les relations avec les équations existantes
-            try {
-                saveEquationRelations(referenceEv)
-            } catch (e: Exception) {
-                throw e
-            }
-
-            // 5. Sauvegarder les coefficients
-            try {
-                saveCoefficients(referenceEv)
-            } catch (e: Exception) {
-                throw e
-            }
-
-            // 6. Sauvegarder les nutriments
-            try {
-                saveNutrients(referenceEv)
-            } catch (e: Exception) {
-                throw e
-            }
-
-            return referenceEv.uuid
-        } catch (e: Exception) {
-            throw e
+            saveEquationRelations(referenceEv)
+            saveCoefficients(referenceEv)
+            saveNutrients(referenceEv)
+            referenceEv.uuid
         }
     }
 
     suspend fun updateReferenceEv(referenceEv: ReferenceEv) {
-
-        try {
-            // 1. Mettre à jour l'entité principale
+        withContext(AppDispatchers.IO) {
             val entity = convertReferenceEvToEntity(referenceEv)
             referenceEvDao.updateReferenceEv(entity)
-
-            // 2. Les références bibliographiques existent déjà, pas besoin de les sauvegarder à nouveau
-
-            // 3. Les équations existent déjà, pas besoin de les sauvegarder à nouveau
-
-            // 4. Supprimer les anciennes relations
             referenceEvDao.deleteEquationsForReference(referenceEv.uuid)
             referenceEvDao.deleteCoefficientsForReference(referenceEv.uuid)
             referenceEvDao.deleteNutrientsForReference(referenceEv.uuid)
-
-            // 5. Sauvegarder les nouvelles relations
             saveEquationRelations(referenceEv)
             saveCoefficients(referenceEv)
             saveNutrients(referenceEv)
-
-        } catch (e: Exception) {
-            throw e
         }
     }
 
     suspend fun deleteReferenceEv(id: String) {
-        try {
+        withContext(AppDispatchers.IO) {
             referenceEvDao.deleteReferenceEvById(id)
-        } catch (e: Exception) {
-            throw e
         }
     }
 
-    // 🆕 Méthode publique pour sauvegarder un coefficient individuel
     suspend fun saveCoefficient(coefficient: ReferenceEvCoefficientEntity) {
-        try {
+        withContext(AppDispatchers.IO) {
             referenceEvDao.insertCoefficient(coefficient)
-        } catch (e: Exception) {
-            throw e
         }
     }
 
-    // 🆕 Méthode spéciale pour l'import qui gère les coefficients avec leurs UUIDs originaux
     suspend fun saveReferenceEvForImport(referenceEv: ReferenceEv): String {
-        try {
-            // 1. Sauvegarder l'entité principale
+        return withContext(AppDispatchers.IO) {
             val entity = convertReferenceEvToEntity(referenceEv)
             referenceEvDao.insertReferenceEv(entity)
-
-            // 2. Sauvegarder les relations avec les équations
             saveEquationRelations(referenceEv)
-
-            // 3. 🆕 Sauvegarder les coefficients AVEC leurs UUIDs originaux
             saveCoefficientsForImport(referenceEv)
-
-            // 4. Sauvegarder les nutriments
             saveNutrients(referenceEv)
-
-            return referenceEv.uuid
-        } catch (e: Exception) {
-            throw e
+            referenceEv.uuid
         }
     }
 
@@ -306,28 +257,16 @@ class DatabaseReferenceEvRepository(
      * @return Le nombre de références supprimées
      */
     suspend fun clearAllReferences(): Int {
-        
-
-        return try {
-            // Obtenir le nombre total de références avant suppression
+        return withContext(AppDispatchers.IO) {
             val allReferences = getAllReferenceEv()
             val count = allReferences.size
-
             if (count > 0) {
                 referenceEvDao.deleteAllEquationRelations()
-
                 referenceEvDao.deleteAllCoefficients()
-
                 referenceEvDao.deleteAllNutrients()
-
-                // Supprimer toutes les références
                 allReferences.forEach { reference -> deleteReferenceEv(reference.uuid) }
             }
-
             count
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
         }
     }
 

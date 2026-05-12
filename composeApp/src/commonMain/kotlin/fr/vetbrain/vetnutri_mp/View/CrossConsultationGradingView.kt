@@ -14,7 +14,7 @@ import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.ExcelPlatform.openCsvFileForImport
 import fr.vetbrain.vetnutri_mp.ExcelPlatform.saveCsvFileForExport
-import fr.vetbrain.vetnutri_mp.Services.ExamGradingCsvService
+import fr.vetbrain.vetnutri_mp.Service.ExamGradingCsvService
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CrossConsultationAnalysisViewModel
