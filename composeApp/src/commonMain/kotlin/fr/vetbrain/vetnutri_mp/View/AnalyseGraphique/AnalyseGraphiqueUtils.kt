@@ -302,8 +302,9 @@ suspend fun calculerPourcentagesEnergieRation(
                         return null
                 }
 
-                // Calculer l'énergie totale de la ration et l'énergie des macronutriments
-                var energieTotale = 0.0
+                // Calculer l'énergie des macronutriments avec les mêmes sources que le reste de
+                // l'application (valeurs directes + équations complémentaires).
+                var energieTotaleMacro = 0.0
                 var energieProteines = 0.0
                 var energieLipides = 0.0
                 var poidsTotal = 0.0
@@ -317,28 +318,52 @@ suspend fun calculerPourcentagesEnergieRation(
                                 continue
                         }
 
-                        // Récupérer les valeurs nutritionnelles
+                        val alimentRationTemp =
+                                AlimentRation(
+                                        aliment = aliment,
+                                        quantite = quantite,
+                                        weight = 1.0
+                                )
+
+                        // Récupérer les macronutriments en g (sur la quantité réellement donnée)
+                        // avec la logique de compléments utilisée dans les autres vues.
                         val proteines =
-                                aliment.valMap[NutrientMain.PROTEINE]
-                                        ?.value
+                                alimentRationTemp.getNutrientWithComplementary(
+                                        NutrientMain.PROTEINE,
+                                        preferencesEspece,
+                                        equationRepository,
+                                        referenceEv
+                                )
                                         ?: 0.0
                         val lipides =
-                                aliment.valMap[NutrientMain.LIPIDE]
-                                        ?.value
+                                alimentRationTemp.getNutrientWithComplementary(
+                                        NutrientMain.LIPIDE,
+                                        preferencesEspece,
+                                        equationRepository,
+                                        referenceEv
+                                )
+                                        ?: 0.0
+                        val glucides =
+                                alimentRationTemp.getNutrientWithComplementary(
+                                        NutrientMain.GLUCIDE,
+                                        preferencesEspece,
+                                        equationRepository,
+                                        referenceEv
+                                )
                                         ?: 0.0
                         val humidite =
-                                aliment.valMap[NutrientMain.HUMIDITE]
-                                        ?.value
-                                        ?: 0.0
-                        val ena =
-                                aliment.valMap[NutrientMain.ENA]
-                                        ?.value
+                                alimentRationTemp.getNutrientWithComplementary(
+                                        NutrientMain.HUMIDITE,
+                                        preferencesEspece,
+                                        equationRepository,
+                                        referenceEv
+                                )
                                         ?: 0.0
 
-                        // Calculer l'énergie des macronutriments (en kcal pour 100g)
-                        val energieProteinesAliment = (proteines * quantite / 100.0) * 3.5
-                        val energieLipidesAliment = (lipides * quantite / 100.0) * 8.5
-                        val energieEnaAliment = (ena * quantite / 100.0) * 3.5
+                        // Coefficients utilisés ailleurs dans l'application pour ces graphes.
+                        val energieProteinesAliment = proteines * 3.5
+                        val energieLipidesAliment = lipides * 8.5
+                        val energieGlucidesAliment = glucides * 3.5
 
                         // Calculer le poids et l'humidité
                         poidsTotal += quantite
@@ -347,20 +372,40 @@ suspend fun calculerPourcentagesEnergieRation(
                         // Ajouter à l'énergie totale
                         energieProteines += energieProteinesAliment
                         energieLipides += energieLipidesAliment
-                        energieTotale += (energieProteinesAliment + energieLipidesAliment + energieEnaAliment)
-                        
+                        energieTotaleMacro +=
+                                (energieProteinesAliment +
+                                        energieLipidesAliment +
+                                        energieGlucidesAliment)
                 }
 
-                if (energieTotale <= 0) {
+                if (energieTotaleMacro <= 0) {
                         return null
                 }
 
                 // Calculer les pourcentages d'énergie
-                val pourcentageProteines = (energieProteines / energieTotale) * 100.0
-                val pourcentageLipides = (energieLipides / energieTotale) * 100.0
+                val pourcentageProteines = (energieProteines / energieTotaleMacro) * 100.0
+                val pourcentageLipides = (energieLipides / energieTotaleMacro) * 100.0
 
                 // Calculer la matière sèche
-                val matiereSeche = poidsTotal - humiditeTotale
+                val matiereSeche = (poidsTotal - humiditeTotale).coerceAtLeast(0.0)
+
+                // Énergie totale de la ration pour les graphes de densité.
+                // On conserve getEnergie() pour respecter l'équation énergétique du référentiel.
+                var energieTotaleRation = 0.0
+                for (alimentRation in ration.alimentMutableList) {
+                        val aliment = alimentRation.aliment ?: continue
+                        val alimentRationTemp =
+                                AlimentRation(
+                                        aliment = aliment,
+                                        quantite = alimentRation.quantite,
+                                        weight = 1.0
+                                )
+                        energieTotaleRation +=
+                                alimentRationTemp.getEnergie(
+                                        referenceEv = referenceEv,
+                                        equationRepository = equationRepository
+                                )
+                }
 
                 return RationEnergyData(
                         consultationDate = null, // Sera rempli plus tard
@@ -370,7 +415,7 @@ suspend fun calculerPourcentagesEnergieRation(
                         numero = ration.number,
                         proteineEnergyPercentage = pourcentageProteines,
                         lipideEnergyPercentage = pourcentageLipides,
-                        energieTotale = energieTotale,
+                        energieTotale = energieTotaleRation,
                         matiereSeche = matiereSeche,
                         poidsTotal = poidsTotal
                 )
@@ -411,4 +456,3 @@ fun convertirTexteEnPoids(texte: String): Double? {
         val texteNormalise = normaliserTextePoids(texte)
         return texteNormalise.toDoubleOrNull()
 }
-
