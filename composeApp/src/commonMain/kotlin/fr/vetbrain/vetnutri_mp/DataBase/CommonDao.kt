@@ -263,6 +263,9 @@ interface NutrientValueDao {
         @Query("DELETE FROM NUTRIENT_VALUES WHERE refAliment IN (:alimentUuids)")
         suspend fun deleteAllForAliments(alimentUuids: List<String>)
 
+        @Query("SELECT DISTINCT nutrientLabel FROM NUTRIENT_VALUES")
+        suspend fun getDistinctNutrientLabels(): List<String>
+
         @Transaction
         suspend fun replaceNutrientValues(alimentUuid: String, values: List<NutrientValueEntity>) {
                 deleteAllNutrientValuesForAliment(alimentUuid)

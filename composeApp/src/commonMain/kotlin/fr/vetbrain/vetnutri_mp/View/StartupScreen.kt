@@ -115,7 +115,7 @@ fun StartupScreen(
         // Vérifier l'état de la base de données, des CGU et des versions au démarrage
         LaunchedEffect(Unit) {
                 try {
-                        val foodCount = settingsViewModel.foodRepository.getAllFoods().size
+                        val foodCount = settingsViewModel.foodRepository.getFoodsCount()
                         val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
 
                         // Assainir les doublons de coefficients K (même nom et même valeur) au démarrage

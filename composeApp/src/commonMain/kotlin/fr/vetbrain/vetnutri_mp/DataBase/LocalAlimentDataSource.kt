@@ -266,6 +266,11 @@ class LocalAlimentDataSource(
         return count
     }
 
+    override suspend fun getFoodsCount(): Int = foodDao.getFoodsCount()
+
+    override suspend fun getDistinctNutrientLabels(): List<String> =
+        nutrientValueDao.getDistinctNutrientLabels()
+
     fun clear() {
         coroutineScope.cancel()
     }
