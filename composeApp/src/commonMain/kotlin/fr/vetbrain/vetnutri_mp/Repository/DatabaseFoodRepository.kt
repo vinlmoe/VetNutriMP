@@ -552,6 +552,14 @@ class DatabaseFoodRepository(
         return withContext(AppDispatchers.IO) { foodDao.getAllFoodIds().toSet() }
     }
 
+    override suspend fun getFoodsCount(): Int =
+        withContext(AppDispatchers.IO) { foodDao.getFoodsCount() }
+
+    override suspend fun getDistinctNutrientLabels(): List<String> =
+        withContext(AppDispatchers.IO) {
+            nutrientValueDao?.getDistinctNutrientLabels() ?: emptyList()
+        }
+
     /**
      * Récupère une liste légère de tous les aliments sans les valeurs nutritionnelles. Cette
      * méthode est optimisée pour les performances lorsque seules les informations de base des

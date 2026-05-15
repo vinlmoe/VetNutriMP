@@ -132,6 +132,11 @@ class SqliteFoodRepository : FoodRepository {
         return getFoodById(uuid)
     }
 
+    override suspend fun getFoodsCount(): Int = _foods.size
+
+    override suspend fun getDistinctNutrientLabels(): List<String> =
+        _foods.flatMap { it.valMap.keys.map { k -> k.label } }.distinct()
+
     private suspend fun refreshFoods() {
         foodsFlow.value = _foods.toList()
     }
