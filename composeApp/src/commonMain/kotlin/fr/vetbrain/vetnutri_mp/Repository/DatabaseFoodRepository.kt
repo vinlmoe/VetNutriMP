@@ -548,7 +548,7 @@ class DatabaseFoodRepository(
     }
 
     /** Récupère uniquement les UUID de tous les aliments (optimisé pour des jeux volumineux). */
-    suspend fun getAllFoodIds(): Set<String> {
+    override suspend fun getAllFoodIds(): Set<String> {
         return withContext(AppDispatchers.IO) { foodDao.getAllFoodIds().toSet() }
     }
 

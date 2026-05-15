@@ -271,6 +271,8 @@ class LocalAlimentDataSource(
     override suspend fun getDistinctNutrientLabels(): List<String> =
         nutrientValueDao.getDistinctNutrientLabels()
 
+    override suspend fun getAllFoodIds(): Set<String> = foodDao.getAllFoodIds().toSet()
+
     fun clear() {
         coroutineScope.cancel()
     }

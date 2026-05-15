@@ -81,4 +81,7 @@ interface FoodRepository {
 
     /** Retourne les labels de nutriments distincts présents dans la base (sans charger les valeurs). */
     suspend fun getDistinctNutrientLabels(): List<String>
+
+    /** Retourne uniquement les UUID de tous les aliments (sans charger les valeurs nutritionnelles). */
+    suspend fun getAllFoodIds(): Set<String>
 }

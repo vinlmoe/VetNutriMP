@@ -943,7 +943,7 @@ class ExportImportRepository(
                         var existingFoodIdsForRations: MutableSet<String> = mutableSetOf()
                         if (foodRepository != null) {
                                 existingFoodIdsForRations =
-                                        foodRepository.getAllFoods().map { it.uuid }.toMutableSet()
+                                        foodRepository.getAllFoodIds().toMutableSet()
                         }
                         for (animalApi in envelope.animals) {
                                 try {
@@ -1037,7 +1037,7 @@ class ExportImportRepository(
                         val existingFoodIds: Set<String> =
                                 if (foodRepository != null) {
                                         try {
-                                                foodRepository.getAllFoods().map { it.uuid }.toSet()
+                                                foodRepository.getAllFoodIds()
                                         } catch (_: Exception) {
                                                 emptySet()
                                         }
