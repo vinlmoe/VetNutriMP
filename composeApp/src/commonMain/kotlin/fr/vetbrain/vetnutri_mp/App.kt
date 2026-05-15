@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import fr.vetbrain.vetnutri_mp.Data.ExamSession
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
