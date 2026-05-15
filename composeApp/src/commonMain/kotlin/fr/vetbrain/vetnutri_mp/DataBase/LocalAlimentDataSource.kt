@@ -153,7 +153,7 @@ class LocalAlimentDataSource(
 
         refreshFoodsFlow()
 
-        val totalFoods = getAllFoods().size
+        val totalFoods = foodDao.getFoodsCount()
 
         return fr.vetbrain.vetnutri_mp.Repository.FoodImportResult(
                 importedCount = imported,
@@ -252,13 +252,9 @@ class LocalAlimentDataSource(
      * @return Le nombre d'aliments supprimés
      */
     override suspend fun clearAllFoods(): Int {
-        val allFoods = foodDao.getAllFoods()
-        val count = allFoods.size
-
-        // Supprimer d'abord toutes les valeurs nutritionnelles pour tous les aliments
-        allFoods.forEach { food -> nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid) }
-
-        // Supprimer tous les aliments
+        val count = foodDao.getFoodsCount()
+        val uuids = foodDao.getAllFoodIds()
+        uuids.forEach { uuid -> nutrientValueDao.deleteAllNutrientValuesForAliment(uuid) }
         foodDao.deleteAllFoods()
 
         refreshFoodsFlow()
@@ -272,6 +268,39 @@ class LocalAlimentDataSource(
         nutrientValueDao.getDistinctNutrientLabels()
 
     override suspend fun getAllFoodIds(): Set<String> = foodDao.getAllFoodIds().toSet()
+
+    override suspend fun getAllFoodsAsEvLight(): List<AlimentEv> {
+        val entities = foodDao.getAllFoods()
+        return entities.map { entity ->
+            val light = entity.toAlimentEvLight()
+            AlimentEv(
+                uuid = light.uuid, nom = light.nom, brand = light.brand,
+                group = light.group, typeAliment = light.typeAliment, gamme = light.gamme,
+                deprecated = light.deprecated, dataB = light.dataB,
+                especes = light.especes.toMutableList(), indicat = light.indicat.toMutableList(),
+                valMap = mutableMapOf()
+            )
+        }
+    }
+
+    override suspend fun getFoodsByIds(ids: List<String>): List<AlimentEv> {
+        if (ids.isEmpty()) return emptyList()
+        return ids.chunked(500).flatMap { chunk ->
+            foodDao.getFoodsByIds(chunk).map { entity ->
+                entity.toAlimentEv(nutrientValues = nutrientValueDao.getNutrientValuesForAliments(listOf(entity.uuid)))
+            }
+        }
+    }
+
+    override suspend fun getFoodsPage(limit: Int, offset: Int): List<AlimentEv> {
+        val entities = foodDao.getFoodsPaginated(limit, offset)
+        if (entities.isEmpty()) return emptyList()
+        val uuids = entities.map { it.uuid }
+        val nutrientsByFood = nutrientValueDao.getNutrientValuesForAliments(uuids).groupBy { it.refAliment }
+        return entities.map { entity ->
+            entity.toAlimentEv(nutrientValues = nutrientsByFood[entity.uuid] ?: emptyList())
+        }
+    }
 
     fun clear() {
         coroutineScope.cancel()

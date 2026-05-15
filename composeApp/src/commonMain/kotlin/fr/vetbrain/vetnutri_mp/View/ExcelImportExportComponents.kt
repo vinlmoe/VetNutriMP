@@ -190,7 +190,7 @@ fun ExcelImportExportSection(
                                                                         try {
                                                                                 availableFoods =
                                                                                         foodRepository
-                                                                                                .getAllFoods()
+                                                                                                .getAllFoodsAsEvLight()
                                                                         } catch (e: Exception) {
                                                                                 selectionLoadError =
                                                                                         "Erreur de chargement: ${e.message}"

@@ -22,16 +22,31 @@ class ExcelFoodService(
      * Exporte tous les aliments vers un fichier CSV
      */
     suspend fun exportAllFoodsToCsv(): String = withContext(AppDispatchers.IO) {
-        val aliments = foodRepository.getAllFoods()
-        csvService.exportToCsv(aliments)
+        val sb = StringBuilder()
+        var offset = 0
+        var headerWritten = false
+        while (true) {
+            val batch = foodRepository.getFoodsPage(50, offset)
+            if (batch.isEmpty()) break
+            val csv = csvService.exportToCsv(batch)
+            if (!headerWritten) {
+                sb.append(csv)
+                headerWritten = true
+            } else {
+                val rows = csv.lines().drop(1).filter { it.isNotBlank() }
+                if (rows.isNotEmpty()) sb.append('\n').append(rows.joinToString("\n"))
+            }
+            offset += 50
+        }
+        sb.toString()
     }
 
     /**
      * Exporte une sélection d'aliments vers un fichier CSV
      */
     suspend fun exportSelectedFoodsToCsv(foodIds: Set<String>): String = withContext(AppDispatchers.IO) {
-        val allFoods = foodRepository.getAllFoods()
-        val selectedFoods = allFoods.filter { it.uuid in foodIds }
+        if (foodIds.isEmpty()) return@withContext csvService.exportToCsv(emptyList())
+        val selectedFoods = foodRepository.getFoodsByIds(foodIds.toList())
         csvService.exportToCsv(selectedFoods)
     }
 

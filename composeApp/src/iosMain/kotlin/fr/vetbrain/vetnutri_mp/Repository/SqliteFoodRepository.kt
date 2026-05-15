@@ -136,6 +136,17 @@ class SqliteFoodRepository : FoodRepository {
 
     override suspend fun getAllFoodIds(): Set<String> = _foods.map { it.uuid }.toSet()
 
+    override suspend fun getAllFoodsAsEvLight(): List<AlimentEv> =
+        _foods.map { it.copy(valMap = mutableMapOf()) }
+
+    override suspend fun getFoodsByIds(ids: List<String>): List<AlimentEv> {
+        val idSet = ids.toSet()
+        return _foods.filter { it.uuid in idSet }
+    }
+
+    override suspend fun getFoodsPage(limit: Int, offset: Int): List<AlimentEv> =
+        _foods.drop(offset).take(limit)
+
     override suspend fun getDistinctNutrientLabels(): List<String> =
         _foods.flatMap { it.valMap.keys.map { k -> k.label } }.distinct()
 

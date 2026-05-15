@@ -142,6 +142,8 @@ interface RecipeDao {
         suspend fun deleteAlimentsForRecipe(recipeId: String)
 }
 
+data class FoodUuidName(val uuid: String, val name: String?)
+
 @Dao
 interface FoodDao {
         @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insert(food: FoodEntity)
@@ -181,6 +183,11 @@ interface FoodDao {
 
         // Optimisations pour import en lot
         @Query("SELECT uuid FROM FOOD") suspend fun getAllFoodIds(): List<String>
+
+        @Query("SELECT uuid, name FROM FOOD") suspend fun getAllFoodUuidNames(): List<FoodUuidName>
+
+        @Query("SELECT * FROM FOOD WHERE RefRation = :rationId")
+        suspend fun getFoodsForRation(rationId: String): List<FoodEntity>
 
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertFoods(foods: List<FoodEntity>)

@@ -401,7 +401,7 @@ class DatabaseFoodRepository(
                     deletedCount = 0,
                     totalCount =
                             try {
-                                foodDao.getAllFoods().size
+                                foodDao.getFoodsCount()
                             } catch (_: Exception) {
                                 0
                             },
@@ -416,7 +416,7 @@ class DatabaseFoodRepository(
         // Initialiser le flow au démarrage
         coroutineScope.launch {
             try {
-                val initialFoods = getAllFoodsLightAsEv()
+                val initialFoods = getAllFoodsAsEvLight()
                 _foodsFlow.value = initialFoods
             } catch (e: Exception) {
                 _foodsFlow.value = emptyList()
@@ -427,7 +427,7 @@ class DatabaseFoodRepository(
     /** Met à jour le Flow avec la liste actuelle des aliments */
     private suspend fun refreshFoodsFlow() {
         try {
-            val foods = getAllFoodsLightAsEv()
+            val foods = getAllFoodsAsEvLight()
             _foodsFlow.value = foods
         } catch (e: Exception) {
             e.printStackTrace()
@@ -466,14 +466,10 @@ class DatabaseFoodRepository(
         }
     }
 
-    /**
-     * Récupère tous les aliments en version légère (sans valeurs nutritionnelles),
-     * pour éviter les pics mémoire lors du chargement initial.
-     */
-    private suspend fun getAllFoodsLightAsEv(): List<AlimentEv> {
+    override suspend fun getAllFoodsAsEvLight(): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
             val foodEntities = foodDao.getAllFoods()
-            val result = foodEntities.map { foodEntity ->
+            foodEntities.map { foodEntity ->
                 val light = foodEntity.toAlimentEvLight()
                 AlimentEv(
                     uuid = light.uuid,
@@ -489,7 +485,40 @@ class DatabaseFoodRepository(
                     valMap = mutableMapOf()
                 )
             }
-            return@withContext result
+        }
+    }
+
+    override suspend fun getFoodsByIds(ids: List<String>): List<AlimentEv> {
+        return withContext(AppDispatchers.IO) {
+            if (ids.isEmpty()) return@withContext emptyList()
+            val entities = ids.chunked(500).flatMap { chunk -> foodDao.getFoodsByIds(chunk) }
+            if (entities.isEmpty()) return@withContext emptyList()
+            val nutrientsByFood = if (nutrientValueDao != null) {
+                try {
+                    ids.chunked(500)
+                        .flatMap { chunk -> nutrientValueDao.getNutrientValuesForAliments(chunk) }
+                        .groupBy { it.refAliment }
+                } catch (_: Exception) { emptyMap() }
+            } else emptyMap()
+            entities.map { entity ->
+                entity.toAlimentEv(nutrientValues = nutrientsByFood[entity.uuid] ?: emptyList())
+            }
+        }
+    }
+
+    override suspend fun getFoodsPage(limit: Int, offset: Int): List<AlimentEv> {
+        return withContext(AppDispatchers.IO) {
+            val entities = foodDao.getFoodsPaginated(limit, offset)
+            if (entities.isEmpty()) return@withContext emptyList()
+            val uuids = entities.map { it.uuid }
+            val nutrientsByFood = if (nutrientValueDao != null) {
+                try {
+                    nutrientValueDao.getNutrientValuesForAliments(uuids).groupBy { it.refAliment }
+                } catch (_: Exception) { emptyMap() }
+            } else emptyMap()
+            entities.map { entity ->
+                entity.toAlimentEv(nutrientValues = nutrientsByFood[entity.uuid] ?: emptyList())
+            }
         }
     }
 
@@ -986,7 +1015,7 @@ class DatabaseFoodRepository(
                     deletedCount = 0,
                     totalCount =
                             try {
-                                foodDao.getAllFoods().size
+                                foodDao.getFoodsCount()
                             } catch (_: Exception) {
                                 0
                             },
@@ -1453,14 +1482,11 @@ class DatabaseFoodRepository(
      */
     override suspend fun clearAllFoods(): Int {
         return withContext(AppDispatchers.IO) {
-            // Récupérer tous les aliments pour connaître leur nombre
-            val allFoods = foodDao.getAllFoods()
-            val count = allFoods.size
-
-            // Supprimer toutes les valeurs nutritionnelles pour tous les aliments
-            allFoods.forEach { food ->
-                nutrientValueDao?.deleteAllNutrientValuesForAliment(food.uuid)
-                foodDao.deleteIndicationsForAliment(food.uuid)
+            val count = foodDao.getFoodsCount()
+            val uuids = foodDao.getAllFoodIds()
+            uuids.forEach { uuid ->
+                nutrientValueDao?.deleteAllNutrientValuesForAliment(uuid)
+                foodDao.deleteIndicationsForAliment(uuid)
             }
 
             // Supprimer tous les aliments
@@ -1517,14 +1543,9 @@ class DatabaseFoodRepository(
      */
     suspend fun getFoodsForRation(rationId: String): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
-            val foods = foodDao.getAllFoods().filter { it.RefRation == rationId }
-            return@withContext foods.map { foodEntity ->
-                val nutrientValues =
-                        if (nutrientValueDao != null) {
-                            nutrientValueDao.getNutrientValues(foodEntity.uuid)
-                        } else {
-                            emptyList()
-                        }
+            val entities = foodDao.getFoodsForRation(rationId)
+            entities.map { foodEntity ->
+                val nutrientValues = nutrientValueDao?.getNutrientValues(foodEntity.uuid) ?: emptyList()
                 foodEntity.toAlimentEv(nutrientValues = nutrientValues)
             }
         }

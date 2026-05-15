@@ -199,9 +199,8 @@ class DatabaseAnimalRepository(
                         val foodNamesMap = mutableMapOf<String, String>()
 
                         // Récupérer les aliments existants dans la base de données
-                        foodDao.getAllFoods().forEach { food ->
+                        foodDao.getAllFoodUuidNames().forEach { food ->
                                 availableFoodUUIDs.add(food.uuid)
-                                // Stocker les noms des aliments déjà présents dans la base
                                 food.name?.let { name -> foodNamesMap[food.uuid] = name }
                         }
 

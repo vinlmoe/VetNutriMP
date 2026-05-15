@@ -107,13 +107,17 @@ class ExportImportRepository(
                                 }
                         } else domainAnimals
                 val animals: List<AnimalApi> = animalsWithConsultations.map { it.toApi() }
-                // Forcer le chargement frais des aliments (avec nutriments) avant export
-                if (foodRepository is DatabaseFoodRepository) {
-                        try {
-                                foodRepository.forceRefresh()
-                        } catch (_: Exception) {}
-                }
-                val foods = foodRepository?.getAllFoods()?.map { it.toApi() } ?: emptyList()
+                val foods: List<FoodApi> = if (foodRepository != null) {
+                        val result = mutableListOf<FoodApi>()
+                        var offset = 0
+                        while (true) {
+                                val batch = foodRepository.getFoodsPage(50, offset)
+                                if (batch.isEmpty()) break
+                                result.addAll(batch.map { it.toApi() })
+                                offset += 50
+                        }
+                        result
+                } else emptyList()
 
                 // Rassembler toutes les rations depuis les consultations (depuis le domaine)
                 val rationsList: List<RationApi> =
@@ -352,31 +356,24 @@ class ExportImportRepository(
                                 (options.includeLinkedFromAnimals &&
                                         linkedReferenceIds.isNotEmpty())
 
-                // Forcer le chargement frais des aliments (avec nutriments) avant export filtré
-                if (shouldIncludeFoods && foodRepository is DatabaseFoodRepository) {
-                        try {
-                                foodRepository.forceRefresh()
-                        } catch (_: Exception) {}
-                }
-                val allFoods =
-                        if (shouldIncludeFoods)
-                                (foodRepository?.getAllFoods() ?: emptyList())
-                        else emptyList()
-                val foods: List<FoodApi> =
-                        allFoods.asSequence()
-                                .filter {
-                                        // Logique de filtrage des aliments :
-                                        // - Si foodIds est vide ET animalIds est vide → export général : exporter TOUS les aliments
-                                        // - Si foodIds est vide ET animalIds n'est PAS vide → export sélectif : exporter AUCUN aliment (l'animal n'en utilise pas)
-                                        // - Si foodIds n'est pas vide → exporter seulement ceux dans la liste
-                                        when {
-                                                effectiveFoodIds.isNotEmpty() -> effectiveFoodIds.contains(it.uuid)
-                                                options.animalIds.isEmpty() -> true // Export général : tous les aliments
-                                                else -> false // Export sélectif sans aliments spécifiés : aucun aliment
-                                        }
+                val foods: List<FoodApi> = when {
+                        !shouldIncludeFoods || foodRepository == null -> emptyList()
+                        effectiveFoodIds.isNotEmpty() ->
+                                foodRepository.getFoodsByIds(effectiveFoodIds.toList()).map { it.toApi() }
+                        options.animalIds.isEmpty() -> {
+                                // Export général : tous les aliments en mode paginé
+                                val result = mutableListOf<FoodApi>()
+                                var offset = 0
+                                while (true) {
+                                        val batch = foodRepository.getFoodsPage(50, offset)
+                                        if (batch.isEmpty()) break
+                                        result.addAll(batch.map { it.toApi() })
+                                        offset += 50
                                 }
-                                .map { it.toApi() }
-                                .toList()
+                                result
+                        }
+                        else -> emptyList()
+                }
 
                 val rationsList2: List<RationApi> =
                         if (options.includeRations) {

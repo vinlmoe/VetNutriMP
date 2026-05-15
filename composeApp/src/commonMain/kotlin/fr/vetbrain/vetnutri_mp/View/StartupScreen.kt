@@ -421,8 +421,7 @@ fun StartupScreen(
                                                 try {
                                                         val newFoodCount =
                                                                 settingsViewModel.foodRepository
-                                                                        .getAllFoods()
-                                                                        .size
+                                                                        .getFoodsCount()
                                                         val newReferenceCount =
                                                                 referenceRepository
                                                                         ?.getAllReferenceEv()
@@ -1384,8 +1383,7 @@ fun StartupScreen(
                                                                         val refreshedFoodCount =
                                                                                 settingsViewModel
                                                                                         .foodRepository
-                                                                                        .getAllFoods()
-                                                                                        .size
+                                                                                        .getFoodsCount()
                                                                         val refreshedReferenceCount =
                                                                                 referenceRepository
                                                                                         ?.getAllReferenceEv()
@@ -1498,8 +1496,7 @@ fun StartupScreen(
                                                                         val refreshedFoodCount =
                                                                                 settingsViewModel
                                                                                         .foodRepository
-                                                                                        .getAllFoods()
-                                                                                        .size
+                                                                                        .getFoodsCount()
                                                                         val refreshedReferenceCount =
                                                                                 referenceRepository
                                                                                         ?.getAllReferenceEv()

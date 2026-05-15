@@ -481,7 +481,7 @@ fun SettingsView(
                                                                                         availableFoods =
                                                                                                 viewModel
                                                                                                         .foodRepository
-                                                                                                        .getAllFoods()
+                                                                                                        .getAllFoodsAsEvLight()
                                                                                 } catch (e: Exception) {
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement aliments: ${e.message}"

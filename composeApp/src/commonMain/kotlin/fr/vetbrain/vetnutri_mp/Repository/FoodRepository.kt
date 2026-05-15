@@ -84,4 +84,13 @@ interface FoodRepository {
 
     /** Retourne uniquement les UUID de tous les aliments (sans charger les valeurs nutritionnelles). */
     suspend fun getAllFoodIds(): Set<String>
+
+    /** Retourne tous les aliments sans valeurs nutritionnelles (pour affichage UI). */
+    suspend fun getAllFoodsAsEvLight(): List<AlimentEv>
+
+    /** Retourne les aliments correspondant aux UUIDs donnés, avec leurs valeurs nutritionnelles. */
+    suspend fun getFoodsByIds(ids: List<String>): List<AlimentEv>
+
+    /** Retourne une page d'aliments avec leurs valeurs nutritionnelles (pour export paginé). */
+    suspend fun getFoodsPage(limit: Int, offset: Int): List<AlimentEv>
 }
