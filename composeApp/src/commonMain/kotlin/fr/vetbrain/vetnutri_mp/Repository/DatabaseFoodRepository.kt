@@ -73,10 +73,14 @@ class DatabaseFoodRepository(
     }
 
 
-    // Cache de recherche pour les filtres fréquents
-    private val searchCache = mutableMapOf<String, List<AlimentEv>>()
+    // Cache LRU pour les recherches (max 50 entrées, éviction par accès)
+    private val maxSearchCacheEntries = 50
+    private val searchCache: LinkedHashMap<String, List<AlimentEv>> =
+        object : LinkedHashMap<String, List<AlimentEv>>(maxSearchCacheEntries + 1, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<AlimentEv>>) =
+                size > maxSearchCacheEntries
+        }
     private val searchCacheTime = mutableMapOf<String, Long>()
-    private val maxSearchCacheEntries = 200
     fun beginBatch() {
         isBatchMode = true
     }
@@ -128,15 +132,13 @@ class DatabaseFoodRepository(
 
 
     private fun pruneSearchCacheIfNeeded() {
-        if (searchCache.size <= maxSearchCacheEntries) return
-        val excess = searchCache.size - maxSearchCacheEntries
-        if (excess <= 0) return
-        val keysToRemove =
-                searchCacheTime.entries
-                        .sortedBy { it.value }
-                        .take(excess)
-                        .map { it.key }
-        keysToRemove.forEach { key ->
+        // L'éviction LRU est gérée automatiquement par LinkedHashMap.removeEldestEntry
+        // On nettoie seulement les entrées expirées dans searchCacheTime
+        val now = Clock.System.now().toEpochMilliseconds()
+        val expired = searchCacheTime.entries
+            .filter { now - it.value > cacheValidityDuration }
+            .map { it.key }
+        expired.forEach { key ->
             searchCache.remove(key)
             searchCacheTime.remove(key)
         }
@@ -549,6 +551,14 @@ class DatabaseFoodRepository(
     suspend fun getAllFoodIds(): Set<String> {
         return withContext(AppDispatchers.IO) { foodDao.getAllFoodIds().toSet() }
     }
+
+    override suspend fun getFoodsCount(): Int =
+        withContext(AppDispatchers.IO) { foodDao.getFoodsCount() }
+
+    override suspend fun getDistinctNutrientLabels(): List<String> =
+        withContext(AppDispatchers.IO) {
+            nutrientValueDao?.getDistinctNutrientLabels() ?: emptyList()
+        }
 
     /**
      * Récupère une liste légère de tous les aliments sans les valeurs nutritionnelles. Cette

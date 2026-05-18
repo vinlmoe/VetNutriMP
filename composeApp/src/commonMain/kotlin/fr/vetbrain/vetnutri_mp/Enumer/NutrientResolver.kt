@@ -34,6 +34,8 @@ object NutrientResolver {
     // Cache des résultats de résolution (normalizedLabel → Nutrient?) pour éviter les répétitions
     private val resolvedCache = HashMap<String, Nutrient?>(512)
 
+    private val nonAlphanumericRegex = Regex("[^A-Za-z0-9]")
+
     /**
      * Résout un nutriment à partir de son label. Cette fonction cherche dans toutes les classes
      * d'énumération de nutriments pour trouver celle qui correspond au label donné.
@@ -470,7 +472,7 @@ object NutrientResolver {
             else -> {
                 // Nettoyer davantage le label et le mettre en majuscules pour une comparaison plus
                 // robuste
-                trimmed.replace(Regex("[^A-Za-z0-9]"), "").uppercase()
+                trimmed.replace(nonAlphanumericRegex, "").uppercase()
             }
         }
     }

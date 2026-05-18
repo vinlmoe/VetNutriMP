@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
@@ -139,8 +140,10 @@ class FoodEditViewModel(
     private fun loadAvailableBiblioRefs() {
         coroutineScope.launch {
             try {
-                biblioRefRepository?.getAllBiblioRefs()?.collect { refs ->
-                    _availableBiblioRefs.value = refs
+                withContext(AppDispatchers.IO) {
+                    biblioRefRepository?.getAllBiblioRefs()?.collect { refs ->
+                        _availableBiblioRefs.value = refs
+                    }
                 }
             } catch (_: Exception) {}
         }
@@ -181,24 +184,13 @@ class FoodEditViewModel(
     private fun preloadCustomNutrientsFromRepository() {
         coroutineScope.launch {
             try {
-                val foods = foodRepository.getAllFoods()
-                foods.forEach { food ->
-                    food.valMap.keys.forEach { nutrient ->
-                        if (nutrient is CustomNutrient) {
-                            CustomNutrientRegistry.register(nutrient)
-                        } else if (
-                            NutrientMain.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
-                            NutrientMacro.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
-                            NutrientMin.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
-                            NutrientLipid.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
-                            NutrientVitam.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
-                            NutrientOther.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
-                            AAEnum.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
-                            NutrientEnergy.entries.none { it.label.equals(nutrient.label, ignoreCase = true) } &&
-                            NutrientAnalysis.entries.none { it.label.equals(nutrient.label, ignoreCase = true) }
-                        ) {
-                            CustomNutrientRegistry.register(CustomNutrient.fromLabel(nutrient.label))
-                        }
+                val labels = foodRepository.getDistinctNutrientLabels()
+                labels.forEach { label ->
+                    val resolved = NutrientResolver.AllNutrientResolver(label)
+                    if (resolved == null) {
+                        CustomNutrientRegistry.register(CustomNutrient.fromLabel(label))
+                    } else if (resolved is CustomNutrient) {
+                        CustomNutrientRegistry.register(resolved)
                     }
                 }
                 CustomNutrientRegistry.all().forEach { nutrient ->

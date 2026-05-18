@@ -1,0 +1,27 @@
+package fr.vetbrain.vetnutri_mp.Navigation
+
+internal sealed class Screen {
+    object List : Screen()
+    object Create : Screen()
+    object Detail : Screen()
+    object FoodList : Screen()
+    object FoodEdit : Screen()
+    object CalculationTabs : Screen()
+    object BiblioRefList : Screen()
+    object BiblioRefEdit : Screen()
+    object EquationList : Screen()
+    object EquationEdit : Screen()
+    object ReferenceEvList : Screen()
+    object ReferenceEvNutrient : Screen()
+    object ReferenceEvTabs : Screen()
+    object BulkReferenceEditor : Screen()
+    object NewReferenceEvEdit : Screen()
+    object ConseilEdit : Screen()
+    object Settings : Screen()
+    object SpeciesPreferences : Screen()
+    object BackupRestore : Screen()
+    object CrossAnalysis : Screen()
+    object CrossAnalysisResults : Screen()
+    object CrossAnalysisGrading : Screen()
+    object TestYellowBox : Screen()
+}
