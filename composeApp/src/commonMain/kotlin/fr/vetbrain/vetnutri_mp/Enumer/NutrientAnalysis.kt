@@ -20,12 +20,13 @@ enum class NutrientAnalysis(
     PhenTyr("Phénylalanine+tyrosine", 6, "g", "PHENTYR");
 
     companion object {
-        private val coefMap = mutableMapOf<Int, NutrientAnalysis>().apply {
-            values().forEach { put(it.coef, it) }
-        }
+        private val coefMap by lazy { entries.associateBy { it.coef } }
+        private val labelMap by lazy { entries.associateBy { it.label } }
 
         fun getByCoef(coef: Int) = coefMap[coef]
-        fun size() = 7 // A vérifier selon la logique métier (incohérence détectée)
+        fun getByLabel(label: String) = labelMap[label]
+        fun isByLabel(label: String) = label in labelMap
+        fun size() = entries.size
     }
 
 

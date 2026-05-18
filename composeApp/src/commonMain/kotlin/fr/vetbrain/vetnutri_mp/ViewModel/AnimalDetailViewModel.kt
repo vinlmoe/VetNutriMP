@@ -20,9 +20,11 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -67,7 +69,8 @@ class AnimalDetailViewModel(
         private val animalRepository: AnimalRepository,
         private val databaseReferenceEvRepository: DatabaseReferenceEvRepository,
         private val preferencesRepository: PreferencesRepository,
-        val foodRepository: FoodRepository
+        val foodRepository: FoodRepository,
+        private val equationRepository: EquationRepository? = null
 ) {
     private val job = SupervisorJob()
     private val viewModelScope = CoroutineScope(AppDispatchers.Main + job)
@@ -116,63 +119,22 @@ class AnimalDetailViewModel(
     // StateFlow pour stocker les résultats d'analyse de la ration sélectionnée
     private val _rationAnalyseResultat = MutableStateFlow<AnalyseResultat?>(null)
 
-    // Cache pour éviter les calculs répétés d'analyse de rations avec gestion automatique
-    private val rationAnalysisCache = mutableMapOf<String, AnalyseResultat>()
+    private val cacheValidityDuration = 2 * 60 * 1000L
     private val analysisCacheTime = mutableMapOf<String, Long>()
-    private val cacheValidityDuration = 2 * 60 * 1000L // 2 minutes pour l'analyse
-    private val maxCacheSize = 50
-
-    // Cache pour les données d'animaux fréquemment utilisées avec nettoyage automatique
-    private val animalDataCache = mutableMapOf<String, Any>()
-    private val animalDataCacheTime = mutableMapOf<String, Long>()
-    private val maxAnimalCacheSize = 100
-
-    /** Nettoie automatiquement les caches pour éviter les fuites mémoire */
-    private fun cleanupCachesIfNeeded() {
-        val currentTime = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
-
-        // Nettoyer le cache d'analyse de rations
-        if (rationAnalysisCache.size > maxCacheSize) {
-            val entriesToRemove =
-                    analysisCacheTime
-                            .entries
-                            .sortedBy { it.value }
-                            .take(rationAnalysisCache.size - maxCacheSize / 2)
-                            .map { it.key }
-
-            entriesToRemove.forEach { key ->
-                rationAnalysisCache.remove(key)
-                analysisCacheTime.remove(key)
-            }
+    private val rationAnalysisCache: LinkedHashMap<String, AnalyseResultat> =
+        object : LinkedHashMap<String, AnalyseResultat>(51, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, AnalyseResultat>) =
+                size > 50
         }
 
-        // Nettoyer les entrées expirées du cache d'analyse
-        val expiredKeys =
-                analysisCacheTime.entries
-                        .filter { (key, time) ->
-                            currentTime - time >
-                                    cacheValidityDuration *
-                                            2 // Supprimer les entrées très anciennes
-                        }
-                        .map { it.key }
+    private fun cleanupCachesIfNeeded() {
+        val currentTime = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        val expiredKeys = analysisCacheTime.entries
+            .filter { (_, time) -> currentTime - time > cacheValidityDuration * 2 }
+            .map { it.key }
         expiredKeys.forEach { key ->
             analysisCacheTime.remove(key)
             rationAnalysisCache.remove(key)
-        }
-
-        // Nettoyer le cache de données d'animaux
-        if (animalDataCache.size > maxAnimalCacheSize) {
-            val entriesToRemove =
-                    animalDataCacheTime
-                            .entries
-                            .sortedBy { it.value }
-                            .take(animalDataCache.size - maxAnimalCacheSize / 2)
-                            .map { it.key }
-
-            entriesToRemove.forEach { key ->
-                animalDataCache.remove(key)
-                animalDataCacheTime.remove(key)
-            }
         }
     }
     val rationAnalyseResultat: StateFlow<AnalyseResultat?> = _rationAnalyseResultat.asStateFlow()
@@ -246,6 +208,10 @@ class AnimalDetailViewModel(
     val besoinEnergetiqueTotal: StateFlow<Double?> = _valeursMetaboliques
             .map { it.besoinEnergetiqueTotal }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // Énergie additionnelle issue des références maladies (calculée via EquationEvaluator)
+    private val _energieAdditionnelle = MutableStateFlow(0.0)
+    val energieAdditionnelle: StateFlow<Double> = _energieAdditionnelle.asStateFlow()
 
     // ✨ États pour l'analyse graphique des aliments
     private val _alimentsSelectionnes = MutableStateFlow<List<AlimentEv>>(emptyList())
@@ -1278,8 +1244,7 @@ class AnimalDetailViewModel(
 
                 val resultat = cachedResult ?: rationAnalyzer.analyserRation(ration, consultation)
 
-                // Mettre en cache si pas déjà présent et si le cache n'est pas plein
-                if (cachedResult == null && rationAnalysisCache.size < maxCacheSize) {
+                if (cachedResult == null) {
                     rationAnalysisCache[cacheKey] = resultat
                     analysisCacheTime[cacheKey] =
                             kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
@@ -1566,6 +1531,36 @@ class AnimalDetailViewModel(
     }
 
     // ===== MÉTHODES DE CALCUL MÉTABOLIQUE =====
+
+    /**
+     * Calcule l'énergie additionnelle issue des références maladies et met à jour le StateFlow.
+     * Doit être appelée depuis la View quand les dépendances changent.
+     */
+    fun updateEnergieAdditionnelle(
+            referencesMaladies: List<ReferenceEv>,
+            consultation: ConsultationEv,
+            ration: Ration,
+            speciesPreferences: PreferencesEspece?
+    ) {
+        viewModelScope.launch(AppDispatchers.IO) {
+            val bee = _valeursMetaboliques.value.besoinEnergetiqueStandard ?: return@launch
+            val mw = _valeursMetaboliques.value.poidsMetabolique ?: return@launch
+            val beK = _valeursMetaboliques.value.besoinEnergetiqueTotal ?: return@launch
+            val add = EquationEvaluator.calculerEnergieAdditionnelle(
+                    referencesMaladies = referencesMaladies,
+                    poidsCorps = consultation.effectiveWeight?.toDouble()
+                            ?: consultation.weight?.toDouble() ?: 0.0,
+                    besoinEnergetiqueApresK = beK,
+                    besoinEnergetiqueStandard = bee,
+                    poidsMetabolique = mw,
+                    variablesSupp = consultation.suppVarp,
+                    ration = ration,
+                    preferences = speciesPreferences,
+                    equationRepository = equationRepository
+            )
+            _energieAdditionnelle.value = add
+        }
+    }
 
     /**
      * Calcule les valeurs métaboliques (poids métabolique, BEE) pour une consultation donnée
@@ -2080,7 +2075,6 @@ class AnimalDetailViewModel(
     fun clear() {
         rationAnalysisCache.clear()
         analysisCacheTime.clear()
-        animalDataCache.clear()
         viewModelScope.cancel()
     }
 }

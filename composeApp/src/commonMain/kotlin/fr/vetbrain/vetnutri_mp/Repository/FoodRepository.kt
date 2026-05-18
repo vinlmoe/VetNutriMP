@@ -75,4 +75,10 @@ interface FoodRepository {
      * @return Le nombre d'aliments supprimés
      */
     suspend fun clearAllFoods(): Int
+
+    /** Retourne le nombre d'aliments sans charger leur contenu. */
+    suspend fun getFoodsCount(): Int
+
+    /** Retourne les labels de nutriments distincts présents dans la base (sans charger les valeurs). */
+    suspend fun getDistinctNutrientLabels(): List<String>
 }

@@ -45,7 +45,7 @@ import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
-import fr.vetbrain.vetnutri_mp.Services.ExcelFoodService
+import fr.vetbrain.vetnutri_mp.Service.ExcelFoodService
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch

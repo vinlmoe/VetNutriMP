@@ -74,7 +74,7 @@ class StartupViewModel(
      * Charge le statut de la base de données de manière optimisée
      */
     private suspend fun loadDatabaseStatus(): DatabaseStatus {
-        val foodCount = settingsViewModel.foodRepository.getAllFoods().size
+        val foodCount = settingsViewModel.foodRepository.getFoodsCount()
         val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
         val conseilsCount = try {
             conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0

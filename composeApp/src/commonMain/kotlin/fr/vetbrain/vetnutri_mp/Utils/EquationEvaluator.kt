@@ -33,13 +33,12 @@ object EquationEvaluator {
     /** Toutes les variables disponibles dans le système */
     var toutesLesVariables: Set<String>? = null
 
-    /** Cache pour éviter les recalculs d'expressions identiques */
-    private val expressionCache = mutableMapOf<String, Double?>()
-    private val variableCache =
-            mutableMapOf<String, Map<String, Double>>() // Cache pour les variables pré-calculées
-
-    /** Taille maximale du cache pour éviter la fuite mémoire */
     private const val MAX_CACHE_SIZE = 1000
+    private val expressionCache: LinkedHashMap<String, Double?> =
+        object : LinkedHashMap<String, Double?>(MAX_CACHE_SIZE + 1, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Double?>) =
+                size > MAX_CACHE_SIZE
+        }
 
     /**
      * Injecte dans la map de variables certains nutriments calculés à partir des équations
@@ -100,17 +99,6 @@ object EquationEvaluator {
         }
         if (toutesLesVariables == null) {
             toutesLesVariables = variablesDeBase!! + variablesSupplementaires!!
-        }
-    }
-
-    /** Nettoie les caches si nécessaire pour éviter la fuite mémoire */
-    private fun cleanupCacheIfNeeded() {
-        if (expressionCache.size > MAX_CACHE_SIZE) {
-            // Garder seulement les 500 entrées les plus récentes
-            val sortedEntries =
-                    expressionCache.entries.sortedByDescending { it.value?.hashCode() ?: 0 }
-            expressionCache.clear()
-            sortedEntries.take(500).forEach { (key, value) -> expressionCache[key] = value }
         }
     }
 
@@ -185,10 +173,6 @@ object EquationEvaluator {
             }
         }
 
-        // Nettoyer le cache si nécessaire
-        cleanupCacheIfNeeded()
-
-        // Utiliser le cache pour éviter les recalculs
         val cacheKey = "${expression}:${variables.hashCode()}"
         return expressionCache.getOrPut(cacheKey) {
             ExpressionMathematique.evaluer(expression, variables)
@@ -217,10 +201,6 @@ object EquationEvaluator {
             }
         }
 
-        // Nettoyer le cache si nécessaire
-        cleanupCacheIfNeeded()
-
-        // Utiliser le cache pour éviter les recalculs
         val cacheKey = "${expression}:${variables.hashCode()}"
         return expressionCache.getOrPut(cacheKey) {
             ExpressionMathematique.evaluer(expression, variables)
