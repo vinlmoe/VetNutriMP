@@ -120,7 +120,8 @@ data class FoodApi(
         val rationId: String? = null,
         val species: List<String> = emptyList(),
         val indications: List<String> = emptyList(),
-        val nutrients: Map<String, Double> = emptyMap()
+        val nutrients: Map<String, Double> = emptyMap(),
+        val energyPerSpecies: Map<String, Double> = emptyMap()
 )
 
 @Serializable
@@ -284,6 +285,7 @@ fun FoodApi.toDomain(): AlimentEv {
                         // Log pour débogage - nutriment non résolu
                 }
         }
+        aliment.energieParEspece = energyPerSpecies.filter { (_, v) -> v > 0.0 }
         return aliment
 }
 
@@ -454,7 +456,8 @@ fun AlimentEv.toApi(): FoodApi {
                 rationId = rationUUID,
                 species = especes,
                 indications = indicat.map { it.name },
-                nutrients = valMap.mapKeys { it.key.label }.mapValues { it.value.value }
+                nutrients = valMap.mapKeys { it.key.label }.mapValues { it.value.value },
+                energyPerSpecies = energieParEspece
         )
 }
 

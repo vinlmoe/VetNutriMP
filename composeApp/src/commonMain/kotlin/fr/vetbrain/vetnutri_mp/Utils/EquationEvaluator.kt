@@ -444,10 +444,23 @@ object EquationEvaluator {
         val variables: MutableMap<String, Double> = mutableMapOf()
         val alimentEv = aliment.aliment
 
-        // Priorité : si l'aliment a une énergie définie, l'utiliser sans passer par l'équation
-        val energieDefinie = alimentEv?.valMap?.get(NutrientMain.ENERGIE)?.value
-        if (energieDefinie != null && energieDefinie > 0.0) {
-            return energieDefinie
+        // Priorité 1 : valeur d'énergie définie pour l'espèce courante
+        val especeNom = referenceEv?.espece?.name
+        if (especeNom != null) {
+            val vEspece = alimentEv?.energieParEspece?.get(especeNom)
+            if (vEspece != null && vEspece > 0.0) return vEspece
+            // Valeurs par espèce existent mais pas pour cette espèce → équation (pas de générique)
+            if (alimentEv?.energieParEspece?.isNotEmpty() == true) {
+                // On laisse l'évaluation de l'équation se poursuivre ci-dessous
+            } else {
+                // Rétro-compat : énergie générique si aucune valeur par espèce
+                val gen = alimentEv?.valMap?.get(NutrientMain.ENERGIE)?.value
+                if (gen != null && gen > 0.0) return gen
+            }
+        } else {
+            // Pas de contexte d'espèce : valeur générique en priorité
+            val gen = alimentEv?.valMap?.get(NutrientMain.ENERGIE)?.value
+            if (gen != null && gen > 0.0) return gen
         }
 
         if (alimentEv != null) {

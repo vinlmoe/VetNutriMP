@@ -30,7 +30,8 @@ data class AlimentEv(
         var indicat: MutableList<AlimIndic> = mutableListOf(),
         var valMap: MutableMap<Nutrient, NutrientQuantity> = mutableMapOf(),
         val rationUUID: String? = null,
-        val biblioRefs: List<BiblioRef> = emptyList()
+        val biblioRefs: List<BiblioRef> = emptyList(),
+        var energieParEspece: Map<String, Double> = emptyMap()
 ) {
         /**
          * Obtient la valeur d'un nutriment dans cet aliment
@@ -46,22 +47,26 @@ data class AlimentEv(
                         return null
                 }
 
-                // Si c'est l'énergie (NutrientEnergy ou NutrientMain.ENERGIE), vérifier d'abord
-                // si l'aliment a une valeur d'énergie définie avant d'utiliser les équations
+                // Si c'est l'énergie (NutrientEnergy ou NutrientMain.ENERGIE)
                 if (nutrient is NutrientEnergy || nutrient == NutrientMain.ENERGIE) {
-                        // D'abord vérifier si l'aliment a une valeur d'énergie définie
-                        val energieDefinie = valMap[nutrient]?.value
-                        if (energieDefinie != null && energieDefinie > 0.0) {
-                                return energieDefinie
+                        val especeNom = referenceEv?.espece?.name
+                        if (especeNom != null) {
+                                // Priorité 1 : valeur définie pour cette espèce précise
+                                val vEspece = energieParEspece[especeNom]
+                                if (vEspece != null && vEspece > 0.0) return vEspece
+                                // Si des valeurs par espèce existent mais pas pour celle-ci → équation
+                                if (energieParEspece.isNotEmpty()) {
+                                        return calculerEnergieViaReference(referenceEv)
+                                                ?.let { if (it < 0.0) 0.0 else it }
+                                }
                         }
-                        
-                        // Si pas d'énergie définie et qu'on a une référence avec des équations,
-                        // utiliser les équations
+                        // Rétro-compat : pas de valeurs par espèce → valeur générique puis équation
+                        val generique = valMap[nutrient]?.value
+                        if (generique != null && generique > 0.0) return generique
                         if (referenceEv != null) {
                                 return calculerEnergieViaReference(referenceEv)
+                                        ?.let { if (it < 0.0) 0.0 else it }
                         }
-                        
-                        // Si pas d'énergie définie et pas de référence, retourner null
                         return null
                 }
 

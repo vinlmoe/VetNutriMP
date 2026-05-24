@@ -537,6 +537,27 @@ data class NutrientValueEntity(
         val value: Double
 )
 
+/** Énergie (kcal/100g) définie par espèce pour un aliment donné */
+@Serializable
+@Entity(
+        tableName = "ENERGY_PER_SPECIES",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = FoodEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["refAliment"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("refAliment")],
+        primaryKeys = ["refAliment", "espece"]
+)
+data class EnergyPerSpeciesEntity(
+        val refAliment: String,
+        val espece: String,
+        val value: Double
+)
+
 /** Entité persistant les métadonnées des nutriments personnalisés créés par l'utilisateur */
 @Serializable
 @Entity(tableName = "CUSTOM_NUTRIENTS")
