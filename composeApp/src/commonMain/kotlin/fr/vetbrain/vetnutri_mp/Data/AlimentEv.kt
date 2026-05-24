@@ -65,9 +65,9 @@ data class AlimentEv(
                         return null
                 }
 
-                // Sinon, retourner la valeur stockée
+                // Sinon, retourner la valeur stockée (jamais négative)
                 val quantity = valMap[nutrient]
-                return quantity?.value
+                return quantity?.value?.let { if (it < 0.0) 0.0 else it }
         }
 
         /** Calcule l'énergie via les équations de ReferenceEv */
@@ -98,8 +98,7 @@ data class AlimentEv(
                         fr.vetbrain.vetnutri_mp.Utils.ExpressionMathematique.evaluer(
                                 equation.equationScript,
                                 variables
-                        )
-                                ?: null
+                        )?.let { if (it < 0.0) 0.0 else it }
                 } catch (e: Exception) {
                         null
                 }

@@ -188,7 +188,7 @@ data class AlimentRation(
 
                                 // Si ratio: la dernière valeur res est la valeur par 100g
                                 // Si somme: accum contient la somme des contributions par 100g
-                                if (accum != null) return accum
+                                if (accum != null) return if (accum < 0.0) 0.0 else accum
                         }
 
                         // 3) Fallback: calculateur existant (micro-ration)
@@ -199,7 +199,7 @@ data class AlimentRation(
                                                 this,
                                                 preferences,
                                                 equationRepository
-                                        )
+                                        )?.let { if (it < 0.0) 0.0 else it }
                         } else null
                 }
 

@@ -443,6 +443,13 @@ object EquationEvaluator {
     ): Double {
         val variables: MutableMap<String, Double> = mutableMapOf()
         val alimentEv = aliment.aliment
+
+        // Priorité : si l'aliment a une énergie définie, l'utiliser sans passer par l'équation
+        val energieDefinie = alimentEv?.valMap?.get(NutrientMain.ENERGIE)?.value
+        if (energieDefinie != null && energieDefinie > 0.0) {
+            return energieDefinie
+        }
+
         if (alimentEv != null) {
             for (n in NutrientMain.entries) {
                 variables[n.label] = alimentEv.getNutrient(n, referenceEv)?.toDouble() ?: 0.0
@@ -506,7 +513,7 @@ object EquationEvaluator {
         val res =
                 if (eq != null) ExpressionMathematique.evaluer(eq.equationScript, variables)
                 else null
-        return if (res == null || res.isNaN() || res.isInfinite()) 0.0 else res
+        return if (res == null || res.isNaN() || res.isInfinite() || res < 0.0) 0.0 else res
     }
 
     /**
