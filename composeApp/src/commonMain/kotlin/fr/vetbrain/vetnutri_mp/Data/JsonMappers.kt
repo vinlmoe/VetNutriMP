@@ -41,7 +41,8 @@ fun AlimentEv.toJson(): AlimentEvJson {
                                 nutrient.label to
                                         NutrientQuantity(nutrientQuantity.value, nutrient.label)
                             }
-                            .toMap()
+                            .toMap(),
+            energieParEspece = this.energieParEspece
     )
 }
 
@@ -124,7 +125,7 @@ fun AlimentEvJson.toData(): AlimentEv {
                     rationUUID = null
             )
 
-    // Vérifier l'objet après conversion
+    alimentEv.energieParEspece = this.energieParEspece
 
     return alimentEv
 }
@@ -185,7 +186,7 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
             indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
             valMap = nutrientMap.toMutableMap(),
             rationUUID = ratUUID
-    )
+    ).also { it.energieParEspece = this.energieParEspece }
 }
 
 /**

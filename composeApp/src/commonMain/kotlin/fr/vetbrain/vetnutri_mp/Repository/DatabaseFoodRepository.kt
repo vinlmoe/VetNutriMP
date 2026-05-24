@@ -210,9 +210,19 @@ class DatabaseFoodRepository(
                         )
                 }
 
+        val energyByFood: Map<String, List<EnergyPerSpeciesEntity>> =
+            if (energyPerSpeciesDao != null && foodEntities.isNotEmpty()) {
+                try {
+                    val uuids = foodEntities.map { it.uuid }
+                    uuids.chunked(500)
+                        .flatMap { chunk -> energyPerSpeciesDao.getForAliments(chunk) }
+                        .groupBy { it.refAliment }
+                } catch (_: Exception) { emptyMap() }
+            } else emptyMap()
+
         val filteredFoods =
                 foodEntities
-                        .map { it.toAlimentEv() }
+                        .map { it.toAlimentEv(energyPerSpecies = energyByFood[it.uuid] ?: emptyList()) }
                         .filter { aliment ->
                                 // Garde-fou pour conserver le comportement métier
                                 val especeMatches =
@@ -259,6 +269,7 @@ class DatabaseFoodRepository(
                     val updateEntities: MutableList<FoodEntity> = mutableListOf()
                     val updateIds: MutableList<String> = mutableListOf()
                     val batchNutrientValues: MutableList<NutrientValueEntity> = mutableListOf()
+                    val batchEnergyPerSpecies: MutableList<EnergyPerSpeciesEntity> = mutableListOf()
 
                     // Pré-traiter insert vs update (batch)
                     batch.forEach { aliment ->
@@ -275,6 +286,9 @@ class DatabaseFoodRepository(
                                 val nutrientValues =
                                         aliment.valMap.toNutrientValueEntities(aliment.uuid)
                                 batchNutrientValues.addAll(nutrientValues)
+                                aliment.energieParEspece.forEach { (especeNom, v) ->
+                                    if (v > 0.0) batchEnergyPerSpecies.add(EnergyPerSpeciesEntity(aliment.uuid, especeNom, v))
+                                }
                             } else {
                                 updateIds.add(aliment.uuid)
                             }
@@ -310,6 +324,9 @@ class DatabaseFoodRepository(
                                     batchNutrientValues.addAll(
                                             aliment.valMap.toNutrientValueEntities(aliment.uuid)
                                     )
+                                    aliment.energieParEspece.forEach { (especeNom, v) ->
+                                        if (v > 0.0) batchEnergyPerSpecies.add(EnergyPerSpeciesEntity(aliment.uuid, especeNom, v))
+                                    }
                                 } catch (_: Exception) {
                                     errorCount++
                                 }
@@ -380,6 +397,21 @@ class DatabaseFoodRepository(
                                 } catch (_: Exception) {}
                             }
                         }
+                    }
+                    // Énergie par espèce (batch)
+                    if (batchEnergyPerSpecies.isNotEmpty() && energyPerSpeciesDao != null) {
+                        val allIds: List<String> = buildList {
+                            addAll(newEntities.map { it.uuid })
+                            addAll(updateEntities.map { it.uuid })
+                        }
+                        if (!mergeNutrients) {
+                            try { allIds.forEach { energyPerSpeciesDao.deleteForAliment(it) } } catch (_: Exception) {}
+                        }
+                        try {
+                            batchEnergyPerSpecies.chunked(1000).forEach { chunk ->
+                                energyPerSpeciesDao.insert(chunk)
+                            }
+                        } catch (_: Exception) {}
                     }
                 }
             } finally {
@@ -659,6 +691,7 @@ class DatabaseFoodRepository(
                 val updateCandidateIds: MutableList<String> = mutableListOf()
                 val updateIds: MutableList<String> = mutableListOf()
                 val allNutrientValues: MutableList<NutrientValueEntity> = mutableListOf()
+                val allEnergyPerSpecies: MutableList<EnergyPerSpeciesEntity> = mutableListOf()
                 fun nettoyerChaineBruteBrackets(valeur: String): String {
                     return valeur.replace("[", "").replace("]", "").replace("\"", "").trim()
                 }
@@ -869,6 +902,9 @@ class DatabaseFoodRepository(
                                     )
                             newEntities.add(entity)
                             allNutrientValues.addAll(genererNutrientValues(food))
+                            food.energieParEspece.forEach { (k, v) ->
+                                if (v > 0.0) allEnergyPerSpecies.add(EnergyPerSpeciesEntity(food.UUID, k, v))
+                            }
                             importCount++
                         } else {
                             updateCandidateIds.add(food.UUID)
@@ -945,6 +981,9 @@ class DatabaseFoodRepository(
                                         )
                                 updateEntities.add(updated)
                                 allNutrientValues.addAll(genererNutrientValues(food))
+                                food.energieParEspece.forEach { (k, v) ->
+                                    if (v > 0.0) allEnergyPerSpecies.add(EnergyPerSpeciesEntity(food.UUID, k, v))
+                                }
                                 updateCount++
                                 updateIds.add(food.UUID)
                             } catch (e: Exception) {
@@ -995,6 +1034,19 @@ class DatabaseFoodRepository(
                             } catch (_: Exception) {}
                         }
                     }
+                }
+                // Énergie par espèce
+                if (allEnergyPerSpecies.isNotEmpty() && energyPerSpeciesDao != null) {
+                    if (!mergeNutrients) {
+                        val idsToClean = buildList {
+                            addAll(newEntities.map { it.uuid })
+                            addAll(updateIds)
+                        }
+                        try { idsToClean.forEach { energyPerSpeciesDao.deleteForAliment(it) } } catch (_: Exception) {}
+                    }
+                    try {
+                        allEnergyPerSpecies.chunked(1000).forEach { energyPerSpeciesDao.insert(it) }
+                    } catch (_: Exception) {}
                 }
             } finally {
                 endBatch()
@@ -1556,6 +1608,14 @@ class DatabaseFoodRepository(
     suspend fun getFoodsForRation(rationId: String): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
             val foods = foodDao.getAllFoods().filter { it.RefRation == rationId }
+            val energyByFood: Map<String, List<EnergyPerSpeciesEntity>> =
+                if (energyPerSpeciesDao != null && foods.isNotEmpty()) {
+                    try {
+                        foods.map { it.uuid }.chunked(500)
+                            .flatMap { chunk -> energyPerSpeciesDao.getForAliments(chunk) }
+                            .groupBy { it.refAliment }
+                    } catch (_: Exception) { emptyMap() }
+                } else emptyMap()
             return@withContext foods.map { foodEntity ->
                 val nutrientValues =
                         if (nutrientValueDao != null) {
@@ -1563,7 +1623,10 @@ class DatabaseFoodRepository(
                         } else {
                             emptyList()
                         }
-                foodEntity.toAlimentEv(nutrientValues = nutrientValues)
+                foodEntity.toAlimentEv(
+                    nutrientValues = nutrientValues,
+                    energyPerSpecies = energyByFood[foodEntity.uuid] ?: emptyList()
+                )
             }
         }
     }

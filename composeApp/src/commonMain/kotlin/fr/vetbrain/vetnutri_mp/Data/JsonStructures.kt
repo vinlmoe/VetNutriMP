@@ -26,7 +26,8 @@ data class AlimentEvJson(
         val cont: String = "NO",
         val deprecated: Boolean = false,
         val DataB: String = "6",
-        val valMap: Map<String, NutrientQuantity> = mapOf()
+        val valMap: Map<String, NutrientQuantity> = mapOf(),
+        val energieParEspece: Map<String, Double> = emptyMap()
 )
 
 /** Structure JSON pour AnimalEv */
