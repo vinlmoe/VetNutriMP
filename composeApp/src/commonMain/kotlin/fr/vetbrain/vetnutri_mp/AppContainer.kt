@@ -53,7 +53,8 @@ fun rememberAppContainer(appDatabase: AppDatabase): AppContainer {
             appDatabase.nutrientValueDao(),
             appDatabase.customNutrientDao(),
             appDatabase.alimentBiblioRefDao(),
-            appDatabase.biblioRefDao()
+            appDatabase.biblioRefDao(),
+            appDatabase.energyPerSpeciesDao()
         ) }
     val consultationRepository =
         remember { DatabaseConsultationRepository(appDatabase.consultationDao(), foodRepository) }

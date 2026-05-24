@@ -15,6 +15,8 @@ import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEv
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEvLight
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toFoodEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toNutrientValueEntities
+import fr.vetbrain.vetnutri_mp.DataBase.EnergyPerSpeciesDao
+import fr.vetbrain.vetnutri_mp.DataBase.EnergyPerSpeciesEntity
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueDao
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueEntity
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
@@ -51,7 +53,8 @@ class DatabaseFoodRepository(
         private val nutrientValueDao: NutrientValueDao?,
         private val customNutrientDao: CustomNutrientDao? = null,
         private val alimentBiblioRefDao: AlimentBiblioRefDao? = null,
-        private val biblioRefDao: BiblioRefDao? = null
+        private val biblioRefDao: BiblioRefDao? = null,
+        private val energyPerSpeciesDao: EnergyPerSpeciesDao? = null
 ) : FoodRepository {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -455,8 +458,21 @@ class DatabaseFoodRepository(
                     } catch (_: Exception) { emptyMap() }
                 } else emptyMap()
 
+            val energyByFood: Map<String, List<EnergyPerSpeciesEntity>> =
+                if (energyPerSpeciesDao != null) {
+                    try {
+                        val uuids = foodEntities.map { it.uuid }
+                        uuids.chunked(500)
+                            .flatMap { chunk -> energyPerSpeciesDao.getForAliments(chunk) }
+                            .groupBy { it.refAliment }
+                    } catch (_: Exception) { emptyMap() }
+                } else emptyMap()
+
             val result = foodEntities.map { foodEntity ->
-                foodEntity.toAlimentEv(nutrientValues = nutrientsByFood[foodEntity.uuid] ?: emptyList())
+                foodEntity.toAlimentEv(
+                    nutrientValues = nutrientsByFood[foodEntity.uuid] ?: emptyList(),
+                    energyPerSpecies = energyByFood[foodEntity.uuid] ?: emptyList()
+                )
             }
 
             val currentTime = Clock.System.now().toEpochMilliseconds()
@@ -594,7 +610,11 @@ class DatabaseFoodRepository(
                     } else {
                         emptyList()
                     }
-            return@withContext food.toAlimentEv(nutrientValues = nutrientValues)
+            val energyPerSpecies = energyPerSpeciesDao?.getForAliment(food.uuid) ?: emptyList()
+            return@withContext food.toAlimentEv(
+                nutrientValues = nutrientValues,
+                energyPerSpecies = energyPerSpecies
+            )
         }
     }
 
@@ -1252,6 +1272,14 @@ class DatabaseFoodRepository(
                     alimentBiblioRefDao.insertAll(junctions)
                 }
 
+                // Insérer les valeurs d'énergie par espèce
+                if (energyPerSpeciesDao != null && food.energieParEspece.isNotEmpty()) {
+                    val entities = food.energieParEspece
+                        .filter { (_, v) -> v > 0.0 }
+                        .map { (especeNom, v) -> EnergyPerSpeciesEntity(food.uuid, especeNom, v) }
+                    if (entities.isNotEmpty()) energyPerSpeciesDao.insert(entities)
+                }
+
                 clearCache()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -1310,10 +1338,12 @@ class DatabaseFoodRepository(
                 } catch (_: Exception) { emptyList() }
             } else emptyList()
 
+            val energyPerSpecies = energyPerSpeciesDao?.getForAliment(uuid) ?: emptyList()
             return@withContext foodEntity.toAlimentEv(
                     especes = especeEntities,
                     nutrientValues = nutrientValues,
-                    biblioRefs = biblioRefs
+                    biblioRefs = biblioRefs,
+                    energyPerSpecies = energyPerSpecies
             )
         }
     }
@@ -1425,6 +1455,14 @@ class DatabaseFoodRepository(
                         }
                         alimentBiblioRefDao.insertAll(junctions)
                     }
+                }
+
+                // Remplacer les valeurs d'énergie par espèce
+                if (energyPerSpeciesDao != null) {
+                    val entities = food.energieParEspece
+                        .filter { (_, v) -> v > 0.0 }
+                        .map { (especeNom, v) -> EnergyPerSpeciesEntity(food.uuid, especeNom, v) }
+                    energyPerSpeciesDao.replace(food.uuid, entities)
                 }
 
                 clearCache()

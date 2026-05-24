@@ -77,6 +77,7 @@ fun FoodEditView(
         val allNutrients = viewModel.getAllNutrients()
         val nutrientValues = remember { mutableStateMapOf<Nutrient, String>() }
         val nutrientErrors = remember { mutableStateMapOf<Nutrient, Boolean>() }
+        val energieParEspeceState = remember { mutableStateMapOf<String, String>() }
         val customNutrientNameState = remember { mutableStateOf("") }
         val customNutrientUnitState = remember { mutableStateOf("g") }
         val customNutrientSelectedLabelState = remember { mutableStateOf("") }
@@ -150,6 +151,10 @@ fun FoodEditView(
                 nutrientErrors.clear()
                 aliment.valMap.forEach { (nutrient, quantity) ->
                         nutrientValues[nutrient] = quantity.value.toString()
+                }
+                energieParEspeceState.clear()
+                aliment.energieParEspece.forEach { (especeNom, value) ->
+                        energieParEspeceState[especeNom] = if (value > 0.0) value.toString() else ""
                 }
         }
 
@@ -375,7 +380,14 @@ fun FoodEditView(
                                                                         // problèmes de clé
                                                                         // étrangère
                                                                         rationUUID =
-                                                                                aliment.rationUUID
+                                                                                aliment.rationUUID,
+                                                                        energieParEspece =
+                                                                                energieParEspeceState
+                                                                                        .mapNotNull { (k, v) ->
+                                                                                                val d = v.replace(",", ".").toDoubleOrNull()
+                                                                                                if (d != null && d > 0.0) k to d else null
+                                                                                        }
+                                                                                        .toMap()
                                                                 )
                                                          try {
                                                                 println(
@@ -466,6 +478,8 @@ fun FoodEditView(
                                                         customNutrientUnitState = customNutrientUnitState,
                                                         customNutrientSelectedLabelState = customNutrientSelectedLabelState,
                                                         customNutrientErrorState = customNutrientErrorState,
+                                                        especesAliment = selectedEspecesState.value,
+                                                        energieParEspece = energieParEspeceState,
                                                         onAddCustomNutrient = { name, unit ->
                                                                 val nutrient =
                                                                         viewModel.addOrGetCustomNutrient(name, unit)
@@ -958,7 +972,9 @@ private fun NutritionInfoTab(
         customNutrientErrorState: MutableState<String?>,
         onAddCustomNutrient: (String, String) -> Unit,
         onUpdateCustomNutrient: (CustomNutrient, String, String) -> Unit,
-        onDeleteCustomNutrient: (CustomNutrient) -> Unit
+        onDeleteCustomNutrient: (CustomNutrient) -> Unit,
+        especesAliment: List<Espece> = emptyList(),
+        energieParEspece: SnapshotStateMap<String, String> = mutableStateMapOf()
 ) {
         val scrollState = rememberScrollState()
 
@@ -1221,6 +1237,51 @@ private fun NutritionInfoTab(
                                                                                 MaterialTheme.colors.error
                                                                 )
                                                 ) { Text("Supprimer") }
+                                        }
+                                }
+                        }
+                }
+
+                // Section Énergie par espèce — uniquement pour les espèces déclarées sur l'aliment
+                if (especesAliment.isNotEmpty()) {
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                backgroundColor = Color(0xFFFFF8E1),
+                                elevation = 2.dp
+                        ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                                "Énergie par espèce (kcal/100g)",
+                                                style = MaterialTheme.typography.subtitle1,
+                                                color = MaterialTheme.colors.primary
+                                        )
+                                        Text(
+                                                "Définir ici l'énergie spécifique à chaque espèce. Si vide, l'équation du référentiel sera utilisée.",
+                                                style = MaterialTheme.typography.caption,
+                                                color = Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        especesAliment.forEach { espece ->
+                                                val key = espece.name
+                                                Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                                ) {
+                                                        Text(
+                                                                espece.name,
+                                                                modifier = Modifier.width(100.dp),
+                                                                style = MaterialTheme.typography.body2
+                                                        )
+                                                        OutlinedTextField(
+                                                                value = energieParEspece[key] ?: "",
+                                                                onValueChange = { v ->
+                                                                        energieParEspece[key] = v
+                                                                },
+                                                                label = { Text("kcal/100g") },
+                                                                singleLine = true,
+                                                                modifier = Modifier.weight(1f)
+                                                        )
+                                                }
                                         }
                                 }
                         }

@@ -273,6 +273,27 @@ interface NutrientValueDao {
         }
 }
 
+@Dao
+interface EnergyPerSpeciesDao {
+        @Query("SELECT * FROM ENERGY_PER_SPECIES WHERE refAliment = :alimentUuid")
+        suspend fun getForAliment(alimentUuid: String): List<EnergyPerSpeciesEntity>
+
+        @Query("SELECT * FROM ENERGY_PER_SPECIES WHERE refAliment IN (:alimentUuids)")
+        suspend fun getForAliments(alimentUuids: List<String>): List<EnergyPerSpeciesEntity>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insert(values: List<EnergyPerSpeciesEntity>)
+
+        @Query("DELETE FROM ENERGY_PER_SPECIES WHERE refAliment = :alimentUuid")
+        suspend fun deleteForAliment(alimentUuid: String)
+
+        @Transaction
+        suspend fun replace(alimentUuid: String, values: List<EnergyPerSpeciesEntity>) {
+                deleteForAliment(alimentUuid)
+                if (values.isNotEmpty()) insert(values)
+        }
+}
+
 /** DAO pour accéder aux références bibliographiques dans la base de données */
 @Dao
 interface BiblioRefDao {

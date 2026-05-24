@@ -42,8 +42,9 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ExamGradeEntity::class,
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class,
-                        CustomNutrientEntity::class],
-        version = 35,
+                        CustomNutrientEntity::class,
+                        EnergyPerSpeciesEntity::class],
+        version = 36,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -61,6 +62,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun referenceEvDao(): ReferenceEvDao
     abstract fun htmlSectionDao(): HtmlSectionDao
     abstract fun examGradingDao(): ExamGradingDao
+    abstract fun energyPerSpeciesDao(): EnergyPerSpeciesDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
@@ -120,7 +122,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         // Migration 33→34 : Table de jonction aliment ↔ références bibliographiques
                         createMigration33to34(),
                         // Migration 34→35 : Table CUSTOM_NUTRIENTS pour persister les métadonnées des nutriments personnalisés
-                        createMigration34to35()
+                        createMigration34to35(),
+                        // Migration 35→36 : Table ENERGY_PER_SPECIES pour l'énergie par espèce
+                        createMigration35to36()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -671,6 +675,23 @@ fun createMigration34to35(): Migration {
                     categoryCode TEXT NOT NULL
                 )
             """.trimIndent()).use { it.step() }
+        }
+    }
+}
+
+fun createMigration35to36(): Migration {
+    return object : Migration(35, 36) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS ENERGY_PER_SPECIES (
+                    refAliment TEXT NOT NULL,
+                    espece TEXT NOT NULL,
+                    value REAL NOT NULL,
+                    PRIMARY KEY(refAliment, espece),
+                    FOREIGN KEY(refAliment) REFERENCES FOOD(uuid) ON DELETE CASCADE
+                )
+            """.trimIndent()).use { it.step() }
+            connection.prepare("CREATE INDEX IF NOT EXISTS index_ENERGY_PER_SPECIES_refAliment ON ENERGY_PER_SPECIES(refAliment)").use { it.step() }
         }
     }
 }
