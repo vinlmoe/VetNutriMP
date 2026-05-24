@@ -692,6 +692,18 @@ fun createMigration35to36(): Migration {
                 )
             """.trimIndent()).use { it.step() }
             connection.prepare("CREATE INDEX IF NOT EXISTS index_ENERGY_PER_SPECIES_refAliment ON ENERGY_PER_SPECIES(refAliment)").use { it.step() }
+
+            // Rétrocompatibilité : propager la valeur générique Énergie vers toutes les espèces
+            // déclarées sur l'aliment. Seuls les aliments avec une énergie > 0 ET au moins
+            // une espèce dans ESPECES_ALIMENTS sont concernés.
+            connection.prepare("""
+                INSERT OR IGNORE INTO ENERGY_PER_SPECIES (refAliment, espece, value)
+                SELECT ea.refAliment, ea.espece, nv.value
+                FROM ESPECES_ALIMENTS ea
+                INNER JOIN NUTRIENT_VALUES nv ON nv.refAliment = ea.refAliment
+                WHERE nv.nutrientLabel = 'Énergie'
+                  AND nv.value > 0
+            """.trimIndent()).use { it.step() }
         }
     }
 }
