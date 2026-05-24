@@ -181,6 +181,7 @@ private fun AlimentEv.toAlimentEvJson(): fr.vetbrain.vetnutri_mp.Data.AlimentEvJ
                 value = quantity.value,
                 nut = quantity.unit
             )
-        }
+        },
+        energieParEspece = energieParEspece
     )
 }
