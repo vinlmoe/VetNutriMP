@@ -170,7 +170,7 @@ class ExportImportRepository(
                                 emptyList()
                         }
                 return ApiEnvelope(
-                        version = "1.0.0",
+                        version = "2.0.0",
                         generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
                         animals = animals,
                         foods = foods,
@@ -546,7 +546,7 @@ class ExportImportRepository(
                         }
 
                 return ApiEnvelope(
-                        version = "1.0.0",
+                        version = "2.0.0",
                         generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
                         animals = animals,
                         foods = foods,

@@ -5,6 +5,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKindResolver
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.TargetAdjust
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
@@ -125,7 +126,16 @@ fun AlimentEvJson.toData(): AlimentEv {
                     rationUUID = null
             )
 
-    alimentEv.energieParEspece = this.energieParEspece
+    alimentEv.energieParEspece = if (this.energieParEspece.isNotEmpty()) {
+        this.energieParEspece
+    } else {
+        val genericEnergy = nutrientMap[NutrientMain.ENERGIE]?.value
+        if (genericEnergy != null && genericEnergy > 0.0 && especesConverties.isNotEmpty()) {
+            especesConverties.associateWith { genericEnergy }
+        } else {
+            emptyMap()
+        }
+    }
 
     return alimentEv
 }
@@ -186,7 +196,18 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
             indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
             valMap = nutrientMap.toMutableMap(),
             rationUUID = ratUUID
-    ).also { it.energieParEspece = this.energieParEspece }
+    ).also { alim ->
+        alim.energieParEspece = if (this.energieParEspece.isNotEmpty()) {
+            this.energieParEspece
+        } else {
+            val genericEnergy = nutrientMap[NutrientMain.ENERGIE]?.value
+            if (genericEnergy != null && genericEnergy > 0.0 && especesConverties.isNotEmpty()) {
+                especesConverties.associateWith { genericEnergy }
+            } else {
+                emptyMap()
+            }
+        }
+    }
 }
 
 /**
