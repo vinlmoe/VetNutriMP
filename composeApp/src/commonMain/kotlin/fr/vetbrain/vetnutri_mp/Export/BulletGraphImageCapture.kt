@@ -193,7 +193,8 @@ object BulletGraphImageCapture {
                         poidsAnimal,
                         poidsMetabolique,
                         besoinEnergetiqueEntretien,
-                        reference
+                        reference,
+                        ration
                     )
                     images[nomNutriment] = imageBytes
                 }
@@ -223,7 +224,8 @@ object BulletGraphImageCapture {
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
         besoinEnergetiqueEntretien: Double?,
-        reference: ReferenceEv
+        reference: ReferenceEv,
+        ration: Ration? = null
     ): ByteArray {
         // MÊME LOGIQUE que ReferenceBulletGraph lignes 473-483
         val valeurs = listOfNotNull(valeurApport, minRefConverti, optiminRefConverti, optimaxRefConverti, maxRefConverti)
@@ -251,7 +253,10 @@ object BulletGraphImageCapture {
             maxRefConverti,
             maxAxis,
             bornes,
-            unite
+            unite,
+            ration,
+            nutrient,
+            reference
         )
     }
     
@@ -267,7 +272,10 @@ object BulletGraphImageCapture {
         maxRefConverti: Double?,
         maxAxis: Double,
         bornes: List<Double>,
-        unite: String
+        unite: String,
+        ration: Ration? = null,
+        nutrient: Nutrient? = null,
+        reference: ReferenceEv? = null
     ): ByteArray {
         val width = 500f
         val height = 80f
@@ -288,7 +296,10 @@ object BulletGraphImageCapture {
             bornes = bornes,
             unite = unite,
             width = width,
-            height = height
+            height = height,
+            ration = ration,
+            nutrient = nutrient,
+            reference = reference
         )
         
         return imageBitmap.toByteArray()
@@ -310,7 +321,10 @@ object BulletGraphImageCapture {
         bornes: List<Double>,
         unite: String,
         width: Float,
-        height: Float
+        height: Float,
+        ration: Ration? = null,
+        nutrient: Nutrient? = null,
+        reference: ReferenceEv? = null
     ) {
         // Calculer les positions (même logique que KoalaPlot)
         val startX = 50f
@@ -360,19 +374,69 @@ object BulletGraphImageCapture {
             )
         }
         
-        // Dessiner la barre principale (apport) - MÊME LOGIQUE que ReferenceBulletGraph ligne 536-540
+        // Dessiner la barre principale (apport) en segments colorés si ration est disponible
         val apportX = startX + (valeurApport * scale).toFloat()
-        val apportPaint = Paint().apply {
-            color = Color(0xFF4A5568) // Couleur grise pour l'apport
-            style = PaintingStyle.Fill
+        
+        // Calculer les contributions des aliments
+        val contributions = if (ration != null && nutrient != null && valeurApport > 0.0 && nutrient !is NutrientAnalysis) {
+            ration.alimentMutableList.mapIndexed { index, alimentRation ->
+                val quantiteIngredient = alimentRation.quantite
+                val valeurNutrimentPour100g = alimentRation.aliment?.getNutrient(nutrient, reference) ?: 0.0
+                
+                val contribution = if (nutrient == NutrientMain.ENERGIE) {
+                    alimentRation.densiteEnergetique * quantiteIngredient
+                } else if (nutrient is AAEnum) {
+                    val teneurProteines = alimentRation.aliment?.getNutrient(NutrientMain.PROTEINE) ?: 0.0
+                    val valeurAminoAcideEnPourcentAliment = (valeurNutrimentPour100g * teneurProteines) / 100.0
+                    (valeurAminoAcideEnPourcentAliment * quantiteIngredient) / 100.0
+                } else {
+                    (valeurNutrimentPour100g * quantiteIngredient) / 100.0
+                }
+                
+                Triple(index, contribution, fr.vetbrain.vetnutri_mp.Theme.VetNutriColors.getFeedColor(index))
+            }.filter { it.second > 0.0 }
+        } else {
+            emptyList()
         }
-        canvas.drawRect(
-            left = startX,
-            top = barY + 10f,
-            right = apportX,
-            bottom = barY + 10f + 10f,
-            paint = apportPaint
-        )
+        
+        val totalContrib = contributions.sumOf { it.second }
+        
+        if (contributions.isEmpty() || totalContrib <= 0.0) {
+            // Dessiner la barre grise par défaut
+            val apportPaint = Paint().apply {
+                color = Color(0xFF4A5568)
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = startX,
+                top = barY + 10f,
+                right = apportX,
+                bottom = barY + 10f + 10f,
+                paint = apportPaint
+            )
+        } else {
+            // Dessiner les segments colorés
+            var currentX = startX
+            val totalWidth = (valeurApport * scale).toFloat()
+            
+            contributions.forEach { (index, contribution, color) ->
+                val segmentWidth = ((contribution / totalContrib) * totalWidth).toFloat()
+                if (segmentWidth > 0f) {
+                    val segmentPaint = Paint().apply {
+                        this.color = color
+                        style = PaintingStyle.Fill
+                    }
+                    canvas.drawRect(
+                        left = currentX,
+                        top = barY + 10f,
+                        right = currentX + segmentWidth,
+                        bottom = barY + 10f + 10f,
+                        paint = segmentPaint
+                    )
+                    currentX += segmentWidth
+                }
+            }
+        }
         
         // Dessiner les marqueurs de référence
         minRefConverti?.let { ref ->

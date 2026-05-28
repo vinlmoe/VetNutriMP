@@ -16,6 +16,24 @@ object VetNutriColors {
     val OnSurface = Color(0xFF000000) // Noir
     val OnError = Color(0xFFFFFFFF) // Blanc
 
+    // Palette de couleurs pour les aliments dans les graphiques
+    val FeedColors = listOf(
+        Color(0xFF2E7D32), // Vert
+        Color(0xFF1565C0), // Bleu
+        Color(0xFFEF6C00), // Orange
+        Color(0xFFAD1457), // Rose/Magenta
+        Color(0xFF6A1B9A), // Violet
+        Color(0xFF00838F), // Cyan
+        Color(0xFFD84315), // Orange foncé
+        Color(0xFF4527A0), // Violet foncé
+        Color(0xFF37474F), // Gris bleu
+        Color(0xFFC2185B)  // Rose moyen
+    )
+
+    fun getFeedColor(index: Int): Color {
+        return FeedColors[index % FeedColors.size]
+    }
+
     // Couleurs spécifiques pour le code
     object CodeColors {
         val Keyword = Color(0xFF0033B3) // mots-clés comme class, fun, val, var
