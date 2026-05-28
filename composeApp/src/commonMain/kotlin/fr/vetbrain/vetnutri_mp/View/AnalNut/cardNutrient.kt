@@ -638,7 +638,8 @@ fun AnalyseNutritionnelleCard(
                                                         besoinEnergetiqueEntretien =
                                                                 besoinEnergetiqueEntretien,
                                                         referencesMaladies = referencesMaladies,
-                                                        onClick = { onNutrimentClick(nom, valeur) }
+                                                        onClick = { onNutrimentClick(nom, valeur) },
+                                                        ration = ration
                                                 )
                                             }
                                         }

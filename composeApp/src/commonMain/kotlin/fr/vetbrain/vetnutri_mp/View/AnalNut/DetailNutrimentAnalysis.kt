@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -299,7 +300,8 @@ fun NutrientDetailDialog(
                                                                         besoinEnergetiqueEntretien =
                                                                                 besoinEnergetiqueEntretien,
                                                                         referencesMaladies =
-                                                                                referencesMaladies
+                                                                                referencesMaladies,
+                                                                        ration = ration
                                                                 )
                                                         }
                                                 }
@@ -341,7 +343,8 @@ fun NutrientDetailDialog(
                                                                                 poidsMetabolique =
                                                                                         poidsMetabolique,
                                                                                 besoinEnergetiqueEntretien =
-                                                                                        besoinEnergetiqueEntretien
+                                                                                        besoinEnergetiqueEntretien,
+                                                                                ration = ration
                                                                         )
                                                                 }
                                                         }
@@ -378,7 +381,8 @@ fun ReferenceBulletGraph(
         poidsMetabolique: Double?,
         besoinEnergetiqueEntretien: Double?,
         referencesMaladies: List<ReferenceEv> = emptyList(),
-        onClick: (() -> Unit)? = null
+        onClick: (() -> Unit)? = null,
+        ration: Ration? = null
 ) {
         // Récupération des valeurs de référence avec leurs unités
         val minRef = reference.obtenirNutriment(nutriment, Reflevel.MIN)
@@ -520,12 +524,51 @@ fun ReferenceBulletGraph(
                                         }
                                 }
 
-                                // Barre représentant l'apport
+                                // Barre représentant l'apport (segmentée par aliment)
                                 featuredMeasureBar(valeurApport.toFloat()) {
-                                        HorizontalBarIndicator(
-                                                SolidColor(Color.Gray),
-                                                fraction = 0.33f
-                                        )
+                                        val contributions = remember(ration, nutriment, valeurApport) {
+                                                if (ration == null || valeurApport <= 0.0 || nutriment is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis) {
+                                                        emptyList()
+                                                } else {
+                                                        ration.alimentMutableList.mapIndexed { index, alimentRation ->
+                                                                val quantiteIngredient = alimentRation.quantite
+                                                                val valeurNutrimentPour100g = alimentRation.aliment?.getNutrient(nutriment, reference) ?: 0.0
+                                                                val contribution = if (nutriment == fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE) {
+                                                                        alimentRation.densiteEnergetique * quantiteIngredient
+                                                                } else if (nutriment is fr.vetbrain.vetnutri_mp.Enumer.AAEnum) {
+                                                                        val teneurProteines = alimentRation.aliment?.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE) ?: 0.0
+                                                                        val valeurAminoAcideEnPourcentAliment = (valeurNutrimentPour100g * teneurProteines) / 100.0
+                                                                        (valeurAminoAcideEnPourcentAliment * quantiteIngredient) / 100.0
+                                                                } else {
+                                                                        (valeurNutrimentPour100g * quantiteIngredient) / 100.0
+                                                                }
+                                                                Triple(index, contribution, fr.vetbrain.vetnutri_mp.Theme.VetNutriColors.getFeedColor(index))
+                                                        }.filter { it.second > 0.0 }
+                                                }
+                                        }
+
+                                        val totalContrib = contributions.sumOf { it.second }
+
+                                        if (contributions.isEmpty() || totalContrib <= 0.0) {
+                                                HorizontalBarIndicator(
+                                                        SolidColor(Color.Gray),
+                                                        fraction = 0.33f
+                                                )
+                                        } else {
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth().fillMaxHeight(0.33f),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                        contributions.forEach { (index, contribution, color) ->
+                                                                Box(
+                                                                        modifier = Modifier
+                                                                                .weight(contribution.toFloat())
+                                                                                .fillMaxHeight()
+                                                                                .background(color)
+                                                                )
+                                                        }
+                                                }
+                                        }
                                 }
 
                                 // Construction dynamique des intervalles colorés
@@ -907,6 +950,7 @@ private fun ContributionsList(
         ) {
                 contributionsTriees.forEach {
                         (alimentRation, contributionAbsolue, contributionPourcentage) ->
+                        val alimentIndex = ration.alimentMutableList.indexOf(alimentRation)
                         ContributionItem(
                                 alimentRation = alimentRation,
                                 valeurNutritionnelle = valeurNutritionnelle,
@@ -915,7 +959,8 @@ private fun ContributionsList(
                                 equationRepository = equationRepository,
                                 referenceUtilisee = referenceUtilisee,
                                 contributionAbsolue = contributionAbsolue,
-                                contributionPourcentage = contributionPourcentage
+                                contributionPourcentage = contributionPourcentage,
+                                alimentIndex = alimentIndex
                         )
                 }
         }
@@ -1017,7 +1062,8 @@ private fun ContributionItem(
         equationRepository: EquationRepository?,
         referenceUtilisee: ReferenceEv?,
         contributionAbsolue: Double,
-        contributionPourcentage: Double
+        contributionPourcentage: Double,
+        alimentIndex: Int = -1
 ) {
         val quantite: Double = alimentRation.quantite
         val nutrient: Nutrient = valeurNutritionnelle.nutriment
@@ -1084,12 +1130,27 @@ private fun ContributionItem(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
-                                Text(
-                                        text = alimentRation.aliment?.nom ?: "Aliment inconnu",
-                                        style = MaterialTheme.typography.subtitle2,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.weight(1f)
-                                )
+                                Row(
+                                        modifier = Modifier.weight(1f),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        if (alimentIndex >= 0) {
+                                                Box(
+                                                        modifier = Modifier
+                                                                .size(12.dp)
+                                                                .background(
+                                                                        fr.vetbrain.vetnutri_mp.Theme.VetNutriColors.getFeedColor(alimentIndex),
+                                                                        MaterialTheme.shapes.small
+                                                                )
+                                                )
+                                        }
+                                        Text(
+                                                text = alimentRation.aliment?.nom ?: "Aliment inconnu",
+                                                style = MaterialTheme.typography.subtitle2,
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                }
                                 val hasEqForAliment: Boolean =
                                         (valeurAlimentAffichee == null || valeurAlimentAffichee <= 0.0) &&
                                                 valeurPour100gItem != null
@@ -1203,7 +1264,8 @@ private fun ReferenceCard(
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
         besoinEnergetiqueEntretien: Double?,
-        referencesMaladies: List<ReferenceEv> = emptyList()
+        referencesMaladies: List<ReferenceEv> = emptyList(),
+        ration: Ration? = null
 ) {
         val nutrient: Nutrient = valeurNutritionnelle.nutriment
         val isAnalysisNoUnit: Boolean =
@@ -1248,7 +1310,8 @@ private fun ReferenceCard(
                                 poidsMetabolique = poidsMetabolique,
                                 besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
                                 referencesMaladies = referencesMaladies,
-                                onClick = null // Pas de clic dans ce contexte
+                                onClick = null,
+                                ration = ration
                         )
                         ReferenceLevelsList(
                                 reference = reference,
