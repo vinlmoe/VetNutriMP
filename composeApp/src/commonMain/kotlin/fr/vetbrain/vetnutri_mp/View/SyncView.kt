@@ -32,11 +32,12 @@ fun SyncView(
     syncViewModel: SyncViewModel,
     onNavigateBack: () -> Unit
 ) {
-    val authState  by authViewModel.state.collectAsState()
-    val syncResult by syncViewModel.syncResult.collectAsState()
-    val syncConfig by syncViewModel.syncConfig.collectAsState()
+    val authState   by authViewModel.state.collectAsState()
+    val savedEmail  by authViewModel.savedEmail.collectAsState()
+    val syncResult  by syncViewModel.syncResult.collectAsState()
+    val syncConfig  by syncViewModel.syncConfig.collectAsState()
     val remoteManifest by syncViewModel.remoteManifest.collectAsState()
-    val isLoading  by syncViewModel.isLoading.collectAsState()
+    val isLoading   by syncViewModel.isLoading.collectAsState()
 
     var showConflictDialog by remember { mutableStateOf(false) }
     var showSchemaDialog   by remember { mutableStateOf(false) }
@@ -47,7 +48,7 @@ fun SyncView(
 
     LaunchedEffect(syncResult) {
         when (syncResult) {
-            is SyncResult.ConflictDetected  -> showConflictDialog = true
+            is SyncResult.ConflictDetected   -> showConflictDialog = true
             is SyncResult.SchemaIncompatible -> showSchemaDialog = true
             else -> {}
         }
@@ -72,30 +73,37 @@ fun SyncView(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (authState) {
+            when (val state = authState) {
                 is AuthState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
                 is AuthState.Unauthenticated, is AuthState.Error -> {
                     LoginPanel(
                         authState  = authState,
+                        savedEmail = savedEmail,
                         onSignIn   = authViewModel::signIn,
                         onSignUp   = authViewModel::signUp
                     )
                 }
+                is AuthState.ConfirmationPending -> {
+                    ConfirmationPendingPanel(
+                        email  = state.email,
+                        onBack = authViewModel::resetToUnauthenticated
+                    )
+                }
                 is AuthState.Authenticated -> {
                     SyncPanel(
-                        auth       = authState as AuthState.Authenticated,
-                        config     = syncConfig,
+                        auth           = state,
+                        config         = syncConfig,
                         remoteManifest = remoteManifest,
-                        isLoading  = isLoading,
-                        syncResult = syncResult,
-                        onSignOut  = authViewModel::signOut,
-                        onPush     = syncViewModel::push,
-                        onCheck    = syncViewModel::checkRemoteManifest,
-                        onPull     = { syncViewModel.pull(false) },
-                        onSaveName = syncViewModel::saveDeviceName,
-                        onClearResult = syncViewModel::clearResult
+                        isLoading      = isLoading,
+                        syncResult     = syncResult,
+                        onSignOut      = authViewModel::signOut,
+                        onPush         = syncViewModel::push,
+                        onCheck        = syncViewModel::checkRemoteManifest,
+                        onPull         = { syncViewModel.pull(false) },
+                        onSaveName     = syncViewModel::saveDeviceName,
+                        onClearResult  = syncViewModel::clearResult
                     )
                 }
             }
@@ -162,12 +170,18 @@ fun SyncView(
 @Composable
 private fun LoginPanel(
     authState: AuthState,
+    savedEmail: String,
     onSignIn: (String, String) -> Unit,
     onSignUp: (String, String) -> Unit
 ) {
     var email    by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+
+    // Pré-remplit l'e-mail avec la dernière valeur connue, seulement si le champ est vide
+    LaunchedEffect(savedEmail) {
+        if (email.isEmpty() && savedEmail.isNotEmpty()) email = savedEmail
+    }
 
     Column(
         modifier = Modifier
@@ -247,7 +261,7 @@ private fun LoginPanel(
 
         Button(
             onClick = { onSignIn(email, password) },
-            enabled = email.isNotBlank() && password.isNotBlank(),
+            enabled = email.isNotBlank() && password.isNotBlank() && authState !is AuthState.Loading,
             colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -268,6 +282,58 @@ private fun LoginPanel(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Créer un compte")
+        }
+    }
+}
+
+@Composable
+private fun ConfirmationPendingPanel(email: String, onBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Default.MarkEmailUnread,
+            contentDescription = null,
+            tint = VetNutriColors.Primary,
+            modifier = Modifier.size(72.dp)
+        )
+        Spacer(Modifier.height(20.dp))
+        Text(
+            "Confirmez votre adresse e-mail",
+            style = MaterialTheme.typography.h6,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Un e-mail de confirmation a été envoyé à :",
+            style = MaterialTheme.typography.body2
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            email,
+            style = MaterialTheme.typography.body1,
+            fontWeight = FontWeight.SemiBold,
+            color = VetNutriColors.Primary
+        )
+        Spacer(Modifier.height(16.dp))
+        Card(
+            backgroundColor = VetNutriColors.Primary.copy(alpha = 0.07f),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("1. Ouvrez votre boîte mail.", style = MaterialTheme.typography.body2)
+                Text("2. Cliquez sur le lien de confirmation.", style = MaterialTheme.typography.body2)
+                Text("3. Revenez ici et connectez-vous.", style = MaterialTheme.typography.body2)
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+            Text("Retour à la connexion")
         }
     }
 }

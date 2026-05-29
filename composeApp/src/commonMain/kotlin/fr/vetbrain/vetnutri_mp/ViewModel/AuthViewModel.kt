@@ -14,8 +14,12 @@ class AuthViewModel(private val authService: AuthService) : ViewModel() {
     private val _state = MutableStateFlow<AuthState>(AuthState.Loading)
     val state: StateFlow<AuthState> = _state.asStateFlow()
 
+    private val _savedEmail = MutableStateFlow("")
+    val savedEmail: StateFlow<String> = _savedEmail.asStateFlow()
+
     init {
         viewModelScope.launch {
+            _savedEmail.value = authService.loadLastEmail()
             _state.value = authService.restoreSession()
         }
     }
@@ -24,10 +28,15 @@ class AuthViewModel(private val authService: AuthService) : ViewModel() {
         viewModelScope.launch {
             _state.value = AuthState.Loading
             val result = authService.signIn(email, password)
-            _state.value = if (result.isSuccess) {
-                authService.restoreSession()
+            if (result.isSuccess) {
+                val session = authService.restoreSession()
+                if (session is AuthState.Authenticated) {
+                    authService.saveLastEmail(email)
+                    _savedEmail.value = email
+                }
+                _state.value = session
             } else {
-                AuthState.Error(result.exceptionOrNull()?.message ?: "Erreur de connexion")
+                _state.value = AuthState.Error(result.exceptionOrNull()?.message ?: "Erreur de connexion")
             }
         }
     }
@@ -36,10 +45,18 @@ class AuthViewModel(private val authService: AuthService) : ViewModel() {
         viewModelScope.launch {
             _state.value = AuthState.Loading
             val result = authService.signUp(email, password)
-            _state.value = if (result.isSuccess) {
-                authService.restoreSession()
+            if (result.isSuccess) {
+                val session = authService.restoreSession()
+                _state.value = when (session) {
+                    is AuthState.Authenticated -> {
+                        authService.saveLastEmail(email)
+                        _savedEmail.value = email
+                        session
+                    }
+                    else -> AuthState.ConfirmationPending(email)
+                }
             } else {
-                AuthState.Error(result.exceptionOrNull()?.message ?: "Erreur de création de compte")
+                _state.value = AuthState.Error(result.exceptionOrNull()?.message ?: "Erreur de création de compte")
             }
         }
     }
@@ -49,5 +66,9 @@ class AuthViewModel(private val authService: AuthService) : ViewModel() {
             authService.signOut()
             _state.value = AuthState.Unauthenticated
         }
+    }
+
+    fun resetToUnauthenticated() {
+        _state.value = AuthState.Unauthenticated
     }
 }

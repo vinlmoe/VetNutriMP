@@ -1,11 +1,18 @@
 package fr.vetbrain.vetnutri_mp.Service
 
 import fr.vetbrain.vetnutri_mp.Data.AuthState
+import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 
-class AuthService(private val supabase: SupabaseClient) {
+class AuthService(
+    private val supabase: SupabaseClient,
+    private val prefs: PreferencesStorage
+) {
+    companion object {
+        private const val KEY_LAST_EMAIL = "auth_last_email"
+    }
 
     suspend fun signIn(email: String, password: String): Result<Unit> = runCatching {
         supabase.auth.signInWith(Email) {
@@ -45,4 +52,8 @@ class AuthService(private val supabase: SupabaseClient) {
     }
 
     suspend fun getCurrentUserId(): String? = supabase.auth.currentSessionOrNull()?.user?.id
+
+    suspend fun saveLastEmail(email: String) = prefs.saveString(KEY_LAST_EMAIL, email)
+
+    suspend fun loadLastEmail(): String = prefs.getString(KEY_LAST_EMAIL)
 }

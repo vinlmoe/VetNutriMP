@@ -109,7 +109,7 @@ fun rememberAppContainer(appDatabase: AppDatabase): AppContainer {
             install(Storage)
         }
     }
-    val authService = remember { AuthService(supabaseClient) }
+    val authService = remember { AuthService(supabaseClient, preferencesStorage) }
     val syncService = remember {
         SyncService(
             supabase = supabaseClient,
