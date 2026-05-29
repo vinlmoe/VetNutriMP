@@ -17,9 +17,16 @@ import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Repository.ExamGradingRepository
+import fr.vetbrain.vetnutri_mp.Service.AuthService
 import fr.vetbrain.vetnutri_mp.Service.FileService
 import fr.vetbrain.vetnutri_mp.Service.StartupService
+import fr.vetbrain.vetnutri_mp.Service.SyncService
+import fr.vetbrain.vetnutri_mp.Service.SyncSessionManager
+import fr.vetbrain.vetnutri_mp.Utils.AppSecrets
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.storage.Storage
 
 data class AppContainer(
     val animalRepository: DatabaseAnimalRepository,
@@ -34,7 +41,9 @@ data class AppContainer(
     val exportImportRepository: ExportImportRepository,
     val fileService: FileService,
     val startupService: StartupService,
-    val preferencesRepository: PreferencesRepository
+    val preferencesRepository: PreferencesRepository,
+    val authService: AuthService,
+    val syncService: SyncService
 )
 
 @Composable
@@ -87,7 +96,27 @@ fun rememberAppContainer(appDatabase: AppDatabase): AppContainer {
         }
     val fileService = remember { createFileService() }
     val startupService = remember { StartupService(exportImportRepository, fileService) }
-    val preferencesRepository = remember { PreferencesRepository(createPreferencesStorage()) }
+    val preferencesStorage = remember { createPreferencesStorage() }
+    val preferencesRepository = remember { PreferencesRepository(preferencesStorage) }
+
+    val supabaseClient = remember {
+        val url = AppSecrets.supabaseUrl ?: "https://placeholder.supabase.co"
+        val key = AppSecrets.supabaseAnonKey ?: "placeholder"
+        createSupabaseClient(url, key) {
+            install(Auth) {
+                sessionManager = SyncSessionManager(preferencesStorage)
+            }
+            install(Storage)
+        }
+    }
+    val authService = remember { AuthService(supabaseClient) }
+    val syncService = remember {
+        SyncService(
+            supabase = supabaseClient,
+            exportImport = exportImportRepository,
+            prefs = preferencesStorage
+        )
+    }
 
     return AppContainer(
         animalRepository = animalRepository,
@@ -102,6 +131,8 @@ fun rememberAppContainer(appDatabase: AppDatabase): AppContainer {
         exportImportRepository = exportImportRepository,
         fileService = fileService,
         startupService = startupService,
-        preferencesRepository = preferencesRepository
+        preferencesRepository = preferencesRepository,
+        authService = authService,
+        syncService = syncService
     )
 }

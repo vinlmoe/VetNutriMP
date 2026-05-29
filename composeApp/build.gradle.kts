@@ -14,6 +14,12 @@ val jsonbinCreateKey: String = localProps.getProperty("jsonbin.create.key")
 val jsonbinReadKey: String = localProps.getProperty("jsonbin.read.key")
     ?: System.getenv("JSONBIN_READ_KEY")
     ?: ""
+val supabaseUrl: String = localProps.getProperty("SUPABASE_URL")
+    ?: System.getenv("SUPABASE_URL")
+    ?: ""
+val supabaseAnonKey: String = localProps.getProperty("SUPABASE_ANON_KEY")
+    ?: System.getenv("SUPABASE_ANON_KEY")
+    ?: ""
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -107,6 +113,8 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.androidx.paging.common)
+            implementation(libs.supabase.auth)
+            implementation(libs.supabase.storage)
         }
 
         val desktopMain by getting {
@@ -148,6 +156,8 @@ val generateSecrets by tasks.registering {
     outputs.dir(outputDir)
     inputs.property("createKey", jsonbinCreateKey)
     inputs.property("readKey", jsonbinReadKey)
+    inputs.property("supabaseUrl", supabaseUrl)
+    inputs.property("supabaseKey", supabaseAnonKey)
     doLast {
         fun escapeKotlinString(value: String): String =
             value
@@ -159,14 +169,18 @@ val generateSecrets by tasks.registering {
 
         val escapedCreateKey = escapeKotlinString(jsonbinCreateKey)
         val escapedReadKey = escapeKotlinString(jsonbinReadKey)
+        val escapedSupabaseUrl = escapeKotlinString(supabaseUrl)
+        val escapedSupabaseKey = escapeKotlinString(supabaseAnonKey)
 
         outputDir.get().asFile.mkdirs()
         File(outputDir.get().asFile, "AppSecretsGenerated.kt").writeText(
             """
             package fr.vetbrain.vetnutri_mp.Utils
 
-            internal const val JSONBIN_CREATE_KEY_VALUE: String = "$escapedCreateKey"
-            internal const val JSONBIN_READ_KEY_VALUE: String   = "$escapedReadKey"
+            internal const val JSONBIN_CREATE_KEY_VALUE: String    = "$escapedCreateKey"
+            internal const val JSONBIN_READ_KEY_VALUE: String      = "$escapedReadKey"
+            internal const val SUPABASE_URL_VALUE: String          = "$escapedSupabaseUrl"
+            internal const val SUPABASE_ANON_KEY_VALUE: String     = "$escapedSupabaseKey"
             """.trimIndent()
         )
     }

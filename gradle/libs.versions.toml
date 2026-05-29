@@ -48,6 +48,7 @@ materialIconsExtended = "1.7.8"
 jansi = "2.4.1"
 qrKit = "3.0.0"
 slf4j = "2.0.16"
+supabase = "3.1.4"
 
 [libraries]
 koalaPlot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaPlot" }
@@ -115,6 +116,8 @@ androidx-material-icons-extended = { group = "androidx.compose.material", name =
 jansi = { group = "org.fusesource.jansi", name = "jansi", version.ref = "jansi" }
 qr-kit = { module = "network.chaintech:qr-kit", version.ref = "qrKit" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+supabase-auth    = { module = "io.github.jan-tennert.supabase:auth-kt",    version.ref = "supabase" }
+supabase-storage = { module = "io.github.jan-tennert.supabase:storage-kt", version.ref = "supabase" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

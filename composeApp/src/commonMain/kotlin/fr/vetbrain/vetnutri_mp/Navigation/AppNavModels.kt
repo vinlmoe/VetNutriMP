@@ -9,6 +9,7 @@ import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.AuthViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.BackupRestoreViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.BiblioRefViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.BulkReferenceEditorViewModel
@@ -22,6 +23,7 @@ import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.SyncViewModel
 
 internal data class AppNavModels(
     val animalListViewModel: AnimalListViewModel,
@@ -38,7 +40,9 @@ internal data class AppNavModels(
     val examGradingViewModel: ExamGradingViewModel,
     val crossAnalysisViewModel: CrossConsultationAnalysisViewModel,
     val bulkReferenceEditorViewModel: BulkReferenceEditorViewModel,
-    val backupRestoreViewModel: BackupRestoreViewModel?
+    val backupRestoreViewModel: BackupRestoreViewModel?,
+    val authViewModel: AuthViewModel,
+    val syncViewModel: SyncViewModel
 )
 
 internal data class AppNavRepositories(

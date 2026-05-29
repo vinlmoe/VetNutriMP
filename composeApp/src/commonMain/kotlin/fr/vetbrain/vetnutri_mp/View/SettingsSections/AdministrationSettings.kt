@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +36,7 @@ fun AdministrationSettings(
         onAnimalListRefresh: () -> Unit,
         onFoodListRefresh: () -> Unit,
         onBackupClick: () -> Unit = {},
+        onSyncClick: () -> Unit = {},
         modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -119,6 +121,24 @@ fun AdministrationSettings(
                                     if (isAutoImporting) translate(LocalizationKeys.Administration.AUTO_IMPORT_RUNNING)
                                     else translate(LocalizationKeys.Administration.AUTO_IMPORT_ACTION)
                             )
+                        }
+
+                        // Bouton de synchronisation cloud
+                        Button(
+                                onClick = onSyncClick,
+                                colors = ButtonDefaults.buttonColors(
+                                        backgroundColor = VetNutriColors.Primary,
+                                        contentColor = androidx.compose.ui.graphics.Color.White
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Synchronisation entre appareils")
                         }
 
                         // Bouton de gestion des sauvegardes

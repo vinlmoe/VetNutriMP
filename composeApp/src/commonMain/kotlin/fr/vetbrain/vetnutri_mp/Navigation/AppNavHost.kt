@@ -344,6 +344,7 @@ internal fun AppNavHost(
                         nav.navigate(Screen.SpeciesPreferences)
                     },
                     onBackupClick = { nav.navigate(Screen.BackupRestore) },
+                    onSyncClick = { nav.navigate(Screen.Sync) },
                     isExamMode = examSession != null
                 )
             }
@@ -407,6 +408,14 @@ internal fun AppNavHost(
             } else {
                 nav.navigate(Screen.Settings)
             }
+        }
+
+        Screen.Sync -> {
+            fr.vetbrain.vetnutri_mp.View.SyncView(
+                authViewModel  = models.authViewModel,
+                syncViewModel  = models.syncViewModel,
+                onNavigateBack = { nav.navigate(Screen.Settings) }
+            )
         }
 
         Screen.TestYellowBox -> {

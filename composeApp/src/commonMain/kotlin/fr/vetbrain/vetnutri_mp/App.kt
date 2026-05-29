@@ -203,6 +203,8 @@ fun App(appDatabase: AppDatabase) {
             equationRepository = equationRepository
         )
     }
+    val authViewModel = remember { fr.vetbrain.vetnutri_mp.ViewModel.AuthViewModel(appContainer.authService) }
+    val syncViewModel = remember { fr.vetbrain.vetnutri_mp.ViewModel.SyncViewModel(appContainer.syncService) }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -263,7 +265,9 @@ fun App(appDatabase: AppDatabase) {
         examGradingViewModel = examGradingViewModel,
         crossAnalysisViewModel = crossAnalysisViewModel,
         bulkReferenceEditorViewModel = bulkReferenceEditorViewModel,
-        backupRestoreViewModel = backupRestoreViewModel
+        backupRestoreViewModel = backupRestoreViewModel,
+        authViewModel = authViewModel,
+        syncViewModel = syncViewModel
     )
     val repos = AppNavRepositories(
         equationRepository = equationRepository,
