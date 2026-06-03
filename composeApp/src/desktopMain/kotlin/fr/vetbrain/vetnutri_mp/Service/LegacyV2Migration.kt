@@ -135,6 +135,11 @@ private fun Connection.tableExists(table: String): Boolean = runCatching {
     ).use { rs -> rs.next() }
 }.getOrDefault(false)
 
+private fun Connection.tableNames(): List<String> = runCatching {
+    queryAll("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+        .mapNotNull { it["name"] as? String }
+}.getOrDefault(emptyList())
+
 private fun Connection.columnExists(table: String, column: String): Boolean = runCatching {
     createStatement().executeQuery("PRAGMA table_info($table)").use { rs ->
         while (rs.next()) {
@@ -160,6 +165,165 @@ private fun Map<String, Any?>.field(vararg keys: String): Any? {
 private fun Map<String, Any?>.str(vararg keys: String): String? = field(*keys) as? String
 private fun Map<String, Any?>.num(vararg keys: String): Number? = field(*keys) as? Number
 
+private fun Any?.asNonBlankString(): String? = when (this) {
+    is String -> trim().takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+    is Number -> toString()
+    else -> null
+}
+
+private fun Map<String, Any?>.stringValue(vararg keys: String): String? =
+    field(*keys).asNonBlankString()
+
+private fun Map<String, Any?>.stringList(vararg keys: String): List<String> {
+    val raw = stringValue(*keys) ?: return emptyList()
+    return raw
+        .trim()
+        .removePrefix("[")
+        .removeSuffix("]")
+        .split(',', ';')
+        .map { it.trim().trim('"', '\'') }
+        .filter { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+        .distinct()
+}
+
+private val CONSULTATION_GENERAL_REF_KEYS = arrayOf(
+    "referenceGeneraleId",
+    "referenceId",
+    "referenceEvId",
+    "referenceUuid",
+    "referenceUUID",
+    "uuidReference",
+    "UUIDReference",
+    "refId",
+    "refUUID",
+    "refUuid",
+    "RefString",
+    "refString",
+    "ref",
+    "Ref",
+    "refRef",
+    "RefRef",
+    "dataRef",
+    "DataRef",
+    "refData",
+    "dataRefUUID",
+    "dataRefUuid"
+)
+
+private val CONSULTATION_DISEASE_REF_KEYS = arrayOf(
+    "referencesMaladies",
+    "referencesMaladiesJson",
+    "diseaseReferences",
+    "diseaseReferenceIds",
+    "diseaseRef",
+    "DiseaseRef",
+    "refMaladie",
+    "refMaladies",
+    "refDisease",
+    "refDiseases"
+)
+
+private data class LegacyReferenceInfo(
+    val uuid: String,
+    val name: String,
+    val disease: Boolean
+)
+
+private data class LegacyReferenceTranslation(
+    val mpUuid: String,
+    val label: String
+)
+
+private val LEGACY_REFERENCE_TRANSLATIONS = mapOf(
+    "a1e31f4d-ea50-4865-b371-c6c06ebcc02b" to LegacyReferenceTranslation("a4c16357-5ca0-40e0-b6a7-10fb2891c77a", "Adulte"),
+    "a4c16357-5ca0-40e0-b6a7-10fb2891c77a" to LegacyReferenceTranslation("a4c16357-5ca0-40e0-b6a7-10fb2891c77a", "Adulte"),
+    "a96c263d-9571-4748-b7b7-a9d3b85620fa" to LegacyReferenceTranslation("54ffe7ad-ca54-4af9-ab9a-c159f018d2ec", "Adulte 9-25kg"),
+    "1f7cdc6e-d4e3-4169-a3a8-d0a4bedc9908" to LegacyReferenceTranslation("28d0462e-1662-4374-bcbe-d1e31be1ba6c", "Adulte <9kg"),
+    "105a39b1-c797-4b72-a4db-79035df1c19d" to LegacyReferenceTranslation("105a39b1-c797-4b72-a4db-79035df1c19d", "Adulte >25kg"),
+    "936a07a3-239a-4414-967e-eeb8906984bf" to LegacyReferenceTranslation("936a07a3-239a-4414-967e-eeb8906984bf", "Arthrosis"),
+    "202af15d-c0fa-4ed9-81d5-1ca5e9e94a8a" to LegacyReferenceTranslation("202af15d-c0fa-4ed9-81d5-1ca5e9e94a8a", "Avant sevrage"),
+    "84f4633d-cfeb-4c03-96a6-1d6d7c0eccd2" to LegacyReferenceTranslation("84f4633d-cfeb-4c03-96a6-1d6d7c0eccd2", "CKD"),
+    "e494287e-5532-4f89-85ad-aaa8248053b4" to LegacyReferenceTranslation("e494287e-5532-4f89-85ad-aaa8248053b4", "CKD"),
+    "03f44571-9b09-4406-bdd4-21cb3ba235ea" to LegacyReferenceTranslation("03f44571-9b09-4406-bdd4-21cb3ba235ea", "Cardio (>C1)"),
+    "77e8d58b-e78a-4f1e-902f-1b60e96f4141" to LegacyReferenceTranslation("77e8d58b-e78a-4f1e-902f-1b60e96f4141", "Cardio (>C1)"),
+    "5ac72656-f825-47b9-a719-a845bd88ad19" to LegacyReferenceTranslation("5ac72656-f825-47b9-a719-a845bd88ad19", "Croissance"),
+    "b2f03b6e-014f-49f2-9e08-a644cb1bec17" to LegacyReferenceTranslation("b2f03b6e-014f-49f2-9e08-a644cb1bec17", "Croissance"),
+    "16fefe59-a87e-4bf8-9c12-1535c1532bad" to LegacyReferenceTranslation("16fefe59-a87e-4bf8-9c12-1535c1532bad", "Croissance grandes races <7 mois"),
+    "9560d6ce-89de-471a-91bf-93932a594b2f" to LegacyReferenceTranslation("9560d6ce-89de-471a-91bf-93932a594b2f", "DCM"),
+    "c252af95-fb7f-4cd7-b5af-a6b098f118c4" to LegacyReferenceTranslation("c252af95-fb7f-4cd7-b5af-a6b098f118c4", "DCM"),
+    "1d17d4fc-16ba-4f61-9e9c-13004b93e57e" to LegacyReferenceTranslation("1d17d4fc-16ba-4f61-9e9c-13004b93e57e", "Gestation"),
+    "8cac807d-d110-404e-91b3-150d68826180" to LegacyReferenceTranslation("8cac807d-d110-404e-91b3-150d68826180", "Gestation"),
+    "d05ad591-a2d7-4253-8f42-cd03e3f18334" to LegacyReferenceTranslation("d05ad591-a2d7-4253-8f42-cd03e3f18334", "Hospitalisation"),
+    "e9ce41d1-f3d9-4981-9934-3abdc7109825" to LegacyReferenceTranslation("e9ce41d1-f3d9-4981-9934-3abdc7109825", "Hospitalisation"),
+    "839e3bb9-2b4f-445c-aed7-4879e4a9c8a5" to LegacyReferenceTranslation("839e3bb9-2b4f-445c-aed7-4879e4a9c8a5", "Hypercalcemia"),
+    "da67dbba-2583-4c34-b6d2-a92755af37f4" to LegacyReferenceTranslation("da67dbba-2583-4c34-b6d2-a92755af37f4", "Lactation"),
+    "f9d12195-41f7-4170-864b-92e32569496e" to LegacyReferenceTranslation("f9d12195-41f7-4170-864b-92e32569496e", "Lactation"),
+    "2744b605-11ab-41aa-a488-913fe819008a" to LegacyReferenceTranslation("2744b605-11ab-41aa-a488-913fe819008a", "Pancreatitis"),
+    "9edcb377-3648-41e3-befc-1188fabe2994" to LegacyReferenceTranslation("9edcb377-3648-41e3-befc-1188fabe2994", "Primate")
+)
+
+private fun String.normalizedUuidCandidate(): String =
+    trim()
+        .trim('{', '}')
+        .lowercase()
+
+private fun String.translateLegacyReferenceUuid(): String =
+    LEGACY_REFERENCE_TRANSLATIONS[normalizedUuidCandidate()]?.mpUuid ?: this
+
+private fun Map<String, Any?>.debugValuesForKeys(keys: Array<String>): String =
+    keys.mapNotNull { key ->
+        field(key).asNonBlankString()?.let { value -> "$key=$value" }
+    }.joinToString(", ")
+
+private fun Map<String, Any?>.knownReferenceUuidMatches(
+    knownReferences: Map<String, LegacyReferenceInfo>
+): List<Pair<String, LegacyReferenceInfo>> {
+    if (knownReferences.isEmpty()) return emptyList()
+    val normalizedReferenceIds = knownReferences.values.associateBy { it.uuid.normalizedUuidCandidate() }
+    return entries.mapNotNull { (key, value) ->
+        if (key.equals("UUID", ignoreCase = true)) {
+            null
+        } else {
+            val normalizedValue = value.asNonBlankString()?.normalizedUuidCandidate()
+            val reference = normalizedValue?.let { normalizedReferenceIds[it] }
+            if (reference != null) key to reference else null
+        }
+    }.distinctBy { it.first to it.second.uuid }
+}
+
+private fun Map<String, Any?>.resolveKnownReferenceUuid(
+    knownReferences: Map<String, LegacyReferenceInfo>,
+    preferNonDisease: Boolean
+): String? {
+    val exactCandidates = knownReferenceUuidMatches(knownReferences)
+        .map { it.second }
+        .distinctBy { it.uuid }
+    if (exactCandidates.isEmpty()) return null
+    return if (preferNonDisease) {
+        (exactCandidates.firstOrNull { !it.disease } ?: exactCandidates.first()).uuid
+    } else {
+        (exactCandidates.firstOrNull { it.disease } ?: exactCandidates.first()).uuid
+    }
+}
+
+private fun loadLegacyReferenceInfo(refDbFile: File?): Map<String, LegacyReferenceInfo> {
+    if (refDbFile == null || !refDbFile.exists()) return emptyMap()
+    return runCatching {
+        connectV2(refDbFile).use { conn ->
+            val refEvTable = conn.findTable(*REF_TABLE_NAMES.toTypedArray()) ?: return@use emptyMap()
+            conn.queryAll("SELECT * FROM $refEvTable").mapNotNull { row ->
+                val uuid = row.str("UUID", "uuid") ?: return@mapNotNull null
+                val disease = row.num("disease", "maladie")?.toInt() == 1
+                uuid to LegacyReferenceInfo(
+                    uuid = uuid,
+                    name = row.str("nom", "name") ?: "",
+                    disease = disease
+                )
+            }.toMap()
+        }
+    }.getOrDefault(emptyMap())
+}
+
 // ---- Ref-DB discovery -------------------------------------------------------
 
 // Noms possibles du fichier de références (V2 selon version/OS)
@@ -177,17 +341,21 @@ private val COEF_TABLE_NAMES    = listOf("REFERENCE_EV_COEFFICIENTS", "coef", "C
 private val NUTREQ_TABLE_NAMES  = listOf("REFERENCE_EV_NUTRIENTS", "speReqEq", "SpeReqEq", "SPEREQEQ")
 private val REFREL_TABLE_NAMES  = listOf("REFERENCE_EV_EQUATIONS", "method", "Method", "METHOD")
 
-private fun Connection.findTable(vararg candidates: String): String? =
-    candidates.firstOrNull { tableExists(it) }
+private fun Connection.findTable(vararg candidates: String): String? {
+    val actualTables = tableNames()
+    return candidates.firstNotNullOfOrNull { candidate ->
+        actualTables.firstOrNull { it.equals(candidate, ignoreCase = true) }
+    }
+}
 
 /** Trouve la base contenant les tables de référence.
  *  Cherche d'abord par nom connu, puis dans tous les .db du dossier. */
 private fun findRefDb(folder: File): File? {
     fun hasRefTables(f: File) = runCatching {
         connectV2(f).use { c ->
-            BIBLIO_TABLE_NAMES.any { c.tableExists(it) } ||
-            EQUATION_TABLE_NAMES.any { c.tableExists(it) } ||
-            REF_TABLE_NAMES.any { c.tableExists(it) }
+            c.findTable(*BIBLIO_TABLE_NAMES.toTypedArray()) != null ||
+            c.findTable(*EQUATION_TABLE_NAMES.toTypedArray()) != null ||
+            c.findTable(*REF_TABLE_NAMES.toTypedArray()) != null
         }
     }.getOrDefault(false)
 
@@ -195,13 +363,9 @@ private fun findRefDb(folder: File): File? {
     REF_DB_NAMES.mapNotNull { name -> File(folder, name).takeIf { it.exists() } }
         .firstOrNull { hasRefTables(it) }?.let { return it }
 
-    // 2. Scan exhaustif de tous les .db présents
+    // 2. Scan exhaustif de tous les .db présents. Certaines versions stockent dataRef dans Data-Anim.db.
     return folder.listFiles { f -> f.isFile && f.name.endsWith(".db", ignoreCase = true) }
-        ?.firstOrNull { f ->
-            !f.name.equals("Data-Anim.db", ignoreCase = true) &&
-            !f.name.equals("Data-Food.db", ignoreCase = true) &&
-            hasRefTables(f)
-        }
+        ?.firstOrNull { f -> hasRefTables(f) }
 }
 
 /** Compte les enregistrements dans les tables de référence d'un fichier DB donné. */
@@ -287,6 +451,8 @@ suspend fun runV2Migration(
     val folder = File(dbFolderPath)
     val animDb = File(folder, "Data-Anim.db")
     val foodDb = File(folder, "Data-Food.db")
+    val refDbFile = findRefDb(folder)
+    val legacyReferencesByUuid = loadLegacyReferenceInfo(refDbFile)
 
     var impAnimals = 0; var skipAnimals = 0
     var impConsults = 0; var skipConsults = 0
@@ -305,6 +471,81 @@ suspend fun runV2Migration(
     val biblioRefDao = appDatabase.biblioRefDao()
     val equationDao = appDatabase.equationDao()
     val referenceEvDao = appDatabase.referenceEvDao()
+
+    if (refDbFile != null) {
+        log("Base de références utilisée: ${refDbFile.name} (${legacyReferencesByUuid.size} UUID de références préchargés)")
+        if (legacyReferencesByUuid.isNotEmpty()) {
+            log(
+                "Exemples UUID références V2: " +
+                    legacyReferencesByUuid.values.take(8).joinToString { ref ->
+                        "${ref.uuid}${if (ref.name.isNotBlank()) " (${ref.name})" else ""}${if (ref.disease) " [maladie]" else ""}"
+                    }
+            )
+        }
+    } else {
+        log("Aucune base de références trouvée avant import des consultations")
+    }
+    log("Traducteur UUID références VetNutri 2 -> VetNutri MP actif: ${LEGACY_REFERENCE_TRANSLATIONS.size} correspondances")
+
+    suspend fun validateAndRepairConsultationReferences() {
+        val importedReferences = referenceEvDao.getAllReferenceEv()
+        val referencesByUuid = importedReferences.associateBy { it.uuid }
+        val referencesByNormalizedUuid = importedReferences.associateBy { it.uuid.normalizedUuidCandidate() }
+        log("Validation post-import: ${importedReferences.size} références MP disponibles")
+        if (importedReferences.isNotEmpty()) {
+            log(
+                "Exemples UUID références MP: " +
+                    importedReferences.take(8).joinToString { ref ->
+                        "${ref.uuid}${if (ref.nom.isNotBlank()) " (${ref.nom})" else ""}${if (ref.maladie) " [maladie]" else ""}"
+                    }
+            )
+        }
+
+        val consultations = animalDao.getAllAnimals().flatMap { animal ->
+            consultationDao.getConsultationsForAnimal(animal.uuid)
+        }
+        var withGeneralRef = 0
+        var repairedGeneralRef = 0
+        var translatedGeneralRef = 0
+        var missingGeneralRef = 0
+        val missingSamples = mutableListOf<String>()
+
+        consultations.forEach { consultation ->
+            val refId = consultation.referenceGeneraleId?.takeIf { it.isNotBlank() }
+            if (refId == null) return@forEach
+            withGeneralRef++
+            val translatedRefId = refId.translateLegacyReferenceUuid()
+            if (translatedRefId != refId) {
+                consultationDao.update(consultation.copy(referenceGeneraleId = translatedRefId))
+                translatedGeneralRef++
+            }
+
+            val effectiveRefId = translatedRefId
+            val exactMatch = referencesByUuid[effectiveRefId]
+            if (exactMatch != null) return@forEach
+
+            val normalizedMatch = referencesByNormalizedUuid[effectiveRefId.normalizedUuidCandidate()]
+            if (normalizedMatch != null) {
+                consultationDao.update(consultation.copy(referenceGeneraleId = normalizedMatch.uuid))
+                repairedGeneralRef++
+                return@forEach
+            }
+
+            missingGeneralRef++
+            if (missingSamples.size < 12) {
+                missingSamples.add("${consultation.uuid} -> $effectiveRefId")
+            }
+        }
+
+        log(
+            "Validation post-import consultations: $withGeneralRef avec référence générale, " +
+                "$translatedGeneralRef UUID legacy traduits, " +
+                "$repairedGeneralRef UUID réparés, $missingGeneralRef références introuvables"
+        )
+        if (missingSamples.isNotEmpty()) {
+            log("Références générales introuvables exemples: ${missingSamples.joinToString()}")
+        }
+    }
 
     // --- Animaux + consultations + rations + poids ---
     if (animDb.exists()) {
@@ -375,12 +616,119 @@ suspend fun runV2Migration(
 
             // 3. CONSULTATIONS
             if (conn.tableExists("CONSULTATIONS")) {
+                val consultationColumns = conn.tableColumns("CONSULTATIONS")
+                log("Colonnes CONSULTATIONS: ${consultationColumns.joinToString()}")
+                log(
+                    "Colonnes CONSULTATIONS contenant 'ref' ou 'uuid': " +
+                        consultationColumns.filter {
+                            it.contains("ref", ignoreCase = true) ||
+                                it.contains("uuid", ignoreCase = true)
+                        }
+                            .joinToString()
+                            .ifBlank { "aucune" }
+                )
+                val referenceLinksByConsult = if (conn.tableExists("ReferenceDisease")) {
+                    log("Colonnes ReferenceDisease: ${conn.tableColumns("ReferenceDisease").joinToString()}")
+                    conn.queryAll("SELECT * FROM ReferenceDisease")
+                        .mapNotNull { linkRow ->
+                            val consultId = linkRow.stringValue("idCons", "idConsult", "consultationId", "refConsult")
+                                ?: return@mapNotNull null
+                            val refId = linkRow.stringValue("refRef", "referenceId", "referenceEvId", "refId")
+                                ?: return@mapNotNull null
+                            consultId to refId
+                        }
+                        .groupBy({ it.first }, { it.second })
+                } else {
+                    emptyMap()
+                }
+                if (referenceLinksByConsult.isNotEmpty()) {
+                    log("Liens ReferenceDisease détectés: ${referenceLinksByConsult.values.sumOf { it.size }}")
+                }
                 val rows = conn.queryAll("SELECT * FROM CONSULTATIONS")
                 log("${rows.size} consultations trouvées")
+                var consultsWithGeneralRef = 0
+                var consultsWithoutGeneralRef = 0
+                var skippedWithGeneralRef = 0
+                var skippedWithoutGeneralRef = 0
+                var updatedExistingConsultRefs = 0
+                var debugConsultationRows = 0
                 rows.forEach { row ->
                     try {
                         val uuid = row["UUID"] as? String ?: return@forEach
-                        if (consultationDao.getConsultationById(uuid) != null) {
+                        val linkedRefs = referenceLinksByConsult[uuid]
+                            .orEmpty()
+                            .map { it.translateLegacyReferenceUuid() }
+                            .distinct()
+                        val linkedGeneralRef = linkedRefs.firstOrNull {
+                            legacyReferencesByUuid[it]?.disease == false
+                        }
+                        val linkedDiseaseRefs = linkedRefs.filter {
+                            legacyReferencesByUuid[it]?.disease != false
+                        }
+                        val referenceGeneraleId =
+                            row.stringValue(*CONSULTATION_GENERAL_REF_KEYS)
+                                ?.translateLegacyReferenceUuid()
+                                ?: linkedGeneralRef
+                                ?: row.resolveKnownReferenceUuid(
+                                    legacyReferencesByUuid,
+                                    preferNonDisease = true
+                                )?.translateLegacyReferenceUuid()
+                        val referencesMaladiesJson =
+                            (row.stringList(*CONSULTATION_DISEASE_REF_KEYS)
+                                .map { it.translateLegacyReferenceUuid() } + linkedDiseaseRefs)
+                                .distinct()
+                                .joinToString(",")
+                                .takeIf { it.isNotBlank() }
+                        if (referenceGeneraleId != null) {
+                            consultsWithGeneralRef++
+                        } else {
+                            consultsWithoutGeneralRef++
+                        }
+                        if (debugConsultationRows < 10) {
+                            val generalDebug = row.debugValuesForKeys(CONSULTATION_GENERAL_REF_KEYS)
+                                .ifBlank { "aucune valeur detectee" }
+                            val diseaseDebug = row.debugValuesForKeys(CONSULTATION_DISEASE_REF_KEYS)
+                                .ifBlank { "aucune valeur detectee" }
+                            val uuidMatches = row.knownReferenceUuidMatches(legacyReferencesByUuid)
+                                .joinToString { (column, ref) ->
+                                    "$column=${ref.uuid}${if (ref.name.isNotBlank()) " (${ref.name})" else ""}"
+                                }
+                                .ifBlank { "aucun" }
+                            log(
+                                "Consultation $uuid refs candidates: " +
+                                    "generale=[$generalDebug], maladies=[$diseaseDebug], " +
+                                    "uuidRefsConnus=[$uuidMatches], " +
+                                    "liensReferenceDisease=${linkedRefs.joinToString().ifBlank { "aucun" }}, " +
+                                    "retenueGenerale=${referenceGeneraleId ?: "null"}, " +
+                                    "retenuesMaladies=${referencesMaladiesJson ?: "null"}"
+                            )
+                            debugConsultationRows++
+                        }
+                        val existingConsultation = consultationDao.getConsultationById(uuid)
+                        if (existingConsultation != null) {
+                            val shouldUpdateExisting =
+                                (existingConsultation.referenceGeneraleId.isNullOrBlank() && referenceGeneraleId != null) ||
+                                    (existingConsultation.referencesMaladiesJson.isNullOrBlank() && referencesMaladiesJson != null)
+                            if (shouldUpdateExisting) {
+                                consultationDao.update(
+                                    existingConsultation.copy(
+                                        referenceGeneraleId =
+                                            existingConsultation.referenceGeneraleId
+                                                ?.takeIf { it.isNotBlank() }
+                                                ?: referenceGeneraleId,
+                                        referencesMaladiesJson =
+                                            existingConsultation.referencesMaladiesJson
+                                                ?.takeIf { it.isNotBlank() }
+                                                ?: referencesMaladiesJson
+                                    )
+                                )
+                                updatedExistingConsultRefs++
+                            }
+                            if (referenceGeneraleId != null) {
+                                skippedWithGeneralRef++
+                            } else {
+                                skippedWithoutGeneralRef++
+                            }
                             skipConsults++; return@forEach
                         }
                         val entity = ConsultationEntity(
@@ -410,7 +758,14 @@ suspend fun runV2Migration(
                             pAdult = (row["pAdult"] as? Number)?.toDouble() ?: 0.0,
                             coefGes = (row["coefGes"] as? Number)?.toInt() ?: 0,
                             coefLact = (row["coefLact"] as? Number)?.toInt() ?: 0,
-                            MCS = (row["MCS"] as? Number)?.toInt() ?: 0
+                            MCS = (row["MCS"] as? Number)?.toInt() ?: 0,
+                            referenceGeneraleId = referenceGeneraleId,
+                            referencesMaladiesJson = referencesMaladiesJson,
+                            coefficientAjustement = row.num(
+                                "coefficientAjustement",
+                                "coefAjustement",
+                                "ky"
+                            )?.toDouble() ?: 1.0
                         )
                         consultationDao.insert(entity)
                         impConsults++
@@ -418,6 +773,17 @@ suspend fun runV2Migration(
                         val msg = "Consultation ${row["UUID"]}: ${e.message}"
                         errors.add(msg); logError(msg, e)
                     }
+                }
+                log(
+                    "Références générales détectées dans CONSULTATIONS: " +
+                        "$consultsWithGeneralRef oui, $consultsWithoutGeneralRef non"
+                )
+                log(
+                    "Consultations ignorées déjà présentes: $skipConsults " +
+                        "(avec ref detectee=$skippedWithGeneralRef, sans ref detectee=$skippedWithoutGeneralRef)"
+                )
+                if (updatedExistingConsultRefs > 0) {
+                    log("Consultations déjà présentes complétées avec références: $updatedExistingConsultRefs")
                 }
                 log("Consultations importées: $impConsults, ignorées: $skipConsults")
             }
@@ -475,8 +841,8 @@ suspend fun runV2Migration(
                         }
                     } catch (e: Exception) {
                         // FK constraint = ration orpheline (consultation absente) → skip silencieux
-                        if (e.message?.contains("FOREIGN KEY") == true ||
-                            e.message?.contains("constraint") == true) {
+                        if (e.message?.contains("FOREIGN KEY", ignoreCase = true) == true ||
+                            e.message?.contains("constraint", ignoreCase = true) == true) {
                             skipRations++
                         } else {
                             val msg = "Ration ${row["UUID"]}: ${e.message}"
@@ -588,15 +954,14 @@ suspend fun runV2Migration(
         }
     }
 
-    // --- Références (ref.db) ---
-    val refDb = File(folder, "ref.db")
-    if (refDb.exists()) {
-        log("Lecture de ref.db...")
-        connectV2(refDb).use { conn ->
+    // --- Références (ref.db / Data-Ref.db / autre base détectée) ---
+    if (refDbFile != null && refDbFile.exists()) {
+        log("Lecture de ${refDbFile.name}...")
+        connectV2(refDbFile).use { conn ->
             val refTables = conn.queryAll(
                 "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
             ).mapNotNull { it["name"] as? String }
-            log("Tables ref.db: ${refTables.joinToString()}")
+            log("Tables ${refDbFile.name}: ${refTables.joinToString()}")
 
             // 6. BIBLIO_REFS / Biblio
             val biblioTable = conn.findTable(*BIBLIO_TABLE_NAMES.toTypedArray())
@@ -612,9 +977,9 @@ suspend fun runV2Migration(
                         }
                         val entity = fr.vetbrain.vetnutri_mp.DataBase.BiblioRefEntity(
                             uuid = uuid,
-                            firstAuthor = row.str("firstAuthor", "first_author", "author") ?: "",
+                            firstAuthor = row.str("firstAuthor", "first_author", "author", "fAuthor") ?: "",
                             year = row.num("year")?.toInt() ?: 0,
-                            completeRef = row.str("completeRef", "complete_ref", "reference") ?: "",
+                            completeRef = row.str("completeRef", "complete_ref", "reference", "fullRef") ?: "",
                             comments = row.str("comments", "comment") ?: "",
                             bibtex = row.str("bibtex") ?: "",
                             consistent = row.num("consistent")?.toInt() ?: 1
@@ -627,6 +992,8 @@ suspend fun runV2Migration(
                     }
                 }
                 log("BiblioRefs importées: $impBiblioRefs, ignorées: $skipBiblioRefs")
+            } else {
+                log("Aucune table bibliographique reconnue parmi: ${BIBLIO_TABLE_NAMES.joinToString()}")
             }
 
             // 7. EQUATIONS / equation
@@ -654,7 +1021,7 @@ suspend fun runV2Migration(
                             specie = specieName,
                             kind = kindName,
                             consistent = row.num("consistent")?.toInt() != 0,
-                            bibRef = row.str("bibRef", "bib_ref", "biblio"),
+                            bibRef = row.str("bibRef", "bib_ref", "biblio", "refBiblio"),
                             variables = row.str("variables") ?: "[]",
                             nutrient = row.str("nutrient"),
                             ratio = row.num("ratio")?.toInt() == 1
@@ -667,6 +1034,8 @@ suspend fun runV2Migration(
                     }
                 }
                 log("Équations importées: $impEquations, ignorées: $skipEquations")
+            } else {
+                log("Aucune table d'équations reconnue parmi: ${EQUATION_TABLE_NAMES.joinToString()}")
             }
 
             // 8. REFERENCE_EV / dataRef
@@ -699,15 +1068,15 @@ suspend fun runV2Migration(
                             description = row.str("description") ?: "",
                             maladie = row.num("disease", "maladie")?.toInt() == 1,
                             nomMaladie = row.str("nameDisease", "nomMaladie", "name_disease") ?: "",
-                            nomEnergie = row.str("nameEnergy", "nomEnergie", "name_energy") ?: "",
+                            nomEnergie = row.str("nameEnergy", "nomEnergie", "name_energy", "SERName") ?: "",
                             consistent = row.num("consistent")?.toInt() ?: 1,
                             espece = especeStr,
                             stadePhysio = stadeStr,
-                            nomk1 = row.str("nomk1", "nomK1") ?: "",
-                            nomk2 = row.str("nomk2", "nomK2") ?: "",
-                            nomk3 = row.str("nomk3", "nomK3") ?: "",
-                            nomk4 = row.str("nomk4", "nomK4") ?: "",
-                            nomk5 = row.str("nomk5", "nomK5") ?: ""
+                            nomk1 = row.str("nomk1", "nomK1", "k1Name") ?: "",
+                            nomk2 = row.str("nomk2", "nomK2", "k2Name") ?: "",
+                            nomk3 = row.str("nomk3", "nomK3", "k3Name") ?: "",
+                            nomk4 = row.str("nomk4", "nomK4", "k4Name") ?: "",
+                            nomk5 = row.str("nomk5", "nomK5", "k5Name") ?: ""
                         )
                         referenceEvDao.insertReferenceEv(entity)
                         impReferences++
@@ -717,6 +1086,8 @@ suspend fun runV2Migration(
                     }
                 }
                 log("Références nutritionnelles importées: $impReferences, ignorées: $skipReferences")
+            } else {
+                log("Aucune table de références nutritionnelles reconnue parmi: ${REF_TABLE_NAMES.joinToString()}")
             }
 
             // 9. REFERENCE_EV_EQUATIONS / method
@@ -802,8 +1173,10 @@ suspend fun runV2Migration(
             }
         }
     } else {
-        log("ref.db introuvable dans $dbFolderPath — références non importées")
+        log("Base de références introuvable dans $dbFolderPath — références non importées")
     }
+
+    validateAndRepairConsultationReferences()
 
     if (errors.isNotEmpty()) {
         log("${errors.size} erreur(s) rencontrée(s) :")
