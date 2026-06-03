@@ -202,6 +202,9 @@ private fun PreviewPanel(
                 PreviewRow("Rations", counts.rations)
                 PreviewRow("Pesées", counts.weights)
                 PreviewRow("Aliments", counts.foods)
+                PreviewRow("Références bibliographiques", counts.biblioRefs)
+                PreviewRow("Équations", counts.equations)
+                PreviewRow("Références nutritionnelles", counts.references)
             }
         }
         Card(
@@ -218,7 +221,8 @@ private fun PreviewPanel(
         Button(
             onClick = onMigrate,
             modifier = Modifier.fillMaxWidth(),
-            enabled = counts.animals > 0 || counts.foods > 0 || counts.consultations > 0
+            enabled = counts.animals > 0 || counts.foods > 0 || counts.consultations > 0 ||
+                counts.references > 0 || counts.equations > 0 || counts.biblioRefs > 0
         ) {
             Text("Importer les données")
         }
@@ -287,12 +291,21 @@ private fun ResultPanel(
                 PreviewRow("Rations", result.imported.rations)
                 PreviewRow("Pesées", result.imported.weights)
                 PreviewRow("Aliments", result.imported.foods)
-                if (result.skipped.animals + result.skipped.consultations + result.skipped.foods > 0) {
+                PreviewRow("Références bibliographiques", result.imported.biblioRefs)
+                PreviewRow("Équations", result.imported.equations)
+                PreviewRow("Références nutritionnelles", result.imported.references)
+                val totalSkipped = result.skipped.animals + result.skipped.consultations +
+                    result.skipped.foods + result.skipped.biblioRefs +
+                    result.skipped.equations + result.skipped.references
+                if (totalSkipped > 0) {
                     Divider(Modifier.padding(vertical = 4.dp))
                     Text("Ignorés (déjà présents)", fontWeight = FontWeight.Bold)
                     if (result.skipped.animals > 0) PreviewRow("Animaux", result.skipped.animals)
                     if (result.skipped.consultations > 0) PreviewRow("Consultations", result.skipped.consultations)
                     if (result.skipped.foods > 0) PreviewRow("Aliments", result.skipped.foods)
+                    if (result.skipped.biblioRefs > 0) PreviewRow("Références bibliographiques", result.skipped.biblioRefs)
+                    if (result.skipped.equations > 0) PreviewRow("Équations", result.skipped.equations)
+                    if (result.skipped.references > 0) PreviewRow("Références nutritionnelles", result.skipped.references)
                 }
                 if (result.errors.isNotEmpty()) {
                     Divider(Modifier.padding(vertical = 4.dp))
