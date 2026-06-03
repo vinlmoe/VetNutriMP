@@ -543,6 +543,15 @@ fun AnalyseNutritionnelleCard(
                                             }
                                         }
                                     }
+                                    val apportBulletGraph =
+                                            if (valeur.nutriment == NutrientMain.ENERGIE &&
+                                                            besoinEnergetiqueEntretien != null &&
+                                                            besoinEnergetiqueEntretien > 0.0
+                                            ) {
+                                                (apport / besoinEnergetiqueEntretien) * 100.0
+                                            } else {
+                                                apportConverti
+                                            }
                                     
                                     if (referenceUtilisee != null) {
                                         // Obtenir l'icône de conformité pour déterminer la couleur
@@ -629,7 +638,7 @@ fun AnalyseNutritionnelleCard(
                                             }
                                             Box(modifier = Modifier.weight(1f)) {
                                                 ReferenceBulletGraph(
-                                                        valeurApport = apportConverti,
+                                                        valeurApport = apportBulletGraph,
                                                         reference = referenceUtilisee,
                                                         nutriment = valeur.nutriment,
                                                         typeExpressionBesoin = typeExpr,
@@ -639,7 +648,8 @@ fun AnalyseNutritionnelleCard(
                                                                 besoinEnergetiqueEntretien,
                                                         referencesMaladies = referencesMaladies,
                                                         onClick = { onNutrimentClick(nom, valeur) },
-                                                        ration = ration
+                                                        ration = ration,
+                                                        equationRepository = equationRepository
                                                 )
                                             }
                                         }
@@ -1145,6 +1155,26 @@ private data class IconeConformite(
         val isMaladie: Boolean = false // true pour les références de maladies (couleur violette)
 )
 
+private fun defaultEnergyNeed(
+        nutrient: Nutrient,
+        level: Reflevel,
+        besoinEnergetiqueEntretien: Double?
+): Double? {
+    if (nutrient != NutrientMain.ENERGIE ||
+                    besoinEnergetiqueEntretien == null ||
+                    besoinEnergetiqueEntretien <= 0.0
+    ) {
+        return null
+    }
+    val factor =
+            when (level) {
+                Reflevel.MIN -> 0.9
+                Reflevel.MAX -> 1.1
+                else -> return null
+            }
+    return besoinEnergetiqueEntretien * factor
+}
+
 /**
  * Détermine l'icône de conformité aux références nutritionnelles
  *
@@ -1230,12 +1260,13 @@ private fun obtenirIconeConformite(
 
         // Vérifier les minimums (MIN et OPTIMIN)
         listOf(Reflevel.MIN, Reflevel.OPTIMIN).forEach { level ->
-            if (reference.contientNutriment(nutrient, level)) {
+            val defaultNeed = defaultEnergyNeed(nutrient, level, besoinEnergetiqueEntretien)
+            if (reference.contientNutriment(nutrient, level) || defaultNeed != null) {
                 hasReferences = true
                 val valeurRef = reference.obtenirNutriment(nutrient, level)
                 val uniteRef = UnitReqEnum.getById(reference.obtenirUniteNutriment(nutrient, level))
 
-                val besoinAbsolu = if (isNutrimentRatio) {
+                val besoinAbsolu = defaultNeed ?: if (isNutrimentRatio) {
                     // Pour les ratios, utiliser directement la valeur de référence
                     // car ils ne dépendent pas du poids ou de l'énergie
                     valeurRef
@@ -1265,12 +1296,13 @@ private fun obtenirIconeConformite(
 
         // Vérifier les maximums (MAX et OPTIMAX)
         listOf(Reflevel.MAX, Reflevel.OPTIMAX).forEach { level ->
-            if (reference.contientNutriment(nutrient, level)) {
+            val defaultNeed = defaultEnergyNeed(nutrient, level, besoinEnergetiqueEntretien)
+            if (reference.contientNutriment(nutrient, level) || defaultNeed != null) {
                 hasReferences = true
                 val valeurRef = reference.obtenirNutriment(nutrient, level)
                 val uniteRef = UnitReqEnum.getById(reference.obtenirUniteNutriment(nutrient, level))
 
-                val besoinAbsolu = if (isNutrimentRatio) {
+                val besoinAbsolu = defaultNeed ?: if (isNutrimentRatio) {
                     // Pour les ratios, utiliser directement la valeur de référence
                     // car ils ne dépendent pas du poids ou de l'énergie
                     valeurRef
