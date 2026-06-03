@@ -1,5 +1,8 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.detectLegacyV2DbFolder
+import fr.vetbrain.vetnutri_mp.previewLegacyV2Migration
+import fr.vetbrain.vetnutri_mp.runLegacyV2Migration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
