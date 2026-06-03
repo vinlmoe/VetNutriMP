@@ -160,6 +160,63 @@ private fun Map<String, Any?>.field(vararg keys: String): Any? {
 private fun Map<String, Any?>.str(vararg keys: String): String? = field(*keys) as? String
 private fun Map<String, Any?>.num(vararg keys: String): Number? = field(*keys) as? Number
 
+// ---- Ref-DB discovery -------------------------------------------------------
+
+// Noms possibles du fichier de références (V2 selon version/OS)
+private val REF_DB_NAMES = listOf(
+    "ref.db", "Ref.db", "REF.db",
+    "Data-Ref.db", "data-ref.db",
+    "references.db", "refs.db"
+)
+
+// Noms possibles selon la version de VetNutri 2
+private val BIBLIO_TABLE_NAMES  = listOf("BIBLIO_REFS", "BIBLIO_REF", "Biblio", "biblio")
+private val EQUATION_TABLE_NAMES = listOf("EQUATIONS", "equation", "Equation", "EQUATION")
+private val REF_TABLE_NAMES     = listOf("REFERENCE_EV", "dataRef", "DataRef", "DATAREF")
+private val COEF_TABLE_NAMES    = listOf("REFERENCE_EV_COEFFICIENTS", "coef", "Coef", "COEF")
+private val NUTREQ_TABLE_NAMES  = listOf("REFERENCE_EV_NUTRIENTS", "speReqEq", "SpeReqEq", "SPEREQEQ")
+private val REFREL_TABLE_NAMES  = listOf("REFERENCE_EV_EQUATIONS", "method", "Method", "METHOD")
+
+private fun Connection.findTable(vararg candidates: String): String? =
+    candidates.firstOrNull { tableExists(it) }
+
+/** Trouve la base contenant les tables de référence.
+ *  Cherche d'abord par nom connu, puis dans tous les .db du dossier. */
+private fun findRefDb(folder: File): File? {
+    fun hasRefTables(f: File) = runCatching {
+        connectV2(f).use { c ->
+            BIBLIO_TABLE_NAMES.any { c.tableExists(it) } ||
+            EQUATION_TABLE_NAMES.any { c.tableExists(it) } ||
+            REF_TABLE_NAMES.any { c.tableExists(it) }
+        }
+    }.getOrDefault(false)
+
+    // 1. Noms candidats classiques
+    REF_DB_NAMES.mapNotNull { name -> File(folder, name).takeIf { it.exists() } }
+        .firstOrNull { hasRefTables(it) }?.let { return it }
+
+    // 2. Scan exhaustif de tous les .db présents
+    return folder.listFiles { f -> f.isFile && f.name.endsWith(".db", ignoreCase = true) }
+        ?.firstOrNull { f ->
+            !f.name.equals("Data-Anim.db", ignoreCase = true) &&
+            !f.name.equals("Data-Food.db", ignoreCase = true) &&
+            hasRefTables(f)
+        }
+}
+
+/** Compte les enregistrements dans les tables de référence d'un fichier DB donné. */
+private fun countRefTables(f: File): Triple<Int, Int, Int> {
+    var biblioRefs = 0; var equations = 0; var references = 0
+    runCatching {
+        connectV2(f).use { conn ->
+            conn.findTable(*BIBLIO_TABLE_NAMES.toTypedArray())?.let  { biblioRefs  = conn.count(it) }
+            conn.findTable(*EQUATION_TABLE_NAMES.toTypedArray())?.let { equations   = conn.count(it) }
+            conn.findTable(*REF_TABLE_NAMES.toTypedArray())?.let     { references  = conn.count(it) }
+        }
+    }
+    return Triple(biblioRefs, equations, references)
+}
+
 // ---- Preview ----------------------------------------------------------------
 
 suspend fun previewV2Migration(dbFolderPath: String): LegacyMigrationViewModel.MigrationCounts =
@@ -167,7 +224,11 @@ suspend fun previewV2Migration(dbFolderPath: String): LegacyMigrationViewModel.M
         val folder = File(dbFolderPath)
         val animDb = File(folder, "Data-Anim.db")
         val foodDb = File(folder, "Data-Food.db")
-        val refDb  = File(folder, "ref.db")
+
+        println("[VetNutriMigration] Dossier: $dbFolderPath")
+        val allFiles = folder.listFiles { f -> f.isFile && f.name.endsWith(".db", ignoreCase = true) }
+            ?.map { it.name } ?: emptyList()
+        println("[VetNutriMigration] Fichiers .db trouvés: ${allFiles.joinToString()}")
 
         var animals = 0; var consultations = 0; var rations = 0; var weights = 0
         var foods = 0; var biblioRefs = 0; var equations = 0; var references = 0
@@ -192,13 +253,14 @@ suspend fun previewV2Migration(dbFolderPath: String): LegacyMigrationViewModel.M
                 }
             }
         }
-        if (refDb.exists()) {
-            connectV2(refDb).use { conn ->
-                if (conn.tableExists("BIBLIO_REFS"))  biblioRefs  = conn.count("BIBLIO_REFS")
-                else if (conn.tableExists("BIBLIO_REF")) biblioRefs = conn.count("BIBLIO_REF")
-                if (conn.tableExists("EQUATIONS"))    equations   = conn.count("EQUATIONS")
-                if (conn.tableExists("REFERENCE_EV")) references  = conn.count("REFERENCE_EV")
-            }
+
+        val refDbFile = findRefDb(folder)
+        if (refDbFile != null) {
+            println("[VetNutriMigration] Base de références trouvée: ${refDbFile.name}")
+            val (b, e, r) = countRefTables(refDbFile)
+            biblioRefs = b; equations = e; references = r
+        } else {
+            println("[VetNutriMigration] Aucune base de références trouvée dans $dbFolderPath")
         }
 
         LegacyMigrationViewModel.MigrationCounts(
@@ -412,11 +474,17 @@ suspend fun runV2Migration(
                             }
                         }
                     } catch (e: Exception) {
-                        val msg = "Ration ${row["UUID"]}: ${e.message}"
-                        errors.add(msg); logError(msg, e)
+                        // FK constraint = ration orpheline (consultation absente) → skip silencieux
+                        if (e.message?.contains("FOREIGN KEY") == true ||
+                            e.message?.contains("constraint") == true) {
+                            skipRations++
+                        } else {
+                            val msg = "Ration ${row["UUID"]}: ${e.message}"
+                            errors.add(msg); logError(msg, e)
+                        }
                     }
                 }
-                log("Rations importées: $impRations, ignorées: $skipRations")
+                log("Rations importées: $impRations, ignorées (dont orphelines): $skipRations")
             }
         }
     }
@@ -530,12 +598,8 @@ suspend fun runV2Migration(
             ).mapNotNull { it["name"] as? String }
             log("Tables ref.db: ${refTables.joinToString()}")
 
-            // 6. BIBLIO_REFS
-            val biblioTable = when {
-                conn.tableExists("BIBLIO_REFS") -> "BIBLIO_REFS"
-                conn.tableExists("BIBLIO_REF")  -> "BIBLIO_REF"
-                else -> null
-            }
+            // 6. BIBLIO_REFS / Biblio
+            val biblioTable = conn.findTable(*BIBLIO_TABLE_NAMES.toTypedArray())
             if (biblioTable != null) {
                 log("Colonnes $biblioTable: ${conn.tableColumns(biblioTable).joinToString()}")
                 val rows = conn.queryAll("SELECT * FROM $biblioTable")
@@ -565,10 +629,11 @@ suspend fun runV2Migration(
                 log("BiblioRefs importées: $impBiblioRefs, ignorées: $skipBiblioRefs")
             }
 
-            // 7. EQUATIONS
-            if (conn.tableExists("EQUATIONS")) {
-                log("Colonnes EQUATIONS: ${conn.tableColumns("EQUATIONS").joinToString()}")
-                val rows = conn.queryAll("SELECT * FROM EQUATIONS")
+            // 7. EQUATIONS / equation
+            val equationTable = conn.findTable(*EQUATION_TABLE_NAMES.toTypedArray())
+            if (equationTable != null) {
+                log("Colonnes $equationTable: ${conn.tableColumns(equationTable).joinToString()}")
+                val rows = conn.queryAll("SELECT * FROM $equationTable")
                 log("${rows.size} équations trouvées")
                 rows.forEach { row ->
                     try {
@@ -604,10 +669,11 @@ suspend fun runV2Migration(
                 log("Équations importées: $impEquations, ignorées: $skipEquations")
             }
 
-            // 8. REFERENCE_EV
-            if (conn.tableExists("REFERENCE_EV")) {
-                log("Colonnes REFERENCE_EV: ${conn.tableColumns("REFERENCE_EV").joinToString()}")
-                val rows = conn.queryAll("SELECT * FROM REFERENCE_EV")
+            // 8. REFERENCE_EV / dataRef
+            val refEvTable = conn.findTable(*REF_TABLE_NAMES.toTypedArray())
+            if (refEvTable != null) {
+                log("Colonnes $refEvTable: ${conn.tableColumns(refEvTable).joinToString()}")
+                val rows = conn.queryAll("SELECT * FROM $refEvTable")
                 log("${rows.size} références nutritionnelles trouvées")
                 rows.forEach { row ->
                     try {
@@ -653,9 +719,11 @@ suspend fun runV2Migration(
                 log("Références nutritionnelles importées: $impReferences, ignorées: $skipReferences")
             }
 
-            // 9. REFERENCE_EV_EQUATIONS (table de liaison)
-            if (conn.tableExists("REFERENCE_EV_EQUATIONS")) {
-                val relRows = conn.queryAll("SELECT * FROM REFERENCE_EV_EQUATIONS")
+            // 9. REFERENCE_EV_EQUATIONS / method
+            val refRelTable = conn.findTable(*REFREL_TABLE_NAMES.toTypedArray())
+            if (refRelTable != null) {
+                val relRows = conn.queryAll("SELECT * FROM $refRelTable")
+                log("Colonnes $refRelTable: ${conn.tableColumns(refRelTable).joinToString()}")
                 var impRel = 0
                 relRows.forEach { row ->
                     try {
@@ -673,9 +741,11 @@ suspend fun runV2Migration(
                 if (impRel > 0) log("Relations référence↔équation importées: $impRel")
             }
 
-            // 10. REFERENCE_EV_COEFFICIENTS
-            if (conn.tableExists("REFERENCE_EV_COEFFICIENTS")) {
-                val coefRows = conn.queryAll("SELECT * FROM REFERENCE_EV_COEFFICIENTS")
+            // 10. REFERENCE_EV_COEFFICIENTS / coef
+            val coefTable = conn.findTable(*COEF_TABLE_NAMES.toTypedArray())
+            if (coefTable != null) {
+                log("Colonnes $coefTable: ${conn.tableColumns(coefTable).joinToString()}")
+                val coefRows = conn.queryAll("SELECT * FROM $coefTable")
                 var impCoef = 0
                 coefRows.forEach { row ->
                     try {
@@ -697,9 +767,11 @@ suspend fun runV2Migration(
                 if (impCoef > 0) log("Coefficients importés: $impCoef")
             }
 
-            // 11. REFERENCE_EV_NUTRIENTS
-            if (conn.tableExists("REFERENCE_EV_NUTRIENTS")) {
-                val nutRows = conn.queryAll("SELECT * FROM REFERENCE_EV_NUTRIENTS")
+            // 11. REFERENCE_EV_NUTRIENTS / speReqEq
+            val nutReqTable = conn.findTable(*NUTREQ_TABLE_NAMES.toTypedArray())
+            if (nutReqTable != null) {
+                log("Colonnes $nutReqTable: ${conn.tableColumns(nutReqTable).joinToString()}")
+                val nutRows = conn.queryAll("SELECT * FROM $nutReqTable")
                 var impNut = 0
                 nutRows.forEach { row ->
                     try {
