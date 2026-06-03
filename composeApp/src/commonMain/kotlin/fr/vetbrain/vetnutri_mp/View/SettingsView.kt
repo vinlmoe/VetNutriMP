@@ -137,6 +137,7 @@ fun SettingsView(
         modifier: Modifier = Modifier,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {},
         onBackupClick: () -> Unit = {},
+        onLegacyMigrationClick: () -> Unit = {},
         isExamMode: Boolean = false
 ) {
 
@@ -2620,6 +2621,7 @@ fun SettingsView(
                                                 onAnimalListRefresh = onAnimalListRefresh,
                                                 onFoodListRefresh = onFoodListRefresh,
                                                 onBackupClick = { onBackupClick() },
+                                                onLegacyMigrationClick = { onLegacyMigrationClick() },
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                 }

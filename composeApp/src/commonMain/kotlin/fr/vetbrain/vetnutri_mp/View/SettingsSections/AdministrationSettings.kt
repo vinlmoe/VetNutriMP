@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +36,7 @@ fun AdministrationSettings(
         onAnimalListRefresh: () -> Unit,
         onFoodListRefresh: () -> Unit,
         onBackupClick: () -> Unit = {},
+        onLegacyMigrationClick: () -> Unit = {},
         modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -137,6 +139,20 @@ fun AdministrationSettings(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(translate(LocalizationKeys.Administration.MANAGE_BACKUPS))
+                        }
+
+                        // Bouton migration VetNutri 2
+                        OutlinedButton(
+                                onClick = onLegacyMigrationClick,
+                                modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                    imageVector = Icons.Default.Upload,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Importer depuis VetNutri 2")
                         }
 
                         // Affichage du résultat de l'import automatique
