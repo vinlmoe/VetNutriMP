@@ -16,7 +16,10 @@ class LegacyMigrationViewModel(
         val consultations: Int = 0,
         val rations: Int = 0,
         val weights: Int = 0,
-        val foods: Int = 0
+        val foods: Int = 0,
+        val biblioRefs: Int = 0,
+        val equations: Int = 0,
+        val references: Int = 0
     )
 
     data class MigrationResult(

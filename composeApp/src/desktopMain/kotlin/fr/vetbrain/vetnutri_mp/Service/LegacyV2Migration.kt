@@ -80,6 +80,20 @@ private val NUTRIENT_TABLE_MAP = mapOf(
     "VALUEOTHER" to OTHER_LABELS
 )
 
+// V2 stadePhysio int → VetNutriMP StadePhysio.label
+private val STADE_MAP = mapOf(
+    0 to "ADULTE", 1 to "CROISSANCE", 2 to "LACTATION", 3 to "GESTATION", 4 to "HOSPIT"
+)
+
+// V2 EquationKind int → VetNutriMP EquationKind.name
+private val EQUATION_KIND_MAP = mapOf(
+    0 to "ENERGYNEED", 1 to "ENERGYDENSITY", 2 to "MW",
+    3 to "INDICATOR", 4 to "NEED", 5 to "COMPLEMENTARY_NUTRIENT", 6 to "ENERCOMP"
+)
+
+// V2 Reflevel int → VetNutriMP Reflevel.name
+private val REFLEVEL_MAP = mapOf(0 to "MIN", 1 to "MAX", 2 to "OPTIMIN", 3 to "OPTIMAX")
+
 // V2 specie int (getCategorie()) → VetNutriMP Espece.label
 private val SPECIE_MAP = mapOf(
     0 to "DOG", 1 to "CAT", 2 to "ALL", 3 to "PRIMATE",
@@ -138,6 +152,14 @@ private fun Connection.tableColumns(table: String): List<String> = runCatching {
     cols
 }.getOrDefault(emptyList())
 
+// Case-insensitive lookup: first matching key wins
+private fun Map<String, Any?>.field(vararg keys: String): Any? {
+    val lower = entries.associate { it.key.lowercase() to it.value }
+    return keys.firstNotNullOfOrNull { lower[it.lowercase()] }
+}
+private fun Map<String, Any?>.str(vararg keys: String): String? = field(*keys) as? String
+private fun Map<String, Any?>.num(vararg keys: String): Number? = field(*keys) as? Number
+
 // ---- Preview ----------------------------------------------------------------
 
 suspend fun previewV2Migration(dbFolderPath: String): LegacyMigrationViewModel.MigrationCounts =
@@ -145,8 +167,10 @@ suspend fun previewV2Migration(dbFolderPath: String): LegacyMigrationViewModel.M
         val folder = File(dbFolderPath)
         val animDb = File(folder, "Data-Anim.db")
         val foodDb = File(folder, "Data-Food.db")
+        val refDb  = File(folder, "ref.db")
 
-        var animals = 0; var consultations = 0; var rations = 0; var weights = 0; var foods = 0
+        var animals = 0; var consultations = 0; var rations = 0; var weights = 0
+        var foods = 0; var biblioRefs = 0; var equations = 0; var references = 0
 
         if (animDb.exists()) {
             connectV2(animDb).use { conn ->
@@ -168,8 +192,18 @@ suspend fun previewV2Migration(dbFolderPath: String): LegacyMigrationViewModel.M
                 }
             }
         }
+        if (refDb.exists()) {
+            connectV2(refDb).use { conn ->
+                if (conn.tableExists("BIBLIO_REFS"))  biblioRefs  = conn.count("BIBLIO_REFS")
+                else if (conn.tableExists("BIBLIO_REF")) biblioRefs = conn.count("BIBLIO_REF")
+                if (conn.tableExists("EQUATIONS"))    equations   = conn.count("EQUATIONS")
+                if (conn.tableExists("REFERENCE_EV")) references  = conn.count("REFERENCE_EV")
+            }
+        }
 
-        LegacyMigrationViewModel.MigrationCounts(animals, consultations, rations, weights, foods)
+        LegacyMigrationViewModel.MigrationCounts(
+            animals, consultations, rations, weights, foods, biblioRefs, equations, references
+        )
     }
 
 // ---- Migration ---------------------------------------------------------------
@@ -197,12 +231,18 @@ suspend fun runV2Migration(
     var impRations = 0; var skipRations = 0
     var impWeights = 0; var skipWeights = 0
     var impFoods = 0; var skipFoods = 0
+    var impBiblioRefs = 0; var skipBiblioRefs = 0
+    var impEquations = 0; var skipEquations = 0
+    var impReferences = 0; var skipReferences = 0
     val errors = mutableListOf<String>()
 
     val animalDao = appDatabase.animalDao()
     val consultationDao = appDatabase.consultationDao()
     val foodDao = appDatabase.foodDao()
     val nutrientValueDao = appDatabase.nutrientValueDao()
+    val biblioRefDao = appDatabase.biblioRefDao()
+    val equationDao = appDatabase.equationDao()
+    val referenceEvDao = appDatabase.referenceEvDao()
 
     // --- Animaux + consultations + rations + poids ---
     if (animDb.exists()) {
@@ -480,6 +520,219 @@ suspend fun runV2Migration(
         }
     }
 
+    // --- Références (ref.db) ---
+    val refDb = File(folder, "ref.db")
+    if (refDb.exists()) {
+        log("Lecture de ref.db...")
+        connectV2(refDb).use { conn ->
+            val refTables = conn.queryAll(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            ).mapNotNull { it["name"] as? String }
+            log("Tables ref.db: ${refTables.joinToString()}")
+
+            // 6. BIBLIO_REFS
+            val biblioTable = when {
+                conn.tableExists("BIBLIO_REFS") -> "BIBLIO_REFS"
+                conn.tableExists("BIBLIO_REF")  -> "BIBLIO_REF"
+                else -> null
+            }
+            if (biblioTable != null) {
+                log("Colonnes $biblioTable: ${conn.tableColumns(biblioTable).joinToString()}")
+                val rows = conn.queryAll("SELECT * FROM $biblioTable")
+                log("${rows.size} références bibliographiques trouvées")
+                rows.forEach { row ->
+                    try {
+                        val uuid = row.str("UUID", "uuid") ?: return@forEach
+                        if (biblioRefDao.getBiblioRefById(uuid) != null) {
+                            skipBiblioRefs++; return@forEach
+                        }
+                        val entity = fr.vetbrain.vetnutri_mp.DataBase.BiblioRefEntity(
+                            uuid = uuid,
+                            firstAuthor = row.str("firstAuthor", "first_author", "author") ?: "",
+                            year = row.num("year")?.toInt() ?: 0,
+                            completeRef = row.str("completeRef", "complete_ref", "reference") ?: "",
+                            comments = row.str("comments", "comment") ?: "",
+                            bibtex = row.str("bibtex") ?: "",
+                            consistent = row.num("consistent")?.toInt() ?: 1
+                        )
+                        biblioRefDao.insertBiblioRef(entity)
+                        impBiblioRefs++
+                    } catch (e: Exception) {
+                        val msg = "BiblioRef ${row.str("UUID", "uuid")}: ${e.message}"
+                        errors.add(msg); logError(msg, e)
+                    }
+                }
+                log("BiblioRefs importées: $impBiblioRefs, ignorées: $skipBiblioRefs")
+            }
+
+            // 7. EQUATIONS
+            if (conn.tableExists("EQUATIONS")) {
+                log("Colonnes EQUATIONS: ${conn.tableColumns("EQUATIONS").joinToString()}")
+                val rows = conn.queryAll("SELECT * FROM EQUATIONS")
+                log("${rows.size} équations trouvées")
+                rows.forEach { row ->
+                    try {
+                        val uuid = row.str("UUID", "uuid") ?: return@forEach
+                        if (equationDao.getEquationById(uuid) != null) {
+                            skipEquations++; return@forEach
+                        }
+                        val kindInt = row.num("kind")?.toInt() ?: 0
+                        val kindName = EQUATION_KIND_MAP[kindInt] ?: "ENERGYNEED"
+                        val specieInt = row.num("Specie", "specie", "species")?.toInt()
+                        val specieName = specieInt?.let { SPECIE_MAP[it] }
+                            ?: row.str("Specie", "specie", "species")
+                        val entity = fr.vetbrain.vetnutri_mp.DataBase.EquationEntity(
+                            uuid = uuid,
+                            name = row.str("name") ?: "Équation importée",
+                            description = row.str("Description", "description") ?: "",
+                            equationScript = row.str("equationScript", "script", "equation") ?: "0",
+                            specie = specieName,
+                            kind = kindName,
+                            consistent = row.num("consistent")?.toInt() != 0,
+                            bibRef = row.str("bibRef", "bib_ref", "biblio"),
+                            variables = row.str("variables") ?: "[]",
+                            nutrient = row.str("nutrient"),
+                            ratio = row.num("ratio")?.toInt() == 1
+                        )
+                        equationDao.insertEquation(entity)
+                        impEquations++
+                    } catch (e: Exception) {
+                        val msg = "Equation ${row.str("UUID", "uuid")}: ${e.message}"
+                        errors.add(msg); logError(msg, e)
+                    }
+                }
+                log("Équations importées: $impEquations, ignorées: $skipEquations")
+            }
+
+            // 8. REFERENCE_EV
+            if (conn.tableExists("REFERENCE_EV")) {
+                log("Colonnes REFERENCE_EV: ${conn.tableColumns("REFERENCE_EV").joinToString()}")
+                val rows = conn.queryAll("SELECT * FROM REFERENCE_EV")
+                log("${rows.size} références nutritionnelles trouvées")
+                rows.forEach { row ->
+                    try {
+                        val uuid = row.str("UUID", "uuid") ?: return@forEach
+                        if (referenceEvDao.getReferenceEvById(uuid) != null) {
+                            skipReferences++; return@forEach
+                        }
+                        val specieRaw = row.field("species", "espece", "specie", "Specie")
+                        val especeStr = when (specieRaw) {
+                            is Number -> SPECIE_MAP[specieRaw.toInt()] ?: "ALL"
+                            is String -> specieRaw.ifBlank { "ALL" }
+                            else -> "ALL"
+                        }
+                        val stadeRaw = row.field("sPhysio", "stadePhysio", "stade_physio", "physio")
+                        val stadeStr = when (stadeRaw) {
+                            is Number -> STADE_MAP[stadeRaw.toInt()] ?: "ADULTE"
+                            is String -> stadeRaw.ifBlank { "ADULTE" }
+                            else -> "ADULTE"
+                        }
+                        val entity = fr.vetbrain.vetnutri_mp.DataBase.ReferenceEvEntity(
+                            uuid = uuid,
+                            nom = row.str("nom", "name") ?: "",
+                            description = row.str("description") ?: "",
+                            maladie = row.num("disease", "maladie")?.toInt() == 1,
+                            nomMaladie = row.str("nameDisease", "nomMaladie", "name_disease") ?: "",
+                            nomEnergie = row.str("nameEnergy", "nomEnergie", "name_energy") ?: "",
+                            consistent = row.num("consistent")?.toInt() ?: 1,
+                            espece = especeStr,
+                            stadePhysio = stadeStr,
+                            nomk1 = row.str("nomk1", "nomK1") ?: "",
+                            nomk2 = row.str("nomk2", "nomK2") ?: "",
+                            nomk3 = row.str("nomk3", "nomK3") ?: "",
+                            nomk4 = row.str("nomk4", "nomK4") ?: "",
+                            nomk5 = row.str("nomk5", "nomK5") ?: ""
+                        )
+                        referenceEvDao.insertReferenceEv(entity)
+                        impReferences++
+                    } catch (e: Exception) {
+                        val msg = "ReferenceEv ${row.str("UUID", "uuid")}: ${e.message}"
+                        errors.add(msg); logError(msg, e)
+                    }
+                }
+                log("Références nutritionnelles importées: $impReferences, ignorées: $skipReferences")
+            }
+
+            // 9. REFERENCE_EV_EQUATIONS (table de liaison)
+            if (conn.tableExists("REFERENCE_EV_EQUATIONS")) {
+                val relRows = conn.queryAll("SELECT * FROM REFERENCE_EV_EQUATIONS")
+                var impRel = 0
+                relRows.forEach { row ->
+                    try {
+                        val refId = row.str("referenceEvId", "reference_ev_id") ?: return@forEach
+                        val eqId  = row.str("equationId", "equation_id") ?: return@forEach
+                        val eqType = row.str("equationType", "equation_type") ?: return@forEach
+                        referenceEvDao.insertEquationRelation(
+                            fr.vetbrain.vetnutri_mp.DataBase.ReferenceEvEquationEntity(
+                                referenceEvId = refId, equationId = eqId, equationType = eqType
+                            )
+                        )
+                        impRel++
+                    } catch (_: Exception) {}
+                }
+                if (impRel > 0) log("Relations référence↔équation importées: $impRel")
+            }
+
+            // 10. REFERENCE_EV_COEFFICIENTS
+            if (conn.tableExists("REFERENCE_EV_COEFFICIENTS")) {
+                val coefRows = conn.queryAll("SELECT * FROM REFERENCE_EV_COEFFICIENTS")
+                var impCoef = 0
+                coefRows.forEach { row ->
+                    try {
+                        val uuid   = row.str("uuid", "UUID") ?: return@forEach
+                        val refId  = row.str("referenceEvId", "reference_ev_id") ?: return@forEach
+                        referenceEvDao.insertCoefficient(
+                            fr.vetbrain.vetnutri_mp.DataBase.ReferenceEvCoefficientEntity(
+                                uuid = uuid,
+                                referenceEvId = refId,
+                                groupType = row.str("groupType", "group_type", "ktype") ?: "k1",
+                                description = row.str("description") ?: "Normal",
+                                coef = row.num("coef")?.toDouble() ?: 1.0,
+                                groupUUID = row.num("groupUUID", "group_uuid")?.toInt() ?: 0
+                            )
+                        )
+                        impCoef++
+                    } catch (_: Exception) {}
+                }
+                if (impCoef > 0) log("Coefficients importés: $impCoef")
+            }
+
+            // 11. REFERENCE_EV_NUTRIENTS
+            if (conn.tableExists("REFERENCE_EV_NUTRIENTS")) {
+                val nutRows = conn.queryAll("SELECT * FROM REFERENCE_EV_NUTRIENTS")
+                var impNut = 0
+                nutRows.forEach { row ->
+                    try {
+                        val uuid  = row.str("uuid", "UUID") ?: return@forEach
+                        val refId = row.str("referenceEvId", "reference_ev_id") ?: return@forEach
+                        val reflevelRaw = row.field("reflevel", "refLevel", "level")
+                        val reflevel = when (reflevelRaw) {
+                            is Number -> REFLEVEL_MAP[reflevelRaw.toInt()] ?: "MIN"
+                            is String -> reflevelRaw.uppercase().ifBlank { "MIN" }
+                            else -> "MIN"
+                        }
+                        referenceEvDao.insertNutrient(
+                            fr.vetbrain.vetnutri_mp.DataBase.ReferenceEvNutrientEntity(
+                                uuid = uuid,
+                                referenceEvId = refId,
+                                nutrientCode = row.str("nutrientCode", "nutrient_code", "nutrient") ?: "",
+                                reflevel = reflevel,
+                                quantite = row.num("quantite", "quantity", "value")?.toDouble() ?: 0.0,
+                                uniteId = row.num("uniteId", "unite_id", "unit_id")?.toInt() ?: 0,
+                                uniteReqId = row.num("uniteReqId", "unite_req_id", "unit_req_id")?.toInt() ?: 0,
+                                biblioRefId = row.str("biblioRefId", "biblio_ref_id", "bibRef")
+                            )
+                        )
+                        impNut++
+                    } catch (_: Exception) {}
+                }
+                if (impNut > 0) log("Besoins nutritionnels importés: $impNut")
+            }
+        }
+    } else {
+        log("ref.db introuvable dans $dbFolderPath — références non importées")
+    }
+
     if (errors.isNotEmpty()) {
         log("${errors.size} erreur(s) rencontrée(s) :")
         errors.forEach { log("  • $it") }
@@ -492,14 +745,20 @@ suspend fun runV2Migration(
             consultations = impConsults,
             rations = impRations,
             weights = impWeights,
-            foods = impFoods
+            foods = impFoods,
+            biblioRefs = impBiblioRefs,
+            equations = impEquations,
+            references = impReferences
         ),
         skipped = LegacyMigrationViewModel.MigrationCounts(
             animals = skipAnimals,
             consultations = skipConsults,
             rations = skipRations,
             weights = 0,
-            foods = skipFoods
+            foods = skipFoods,
+            biblioRefs = skipBiblioRefs,
+            equations = skipEquations,
+            references = skipReferences
         ),
         errors = errors
     )
