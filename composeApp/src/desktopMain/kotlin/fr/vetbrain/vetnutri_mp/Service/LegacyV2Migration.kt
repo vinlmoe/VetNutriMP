@@ -121,6 +121,23 @@ private fun Connection.tableExists(table: String): Boolean = runCatching {
     ).use { rs -> rs.next() }
 }.getOrDefault(false)
 
+private fun Connection.columnExists(table: String, column: String): Boolean = runCatching {
+    createStatement().executeQuery("PRAGMA table_info($table)").use { rs ->
+        while (rs.next()) {
+            if (rs.getString("name").equals(column, ignoreCase = true)) return@runCatching true
+        }
+        false
+    }
+}.getOrDefault(false)
+
+private fun Connection.tableColumns(table: String): List<String> = runCatching {
+    val cols = mutableListOf<String>()
+    createStatement().executeQuery("PRAGMA table_info($table)").use { rs ->
+        while (rs.next()) cols.add(rs.getString("name"))
+    }
+    cols
+}.getOrDefault(emptyList())
+
 // ---- Preview ----------------------------------------------------------------
 
 suspend fun previewV2Migration(dbFolderPath: String): LegacyMigrationViewModel.MigrationCounts =
@@ -141,10 +158,14 @@ suspend fun previewV2Migration(dbFolderPath: String): LegacyMigrationViewModel.M
         }
         if (foodDb.exists()) {
             connectV2(foodDb).use { conn ->
-                if (conn.tableExists("FOOD"))
-                    foods = conn.createStatement()
-                        .executeQuery("SELECT COUNT(*) FROM FOOD WHERE (RefRation IS NULL OR RefRation = '')")
+                if (conn.tableExists("FOOD")) {
+                    val sql = if (conn.columnExists("FOOD", "RefRation"))
+                        "SELECT COUNT(*) FROM FOOD WHERE (RefRation IS NULL OR RefRation = '')"
+                    else
+                        "SELECT COUNT(*) FROM FOOD"
+                    foods = conn.createStatement().executeQuery(sql)
                         .use { rs -> if (rs.next()) rs.getInt(1) else 0 }
+                }
             }
         }
 
@@ -178,9 +199,14 @@ suspend fun runV2Migration(
     if (animDb.exists()) {
         onLog("Lecture de Data-Anim.db...")
         connectV2(animDb).use { conn ->
+            val animTables = conn.queryAll(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            ).mapNotNull { it["name"] as? String }
+            onLog("Tables Data-Anim.db: ${animTables.joinToString()}")
 
             // 1. ANIMALS
             if (conn.tableExists("ANIMALS")) {
+                onLog("Colonnes ANIMALS: ${conn.tableColumns("ANIMALS").joinToString()}")
                 val rows = conn.queryAll("SELECT * FROM ANIMALS")
                 onLog("${rows.size} animaux trouvés")
                 rows.forEach { row ->
@@ -308,7 +334,7 @@ suspend fun runV2Migration(
                         impRations++
 
                         // Aliments de cette ration (dans Data-Anim.db FOOD table)
-                        if (conn.tableExists("FOOD")) {
+                        if (conn.tableExists("FOOD") && conn.columnExists("FOOD", "RefRation")) {
                             val rationFoods = conn.queryAll(
                                 "SELECT * FROM FOOD WHERE RefRation = '${uuid.replace("'", "''")}'"
                             )
@@ -345,10 +371,24 @@ suspend fun runV2Migration(
     if (foodDb.exists()) {
         onLog("Lecture de Data-Food.db...")
         connectV2(foodDb).use { conn ->
+            // Log tables disponibles
+            val tables = conn.queryAll(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            ).mapNotNull { it["name"] as? String }
+            onLog("Tables Data-Food.db: ${tables.joinToString()}")
+
             if (conn.tableExists("FOOD")) {
-                val rows = conn.queryAll(
+                val foodCols = conn.tableColumns("FOOD")
+                onLog("Colonnes FOOD: ${foodCols.joinToString()}")
+
+                val hasRefRation = conn.columnExists("FOOD", "RefRation")
+                onLog("Colonne RefRation présente: $hasRefRation")
+
+                val sql = if (hasRefRation)
                     "SELECT * FROM FOOD WHERE (RefRation IS NULL OR RefRation = '')"
-                )
+                else
+                    "SELECT * FROM FOOD"
+                val rows = conn.queryAll(sql)
                 onLog("${rows.size} aliments base trouvés")
 
                 // Pré-charger les IDs existants pour éviter N requêtes
