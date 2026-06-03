@@ -179,6 +179,15 @@ suspend fun runV2Migration(
     appDatabase: AppDatabase,
     onLog: suspend (String) -> Unit
 ): LegacyMigrationViewModel.MigrationResult = withContext(AppDispatchers.IO) {
+    suspend fun log(msg: String) {
+        println("[VetNutriMigration] $msg")
+        onLog(msg)
+    }
+    fun logError(msg: String, e: Exception) {
+        System.err.println("[VetNutriMigration][ERROR] $msg")
+        e.printStackTrace(System.err)
+    }
+
     val folder = File(dbFolderPath)
     val animDb = File(folder, "Data-Anim.db")
     val foodDb = File(folder, "Data-Food.db")
@@ -197,18 +206,18 @@ suspend fun runV2Migration(
 
     // --- Animaux + consultations + rations + poids ---
     if (animDb.exists()) {
-        onLog("Lecture de Data-Anim.db...")
+        log("Lecture de Data-Anim.db...")
         connectV2(animDb).use { conn ->
             val animTables = conn.queryAll(
                 "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
             ).mapNotNull { it["name"] as? String }
-            onLog("Tables Data-Anim.db: ${animTables.joinToString()}")
+            log("Tables Data-Anim.db: ${animTables.joinToString()}")
 
             // 1. ANIMALS
             if (conn.tableExists("ANIMALS")) {
-                onLog("Colonnes ANIMALS: ${conn.tableColumns("ANIMALS").joinToString()}")
+                log("Colonnes ANIMALS: ${conn.tableColumns("ANIMALS").joinToString()}")
                 val rows = conn.queryAll("SELECT * FROM ANIMALS")
-                onLog("${rows.size} animaux trouvés")
+                log("${rows.size} animaux trouvés")
                 rows.forEach { row ->
                     try {
                         val uuid = row["UUID"] as? String ?: return@forEach
@@ -232,10 +241,11 @@ suspend fun runV2Migration(
                         animalDao.insert(entity)
                         impAnimals++
                     } catch (e: Exception) {
-                        errors.add("Animal ${row["UUID"]}: ${e.message}")
+                        val msg = "Animal ${row["UUID"]}: ${e.message}"
+                        errors.add(msg); logError(msg, e)
                     }
                 }
-                onLog("Animaux importés: $impAnimals, ignorés: $skipAnimals")
+                log("Animaux importés: $impAnimals, ignorés: $skipAnimals")
             }
 
             // 2. Weight
@@ -254,16 +264,17 @@ suspend fun runV2Migration(
                         animalDao.insertWeight(entity)
                         impWeights++
                     } catch (e: Exception) {
-                        errors.add("Poids ${row["UUID"]}: ${e.message}")
+                        val msg = "Poids ${row["UUID"]}: ${e.message}"
+                        errors.add(msg); logError(msg, e)
                     }
                 }
-                onLog("Poids importés: $impWeights")
+                log("Poids importés: $impWeights")
             }
 
             // 3. CONSULTATIONS
             if (conn.tableExists("CONSULTATIONS")) {
                 val rows = conn.queryAll("SELECT * FROM CONSULTATIONS")
-                onLog("${rows.size} consultations trouvées")
+                log("${rows.size} consultations trouvées")
                 rows.forEach { row ->
                     try {
                         val uuid = row["UUID"] as? String ?: return@forEach
@@ -302,10 +313,11 @@ suspend fun runV2Migration(
                         consultationDao.insert(entity)
                         impConsults++
                     } catch (e: Exception) {
-                        errors.add("Consultation ${row["UUID"]}: ${e.message}")
+                        val msg = "Consultation ${row["UUID"]}: ${e.message}"
+                        errors.add(msg); logError(msg, e)
                     }
                 }
-                onLog("Consultations importées: $impConsults, ignorées: $skipConsults")
+                log("Consultations importées: $impConsults, ignorées: $skipConsults")
             }
 
             // 4. RATION
@@ -354,42 +366,43 @@ suspend fun runV2Migration(
                                         consultationDao.insertAlimentRation(alimentEntity)
                                     } catch (_: Exception) {}
                                 } catch (e: Exception) {
-                                    errors.add("AlimentRation ${fRow["UUID"]}: ${e.message}")
+                                    val msg = "AlimentRation ${fRow["UUID"]}: ${e.message}"
+                                    errors.add(msg); logError(msg, e)
                                 }
                             }
                         }
                     } catch (e: Exception) {
-                        errors.add("Ration ${row["UUID"]}: ${e.message}")
+                        val msg = "Ration ${row["UUID"]}: ${e.message}"
+                        errors.add(msg); logError(msg, e)
                     }
                 }
-                onLog("Rations importées: $impRations, ignorées: $skipRations")
+                log("Rations importées: $impRations, ignorées: $skipRations")
             }
         }
     }
 
     // --- Aliments (base alimentaire) ---
     if (foodDb.exists()) {
-        onLog("Lecture de Data-Food.db...")
+        log("Lecture de Data-Food.db...")
         connectV2(foodDb).use { conn ->
-            // Log tables disponibles
             val tables = conn.queryAll(
                 "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
             ).mapNotNull { it["name"] as? String }
-            onLog("Tables Data-Food.db: ${tables.joinToString()}")
+            log("Tables Data-Food.db: ${tables.joinToString()}")
 
             if (conn.tableExists("FOOD")) {
                 val foodCols = conn.tableColumns("FOOD")
-                onLog("Colonnes FOOD: ${foodCols.joinToString()}")
+                log("Colonnes FOOD: ${foodCols.joinToString()}")
 
                 val hasRefRation = conn.columnExists("FOOD", "RefRation")
-                onLog("Colonne RefRation présente: $hasRefRation")
+                log("Colonne RefRation présente: $hasRefRation")
 
                 val sql = if (hasRefRation)
                     "SELECT * FROM FOOD WHERE (RefRation IS NULL OR RefRation = '')"
                 else
                     "SELECT * FROM FOOD"
                 val rows = conn.queryAll(sql)
-                onLog("${rows.size} aliments base trouvés")
+                log("${rows.size} aliments base trouvés")
 
                 // Pré-charger les IDs existants pour éviter N requêtes
                 val existingIds = foodDao.getAllFoodIds().toHashSet()
@@ -458,16 +471,20 @@ suspend fun runV2Migration(
                             nutrientValueDao.insertNutrientValues(nutrientValues)
                         }
                     } catch (e: Exception) {
-                        errors.add("Aliment ${row["UUID"]}: ${e.message}")
+                        val msg = "Aliment ${row["UUID"]}: ${e.message}"
+                        errors.add(msg); logError(msg, e)
                     }
                 }
-                onLog("Aliments importés: $impFoods, ignorés: $skipFoods")
+                log("Aliments importés: $impFoods, ignorés: $skipFoods")
             }
         }
     }
 
-    if (errors.isNotEmpty()) onLog("${errors.size} erreur(s) rencontrée(s)")
-    onLog("Migration terminée.")
+    if (errors.isNotEmpty()) {
+        log("${errors.size} erreur(s) rencontrée(s) :")
+        errors.forEach { log("  • $it") }
+    }
+    log("Migration terminée.")
 
     LegacyMigrationViewModel.MigrationResult(
         imported = LegacyMigrationViewModel.MigrationCounts(
