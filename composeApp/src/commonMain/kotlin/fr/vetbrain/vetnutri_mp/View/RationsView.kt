@@ -959,7 +959,7 @@ fun RationsView(
                                                                                 referenceUtilisee =
                                                                                         referenceUtilisee,
                                                                                 besoinEnergetiqueEntretien =
-                                                                                        besoinEnergetiqueStandard,
+                                                                                        besoinEnergetiqueTotal,
                                                                                 poidsAnimal =
                                                                                         selectedConsultation
                                                                                                 ?.weight
@@ -1368,7 +1368,7 @@ fun RationsView(
                                                                         referenceUtilisee =
                                                                                 referenceUtilisee,
                                                                         besoinEnergetiqueEntretien =
-                                                                                besoinEnergetiqueStandard,
+                                                                                besoinEnergetiqueTotal,
                                                                         poidsAnimal =
                                                                                 selectedConsultation
                                                                                         ?.effectiveWeight
@@ -1572,7 +1572,7 @@ fun RationsView(
                                 ration = ration,
                                 poidsMetabolique = poidsMetabolique,
                                 referenceUtilisee = referenceUtilisee,
-                                besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
+                                besoinEnergetiqueEntretien = besoinEnergetiqueTotal,
                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                 espece = animal?.getEspece() ?: Espece.CHIEN,
                                 preferencesStorage = preferencesStorage,
