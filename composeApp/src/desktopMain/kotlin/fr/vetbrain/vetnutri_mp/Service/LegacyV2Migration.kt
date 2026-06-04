@@ -1310,14 +1310,21 @@ suspend fun runV2Migration(
                 val coefRows = conn.queryAll("SELECT * FROM $coefTable")
                 var impCoef = 0
                 coefRows.forEach { row ->
+                    val refId = row.str("refRef", "referenceEvId") ?: return@forEach
+                    val origUuid = row.str("UUID", "uuid")
+                    // Always populate the map before attempting insert so re-migration works:
+                    // if the coef already exists the insert throws and coefToRefMap would otherwise
+                    // stay empty, breaking the consultation-reference linkage pass.
+                    if (!origUuid.isNullOrBlank()) {
+                        coefToRefMap[origUuid.normalizedUuidCandidate()] =
+                            refId.translateLegacyReferenceUuid()
+                    }
                     try {
-                        val refId = row.str("refRef", "referenceEvId") ?: return@forEach
                         val groupUUID = row.num("groupUUID", "group_uuid")?.toInt() ?: 0
                         val coefName = row.str("coefName", "description") ?: "Normal"
                         val coefValue = row.num("value", "coef")?.toDouble() ?: 1.0
                         val groupType = "k${groupUUID + 1}"
-                        // UUID V2 si disponible, sinon UUID déterministe
-                        val uuid = row.str("UUID", "uuid")?.takeIf { it.isNotBlank() }
+                        val uuid = origUuid?.takeIf { it.isNotBlank() }
                             ?: "${refId}_${groupUUID}_${coefName.take(16).replace(" ", "_")}"
                         referenceEvDao.insertCoefficient(
                             fr.vetbrain.vetnutri_mp.DataBase.ReferenceEvCoefficientEntity(
@@ -1329,15 +1336,11 @@ suspend fun runV2Migration(
                                 groupUUID = groupUUID
                             )
                         )
-                        // Register original V2 UUID → reference mapping for post-import consultation linkage
-                        val origUuid = row.str("UUID", "uuid")
-                        if (!origUuid.isNullOrBlank()) {
-                            coefToRefMap[origUuid.normalizedUuidCandidate()] = refId
-                        }
                         impCoef++
                     } catch (_: Exception) {}
                 }
                 if (impCoef > 0) log("Coefficients importés: $impCoef")
+                log("Carte coef→référence construite: ${coefToRefMap.size} entrées")
             }
 
             // 11. VALUE tables → besoins nutritionnels par référence (VALUEBASE, VALUEAA, etc.)
