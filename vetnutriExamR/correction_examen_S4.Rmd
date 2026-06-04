@@ -159,6 +159,108 @@ normalize_str <- function(s) {
   s <- iconv(s, from = "UTF-8", to = "ASCII//TRANSLIT")
   tolower(s)
 }
+
+# --- Classification des conseils d'ordonnance --------------------------------
+# Conseils libres saisis par l'étudiant dans `consultation.prescriptionAdditionalText`.
+# Patterns regex (perl=TRUE) appliqués sur texte normalisé (sans accents, minuscule).
+CONSEILS_PATTERNS <- list(
+  transition_alimentaire = c(
+    "\\btransition\\b",
+    "\\bchangement +(progressif|graduel|d'aliment|de +(croquette|ration|alimentation))\\b",
+    "\\b(passer|passage|introduire) +(progressivement|graduellement|a +(une|un|la|le) +(ration|aliment))\\b",
+    "\\b(nouvelle|ancienne) +(croquette|ration|aliment)\\b",
+    "\\bsur +(\\d+|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix) +jours?\\b",
+    "\\bsur +(une|deux|1|2) +semaines?\\b"
+  ),
+  cuisson = c(
+    "\\bcui[res]\\b", "\\bcuisson\\b", "\\bcuit[se]?\\b", "\\bcuir[ae][zsi]?\\b",
+    "\\b(a +la +)?vapeur\\b",
+    "\\ba +l'?eau\\b", "\\bbouilli",
+    "\\bcuiseur +a +riz\\b",
+    "\\b(deux|2) +fois +plus +(longtemps|de +temps)\\b"
+  ),
+  ordre_ingredients = c(
+    "\\b(huile|cmv|vit) +(apres|en +fin +de) +cuisson\\b",
+    "\\bajouter +.{0,30}(huile|cmv|vit|complement|vitamines?|mineraux) +apres\\b",
+    "\\bapres +cuisson\\b", "\\bavant +cuisson\\b",
+    "\\bpeser +(les +)?aliments? +(avant|apres)\\b"
+  ),
+  distribution_repas = c(
+    "\\b(diviser|fractionner|repartir|distribuer|separer|espacer|proposer) +(la +(ration|nourriture)|les +repas|en +\\d|en +(plusieurs|deux|trois|quatre))\\b",
+    "\\bfractionn(er|ement|e[se]?|ees?)\\b",
+    "\\bplusieurs +(petits +)?(repas|prises|fois|distributions?)\\b",
+    "\\b(en|sur) +\\d+ *[-a]? *\\d* *(repas|prises?|fois|distributions?)\\b",
+    "\\b\\d +(a +\\d +)?repas +(par|/) +jours?\\b",
+    "\\b(gamelle|distributeur) +anti[ -]?glouton\\b",
+    "\\bconseils? +de +distribution\\b"
+  ),
+  suivi_poids = c(
+    "\\bsuivi\\b", "\\bsuivre +(le +)?poids\\b",
+    "\\bpeser\\b", "\\bpese[ze]?\\b", "\\bmesurer? +(le +)?poids\\b",
+    "\\btoutes +les +\\d+ +semaines?\\b", "\\bchaque +semaines?\\b",
+    "\\bsurveill(er|ance) +(du +)?poids\\b",
+    "\\bcontrol(er|e)? +(du +|le +)?poids\\b",
+    "\\bevolu(er|tion) +(du +)?poids\\b"
+  ),
+  activite_physique = c(
+    "\\bactivit(e|es)\\b", "\\bexercice\\b", "\\bpromenade\\b",
+    "\\bjouer\\b", "\\bbalad(e|es)\\b",
+    "\\b(augmenter|stimul(er|ation)) +.{0,20}activit",
+    "\\bplus +actif\\b", "\\bse +depenser\\b"
+  ),
+  enrichissement_environnement = c(
+    "\\bjouet\\b", "\\benrichissement\\b",
+    "\\bcacher +(la|les|des) +(aliment|croquette|repas|nourriture)",
+    "\\btapis +de +(fouille|leche)\\b",
+    "\\bpuzzle +alimentaire\\b",
+    "\\bgamelle +ludique\\b"
+  ),
+  hydratation_eau = c(
+    "\\beau +(a +volonte|fra(i|î)che|propre)\\b",
+    "\\bbol +d'?eau\\b", "\\bhydratation\\b",
+    "\\btoujours +(a +)?boire\\b", "\\ba +boire\\b"
+  ),
+  complementation_cmv = c(
+    "\\bcmv\\b", "\\bvit[' ]?i?[ -]?5\\b",
+    "\\bcomplement", "\\bdosette\\b",
+    "\\bvitamines?\\b", "\\bmineraux?\\b"
+  ),
+  objectif_poids = c(
+    "\\bobjectif +(de +)?poids\\b",
+    "\\bperte +de +poids\\b", "\\bmaigrir\\b", "\\bamaigrissement\\b",
+    "\\bprise +de +poids\\b", "\\bpoids +(ideal|cible)\\b",
+    "\\batteindre +(le +)?poids\\b"
+  ),
+  satiete_appetit = c(
+    "\\bsatiete\\b", "\\brassasi(e|er|es|ement)\\b",
+    "\\bappetit\\b", "\\bsensation +de +faim\\b",
+    "\\bsignes? +de +faim\\b"
+  )
+)
+
+# Barème conseils pour EX1 (chien Isopp, obésité) :
+# 0 pt par défaut. Modifiez la valeur pour donner des points sur la présence
+# de chaque conseil pertinent. Les colonnes booléennes restent exportées
+# même quand le barème vaut 0 (sert au diagnostic).
+PTS_EX1_CONSEILS <- c(
+  transition_alimentaire = 0.20,
+  distribution_repas     = 0.20,
+  suivi_poids            = 0.20,
+  activite_physique      = 0.20,
+  objectif_poids         = 0.10,
+  satiete_appetit        = 0.10
+  # NB: la somme des points conseils EX1 s'ajoute au total /6.
+  #     Ajustez à 0 si vous ne voulez pas changer le barème.
+)
+
+# Barème conseils pour EX2 (chat Mochi, ration ménagère) :
+PTS_EX2_CONSEILS <- c(
+  cuisson                = 0.30,
+  ordre_ingredients      = 0.20,
+  transition_alimentaire = 0.20,
+  distribution_repas     = 0.20,
+  suivi_poids            = 0.10
+)
 ```
 
 # 2. Lecture du CSV des réponses
@@ -450,6 +552,30 @@ find_ideal_weight <- function(consult, animal,
   list(value = NA_real_, field = NA_character_, where = NA_character_, flag = NA)
 }
 
+# --- Détection des catégories de conseils dans un texte libre ---------------
+# Renvoie un vecteur logique nommé sur toutes les catégories de
+# CONSEILS_PATTERNS, plus le détail des matches.
+detect_conseils <- function(text, patterns = CONSEILS_PATTERNS) {
+  out <- setNames(logical(length(patterns)), names(patterns))
+  if (is.null(text) || length(text) == 0) return(out)
+  text <- as.character(text)
+  if (!nzchar(text)) return(out)
+  txt <- normalize_str(text)
+  for (cat in names(patterns)) {
+    pats <- patterns[[cat]]
+    out[cat] <- any(vapply(pats, function(p)
+      grepl(p, txt, perl = TRUE), logical(1)))
+  }
+  out
+}
+
+# Concatène les catégories détectées en chaîne ";"-séparée
+conseils_to_str <- function(detected_vec) {
+  if (length(detected_vec) == 0) return(NA_character_)
+  hits <- names(detected_vec)[detected_vec]
+  if (length(hits) == 0) "" else paste(hits, collapse = ";")
+}
+
 extract_metrics_one <- function(x) {
   out <- list(
     # EX1
@@ -474,10 +600,18 @@ extract_metrics_one <- function(x) {
     ex1_proteine_g           = NA_real_,
     ex1_food_names           = NA_character_,
     ex1_n_proposed_rations   = NA_integer_,
+    # Conseils EX1
+    ex1_conseil_text         = NA_character_,
+    ex1_conseils_detected    = NA_character_,  # ";"-séparé
+    ex1_n_conseils_ok        = NA_integer_,
     # EX2
     ex2_present       = FALSE,
     ex2_food_names    = NA_character_,
     ex2_categories_ok = NA_character_,  # liste séparée par ;
+    # Conseils EX2
+    ex2_conseil_text         = NA_character_,
+    ex2_conseils_detected    = NA_character_,
+    ex2_n_conseils_ok        = NA_integer_,
     # Diagnostic global
     n_foods_missing_ena      = NA_integer_,
     n_items_missing_energy   = NA_integer_,
@@ -559,6 +693,14 @@ extract_metrics_one <- function(x) {
     out$ex1_weight_ideal_kg <- iw$value
     out$ex1_weight_field    <- iw$field
     out$ex1_ideal_flag      <- iw$flag
+
+    # --- Conseils EX1 (texte libre prescriptionAdditionalText) ----------------
+    conseil_text_ex1 <- if (!is.null(consult_obj))
+      (consult_obj$prescriptionAdditionalText %||% "") else ""
+    out$ex1_conseil_text      <- conseil_text_ex1
+    detected_ex1 <- detect_conseils(conseil_text_ex1)
+    out$ex1_conseils_detected <- conseils_to_str(detected_ex1)
+    out$ex1_n_conseils_ok     <- sum(detected_ex1)
 
     # Poids actuel (fallback)
     actual_w <- NA_real_
@@ -672,6 +814,27 @@ extract_metrics_one <- function(x) {
       }
     }
     out$ex2_categories_ok <- paste(cats_found, collapse = ";")
+
+    # --- Conseils EX2 (texte libre prescriptionAdditionalText) --------------
+    # On va chercher la 1re consultation de l'animal EX2
+    consult_ex2 <- NULL
+    if (!is.null(x$animals) && is.list(x$animals)) {
+      for (a in x$animals) {
+        if (identical(a$uuid %||% "", aid2)) {
+          if (!is.null(a$consultations) && is.list(a$consultations) &&
+              length(a$consultations) > 0) {
+            consult_ex2 <- a$consultations[[1]]
+          }
+          break
+        }
+      }
+    }
+    conseil_text_ex2 <- if (!is.null(consult_ex2))
+      (consult_ex2$prescriptionAdditionalText %||% "") else ""
+    out$ex2_conseil_text      <- conseil_text_ex2
+    detected_ex2 <- detect_conseils(conseil_text_ex2)
+    out$ex2_conseils_detected <- conseils_to_str(detected_ex2)
+    out$ex2_n_conseils_ok     <- sum(detected_ex2)
   }
 
   as.data.frame(out, stringsAsFactors = FALSE)
@@ -860,9 +1023,72 @@ colnames(cat_flags) <- paste0("ex2_cat_", cat_names)
 n_cats_ok <- rowSums(cat_flags)
 pts_ex2   <- n_cats_ok * PTS_EX2_PAR_CATEGORIE
 
+# --- Conseils EX1 / EX2 : expansion en colonnes booléennes + points ----------
+# Pour chaque copie, on a une chaîne ";"-séparée des catégories détectées.
+# On la déplie en colonnes booléennes ex1_conseil_<cat> / ex2_conseil_<cat>
+# puis on calcule les points selon PTS_EX1_CONSEILS / PTS_EX2_CONSEILS.
+expand_conseil_flags <- function(detected_str, all_cats, prefix) {
+  lst <- strsplit(detected_str %||% "", ";")
+  lst[lengths(lst) == 0] <- list(character(0))
+  m <- vapply(all_cats, function(cn) {
+    vapply(lst, function(v) cn %in% v, logical(1))
+  }, logical(length(detected_str)))
+  if (is.null(dim(m))) m <- matrix(m, nrow = length(detected_str))
+  colnames(m) <- paste0(prefix, all_cats)
+  m
+}
+
+conseil_cat_names <- names(CONSEILS_PATTERNS)
+
+ex1_conseil_flags <- expand_conseil_flags(metrics$ex1_conseils_detected,
+                                          conseil_cat_names, "ex1_conseil_")
+ex2_conseil_flags <- expand_conseil_flags(metrics$ex2_conseils_detected,
+                                          conseil_cat_names, "ex2_conseil_")
+
+# Points conseils EX1 = somme(PTS_EX1_CONSEILS[cat]) pour chaque cat détectée
+score_conseils <- function(flag_matrix, pts_named, all_cats, prefix) {
+  # pts_named peut ne contenir qu'un sous-ensemble de all_cats
+  pts_vec <- setNames(rep(0, length(all_cats)), all_cats)
+  for (cn in names(pts_named)) {
+    if (cn %in% all_cats) pts_vec[cn] <- as.numeric(pts_named[cn])
+  }
+  # multiplication ligne par ligne
+  as.numeric(flag_matrix %*% pts_vec[match(sub(paste0("^", prefix), "",
+                                               colnames(flag_matrix)),
+                                          names(pts_vec))])
+}
+
+pts_ex1_conseils <- score_conseils(ex1_conseil_flags, PTS_EX1_CONSEILS,
+                                   conseil_cat_names, "ex1_conseil_")
+pts_ex2_conseils <- score_conseils(ex2_conseil_flags, PTS_EX2_CONSEILS,
+                                   conseil_cat_names, "ex2_conseil_")
+
+# Si EX1 n'est pas présent (pas d'animal EX1 dans la copie), pas de points
+pts_ex1_conseils[!metrics$ex1_present] <- 0
+pts_ex2_conseils[!metrics$ex2_present] <- 0
+
+cat(sprintf(
+  "\nBarème conseils : EX1 max = %.2f pts | EX2 max = %.2f pts (somme = %.2f)\n",
+  sum(PTS_EX1_CONSEILS), sum(PTS_EX2_CONSEILS),
+  sum(PTS_EX1_CONSEILS) + sum(PTS_EX2_CONSEILS)
+))
+cat("\nFréquence catégories de conseils détectées (% copies) :\n")
+freq_tbl <- rbind(
+  EX1 = round(100 * colMeans(ex1_conseil_flags), 1),
+  EX2 = round(100 * colMeans(ex2_conseil_flags), 1)
+)
+colnames(freq_tbl) <- conseil_cat_names
+print(freq_tbl)
+
 # --- Total -------------------------------------------------------------------
-total_pts <- pts_poids + pts_bec + pts_energie + pts_densite + pts_proteine + pts_ex2
+total_pts <- pts_poids + pts_bec + pts_energie + pts_densite + pts_proteine + pts_ex2 +
+             pts_ex1_conseils + pts_ex2_conseils
 total_pts[!metrics$ex1_present & !metrics$ex2_present] <- 0
+
+# Total maximum théorique (utile pour info)
+max_pts <- PTS_EX1_POIDS + PTS_EX1_BEC + PTS_EX1_ENERGIE + PTS_EX1_DENSITE +
+           PTS_EX1_PROTEINE + 5 * PTS_EX2_PAR_CATEGORIE +
+           sum(PTS_EX1_CONSEILS) + sum(PTS_EX2_CONSEILS)
 
 notes <- data.frame(
   nom    = metrics$nom,
@@ -894,17 +1120,26 @@ notes <- data.frame(
   ex1_proteine_ok        = proteine_ok,
   ex1_food_names         = metrics$ex1_food_names,
 
+  ex1_conseils_detected = metrics$ex1_conseils_detected,
+  ex1_n_conseils_ok     = metrics$ex1_n_conseils_ok,
+  ex1_conseil_flags,
+
   ex2_present  = metrics$ex2_present,
   cat_flags,
   ex2_n_categories_ok = n_cats_ok,
+  ex2_conseils_detected = metrics$ex2_conseils_detected,
+  ex2_n_conseils_ok     = metrics$ex2_n_conseils_ok,
+  ex2_conseil_flags,
 
-  pts_poids    = pts_poids,
-  pts_bec      = pts_bec,
-  pts_energie  = pts_energie,
-  pts_densite  = pts_densite,
-  pts_proteine = pts_proteine,
-  pts_ex2      = pts_ex2,
-  note_sur_6   = round(total_pts, 2),
+  pts_poids        = pts_poids,
+  pts_bec          = pts_bec,
+  pts_energie      = pts_energie,
+  pts_densite      = pts_densite,
+  pts_proteine     = pts_proteine,
+  pts_ex2          = pts_ex2,
+  pts_ex1_conseils = round(pts_ex1_conseils, 2),
+  pts_ex2_conseils = round(pts_ex2_conseils, 2),
+  note_sur_6       = round(total_pts, 2),
 
   stringsAsFactors = FALSE
 )
@@ -912,18 +1147,25 @@ notes <- data.frame(
 print(head(notes[, c("nom", "prenom",
                      "ex1_poids_ok", "ex1_bec_ok", "ex1_energie_ok",
                      "ex1_densite_ok", "ex1_proteine_ok",
-                     "ex2_n_categories_ok", "note_sur_6")], 15))
+                     "ex2_n_categories_ok",
+                     "ex1_n_conseils_ok", "ex2_n_conseils_ok",
+                     "pts_ex1_conseils", "pts_ex2_conseils",
+                     "note_sur_6")], 15))
 
-cat("\nDistribution des notes /6 :\n")
+cat(sprintf("\nTotal max théorique : %.2f pts\n", max_pts))
+cat("Distribution des notes /6 (peut dépasser 6 si bonus conseils > 0) :\n")
 print(summary(notes$note_sur_6))
 ```
 
 ```{r notes-distribution-plot}
 if (has_ggplot2) {
+  hi <- max(c(6.25, ceiling(max_pts * 2) / 2 + 0.25), na.rm = TRUE)
   p <- ggplot2::ggplot(notes, ggplot2::aes(x = note_sur_6)) +
     ggplot2::geom_histogram(binwidth = 0.5, fill = "#41AB5D", color = "white") +
-    ggplot2::scale_x_continuous(breaks = seq(0, 6, 0.5), limits = c(-0.25, 6.25)) +
-    ggplot2::labs(title = "Distribution des notes /6", x = "Note /6", y = "Effectif") +
+    ggplot2::scale_x_continuous(breaks = seq(0, hi, 0.5), limits = c(-0.25, hi)) +
+    ggplot2::geom_vline(xintercept = 6, linetype = "dashed", color = "grey50") +
+    ggplot2::labs(title = sprintf("Distribution des notes (max théorique : %.2f)", max_pts),
+                  x = "Note", y = "Effectif") +
     ggplot2::theme_minimal()
   print(p)
 }
@@ -935,8 +1177,10 @@ if (has_ggplot2) {
 details <- cbind(
   notes,
   data.frame(
-    ex1_food_names = metrics$ex1_food_names,
-    ex2_food_names = metrics$ex2_food_names,
+    ex1_food_names   = metrics$ex1_food_names,
+    ex2_food_names   = metrics$ex2_food_names,
+    ex1_conseil_text = metrics$ex1_conseil_text,
+    ex2_conseil_text = metrics$ex2_conseil_text,
     stringsAsFactors = FALSE
   )
 )
