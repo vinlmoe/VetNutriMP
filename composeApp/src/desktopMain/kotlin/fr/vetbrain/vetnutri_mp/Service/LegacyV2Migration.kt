@@ -993,17 +993,72 @@ suspend fun runV2Migration(
                                 try {
                                     val fUuid = fRow["UUID"] as? String ?: return@forEach
                                     val refAlimUnif = fRow["RefAlimUnif"] as? String ?: fUuid
-                                    val quantity = (fRow["quantite"] as? Number)?.toDouble() ?: 0.0
+                                    // V2 column is "quantity" (not "quantite")
+                                    val quantity = (fRow["quantity"] as? Number)?.toDouble() ?: 0.0
+                                    val refTarget = (fRow["refTarget"] as? Number)?.toInt() ?: 1
                                     val alimentEntity = AlimentRationEntity(
                                         uuid = fUuid,
                                         refAlimUnif = refAlimUnif,
                                         refRation = uuid,
                                         quantity = quantity,
-                                        refTarget = 0
+                                        refTarget = refTarget
                                     )
                                     try {
                                         consultationDao.insertAlimentRation(alimentEntity)
                                     } catch (_: Exception) {}
+
+                                    // VetNutriMP loads nutrients via refAlimUnif → FoodEntity.
+                                    // If the base food doesn't exist in our DB (was only a ration
+                                    // copy in Data-Anim.db), import it now with its nutrient values.
+                                    if (foodDao.getFoodById(refAlimUnif) == null) {
+                                        runCatching {
+                                            val foodEntity = FoodEntity(
+                                                uuid = refAlimUnif,
+                                                groupAlim = (fRow["groupAlim"] as? Number)?.toInt() ?: 0,
+                                                typeAlim = (fRow["typeAlim"] as? Number)?.toInt() ?: 0,
+                                                ingredients = fRow["ingredients"] as? String ?: "",
+                                                price = (fRow["price"] as? Number)?.toDouble() ?: 0.0,
+                                                categPrice = fRow["categPrice"] as? String ?: "",
+                                                brand = fRow["brand"] as? String ?: "",
+                                                gamme = fRow["gamme"] as? String ?: "",
+                                                cont = "",
+                                                unitPres = (fRow["unitPres"] as? Number)?.toInt() ?: 0,
+                                                quantityPres = (fRow["quantityPres"] as? Number)?.toDouble() ?: 0.0,
+                                                version = 1,
+                                                date = "2021-12-20",
+                                                nameDef = fRow["nameDef"] as? String ?: "",
+                                                consistent = 1,
+                                                deprecated = 0,
+                                                DataB = "",
+                                                name = fRow["nameDef"] as? String
+                                            )
+                                            foodDao.insertFood(foodEntity)
+                                            // Import nutrient values from Data-Anim.db VALUE* tables
+                                            val nutrientValues = mutableListOf<NutrientValueEntity>()
+                                            NUTRIENT_TABLE_MAP.forEach { (table, labels) ->
+                                                if (conn.tableExists(table)) {
+                                                    runCatching {
+                                                        conn.queryAll(
+                                                            "SELECT kind, value FROM $table WHERE reffood = '${fUuid.replace("'", "''")}'"
+                                                        ).forEach { nRow ->
+                                                            val kind = (nRow["kind"] as? Number)?.toInt() ?: return@forEach
+                                                            val value = (nRow["value"] as? Number)?.toDouble() ?: return@forEach
+                                                            if (kind < labels.size && value != 0.0) {
+                                                                nutrientValues.add(NutrientValueEntity(
+                                                                    refAliment = refAlimUnif,
+                                                                    nutrientLabel = labels[kind],
+                                                                    value = value
+                                                                ))
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            if (nutrientValues.isNotEmpty()) {
+                                                nutrientValueDao.insertNutrientValues(nutrientValues)
+                                            }
+                                        }
+                                    }
                                 } catch (e: Exception) {
                                     val msg = "AlimentRation ${fRow["UUID"]}: ${e.message}"
                                     errors.add(msg); logError(msg, e)
