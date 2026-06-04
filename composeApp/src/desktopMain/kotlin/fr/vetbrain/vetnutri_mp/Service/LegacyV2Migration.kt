@@ -94,12 +94,39 @@ private val EQUATION_KIND_MAP = mapOf(
 // V2 Reflevel int → VetNutriMP Reflevel.name
 private val REFLEVEL_MAP = mapOf(0 to "MIN", 1 to "MAX", 2 to "OPTIMIN", 3 to "OPTIMAX")
 
-// V2 specie int (getCategorie()) → VetNutriMP Espece.label
+// V2 specie int (getCategorie()) → VetNutriMP Espece.label  (used for animal/ration specieId)
 private val SPECIE_MAP = mapOf(
     0 to "DOG", 1 to "CAT", 2 to "ALL", 3 to "PRIMATE",
     4 to "RAT", 5 to "SOURIS", 6 to "FURET", 7 to "LAPIN",
     8 to "CHEVAL", 9 to "FELIN", 10 to "CANIN", 11 to "HERBIVORE", 12 to "FOLIVORE"
 )
+
+// V2 specie int → VetNutriMP Espece enum *name* (used for EquationEntity.specie / ReferenceEvEntity.espece
+// which are parsed via Espece.valueOf — French enum names, not English labels).
+// 2 → null because "all species" is stored as null in MP equations/references.
+private val SPECIE_ENUM_MAP = mapOf(
+    0 to "CHIEN", 1 to "CHAT", 2 to null, 3 to "PRIMATE",
+    4 to "RAT", 5 to "SOURIS", 6 to "FURET", 7 to "LAPIN",
+    8 to "CHEVAL", 9 to "FELIN", 10 to "CANIN", 11 to "HERBIVORE", 12 to "FOLIVORE"
+)
+
+// Translate English V2 species labels (or enum names) to MP Espece enum names.
+private fun String.toEspeceEnumName(): String? = when (uppercase()) {
+    "ALL", "CH" -> null
+    "DOG", "CHIEN" -> "CHIEN"
+    "CAT", "CHAT" -> "CHAT"
+    "PRIMATE" -> "PRIMATE"
+    "RAT" -> "RAT"
+    "SOURIS" -> "SOURIS"
+    "FURET" -> "FURET"
+    "LAPIN" -> "LAPIN"
+    "CHEVAL" -> "CHEVAL"
+    "FELIN" -> "FELIN"
+    "CANIN" -> "CANIN"
+    "HERBIVORE" -> "HERBIVORE"
+    "FOLIVORE" -> "FOLIVORE"
+    else -> null
+}
 
 // ---- JDBC helpers -----------------------------------------------------------
 
@@ -397,7 +424,9 @@ private fun loadLegacyReferenceInfo(refDbFile: File?): Map<String, LegacyReferen
     return runCatching {
         connectV2(refDbFile).use { conn ->
             val refEvTable = conn.findTable(*REF_TABLE_NAMES.toTypedArray()) ?: return@use emptyMap()
-            conn.queryAll("SELECT * FROM $refEvTable").mapNotNull { row ->
+
+            // Primary map: dataRef.UUID → LegacyReferenceInfo
+            val byDataRefUuid = conn.queryAll("SELECT * FROM $refEvTable").mapNotNull { row ->
                 val uuid = row.str("UUID", "uuid") ?: return@mapNotNull null
                 val disease = row.num("disease", "maladie")?.toInt() == 1
                 uuid to LegacyReferenceInfo(
@@ -405,7 +434,34 @@ private fun loadLegacyReferenceInfo(refDbFile: File?): Map<String, LegacyReferen
                     name = row.str("nom", "name") ?: "",
                     disease = disease
                 )
-            }.toMap()
+            }.toMap().toMutableMap()
+
+            // Some V2 consultations store a method.UUID in methodAnalysis rather than a dataRef.UUID.
+            // Follow: method.UUID → targetMethod → dataRef.UUID to include method UUIDs as aliases.
+            // The LegacyReferenceInfo.uuid is set to the ACTUAL dataRef UUID so the correct ID is stored.
+            runCatching {
+                if (conn.tableExists("targetMethod") && conn.tableExists("method")) {
+                    val tmCols = conn.tableColumns("targetMethod")
+                    println("[VetNutriMigration] Colonnes targetMethod: ${tmCols.joinToString()}")
+                    // Try all plausible column name patterns for (methodUUID, dataRefUUID)
+                    conn.queryAll("SELECT * FROM targetMethod").forEach { row ->
+                        val methodId = row.str(
+                            "methodRef", "refMethod", "methodId", "idMethod",
+                            "method", "UUID_method", "uuid_method"
+                        )
+                        val refId = row.str(
+                            "refRef", "dataRefRef", "dataRefId", "idRef",
+                            "reference", "UUID_ref", "uuid_ref"
+                        )
+                        if (methodId != null && refId != null) {
+                            val info = byDataRefUuid[refId] ?: return@forEach
+                            byDataRefUuid[methodId.normalizedUuidCandidate()] = info
+                        }
+                    }
+                }
+            }
+
+            byDataRefUuid
         }
     }.getOrDefault(emptyMap())
 }
@@ -1125,13 +1181,13 @@ suspend fun runV2Migration(
                         }
                         val kindInt = row.num("kind")?.toInt() ?: 0
                         val kindName = EQUATION_KIND_MAP[kindInt] ?: "ENERGYNEED"
-                        // speciesRef est une String : "ALL", "0", "1", "4", "6"…
+                        // speciesRef : "ALL", "0", "1", "4", "CAT", "DOG"…
+                        // EquationEntity.specie is loaded via Espece.valueOf() → must store enum NAME
+                        // (CHIEN/CHAT/…), not English label. null = applies to all species.
                         val specieStr = row.str("speciesRef", "Specie", "specie", "species")?.let { raw ->
                             when {
-                                raw.uppercase() == "ALL" -> "ALL"
-                                raw.toIntOrNull() != null -> SPECIE_MAP[raw.toInt()]
-                                raw.isNotBlank() -> raw
-                                else -> null
+                                raw.toIntOrNull() != null -> SPECIE_ENUM_MAP[raw.toInt()]
+                                else -> raw.toEspeceEnumName()
                             }
                         }
                         // refBiblio peut être un UUID ou un entier "1","2" → on ne garde que les UUID
@@ -1177,6 +1233,8 @@ suspend fun runV2Migration(
                             skipReferences++; return@forEach
                         }
                         val especeRaw = row.str("specie", "species", "espece")
+                        // ReferenceEvEntity.espece is a plain String (not Espece.valueOf) — keep
+                        // "ALL" as the sentinel for all-species references.
                         val especeStr = when {
                             especeRaw == null || especeRaw.isBlank() -> "ALL"
                             especeRaw.toIntOrNull() != null -> SPECIE_MAP[especeRaw.toInt()] ?: "ALL"
