@@ -165,6 +165,92 @@ private fun Map<String, Any?>.field(vararg keys: String): Any? {
 private fun Map<String, Any?>.str(vararg keys: String): String? = field(*keys) as? String
 private fun Map<String, Any?>.num(vararg keys: String): Number? = field(*keys) as? Number
 
+// ---- Script transpiler V2 → VetNutriMP --------------------------------------
+
+/**
+ * Traduit un script d'équation VetNutri 2 vers la syntaxe du MathParser VetNutriMP.
+ *
+ * Règle 1 : Math.exp() / Math.pow() → exp() / pow()
+ * Règle 2 : a ** b → a ^ b  (opérateur puissance JS/Python)
+ * Règle 3 : A | B dans les conditions → A + B  (OR logique ; les conditions retournent 0/1)
+ * Règle 4 : script multi-lignes avec assignations → expression unique
+ */
+internal fun transpileV2Script(script: String): String {
+    var s = script.trim()
+
+    // R1 – Math.func() → func()
+    s = s.replace(Regex("\\bMath\\.")) { "" }
+
+    // R2 – ** → ^
+    s = s.replace("**", "^")
+
+    // R3 – | → +  (OR logique via somme de booléens 0/1)
+    s = s.replace("|", "+")
+
+    // R4 – script multi-lignes (valeurs Java-like) → expression unique
+    if (s.contains('\n') || s.contains(';')) {
+        s = tryFoldValueScript(s) ?: s
+    }
+
+    return s.replace(Regex("[ \t]+"), " ").trim()
+}
+
+/**
+ * Plie un script de la forme :
+ *   value = init;
+ *   value = value + X;
+ *   if(cond){ value = value + A; } else { value = value + B1; value = value + B2; }
+ * en une seule expression : init + X + if(cond, A, B1+B2)
+ * Retourne null si le script ne correspond pas à ce pattern.
+ */
+private fun tryFoldValueScript(script: String): String? {
+    val terms     = mutableListOf<String>()
+    val ifTerms   = mutableListOf<String>()
+    val elseTerms = mutableListOf<String>()
+    var condition = ""
+    var phase = 0 // 0 = outer, 1 = in_if, 2 = in_else
+
+    val initPat = Regex("^value\\s*=\\s*(?!value\\b)(.+)$")
+    val incrPat = Regex("^value\\s*=\\s*value\\s*\\+\\s*(.+)$")
+    val ifPat   = Regex("^if\\s*\\((.+)\\)\\s*\\{?\\s*$")
+    val elsePat = Regex("^[}]?\\s*else\\s*\\{?\\s*$")
+
+    val lines = script
+        .replace(Regex("[ \t]+"), " ")
+        .split(Regex("[;\n]"))
+        .map { it.trim().trimEnd('{').trim() }
+        .filter { it.isNotBlank() && it != "value" && it != "}" }
+
+    for (line in lines) {
+        when {
+            elsePat.matches(line) -> phase = 2
+
+            ifPat.matches(line) -> {
+                condition = ifPat.find(line)!!.groupValues[1].trim()
+                phase = 1
+                ifTerms.clear(); elseTerms.clear()
+            }
+
+            initPat.matches(line) && phase == 0 ->
+                terms.add(initPat.find(line)!!.groupValues[1].trim())
+
+            incrPat.matches(line) -> when (phase) {
+                0 -> terms.add(incrPat.find(line)!!.groupValues[1].trim())
+                1 -> ifTerms.add(incrPat.find(line)!!.groupValues[1].trim())
+                2 -> elseTerms.add(incrPat.find(line)!!.groupValues[1].trim())
+            }
+        }
+    }
+
+    if (condition.isNotBlank()) {
+        val ifExpr   = ifTerms.joinToString("+")
+        val elseExpr = elseTerms.joinToString("+").ifBlank { "0" }
+        terms.add("if($condition,$ifExpr,$elseExpr)")
+    }
+
+    return terms.joinToString("+").takeIf { it.isNotBlank() }
+}
+
 private fun Any?.asNonBlankString(): String? = when (this) {
     is String -> trim().takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
     is Number -> toString()
@@ -1025,7 +1111,8 @@ suspend fun runV2Migration(
                             uuid = uuid,
                             name = row.str("name") ?: "Équation importée",
                             description = row.str("description") ?: "",
-                            equationScript = row.str("script", "equationScript") ?: "0",
+                            equationScript = row.str("script", "equationScript")
+                            ?.let { transpileV2Script(it) } ?: "0",
                             specie = specieStr,
                             kind = kindName,
                             consistent = row.num("consistent")?.toInt() != 0,
