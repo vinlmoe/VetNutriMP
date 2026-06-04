@@ -574,150 +574,134 @@ suspend fun previewV2Migration(dbFolderPath: String): LegacyMigrationViewModel.M
 
 // ---- Migration ---------------------------------------------------------------
 
-suspend fun runV2Migration(
-    dbFolderPath: String,
+private data class LegacyImportStats(
+    var impAnimals: Int = 0,
+    var skipAnimals: Int = 0,
+    var impConsults: Int = 0,
+    var skipConsults: Int = 0,
+    var impRations: Int = 0,
+    var skipRations: Int = 0,
+    var impWeights: Int = 0,
+    var skipWeights: Int = 0,
+    var impFoods: Int = 0,
+    var skipFoods: Int = 0,
+    var impBiblioRefs: Int = 0,
+    var skipBiblioRefs: Int = 0,
+    var impEquations: Int = 0,
+    var skipEquations: Int = 0,
+    var impReferences: Int = 0,
+    var skipReferences: Int = 0
+)
+
+private suspend fun validateAndRepairConsultationReferences(
     appDatabase: AppDatabase,
-    onLog: suspend (String) -> Unit
-): LegacyMigrationViewModel.MigrationResult = withContext(AppDispatchers.IO) {
-    suspend fun log(msg: String) {
-        println("[VetNutriMigration] $msg")
-        onLog(msg)
+    coefToRefMap: Map<String, String>,
+    log: suspend (String) -> Unit
+) {
+    val animalDao = appDatabase.animalDao()
+    val consultationDao = appDatabase.consultationDao()
+    val referenceEvDao = appDatabase.referenceEvDao()
+    val importedReferences = referenceEvDao.getAllReferenceEv()
+    val referencesByUuid = importedReferences.associateBy { it.uuid }
+    val referencesByNormalizedUuid = importedReferences.associateBy { it.uuid.normalizedUuidCandidate() }
+    log("Validation post-import: ${importedReferences.size} références MP disponibles")
+    if (importedReferences.isNotEmpty()) {
+        log(
+            "Exemples UUID références MP: " +
+                importedReferences.take(8).joinToString { ref ->
+                    "${ref.uuid}${if (ref.nom.isNotBlank()) " (${ref.nom})" else ""}${if (ref.maladie) " [maladie]" else ""}"
+                }
+        )
     }
-    fun logError(msg: String, e: Exception) {
-        System.err.println("[VetNutriMigration][ERROR] $msg")
-        e.printStackTrace(System.err)
+
+    val consultations = animalDao.getAllAnimals().flatMap { animal ->
+        consultationDao.getConsultationsForAnimal(animal.uuid)
+    }
+    var withGeneralRef = 0
+    var repairedGeneralRef = 0
+    var translatedGeneralRef = 0
+    var missingGeneralRef = 0
+    val missingSamples = mutableListOf<String>()
+
+    consultations.forEach { consultation ->
+        val refId = consultation.referenceGeneraleId?.takeIf { it.isNotBlank() }
+        if (refId == null) return@forEach
+        withGeneralRef++
+        val translatedRefId = refId.translateLegacyReferenceUuid()
+        if (translatedRefId != refId) {
+            consultationDao.update(consultation.copy(referenceGeneraleId = translatedRefId))
+            translatedGeneralRef++
+        }
+
+        val effectiveRefId = translatedRefId
+        val exactMatch = referencesByUuid[effectiveRefId]
+        if (exactMatch != null) return@forEach
+
+        val normalizedMatch = referencesByNormalizedUuid[effectiveRefId.normalizedUuidCandidate()]
+        if (normalizedMatch != null) {
+            consultationDao.update(consultation.copy(referenceGeneraleId = normalizedMatch.uuid))
+            repairedGeneralRef++
+            return@forEach
+        }
+
+        missingGeneralRef++
+        if (missingSamples.size < 12) {
+            missingSamples.add("${consultation.uuid} -> $effectiveRefId")
+        }
     }
 
-    val folder = File(dbFolderPath)
-    val animDb = File(folder, "Data-Anim.db")
-    val foodDb = File(folder, "Data-Food.db")
-    val refDbFile = findRefDb(folder)
-    val legacyReferencesByUuid = loadLegacyReferenceInfo(refDbFile)
+    log(
+        "Validation post-import consultations: $withGeneralRef avec référence générale, " +
+            "$translatedGeneralRef UUID legacy traduits, " +
+            "$repairedGeneralRef UUID réparés, $missingGeneralRef références introuvables"
+    )
+    if (missingSamples.isNotEmpty()) {
+        log("Références générales introuvables exemples: ${missingSamples.joinToString()}")
+    }
 
-    var impAnimals = 0; var skipAnimals = 0
-    var impConsults = 0; var skipConsults = 0
-    var impRations = 0; var skipRations = 0
-    var impWeights = 0; var skipWeights = 0
-    var impFoods = 0; var skipFoods = 0
-    var impBiblioRefs = 0; var skipBiblioRefs = 0
-    var impEquations = 0; var skipEquations = 0
-    var impReferences = 0; var skipReferences = 0
-    val errors = mutableListOf<String>()
-    // Populated during ref.db coef import; used in post-validation to link consultations
-    // whose k1Id..k5Id store V2 coef UUIDs rather than direct reference UUIDs.
-    val coefToRefMap = mutableMapOf<String, String>() // coef UUID (lowercase) → referenceEvId
+    // Second pass: link consultations that have no referenceGeneraleId yet but whose
+    // k1Id..k5Id are V2 coef UUIDs. Each coef row carries a refRef (= reference UUID),
+    // so we can recover the reference via: consultation.kXId -> coefToRefMap -> referenceEvId.
+    if (coefToRefMap.isNotEmpty()) {
+        var linkedViaCoef = 0
+        consultations.forEach { consultation ->
+            if (!consultation.referenceGeneraleId.isNullOrBlank()) return@forEach
+            val kIds = listOfNotNull(
+                consultation.k1Id, consultation.k2Id, consultation.k3Id,
+                consultation.k4Id, consultation.k5Id
+            ).filter { it.isNotBlank() }
 
+            val foundRefId = kIds.firstNotNullOfOrNull { kId ->
+                val refId = coefToRefMap[kId.normalizedUuidCandidate()]
+                    ?: return@firstNotNullOfOrNull null
+                if (referencesByUuid.containsKey(refId)) refId else null
+            }
+
+            if (foundRefId != null) {
+                consultationDao.update(consultation.copy(referenceGeneraleId = foundRefId))
+                linkedViaCoef++
+            }
+        }
+        if (linkedViaCoef > 0) {
+            log("Consultations liées via coef k1-k5: $linkedViaCoef")
+        }
+    }
+}
+
+
+private suspend fun importLegacyAnimDb(
+    animDb: File,
+    appDatabase: AppDatabase,
+    legacyReferencesByUuid: Map<String, LegacyReferenceInfo>,
+    stats: LegacyImportStats,
+    errors: MutableList<String>,
+    log: suspend (String) -> Unit,
+    logError: (String, Exception) -> Unit
+) {
     val animalDao = appDatabase.animalDao()
     val consultationDao = appDatabase.consultationDao()
     val foodDao = appDatabase.foodDao()
     val nutrientValueDao = appDatabase.nutrientValueDao()
-    val biblioRefDao = appDatabase.biblioRefDao()
-    val equationDao = appDatabase.equationDao()
-    val referenceEvDao = appDatabase.referenceEvDao()
-
-    if (refDbFile != null) {
-        log("Base de références utilisée: ${refDbFile.name} (${legacyReferencesByUuid.size} UUID de références préchargés)")
-        if (legacyReferencesByUuid.isNotEmpty()) {
-            log(
-                "Exemples UUID références V2: " +
-                    legacyReferencesByUuid.values.take(8).joinToString { ref ->
-                        "${ref.uuid}${if (ref.name.isNotBlank()) " (${ref.name})" else ""}${if (ref.disease) " [maladie]" else ""}"
-                    }
-            )
-        }
-    } else {
-        log("Aucune base de références trouvée avant import des consultations")
-    }
-    log("Traducteur UUID références VetNutri 2 -> VetNutri MP actif: ${LEGACY_REFERENCE_TRANSLATIONS.size} correspondances")
-
-    suspend fun validateAndRepairConsultationReferences() {
-        val importedReferences = referenceEvDao.getAllReferenceEv()
-        val referencesByUuid = importedReferences.associateBy { it.uuid }
-        val referencesByNormalizedUuid = importedReferences.associateBy { it.uuid.normalizedUuidCandidate() }
-        log("Validation post-import: ${importedReferences.size} références MP disponibles")
-        if (importedReferences.isNotEmpty()) {
-            log(
-                "Exemples UUID références MP: " +
-                    importedReferences.take(8).joinToString { ref ->
-                        "${ref.uuid}${if (ref.nom.isNotBlank()) " (${ref.nom})" else ""}${if (ref.maladie) " [maladie]" else ""}"
-                    }
-            )
-        }
-
-        val consultations = animalDao.getAllAnimals().flatMap { animal ->
-            consultationDao.getConsultationsForAnimal(animal.uuid)
-        }
-        var withGeneralRef = 0
-        var repairedGeneralRef = 0
-        var translatedGeneralRef = 0
-        var missingGeneralRef = 0
-        val missingSamples = mutableListOf<String>()
-
-        consultations.forEach { consultation ->
-            val refId = consultation.referenceGeneraleId?.takeIf { it.isNotBlank() }
-            if (refId == null) return@forEach
-            withGeneralRef++
-            val translatedRefId = refId.translateLegacyReferenceUuid()
-            if (translatedRefId != refId) {
-                consultationDao.update(consultation.copy(referenceGeneraleId = translatedRefId))
-                translatedGeneralRef++
-            }
-
-            val effectiveRefId = translatedRefId
-            val exactMatch = referencesByUuid[effectiveRefId]
-            if (exactMatch != null) return@forEach
-
-            val normalizedMatch = referencesByNormalizedUuid[effectiveRefId.normalizedUuidCandidate()]
-            if (normalizedMatch != null) {
-                consultationDao.update(consultation.copy(referenceGeneraleId = normalizedMatch.uuid))
-                repairedGeneralRef++
-                return@forEach
-            }
-
-            missingGeneralRef++
-            if (missingSamples.size < 12) {
-                missingSamples.add("${consultation.uuid} -> $effectiveRefId")
-            }
-        }
-
-        log(
-            "Validation post-import consultations: $withGeneralRef avec référence générale, " +
-                "$translatedGeneralRef UUID legacy traduits, " +
-                "$repairedGeneralRef UUID réparés, $missingGeneralRef références introuvables"
-        )
-        if (missingSamples.isNotEmpty()) {
-            log("Références générales introuvables exemples: ${missingSamples.joinToString()}")
-        }
-
-        // Second pass: link consultations that have no referenceGeneraleId yet but whose
-        // k1Id–k5Id are V2 coef UUIDs. Each coef row carries a refRef (= reference UUID),
-        // so we can recover the reference via: consultation.kXId → coefToRefMap → referenceEvId.
-        if (coefToRefMap.isNotEmpty()) {
-            var linkedViaCoef = 0
-            consultations.forEach { consultation ->
-                if (!consultation.referenceGeneraleId.isNullOrBlank()) return@forEach
-                val kIds = listOfNotNull(
-                    consultation.k1Id, consultation.k2Id, consultation.k3Id,
-                    consultation.k4Id, consultation.k5Id
-                ).filter { it.isNotBlank() }
-
-                val foundRefId = kIds.firstNotNullOfOrNull { kId ->
-                    val refId = coefToRefMap[kId.normalizedUuidCandidate()]
-                        ?: return@firstNotNullOfOrNull null
-                    if (referencesByUuid.containsKey(refId)) refId else null
-                }
-
-                if (foundRefId != null) {
-                    consultationDao.update(consultation.copy(referenceGeneraleId = foundRefId))
-                    linkedViaCoef++
-                }
-            }
-            if (linkedViaCoef > 0) {
-                log("Consultations liées via coef k1–k5: $linkedViaCoef")
-            }
-        }
-    }
-
     // --- Animaux + consultations + rations + poids ---
     if (animDb.exists()) {
         log("Lecture de Data-Anim.db...")
@@ -736,7 +720,7 @@ suspend fun runV2Migration(
                     try {
                         val uuid = row["UUID"] as? String ?: return@forEach
                         if (animalDao.getAnimalById(uuid) != null) {
-                            skipAnimals++; return@forEach
+                            stats.skipAnimals++; return@forEach
                         }
                         val specieInt = (row["specie"] as? Number)?.toInt()
                         val specieId = specieInt?.let { SPECIE_MAP[it] } ?: (row["specie"] as? String)
@@ -753,13 +737,13 @@ suspend fun runV2Migration(
                             summary = row["summary"] as? String
                         )
                         animalDao.insert(entity)
-                        impAnimals++
+                        stats.impAnimals++
                     } catch (e: Exception) {
                         val msg = "Animal ${row["UUID"]}: ${e.message}"
                         errors.add(msg); logError(msg, e)
                     }
                 }
-                log("Animaux importés: $impAnimals, ignorés: $skipAnimals")
+                log("Animaux importés: ${stats.impAnimals}, ignorés: ${stats.skipAnimals}")
             }
 
             // 2. Weight
@@ -776,13 +760,13 @@ suspend fun runV2Migration(
                         )
                         // Check via direct insert - WeightEntity uses REPLACE strategy
                         animalDao.insertWeight(entity)
-                        impWeights++
+                        stats.impWeights++
                     } catch (e: Exception) {
                         val msg = "Poids ${row["UUID"]}: ${e.message}"
                         errors.add(msg); logError(msg, e)
                     }
                 }
-                log("Poids importés: $impWeights")
+                log("Poids importés: ${stats.impWeights}")
             }
 
             // 3. CONSULTATIONS
@@ -900,7 +884,7 @@ suspend fun runV2Migration(
                             } else {
                                 skippedWithoutGeneralRef++
                             }
-                            skipConsults++; return@forEach
+                            stats.skipConsults++; return@forEach
                         }
                         val entity = ConsultationEntity(
                             uuid = uuid,
@@ -939,7 +923,7 @@ suspend fun runV2Migration(
                             )?.toDouble() ?: 1.0
                         )
                         consultationDao.insert(entity)
-                        impConsults++
+                        stats.impConsults++
                     } catch (e: Exception) {
                         val msg = "Consultation ${row["UUID"]}: ${e.message}"
                         errors.add(msg); logError(msg, e)
@@ -950,13 +934,13 @@ suspend fun runV2Migration(
                         "$consultsWithGeneralRef oui, $consultsWithoutGeneralRef non"
                 )
                 log(
-                    "Consultations ignorées déjà présentes: $skipConsults " +
+                    "Consultations ignorées déjà présentes: ${stats.skipConsults} " +
                         "(avec ref detectee=$skippedWithGeneralRef, sans ref detectee=$skippedWithoutGeneralRef)"
                 )
                 if (updatedExistingConsultRefs > 0) {
                     log("Consultations déjà présentes complétées avec références: $updatedExistingConsultRefs")
                 }
-                log("Consultations importées: $impConsults, ignorées: $skipConsults")
+                log("Consultations importées: ${stats.impConsults}, ignorées: ${stats.skipConsults}")
             }
 
             // 4. RATION
@@ -982,7 +966,7 @@ suspend fun runV2Migration(
                             description = row["description"] as? String
                         )
                         consultationDao.insertRation(entity)
-                        impRations++
+                        stats.impRations++
 
                         // Aliments de cette ration (dans Data-Anim.db FOOD table)
                         if (conn.tableExists("FOOD") && conn.columnExists("FOOD", "RefRation")) {
@@ -1069,18 +1053,31 @@ suspend fun runV2Migration(
                         // FK constraint = ration orpheline (consultation absente) → skip silencieux
                         if (e.message?.contains("FOREIGN KEY", ignoreCase = true) == true ||
                             e.message?.contains("constraint", ignoreCase = true) == true) {
-                            skipRations++
+                            stats.skipRations++
                         } else {
                             val msg = "Ration ${row["UUID"]}: ${e.message}"
                             errors.add(msg); logError(msg, e)
                         }
                     }
                 }
-                log("Rations importées: $impRations, ignorées (dont orphelines): $skipRations")
+                log("Rations importées: ${stats.impRations}, ignorées (dont orphelines): ${stats.skipRations}")
             }
         }
     }
 
+
+}
+
+private suspend fun importLegacyFoodDb(
+    foodDb: File,
+    appDatabase: AppDatabase,
+    stats: LegacyImportStats,
+    errors: MutableList<String>,
+    log: suspend (String) -> Unit,
+    logError: (String, Exception) -> Unit
+) {
+    val foodDao = appDatabase.foodDao()
+    val nutrientValueDao = appDatabase.nutrientValueDao()
     // --- Aliments (base alimentaire) ---
     if (foodDb.exists()) {
         log("Lecture de Data-Food.db...")
@@ -1111,7 +1108,7 @@ suspend fun runV2Migration(
                     try {
                         val uuid = row["UUID"] as? String ?: return@forEach
                         if (uuid in existingIds) {
-                            skipFoods++; return@forEach
+                            stats.skipFoods++; return@forEach
                         }
 
                         // Résoudre le nom : NAME table (lang=FR) ou nameDef
@@ -1142,7 +1139,7 @@ suspend fun runV2Migration(
                             name = nameFr ?: row["nameDef"] as? String
                         )
                         foodDao.insertFood(entity)
-                        impFoods++
+                        stats.impFoods++
 
                         // Valeurs nutritionnelles
                         val nutrientValues = mutableListOf<NutrientValueEntity>()
@@ -1175,11 +1172,27 @@ suspend fun runV2Migration(
                         errors.add(msg); logError(msg, e)
                     }
                 }
-                log("Aliments importés: $impFoods, ignorés: $skipFoods")
+                log("Aliments importés: ${stats.impFoods}, ignorés: ${stats.skipFoods}")
             }
         }
     }
 
+
+}
+
+private suspend fun importLegacyRefDb(
+    refDbFile: File?,
+    dbFolderPath: String,
+    appDatabase: AppDatabase,
+    coefToRefMap: MutableMap<String, String>,
+    stats: LegacyImportStats,
+    errors: MutableList<String>,
+    log: suspend (String) -> Unit,
+    logError: (String, Exception) -> Unit
+) {
+    val biblioRefDao = appDatabase.biblioRefDao()
+    val equationDao = appDatabase.equationDao()
+    val referenceEvDao = appDatabase.referenceEvDao()
     // --- Références (ref.db / Data-Ref.db / autre base détectée) ---
     if (refDbFile != null && refDbFile.exists()) {
         log("Lecture de ${refDbFile.name}...")
@@ -1199,7 +1212,7 @@ suspend fun runV2Migration(
                     try {
                         val uuid = row.str("UUID", "uuid") ?: return@forEach
                         if (biblioRefDao.getBiblioRefById(uuid) != null) {
-                            skipBiblioRefs++; return@forEach
+                            stats.skipBiblioRefs++; return@forEach
                         }
                         val entity = fr.vetbrain.vetnutri_mp.DataBase.BiblioRefEntity(
                             uuid = uuid,
@@ -1211,13 +1224,13 @@ suspend fun runV2Migration(
                             consistent = row.num("consistent")?.toInt() ?: 1
                         )
                         biblioRefDao.insertBiblioRef(entity)
-                        impBiblioRefs++
+                        stats.impBiblioRefs++
                     } catch (e: Exception) {
                         val msg = "BiblioRef ${row.str("UUID", "uuid")}: ${e.message}"
                         errors.add(msg); logError(msg, e)
                     }
                 }
-                log("BiblioRefs importées: $impBiblioRefs, ignorées: $skipBiblioRefs")
+                log("BiblioRefs importées: ${stats.impBiblioRefs}, ignorées: ${stats.skipBiblioRefs}")
             } else {
                 log("Aucune table bibliographique reconnue parmi: ${BIBLIO_TABLE_NAMES.joinToString()}")
             }
@@ -1232,7 +1245,7 @@ suspend fun runV2Migration(
                     try {
                         val uuid = row.str("UUID", "uuid") ?: return@forEach
                         if (equationDao.getEquationById(uuid) != null) {
-                            skipEquations++; return@forEach
+                            stats.skipEquations++; return@forEach
                         }
                         val kindInt = row.num("kind")?.toInt() ?: 0
                         val kindName = EQUATION_KIND_MAP[kindInt] ?: "ENERGYNEED"
@@ -1264,13 +1277,13 @@ suspend fun runV2Migration(
                             ratio = false
                         )
                         equationDao.insertEquation(entity)
-                        impEquations++
+                        stats.impEquations++
                     } catch (e: Exception) {
                         val msg = "Equation ${row.str("UUID", "uuid")}: ${e.message}"
                         errors.add(msg); logError(msg, e)
                     }
                 }
-                log("Équations importées: $impEquations, ignorées: $skipEquations")
+                log("Équations importées: ${stats.impEquations}, ignorées: ${stats.skipEquations}")
             } else {
                 log("Aucune table d'équations reconnue parmi: ${EQUATION_TABLE_NAMES.joinToString()}")
             }
@@ -1285,7 +1298,7 @@ suspend fun runV2Migration(
                     try {
                         val uuid = row.str("UUID", "uuid") ?: return@forEach
                         if (referenceEvDao.getReferenceEvById(uuid) != null) {
-                            skipReferences++; return@forEach
+                            stats.skipReferences++; return@forEach
                         }
                         val especeRaw = row.str("specie", "species", "espece")
                         // ReferenceEvEntity.espece must store the Espece enum NAME (e.g. "CH", "CHIEN",
@@ -1314,7 +1327,7 @@ suspend fun runV2Migration(
                             nomk5 = row.str("k5Name", "nomk5") ?: ""
                         )
                         referenceEvDao.insertReferenceEv(entity)
-                        impReferences++
+                        stats.impReferences++
 
                         // Relations référence ↔ équation depuis BWeqRef, SERRef, DEcomRef, DErawRef
                         listOf(
@@ -1336,7 +1349,7 @@ suspend fun runV2Migration(
                         errors.add(msg); logError(msg, e)
                     }
                 }
-                log("Références nutritionnelles importées: $impReferences, ignorées: $skipReferences")
+                log("Références nutritionnelles importées: ${stats.impReferences}, ignorées: ${stats.skipReferences}")
             } else {
                 log("Aucune table de références nutritionnelles reconnue parmi: ${REF_TABLE_NAMES.joinToString()}")
             }
@@ -1440,7 +1453,55 @@ suspend fun runV2Migration(
         log("Base de références introuvable dans $dbFolderPath — références non importées")
     }
 
-    validateAndRepairConsultationReferences()
+
+}
+
+suspend fun runV2Migration(
+    dbFolderPath: String,
+    appDatabase: AppDatabase,
+    onLog: suspend (String) -> Unit
+): LegacyMigrationViewModel.MigrationResult = withContext(AppDispatchers.IO) {
+    suspend fun log(msg: String) {
+        println("[VetNutriMigration] $msg")
+        onLog(msg)
+    }
+    fun logError(msg: String, e: Exception) {
+        System.err.println("[VetNutriMigration][ERROR] $msg")
+        e.printStackTrace(System.err)
+    }
+
+    val folder = File(dbFolderPath)
+    val animDb = File(folder, "Data-Anim.db")
+    val foodDb = File(folder, "Data-Food.db")
+    val refDbFile = findRefDb(folder)
+    val legacyReferencesByUuid = loadLegacyReferenceInfo(refDbFile)
+
+    val stats = LegacyImportStats()
+    val errors = mutableListOf<String>()
+    // Populated during ref.db coef import; used in post-validation to link consultations
+    // whose k1Id..k5Id store V2 coef UUIDs rather than direct reference UUIDs.
+    val coefToRefMap = mutableMapOf<String, String>() // coef UUID (lowercase) → referenceEvId
+
+    if (refDbFile != null) {
+        log("Base de références utilisée: ${refDbFile.name} (${legacyReferencesByUuid.size} UUID de références préchargés)")
+        if (legacyReferencesByUuid.isNotEmpty()) {
+            log(
+                "Exemples UUID références V2: " +
+                    legacyReferencesByUuid.values.take(8).joinToString { ref ->
+                        "${ref.uuid}${if (ref.name.isNotBlank()) " (${ref.name})" else ""}${if (ref.disease) " [maladie]" else ""}"
+                    }
+            )
+        }
+    } else {
+        log("Aucune base de références trouvée avant import des consultations")
+    }
+    log("Traducteur UUID références VetNutri 2 -> VetNutri MP actif: ${LEGACY_REFERENCE_TRANSLATIONS.size} correspondances")
+
+    importLegacyAnimDb(animDb, appDatabase, legacyReferencesByUuid, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
+    importLegacyFoodDb(foodDb, appDatabase, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
+    importLegacyRefDb(refDbFile, dbFolderPath, appDatabase, coefToRefMap, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
+
+    validateAndRepairConsultationReferences(appDatabase, coefToRefMap, ::log)
 
     if (errors.isNotEmpty()) {
         log("${errors.size} erreur(s) rencontrée(s) :")
@@ -1450,24 +1511,24 @@ suspend fun runV2Migration(
 
     LegacyMigrationViewModel.MigrationResult(
         imported = LegacyMigrationViewModel.MigrationCounts(
-            animals = impAnimals,
-            consultations = impConsults,
-            rations = impRations,
-            weights = impWeights,
-            foods = impFoods,
-            biblioRefs = impBiblioRefs,
-            equations = impEquations,
-            references = impReferences
+            animals = stats.impAnimals,
+            consultations = stats.impConsults,
+            rations = stats.impRations,
+            weights = stats.impWeights,
+            foods = stats.impFoods,
+            biblioRefs = stats.impBiblioRefs,
+            equations = stats.impEquations,
+            references = stats.impReferences
         ),
         skipped = LegacyMigrationViewModel.MigrationCounts(
-            animals = skipAnimals,
-            consultations = skipConsults,
-            rations = skipRations,
-            weights = 0,
-            foods = skipFoods,
-            biblioRefs = skipBiblioRefs,
-            equations = skipEquations,
-            references = skipReferences
+            animals = stats.skipAnimals,
+            consultations = stats.skipConsults,
+            rations = stats.skipRations,
+            weights = stats.skipWeights,
+            foods = stats.skipFoods,
+            biblioRefs = stats.skipBiblioRefs,
+            equations = stats.skipEquations,
+            references = stats.skipReferences
         ),
         errors = errors
     )
