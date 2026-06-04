@@ -1233,12 +1233,14 @@ suspend fun runV2Migration(
                             skipReferences++; return@forEach
                         }
                         val especeRaw = row.str("specie", "species", "espece")
-                        // ReferenceEvEntity.espece is a plain String (not Espece.valueOf) — keep
-                        // "ALL" as the sentinel for all-species references.
+                        // ReferenceEvEntity.espece must store the Espece enum NAME (e.g. "CH", "CHIEN",
+                        // "CHAT") because DatabaseReferenceEvRepository.convertEntityToReferenceEv
+                        // calls Espece.valueOf(entity.espece). Use SPECIE_ENUM_MAP (French names) and
+                        // fall back to "CH" (= ALL species) rather than "ALL" which would crash valueOf.
                         val especeStr = when {
-                            especeRaw == null || especeRaw.isBlank() -> "ALL"
-                            especeRaw.toIntOrNull() != null -> SPECIE_MAP[especeRaw.toInt()] ?: "ALL"
-                            else -> especeRaw
+                            especeRaw == null || especeRaw.isBlank() -> "CH"
+                            especeRaw.toIntOrNull() != null -> SPECIE_ENUM_MAP[especeRaw.toInt()] ?: "CH"
+                            else -> especeRaw.toEspeceEnumName() ?: "CH"
                         }
                         val entity = fr.vetbrain.vetnutri_mp.DataBase.ReferenceEvEntity(
                             uuid = uuid,
