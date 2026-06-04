@@ -547,6 +547,9 @@ suspend fun runV2Migration(
     var impEquations = 0; var skipEquations = 0
     var impReferences = 0; var skipReferences = 0
     val errors = mutableListOf<String>()
+    // Populated during ref.db coef import; used in post-validation to link consultations
+    // whose k1Id..k5Id store V2 coef UUIDs rather than direct reference UUIDs.
+    val coefToRefMap = mutableMapOf<String, String>() // coef UUID (lowercase) → referenceEvId
 
     val animalDao = appDatabase.animalDao()
     val consultationDao = appDatabase.consultationDao()
@@ -628,6 +631,34 @@ suspend fun runV2Migration(
         )
         if (missingSamples.isNotEmpty()) {
             log("Références générales introuvables exemples: ${missingSamples.joinToString()}")
+        }
+
+        // Second pass: link consultations that have no referenceGeneraleId yet but whose
+        // k1Id–k5Id are V2 coef UUIDs. Each coef row carries a refRef (= reference UUID),
+        // so we can recover the reference via: consultation.kXId → coefToRefMap → referenceEvId.
+        if (coefToRefMap.isNotEmpty()) {
+            var linkedViaCoef = 0
+            consultations.forEach { consultation ->
+                if (!consultation.referenceGeneraleId.isNullOrBlank()) return@forEach
+                val kIds = listOfNotNull(
+                    consultation.k1Id, consultation.k2Id, consultation.k3Id,
+                    consultation.k4Id, consultation.k5Id
+                ).filter { it.isNotBlank() }
+
+                val foundRefId = kIds.firstNotNullOfOrNull { kId ->
+                    val refId = coefToRefMap[kId.normalizedUuidCandidate()]
+                        ?: return@firstNotNullOfOrNull null
+                    if (referencesByUuid.containsKey(refId)) refId else null
+                }
+
+                if (foundRefId != null) {
+                    consultationDao.update(consultation.copy(referenceGeneraleId = foundRefId))
+                    linkedViaCoef++
+                }
+            }
+            if (linkedViaCoef > 0) {
+                log("Consultations liées via coef k1–k5: $linkedViaCoef")
+            }
         }
     }
 
@@ -1240,6 +1271,11 @@ suspend fun runV2Migration(
                                 groupUUID = groupUUID
                             )
                         )
+                        // Register original V2 UUID → reference mapping for post-import consultation linkage
+                        val origUuid = row.str("UUID", "uuid")
+                        if (!origUuid.isNullOrBlank()) {
+                            coefToRefMap[origUuid.normalizedUuidCandidate()] = refId
+                        }
                         impCoef++
                     } catch (_: Exception) {}
                 }
