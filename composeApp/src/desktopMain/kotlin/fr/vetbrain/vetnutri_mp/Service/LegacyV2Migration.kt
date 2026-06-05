@@ -8,6 +8,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueEntity
 import fr.vetbrain.vetnutri_mp.DataBase.RationEntity
 import fr.vetbrain.vetnutri_mp.DataBase.WeightEntity
+import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.ViewModel.LegacyMigrationViewModel
 import kotlinx.coroutines.withContext
@@ -1101,6 +1102,35 @@ private suspend fun importLegacyFoodDb(
                 val rows = conn.queryAll(sql)
                 log("${rows.size} aliments base trouvés")
 
+                // Pré-charger ESPECE et INDICATION en une seule passe pour éviter N requêtes
+                val especesByFoodId: Map<String, List<String>> = if (conn.tableExists("ESPECE")) {
+                    runCatching {
+                        conn.queryAll("SELECT reffood, specie FROM ESPECE")
+                            .mapNotNull { eRow ->
+                                val fid = eRow.str("reffood", "refFood", "idFood") ?: return@mapNotNull null
+                                val label = (eRow.num("specie", "espece"))?.toInt()?.let { SPECIE_MAP[it] }
+                                    ?: return@mapNotNull null
+                                fid to label
+                            }
+                            .groupBy({ it.first }, { it.second })
+                    }.getOrDefault(emptyMap()).also { log("ESPECE pré-chargée: ${it.size} aliments") }
+                } else emptyMap()
+
+                val indicationsByFoodId: Map<String, List<String>> = if (conn.tableExists("INDICATION")) {
+                    runCatching {
+                        conn.queryAll("SELECT reffood, indication FROM INDICATION")
+                            .mapNotNull { iRow ->
+                                val fid = iRow.str("reffood", "refFood", "idFood") ?: return@mapNotNull null
+                                val name = (iRow.num("indication", "indic"))?.toInt()
+                                    ?.let { AlimIndic.byCoef(it) }
+                                    ?.takeIf { it != AlimIndic.AUTRE }
+                                    ?.name ?: return@mapNotNull null
+                                fid to name
+                            }
+                            .groupBy({ it.first }, { it.second })
+                    }.getOrDefault(emptyMap()).also { log("INDICATION pré-chargée: ${it.size} aliments") }
+                } else emptyMap()
+
                 // Pré-charger les IDs existants pour éviter N requêtes
                 val existingIds = foodDao.getAllFoodIds().toHashSet()
 
@@ -1111,12 +1141,19 @@ private suspend fun importLegacyFoodDb(
                             stats.skipFoods++; return@forEach
                         }
 
-                        // Résoudre le nom : NAME table (lang=FR) ou nameDef
+                        // Résoudre le nom : NAME table (lang=FR), puis NAMEFOOD, puis nameDef
                         val nameFr = runCatching {
                             conn.createStatement().executeQuery(
                                 "SELECT value FROM NAME WHERE reffood = '${uuid.replace("'", "''")}' AND lang = 'FR' LIMIT 1"
                             ).use { rs -> if (rs.next()) rs.getString(1) else null }
+                        }.getOrNull() ?: runCatching {
+                            conn.createStatement().executeQuery(
+                                "SELECT value FROM NAMEFOOD WHERE reffood = '${uuid.replace("'", "''")}' AND lang = 'FR' LIMIT 1"
+                            ).use { rs -> if (rs.next()) rs.getString(1) else null }
                         }.getOrNull()
+
+                        val especesStr = especesByFoodId[uuid]?.joinToString(",")?.takeIf { it.isNotBlank() }
+                        val indicationsStr = indicationsByFoodId[uuid]?.joinToString(",")?.takeIf { it.isNotBlank() }
 
                         val entity = FoodEntity(
                             uuid = uuid,
@@ -1136,7 +1173,9 @@ private suspend fun importLegacyFoodDb(
                             consistent = (row["consistent"] as? Number)?.toInt() ?: 1,
                             deprecated = (row["deprecated"] as? Number)?.toInt() ?: 0,
                             DataB = row["DataB"] as? String ?: "",
-                            name = nameFr ?: row["nameDef"] as? String
+                            name = nameFr ?: row["nameDef"] as? String,
+                            especesJson = especesStr,
+                            indicationsJson = indicationsStr
                         )
                         foodDao.insertFood(entity)
                         stats.impFoods++
@@ -1310,6 +1349,9 @@ private suspend fun importLegacyRefDb(
                             especeRaw.toIntOrNull() != null -> SPECIE_ENUM_MAP[especeRaw.toInt()] ?: "CH"
                             else -> especeRaw.toEspeceEnumName() ?: "CH"
                         }
+                        // stadePhysio: V2 stores an int (0=ADULTE…4=HOSPIT). STADE_MAP gives enum names.
+                        val stadePhysioStr = row.num("stadePhysio", "physio", "stade", "physioStade")
+                            ?.toInt()?.let { STADE_MAP[it] } ?: "ADULTE"
                         val entity = fr.vetbrain.vetnutri_mp.DataBase.ReferenceEvEntity(
                             uuid = uuid,
                             nom = row.str("name", "nom") ?: "",
@@ -1319,7 +1361,7 @@ private suspend fun importLegacyRefDb(
                             nomEnergie = row.str("SERname", "nomEnergie", "nameEnergy") ?: "",
                             consistent = row.num("consistent")?.toInt() ?: 1,
                             espece = especeStr,
-                            stadePhysio = "ADULTE",
+                            stadePhysio = stadePhysioStr,
                             nomk1 = row.str("k1Name", "nomk1") ?: "",
                             nomk2 = row.str("k2Name", "nomk2") ?: "",
                             nomk3 = row.str("k3Name", "nomk3") ?: "",
