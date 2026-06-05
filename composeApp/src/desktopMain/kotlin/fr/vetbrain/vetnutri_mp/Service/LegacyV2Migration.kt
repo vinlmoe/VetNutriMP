@@ -10,6 +10,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.RationEntity
 import fr.vetbrain.vetnutri_mp.DataBase.WeightEntity
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.RaceCodeMapper
 import fr.vetbrain.vetnutri_mp.ViewModel.LegacyMigrationViewModel
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -725,6 +726,12 @@ private suspend fun importLegacyAnimDb(
                         }
                         val specieInt = (row["specie"] as? Number)?.toInt()
                         val specieId = specieInt?.let { SPECIE_MAP[it] } ?: (row["specie"] as? String)
+                        // V2 stocke la race comme code "A1"…"A503" — résoudre vers le nom complet.
+                        // Si le code n'est pas reconnu (ou si c'est déjà un nom libre), garder tel quel.
+                        val raceRaw = row["race"] as? String
+                        val race = raceRaw?.let { code ->
+                            RaceCodeMapper.resolveRaceCode(specieId, code) ?: code
+                        }
                         val entity = AnimalEntity(
                             uuid = uuid,
                             nom = row["name"] as? String,
@@ -734,7 +741,7 @@ private suspend fun importLegacyAnimDb(
                             specieId = specieId,
                             ownerName = row["ownerName"] as? String,
                             birthdate = row["birthdate"] as? String,
-                            race = row["race"] as? String,
+                            race = race,
                             summary = row["summary"] as? String
                         )
                         animalDao.insert(entity)
