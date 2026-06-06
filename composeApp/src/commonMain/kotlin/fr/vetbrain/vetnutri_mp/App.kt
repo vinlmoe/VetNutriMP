@@ -6,6 +6,8 @@ import androidx.compose.ui.Modifier
 import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import fr.vetbrain.vetnutri_mp.Data.ExamSession
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
+import fr.vetbrain.vetnutri_mp.DataBase.checkIntegrity
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Navigation.*
 import fr.vetbrain.vetnutri_mp.Repository.*
@@ -229,6 +231,14 @@ fun App(appDatabase: AppDatabase) {
     LaunchedEffect(Unit) {
         startupService.initialize()
         backupService = startupService.getBackupService()
+    }
+    LaunchedEffect(appDatabase) {
+        if (!appDatabase.checkIntegrity()) {
+            DatabaseChangeNotifier.notifyChange(
+                DatabaseChangeNotifier.ChangeType.DATABASE_CORRUPTION_DETECTED,
+                "PRAGMA integrity_check a échoué au démarrage"
+            )
+        }
     }
     LaunchedEffect(examSession) {
         animalListViewModel.setExamSession(examSession)

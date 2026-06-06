@@ -10,6 +10,8 @@ import androidx.sqlite.SQLiteException
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import fr.vetbrain.vetnutri_mp.DataBase.*
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
+import kotlinx.coroutines.withContext
 
 /**
  * Base de données Room pour KMP. Cette classe définit la structure de la base de données et ses
@@ -84,7 +86,9 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
  * IMPORTANT: Cette configuration remplace la stratégie destructive précédente qui détruisait toutes
  * les données en cas d'erreur de migration.
  */
-fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
+fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String): AppDatabase {
+    backupDatabaseFiles(dbPath)
+
     return try {
         // ✅ Configuration sécurisée avec migrations explicites
         builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
@@ -133,14 +137,33 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                 .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = false)
                 .build()
     } catch (e: Exception) {
-
-        // ⚠️ En dernier recours seulement, avec avertissement explicite
-
+        // ⚠️ Migration ou initialisation échouée : rotation du fichier corrompu, jamais d'effacement
+        rotateCorruptDatabaseFiles(dbPath)
+        DatabaseChangeNotifier.notifyChange(
+            DatabaseChangeNotifier.ChangeType.DATABASE_MIGRATION_FAILED,
+            e.message
+        )
+        // Ouvre une base vide propre (v36). Le .bak binaire + les JSON backups permettent la restauration.
         builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-                .fallbackToDestructiveMigration(true)
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
                 .build()
+    }
+}
+
+/**
+ * Vérifie l'intégrité structurelle de la base via PRAGMA integrity_check.
+ * Retourne false si la base est corrompue ou inaccessible.
+ */
+suspend fun AppDatabase.checkIntegrity(): Boolean = withContext(AppDispatchers.IO) {
+    try {
+        useReaderConnection { connection ->
+            connection.prepare("PRAGMA integrity_check").use { stmt ->
+                stmt.step() && stmt.getText(0) == "ok"
+            }
+        }
+    } catch (_: Exception) {
+        false
     }
 }
 
