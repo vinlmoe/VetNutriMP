@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabaseBuilder
+import fr.vetbrain.vetnutri_mp.DataBase.getDatabasePath
 import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
@@ -29,7 +30,7 @@ class MainActivity : ComponentActivity() {
         LocalizationManager.initialize(primaryLanguage)
 
         // Initialisation de la base de données
-        val appDatabase = getRoomDatabase(getDatabaseBuilder(this))
+        val appDatabase = getRoomDatabase(getDatabaseBuilder(this), getDatabasePath(this))
 
         setContent { App(appDatabase) }
     }
