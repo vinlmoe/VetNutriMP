@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseVersionManager
 import fr.vetbrain.vetnutri_mp.Utils.AppLogo
@@ -948,6 +949,9 @@ fun StartupScreen(
                                                         if (hasAcceptedTerms) {
                                                                 OutlinedButton(
                                                                         onClick = {
+                                                                                coroutineScope.launch {
+                                                                                    try { createPreferencesStorage().saveString("startup_complete", "true") } catch (_: Exception) {}
+                                                                                }
                                                                                 showStartupScreen =
                                                                                         false
                                                                                 // Désactiver
@@ -1054,6 +1058,9 @@ fun StartupScreen(
                                                         if (hasAcceptedTerms) {
                                                                 Button(
                                                                         onClick = {
+                                                                                coroutineScope.launch {
+                                                                                    try { createPreferencesStorage().saveString("startup_complete", "true") } catch (_: Exception) {}
+                                                                                }
                                                                                 showStartupScreen =
                                                                                         false
                                                                                 // Désactiver
@@ -1657,6 +1664,9 @@ fun StartupScreen(
                                                                         studentId =
                                                                                 examStudentId.trim()
                                                                 )
+                                                        coroutineScope.launch {
+                                                            try { createPreferencesStorage().saveString("startup_complete", "true") } catch (_: Exception) {}
+                                                        }
                                                         onStartExam(session)
                                                         showExamDialog = false
                                                         showStartupScreen = false
