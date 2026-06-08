@@ -762,7 +762,10 @@ alimentUuid: String
                         description = this.description ?: "",
                         equationScript = this.equationScript ?: "",
                         kind = EquationKind.valueOf(this.kind ?: EquationKind.ENERGYNEED.name),
-                        specie = this.specie?.let { Espece.valueOf(it) },
+                        specie = this.specie?.let { s ->
+                            runCatching { Espece.valueOf(s) }.getOrNull()
+                                ?: Espece.entries.firstOrNull { it.label.equals(s, ignoreCase = true) }
+                        },
                         nutrient = nutrient,
                         bib = biblioRef ?: BiblioRef(),
                         consistent = this.consistent,

@@ -21,6 +21,7 @@ import fr.vetbrain.vetnutri_mp.ViewModel.FoodListViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.LegacyMigrationViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 
 internal data class AppNavModels(
@@ -38,7 +39,8 @@ internal data class AppNavModels(
     val examGradingViewModel: ExamGradingViewModel,
     val crossAnalysisViewModel: CrossConsultationAnalysisViewModel,
     val bulkReferenceEditorViewModel: BulkReferenceEditorViewModel,
-    val backupRestoreViewModel: BackupRestoreViewModel?
+    val backupRestoreViewModel: BackupRestoreViewModel?,
+    val legacyMigrationViewModel: LegacyMigrationViewModel
 )
 
 internal data class AppNavRepositories(

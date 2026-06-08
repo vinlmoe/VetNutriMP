@@ -14,8 +14,12 @@ import fr.vetbrain.vetnutri_mp.Repository.DatabaseAnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
 import fr.vetbrain.vetnutri_mp.Utils.FileUtils
 import fr.vetbrain.vetnutri_mp.Utils.ImportUtils
+import fr.vetbrain.vetnutri_mp.Service.LegacyV2Detector
+import fr.vetbrain.vetnutri_mp.Service.previewV2Migration
+import fr.vetbrain.vetnutri_mp.Service.runV2Migration
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.LegacyMigrationViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import java.io.File
 import javax.swing.JFileChooser
@@ -531,4 +535,49 @@ actual suspend fun exportPdfDocument(
             false
         }
     }
+}
+
+actual fun detectLegacyV2DbFolder(): String? = LegacyV2Detector.findDbFolder()
+
+actual fun browseLegacyV2DbFolder(): String? {
+    var path: String? = null
+    val open = {
+        val chooser = javax.swing.JFileChooser().apply {
+            dialogTitle = "Sélectionner le dossier 'db' de VetNutri 2"
+            fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
+        }
+        if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+            val selected = chooser.selectedFile
+            path = if (fr.vetbrain.vetnutri_mp.Service.LegacyV2Detector.isV2DbFolder(selected)) {
+                selected.absolutePath
+            } else {
+                // Essayer d'y chercher un sous-dossier db/
+                val dbSub = java.io.File(selected, "db")
+                if (fr.vetbrain.vetnutri_mp.Service.LegacyV2Detector.isV2DbFolder(dbSub))
+                    dbSub.absolutePath
+                else
+                    selected.absolutePath // laisser l'utilisateur valider lui-même
+            }
+        }
+    }
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) open()
+    else javax.swing.SwingUtilities.invokeAndWait { open() }
+    return path
+}
+
+actual suspend fun previewLegacyV2Migration(
+    dbFolderPath: String
+): LegacyMigrationViewModel.MigrationCounts = previewV2Migration(dbFolderPath)
+
+actual suspend fun runLegacyV2Migration(
+    dbFolderPath: String,
+    onLog: suspend (String) -> Unit
+): LegacyMigrationViewModel.MigrationResult {
+    val db = desktopAppDatabase
+        ?: return LegacyMigrationViewModel.MigrationResult(
+            imported = LegacyMigrationViewModel.MigrationCounts(),
+            skipped = LegacyMigrationViewModel.MigrationCounts(),
+            errors = listOf("Base de données non initialisée")
+        )
+    return runV2Migration(dbFolderPath, db, onLog)
 }

@@ -24,4 +24,5 @@ internal sealed class Screen {
     object CrossAnalysisResults : Screen()
     object CrossAnalysisGrading : Screen()
     object TestYellowBox : Screen()
+    object LegacyMigration : Screen()
 }
