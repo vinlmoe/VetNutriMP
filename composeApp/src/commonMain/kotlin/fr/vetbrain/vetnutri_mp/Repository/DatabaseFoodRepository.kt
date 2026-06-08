@@ -1401,6 +1401,35 @@ class DatabaseFoodRepository(
     }
 
     /**
+     * Récupère plusieurs aliments en batch (une requête par table au lieu de N×3 requêtes).
+     */
+    override suspend fun getFoodsByUuids(uuids: List<String>): Map<String, AlimentEv> {
+        if (uuids.isEmpty()) return emptyMap()
+        return withContext(AppDispatchers.IO) {
+            val foodEntities = uuids.chunked(500)
+                .flatMap { chunk -> foodDao.getFoodsByIds(chunk) }
+            if (foodEntities.isEmpty()) return@withContext emptyMap()
+
+            val ids = foodEntities.map { it.uuid }
+            val nutrientsByFood = nutrientValueDao?.let { dao ->
+                ids.chunked(500).flatMap { chunk -> dao.getNutrientValuesForAliments(chunk) }
+                    .groupBy { it.refAliment }
+            } ?: emptyMap()
+            val energyByFood = energyPerSpeciesDao?.let { dao ->
+                ids.chunked(500).flatMap { chunk -> dao.getForAliments(chunk) }
+                    .groupBy { it.refAliment }
+            } ?: emptyMap()
+
+            foodEntities.associate { entity ->
+                entity.uuid to entity.toAlimentEv(
+                    nutrientValues = nutrientsByFood[entity.uuid] ?: emptyList(),
+                    energyPerSpecies = energyByFood[entity.uuid] ?: emptyList()
+                )
+            }
+        }
+    }
+
+    /**
      * Supprime un aliment et toutes ses propriétés associées.
      * @param uuid UUID de l'aliment à supprimer
      */

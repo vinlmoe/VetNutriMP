@@ -111,94 +111,69 @@ class DatabaseConsultationRepository(
     override suspend fun getConsultationsForAnimal(animalId: String): List<ConsultationEv> {
         return withContext(AppDispatchers.IO) {
             val consultations = consultationDao.getConsultationsForAnimal(animalId)
-            consultations.map { consultationEntity ->
-                val suppVars =
-                        consultationDao.getSupplementalVariablesForConsultation(
-                                consultationEntity.uuid
-                        )
-                val rations = consultationDao.getRationsForConsultation(consultationEntity.uuid)
 
-                // Créer d'abord la consultation avec les entités RationEntity
+            val consultationEvs = consultations.map { consultationEntity ->
+                val suppVars = consultationDao.getSupplementalVariablesForConsultation(consultationEntity.uuid)
+                val rations = consultationDao.getRationsForConsultation(consultationEntity.uuid)
                 val consultation = consultationEntity.toData(rations = rations, suppVars = suppVars)
 
-                // Maintenant, pour chaque ration dans la consultation créée, récupérer et associer
-                // les aliments
                 consultation.rations.forEach { ration ->
-                    // Charger les aliments pour cette ration
                     val aliments = consultationDao.getAlimentsForRation(ration.uuid)
-
-                    // Remplacer la liste d'aliments vide par les aliments chargés
                     ration.alimentMutableList.clear()
                     ration.alimentMutableList.addAll(aliments.map { it.toData() })
+                }
+                consultation
+            }
 
-                    // Pour chaque AlimentRation, charger les détails complets de l'aliment
+            // Batch-load tous les aliments référencés en une seule passe
+            val allAlimentUuids = consultationEvs
+                .flatMap { it.rations }
+                .flatMap { it.alimentMutableList }
+                .mapNotNull { it.refAlimUnif }
+                .distinct()
+            val alimentsById = foodRepository.getFoodsByUuids(allAlimentUuids)
+
+            consultationEvs.forEach { consultation ->
+                consultation.rations.forEach { ration ->
                     ration.alimentMutableList.forEachIndexed { index, alimentRation ->
-                        alimentRation.refAlimUnif?.let { alimentUuid ->
-                            // Charger l'aliment complet depuis le FoodRepository
-                            val alimentEv = foodRepository.getFood(alimentUuid)
-
-                            if (alimentEv != null) {
-                                // Mettre à jour l'objet AlimentRation avec les détails complets
-                                ration.alimentMutableList[index] =
-                                        alimentRation.copy(aliment = alimentEv)
-                            } else {
-                                // Essayer avec getFoodById au cas où
-                                val alimentById = foodRepository.getFoodById(alimentUuid)
-                                if (alimentById != null) {
-                                    ration.alimentMutableList[index] =
-                                            alimentRation.copy(aliment = alimentById)
-                                } else {}
-                            }
+                        val alimentEv = alimentRation.refAlimUnif?.let { alimentsById[it] }
+                        if (alimentEv != null) {
+                            ration.alimentMutableList[index] = alimentRation.copy(aliment = alimentEv)
                         }
                     }
                 }
-
-                consultation
             }
+
+            consultationEvs
         }
     }
 
     override suspend fun getConsultationById(id: String): ConsultationEv? {
         return withContext(AppDispatchers.IO) {
             val consultation = consultationDao.getConsultationById(id) ?: return@withContext null
-            val suppVars =
-                    consultationDao.getSupplementalVariablesForConsultation(consultation.uuid)
+            val suppVars = consultationDao.getSupplementalVariablesForConsultation(consultation.uuid)
             val rations = consultationDao.getRationsForConsultation(consultation.uuid)
-
-            // Créer d'abord la consultation avec les entités RationEntity
             val consultationEv = consultation.toData(rations = rations, suppVars = suppVars)
 
-            // Maintenant, pour chaque ration dans la consultation créée, récupérer et associer les
-            // aliments
             consultationEv.rations.forEach { ration ->
-                // Charger les aliments pour cette ration
                 val aliments = consultationDao.getAlimentsForRation(ration.uuid)
-
-                // Remplacer la liste d'aliments vide par les aliments chargés
                 ration.alimentMutableList.clear()
                 ration.alimentMutableList.addAll(aliments.map { it.toData() })
+            }
 
-                // Pour chaque AlimentRation, charger les détails complets de l'aliment
+            // Batch-load tous les aliments référencés en une seule passe
+            val allAlimentUuids = consultationEv.rations
+                .flatMap { it.alimentMutableList }
+                .mapNotNull { it.refAlimUnif }
+                .distinct()
+            val alimentsById = foodRepository.getFoodsByUuids(allAlimentUuids)
+
+            consultationEv.rations.forEach { ration ->
                 ration.alimentMutableList.forEachIndexed { index, alimentRation ->
-                    val alimentUuid = alimentRation.refAlimUnif
-
-                    if (alimentUuid != null) {
-                        // Charger l'aliment complet depuis le FoodRepository
-                        val alimentEv = foodRepository.getFood(alimentUuid)
-
-                        // Mettre à jour l'objet AlimentRation avec les détails complets
-                        if (alimentEv != null) {
-                            ration.alimentMutableList[index] =
-                                    alimentRation.copy(aliment = alimentEv)
-                        } else {
-                            // Essayer avec getFoodById au cas où
-                            val alimentById = foodRepository.getFoodById(alimentUuid)
-                            if (alimentById != null) {
-                                ration.alimentMutableList[index] =
-                                        alimentRation.copy(aliment = alimentById)
-                            } else {}
-                        }
-                    } else {}
+                    val alimentEv = alimentRation.refAlimUnif?.let { alimentsById[it] }
+                    if (alimentEv != null) {
+                        ration.alimentMutableList[index] = alimentRation.copy(aliment = alimentEv)
+                    }
                 }
             }
 

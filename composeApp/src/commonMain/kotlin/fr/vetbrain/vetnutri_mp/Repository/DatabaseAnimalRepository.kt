@@ -28,7 +28,7 @@ class DatabaseAnimalRepository(
         private val nutrientValueDao: NutrientValueDao? = null
 ) : AnimalRepository {
         override suspend fun saveAnimal(animal: AnimalEv) {
-                withContext(AppDispatchers.Default) {
+                withContext(AppDispatchers.IO) {
                         // Sauvegarder l'animal
                         animalDao.insert(animal.toEntity())
 
@@ -53,7 +53,7 @@ class DatabaseAnimalRepository(
         }
 
         override suspend fun getAllAnimals(): List<AnimalEv> {
-                return withContext(AppDispatchers.Default) {
+                return withContext(AppDispatchers.IO) {
                         val entities = animalDao.getAllAnimals()
 
                         entities.map { entity ->
@@ -68,13 +68,13 @@ class DatabaseAnimalRepository(
         }
 
         override suspend fun deleteAnimal(animal: AnimalEv) {
-                withContext(AppDispatchers.Default) {
+                withContext(AppDispatchers.IO) {
                         animalDao.delete(animal.toEntity(includeRelations = false))
                 }
         }
 
         override suspend fun updateAnimal(animal: AnimalEv) {
-                withContext(AppDispatchers.Default) {
+                withContext(AppDispatchers.IO) {
 
                         // Vérifier si l'animal existe avant la mise à jour
                         val existingAnimal = animalDao.getAnimalById(animal.uuid)
@@ -102,7 +102,7 @@ class DatabaseAnimalRepository(
         }
 
         override suspend fun getAnimalById(id: String): AnimalEv? {
-                return withContext(AppDispatchers.Default) {
+                return withContext(AppDispatchers.IO) {
                         val entity = animalDao.getAnimalById(id) ?: return@withContext null
 
                         // Charger les consultations et poids associés
@@ -193,7 +193,7 @@ class DatabaseAnimalRepository(
         }
 
         override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): AnimalImportResult {
-                return withContext(AppDispatchers.Default) {
+                return withContext(AppDispatchers.IO) {
                         val availableFoodUUIDs = mutableSetOf<String>()
                         // Map pour stocker les noms des aliments par UUID
                         val foodNamesMap = mutableMapOf<String, String>()
@@ -830,7 +830,7 @@ class DatabaseAnimalRepository(
         }
 
         override suspend fun getRacesBySpecies(specieId: String): List<String> {
-                return withContext(AppDispatchers.Default) {
+                return withContext(AppDispatchers.IO) {
                         val allAnimals = animalDao.getAllAnimals()
                         allAnimals
                                 .filter { it.specieId == specieId && !it.race.isNullOrBlank() }
