@@ -728,6 +728,26 @@ private suspend fun importLegacyAnimDb(
             // 1. ANIMALS
             if (conn.tableExists("ANIMALS")) {
                 log("Colonnes ANIMALS: ${conn.tableColumns("ANIMALS").joinToString()}")
+
+                // Pré-charger breedName (code race → nom) si la table existe dans Data-Anim.db.
+                // Prioritaire sur RaceCodeMapper car c'est le nom réel tel que stocké par V2.
+                val breedNameMap: Map<String, String> = if (conn.tableExists("breedName")) {
+                    log("Colonnes breedName: ${conn.tableColumns("breedName").joinToString()}")
+                    runCatching {
+                        conn.queryAll("SELECT * FROM breedName")
+                            .mapNotNull { bRow ->
+                                val code = bRow.str(
+                                    "refBreed", "breed", "refRace", "race", "UUID", "id"
+                                ) ?: return@mapNotNull null
+                                val name = bRow.str(
+                                    "value", "name", "nom", "label"
+                                ) ?: return@mapNotNull null
+                                code to name
+                            }
+                            .toMap()
+                    }.getOrDefault(emptyMap()).also { log("breedName pré-chargé: ${it.size} races") }
+                } else emptyMap()
+
                 val rows = conn.queryAll("SELECT * FROM ANIMALS")
                 log("${rows.size} animaux trouvés")
                 rows.forEach { row ->
@@ -738,11 +758,13 @@ private suspend fun importLegacyAnimDb(
                         }
                         val specieInt = (row["specie"] as? Number)?.toInt()
                         val specieId = specieInt?.let { SPECIE_MAP[it] } ?: (row["specie"] as? String)
-                        // V2 stocke la race comme code "A1"…"A503" — résoudre vers le nom complet.
-                        // Si le code n'est pas reconnu (ou si c'est déjà un nom libre), garder tel quel.
+                        // Résoudre le code race : breedName (table V2) prioritaire, puis
+                        // RaceCodeMapper (codes A01…A503), puis valeur brute si déjà un nom.
                         val raceRaw = row["race"] as? String
                         val race = raceRaw?.let { code ->
-                            RaceCodeMapper.resolveRaceCode(specieId, code) ?: code
+                            breedNameMap[code]
+                                ?: RaceCodeMapper.resolveRaceCode(specieId, code)
+                                ?: code
                         }
                         val entity = AnimalEntity(
                             uuid = uuid,
@@ -1123,12 +1145,16 @@ private suspend fun importLegacyFoodDb(
 
                 // Pré-charger ESPECE et INDICATION en une seule passe pour éviter N requêtes
                 val especesByFoodId: Map<String, List<String>> = if (conn.tableExists("ESPECE")) {
+                    log("Colonnes ESPECE: ${conn.tableColumns("ESPECE").joinToString()}")
                     runCatching {
-                        conn.queryAll("SELECT reffood, specie FROM ESPECE")
+                        conn.queryAll("SELECT * FROM ESPECE")
                             .mapNotNull { eRow ->
-                                val fid = eRow.str("reffood", "refFood", "idFood") ?: return@mapNotNull null
-                                val label = (eRow.num("specie", "espece"))?.toInt()?.let { SPECIE_MAP[it] }
-                                    ?: return@mapNotNull null
+                                val fid = eRow.str(
+                                    "reffood", "refFood", "idFood", "UUID", "refAlim", "foodId"
+                                ) ?: return@mapNotNull null
+                                val label = eRow.num(
+                                    "specie", "espece", "categorie", "specieRef", "SPECIE"
+                                )?.toInt()?.let { SPECIE_MAP[it] } ?: return@mapNotNull null
                                 fid to label
                             }
                             .groupBy({ it.first }, { it.second })
@@ -1136,11 +1162,16 @@ private suspend fun importLegacyFoodDb(
                 } else emptyMap()
 
                 val indicationsByFoodId: Map<String, List<String>> = if (conn.tableExists("INDICATION")) {
+                    log("Colonnes INDICATION: ${conn.tableColumns("INDICATION").joinToString()}")
                     runCatching {
-                        conn.queryAll("SELECT reffood, indication FROM INDICATION")
+                        conn.queryAll("SELECT * FROM INDICATION")
                             .mapNotNull { iRow ->
-                                val fid = iRow.str("reffood", "refFood", "idFood") ?: return@mapNotNull null
-                                val name = (iRow.num("indication", "indic"))?.toInt()
+                                val fid = iRow.str(
+                                    "reffood", "refFood", "idFood", "UUID", "refAlim", "foodId"
+                                ) ?: return@mapNotNull null
+                                val name = iRow.num(
+                                    "indication", "indic", "indicRef", "value", "indicValue"
+                                )?.toInt()
                                     ?.let { AlimIndic.byCoef(it) }
                                     ?.takeIf { it != AlimIndic.AUTRE }
                                     ?.name ?: return@mapNotNull null
