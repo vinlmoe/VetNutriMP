@@ -590,6 +590,13 @@ object RaceCodeMapper {
                     "A503" to "Leonberg"
             )
 
+    // Entrées nommées de l'enum V2 RaceChat (non A-code)
+    private val catNamedMap = mapOf(
+        "Europeen" to "Européen",
+        "Sacre" to "Sacré de Birmanie",
+        "Siamois" to "Siamois"
+    )
+
     // Entrées nommées de l'enum V2 RaceChien (non A-code), stockées telles quelles dans ANIMALS.race.
     // Fallback si la table breedName de Data-Anim.db ne les couvre pas.
     private val dogNamedMap = mapOf(
@@ -627,10 +634,14 @@ object RaceCodeMapper {
         if (especeValue.isNullOrBlank()) return null
         val trimmedRace = raceValue.trim()
 
-        // Entrées nommées hors A-code (Labrador, BergerAllemand, DogueAllemeand…)
+        // Entrées nommées hors A-code (Labrador, BergerAllemand, Europeen…)
         if (!codePattern.matches(trimmedRace)) {
             val espece = Espece.getFromString(especeValue.trim()) ?: return null
-            return if (espece == Espece.CHIEN) dogNamedMap[trimmedRace] else null
+            return when (espece) {
+                Espece.CHIEN -> dogNamedMap[trimmedRace]
+                Espece.CHAT -> catNamedMap[trimmedRace]
+                else -> null
+            }
         }
 
         // Normalise "A01" / "A002" → "A1" / "A2" pour correspondre aux clés de la map
