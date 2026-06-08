@@ -1386,6 +1386,9 @@ private suspend fun importLegacyRefDb(
             }
 
             // 8. REFERENCE_EV / dataRef
+            // Collect UUIDs of references newly imported in this run — only their nutrients
+            // will be imported (section 11). Pre-existing VetNutriMP references are not touched.
+            val newRefIds = mutableSetOf<String>()
             val refEvTable = conn.findTable(*REF_TABLE_NAMES.toTypedArray())
             if (refEvTable != null) {
                 log("Colonnes $refEvTable: ${conn.tableColumns(refEvTable).joinToString()}")
@@ -1428,6 +1431,7 @@ private suspend fun importLegacyRefDb(
                         )
                         referenceEvDao.insertReferenceEv(entity)
                         stats.impReferences++
+                        newRefIds.add(uuid)
 
                         // Relations référence ↔ équation depuis BWeqRef, SERRef, DEcomRef, DErawRef
                         listOf(
@@ -1559,6 +1563,9 @@ private suspend fun importLegacyRefDb(
                     conn.queryAll("SELECT * FROM $table").forEach { row ->
                         try {
                             val refId   = row.str("refRef") ?: return@forEach
+                            // Ne pas écraser les besoins nutritionnels des références déjà présentes
+                            // dans VetNutriMP — uniquement importer pour les références nouvellement créées.
+                            if (refId !in newRefIds) return@forEach
                             val kindIdx = row.num("kind")?.toInt() ?: return@forEach
                             if (kindIdx >= labels.size) return@forEach
                             val nutrientCode = labels[kindIdx]
