@@ -344,6 +344,7 @@ internal fun AppNavHost(
                         nav.navigate(Screen.SpeciesPreferences)
                     },
                     onBackupClick = { nav.navigate(Screen.BackupRestore) },
+                    onLegacyMigrationClick = { nav.navigate(Screen.LegacyMigration) },
                     isExamMode = examSession != null
                 )
             }
@@ -407,6 +408,14 @@ internal fun AppNavHost(
             } else {
                 nav.navigate(Screen.Settings)
             }
+        }
+
+        Screen.LegacyMigration -> {
+            LegacyMigrationView(
+                viewModel = models.legacyMigrationViewModel,
+                onNavigateBack = { nav.navigate(Screen.Settings) },
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
         Screen.TestYellowBox -> {

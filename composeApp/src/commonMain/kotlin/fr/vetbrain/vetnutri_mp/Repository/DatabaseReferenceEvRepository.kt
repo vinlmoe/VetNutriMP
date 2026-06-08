@@ -193,8 +193,11 @@ class DatabaseReferenceEvRepository(
                         nomMaladie = entity.nomMaladie,
                         nomEnergie = entity.nomEnergie,
                         consistent = entity.consistent,
-                        espece = Espece.valueOf(entity.espece),
-                        stadePhysio = StadePhysio.valueOf(entity.stadePhysio)
+                        espece = runCatching { Espece.valueOf(entity.espece) }.getOrNull()
+                                ?: Espece.entries.firstOrNull { it.label.equals(entity.espece, ignoreCase = true) }
+                                ?: Espece.CH,
+                        stadePhysio = runCatching { StadePhysio.valueOf(entity.stadePhysio) }.getOrNull()
+                                ?: StadePhysio.getFromString(entity.stadePhysio)
                 )
 
         // Assigner les noms des coefficients
@@ -795,7 +798,10 @@ class DatabaseReferenceEvRepository(
                 name = entity.name,
                 description = entity.description,
                 equationScript = entity.equationScript,
-                specie = if (entity.specie != null) Espece.valueOf(entity.specie) else null,
+                specie = entity.specie?.let { s ->
+                        runCatching { Espece.valueOf(s) }.getOrNull()
+                                ?: Espece.entries.firstOrNull { it.label.equals(s, ignoreCase = true) }
+                },
                 kind = EquationKind.valueOf(entity.kind),
                 consistent = entity.consistent,
                 bib = BiblioRef() // Temporairement vide pour éviter l'erreur suspend

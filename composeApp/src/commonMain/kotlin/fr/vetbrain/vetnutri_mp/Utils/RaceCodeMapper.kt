@@ -597,10 +597,13 @@ object RaceCodeMapper {
         val trimmedRace = raceValue.trim()
         if (!codePattern.matches(trimmedRace)) return null
 
+        // Normalise "A01" / "A002" → "A1" / "A2" pour correspondre aux clés de la map
+        val normalizedRace = "A" + trimmedRace.removePrefix("A").trimStart('0').ifEmpty { "0" }
+
         val espece = Espece.getFromString(especeValue.trim()) ?: return null
         return when (espece) {
-            Espece.CHAT -> catRaceMap[trimmedRace]
-            Espece.CHIEN -> dogRaceMap[trimmedRace]
+            Espece.CHAT -> catRaceMap[normalizedRace]
+            Espece.CHIEN -> dogRaceMap[normalizedRace]
             else -> null
         }
     }

@@ -195,6 +195,10 @@ fun App(appDatabase: AppDatabase) {
             biblioRefRepository = biblioRefRepository
         )
     }
+    val legacyMigrationScope = rememberCoroutineScope()
+    val legacyMigrationViewModel = remember(legacyMigrationScope) {
+        LegacyMigrationViewModel(scope = legacyMigrationScope)
+    }
     val crossAnalysisViewModel = remember {
         CrossConsultationAnalysisViewModel(
             animalRepository = animalRepository,
@@ -263,7 +267,8 @@ fun App(appDatabase: AppDatabase) {
         examGradingViewModel = examGradingViewModel,
         crossAnalysisViewModel = crossAnalysisViewModel,
         bulkReferenceEditorViewModel = bulkReferenceEditorViewModel,
-        backupRestoreViewModel = backupRestoreViewModel
+        backupRestoreViewModel = backupRestoreViewModel,
+        legacyMigrationViewModel = legacyMigrationViewModel
     )
     val repos = AppNavRepositories(
         equationRepository = equationRepository,
