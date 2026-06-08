@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
+import androidx.room.useReaderConnection
 import androidx.sqlite.SQLiteException
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import fr.vetbrain.vetnutri_mp.DataBase.*
@@ -158,7 +159,7 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
 suspend fun AppDatabase.checkIntegrity(): Boolean = withContext(AppDispatchers.IO) {
     try {
         useReaderConnection { connection ->
-            connection.prepare("PRAGMA integrity_check").use { stmt ->
+            connection.usePrepared("PRAGMA integrity_check") { stmt ->
                 stmt.step() && stmt.getText(0) == "ok"
             }
         }
