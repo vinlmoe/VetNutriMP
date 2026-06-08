@@ -8,6 +8,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabaseBuilder
+import fr.vetbrain.vetnutri_mp.DataBase.getDatabasePath
 import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseAnimalRepository
@@ -104,7 +105,7 @@ suspend fun main(args: Array<String> = emptyArray()) {
     LocalizationManager.initialize()
 
     // Initialisation de la base de données
-    val appDatabase = getRoomDatabase(getDatabaseBuilder())
+    val appDatabase = getRoomDatabase(getDatabaseBuilder(), getDatabasePath())
     desktopAppDatabase = appDatabase
 
     // Création du repository des animaux

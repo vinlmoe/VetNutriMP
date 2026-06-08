@@ -11,7 +11,7 @@ class AndroidDatabaseModule(private val context: Context) : DatabaseModule {
 
     override fun initializeDatabase() {
         if (database == null) {
-            database = getRoomDatabase(getDatabaseBuilder(context))
+            database = getRoomDatabase(getDatabaseBuilder(context), getDatabasePath(context))
         }
     }
 
