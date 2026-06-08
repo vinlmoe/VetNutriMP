@@ -96,6 +96,17 @@ private val EQUATION_KIND_MAP = mapOf(
 // V2 Reflevel int → VetNutriMP Reflevel.name
 private val REFLEVEL_MAP = mapOf(0 to "MIN", 1 to "MAX", 2 to "OPTIMIN", 3 to "OPTIMAX")
 
+// V2 UnitReqEnum IDs → VetNutriMP UnitReqEnum IDs
+// V2: MCAL(0)=per Mcal/1000kcal, KGBW(1)=per kg BW, KGMW(2)=per kg MW, NO(3)=no unit, PERC(4)=%
+// MP: PERKG(0)=per kg, PERKCAL(1)=per 1000kcal, PERMS(2)=per kg metab, PERKJ(4), RATIO(5), ABSOLUTE(6)
+private val V2_UNIT_KIND_MAP = mapOf(
+    0 to 1, // V2 MCAL (per Mcal = per 1000 kcal) → MP PERKCAL
+    1 to 0, // V2 KGBW (per kg body weight)        → MP PERKG
+    2 to 2, // V2 KGMW (per kg metabolic weight)   → MP PERMS
+    3 to 6, // V2 NO   (no unit)                   → MP ABSOLUTE
+    4 to 5  // V2 PERC (percentage)                → MP RATIO
+)
+
 // V2 specie int (getCategorie()) → VetNutriMP Espece.label  (used for animal/ration specieId)
 private val SPECIE_MAP = mapOf(
     0 to "DOG", 1 to "CAT", 2 to "ALL", 3 to "PRIMATE",
@@ -716,6 +727,26 @@ private suspend fun importLegacyAnimDb(
             // 1. ANIMALS
             if (conn.tableExists("ANIMALS")) {
                 log("Colonnes ANIMALS: ${conn.tableColumns("ANIMALS").joinToString()}")
+
+                // Pré-charger breedName (code race → nom) si la table existe dans Data-Anim.db.
+                // Prioritaire sur RaceCodeMapper car c'est le nom réel tel que stocké par V2.
+                val breedNameMap: Map<String, String> = if (conn.tableExists("breedName")) {
+                    log("Colonnes breedName: ${conn.tableColumns("breedName").joinToString()}")
+                    runCatching {
+                        conn.queryAll("SELECT * FROM breedName")
+                            .mapNotNull { bRow ->
+                                val code = bRow.str(
+                                    "refBreed", "breed", "refRace", "race", "UUID", "id"
+                                ) ?: return@mapNotNull null
+                                val name = bRow.str(
+                                    "value", "name", "nom", "label"
+                                ) ?: return@mapNotNull null
+                                code to name
+                            }
+                            .toMap()
+                    }.getOrDefault(emptyMap()).also { log("breedName pré-chargé: ${it.size} races") }
+                } else emptyMap()
+
                 val rows = conn.queryAll("SELECT * FROM ANIMALS")
                 log("${rows.size} animaux trouvés")
                 rows.forEach { row ->
@@ -726,11 +757,13 @@ private suspend fun importLegacyAnimDb(
                         }
                         val specieInt = (row["specie"] as? Number)?.toInt()
                         val specieId = specieInt?.let { SPECIE_MAP[it] } ?: (row["specie"] as? String)
-                        // V2 stocke la race comme code "A1"…"A503" — résoudre vers le nom complet.
-                        // Si le code n'est pas reconnu (ou si c'est déjà un nom libre), garder tel quel.
+                        // Résoudre le code race : breedName (table V2) prioritaire, puis
+                        // RaceCodeMapper (codes A01…A503), puis valeur brute si déjà un nom.
                         val raceRaw = row["race"] as? String
                         val race = raceRaw?.let { code ->
-                            RaceCodeMapper.resolveRaceCode(specieId, code) ?: code
+                            breedNameMap[code]
+                                ?: RaceCodeMapper.resolveRaceCode(specieId, code)
+                                ?: code
                         }
                         val entity = AnimalEntity(
                             uuid = uuid,
@@ -1111,24 +1144,42 @@ private suspend fun importLegacyFoodDb(
 
                 // Pré-charger ESPECE et INDICATION en une seule passe pour éviter N requêtes
                 val especesByFoodId: Map<String, List<String>> = if (conn.tableExists("ESPECE")) {
+                    log("Colonnes ESPECE: ${conn.tableColumns("ESPECE").joinToString()}")
                     runCatching {
-                        conn.queryAll("SELECT reffood, specie FROM ESPECE")
-                            .mapNotNull { eRow ->
-                                val fid = eRow.str("reffood", "refFood", "idFood") ?: return@mapNotNull null
-                                val label = (eRow.num("specie", "espece"))?.toInt()?.let { SPECIE_MAP[it] }
-                                    ?: return@mapNotNull null
-                                fid to label
-                            }
+                        val espRows = conn.queryAll("SELECT * FROM ESPECE")
+                        // Log first 5 rows for diagnosis
+                        espRows.take(5).forEachIndexed { i, r ->
+                            log("  ESPECE[$i]: ${r.entries.joinToString { "${it.key}=${it.value}(${it.value?.javaClass?.simpleName})" }}")
+                        }
+                        espRows.mapNotNull { eRow ->
+                            val fid = eRow.str(
+                                "reffood", "refFood", "idFood", "UUID", "refAlim", "foodId"
+                            ) ?: return@mapNotNull null
+                            // value may be stored as Int or String
+                            val specieInt = eRow.num(
+                                "specie", "espece", "categorie", "specieRef", "SPECIE", "value"
+                            )?.toInt()
+                                ?: eRow.str(
+                                    "specie", "espece", "categorie", "specieRef", "SPECIE", "value"
+                                )?.toIntOrNull()
+                            val label = specieInt?.let { SPECIE_MAP[it] } ?: return@mapNotNull null
+                            fid to label
+                        }
                             .groupBy({ it.first }, { it.second })
                     }.getOrDefault(emptyMap()).also { log("ESPECE pré-chargée: ${it.size} aliments") }
                 } else emptyMap()
 
                 val indicationsByFoodId: Map<String, List<String>> = if (conn.tableExists("INDICATION")) {
+                    log("Colonnes INDICATION: ${conn.tableColumns("INDICATION").joinToString()}")
                     runCatching {
-                        conn.queryAll("SELECT reffood, indication FROM INDICATION")
+                        conn.queryAll("SELECT * FROM INDICATION")
                             .mapNotNull { iRow ->
-                                val fid = iRow.str("reffood", "refFood", "idFood") ?: return@mapNotNull null
-                                val name = (iRow.num("indication", "indic"))?.toInt()
+                                val fid = iRow.str(
+                                    "reffood", "refFood", "idFood", "UUID", "refAlim", "foodId"
+                                ) ?: return@mapNotNull null
+                                val name = iRow.num(
+                                    "indication", "indic", "indicRef", "value", "indicValue"
+                                )?.toInt()
                                     ?.let { AlimIndic.byCoef(it) }
                                     ?.takeIf { it != AlimIndic.AUTRE }
                                     ?.name ?: return@mapNotNull null
@@ -1335,6 +1386,9 @@ private suspend fun importLegacyRefDb(
             }
 
             // 8. REFERENCE_EV / dataRef
+            // Collect UUIDs of references newly imported in this run — only their nutrients
+            // will be imported (section 11). Pre-existing VetNutriMP references are not touched.
+            val newRefIds = mutableSetOf<String>()
             val refEvTable = conn.findTable(*REF_TABLE_NAMES.toTypedArray())
             if (refEvTable != null) {
                 log("Colonnes $refEvTable: ${conn.tableColumns(refEvTable).joinToString()}")
@@ -1377,6 +1431,7 @@ private suspend fun importLegacyRefDb(
                         )
                         referenceEvDao.insertReferenceEv(entity)
                         stats.impReferences++
+                        newRefIds.add(uuid)
 
                         // Relations référence ↔ équation depuis BWeqRef, SERRef, DEcomRef, DErawRef
                         listOf(
@@ -1464,18 +1519,65 @@ private suspend fun importLegacyRefDb(
 
             // 11. VALUE tables → besoins nutritionnels par référence (VALUEBASE, VALUEAA, etc.)
             var impNut = 0
+            // Diagnostic VALUEBASE unitKind
+            NUTRIENT_TABLE_MAP.keys.firstOrNull { conn.tableExists(it) }?.let { firstTable ->
+                log("Colonnes $firstTable (ref): ${conn.tableColumns(firstTable).joinToString()}")
+                runCatching {
+                    val distinctUnits = conn.queryAll(
+                        "SELECT DISTINCT unitKind FROM $firstTable LIMIT 20"
+                    ).map { r -> r.values.firstOrNull()?.toString() ?: "null" }
+                    log("Valeurs distinctes unitKind dans $firstTable: $distinctUnits")
+                    conn.queryAll("SELECT unitKind, kind, kindrelative, value FROM $firstTable LIMIT 5")
+                        .forEachIndexed { i, r ->
+                            log("  $firstTable[$i]: unitKind=${r["unitKind"]}, kind=${r["kind"]}, kindrel=${r["kindrelative"]}, value=${r["value"]}")
+                        }
+                }
+            }
+            // Diagnostic targetMethod (alternative source de requirements avec unité propre)
+            if (conn.tableExists("targetMethod")) {
+                log("Colonnes targetMethod: ${conn.tableColumns("targetMethod").joinToString()}")
+                runCatching {
+                    val tmCount = conn.count("targetMethod")
+                    log("targetMethod: $tmCount lignes")
+                    val distinctTmUnits = conn.queryAll(
+                        "SELECT DISTINCT unit FROM targetMethod LIMIT 20"
+                    ).map { r -> r.values.firstOrNull()?.toString() ?: "null" }
+                    log("Valeurs distinctes unit dans targetMethod: $distinctTmUnits")
+                    conn.queryAll("SELECT * FROM targetMethod LIMIT 5")
+                        .forEachIndexed { i, r ->
+                            log("  targetMethod[$i]: ${r.entries.joinToString { "${it.key}=${it.value}" }}")
+                        }
+                }
+            }
+            if (conn.tableExists("method")) {
+                log("Colonnes method: ${conn.tableColumns("method").joinToString()}")
+                runCatching {
+                    conn.queryAll("SELECT * FROM method LIMIT 3")
+                        .forEachIndexed { i, r ->
+                            log("  method[$i]: ${r.entries.joinToString { "${it.key}=${it.value}" }}")
+                        }
+                }
+            }
             NUTRIENT_TABLE_MAP.forEach { (table, labels) ->
                 if (conn.tableExists(table)) runCatching {
                     conn.queryAll("SELECT * FROM $table").forEach { row ->
                         try {
                             val refId   = row.str("refRef") ?: return@forEach
+                            // Ne pas écraser les besoins nutritionnels des références déjà présentes
+                            // dans VetNutriMP — uniquement importer pour les références nouvellement créées.
+                            if (refId !in newRefIds) return@forEach
                             val kindIdx = row.num("kind")?.toInt() ?: return@forEach
                             if (kindIdx >= labels.size) return@forEach
                             val nutrientCode = labels[kindIdx]
                             val kindRel  = row.num("kindrelative")?.toInt() ?: 0
                             val reflevel = REFLEVEL_MAP[kindRel] ?: "MIN"
                             val quantite = row.num("value")?.toDouble() ?: return@forEach
-                            val unitKind = row.num("unitKind")?.toInt() ?: 0
+                            // Noms de colonne candidats : V2 peut utiliser "unitKind", "unit",
+                            // "uniteKind", "unite". Mapper l'ordinal V2 vers l'id MP (trou à 3).
+                            val v2UnitOrd = row.num(
+                                "unitKind", "unit", "uniteKind", "unite", "kindUnit", "unitReq"
+                            )?.toInt() ?: 0
+                            val uniteReqId = V2_UNIT_KIND_MAP[v2UnitOrd] ?: v2UnitOrd
                             val bibRefId = row.str("refBiblio")
                                 ?.takeIf { it.length >= 32 && it.contains("-") }
                             val uuid = "${refId}_${table}_${kindIdx}_${kindRel}"
@@ -1487,7 +1589,7 @@ private suspend fun importLegacyRefDb(
                                     reflevel = reflevel,
                                     quantite = quantite,
                                     uniteId = 0,
-                                    uniteReqId = unitKind,
+                                    uniteReqId = uniteReqId,
                                     biblioRefId = bibRefId
                                 )
                             )

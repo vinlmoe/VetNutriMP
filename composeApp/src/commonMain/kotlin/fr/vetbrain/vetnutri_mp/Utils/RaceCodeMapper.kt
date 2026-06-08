@@ -590,12 +590,59 @@ object RaceCodeMapper {
                     "A503" to "Leonberg"
             )
 
+    // Entrées nommées de l'enum V2 RaceChat (non A-code)
+    private val catNamedMap = mapOf(
+        "Europeen" to "Européen",
+        "Sacre" to "Sacré de Birmanie",
+        "Siamois" to "Siamois"
+    )
+
+    // Entrées nommées de l'enum V2 RaceChien (non A-code), stockées telles quelles dans ANIMALS.race.
+    // Fallback si la table breedName de Data-Anim.db ne les couvre pas.
+    private val dogNamedMap = mapOf(
+        "Autre" to "Autre",
+        "Nordique" to "Nordique",
+        "Levrier" to "Lévrier",
+        "DogueAllemeand" to "Dogue Allemand",  // typo dans l'enum V2
+        "DogueAllemand" to "Dogue Allemand",
+        "Deerhound" to "Deerhound",
+        "IrishWolfhound" to "Irish Wolfhound",
+        "Leonberg" to "Leonberg",
+        "Mastiff" to "Mastiff",
+        "MontagnedesPyrenees" to "Montagne des Pyrénées",
+        "SaintBernard" to "Saint-Bernard",
+        "TerreNeuve" to "Terre-Neuve",
+        "SchnauzerGeant" to "Schnauzer Géant",
+        "Akita" to "Akita",
+        "Baroi" to "Barzo",
+        "BergerAllemand" to "Berger Allemand",
+        "Caniche" to "Caniche",
+        "BergerBelge" to "Berger Belge",
+        "Bobtail" to "Bobtail",
+        "BouvierBernois" to "Bouvier Bernois",
+        "BouvierdesFlandres" to "Bouvier des Flandres",
+        "Boxer" to "Boxer",
+        "Labrador" to "Labrador",
+        "Yorkshire" to "Yorkshire",
+        "AUSTRALIEN" to "Berger Australien",
+        "Border" to "Border Collie"
+    )
+
     private val codePattern = Regex("^A\\d+$")
 
     fun resolveRaceCode(especeValue: String?, raceValue: String): String? {
         if (especeValue.isNullOrBlank()) return null
         val trimmedRace = raceValue.trim()
-        if (!codePattern.matches(trimmedRace)) return null
+
+        // Entrées nommées hors A-code (Labrador, BergerAllemand, Europeen…)
+        if (!codePattern.matches(trimmedRace)) {
+            val espece = Espece.getFromString(especeValue.trim()) ?: return null
+            return when (espece) {
+                Espece.CHIEN -> dogNamedMap[trimmedRace]
+                Espece.CHAT -> catNamedMap[trimmedRace]
+                else -> null
+            }
+        }
 
         // Normalise "A01" / "A002" → "A1" / "A2" pour correspondre aux clés de la map
         val normalizedRace = "A" + trimmedRace.removePrefix("A").trimStart('0').ifEmpty { "0" }
