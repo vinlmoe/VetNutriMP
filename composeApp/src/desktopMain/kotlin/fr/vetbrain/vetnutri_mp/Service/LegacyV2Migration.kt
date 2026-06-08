@@ -1153,7 +1153,7 @@ private suspend fun importLegacyFoodDb(
                                     "reffood", "refFood", "idFood", "UUID", "refAlim", "foodId"
                                 ) ?: return@mapNotNull null
                                 val label = eRow.num(
-                                    "specie", "espece", "categorie", "specieRef", "SPECIE"
+                                    "specie", "espece", "categorie", "specieRef", "SPECIE", "value"
                                 )?.toInt()?.let { SPECIE_MAP[it] } ?: return@mapNotNull null
                                 fid to label
                             }
@@ -1507,9 +1507,22 @@ private suspend fun importLegacyRefDb(
 
             // 11. VALUE tables → besoins nutritionnels par référence (VALUEBASE, VALUEAA, etc.)
             var impNut = 0
-            // Loguer les colonnes de la première table trouvée pour diagnostiquer le nom de colonne unit
+            // Loguer les colonnes + valeurs distinctes de unitKind pour diagnostic
             NUTRIENT_TABLE_MAP.keys.firstOrNull { conn.tableExists(it) }?.let { firstTable ->
                 log("Colonnes $firstTable (ref): ${conn.tableColumns(firstTable).joinToString()}")
+                runCatching {
+                    val distinctUnits = conn.queryAll(
+                        "SELECT DISTINCT unitKind FROM $firstTable LIMIT 20"
+                    ).map { r -> r.values.firstOrNull()?.toString() ?: "null" }
+                    log("Valeurs distinctes unitKind dans $firstTable: $distinctUnits")
+                    // Sample rows for further debugging
+                    val sampleRows = conn.queryAll(
+                        "SELECT unitKind, kind, kindrelative, value FROM $firstTable LIMIT 5"
+                    )
+                    sampleRows.forEachIndexed { i, r ->
+                        log("  $firstTable[$i]: unitKind=${r["unitKind"]}, kind=${r["kind"]}, kindrel=${r["kindrelative"]}, value=${r["value"]}")
+                    }
+                }
             }
             NUTRIENT_TABLE_MAP.forEach { (table, labels) ->
                 if (conn.tableExists(table)) runCatching {
