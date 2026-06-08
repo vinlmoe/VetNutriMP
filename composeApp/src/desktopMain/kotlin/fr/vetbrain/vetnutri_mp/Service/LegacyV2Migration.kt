@@ -1507,7 +1507,7 @@ private suspend fun importLegacyRefDb(
 
             // 11. VALUE tables → besoins nutritionnels par référence (VALUEBASE, VALUEAA, etc.)
             var impNut = 0
-            // Loguer les colonnes + valeurs distinctes de unitKind pour diagnostic
+            // Diagnostic VALUEBASE unitKind
             NUTRIENT_TABLE_MAP.keys.firstOrNull { conn.tableExists(it) }?.let { firstTable ->
                 log("Colonnes $firstTable (ref): ${conn.tableColumns(firstTable).joinToString()}")
                 runCatching {
@@ -1515,13 +1515,35 @@ private suspend fun importLegacyRefDb(
                         "SELECT DISTINCT unitKind FROM $firstTable LIMIT 20"
                     ).map { r -> r.values.firstOrNull()?.toString() ?: "null" }
                     log("Valeurs distinctes unitKind dans $firstTable: $distinctUnits")
-                    // Sample rows for further debugging
-                    val sampleRows = conn.queryAll(
-                        "SELECT unitKind, kind, kindrelative, value FROM $firstTable LIMIT 5"
-                    )
-                    sampleRows.forEachIndexed { i, r ->
-                        log("  $firstTable[$i]: unitKind=${r["unitKind"]}, kind=${r["kind"]}, kindrel=${r["kindrelative"]}, value=${r["value"]}")
-                    }
+                    conn.queryAll("SELECT unitKind, kind, kindrelative, value FROM $firstTable LIMIT 5")
+                        .forEachIndexed { i, r ->
+                            log("  $firstTable[$i]: unitKind=${r["unitKind"]}, kind=${r["kind"]}, kindrel=${r["kindrelative"]}, value=${r["value"]}")
+                        }
+                }
+            }
+            // Diagnostic targetMethod (alternative source de requirements avec unité propre)
+            if (conn.tableExists("targetMethod")) {
+                log("Colonnes targetMethod: ${conn.tableColumns("targetMethod").joinToString()}")
+                runCatching {
+                    val tmCount = conn.count("targetMethod")
+                    log("targetMethod: $tmCount lignes")
+                    val distinctTmUnits = conn.queryAll(
+                        "SELECT DISTINCT unit FROM targetMethod LIMIT 20"
+                    ).map { r -> r.values.firstOrNull()?.toString() ?: "null" }
+                    log("Valeurs distinctes unit dans targetMethod: $distinctTmUnits")
+                    conn.queryAll("SELECT * FROM targetMethod LIMIT 5")
+                        .forEachIndexed { i, r ->
+                            log("  targetMethod[$i]: ${r.entries.joinToString { "${it.key}=${it.value}" }}")
+                        }
+                }
+            }
+            if (conn.tableExists("method")) {
+                log("Colonnes method: ${conn.tableColumns("method").joinToString()}")
+                runCatching {
+                    conn.queryAll("SELECT * FROM method LIMIT 3")
+                        .forEachIndexed { i, r ->
+                            log("  method[$i]: ${r.entries.joinToString { "${it.key}=${it.value}" }}")
+                        }
                 }
             }
             NUTRIENT_TABLE_MAP.forEach { (table, labels) ->
