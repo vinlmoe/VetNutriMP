@@ -96,16 +96,15 @@ private val EQUATION_KIND_MAP = mapOf(
 // V2 Reflevel int → VetNutriMP Reflevel.name
 private val REFLEVEL_MAP = mapOf(0 to "MIN", 1 to "MAX", 2 to "OPTIMIN", 3 to "OPTIMAX")
 
-// V2 UnitKind ordinal (séquentiel 0-5) → VetNutriMP UnitReqEnum.id (sparse : trou à 3).
-// VetNutriMP : PERKG=0, PERKCAL=1, PERMS=2, (trou 3), PERKJ=4, RATIO=5, ABSOLUTE=6
-// V2 utilise les ordinaux séquentiels de son enum Java, sans trou.
+// V2 UnitReqEnum IDs → VetNutriMP UnitReqEnum IDs
+// V2: MCAL(0)=per Mcal/1000kcal, KGBW(1)=per kg BW, KGMW(2)=per kg MW, NO(3)=no unit, PERC(4)=%
+// MP: PERKG(0)=per kg, PERKCAL(1)=per 1000kcal, PERMS(2)=per kg metab, PERKJ(4), RATIO(5), ABSOLUTE(6)
 private val V2_UNIT_KIND_MAP = mapOf(
-    0 to 0, // PERKG     → PERKG
-    1 to 1, // PERKCAL   → PERKCAL
-    2 to 2, // PERMS     → PERMS
-    3 to 4, // PERKJ     → PERKJ  (id=4 en MP, pas 3)
-    4 to 5, // RATIO     → RATIO
-    5 to 6  // ABSOLUTE  → ABSOLUTE
+    0 to 1, // V2 MCAL (per Mcal = per 1000 kcal) → MP PERKCAL
+    1 to 0, // V2 KGBW (per kg body weight)        → MP PERKG
+    2 to 2, // V2 KGMW (per kg metabolic weight)   → MP PERMS
+    3 to 6, // V2 NO   (no unit)                   → MP ABSOLUTE
+    4 to 5  // V2 PERC (percentage)                → MP RATIO
 )
 
 // V2 specie int (getCategorie()) → VetNutriMP Espece.label  (used for animal/ration specieId)
@@ -1147,16 +1146,25 @@ private suspend fun importLegacyFoodDb(
                 val especesByFoodId: Map<String, List<String>> = if (conn.tableExists("ESPECE")) {
                     log("Colonnes ESPECE: ${conn.tableColumns("ESPECE").joinToString()}")
                     runCatching {
-                        conn.queryAll("SELECT * FROM ESPECE")
-                            .mapNotNull { eRow ->
-                                val fid = eRow.str(
-                                    "reffood", "refFood", "idFood", "UUID", "refAlim", "foodId"
-                                ) ?: return@mapNotNull null
-                                val label = eRow.num(
+                        val espRows = conn.queryAll("SELECT * FROM ESPECE")
+                        // Log first 5 rows for diagnosis
+                        espRows.take(5).forEachIndexed { i, r ->
+                            log("  ESPECE[$i]: ${r.entries.joinToString { "${it.key}=${it.value}(${it.value?.javaClass?.simpleName})" }}")
+                        }
+                        espRows.mapNotNull { eRow ->
+                            val fid = eRow.str(
+                                "reffood", "refFood", "idFood", "UUID", "refAlim", "foodId"
+                            ) ?: return@mapNotNull null
+                            // value may be stored as Int or String
+                            val specieInt = eRow.num(
+                                "specie", "espece", "categorie", "specieRef", "SPECIE", "value"
+                            )?.toInt()
+                                ?: eRow.str(
                                     "specie", "espece", "categorie", "specieRef", "SPECIE", "value"
-                                )?.toInt()?.let { SPECIE_MAP[it] } ?: return@mapNotNull null
-                                fid to label
-                            }
+                                )?.toIntOrNull()
+                            val label = specieInt?.let { SPECIE_MAP[it] } ?: return@mapNotNull null
+                            fid to label
+                        }
                             .groupBy({ it.first }, { it.second })
                     }.getOrDefault(emptyMap()).also { log("ESPECE pré-chargée: ${it.size} aliments") }
                 } else emptyMap()
