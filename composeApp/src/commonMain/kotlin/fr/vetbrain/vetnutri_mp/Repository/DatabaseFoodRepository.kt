@@ -37,6 +37,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -78,6 +80,7 @@ class DatabaseFoodRepository(
 
     // Cache LRU pour les recherches (max 50 entrées, éviction par accès)
     private val maxSearchCacheEntries = 50
+    private val searchCacheMutex = Mutex()
     private val searchCache: LinkedHashMap<String, List<AlimentEv>> =
         object : LinkedHashMap<String, List<AlimentEv>>(maxSearchCacheEntries + 1, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<AlimentEv>>) =
@@ -93,11 +96,13 @@ class DatabaseFoodRepository(
     }
 
     /** Vide le cache en mémoire pour forcer un rechargement des données */
-    fun clearCache() {
+    suspend fun clearCache() {
         cachedFoods = null
         lastCacheTime = 0
-        searchCache.clear()
-        searchCacheTime.clear()
+        searchCacheMutex.withLock {
+            searchCache.clear()
+            searchCacheTime.clear()
+        }
     }
 
     private suspend fun loadCustomNutrientsFromDb() {
@@ -134,16 +139,18 @@ class DatabaseFoodRepository(
     }
 
 
-    private fun pruneSearchCacheIfNeeded() {
+    private suspend fun pruneSearchCacheIfNeeded() {
         // L'éviction LRU est gérée automatiquement par LinkedHashMap.removeEldestEntry
         // On nettoie seulement les entrées expirées dans searchCacheTime
         val now = Clock.System.now().toEpochMilliseconds()
-        val expired = searchCacheTime.entries
-            .filter { now - it.value > cacheValidityDuration }
-            .map { it.key }
-        expired.forEach { key ->
-            searchCache.remove(key)
-            searchCacheTime.remove(key)
+        searchCacheMutex.withLock {
+            val expired = searchCacheTime.entries
+                .filter { now - it.value > cacheValidityDuration }
+                .map { it.key }
+            expired.forEach { key ->
+                searchCache.remove(key)
+                searchCacheTime.remove(key)
+            }
         }
     }
 
@@ -187,15 +194,20 @@ class DatabaseFoodRepository(
 
         // Vérifier le cache si pas de refresh forcé
         if (!forceRefresh) {
-            val cachedTime = searchCacheTime[cacheKey]
-            if (cachedTime != null) {
-                val now = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
-                if (now - cachedTime < cacheValidityDuration) {
-                    return searchCache[cacheKey] ?: emptyList()
-                }
-                searchCache.remove(cacheKey)
-                searchCacheTime.remove(cacheKey)
+            val cached = searchCacheMutex.withLock {
+                val cachedTime = searchCacheTime[cacheKey]
+                if (cachedTime != null) {
+                    val now = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+                    if (now - cachedTime < cacheValidityDuration) {
+                        searchCache[cacheKey]
+                    } else {
+                        searchCache.remove(cacheKey)
+                        searchCacheTime.remove(cacheKey)
+                        null
+                    }
+                } else null
             }
+            if (cached != null) return cached
         }
 
         val normalizedQuery = searchQuery.trim()
@@ -232,8 +244,10 @@ class DatabaseFoodRepository(
                         }
 
         // Mettre en cache le résultat
-        searchCache[cacheKey] = filteredFoods
-        searchCacheTime[cacheKey] = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        searchCacheMutex.withLock {
+            searchCache[cacheKey] = filteredFoods
+            searchCacheTime[cacheKey] = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        }
         pruneSearchCacheIfNeeded()
 
         return filteredFoods

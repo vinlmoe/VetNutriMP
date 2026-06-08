@@ -37,72 +37,56 @@ class DatabaseConsultationRepository(
     override suspend fun saveConsultation(consultation: ConsultationEv) {
         withContext(AppDispatchers.IO) {
             try {
-                // Vérifier si la consultation existe déjà
                 val existingConsultation = consultationDao.getConsultationById(consultation.uuid)
                 val entity = consultation.toEntity()
 
-                if (existingConsultation != null) {
-                    // Mise à jour de la consultation existante
-                    consultationDao.update(entity)
-
-                    // Supprimer les anciennes rations et variables pour éviter les doublons
-                    consultationDao.deleteRationsForConsultation(consultation.uuid)
-                    consultationDao.deleteSupplementalVariablesForConsultation(consultation.uuid)
-                } else {
-                    // Insertion d'une nouvelle consultation
+                if (existingConsultation == null) {
                     try {
                         consultationDao.insert(entity)
                     } catch (e: Exception) {
-                        // En cas de conflit d'UUID, essayer avec un nouvel UUID
                         if (e.message?.contains("UNIQUE constraint failed") == true) {
                             val newUuid = fr.vetbrain.vetnutri_mp.Utils.genUUID()
-                            val newEntity = entity.copy(uuid = newUuid)
-                            consultationDao.insert(newEntity)
-                            
-                            // Mettre à jour l'UUID de la consultation originale
+                            consultationDao.insert(entity.copy(uuid = newUuid))
                             consultation.uuid = newUuid
                         } else {
                             throw e
                         }
                     }
+                } else {
+                    consultationDao.update(entity)
                 }
 
-                // Sauvegarder les variables supplémentaires
-                consultation.suppVarp.forEach { suppVar ->
+                // Pré-construire toutes les entités avant la transaction
+                val rationEntities = consultation.rations.map { ration ->
+                    ration.toEntity().also { it.idConsult = consultation.uuid }
+                }
+                val alimentEntities = consultation.rations.flatMap { ration ->
+                    ration.alimentMutableList
+                        .filter { it.refAlimUnif != null }
+                        .map { aliment ->
+                            aliment.refRation = ration.uuid
+                            aliment.toEntity()
+                        }
+                }
+                val suppVarEntities = consultation.suppVarp.mapNotNull { suppVar ->
                     suppVar.variable?.let { variable ->
-                        consultationDao.insertSupplementalVariable(
-                                SupplementalVariableEntity(
-                                        idConsult = consultation.uuid,
-                                        variableKind = variable.uuid,
-                                        value = suppVar.varue ?: 0.0
-                                )
+                        SupplementalVariableEntity(
+                            idConsult = consultation.uuid,
+                            variableKind = variable.uuid,
+                            value = suppVar.varue ?: 0.0
                         )
                     }
                 }
 
-                // Sauvegarder les rations
-                consultation.rations.forEach { ration ->
-                    val rationEntity = ration.toEntity()
-                    rationEntity.idConsult = consultation.uuid
-                    consultationDao.insertRation(rationEntity)
-
-                    // Sauvegarder les aliments de la ration
-                    ration.alimentMutableList.forEach { aliment ->
-                        // S'assurer que la référence à la ration est bien définie
-                        aliment.refRation = ration.uuid
-
-                        // Vérifier si l'aliment a une référence valide
-                        if (aliment.refAlimUnif != null) {
-                            try {
-                                // Convertir l'AlimentRation en AlimentRationEntity et l'insérer
-                                val alimentEntity = aliment.toEntity()
-                                consultationDao.insertAlimentRation(alimentEntity)
-                            } catch (e: Exception) {}
-                        } else {}
-                    }
-                }
+                // DELETE + INSERT atomiques : sans transaction, un échec laisserait la
+                // consultation sans rations si le DELETE avait déjà eu lieu
+                consultationDao.replaceConsultationRelations(
+                    consultation.uuid,
+                    rationEntities,
+                    alimentEntities,
+                    suppVarEntities
+                )
             } catch (e: Exception) {
-                // Log de l'erreur pour le débogage
                 throw e
             }
         }

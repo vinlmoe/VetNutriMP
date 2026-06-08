@@ -29,26 +29,19 @@ class DatabaseAnimalRepository(
 ) : AnimalRepository {
         override suspend fun saveAnimal(animal: AnimalEv) {
                 withContext(AppDispatchers.IO) {
-                        // Sauvegarder l'animal
-                        animalDao.insert(animal.toEntity())
-
-                        // Sauvegarder les consultations
-                        animal.consultations.forEach { consultation ->
-                                // S'assurer que l'ID de l'animal est correctement défini
+                        val consultationEntities = animal.consultations.map { consultation ->
                                 consultation.idAnim = animal.uuid
-                                // Insérer la consultation
-                                animalDao.insertConsultation(
-                                        consultation.toEntity(includeRelations = false)
-                                )
+                                consultation.toEntity(includeRelations = false)
                         }
-
-                        // Sauvegarder les poids
-                        animal.weightHistory.forEach { weight ->
-                                // S'assurer que la référence de l'animal est correctement définie
+                        val weightEntities = animal.weightHistory.map { weight ->
                                 weight.refAnimal = animal.uuid
-                                // Insérer le poids
-                                animalDao.insertWeight(weight.toEntity())
+                                weight.toEntity()
                         }
+                        animalDao.saveAnimalWithRelations(
+                                animal.toEntity(),
+                                consultationEntities,
+                                weightEntities
+                        )
                 }
         }
 
@@ -75,29 +68,15 @@ class DatabaseAnimalRepository(
 
         override suspend fun updateAnimal(animal: AnimalEv) {
                 withContext(AppDispatchers.IO) {
+                        animalDao.update(animal.toEntity(includeRelations = false))
 
-                        // Vérifier si l'animal existe avant la mise à jour
-                        val existingAnimal = animalDao.getAnimalById(animal.uuid)
-                        if (existingAnimal != null) {} else {}
-
-                        // Convertir l'animal en entité et le mettre à jour
-                        val animalEntity = animal.toEntity(includeRelations = false)
-                        
-                        animalDao.update(animalEntity)
-
-                        // Supprimer tous les poids existants pour cet animal
-                        animalDao.deleteWeightsForAnimal(animal.uuid)
-
-                        // Sauvegarder les nouveaux poids
-                        animal.weightHistory.forEach { weight ->
-                                // S'assurer que la référence de l'animal est correctement définie
+                        val weightEntities = animal.weightHistory.map { weight ->
                                 weight.refAnimal = animal.uuid
-                                // Insérer le poids
-                                animalDao.insertWeight(weight.toEntity())
+                                weight.toEntity()
                         }
-
-                        // Vérifier que l'animal a été correctement mis à jour avec le jsonbinId
-                        val updatedAnimalEntity = animalDao.getAnimalById(animal.uuid)
+                        // DELETE + INSERT atomiques : sans transaction, un échec entre les deux
+                        // supprimerait définitivement les poids existants
+                        animalDao.updateWeightsTransactional(animal.uuid, weightEntities)
                 }
         }
 

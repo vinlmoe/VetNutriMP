@@ -358,7 +358,7 @@ object Mappers {
         // entités de base de données.
         fun AlimentEv.toFoodEntity(): FoodEntity {
                 // Assurer que les valeurs ne sont pas nulles
-                val safeRationUUID = this.rationUUID ?: ""
+                val safeRationUUID = this.rationUUID?.takeIf { it.isNotBlank() } ?: ""
                 val safeQuantInt = this.quantInt ?: 0.0
 
                 return FoodEntity(

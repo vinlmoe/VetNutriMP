@@ -49,6 +49,28 @@ interface AnimalDao {
 
         @Query("DELETE FROM RATIONS WHERE idConsult = :consultationId")
         suspend fun deleteRationsForConsultation(consultationId: String)
+
+        /** Sauvegarde atomique d'un nouvel animal avec toutes ses relations. */
+        @Transaction
+        suspend fun saveAnimalWithRelations(
+                animal: AnimalEntity,
+                consultations: List<ConsultationEntity>,
+                weights: List<WeightEntity>
+        ) {
+                insert(animal)
+                consultations.forEach { insertConsultation(it) }
+                weights.forEach { insertWeight(it) }
+        }
+
+        /**
+         * Mise à jour atomique des poids d'un animal : suppression + réinsertion dans la même
+         * transaction. Sans atomicité, une interruption entre DELETE et INSERT perdrait des poids.
+         */
+        @Transaction
+        suspend fun updateWeightsTransactional(animalId: String, weights: List<WeightEntity>) {
+                deleteWeightsForAnimal(animalId)
+                weights.forEach { insertWeight(it) }
+        }
 }
 
 @Dao
@@ -100,6 +122,25 @@ interface ConsultationDao {
 
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertConsultationKeyword(keyword: ConsultationKeywordEntity)
+
+        /**
+         * Remplace atomiquement toutes les relations d'une consultation (rations, aliments,
+         * variables). Sans atomicité, un échec partiel après DELETE laisserait une consultation
+         * sans rations ni aliments.
+         */
+        @Transaction
+        suspend fun replaceConsultationRelations(
+                consultationId: String,
+                rations: List<RationEntity>,
+                aliments: List<AlimentRationEntity>,
+                suppVars: List<SupplementalVariableEntity>
+        ) {
+                deleteRationsForConsultation(consultationId)
+                deleteSupplementalVariablesForConsultation(consultationId)
+                rations.forEach { insertRation(it) }
+                aliments.forEach { insertAlimentRation(it) }
+                suppVars.forEach { insertSupplementalVariable(it) }
+        }
 }
 
 @Dao
