@@ -96,6 +96,18 @@ private val EQUATION_KIND_MAP = mapOf(
 // V2 Reflevel int → VetNutriMP Reflevel.name
 private val REFLEVEL_MAP = mapOf(0 to "MIN", 1 to "MAX", 2 to "OPTIMIN", 3 to "OPTIMAX")
 
+// V2 UnitKind ordinal (séquentiel 0-5) → VetNutriMP UnitReqEnum.id (sparse : trou à 3).
+// VetNutriMP : PERKG=0, PERKCAL=1, PERMS=2, (trou 3), PERKJ=4, RATIO=5, ABSOLUTE=6
+// V2 utilise les ordinaux séquentiels de son enum Java, sans trou.
+private val V2_UNIT_KIND_MAP = mapOf(
+    0 to 0, // PERKG     → PERKG
+    1 to 1, // PERKCAL   → PERKCAL
+    2 to 2, // PERMS     → PERMS
+    3 to 4, // PERKJ     → PERKJ  (id=4 en MP, pas 3)
+    4 to 5, // RATIO     → RATIO
+    5 to 6  // ABSOLUTE  → ABSOLUTE
+)
+
 // V2 specie int (getCategorie()) → VetNutriMP Espece.label  (used for animal/ration specieId)
 private val SPECIE_MAP = mapOf(
     0 to "DOG", 1 to "CAT", 2 to "ALL", 3 to "PRIMATE",
@@ -1464,6 +1476,10 @@ private suspend fun importLegacyRefDb(
 
             // 11. VALUE tables → besoins nutritionnels par référence (VALUEBASE, VALUEAA, etc.)
             var impNut = 0
+            // Loguer les colonnes de la première table trouvée pour diagnostiquer le nom de colonne unit
+            NUTRIENT_TABLE_MAP.keys.firstOrNull { conn.tableExists(it) }?.let { firstTable ->
+                log("Colonnes $firstTable (ref): ${conn.tableColumns(firstTable).joinToString()}")
+            }
             NUTRIENT_TABLE_MAP.forEach { (table, labels) ->
                 if (conn.tableExists(table)) runCatching {
                     conn.queryAll("SELECT * FROM $table").forEach { row ->
@@ -1475,7 +1491,12 @@ private suspend fun importLegacyRefDb(
                             val kindRel  = row.num("kindrelative")?.toInt() ?: 0
                             val reflevel = REFLEVEL_MAP[kindRel] ?: "MIN"
                             val quantite = row.num("value")?.toDouble() ?: return@forEach
-                            val unitKind = row.num("unitKind")?.toInt() ?: 0
+                            // Noms de colonne candidats : V2 peut utiliser "unitKind", "unit",
+                            // "uniteKind", "unite". Mapper l'ordinal V2 vers l'id MP (trou à 3).
+                            val v2UnitOrd = row.num(
+                                "unitKind", "unit", "uniteKind", "unite", "kindUnit", "unitReq"
+                            )?.toInt() ?: 0
+                            val uniteReqId = V2_UNIT_KIND_MAP[v2UnitOrd] ?: v2UnitOrd
                             val bibRefId = row.str("refBiblio")
                                 ?.takeIf { it.length >= 32 && it.contains("-") }
                             val uuid = "${refId}_${table}_${kindIdx}_${kindRel}"
@@ -1487,7 +1508,7 @@ private suspend fun importLegacyRefDb(
                                     reflevel = reflevel,
                                     quantite = quantite,
                                     uniteId = 0,
-                                    uniteReqId = unitKind,
+                                    uniteReqId = uniteReqId,
                                     biblioRefId = bibRefId
                                 )
                             )
