@@ -83,17 +83,17 @@ TOL_PCT <- 10
 # pour vous montrer rapidement où se situent les copies. Une fois les valeurs
 # pédagogiquement attendues fixées, remplacez les NA par des nombres.
 
-BEC_LOW  <- NA  # kcal/jour, ex : 1080
-BEC_HIGH <- NA  # ex : 1320
+BEC_LOW  <- 800  # kcal/jour, ex : 1080
+BEC_HIGH <- 1050 # ex : 1320
 
-ENERGIE_INTAKE_LOW  <- NA  # apport énergétique ration proposée (kcal), ex : 1080
-ENERGIE_INTAKE_HIGH <- NA  # ex : 1320
+ENERGIE_INTAKE_LOW  <- 800  # apport énergétique ration proposée (kcal), ex : 1080
+ENERGIE_INTAKE_HIGH <- 1050  # ex : 1320
 
-DENSITE_LOW  <- NA  # kcal / 100 g (matiere brute) ex : 350
-DENSITE_HIGH <- NA  # ex : 430
+DENSITE_LOW  <- 250  # kcal / 100 g (matiere brute) ex : 350
+DENSITE_HIGH <- 350  # ex : 430
 
-PROTEINE_LOW  <- NA  # g / ration  ex : 60
-PROTEINE_HIGH <- NA  # ex : 90
+PROTEINE_LOW  <- 70  # g / ration  ex : 60
+PROTEINE_HIGH <- 125  # ex : 90
 
 # --- Champs candidats pour le POIDS IDÉAL dans le JSON VetNutri --------------
 # Le champ canonique de l'export VetNutri est `PoidsIdeal`. Le booléen
@@ -123,33 +123,50 @@ FORCE_ATWATER <- TRUE
 # une seule (la 1re). FALSE = laisser le code échouer/sommer (déconseillé).
 PICK_FIRST_PROPOSED <- TRUE
 
-# --- EX2 : catégories d'ingrédients & mots-clés ------------------------------
-# Le matching est fait sur le NOM de l'aliment (insensible à la casse, accents
-# ignorés). Ajoutez/retirez des mots-clés selon votre catalogue VetNutri.
+# --- EX2 : catégories d'ingrédients & patterns regex -------------------------
+# Patterns REGEX (perl=TRUE) appliqués sur les noms d'aliments NORMALISÉS
+# (minuscule, sans accents). Utilisez \\b pour exiger un mot entier et
+# éviter les faux positifs du genre "lin" capturé dans "colin", "ble" dans
+# "Bleu", "pois" dans "poisson", "chou" dans "couscous", etc.
 INGREDIENT_KEYWORDS <- list(
   proteine_animale = c(
-    "poulet", "dinde", "boeuf", "veau", "agneau", "lapin", "porc",
-    "jambon", "cheval", "canard", "thon", "saumon", "poisson",
-    "cabillaud", "merlu", "oeuf", "œuf", "viande", "filet"
+    "\\b(poulet|dinde|boeuf|veau|agneau|lapin|porc|jambon|cheval|canard)s?\\b",
+    "\\b(thon|saumon|cabillaud|merlu(s|che)?|merlan|sardine|maquereau|hareng|anchois)s?\\b",
+    "\\b(truite|colin|lieu|julienne|hoki|tilapia|bar|dorade|sole|raie)s?\\b",
+    "\\bpoisson(s|nerie)?\\b",
+    "\\b(oeuf|oeufs|jaune +d['e ]?oeuf|blanc +d['e ]?oeuf)\\b",
+    "\\b(viande[s]?|filet[s]?|escalope|cuisse|poitrine|abats|coeur|foie|gesier)\\b"
   ),
   feculent = c(
-    "riz", "pates", "pâtes", "ble", "blé", "semoule", "pomme de terre",
-    "patate", "boulgour", "quinoa", "flocon", "avoine", "mais", "maïs",
-    "tapioca", "orge"
+    "\\b(riz|pates|semoule|boulgour|quinoa|avoine|tapioca|orge|millet|epeautre)\\b",
+    "\\bble[s]?\\b",                       # blé / bles  (pas "bleu")
+    "\\bpomme[s]? +de +terre\\b",
+    "\\bpatate[s]?\\b",
+    "\\bflocon[s]?\\b",
+    "\\bmais\\b",                          # maïs mot entier
+    "\\bfrik\\b"                           # blé dur immature
   ),
   legume = c(
-    "courgette", "carotte", "haricot", "epinard", "épinard", "brocoli",
-    "chou", "courge", "potiron", "concombre", "tomate", "salade",
-    "petits pois", "pois", "legume", "légume"
+    "\\b(courgette|carotte|haricot|epinard|brocoli|courge|potiron|concombre|tomate|salade|navet|poireau|fenouil|aubergine|poivron)s?\\b",
+    "\\bchou(x|fleur|-fleur|-rave|-rouge)?\\b",
+    "\\b(petits +)?pois\\b",               # pois / petits pois  (pas "poisson")
+    "\\blegume[s]?\\b"
   ),
   huile = c(
-    "huile", "olive", "colza", "tournesol", "lin", "saumon (huile)",
-    "poisson (huile)", "matiere grasse", "matière grasse"
+    "\\bhuile[s]?\\b",
+    "\\b(olive|colza|tournesol|canola|noix|noisette|sesame|arachide)\\b",
+    "\\bgraine[s]? +de +lin\\b",           # pas "colin"
+    "\\bmatiere[s]? +grasse[s]?\\b",
+    "\\b(beurre|margarine|saindoux)\\b"
   ),
   cmv = c(
-    "cmv", "complement", "complément", "mineral", "minéral", "vitamine",
-    "vitamines", "vit-i-min", "calcium", "carbonate", "phosphate",
-    "premix", "pet-phos", "nutri-mix", "nutri mix", "vetcomplex"
+    "\\bcmv\\b",
+    "vit['' ]?i[' -]?5",                   # Vit'i5 / Viti5 / Vit-i-5 / Vit i 5
+    "vit['' ]?i[' -]?min",                 # Vit-i-Min
+    "\\b(complement|mineral|vitamine[s]?|mineraux)\\b",
+    "\\bdosette[s]?\\b",
+    "\\b(premix|nutri[ -]?mix|pet[ -]?phos|vetcomplex|calcibon|canifelox)\\b",
+    "\\b(calcium|carbonate|phosphate +bi)\\b"
   )
 )
 
@@ -803,13 +820,16 @@ extract_metrics_one <- function(x) {
     foods <- food_list_proposed(aid2)
     out$ex2_food_names <- paste(foods, collapse = " | ")
 
-    # Détection de catégories par mots-clés
+    # Détection de catégories par PATTERNS REGEX (perl=TRUE)
+    # Les patterns sont déjà écrits en forme normalisée (minuscule, sans
+    # accents) -> on ne renormalise PAS, on évalue tel quel.
     norm_foods <- normalize_str(foods)
     cats_found <- character(0)
     for (cat_name in names(INGREDIENT_KEYWORDS)) {
-      kw <- normalize_str(INGREDIENT_KEYWORDS[[cat_name]])
-      pat <- paste(kw, collapse = "|")
-      if (length(norm_foods) > 0 && any(grepl(pat, norm_foods))) {
+      pats <- INGREDIENT_KEYWORDS[[cat_name]]
+      pat  <- paste(pats, collapse = "|")
+      if (length(norm_foods) > 0 &&
+          any(grepl(pat, norm_foods, perl = TRUE))) {
         cats_found <- c(cats_found, cat_name)
       }
     }
