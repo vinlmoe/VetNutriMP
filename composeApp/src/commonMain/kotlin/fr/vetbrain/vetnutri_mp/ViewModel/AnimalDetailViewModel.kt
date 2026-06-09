@@ -125,7 +125,9 @@ class AnimalDetailViewModel(
     private val cacheValidityDuration = 2 * 60 * 1000L
     private val analysisCacheMutex = Mutex()
     private val analysisCacheTime = mutableMapOf<String, Long>()
-    private val rationAnalysisCache = LruMap<String, AnalyseResultat>(50)
+    private val rationAnalysisCache = LruMap<String, AnalyseResultat>(50) { evictedKey ->
+        analysisCacheTime.remove(evictedKey)
+    }
 
     private suspend fun cleanupCachesIfNeeded() {
         val currentTime = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()

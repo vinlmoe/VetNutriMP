@@ -85,7 +85,9 @@ class DatabaseFoodRepository(
     // Cache LRU pour les recherches (max 50 entrées, éviction par accès)
     private val maxSearchCacheEntries = 50
     private val searchCacheMutex = Mutex()
-    private val searchCache = LruMap<String, List<AlimentEv>>(maxSearchCacheEntries)
+    private val searchCache = LruMap<String, List<AlimentEv>>(maxSearchCacheEntries) { evictedKey ->
+        searchCacheTime.remove(evictedKey)
+    }
     private val searchCacheTime = mutableMapOf<String, Long>()
     fun beginBatch() {
         batchModeCounter.update { it + 1 }

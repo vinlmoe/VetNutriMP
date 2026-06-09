@@ -7,8 +7,14 @@ import kotlinx.coroutines.sync.withLock
  * Map LRU synchrone et multiplateforme.
  *
  * Cette classe n'est pas thread-safe : l'appelant doit fournir la synchronisation si nécessaire.
+ *
+ * @param onEvict appelé avec la clé évincée quand la map dépasse maxSize (utile pour nettoyer
+ *                les structures auxiliaires, ex. une map de timestamps séparée).
  */
-class LruMap<K, V>(private val maxSize: Int) {
+class LruMap<K, V>(
+    private val maxSize: Int,
+    private val onEvict: ((K) -> Unit)? = null
+) {
     private val entries = mutableMapOf<K, V>()
     private val accessOrder = mutableListOf<K>()
 
@@ -26,7 +32,10 @@ class LruMap<K, V>(private val maxSize: Int) {
         entries[key] = value
         promote(key)
         while (entries.size > maxSize) {
-            remove(accessOrder.first())
+            // removeFirst() est O(1) ; appeler remove(key) serait O(n) inutilement
+            val lruKey = accessOrder.removeFirst()
+            entries.remove(lruKey)
+            onEvict?.invoke(lruKey)
         }
     }
 
