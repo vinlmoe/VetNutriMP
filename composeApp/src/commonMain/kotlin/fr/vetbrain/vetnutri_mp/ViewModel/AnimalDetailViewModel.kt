@@ -24,6 +24,7 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.LruMap
 import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import kotlin.uuid.ExperimentalUuidApi
@@ -124,11 +125,7 @@ class AnimalDetailViewModel(
     private val cacheValidityDuration = 2 * 60 * 1000L
     private val analysisCacheMutex = Mutex()
     private val analysisCacheTime = mutableMapOf<String, Long>()
-    private val rationAnalysisCache: LinkedHashMap<String, AnalyseResultat> =
-        object : LinkedHashMap<String, AnalyseResultat>(51, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, AnalyseResultat>) =
-                size > 50
-        }
+    private val rationAnalysisCache = LruMap<String, AnalyseResultat>(50)
 
     private suspend fun cleanupCachesIfNeeded() {
         val currentTime = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()

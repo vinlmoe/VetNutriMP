@@ -31,6 +31,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.LruMap
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -84,11 +85,7 @@ class DatabaseFoodRepository(
     // Cache LRU pour les recherches (max 50 entrées, éviction par accès)
     private val maxSearchCacheEntries = 50
     private val searchCacheMutex = Mutex()
-    private val searchCache: LinkedHashMap<String, List<AlimentEv>> =
-        object : LinkedHashMap<String, List<AlimentEv>>(maxSearchCacheEntries + 1, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<AlimentEv>>) =
-                size > maxSearchCacheEntries
-        }
+    private val searchCache = LruMap<String, List<AlimentEv>>(maxSearchCacheEntries)
     private val searchCacheTime = mutableMapOf<String, Long>()
     fun beginBatch() {
         batchModeCounter.update { it + 1 }
@@ -145,8 +142,7 @@ class DatabaseFoodRepository(
 
 
     private suspend fun pruneSearchCacheIfNeeded() {
-        // L'éviction LRU est gérée automatiquement par LinkedHashMap.removeEldestEntry
-        // On nettoie seulement les entrées expirées dans searchCacheTime
+        // L'éviction par taille est gérée par LruMap ; on nettoie aussi les entrées expirées.
         val now = Clock.System.now().toEpochMilliseconds()
         searchCacheMutex.withLock {
             val expired = searchCacheTime.entries
