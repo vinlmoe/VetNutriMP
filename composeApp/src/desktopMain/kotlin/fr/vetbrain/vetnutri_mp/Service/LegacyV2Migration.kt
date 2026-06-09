@@ -211,24 +211,41 @@ private fun Map<String, Any?>.num(vararg keys: String): Number? = field(*keys) a
 /**
  * Traduit un script d'équation VetNutri 2 vers la syntaxe du MathParser VetNutriMP.
  *
- * Règle 1 : Math.exp() / Math.pow() → exp() / pow()
- * Règle 2 : a ** b → a ^ b  (opérateur puissance JS/Python)
- * Règle 3 : A | B dans les conditions → A + B  (OR logique ; les conditions retournent 0/1)
- * Règle 4 : script multi-lignes avec assignations → expression unique
+ * R1a : Math.log10() → log()   (base 10 ; MP utilise log() pour log10)
+ * R1b : Math.log()   → ln()    (log naturel en Java ; MP utilise ln())
+ * R1c : Math.func()  → func()  (préfixe restant : exp, pow, sqrt, abs, sin…)
+ * R2  : log10()      → log()   (sans préfixe Math.)
+ * R3  : a ** b       → a ^ b   (opérateur puissance JS/Python)
+ * R4  : A || B       → A + B   (OR logique — avant le remplacement single-pipe)
+ * R5  : A | B        → A + B   (OR logique ; les conditions retournent 0/1)
+ * R6  : A && B       → A * B   (AND logique via produit de booléens 0/1)
+ * R7  : script multi-lignes avec assignations → expression unique
  */
 internal fun transpileV2Script(script: String): String {
     var s = script.trim()
 
-    // R1 – Math.func() → func()
-    s = s.replace(Regex("\\bMath\\.")) { "" }
+    // R1a – Math.log10() → log()  (avant R1b pour ne pas capturer à tort)
+    s = s.replace(Regex("\\bMath\\.log10\\s*\\("), "log(")
+    // R1b – Math.log() → ln()  (logarithme naturel Java ≠ log10 du parser MP)
+    s = s.replace(Regex("\\bMath\\.log\\s*\\("), "ln(")
+    // R1c – Math.func() → func()
+    s = s.replace(Regex("\\bMath\\."), "")
 
-    // R2 – ** → ^
+    // R2 – log10() sans préfixe → log()
+    s = s.replace(Regex("\\blog10\\s*\\("), "log(")
+
+    // R3 – ** → ^
     s = s.replace("**", "^")
 
-    // R3 – | → +  (OR logique via somme de booléens 0/1)
+    // R4 – || → +  (avant R5 pour éviter que || devienne ++)
+    s = s.replace("||", "+")
+    // R5 – | → +  (OR logique via somme de booléens 0/1)
     s = s.replace("|", "+")
 
-    // R4 – script multi-lignes (valeurs Java-like) → expression unique
+    // R6 – && → *  (AND logique via produit de booléens 0/1)
+    s = s.replace("&&", "*")
+
+    // R7 – script multi-lignes (valeurs Java-like) → expression unique
     if (s.contains('\n') || s.contains(';')) {
         s = tryFoldValueScript(s) ?: s
     }
@@ -1193,9 +1210,14 @@ private suspend fun importLegacyFoodDb(
                 // Pré-charger les IDs existants pour éviter N requêtes
                 val existingIds = foodDao.getAllFoodIds().toHashSet()
 
+                var foodsWithoutUuid = 0
+                var foodsWithoutName = 0
+                var nutrientsOutOfBounds = 0
+
                 rows.forEach { row ->
                     try {
-                        val uuid = row["UUID"] as? String ?: return@forEach
+                        val uuid = row["UUID"] as? String
+                        if (uuid == null) { foodsWithoutUuid++; return@forEach }
                         if (uuid in existingIds) {
                             stats.skipFoods++; return@forEach
                         }
@@ -1210,6 +1232,10 @@ private suspend fun importLegacyFoodDb(
                                 "SELECT value FROM NAMEFOOD WHERE reffood = '${uuid.replace("'", "''")}' AND lang = 'FR' LIMIT 1"
                             ).use { rs -> if (rs.next()) rs.getString(1) else null }
                         }.getOrNull()
+
+                        val nameDef = (row["nameDef"] as? String)?.takeIf { it.isNotBlank() }
+                        val effectiveName = nameFr?.takeIf { it.isNotBlank() } ?: nameDef
+                        if (effectiveName == null) foodsWithoutName++
 
                         val especesStr = especesByFoodId[uuid]?.joinToString(",")?.takeIf { it.isNotBlank() }
                         val indicationsStr = indicationsByFoodId[uuid]?.joinToString(",")?.takeIf { it.isNotBlank() }
@@ -1228,11 +1254,11 @@ private suspend fun importLegacyFoodDb(
                             quantityPres = (row["quantityPres"] as? Number)?.toDouble() ?: 0.0,
                             version = 1,
                             date = "2021-12-20",
-                            nameDef = row["nameDef"] as? String ?: "",
+                            nameDef = nameDef ?: "",
                             consistent = (row["consistent"] as? Number)?.toInt() ?: 1,
                             deprecated = (row["deprecated"] as? Number)?.toInt() ?: 0,
                             DataB = row["DataB"] as? String ?: "",
-                            name = nameFr ?: row["nameDef"] as? String,
+                            name = effectiveName,
                             especesJson = especesStr,
                             indicationsJson = indicationsStr
                         )
@@ -1249,7 +1275,10 @@ private suspend fun importLegacyFoodDb(
                                     ).forEach { nRow ->
                                         val kind = (nRow["kind"] as? Number)?.toInt() ?: return@forEach
                                         val value = (nRow["value"] as? Number)?.toDouble() ?: return@forEach
-                                        if (kind < labels.size && value != 0.0) {
+                                        if (kind >= labels.size) {
+                                            nutrientsOutOfBounds++; return@forEach
+                                        }
+                                        if (value != 0.0) {
                                             nutrientValues.add(
                                                 NutrientValueEntity(
                                                     refAliment = uuid,
@@ -1270,7 +1299,10 @@ private suspend fun importLegacyFoodDb(
                         errors.add(msg); logError(msg, e)
                     }
                 }
-                log("Aliments importés: ${stats.impFoods}, ignorés: ${stats.skipFoods}")
+                if (foodsWithoutUuid > 0) log("$foodsWithoutUuid aliment(s) sans UUID ignoré(s)")
+                if (foodsWithoutName > 0) log("$foodsWithoutName aliment(s) importé(s) sans nom")
+                if (nutrientsOutOfBounds > 0) log("$nutrientsOutOfBounds valeur(s) nutritionnelle(s) ignorée(s) — index hors-plage")
+                log("Aliments importés: ${stats.impFoods}, ignorés (doublons): ${stats.skipFoods}")
             }
         }
     }
