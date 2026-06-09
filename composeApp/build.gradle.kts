@@ -89,8 +89,6 @@ kotlin {
             implementation(compose.ui)
             implementation("org.jetbrains.compose.ui:ui-util:1.7.0")
             implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.kotlin.test)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
@@ -113,7 +111,6 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs) // ✅ auto-resolve skiko
                 implementation(libs.kotlinx.coroutines.core)
-                implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.kotlinx.coroutines.swing)
                 //  implementation(libs.junit.jupiter)
                 // implementation(libs.junit.junit)
@@ -135,6 +132,27 @@ kotlin {
                 implementation(libs.sqliter.driver)
                 implementation(libs.ktor.client.darwin)
                 implementation(libs.qr.kit)
+            }
+        }
+
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+        }
+
+        val androidUnitTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.junit)
+            }
+        }
+
+        val desktopTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.junit)
             }
         }
     }
@@ -288,9 +306,6 @@ dependencies {
     implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
 
     implementation(libs.androidx.sqlite.bundled)
-    implementation(kotlin("test"))
-    implementation(kotlin("test-common"))
-    implementation(kotlin("test-annotations-common"))
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
