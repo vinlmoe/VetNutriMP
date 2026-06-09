@@ -695,6 +695,7 @@ private suspend fun validateAndRepairConsultationReferences(
     // so we can recover the reference via: consultation.kXId -> coefToRefMap -> referenceEvId.
     if (coefToRefMap.isNotEmpty()) {
         var linkedViaCoef = 0
+        var unmappedCoefs = 0
         consultations.forEach { consultation ->
             if (!consultation.referenceGeneraleId.isNullOrBlank()) return@forEach
             val kIds = listOfNotNull(
@@ -704,7 +705,7 @@ private suspend fun validateAndRepairConsultationReferences(
 
             val foundRefId = kIds.firstNotNullOfOrNull { kId ->
                 val refId = coefToRefMap[kId.normalizedUuidCandidate()]
-                    ?: return@firstNotNullOfOrNull null
+                if (refId == null) { unmappedCoefs++; return@firstNotNullOfOrNull null }
                 if (referencesByUuid.containsKey(refId)) refId else null
             }
 
@@ -713,9 +714,8 @@ private suspend fun validateAndRepairConsultationReferences(
                 linkedViaCoef++
             }
         }
-        if (linkedViaCoef > 0) {
-            log("Consultations liées via coef k1-k5: $linkedViaCoef")
-        }
+        if (linkedViaCoef > 0) log("Consultations liées via coef k1-k5: $linkedViaCoef")
+        if (unmappedCoefs > 0) log("$unmappedCoefs coef(s) k1-k5 sans correspondance dans coefToRefMap")
     }
 }
 
@@ -808,14 +808,17 @@ private suspend fun importLegacyAnimDb(
             // 2. Weight
             if (conn.tableExists("Weight")) {
                 val rows = conn.queryAll("SELECT * FROM Weight")
+                var weightsInvalid = 0
                 rows.forEach { row ->
                     try {
                         val uuid = row["UUID"] as? String ?: return@forEach
+                        val weightValue = (row["value"] as? Number)?.toDouble()
+                        if (weightValue == null || weightValue <= 0.0) { weightsInvalid++; return@forEach }
                         val entity = WeightEntity(
                             uuid = uuid,
                             refAnimal = row["refAnimal"] as? String ?: return@forEach,
                             date = row["date"] as? String ?: "",
-                            value = (row["value"] as? Number)?.toDouble() ?: 0.0
+                            value = weightValue
                         )
                         // Check via direct insert - WeightEntity uses REPLACE strategy
                         animalDao.insertWeight(entity)
@@ -825,6 +828,7 @@ private suspend fun importLegacyAnimDb(
                         errors.add(msg); logError(msg, e)
                     }
                 }
+                if (weightsInvalid > 0) log("$weightsInvalid poids ignorés (valeur nulle ou ≤ 0)")
                 log("Poids importés: ${stats.impWeights}")
             }
 
@@ -1005,6 +1009,7 @@ private suspend fun importLegacyAnimDb(
             // 4. RATION
             if (conn.tableExists("RATION")) {
                 val rows = conn.queryAll("SELECT * FROM RATION")
+                var alimentRationErrors = 0
                 rows.forEach { row ->
                     try {
                         val uuid = row["UUID"] as? String ?: return@forEach
@@ -1046,9 +1051,9 @@ private suspend fun importLegacyAnimDb(
                                         quantity = quantity,
                                         refTarget = refTarget
                                     )
-                                    try {
+                                    runCatching {
                                         consultationDao.insertAlimentRation(alimentEntity)
-                                    } catch (_: Exception) {}
+                                    }.onFailure { alimentRationErrors++ }
 
                                     // VetNutriMP loads nutrients via refAlimUnif → FoodEntity.
                                     // If the base food doesn't exist in our DB (was only a ration
@@ -1119,6 +1124,7 @@ private suspend fun importLegacyAnimDb(
                         }
                     }
                 }
+                if (alimentRationErrors > 0) log("$alimentRationErrors aliment(s) de ration ignoré(s) — contrainte ou donnée invalide")
                 log("Rations importées: ${stats.impRations}, ignorées (dont orphelines): ${stats.skipRations}")
             }
         }
@@ -1371,6 +1377,7 @@ private suspend fun importLegacyRefDb(
                 log("Colonnes $equationTable: ${conn.tableColumns(equationTable).joinToString()}")
                 val rows = conn.queryAll("SELECT * FROM $equationTable")
                 log("${rows.size} équations trouvées")
+                var equationFallbacks = 0
                 rows.forEach { row ->
                     try {
                         val uuid = row.str("UUID", "uuid") ?: return@forEach
@@ -1392,12 +1399,14 @@ private suspend fun importLegacyRefDb(
                         val bibRefUuid = row.str("refBiblio", "bibRef", "bib_ref", "biblio")
                             ?.takeIf { it.length >= 32 && it.contains("-") }
                         val nutrientInt = row.num("nutrient")?.toInt() ?: 0
+                        val rawScript = row.str("script", "equationScript")
+                        val transpiledScript = rawScript?.let { transpileV2Script(it) } ?: "0"
+                        if (rawScript != null && transpiledScript == "0") equationFallbacks++
                         val entity = fr.vetbrain.vetnutri_mp.DataBase.EquationEntity(
                             uuid = uuid,
                             name = row.str("name") ?: "Équation importée",
                             description = row.str("description") ?: "",
-                            equationScript = row.str("script", "equationScript")
-                            ?.let { transpileV2Script(it) } ?: "0",
+                            equationScript = transpiledScript,
                             specie = specieStr,
                             kind = kindName,
                             consistent = row.num("consistent")?.toInt() != 0,
@@ -1413,6 +1422,7 @@ private suspend fun importLegacyRefDb(
                         errors.add(msg); logError(msg, e)
                     }
                 }
+                if (equationFallbacks > 0) log("$equationFallbacks équation(s) converties vers \"0\" — script V2 non transpilable")
                 log("Équations importées: ${stats.impEquations}, ignorées: ${stats.skipEquations}")
             } else {
                 log("Aucune table d'équations reconnue parmi: ${EQUATION_TABLE_NAMES.joinToString()}")
