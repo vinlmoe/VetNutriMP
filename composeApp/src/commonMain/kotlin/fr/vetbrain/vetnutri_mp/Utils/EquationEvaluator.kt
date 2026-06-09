@@ -34,11 +34,7 @@ object EquationEvaluator {
     var toutesLesVariables: Set<String>? = null
 
     private const val MAX_CACHE_SIZE = 1000
-    private val expressionCache: LinkedHashMap<String, Double?> =
-        object : LinkedHashMap<String, Double?>(MAX_CACHE_SIZE + 1, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Double?>) =
-                size > MAX_CACHE_SIZE
-        }
+    private val expressionCache = LruMap<String, Double?>(MAX_CACHE_SIZE)
 
     /**
      * Injecte dans la map de variables certains nutriments calculés à partir des équations

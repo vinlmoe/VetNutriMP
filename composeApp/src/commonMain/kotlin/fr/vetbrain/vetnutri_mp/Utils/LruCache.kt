@@ -4,6 +4,67 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
+ * Map LRU synchrone et multiplateforme.
+ *
+ * Cette classe n'est pas thread-safe : l'appelant doit fournir la synchronisation si nécessaire.
+ *
+ * @param onEvict appelé avec la clé évincée quand la map dépasse maxSize (utile pour nettoyer
+ *                les structures auxiliaires, ex. une map de timestamps séparée).
+ */
+class LruMap<K, V>(
+    private val maxSize: Int,
+    private val onEvict: ((K) -> Unit)? = null
+) {
+    private val entries = mutableMapOf<K, V>()
+    private val accessOrder = mutableListOf<K>()
+
+    init {
+        require(maxSize > 0) { "maxSize must be greater than zero" }
+    }
+
+    operator fun get(key: K): V? {
+        if (!entries.containsKey(key)) return null
+        promote(key)
+        return entries[key]
+    }
+
+    operator fun set(key: K, value: V) {
+        entries[key] = value
+        promote(key)
+        while (entries.size > maxSize) {
+            // removeFirst() est O(1) ; appeler remove(key) serait O(n) inutilement
+            val lruKey = accessOrder.removeFirst()
+            entries.remove(lruKey)
+            onEvict?.invoke(lruKey)
+        }
+    }
+
+    fun remove(key: K): V? {
+        accessOrder.remove(key)
+        return entries.remove(key)
+    }
+
+    fun clear() {
+        entries.clear()
+        accessOrder.clear()
+    }
+
+    fun getOrPut(key: K, defaultValue: () -> V): V {
+        if (entries.containsKey(key)) {
+            promote(key)
+            @Suppress("UNCHECKED_CAST")
+            return entries[key] as V
+        }
+        return defaultValue().also { this[key] = it }
+    }
+
+    private fun promote(key: K) {
+        accessOrder.remove(key)
+        accessOrder.add(key)
+    }
+}
+
+/**
  * Cache LRU (Least Recently Used) optimisé pour éviter les fuites mémoire.
  * Thread-safe et avec nettoyage automatique.
  */

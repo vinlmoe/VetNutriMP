@@ -31,12 +31,16 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.LruMap
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -67,9 +71,11 @@ class DatabaseFoodRepository(
     private var lastCacheTime: Long = 0
     private val cacheValidityDuration = 5 * 60 * 1000L // 5 minutes
 
-    // Mode batch pour désactiver les refresh coûteux à chaque insert/update
-    // KMP: éviter @Volatile en commonMain
-    private var isBatchMode: Boolean = false
+    // Mutex pour protéger cachedFoods/lastCacheTime contre le thundering herd
+    private val cacheMutex = Mutex()
+
+    // Mode batch — compteur atomique KMP-safe (MutableStateFlow.update = CAS)
+    private val batchModeCounter = MutableStateFlow(0)
 
     init {
         coroutineScope.launch { loadCustomNutrientsFromDb() }
@@ -78,26 +84,29 @@ class DatabaseFoodRepository(
 
     // Cache LRU pour les recherches (max 50 entrées, éviction par accès)
     private val maxSearchCacheEntries = 50
-    private val searchCache: LinkedHashMap<String, List<AlimentEv>> =
-        object : LinkedHashMap<String, List<AlimentEv>>(maxSearchCacheEntries + 1, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<AlimentEv>>) =
-                size > maxSearchCacheEntries
-        }
+    private val searchCacheMutex = Mutex()
+    private val searchCache = LruMap<String, List<AlimentEv>>(maxSearchCacheEntries) { evictedKey ->
+        searchCacheTime.remove(evictedKey)
+    }
     private val searchCacheTime = mutableMapOf<String, Long>()
     fun beginBatch() {
-        isBatchMode = true
+        batchModeCounter.update { it + 1 }
     }
     fun endBatch() {
-        isBatchMode = false
-        coroutineScope.launch { refreshFoodsFlow() }
+        batchModeCounter.update { it - 1 }
+        if (batchModeCounter.value == 0) coroutineScope.launch { refreshFoodsFlow() }
     }
 
     /** Vide le cache en mémoire pour forcer un rechargement des données */
-    fun clearCache() {
-        cachedFoods = null
-        lastCacheTime = 0
-        searchCache.clear()
-        searchCacheTime.clear()
+    suspend fun clearCache() {
+        cacheMutex.withLock {
+            cachedFoods = null
+            lastCacheTime = 0
+        }
+        searchCacheMutex.withLock {
+            searchCache.clear()
+            searchCacheTime.clear()
+        }
     }
 
     private suspend fun loadCustomNutrientsFromDb() {
@@ -134,16 +143,17 @@ class DatabaseFoodRepository(
     }
 
 
-    private fun pruneSearchCacheIfNeeded() {
-        // L'éviction LRU est gérée automatiquement par LinkedHashMap.removeEldestEntry
-        // On nettoie seulement les entrées expirées dans searchCacheTime
+    private suspend fun pruneSearchCacheIfNeeded() {
+        // L'éviction par taille est gérée par LruMap ; on nettoie aussi les entrées expirées.
         val now = Clock.System.now().toEpochMilliseconds()
-        val expired = searchCacheTime.entries
-            .filter { now - it.value > cacheValidityDuration }
-            .map { it.key }
-        expired.forEach { key ->
-            searchCache.remove(key)
-            searchCacheTime.remove(key)
+        searchCacheMutex.withLock {
+            val expired = searchCacheTime.entries
+                .filter { now - it.value > cacheValidityDuration }
+                .map { it.key }
+            expired.forEach { key ->
+                searchCache.remove(key)
+                searchCacheTime.remove(key)
+            }
         }
     }
 
@@ -187,15 +197,20 @@ class DatabaseFoodRepository(
 
         // Vérifier le cache si pas de refresh forcé
         if (!forceRefresh) {
-            val cachedTime = searchCacheTime[cacheKey]
-            if (cachedTime != null) {
-                val now = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
-                if (now - cachedTime < cacheValidityDuration) {
-                    return searchCache[cacheKey] ?: emptyList()
-                }
-                searchCache.remove(cacheKey)
-                searchCacheTime.remove(cacheKey)
+            val cached = searchCacheMutex.withLock {
+                val cachedTime = searchCacheTime[cacheKey]
+                if (cachedTime != null) {
+                    val now = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+                    if (now - cachedTime < cacheValidityDuration) {
+                        searchCache[cacheKey]
+                    } else {
+                        searchCache.remove(cacheKey)
+                        searchCacheTime.remove(cacheKey)
+                        null
+                    }
+                } else null
             }
+            if (cached != null) return cached
         }
 
         val normalizedQuery = searchQuery.trim()
@@ -232,8 +247,10 @@ class DatabaseFoodRepository(
                         }
 
         // Mettre en cache le résultat
-        searchCache[cacheKey] = filteredFoods
-        searchCacheTime[cacheKey] = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        searchCacheMutex.withLock {
+            searchCache[cacheKey] = filteredFoods
+            searchCacheTime[cacheKey] = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        }
         pruneSearchCacheIfNeeded()
 
         return filteredFoods
@@ -549,7 +566,7 @@ class DatabaseFoodRepository(
         withContext(AppDispatchers.IO) { foodDao.insertFood(food.toFoodEntity()) }
         // Invalider le cache après insertion
         clearCache()
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
@@ -562,7 +579,7 @@ class DatabaseFoodRepository(
         withContext(AppDispatchers.IO) { foodDao.update(food.toFoodEntity()) }
         // Invalider le cache après mise à jour
         clearCache()
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
@@ -575,7 +592,7 @@ class DatabaseFoodRepository(
         withContext(AppDispatchers.IO) { foodDao.delete(food.toFoodEntity()) }
         // Invalider le cache après suppression
         clearCache()
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
@@ -586,12 +603,21 @@ class DatabaseFoodRepository(
      */
     override suspend fun getAllFoods(): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
+            // Fast path sans verrou — évite toute contention quand le cache est chaud
+            val snapshot = cachedFoods
             val currentTime = Clock.System.now().toEpochMilliseconds()
-            if (cachedFoods != null && (currentTime - lastCacheTime) < cacheValidityDuration) {
-                return@withContext cachedFoods!!
+            if (snapshot != null && (currentTime - lastCacheTime) < cacheValidityDuration) {
+                return@withContext snapshot
             }
-            // Déléguer à getAllFoodsFresh() qui utilise déjà la requête batch
-            getAllFoodsFresh()
+            // Slow path — un seul appel DB même si plusieurs coroutines arrivent simultanément
+            cacheMutex.withLock {
+                val snapshotLocked = cachedFoods
+                val now = Clock.System.now().toEpochMilliseconds()
+                if (snapshotLocked != null && (now - lastCacheTime) < cacheValidityDuration) {
+                    return@withLock snapshotLocked
+                }
+                getAllFoodsFresh()
+            }
         }
     }
 
@@ -1340,7 +1366,7 @@ class DatabaseFoodRepository(
         }
 
         // Mettre à jour le Flow pour notifier les observateurs (dans le contexte Main)
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch {
                 try {
                     refreshFoodsFlow()
@@ -1401,6 +1427,35 @@ class DatabaseFoodRepository(
     }
 
     /**
+     * Récupère plusieurs aliments en batch (une requête par table au lieu de N×3 requêtes).
+     */
+    override suspend fun getFoodsByUuids(uuids: List<String>): Map<String, AlimentEv> {
+        if (uuids.isEmpty()) return emptyMap()
+        return withContext(AppDispatchers.IO) {
+            val foodEntities = uuids.chunked(500)
+                .flatMap { chunk -> foodDao.getFoodsByIds(chunk) }
+            if (foodEntities.isEmpty()) return@withContext emptyMap()
+
+            val ids = foodEntities.map { it.uuid }
+            val nutrientsByFood = nutrientValueDao?.let { dao ->
+                ids.chunked(500).flatMap { chunk -> dao.getNutrientValuesForAliments(chunk) }
+                    .groupBy { it.refAliment }
+            } ?: emptyMap()
+            val energyByFood = energyPerSpeciesDao?.let { dao ->
+                ids.chunked(500).flatMap { chunk -> dao.getForAliments(chunk) }
+                    .groupBy { it.refAliment }
+            } ?: emptyMap()
+
+            foodEntities.associate { entity ->
+                entity.uuid to entity.toAlimentEv(
+                    nutrientValues = nutrientsByFood[entity.uuid] ?: emptyList(),
+                    energyPerSpecies = energyByFood[entity.uuid] ?: emptyList()
+                )
+            }
+        }
+    }
+
+    /**
      * Supprime un aliment et toutes ses propriétés associées.
      * @param uuid UUID de l'aliment à supprimer
      */
@@ -1417,7 +1472,7 @@ class DatabaseFoodRepository(
         }
         // Invalider le cache et rafraîchir le Flow pour notifier les observateurs
         clearCache()
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
@@ -1525,7 +1580,7 @@ class DatabaseFoodRepository(
         }
 
         // Mettre à jour le Flow pour notifier les observateurs (dans le contexte Main)
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
