@@ -296,9 +296,14 @@ fun AddAlimentView(
                                                         coroutineScope.launch {
                                                                 val alimentComplet = viewModel.getAlimentComplet(aliment.uuid)
                                                                 if (alimentComplet != null) {
+                                                                        val selectedConsultation =
+                                                                                viewModel.selectedConsultation.value
+                                                                                        ?: return@launch
+
                                                                         // Créer une nouvelle ration avec le nom de la marque de l'aliment
                                                                         val nomRation = alimentComplet.brand ?: alimentComplet.nom ?: "Nouvelle ration"
                                                                         val nouvelleRation = Ration(
+                                                                                idConsult = selectedConsultation.uuid,
                                                                                 name = nomRation,
                                                                                 actual = false,
                                                                                 alimentMutableList = mutableListOf()
@@ -306,6 +311,8 @@ fun AddAlimentView(
                                                                         
                                                                         // Ajouter l'aliment à la nouvelle ration
                                                                         val alimentRation = AlimentRation(
+                                                                                refAlimUnif = alimentComplet.uuid,
+                                                                                refRation = nouvelleRation.uuid,
                                                                                 aliment = alimentComplet,
                                                                                 quantite = 100.0,
                                                                                 proportion = 0.0, // Sera calculé par le ViewModel
@@ -315,12 +322,8 @@ fun AddAlimentView(
                                                                         nouvelleRation.alimentMutableList.add(alimentRation)
                                                                         
                                                                         // Ajouter la ration à la consultation et la sélectionner
-                                                                        val selectedConsultation = viewModel.selectedConsultation.value
-                                                                        if (selectedConsultation != null) {
-                                                                                viewModel.addRationToConsultation(nouvelleRation)
-                                                                                viewModel.updateConsultation(selectedConsultation)
-                                                                                viewModel.selectRation(nouvelleRation)
-                                                                        }
+                                                                        viewModel.addRationToConsultation(nouvelleRation)
+                                                                        viewModel.selectRation(nouvelleRation)
                                                                         
                                                                         // L'aliment reste sélectionné pour permettre d'ajouter plusieurs fois le même aliment
                                                                         // selectedFood = null // Supprimé pour garder l'aliment sélectionné
