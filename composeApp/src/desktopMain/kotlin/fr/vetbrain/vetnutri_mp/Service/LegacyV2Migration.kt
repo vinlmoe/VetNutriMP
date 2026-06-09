@@ -12,6 +12,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.RaceCodeMapper
 import fr.vetbrain.vetnutri_mp.ViewModel.LegacyMigrationViewModel
+import androidx.room.withTransaction
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.sql.Connection
@@ -1633,54 +1634,65 @@ suspend fun runV2Migration(
     // whose k1Id..k5Id store V2 coef UUIDs rather than direct reference UUIDs.
     val coefToRefMap = mutableMapOf<String, String>() // coef UUID (lowercase) → referenceEvId
 
-    if (refDbFile != null) {
-        log("Base de références utilisée: ${refDbFile.name} (${legacyReferencesByUuid.size} UUID de références préchargés)")
-        if (legacyReferencesByUuid.isNotEmpty()) {
-            log(
-                "Exemples UUID références V2: " +
-                    legacyReferencesByUuid.values.take(8).joinToString { ref ->
-                        "${ref.uuid}${if (ref.name.isNotBlank()) " (${ref.name})" else ""}${if (ref.disease) " [maladie]" else ""}"
-                    }
-            )
+    try {
+        appDatabase.withTransaction {
+            if (refDbFile != null) {
+                log("Base de références utilisée: ${refDbFile.name} (${legacyReferencesByUuid.size} UUID de références préchargés)")
+                if (legacyReferencesByUuid.isNotEmpty()) {
+                    log(
+                        "Exemples UUID références V2: " +
+                            legacyReferencesByUuid.values.take(8).joinToString { ref ->
+                                "${ref.uuid}${if (ref.name.isNotBlank()) " (${ref.name})" else ""}${if (ref.disease) " [maladie]" else ""}"
+                            }
+                    )
+                }
+            } else {
+                log("Aucune base de références trouvée avant import des consultations")
+            }
+            log("Traducteur UUID références VetNutri 2 -> VetNutri MP actif: ${LEGACY_REFERENCE_TRANSLATIONS.size} correspondances")
+
+            importLegacyAnimDb(animDb, appDatabase, legacyReferencesByUuid, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
+            importLegacyFoodDb(foodDb, appDatabase, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
+            importLegacyRefDb(refDbFile, dbFolderPath, appDatabase, coefToRefMap, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
+
+            validateAndRepairConsultationReferences(appDatabase, coefToRefMap, ::log)
+
+            if (errors.isNotEmpty()) {
+                log("${errors.size} erreur(s) rencontrée(s) :")
+                errors.forEach { log("  • $it") }
+            }
+            log("Migration terminée.")
         }
-    } else {
-        log("Aucune base de références trouvée avant import des consultations")
+
+        LegacyMigrationViewModel.MigrationResult(
+            imported = LegacyMigrationViewModel.MigrationCounts(
+                animals = stats.impAnimals,
+                consultations = stats.impConsults,
+                rations = stats.impRations,
+                weights = stats.impWeights,
+                foods = stats.impFoods,
+                biblioRefs = stats.impBiblioRefs,
+                equations = stats.impEquations,
+                references = stats.impReferences
+            ),
+            skipped = LegacyMigrationViewModel.MigrationCounts(
+                animals = stats.skipAnimals,
+                consultations = stats.skipConsults,
+                rations = stats.skipRations,
+                weights = stats.skipWeights,
+                foods = stats.skipFoods,
+                biblioRefs = stats.skipBiblioRefs,
+                equations = stats.skipEquations,
+                references = stats.skipReferences
+            ),
+            errors = errors
+        )
+    } catch (e: Exception) {
+        log("ROLLBACK — migration annulée suite à une erreur critique : ${e.message}")
+        LegacyMigrationViewModel.MigrationResult(
+            imported = LegacyMigrationViewModel.MigrationCounts(),
+            skipped = LegacyMigrationViewModel.MigrationCounts(),
+            errors = listOf("Migration annulée (rollback automatique) : ${e.message ?: e.javaClass.simpleName}")
+        )
     }
-    log("Traducteur UUID références VetNutri 2 -> VetNutri MP actif: ${LEGACY_REFERENCE_TRANSLATIONS.size} correspondances")
-
-    importLegacyAnimDb(animDb, appDatabase, legacyReferencesByUuid, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
-    importLegacyFoodDb(foodDb, appDatabase, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
-    importLegacyRefDb(refDbFile, dbFolderPath, appDatabase, coefToRefMap, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
-
-    validateAndRepairConsultationReferences(appDatabase, coefToRefMap, ::log)
-
-    if (errors.isNotEmpty()) {
-        log("${errors.size} erreur(s) rencontrée(s) :")
-        errors.forEach { log("  • $it") }
-    }
-    log("Migration terminée.")
-
-    LegacyMigrationViewModel.MigrationResult(
-        imported = LegacyMigrationViewModel.MigrationCounts(
-            animals = stats.impAnimals,
-            consultations = stats.impConsults,
-            rations = stats.impRations,
-            weights = stats.impWeights,
-            foods = stats.impFoods,
-            biblioRefs = stats.impBiblioRefs,
-            equations = stats.impEquations,
-            references = stats.impReferences
-        ),
-        skipped = LegacyMigrationViewModel.MigrationCounts(
-            animals = stats.skipAnimals,
-            consultations = stats.skipConsults,
-            rations = stats.skipRations,
-            weights = stats.skipWeights,
-            foods = stats.skipFoods,
-            biblioRefs = stats.skipBiblioRefs,
-            equations = stats.skipEquations,
-            references = stats.skipReferences
-        ),
-        errors = errors
-    )
 }
