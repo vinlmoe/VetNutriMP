@@ -273,26 +273,20 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
     }
 
     override suspend fun clearAllBiblioRefs(): Int {
-        
-
-        return try {
-            // Obtenir le nombre total de références bibliographiques avant suppression directement
-            // depuis la base
-            val allBiblioRefEntities = biblioRefDao.getAllBiblioRefs()
-            val count = allBiblioRefEntities.size
-
-            if (count > 0) {
-                // Supprimer toutes les références bibliographiques
-                biblioRefDao.deleteAllBiblioRefs()
-
-                // Rafraîchir le cache local
-                _biblioRefs.value = emptyList()
+        return withContext(AppDispatchers.IO) {
+            writeMutex.withLock {
+                try {
+                    val count = biblioRefDao.getAllBiblioRefs().size
+                    if (count > 0) {
+                        biblioRefDao.deleteAllBiblioRefs()
+                        refreshFromDatabase()
+                    }
+                    count
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    throw e
+                }
             }
-
-            count
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
         }
     }
 
