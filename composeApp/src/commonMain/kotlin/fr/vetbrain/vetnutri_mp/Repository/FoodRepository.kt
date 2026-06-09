@@ -81,4 +81,13 @@ interface FoodRepository {
 
     /** Retourne les labels de nutriments distincts présents dans la base (sans charger les valeurs). */
     suspend fun getDistinctNutrientLabels(): List<String>
+
+    /**
+     * Récupère plusieurs aliments en une seule opération batch par leurs UUID.
+     * Par défaut, délègue à getFood() individuellement ; les implémentations peuvent surcharger
+     * avec une requête batch pour de meilleures performances.
+     */
+    suspend fun getFoodsByUuids(uuids: List<String>): Map<String, AlimentEv> {
+        return uuids.mapNotNull { uuid -> getFood(uuid)?.let { uuid to it } }.toMap()
+    }
 }
