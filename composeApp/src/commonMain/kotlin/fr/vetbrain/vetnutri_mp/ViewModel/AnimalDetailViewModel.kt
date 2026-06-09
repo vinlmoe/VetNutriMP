@@ -42,6 +42,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -120,6 +122,7 @@ class AnimalDetailViewModel(
     private val _rationAnalyseResultat = MutableStateFlow<AnalyseResultat?>(null)
 
     private val cacheValidityDuration = 2 * 60 * 1000L
+    private val analysisCacheMutex = Mutex()
     private val analysisCacheTime = mutableMapOf<String, Long>()
     private val rationAnalysisCache: LinkedHashMap<String, AnalyseResultat> =
         object : LinkedHashMap<String, AnalyseResultat>(51, 0.75f, true) {
@@ -127,14 +130,16 @@ class AnimalDetailViewModel(
                 size > 50
         }
 
-    private fun cleanupCachesIfNeeded() {
+    private suspend fun cleanupCachesIfNeeded() {
         val currentTime = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
-        val expiredKeys = analysisCacheTime.entries
-            .filter { (_, time) -> currentTime - time > cacheValidityDuration * 2 }
-            .map { it.key }
-        expiredKeys.forEach { key ->
-            analysisCacheTime.remove(key)
-            rationAnalysisCache.remove(key)
+        analysisCacheMutex.withLock {
+            val expiredKeys = analysisCacheTime.entries
+                .filter { (_, time) -> currentTime - time > cacheValidityDuration * 2 }
+                .map { it.key }
+            expiredKeys.forEach { key ->
+                analysisCacheTime.remove(key)
+                rationAnalysisCache.remove(key)
+            }
         }
     }
     val rationAnalyseResultat: StateFlow<AnalyseResultat?> = _rationAnalyseResultat.asStateFlow()
@@ -1232,22 +1237,25 @@ class AnimalDetailViewModel(
                 // Créer une clé de cache basée sur la ration et la consultation
                 val cacheKey = "${ration.uuid}:${consultation?.uuid ?: "no_consultation"}"
 
-                // Vérifier le cache
-                val cachedTime = analysisCacheTime[cacheKey]
-                val cachedResult =
-                        if (cachedTime != null &&
-                                        (kotlinx.datetime.Clock.System.now().toEpochMilliseconds() -
-                                                cachedTime) < cacheValidityDuration
-                        ) {
-                            rationAnalysisCache[cacheKey]
-                        } else null
+                // Vérifier le cache sous verrou
+                val cachedResult = analysisCacheMutex.withLock {
+                    val cachedTime = analysisCacheTime[cacheKey]
+                    if (cachedTime != null &&
+                            (kotlinx.datetime.Clock.System.now().toEpochMilliseconds() -
+                                    cachedTime) < cacheValidityDuration
+                    ) {
+                        rationAnalysisCache[cacheKey]
+                    } else null
+                }
 
                 val resultat = cachedResult ?: rationAnalyzer.analyserRation(ration, consultation)
 
                 if (cachedResult == null) {
-                    rationAnalysisCache[cacheKey] = resultat
-                    analysisCacheTime[cacheKey] =
-                            kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+                    analysisCacheMutex.withLock {
+                        rationAnalysisCache[cacheKey] = resultat
+                        analysisCacheTime[cacheKey] =
+                                kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+                    }
                 }
 
                 _rationAnalyseResultat.value = resultat

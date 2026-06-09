@@ -9,13 +9,17 @@ import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
 import fr.vetbrain.vetnutri_mp.Data.WeightDate
+import fr.vetbrain.vetnutri_mp.DataBase.AlimentRationEntity
 import fr.vetbrain.vetnutri_mp.DataBase.AnimalDao
+import fr.vetbrain.vetnutri_mp.DataBase.ConsultationEntity
 import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toData
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueDao
+import fr.vetbrain.vetnutri_mp.DataBase.RationEntity
 import fr.vetbrain.vetnutri_mp.DataBase.SupplementalVariableEntity
+import fr.vetbrain.vetnutri_mp.DataBase.WeightEntity
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
@@ -490,299 +494,128 @@ class DatabaseAnimalRepository(
                                                         }
                                                         .toMutableList()
 
-                                        // Vérifier si l'animal existe déjà
-                                        val existingAnimal = animalDao.getAnimalById(animal.uuid)
-                                        if (existingAnimal != null) {
-                                                // L'animal existe déjà, faire une mise à jour
-                                                animalDao.update(
-                                                        animal.toEntity(includeRelations = false)
-                                                )
-
-                                                // Supprimer les anciennes relations pour éviter les
-                                                // doublons
-                                                animalDao.deleteWeightsForAnimal(animal.uuid)
-
-                                                // Récupérer les consultations existantes
-                                                val existingConsultations =
-                                                        animalDao.getConsultationsForAnimal(
-                                                                animal.uuid
-                                                        )
-
-                                                // Supprimer les consultations existantes et leurs
-                                                // relations
-                                                existingConsultations.forEach { consultation ->
-                                                        animalDao
-                                                                .deleteSupplementalVariablesForConsultation(
-                                                                        consultation.uuid
-                                                                )
-                                                        animalDao.deleteRationsForConsultation(
-                                                                consultation.uuid
-                                                        )
-                                                        animalDao.deleteConsultation(consultation)
+                                        // Pré-construire toutes les entités avant la transaction
+                                        // (food validation + création hors transaction)
+                                        val weightEntities: List<WeightEntity> =
+                                                animal.weightHistory.map { weight ->
+                                                        weight.refAnimal = animal.uuid
+                                                        weight.toEntity()
                                                 }
-                                        } else {
-                                                // L'animal n'existe pas, l'insérer
-                                                animalDao.insert(
-                                                        animal.toEntity(includeRelations = false)
-                                                )
-                                        }
+                                        val consultationEntities = mutableListOf<ConsultationEntity>()
+                                        val suppVarEntities = mutableListOf<SupplementalVariableEntity>()
+                                        val rationEntities = mutableListOf<RationEntity>()
+                                        val alimentEntities = mutableListOf<AlimentRationEntity>()
 
-                                        // Insérer les poids
-                                        animal.weightHistory.forEach { weight ->
-                                                weight.refAnimal = animal.uuid
-                                                animalDao.insertWeight(weight.toEntity())
-                                        }
-
-                                        // Insérer les consultations avec leurs relations
                                         animal.consultations.forEach { consultation ->
                                                 consultation.idAnim = animal.uuid
-                                                animalDao.insertConsultation(
-                                                        consultation.toEntity(
-                                                                includeRelations = false
-                                                        )
+                                                consultationEntities.add(
+                                                        consultation.toEntity(includeRelations = false)
                                                 )
 
-                                                // Insérer les variables supplémentaires
                                                 consultation.suppVarp.forEach { suppVar ->
                                                         suppVar.variable?.let { variable ->
-                                                                animalDao
-                                                                        .insertSupplementalVariable(
-                                                                                SupplementalVariableEntity(
-                                                                                        idConsult =
-                                                                                                consultation
-                                                                                                        .uuid,
-                                                                                        variableKind =
-                                                                                                variable.uuid,
-                                                                                        value =
-                                                                                                suppVar.varue
-                                                                                                        ?: 0.0
-                                                                                )
+                                                                suppVarEntities.add(
+                                                                        SupplementalVariableEntity(
+                                                                                idConsult = consultation.uuid,
+                                                                                variableKind = variable.uuid,
+                                                                                value = suppVar.varue ?: 0.0
                                                                         )
+                                                                )
                                                         }
                                                 }
 
-                                                // Insérer les rations avec leurs aliments
                                                 consultation.rations.forEach { ration ->
                                                         ration.idConsult = consultation.uuid
-                                                        animalDao.insertRation(
-                                                                ration.toEntity(
-                                                                        includeRelations = false
-                                                                )
+                                                        rationEntities.add(
+                                                                ration.toEntity(includeRelations = false)
                                                         )
 
-                                                        // Filtrer les aliments pour n'insérer que
-                                                        // ceux qui ont une référence à un aliment
-                                                        // existant
-                                                        val validAliments =
-                                                                ration.alimentMutableList.filter {
-                                                                        aliment ->
-                                                                        val refAlimUnif =
-                                                                                aliment.refAlimUnif
-
-                                                                        // Si pas de référence,
-                                                                        // ignorer cet aliment
-                                                                        if (refAlimUnif == null) {
-                                                                                return@filter false
-                                                                        }
-
-                                                                        // Vérifier si l'aliment
-                                                                        // existe déjà dans la table
-                                                                        // FOOD
-                                                                        val existingFood =
-                                                                                foodDao.getFoodById(
-                                                                                        refAlimUnif
-                                                                                )
-
-                                                                        if (existingFood != null) {
-                                                                                // L'aliment existe
-                                                                                // déjà, on peut
-                                                                                // l'utiliser
-                                                                                return@filter true
-                                                                        } else {
-                                                                                // L'aliment
-                                                                                // n'existe pas,
-                                                                                // essayons de le
-                                                                                // créer à partir
-                                                                                // des données
-                                                                                // disponibles
-                                                                                try {
-                                                                                        // Récupérer
-                                                                                        // le nom
-                                                                                        // depuis la
-                                                                                        // map ou
-                                                                                        // utiliser
-                                                                                        // un nom
-                                                                                        // par
-                                                                                        // défaut
-                                                                                        val nomAliment =
-                                                                                                foodNamesMap[
-                                                                                                        refAlimUnif]
-                                                                                                        ?: "Aliment importé ${refAlimUnif}"
-
-                                                                                        val foodEntity =
-                                                                                                FoodEntity(
-                                                                                                        uuid =
-                                                                                                                refAlimUnif,
-                                                                                                        groupAlim =
-                                                                                                                0,
-                                                                                                        typeAlim =
-                                                                                                                0,
-                                                                                                        ingredients =
-                                                                                                                "",
-                                                                                                        price =
-                                                                                                                0.0,
-                                                                                                        categPrice =
-                                                                                                                "",
-                                                                                                        brand =
-                                                                                                                "",
-                                                                                                        gamme =
-                                                                                                                "",
-                                                                                                        unitPres =
-                                                                                                                0,
-                                                                                                        quantityPres =
-                                                                                                                0.0,
-                                                                                                        version =
-                                                                                                                1,
-                                                                                                        date =
-                                                                                                                "",
-                                                                                                        nameDef =
-                                                                                                                nomAliment,
-                                                                                                        consistent =
-                                                                                                                1,
-                                                                                                        deprecated =
-                                                                                                                0,
-                                                                                                        DataB =
-                                                                                                                "",
-                                                                                                        RefRation =
-                                                                                                                "",
-                                                                                                        RefAlimUnif =
-                                                                                                                "",
-                                                                                                        cont =
-                                                                                                                "NO",
-                                                                                                        name =
-                                                                                                                nomAliment,
-                                                                                                        quantite =
-                                                                                                                0.0,
-                                                                                                        especesJson =
-                                                                                                                "[]",
-                                                                                                        indicationsJson =
-                                                                                                                "[]"
-                                                                                                )
-
-                                                                                        // Insérer
-                                                                                        // l'aliment
-                                                                                        // dans la
-                                                                                        // table
-                                                                                        // FOOD
-                                                                                        foodDao.insertFood(
-                                                                                                foodEntity
+                                                        ration.alimentMutableList.forEach { aliment ->
+                                                                val refAlimUnif = aliment.refAlimUnif
+                                                                        ?: return@forEach
+                                                                val foodKnown = availableFoodUUIDs.contains(refAlimUnif)
+                                                                        || foodDao.getFoodById(refAlimUnif) != null
+                                                                if (!foodKnown) {
+                                                                        try {
+                                                                                val nom = foodNamesMap[refAlimUnif]
+                                                                                        ?: "Aliment importé $refAlimUnif"
+                                                                                foodDao.insertFood(
+                                                                                        FoodEntity(
+                                                                                                uuid = refAlimUnif,
+                                                                                                groupAlim = 0, typeAlim = 0,
+                                                                                                ingredients = "", price = 0.0,
+                                                                                                categPrice = "", brand = "",
+                                                                                                gamme = "", unitPres = 0,
+                                                                                                quantityPres = 0.0, version = 1,
+                                                                                                date = "", nameDef = nom,
+                                                                                                consistent = 1, deprecated = 0,
+                                                                                                DataB = "", RefRation = "",
+                                                                                                RefAlimUnif = "", cont = "NO",
+                                                                                                name = nom, quantite = 0.0,
+                                                                                                especesJson = "[]",
+                                                                                                indicationsJson = "[]"
                                                                                         )
-                                                                                        availableFoodUUIDs
-                                                                                                .add(
-                                                                                                        refAlimUnif
-                                                                                                )
-                                                                                        return@filter true
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {
-                                                                                        return@filter false
-                                                                                }
+                                                                                )
+                                                                                availableFoodUUIDs.add(refAlimUnif)
+                                                                        } catch (_: Exception) {
+                                                                                return@forEach
                                                                         }
                                                                 }
-
-                                                        // Insérer uniquement les aliments valides
-                                                        validAliments.forEach { aliment ->
                                                                 aliment.refRation = ration.uuid
-                                                                try {
-                                                                        // Insérer l'AlimentRation
-                                                                        animalDao
-                                                                                .insertAlimentRation(
-                                                                                        aliment.toEntity()
-                                                                                )
-                                                                } catch (e: Exception) {}
+                                                                alimentEntities.add(aliment.toEntity())
                                                         }
+                                                }
+                                        }
 
-                                                        // Charger les données AlimentEv pour chaque
-                                                        // AlimentRation
-                                                        ration.alimentMutableList.forEach {
-                                                                alimentRation ->
-                                                                val foodEntity =
-                                                                        foodDao.getFoodById(
-                                                                                alimentRation
-                                                                                        .refAlimUnif
-                                                                                        ?: ""
-                                                                        )
-                                                                if (foodEntity != null) {
-                                                                        // Créer un AlimentEv à
-                                                                        // partir de FoodEntity
-                                                                        val alimentEv =
-                                                                                AlimentEv(
-                                                                                        uuid =
-                                                                                                foodEntity
-                                                                                                        .uuid,
-                                                                                        nom =
-                                                                                                foodEntity
-                                                                                                        .nameDef,
-                                                                                        group =
-                                                                                                null,
-                                                                                        typeAliment =
-                                                                                                null,
-                                                                                        ingredients =
-                                                                                                foodEntity
-                                                                                                        .ingredients,
-                                                                                        price =
-                                                                                                foodEntity
-                                                                                                        .price,
-                                                                                        categPrice =
-                                                                                                foodEntity
-                                                                                                        .categPrice,
-                                                                                        brand =
-                                                                                                foodEntity
-                                                                                                        .brand,
-                                                                                        gamme =
-                                                                                                foodEntity
-                                                                                                        .gamme,
-                                                                                        consistent =
-                                                                                                foodEntity
-                                                                                                        .consistent !=
-                                                                                                        0,
-                                                                                        cont =
-                                                                                                fr.vetbrain
-                                                                                                        .vetnutri_mp
-                                                                                                        .Enumer
-                                                                                                        .ContEnum
-                                                                                                        .byId(
-                                                                                                                foodEntity
-                                                                                                                        .consistent
-                                                                                                        ),
-                                                                                        quantInt =
-                                                                                                foodEntity
-                                                                                                        .quantityPres,
-                                                                                        deprecated =
-                                                                                                foodEntity
-                                                                                                        .deprecated >
-                                                                                                        0,
-                                                                                        dataB =
-                                                                                                foodEntity
-                                                                                                        .DataB,
-                                                                                        lastUpdateDate =
-                                                                                                foodEntity
-                                                                                                        .lastUpdateDate,
-                                                                                        imageRef =
-                                                                                                foodEntity
-                                                                                                        .imageRef,
-                                                                                        rationUUID =
-                                                                                                alimentRation
-                                                                                                        .uuid
-                                                                                )
-                                                                        alimentRation.aliment =
-                                                                                alimentEv
-                                                                } else {}
+                                        // Appel transactionnel atomique : un seul animal = une seule transaction
+                                        val existingAnimal = animalDao.getAnimalById(animal.uuid)
+                                        if (existingAnimal != null) {
+                                                animalDao.replaceAnimalRelationsForImport(
+                                                        animal.toEntity(includeRelations = false),
+                                                        weightEntities,
+                                                        consultationEntities,
+                                                        suppVarEntities,
+                                                        rationEntities,
+                                                        alimentEntities
+                                                )
+                                        } else {
+                                                animalDao.insertAnimalWithAllRelations(
+                                                        animal.toEntity(includeRelations = false),
+                                                        weightEntities,
+                                                        consultationEntities,
+                                                        suppVarEntities,
+                                                        rationEntities,
+                                                        alimentEntities
+                                                )
+                                        }
+
+                                        // Charger les AlimentEv en mémoire (affichage uniquement, hors transaction)
+                                        animal.consultations.forEach { consultation ->
+                                                consultation.rations.forEach { ration ->
+                                                        ration.alimentMutableList.forEach { alimentRation ->
+                                                                val fe = foodDao.getFoodById(
+                                                                        alimentRation.refAlimUnif ?: ""
+                                                                ) ?: return@forEach
+                                                                alimentRation.aliment = AlimentEv(
+                                                                        uuid = fe.uuid,
+                                                                        nom = fe.nameDef,
+                                                                        group = null,
+                                                                        typeAliment = null,
+                                                                        ingredients = fe.ingredients,
+                                                                        price = fe.price,
+                                                                        categPrice = fe.categPrice,
+                                                                        brand = fe.brand,
+                                                                        gamme = fe.gamme,
+                                                                        consistent = fe.consistent != 0,
+                                                                        cont = fr.vetbrain.vetnutri_mp.Enumer.ContEnum.byId(fe.consistent),
+                                                                        quantInt = fe.quantityPres,
+                                                                        deprecated = fe.deprecated > 0,
+                                                                        dataB = fe.DataB,
+                                                                        lastUpdateDate = fe.lastUpdateDate,
+                                                                        imageRef = fe.imageRef,
+                                                                        rationUUID = alimentRation.uuid
+                                                                )
                                                         }
-
-                                                        rationsWithAliments++
-                                                        totalAlimentsInRations +=
-                                                                consultation.rations.size
                                                 }
                                         }
 

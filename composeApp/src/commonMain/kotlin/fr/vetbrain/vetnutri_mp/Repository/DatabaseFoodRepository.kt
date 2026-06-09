@@ -36,6 +36,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -69,9 +70,11 @@ class DatabaseFoodRepository(
     private var lastCacheTime: Long = 0
     private val cacheValidityDuration = 5 * 60 * 1000L // 5 minutes
 
-    // Mode batch pour désactiver les refresh coûteux à chaque insert/update
-    // KMP: éviter @Volatile en commonMain
-    private var isBatchMode: Boolean = false
+    // Mutex pour protéger cachedFoods/lastCacheTime contre le thundering herd
+    private val cacheMutex = Mutex()
+
+    // Mode batch — compteur atomique KMP-safe (MutableStateFlow.update = CAS)
+    private val batchModeCounter = MutableStateFlow(0)
 
     init {
         coroutineScope.launch { loadCustomNutrientsFromDb() }
@@ -88,17 +91,19 @@ class DatabaseFoodRepository(
         }
     private val searchCacheTime = mutableMapOf<String, Long>()
     fun beginBatch() {
-        isBatchMode = true
+        batchModeCounter.update { it + 1 }
     }
     fun endBatch() {
-        isBatchMode = false
-        coroutineScope.launch { refreshFoodsFlow() }
+        batchModeCounter.update { it - 1 }
+        if (batchModeCounter.value == 0) coroutineScope.launch { refreshFoodsFlow() }
     }
 
     /** Vide le cache en mémoire pour forcer un rechargement des données */
     suspend fun clearCache() {
-        cachedFoods = null
-        lastCacheTime = 0
+        cacheMutex.withLock {
+            cachedFoods = null
+            lastCacheTime = 0
+        }
         searchCacheMutex.withLock {
             searchCache.clear()
             searchCacheTime.clear()
@@ -563,7 +568,7 @@ class DatabaseFoodRepository(
         withContext(AppDispatchers.IO) { foodDao.insertFood(food.toFoodEntity()) }
         // Invalider le cache après insertion
         clearCache()
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
@@ -576,7 +581,7 @@ class DatabaseFoodRepository(
         withContext(AppDispatchers.IO) { foodDao.update(food.toFoodEntity()) }
         // Invalider le cache après mise à jour
         clearCache()
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
@@ -589,7 +594,7 @@ class DatabaseFoodRepository(
         withContext(AppDispatchers.IO) { foodDao.delete(food.toFoodEntity()) }
         // Invalider le cache après suppression
         clearCache()
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
@@ -600,12 +605,21 @@ class DatabaseFoodRepository(
      */
     override suspend fun getAllFoods(): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
+            // Fast path sans verrou — évite toute contention quand le cache est chaud
+            val snapshot = cachedFoods
             val currentTime = Clock.System.now().toEpochMilliseconds()
-            if (cachedFoods != null && (currentTime - lastCacheTime) < cacheValidityDuration) {
-                return@withContext cachedFoods!!
+            if (snapshot != null && (currentTime - lastCacheTime) < cacheValidityDuration) {
+                return@withContext snapshot
             }
-            // Déléguer à getAllFoodsFresh() qui utilise déjà la requête batch
-            getAllFoodsFresh()
+            // Slow path — un seul appel DB même si plusieurs coroutines arrivent simultanément
+            cacheMutex.withLock {
+                val snapshotLocked = cachedFoods
+                val now = Clock.System.now().toEpochMilliseconds()
+                if (snapshotLocked != null && (now - lastCacheTime) < cacheValidityDuration) {
+                    return@withLock snapshotLocked
+                }
+                getAllFoodsFresh()
+            }
         }
     }
 
@@ -1354,7 +1368,7 @@ class DatabaseFoodRepository(
         }
 
         // Mettre à jour le Flow pour notifier les observateurs (dans le contexte Main)
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch {
                 try {
                     refreshFoodsFlow()
@@ -1460,7 +1474,7 @@ class DatabaseFoodRepository(
         }
         // Invalider le cache et rafraîchir le Flow pour notifier les observateurs
         clearCache()
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
@@ -1568,7 +1582,7 @@ class DatabaseFoodRepository(
         }
 
         // Mettre à jour le Flow pour notifier les observateurs (dans le contexte Main)
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
