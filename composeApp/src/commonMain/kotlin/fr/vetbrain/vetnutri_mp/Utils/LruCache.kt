@@ -70,7 +70,10 @@ class LruMap<K, V>(
  */
 class LruCache<K, V>(
     private val maxSize: Int = 100,
-    private val ttlMs: Long = 5 * 60 * 1000L // 5 minutes par défaut
+    private val ttlMs: Long = 5 * 60 * 1000L, // 5 minutes par défaut
+    private val clock: () -> Long = {
+        kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+    }
 ) {
     private val cache = mutableMapOf<K, CacheEntry<V>>()
     private val accessOrder = mutableListOf<K>()
@@ -91,7 +94,7 @@ class LruCache<K, V>(
             if (entry == null) {
                 null
             } else {
-                val now = currentTimeMillis()
+                val now = clock()
                 if (isExpired(entry, now)) {
                     removeFromCache(key)
                     null
@@ -108,7 +111,7 @@ class LruCache<K, V>(
      */
     suspend fun put(key: K, value: V) {
         mutex.withLock {
-            val now = currentTimeMillis()
+            val now = clock()
 
             // Supprimer les entrées expirées
             cleanupExpiredEntries(now)
@@ -153,7 +156,7 @@ class LruCache<K, V>(
      */
     suspend fun getStats(): CacheStats {
         return mutex.withLock {
-            val now = currentTimeMillis()
+            val now = clock()
             var expiredCount = 0
             var oldestAccess: Long = Long.MAX_VALUE
             var newestAccess: Long = 0
@@ -177,11 +180,6 @@ class LruCache<K, V>(
 
     private fun isExpired(entry: CacheEntry<V>, now: Long): Boolean {
         return (now - entry.timestamp) > ttlMs
-    }
-
-
-    private fun currentTimeMillis(): Long {
-        return kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
     }
 
     private fun updateAccessOrder(key: K) {

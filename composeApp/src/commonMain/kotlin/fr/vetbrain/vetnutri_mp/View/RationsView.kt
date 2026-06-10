@@ -139,16 +139,7 @@ fun RationsView(
         // Calcul du K calculé (produit de tous les coefficients K + coefficient d'ajustement)
         val kCalcule =
                 remember(selectedConsultation) {
-                        selectedConsultation?.let { consultation ->
-                                val k1 = consultation.k1Value ?: 1.0
-                                val k2 = consultation.k2Value ?: 1.0
-                                val k3 = consultation.k3Value ?: 1.0
-                                val k4 = consultation.k4Value ?: 1.0
-                                val k5 = consultation.k5Value ?: 1.0
-                                val coeffAjustement = consultation.coefficientAjustement ?: 1.0
-                                (k1 * k2 * k3 * k4 * k5) * coeffAjustement
-                        }
-                                ?: 1.0
+                        RationAnalysisCalculations.calculerCoefficientGlobal(selectedConsultation)
                 }
 
         // Système de préférences pour le filtrage des nutriments
@@ -165,10 +156,16 @@ fun RationsView(
 
         // Calcul du BE après K et du BE total final (K déjà inclus dans besoinEnergetiqueTotal du VM)
         val beApresK = remember(besoinEnergetiqueStandard, kCalcule) {
-                besoinEnergetiqueStandard?.let { beeVal -> beeVal * kCalcule }
+                RationAnalysisCalculations.calculerBesoinApresK(
+                        besoinEnergetiqueStandard,
+                        kCalcule
+                )
         }
         val besoinEnergetiqueTotal = remember(beApresK, energieAdditionnelle) {
-                beApresK?.let { it + energieAdditionnelle }
+                RationAnalysisCalculations.calculerBesoinTotal(
+                        beApresK,
+                        energieAdditionnelle
+                )
         }
 
         // Délégue le calcul d'énergie additionnelle au ViewModel quand les dépendances changent
@@ -195,19 +192,19 @@ fun RationsView(
         // Calcul du pourcentage de couverture avec le BE total final
         val pourcentageCouverture =
                 remember(energieApportee, besoinEnergetiqueTotal) {
-                        besoinEnergetiqueTotal?.let { besoin ->
-                                if (besoin > 0) (energieApportee / besoin) * 100.0 else 0.0
-                        }
-                                ?: 0.0
+                        RationAnalysisCalculations.calculerPourcentageCouverture(
+                                energieApportee,
+                                besoinEnergetiqueTotal
+                        )
                 }
 
         // Calcul du K Observé avec le besoin énergétique de référence
         val kObserve =
                 remember(energieApportee, besoinEnergetiqueStandard) {
-                        besoinEnergetiqueStandard?.let { besoin ->
-                                if (besoin > 0) energieApportee / besoin else 0.0
-                        }
-                                ?: 0.0
+                        RationAnalysisCalculations.calculerCoefficientObserve(
+                                energieApportee,
+                                besoinEnergetiqueStandard
+                        )
                 }
 
         // Calcul de l'énergie totale apportée par la ration sélectionnée (avec nutriments

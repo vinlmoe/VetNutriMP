@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Utils
 
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -99,11 +100,16 @@ class LruCacheTest {
 
     // ── TTL expiration ─────────────────────────────────────────────────────────
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun get_afterTtlExpired_returnsNull() = runTest {
-        val cache = LruCache<String, Int>(maxSize = 10, ttlMs = 1L)
+        val cache = LruCache<String, Int>(
+            maxSize = 10,
+            ttlMs = 1L,
+            clock = { testScheduler.currentTime }
+        )
         cache.put("a", 42)
-        delay(5)  // wait past TTL
+        delay(5)
         assertNull(cache.get("a"))
     }
 

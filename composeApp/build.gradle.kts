@@ -116,7 +116,6 @@ kotlin {
                 // implementation(libs.junit.junit)
 
                 implementation(libs.xerial.sqlite.jdbc)
-                implementation(libs.compose.ui.test.manifest)
                 implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
                 implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
                 implementation("com.openhtmltopdf:openhtmltopdf-svg-support:1.0.10")
@@ -267,7 +266,10 @@ android {
     }
 }
 
-dependencies { debugImplementation(compose.uiTooling) }
+dependencies {
+    debugImplementation(compose.uiTooling)
+    debugImplementation(libs.compose.ui.test.manifest)
+}
 
 compose.desktop {
     application {

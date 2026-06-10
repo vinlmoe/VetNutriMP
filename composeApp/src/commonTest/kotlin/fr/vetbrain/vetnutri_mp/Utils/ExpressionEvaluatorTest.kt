@@ -22,7 +22,7 @@ class ExpressionEvaluatorTest {
 
     @Test
     fun evaluer_invalidExpression_returnsNull() {
-        val result = ExpressionEvaluator.evaluer("BW +++ 2", mapOf("BW" to 5.0))
+        val result = ExpressionEvaluator.evaluer("BW + * 2", mapOf("BW" to 5.0))
         assertNull(result)
     }
 
