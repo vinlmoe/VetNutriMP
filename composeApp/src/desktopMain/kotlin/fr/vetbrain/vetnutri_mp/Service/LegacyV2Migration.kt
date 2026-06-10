@@ -10,6 +10,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.RationEntity
 import fr.vetbrain.vetnutri_mp.DataBase.WeightEntity
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.LegacyV2Mappings
 import fr.vetbrain.vetnutri_mp.Utils.RaceCodeMapper
 import fr.vetbrain.vetnutri_mp.ViewModel.LegacyMigrationViewModel
 import kotlinx.coroutines.withContext
@@ -45,101 +46,32 @@ object LegacyV2Detector {
 
 // ---- Nutrient label maps (V2 enum index → VetNutriMP label) ----------------
 
-private val BASE_LABELS = arrayOf(
-    "HUMIDITE", "PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE",
-    "SUCRE", "AMIDON", "FIBRESOL", "FIBRETOT", "NDF", "ADF"
-)
-private val AA_LABELS = arrayOf(
-    "ALANINE", "ARGININE", "ASPARAGINE", "ASPARATE", "CYSTEINE",
-    "GLUTAMATE", "GLUTAMINE", "GLYCINE", "HISTIDINE", "ISOLEUCINE",
-    "LEUCINE", "LYSINE", "METHIONINE", "PHENYLALANINE", "PROLINE",
-    "PYRROLYSINE", "SELENOCYSTEINE", "SERINE", "THREONINE", "TRYPTOPHANE",
-    "TYROSINE", "VALINE"
-)
-private val MACRO_LABELS = arrayOf("CAL", "PHOS", "MG", "NA", "K", "CHL")
-private val MIN_LABELS = arrayOf("FE", "CU", "ZN", "MN", "I", "SE")
-private val VITAM_LABELS = arrayOf(
-    "VITA", "VITC", "VITD", "VITE", "VITK", "VITB1", "VITB2", "VITB3",
-    "VITB5", "VITB6", "VITB8", "VITB9", "VITB12", "CHOLINE", "RETINOL", "BETACAR"
-)
-private val LIPID_LABELS = arrayOf(
-    "AGSATURE", "AGMONO", "AGPOLY", "AG40", "AG60", "AG80", "AG100",
-    "AG120", "AG140", "AG160", "AG180", "AG181", "AG182", "AG183",
-    "AG204", "AG205", "AG226", "CHOL", "O3", "O6", "EPADHA"
-)
-private val OTHER_LABELS = arrayOf(
-    "TAURINE", "CARNITINE", "FOS", "MOS", "SUCR", "FRUCT", "LACT",
-    "MALT", "AcOx", "GAL", "GLUCOSE", "DEXTROSE"
-)
-
-private val NUTRIENT_TABLE_MAP = mapOf(
-    "VALUEBASE" to BASE_LABELS,
-    "VALUEAA" to AA_LABELS,
-    "VALUEMACRO" to MACRO_LABELS,
-    "VALUEMIN" to MIN_LABELS,
-    "VALUEVITAM" to VITAM_LABELS,
-    "VALUELIPID" to LIPID_LABELS,
-    "VALUEOTHER" to OTHER_LABELS
-)
+private val NUTRIENT_TABLE_MAP = LegacyV2Mappings.nutrientTableLabels
 
 // V2 stadePhysio int → VetNutriMP StadePhysio.label
-private val STADE_MAP = mapOf(
-    0 to "ADULTE", 1 to "CROISSANCE", 2 to "LACTATION", 3 to "GESTATION", 4 to "HOSPIT"
-)
+private val STADE_MAP = LegacyV2Mappings.stageLabels
 
 // V2 EquationKind int → VetNutriMP EquationKind.name
-private val EQUATION_KIND_MAP = mapOf(
-    0 to "ENERGYNEED", 1 to "ENERGYDENSITY", 2 to "MW",
-    3 to "INDICATOR", 4 to "NEED", 5 to "COMPLEMENTARY_NUTRIENT", 6 to "ENERCOMP"
-)
+private val EQUATION_KIND_MAP = LegacyV2Mappings.equationKindNames
 
 // V2 Reflevel int → VetNutriMP Reflevel.name
-private val REFLEVEL_MAP = mapOf(0 to "MIN", 1 to "MAX", 2 to "OPTIMIN", 3 to "OPTIMAX")
+private val REFLEVEL_MAP = LegacyV2Mappings.referenceLevelNames
 
 // V2 UnitReqEnum IDs → VetNutriMP UnitReqEnum IDs
 // V2: MCAL(0)=per Mcal/1000kcal, KGBW(1)=per kg BW, KGMW(2)=per kg MW, NO(3)=no unit, PERC(4)=%
 // MP: PERKG(0)=per kg, PERKCAL(1)=per 1000kcal, PERMS(2)=per kg metab, PERKJ(4), RATIO(5), ABSOLUTE(6)
-private val V2_UNIT_KIND_MAP = mapOf(
-    0 to 1, // V2 MCAL (per Mcal = per 1000 kcal) → MP PERKCAL
-    1 to 0, // V2 KGBW (per kg body weight)        → MP PERKG
-    2 to 2, // V2 KGMW (per kg metabolic weight)   → MP PERMS
-    3 to 6, // V2 NO   (no unit)                   → MP ABSOLUTE
-    4 to 5  // V2 PERC (percentage)                → MP RATIO
-)
+private val V2_UNIT_KIND_MAP = LegacyV2Mappings.unitRequirementIds
 
 // V2 specie int (getCategorie()) → VetNutriMP Espece.label  (used for animal/ration specieId)
-private val SPECIE_MAP = mapOf(
-    0 to "DOG", 1 to "CAT", 2 to "ALL", 3 to "PRIMATE",
-    4 to "RAT", 5 to "SOURIS", 6 to "FURET", 7 to "LAPIN",
-    8 to "CHEVAL", 9 to "FELIN", 10 to "CANIN", 11 to "HERBIVORE", 12 to "FOLIVORE"
-)
+private val SPECIE_MAP = LegacyV2Mappings.speciesLabels
 
 // V2 specie int → VetNutriMP Espece enum *name* (used for EquationEntity.specie / ReferenceEvEntity.espece
 // which are parsed via Espece.valueOf — French enum names, not English labels).
 // 2 → null because "all species" is stored as null in MP equations/references.
-private val SPECIE_ENUM_MAP = mapOf(
-    0 to "CHIEN", 1 to "CHAT", 2 to null, 3 to "PRIMATE",
-    4 to "RAT", 5 to "SOURIS", 6 to "FURET", 7 to "LAPIN",
-    8 to "CHEVAL", 9 to "FELIN", 10 to "CANIN", 11 to "HERBIVORE", 12 to "FOLIVORE"
-)
+private val SPECIE_ENUM_MAP = LegacyV2Mappings.speciesEnumNames
 
 // Translate English V2 species labels (or enum names) to MP Espece enum names.
-private fun String.toEspeceEnumName(): String? = when (uppercase()) {
-    "ALL", "CH" -> null
-    "DOG", "CHIEN" -> "CHIEN"
-    "CAT", "CHAT" -> "CHAT"
-    "PRIMATE" -> "PRIMATE"
-    "RAT" -> "RAT"
-    "SOURIS" -> "SOURIS"
-    "FURET" -> "FURET"
-    "LAPIN" -> "LAPIN"
-    "CHEVAL" -> "CHEVAL"
-    "FELIN" -> "FELIN"
-    "CANIN" -> "CANIN"
-    "HERBIVORE" -> "HERBIVORE"
-    "FOLIVORE" -> "FOLIVORE"
-    else -> null
-}
+private fun String.toEspeceEnumName(): String? = LegacyV2Mappings.speciesEnumName(this)
 
 // ---- JDBC helpers -----------------------------------------------------------
 
@@ -216,79 +148,7 @@ private fun Map<String, Any?>.num(vararg keys: String): Number? = field(*keys) a
  * Règle 4 : script multi-lignes avec assignations → expression unique
  */
 internal fun transpileV2Script(script: String): String {
-    var s = script.trim()
-
-    // R1 – Math.func() → func()
-    s = s.replace(Regex("\\bMath\\.")) { "" }
-
-    // R2 – ** → ^
-    s = s.replace("**", "^")
-
-    // R3 – | → +  (OR logique via somme de booléens 0/1)
-    s = s.replace("|", "+")
-
-    // R4 – script multi-lignes (valeurs Java-like) → expression unique
-    if (s.contains('\n') || s.contains(';')) {
-        s = tryFoldValueScript(s) ?: s
-    }
-
-    return s.replace(Regex("[ \t]+"), " ").trim()
-}
-
-/**
- * Plie un script de la forme :
- *   value = init;
- *   value = value + X;
- *   if(cond){ value = value + A; } else { value = value + B1; value = value + B2; }
- * en une seule expression : init + X + if(cond, A, B1+B2)
- * Retourne null si le script ne correspond pas à ce pattern.
- */
-private fun tryFoldValueScript(script: String): String? {
-    val terms     = mutableListOf<String>()
-    val ifTerms   = mutableListOf<String>()
-    val elseTerms = mutableListOf<String>()
-    var condition = ""
-    var phase = 0 // 0 = outer, 1 = in_if, 2 = in_else
-
-    val initPat = Regex("^value\\s*=\\s*(?!value\\b)(.+)$")
-    val incrPat = Regex("^value\\s*=\\s*value\\s*\\+\\s*(.+)$")
-    val ifPat   = Regex("^if\\s*\\((.+)\\)\\s*\\{?\\s*$")
-    val elsePat = Regex("^[}]?\\s*else\\s*\\{?\\s*$")
-
-    val lines = script
-        .replace(Regex("[ \t]+"), " ")
-        .split(Regex("[;\n]"))
-        .map { it.trim().trimEnd('{').trim() }
-        .filter { it.isNotBlank() && it != "value" && it != "}" }
-
-    for (line in lines) {
-        when {
-            elsePat.matches(line) -> phase = 2
-
-            ifPat.matches(line) -> {
-                condition = ifPat.find(line)!!.groupValues[1].trim()
-                phase = 1
-                ifTerms.clear(); elseTerms.clear()
-            }
-
-            initPat.matches(line) && phase == 0 ->
-                terms.add(initPat.find(line)!!.groupValues[1].trim())
-
-            incrPat.matches(line) -> when (phase) {
-                0 -> terms.add(incrPat.find(line)!!.groupValues[1].trim())
-                1 -> ifTerms.add(incrPat.find(line)!!.groupValues[1].trim())
-                2 -> elseTerms.add(incrPat.find(line)!!.groupValues[1].trim())
-            }
-        }
-    }
-
-    if (condition.isNotBlank()) {
-        val ifExpr   = ifTerms.joinToString("+")
-        val elseExpr = elseTerms.joinToString("+").ifBlank { "0" }
-        terms.add("if($condition,$ifExpr,$elseExpr)")
-    }
-
-    return terms.joinToString("+").takeIf { it.isNotBlank() }
+    return LegacyV2Mappings.transpileScript(script)
 }
 
 private fun Any?.asNonBlankString(): String? = when (this) {
