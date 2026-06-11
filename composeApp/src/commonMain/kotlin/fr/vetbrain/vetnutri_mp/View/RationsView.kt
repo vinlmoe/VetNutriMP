@@ -1988,7 +1988,7 @@ private fun CoefficientEditableRow(
 
         // État pour l'édition directe des valeurs personnalisées
         var editableValue by
-                remember(currentValue) {
+                remember {
                         mutableStateOf(
                                 fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(
                                                 (currentValue ?: 1.0).toDouble(),
@@ -1998,6 +1998,18 @@ private fun CoefficientEditableRow(
                         )
                 }
         var isEditing by remember { mutableStateOf(false) }
+
+        // Synchroniser editableValue avec currentValue uniquement hors mode édition
+        LaunchedEffect(currentValue) {
+                if (!isEditing) {
+                        editableValue =
+                                fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(
+                                                (currentValue ?: 1.0).toDouble(),
+                                                2
+                                        )
+                                        .replace('.', ',')
+                }
+        }
 
         Column(modifier = Modifier.fillMaxWidth()) {
                 // Label du coefficient
@@ -2015,19 +2027,6 @@ private fun CoefficientEditableRow(
                                 value = editableValue,
                                 onValueChange = { newValue ->
                                         editableValue = newValue
-                                        // Validation et mise à jour en temps réel
-                                        val normalizedText = newValue.replace(',', '.')
-                                        val value = normalizedText.toDoubleOrNull()
-                                        if (value != null && value > 0) {
-                                                val customCoef =
-                                                        fr.vetbrain.vetnutri_mp.Data.CoefP(
-                                                                description =
-                                                                        customValueLabel,
-                                                                coef = value,
-                                                                groupUUID = null
-                                                        )
-                                                onCoefficientSelected(customCoef)
-                                        }
                                 },
                                 label = { Text(translate(ConsultationEdit.COEF_SELECTOR_LABEL)) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -2293,7 +2292,9 @@ private fun CoefficientsDialog(
         var coefficientText by
                 remember(selectedConsultation) {
                         mutableStateOf(
-                                selectedConsultation?.coefficientAjustement?.toString() ?: "1.0"
+                                normalizeDecimalInput(
+                                        selectedConsultation?.coefficientAjustement?.toString() ?: "1.0"
+                                )
                         )
                 }
         val coefficientValue = parsePositiveDecimal(coefficientText)
@@ -2576,10 +2577,12 @@ private fun CoefficientsDialog(
                                                                 IconButtonWithTooltip(
                                                                         onClick = {
                                                                                 coefficientText =
-                                                                                        selectedConsultation
-                                                                                                ?.coefficientAjustement
-                                                                                                ?.toString()
-                                                                                                ?: "1.0"
+                                                                                        normalizeDecimalInput(
+                                                                                                selectedConsultation
+                                                                                                        ?.coefficientAjustement
+                                                                                                        ?.toString()
+                                                                                                        ?: "1.0"
+                                                                                        )
                                                                                 isEditingCoefficient =
                                                                                         true
                                                                         },
