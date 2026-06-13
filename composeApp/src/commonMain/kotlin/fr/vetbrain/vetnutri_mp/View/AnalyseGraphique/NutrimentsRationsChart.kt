@@ -281,150 +281,98 @@ fun NutrimentsRationsChart(
                                                         0f..1f
                                                 }
 
-                                        XYGraph(
-                                                xAxisModel =
-                                                        remember(categories) {
-                                                                CategoryAxisModel(categories)
-                                                        },
-                                                yAxisModel =
-                                                        remember(yRange) {
-                                                                KoalaPlotExtensions
-                                                                        .createSmartYAxisModel(
-                                                                                yRange
-                                                                        )
-                                                        },
-                                                yAxisTitle =
-                                                        "${xOption?.displayName} (${xOption?.unit})",
-                                                modifier = Modifier.height(400.dp)
-                                        ) {
-                                                VerticalBarPlot(
-                                                        xData = categories,
-                                                        yData = valeurs,
-                                                        bar = { index ->
-                                                                val ration =
-                                                                        rationsNutrimentData[index]
-                                                                val couleur =
-                                                                        if (ration.rationId ==
-                                                                                        rationSelectionnee
-                                                                        ) {
-                                                                                Color(
-                                                                                        0xFF9C27B0
-                                                                                ) // Violet pour
-                                                                                // sélectionné
-                                                                        } else if (ration.isRationActuelle
-                                                                        ) {
-                                                                                Color(
-                                                                                        0xFFFF9800
-                                                                                ) // Orange pour
-                                                                                // rations
-                                                                                // actuelles
-                                                                        } else {
-                                                                                VetNutriColors
-                                                                                        .Primary // Couleur normale
+                                        // Box wrapper : permet l'overlay des labels directement
+                                        // sur le graphique avec maxHeight contraint à 400dp
+                                        Box(modifier = Modifier.height(400.dp)) {
+                                                XYGraph(
+                                                        xAxisModel = remember(categories) { CategoryAxisModel(categories) },
+                                                        yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartYAxisModel(yRange) },
+                                                        yAxisTitle = "${xOption?.displayName} (${xOption?.unit})",
+                                                        modifier = Modifier.fillMaxSize()
+                                                ) {
+                                                        VerticalBarPlot(
+                                                                xData = categories,
+                                                                yData = valeurs,
+                                                                bar = { index ->
+                                                                        val ration = rationsNutrimentData[index]
+                                                                        val couleur = when {
+                                                                                ration.rationId == rationSelectionnee -> Color(0xFF9C27B0)
+                                                                                ration.isRationActuelle -> Color(0xFFFF9800)
+                                                                                else -> VetNutriColors.Primary
                                                                         }
-                                                                DefaultVerticalBar(
-                                                                        SolidColor(couleur)
-                                                                )
-                                                        }
-                                                )
-                                        }
-
-                                        // Numéros superposés sur les barres
-                                        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                                                rationsNutrimentData.forEachIndexed { index, ration
-                                                        ->
-                                                        val barWidth =
-                                                                maxWidth / rationsNutrimentData.size
-                                                        val xPosition =
-                                                                (index.toFloat() + 0.5f) *
-                                                                        (maxWidth.value /
-                                                                                rationsNutrimentData
-                                                                                        .size)
-
-                                                        Box(
-                                                                modifier =
-                                                                        Modifier.fillMaxSize()
-                                                                                .wrapContentSize(
-                                                                                        Alignment
-                                                                                                .TopStart
-                                                                                )
-                                                                                .offset(
-                                                                                        x =
-                                                                                                (xPosition -
-                                                                                                                10)
-                                                                                                        .dp,
-                                                                                        y = 20.dp
-                                                                                ),
-                                                                contentAlignment = Alignment.Center
-                                                        ) {
-                                                                // Fond du numéro
-                                                                androidx.compose.foundation.Canvas(
-                                                                        modifier =
-                                                                                Modifier.size(20.dp)
-                                                                ) {
-                                                                        drawCircle(
-                                                                                color = Color.White,
-                                                                                radius =
-                                                                                        10.dp.toPx()
-                                                                        )
-                                                                        drawCircle(
-                                                                                color =
-                                                                                        if (ration.rationId ==
-                                                                                                        rationSelectionnee
-                                                                                        ) {
-                                                                                                Color(
-                                                                                                        0xFF9C27B0
-                                                                                                )
-                                                                                        } else if (ration.isRationActuelle
-                                                                                        ) {
-                                                                                                Color(
-                                                                                                        0xFFFF9800
-                                                                                                )
-                                                                                        } else {
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                        },
-                                                                                radius =
-                                                                                        10.dp.toPx(),
-                                                                                style =
-                                                                                        Stroke(
-                                                                                                width =
-                                                                                                        2.dp.toPx()
-                                                                                        )
-                                                                        )
+                                                                        DefaultVerticalBar(SolidColor(couleur))
                                                                 }
+                                                        )
+                                                }
 
-                                                                // Numéro
-                                                                Text(
-                                                                        text = "${ration.numero}",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .caption
-                                                                                        .copy(
-                                                                                                fontWeight =
-                                                                                                        FontWeight
-                                                                                                                .Bold,
-                                                                                                fontSize =
-                                                                                                        12.sp
-                                                                                        ),
-                                                                        color =
-                                                                                if (ration.rationId ==
-                                                                                                rationSelectionnee
-                                                                                ) {
-                                                                                        Color(
-                                                                                                0xFF9C27B0
+                                                // Labels overlay — correctement superposé au graphique
+                                                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                                                        val leftMgn = KOALAPLOT_LEFT_DP
+                                                        val topPad = KOALAPLOT_TOP_DP
+                                                        val bottomPad = 25f // histogramme catégorie : pas de titre X
+                                                        val rightPad = KOALAPLOT_RIGHT_DP
+                                                        val plotW = maxWidth.value - leftMgn - rightPad
+                                                        val plotH = maxHeight.value - topPad - bottomPad
+
+                                                        rationsNutrimentData.forEachIndexed { index, ration ->
+                                                                val barValue = valeurs[index].coerceAtLeast(0f)
+                                                                val barFrac = if (yRange.endInclusive > yRange.start)
+                                                                        ((barValue - yRange.start) / (yRange.endInclusive - yRange.start)).coerceIn(0f, 1f)
+                                                                else 0f
+                                                                val barTopFrac = 1f - barFrac
+
+                                                                val barCenterX = leftMgn + (index.toFloat() + 0.5f) * (plotW / rationsNutrimentData.size)
+                                                                val barTopY = topPad + barTopFrac * plotH
+
+                                                                val badgeSize = 22.dp
+                                                                val halfBadge = badgeSize / 2
+                                                                val offsetX = (barCenterX - halfBadge.value).dp
+                                                                // Label juste au-dessus du sommet de la barre
+                                                                val offsetY = (barTopY - badgeSize.value - 4f).dp.coerceAtLeast(0.dp)
+
+                                                                val rationColor = when {
+                                                                        ration.rationId == rationSelectionnee -> Color(0xFF9C27B0)
+                                                                        ration.isRationActuelle -> Color(0xFFFF9800)
+                                                                        else -> VetNutriColors.Primary
+                                                                }
+                                                                val numFontSize = if (ration.numero >= 100) 9.sp else if (ration.numero >= 10) 10.sp else 12.sp
+                                                                val shortName = ration.rationName.take(9).let { if (ration.rationName.length > 9) "$it…" else it }
+                                                                val barValueStr = fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils.formatDecimal(barValue.toDouble(), 1)
+
+                                                                Box(
+                                                                        modifier = Modifier.fillMaxSize()
+                                                                                .wrapContentSize(Alignment.TopStart)
+                                                                                .offset(x = offsetX, y = offsetY),
+                                                                        contentAlignment = Alignment.TopCenter
+                                                                ) {
+                                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                                                // Valeur numérique au-dessus du badge
+                                                                                Text(
+                                                                                        text = barValueStr,
+                                                                                        style = MaterialTheme.typography.caption.copy(fontSize = 8.sp, fontWeight = FontWeight.Medium),
+                                                                                        color = rationColor.copy(alpha = 0.85f)
+                                                                                )
+                                                                                Box(contentAlignment = Alignment.Center) {
+                                                                                        androidx.compose.foundation.Canvas(modifier = Modifier.size(badgeSize)) {
+                                                                                                drawCircle(color = Color.White, radius = size.minDimension / 2)
+                                                                                                drawCircle(color = rationColor, radius = size.minDimension / 2, style = Stroke(width = 2.dp.toPx()))
+                                                                                        }
+                                                                                        Text(
+                                                                                                text = "${ration.numero}",
+                                                                                                style = MaterialTheme.typography.caption.copy(fontWeight = FontWeight.Bold, fontSize = numFontSize),
+                                                                                                color = rationColor
                                                                                         )
-                                                                                } else if (ration.isRationActuelle
-                                                                                ) {
-                                                                                        Color(
-                                                                                                0xFFFF9800
-                                                                                        )
-                                                                                } else {
-                                                                                        VetNutriColors
-                                                                                                .Primary
                                                                                 }
-                                                                )
+                                                                                if (shortName.isNotEmpty()) {
+                                                                                        Text(
+                                                                                                text = shortName,
+                                                                                                style = MaterialTheme.typography.caption.copy(fontSize = 8.sp),
+                                                                                                color = rationColor.copy(alpha = 0.85f),
+                                                                                                maxLines = 1
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                }
                                                         }
                                                 }
                                         }
@@ -534,211 +482,117 @@ fun NutrimentsRationsChart(
                                                 }
                                         }
 
-                                        XYGraph(
-                                                xAxisModel =
-                                                        KoalaPlotExtensions.createSmartXAxisModel(
-                                                                xRange
-                                                        ),
-                                                yAxisModel =
-                                                        KoalaPlotExtensions.createSmartYAxisModel(
-                                                                yRange
-                                                        ),
-                                                xAxisTitle =
-                                                        "${xOption?.displayName} (${xOption?.unit})",
-                                                yAxisTitle =
-                                                        "${yOption?.displayName} (${yOption?.unit})",
-                                                modifier = Modifier
-                                                        .height(400.dp)
-                                                        .clipToBounds()
-                                                        .pointerInput(Unit) {
-                                                                detectTransformGestures { _, pan, zoom, _ ->
-                                                                        // Limiter le zoom entre 0.5x et 5x
-                                                                        val newScaleX = (zoomPanState.scaleX * zoom).coerceIn(0.5f, 5f)
-                                                                        val newScaleY = (zoomPanState.scaleY * zoom).coerceIn(0.5f, 5f)
-                                                                        
-                                                                        // Calculer les plages actuelles (zoomées) pour le pan
-                                                                        val currentXRange = calculateZoomedRangeView(originalRanges.first, zoomPanState, isXAxis = true)
-                                                                        val currentYRange = calculateZoomedRangeView(originalRanges.second, zoomPanState, isXAxis = false)
-                                                                        
-                                                                        // Convertir le pan en coordonnées de données (basé sur la plage actuelle)
-                                                                        val panXDelta = pan.x / size.width * (currentXRange.endInclusive - currentXRange.start)
-                                                                        val panYDelta = -pan.y / size.height * (currentYRange.endInclusive - currentYRange.start)
-                                                                        
-                                                                        zoomPanState = ZoomPanStateView(
-                                                                                scaleX = newScaleX,
-                                                                                scaleY = newScaleY,
-                                                                                panX = zoomPanState.panX + panXDelta,
-                                                                                panY = zoomPanState.panY + panYDelta
-                                                                        )
-                                                                }
-                                                        }
-                                        ) {
-                                                rationsNutrimentData.forEachIndexed { index, data ->
-                                                        val point = points[index]
-                                                        
-                                                        // Vérifier si le point est dans la plage visible
-                                                        val isPointVisible = point.x >= xRange.start && 
-                                                                        point.x <= xRange.endInclusive &&
-                                                                        point.y >= yRange.start && 
-                                                                        point.y <= yRange.endInclusive
-                                                        
-                                                        if (!isPointVisible) return@forEachIndexed
-                                                        
-                                                        LinePlot(
-                                                                data = listOf(point),
-                                                                symbol = {
-                                                                        val couleurPoint =
-                                                                                if (data.rationId ==
-                                                                                                rationSelectionnee
-                                                                                ) {
-                                                                                        Color(
-                                                                                                0xFF9C27B0
-                                                                                        ) // Violet
-                                                                                        // pour
-                                                                                        // sélectionné
-                                                                                } else if (data.isRationActuelle
-                                                                                ) {
-                                                                                        Color(
-                                                                                                0xFFFF9800
-                                                                                        ) // Orange
-                                                                                        // pour
-                                                                                        // rations
-                                                                                        // actuelles
-                                                                                } else {
-                                                                                        VetNutriColors
-                                                                                                .Primary // Couleur normale
-                                                                                }
-
-                                                                        androidx.compose.foundation
-                                                                                .Canvas(
-                                                                                        modifier =
-                                                                                                Modifier.size(
-                                                                                                        12.dp
-                                                                                                )
-                                                                                ) {
-                                                                                        drawCircle(
-                                                                                                color =
-                                                                                                        couleurPoint,
-                                                                                                radius =
-                                                                                                        6f,
-                                                                                                center =
-                                                                                                        center
-                                                                                        )
-                                                                                }
-                                                                }
-                                                        )
-                                                }
-                                        }
-
-                                        // Numéros superposés
-                                        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                                                rationsNutrimentData.forEachIndexed { index, data ->
-                                                        val point = points[index]
-                                                        val xPosition =
-                                                                ((point.x - xRange.start) /
-                                                                        (xRange.endInclusive -
-                                                                                xRange.start))
-                                                        val yPosition =
-                                                                1f -
-                                                                        ((point.y - yRange.start) /
-                                                                                (yRange.endInclusive -
-                                                                                        yRange.start))
-
-                                                        // Marges typiques des axes KoalaPlot
-                                                        val leftAxisMargin = 10.dp
-                                                        val bottomAxisMargin = 15.dp
-                                                        val topMargin = 10.dp
-                                                        val rightMargin = 20.dp
-
-                                                        // Zone de graphique effective
-                                                        val effectiveGraphWidth =
-                                                                maxWidth -
-                                                                        leftAxisMargin -
-                                                                        rightMargin
-                                                        val effectiveGraphHeight =
-                                                                maxHeight -
-                                                                        bottomAxisMargin -
-                                                                        topMargin
-
-                                                        val numeroColor =
-                                                                if (data.rationId ==
-                                                                                rationSelectionnee
-                                                                ) {
-                                                                        Color(
-                                                                                0xFF9C27B0
-                                                                        ) // Violet pour sélectionné
-                                                                } else if (data.isRationActuelle) {
-                                                                        Color(
-                                                                                0xFFFF9800
-                                                                        ) // Orange pour rations
-                                                                        // actuelles
-                                                                } else {
-                                                                        VetNutriColors
-                                                                                .Primary // Couleur
-                                                                        // par
-                                                                        // défaut
-                                                                }
-
-                                                        // Vérifier si le label est visible
-                                                        val labelX = leftAxisMargin + (xPosition * effectiveGraphWidth.value).dp - 10.dp
-                                                        val labelY = topMargin + (yPosition * effectiveGraphHeight.value).dp - 30.dp
-                                                        
-                                                        val isLabelVisible = labelX >= (-20).dp && 
-                                                                        labelX <= maxWidth + 20.dp &&
-                                                                        labelY >= (-20).dp && 
-                                                                        labelY <= maxHeight + 20.dp
-                                                        
-                                                        if (!isLabelVisible) return@forEachIndexed
-
-                                                        Box(
-                                                                modifier =
-                                                                        Modifier.fillMaxSize()
-                                                                                .wrapContentSize(
-                                                                                        Alignment
-                                                                                                .TopStart
+                                        // Box wrapper : overlay des labels avec maxHeight contraint à 400dp
+                                        Box(modifier = Modifier.height(400.dp)) {
+                                                XYGraph(
+                                                        xAxisModel = KoalaPlotExtensions.createSmartXAxisModel(xRange),
+                                                        yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(yRange),
+                                                        xAxisTitle = "${xOption?.displayName} (${xOption?.unit})",
+                                                        yAxisTitle = "${yOption?.displayName} (${yOption?.unit})",
+                                                        modifier = Modifier.fillMaxSize().clipToBounds()
+                                                                .pointerInput(Unit) {
+                                                                        detectTransformGestures { _, pan, zoom, _ ->
+                                                                                val newScaleX = (zoomPanState.scaleX * zoom).coerceIn(0.5f, 5f)
+                                                                                val newScaleY = (zoomPanState.scaleY * zoom).coerceIn(0.5f, 5f)
+                                                                                val currentXRange = calculateZoomedRangeView(originalRanges.first, zoomPanState, isXAxis = true)
+                                                                                val currentYRange = calculateZoomedRangeView(originalRanges.second, zoomPanState, isXAxis = false)
+                                                                                val panXDelta = pan.x / size.width * (currentXRange.endInclusive - currentXRange.start)
+                                                                                val panYDelta = -pan.y / size.height * (currentYRange.endInclusive - currentYRange.start)
+                                                                                zoomPanState = ZoomPanStateView(
+                                                                                        scaleX = newScaleX, scaleY = newScaleY,
+                                                                                        panX = zoomPanState.panX + panXDelta,
+                                                                                        panY = zoomPanState.panY + panYDelta
                                                                                 )
-                                                                                .offset(
-                                                                                        x = labelX,
-                                                                                        y = labelY
-                                                                                ),
-                                                                contentAlignment = Alignment.Center
-                                                        ) {
-                                                                androidx.compose.foundation.Canvas(
-                                                                        modifier =
-                                                                                Modifier.size(20.dp)
-                                                                ) {
-                                                                        drawCircle(
-                                                                                color = Color.White,
-                                                                                radius =
-                                                                                        10.dp.toPx()
-                                                                        )
-                                                                        drawCircle(
-                                                                                color = numeroColor,
-                                                                                radius =
-                                                                                        10.dp.toPx(),
-                                                                                style =
-                                                                                        Stroke(
-                                                                                                width =
-                                                                                                        2.dp.toPx()
-                                                                                        )
-                                                                        )
+                                                                        }
                                                                 }
-
-                                                                Text(
-                                                                        text = "${data.numero}",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .caption
-                                                                                        .copy(
-                                                                                                fontWeight =
-                                                                                                        FontWeight
-                                                                                                                .Bold,
-                                                                                                fontSize =
-                                                                                                        12.sp
-                                                                                        ),
-                                                                        color = numeroColor
+                                                ) {
+                                                        rationsNutrimentData.forEachIndexed { index, data ->
+                                                                val point = points[index]
+                                                                val isPointVisible = point.x >= xRange.start &&
+                                                                        point.x <= xRange.endInclusive &&
+                                                                        point.y >= yRange.start &&
+                                                                        point.y <= yRange.endInclusive
+                                                                if (!isPointVisible) return@forEachIndexed
+                                                                val couleurPoint = when {
+                                                                        data.rationId == rationSelectionnee -> Color(0xFF9C27B0)
+                                                                        data.isRationActuelle -> Color(0xFFFF9800)
+                                                                        else -> VetNutriColors.Primary
+                                                                }
+                                                                LinePlot(
+                                                                        data = listOf(point),
+                                                                        symbol = {
+                                                                                androidx.compose.foundation.Canvas(modifier = Modifier.size(12.dp)) {
+                                                                                        drawCircle(color = couleurPoint, radius = 6f, center = center)
+                                                                                }
+                                                                        }
                                                                 )
+                                                        }
+                                                }
+
+                                                // Labels overlay — marges calibrées pour KoalaPlot
+                                                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                                                        val leftAxisMargin = KOALAPLOT_LEFT_DP.dp
+                                                        val bottomAxisMargin = KOALAPLOT_BOTTOM_DP.dp
+                                                        val topMargin = KOALAPLOT_TOP_DP.dp
+                                                        val rightMargin = KOALAPLOT_RIGHT_DP.dp
+                                                        val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
+                                                        val effectiveGraphHeight = maxHeight - bottomAxisMargin - topMargin
+
+                                                        rationsNutrimentData.forEachIndexed { index, data ->
+                                                                val point = points[index]
+                                                                val isPointVisible = point.x >= xRange.start &&
+                                                                        point.x <= xRange.endInclusive &&
+                                                                        point.y >= yRange.start &&
+                                                                        point.y <= yRange.endInclusive
+                                                                if (!isPointVisible) return@forEachIndexed
+
+                                                                val xFrac = ((point.x - xRange.start) / (xRange.endInclusive - xRange.start)).coerceIn(0f, 1f)
+                                                                val yFrac = (1f - (point.y - yRange.start) / (yRange.endInclusive - yRange.start)).coerceIn(0f, 1f)
+
+                                                                val badgeSize = 22.dp
+                                                                val halfBadge = badgeSize / 2
+                                                                val labelX = leftAxisMargin + (xFrac * effectiveGraphWidth.value).dp - halfBadge
+                                                                val labelY = topMargin + (yFrac * effectiveGraphHeight.value).dp - halfBadge
+
+                                                                if (labelX < -halfBadge || labelX > maxWidth ||
+                                                                        labelY < -halfBadge || labelY > maxHeight) return@forEachIndexed
+
+                                                                val numeroColor = when {
+                                                                        data.rationId == rationSelectionnee -> Color(0xFF9C27B0)
+                                                                        data.isRationActuelle -> Color(0xFFFF9800)
+                                                                        else -> VetNutriColors.Primary
+                                                                }
+                                                                val numFontSize = if (data.numero >= 100) 9.sp else if (data.numero >= 10) 10.sp else 12.sp
+                                                                val shortName = data.rationName.take(9).let { if (data.rationName.length > 9) "$it…" else it }
+
+                                                                Box(
+                                                                        modifier = Modifier.fillMaxSize()
+                                                                                .wrapContentSize(Alignment.TopStart)
+                                                                                .offset(x = labelX, y = labelY),
+                                                                        contentAlignment = Alignment.TopCenter
+                                                                ) {
+                                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                                                Box(contentAlignment = Alignment.Center) {
+                                                                                        androidx.compose.foundation.Canvas(modifier = Modifier.size(badgeSize)) {
+                                                                                                drawCircle(color = Color.White, radius = size.minDimension / 2)
+                                                                                                drawCircle(color = numeroColor, radius = size.minDimension / 2, style = Stroke(width = 2.dp.toPx()))
+                                                                                        }
+                                                                                        Text(
+                                                                                                text = "${data.numero}",
+                                                                                                style = MaterialTheme.typography.caption.copy(fontWeight = FontWeight.Bold, fontSize = numFontSize),
+                                                                                                color = numeroColor
+                                                                                        )
+                                                                                }
+                                                                                if (shortName.isNotEmpty()) {
+                                                                                        Text(
+                                                                                                text = shortName,
+                                                                                                style = MaterialTheme.typography.caption.copy(fontSize = 8.sp),
+                                                                                                color = numeroColor.copy(alpha = 0.9f),
+                                                                                                maxLines = 1
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                }
                                                         }
                                                 }
                                         }

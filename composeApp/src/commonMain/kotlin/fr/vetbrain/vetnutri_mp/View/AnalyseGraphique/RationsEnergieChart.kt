@@ -467,94 +467,72 @@ fun RationsEnergieChart(
                                         }
                                 }
 
-                                // Numéros superposés (uniquement ceux dans la plage visible)
-                                val leftAxisMargin = 10.dp
-                                val bottomAxisMargin = 15.dp
-                                val topMargin = 10.dp
-                                val rightMargin = 20.dp
-                                
-                                // Zone de graphique effective
+                                // Numéros superposés — marges calibrées pour le layout KoalaPlot
+                                val leftAxisMargin = KOALAPLOT_LEFT_DP.dp
+                                val bottomAxisMargin = KOALAPLOT_BOTTOM_DP.dp
+                                val topMargin = KOALAPLOT_TOP_DP.dp
+                                val rightMargin = KOALAPLOT_RIGHT_DP.dp
                                 val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
                                 val effectiveGraphHeight = maxHeight - bottomAxisMargin - topMargin
-                                
+
                                 rationsEnergieData.forEachIndexed { index, data ->
                                         val point = points[index]
-                                        
-                                        // Vérifier si le point est dans la plage visible
-                                        val isPointVisible = point.x >= xRange.start && 
-                                                                point.x <= xRange.endInclusive &&
-                                                                point.y >= yRange.start && 
-                                                                point.y <= yRange.endInclusive
-                                        
+
+                                        val isPointVisible = point.x >= xRange.start &&
+                                                        point.x <= xRange.endInclusive &&
+                                                        point.y >= yRange.start &&
+                                                        point.y <= yRange.endInclusive
                                         if (!isPointVisible) return@forEachIndexed
-                                        
-                                        // Calculer la position du numéro
-                                        val xPosition =
-                                                ((point.x - xRange.start) /
-                                                        (xRange.endInclusive - xRange.start))
-                                        val yPosition =
-                                                1f -
-                                                        ((point.y - yRange.start) /
-                                                                (yRange.endInclusive -
-                                                                        yRange.start))
 
-                                        // Couleur selon la sélection
-                                        val numeroColor =
-                                                if (data.rationId == rationSelectionnee) {
-                                                        Color(0xFF9C27B0) // Violet pour sélectionné
-                                                } else {
-                                                        VetNutriColors.Primary // Couleur par défaut
-                                                }
+                                        val xFrac = ((point.x - xRange.start) /
+                                                (xRange.endInclusive - xRange.start)).coerceIn(0f, 1f)
+                                        val yFrac = (1f - (point.y - yRange.start) /
+                                                (yRange.endInclusive - yRange.start)).coerceIn(0f, 1f)
 
-                                        // Vérifier si le label est visible
-                                        val labelX = leftAxisMargin + (xPosition * effectiveGraphWidth.value).dp - 10.dp
-                                        val labelY = topMargin + (yPosition * effectiveGraphHeight.value).dp - 30.dp
-                                        
-                                        val isLabelVisible = labelX >= (-20).dp && 
-                                                        labelX <= maxWidth + 20.dp &&
-                                                        labelY >= (-20).dp && 
-                                                        labelY <= maxHeight + 20.dp
-                                        
-                                        if (!isLabelVisible) return@forEachIndexed
+                                        val badgeSize = 22.dp
+                                        val halfBadge = badgeSize / 2
+                                        val labelX = leftAxisMargin + (xFrac * effectiveGraphWidth.value).dp - halfBadge
+                                        val labelY = topMargin + (yFrac * effectiveGraphHeight.value).dp - halfBadge
+
+                                        if (labelX < -halfBadge || labelX > maxWidth ||
+                                                labelY < -halfBadge || labelY > maxHeight) return@forEachIndexed
+
+                                        val numeroColor = if (data.rationId == rationSelectionnee)
+                                                Color(0xFF9C27B0) else VetNutriColors.Primary
+                                        val numFontSize = if (data.numero >= 100) 9.sp else if (data.numero >= 10) 10.sp else 12.sp
+                                        val shortName = data.rationName.take(9).let {
+                                                if (data.rationName.length > 9) "$it…" else it
+                                        }
 
                                         Box(
-                                                modifier =
-                                                        Modifier.fillMaxSize()
-                                                                .wrapContentSize(Alignment.TopStart)
-                                                                .offset(
-                                                                        x = labelX,
-                                                                        y = labelY
-                                                                ),
-                                                contentAlignment = Alignment.Center
+                                                modifier = Modifier.fillMaxSize()
+                                                        .wrapContentSize(Alignment.TopStart)
+                                                        .offset(x = labelX, y = labelY),
+                                                contentAlignment = Alignment.TopCenter
                                         ) {
-                                                // Fond du numéro
-                                                androidx.compose.foundation.Canvas(
-                                                        modifier = Modifier.size(20.dp)
-                                                ) {
-                                                        drawCircle(
-                                                                color = Color.White,
-                                                                radius = 10.dp.toPx()
-                                                        )
-                                                        drawCircle(
-                                                                color = numeroColor,
-                                                                radius = 10.dp.toPx(),
-                                                                style = Stroke(width = 2.dp.toPx())
-                                                        )
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                        Box(contentAlignment = Alignment.Center) {
+                                                                androidx.compose.foundation.Canvas(
+                                                                        modifier = Modifier.size(badgeSize)
+                                                                ) {
+                                                                        drawCircle(color = Color.White, radius = size.minDimension / 2)
+                                                                        drawCircle(color = numeroColor, radius = size.minDimension / 2, style = Stroke(width = 2.dp.toPx()))
+                                                                }
+                                                                Text(
+                                                                        text = "${data.numero}",
+                                                                        style = MaterialTheme.typography.caption.copy(fontWeight = FontWeight.Bold, fontSize = numFontSize),
+                                                                        color = numeroColor
+                                                                )
+                                                        }
+                                                        if (shortName.isNotEmpty()) {
+                                                                Text(
+                                                                        text = shortName,
+                                                                        style = MaterialTheme.typography.caption.copy(fontSize = 8.sp),
+                                                                        color = numeroColor.copy(alpha = 0.9f),
+                                                                        maxLines = 1
+                                                                )
+                                                        }
                                                 }
-
-                                                // Numéro
-                                                Text(
-                                                        text = "${data.numero}",
-                                                        style =
-                                                                MaterialTheme.typography.caption
-                                                                        .copy(
-                                                                                fontWeight =
-                                                                                        FontWeight
-                                                                                                .Bold,
-                                                                                fontSize = 12.sp
-                                                                        ),
-                                                        color = numeroColor
-                                                )
                                         }
                                 }
                         }
