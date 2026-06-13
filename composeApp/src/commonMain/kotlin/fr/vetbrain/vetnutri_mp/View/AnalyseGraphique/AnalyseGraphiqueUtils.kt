@@ -68,37 +68,37 @@ suspend fun calculerNutrimentsRation(
                                         weight = 1.0
                                 )
 
-                        // Récupérer les valeurs nutritionnelles avec les équations
+                        // Récupérer les valeurs nutritionnelles avec les équations.
+                        // getNutrientWithComplementary retourne des valeurs per 100g (convention
+                        // identique à AlimentEv.valMap), donc on scale par quantite/100.
                         proteines +=
-                                alimentRationTemp.getNutrientWithComplementary(
+                                (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.PROTEINE,
                                         preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
-                                        ?: 0.0
+                                        ?: 0.0) * quantite / 100.0
 
                         lipides +=
-                                alimentRationTemp.getNutrientWithComplementary(
+                                (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.LIPIDE,
                                         preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
-                                        ?: 0.0
+                                        ?: 0.0) * quantite / 100.0
 
                         glucides +=
-                                alimentRationTemp.getNutrientWithComplementary(
+                                (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.GLUCIDE,
                                         preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
-                                        ?: 0.0
+                                        ?: 0.0) * quantite / 100.0
 
-                        // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
-                        // quand tous les paramètres sont disponibles, garantissant l'utilisation
-                        // de l'équation énergétique du référentiel
+                        // getEnergie() scale déjà par quantite/100 en interne.
                         energie +=
                                 alimentRationTemp.getEnergie(
                                         referenceEv = referenceEv,
@@ -106,49 +106,49 @@ suspend fun calculerNutrimentsRation(
                                 )
 
                         calcium +=
-                                alimentRationTemp.getNutrientWithComplementary(
+                                (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMacro.CAL,
                                         preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
-                                        ?: 0.0
+                                        ?: 0.0) * quantite / 100.0
 
                         phosphore +=
-                                alimentRationTemp.getNutrientWithComplementary(
+                                (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMacro.PHOS,
                                         preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
-                                        ?: 0.0
+                                        ?: 0.0) * quantite / 100.0
 
                         magnesium +=
-                                alimentRationTemp.getNutrientWithComplementary(
+                                (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMacro.MG,
                                         preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
-                                        ?: 0.0
+                                        ?: 0.0) * quantite / 100.0
 
                         sodium +=
-                                alimentRationTemp.getNutrientWithComplementary(
+                                (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMacro.NA,
                                         preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
-                                        ?: 0.0
+                                        ?: 0.0) * quantite / 100.0
 
                         potassium +=
-                                alimentRationTemp.getNutrientWithComplementary(
+                                (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMacro.K,
                                         preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
-                                        ?: 0.0
+                                        ?: 0.0) * quantite / 100.0
 
                         // Humidité pour calculer la matière sèche
                         val humidite =
@@ -327,30 +327,31 @@ suspend fun calculerPourcentagesEnergieRation(
 
                         // Récupérer les macronutriments en g (sur la quantité réellement donnée)
                         // avec la logique de compléments utilisée dans les autres vues.
+                        // getNutrientWithComplementary retourne des valeurs per 100g → scale par quantite/100.
                         val proteines =
-                                alimentRationTemp.getNutrientWithComplementary(
+                                (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.PROTEINE,
                                         preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
-                                        ?: 0.0
+                                        ?: 0.0) * quantite / 100.0
                         val lipides =
-                                alimentRationTemp.getNutrientWithComplementary(
+                                (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.LIPIDE,
                                         preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
-                                        ?: 0.0
+                                        ?: 0.0) * quantite / 100.0
                         val glucides =
-                                alimentRationTemp.getNutrientWithComplementary(
+                                (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.GLUCIDE,
                                         preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
-                                        ?: 0.0
+                                        ?: 0.0) * quantite / 100.0
                         val humidite =
                                 alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.HUMIDITE,
