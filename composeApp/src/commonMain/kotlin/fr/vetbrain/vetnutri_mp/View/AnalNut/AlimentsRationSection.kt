@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -321,10 +322,11 @@ fun SectionAlimentsRation(
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingSmall)
                                         ) {
-                                                selectedRation.alimentMutableList.forEach { aliment ->
+                                                selectedRation.alimentMutableList.forEachIndexed { index, aliment ->
                                                         key("${aliment.uuid}-${aliment.quantite}") {
                                                                 AlimentItem(
                                                                         aliment = aliment,
+                                                                        feedColor = VetNutriColors.getFeedColor(index),
                                                                         isEditing =
                                                                                 editingAlimentId ==
                                                                                         aliment.uuid,
@@ -367,12 +369,13 @@ fun SectionAlimentsRation(
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingSmall)
                                         ) {
-                                                items(
+                                                itemsIndexed(
                                                         selectedRation.alimentMutableList,
-                                                        key = { "${it.uuid}-${it.quantite}" }
-                                                ) { aliment ->
+                                                        key = { _, it -> "${it.uuid}-${it.quantite}" }
+                                                ) { index, aliment ->
                                                         AlimentItem(
                                                                 aliment = aliment,
+                                                                feedColor = VetNutriColors.getFeedColor(index),
                                                                 isEditing =
                                                                         editingAlimentId ==
                                                                                 aliment.uuid,

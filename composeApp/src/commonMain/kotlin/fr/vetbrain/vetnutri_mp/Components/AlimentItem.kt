@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
@@ -10,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -88,6 +90,7 @@ fun AlimentItem(
         onQuantityChange: (Double) -> Unit,
         onFinishEditing: () -> Unit,
         onDelete: () -> Unit,
+        feedColor: Color? = null,
         modifier: Modifier = Modifier
 ) {
         // État local pour la quantité en cours d'édition
@@ -125,6 +128,14 @@ fun AlimentItem(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
+                                feedColor?.let { color ->
+                                        Box(
+                                                modifier = Modifier
+                                                        .size(10.dp)
+                                                        .background(color, MaterialTheme.shapes.small)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                }
                                 Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                                 text = aliment.aliment?.nom ?: "Aliment sans nom",
@@ -330,7 +341,7 @@ fun AlimentItem(
                                         } else {
                                                 // Mode affichage
                                                 Text(
-                                                        text = "${aliment.quantite.coerceAtLeast(0.0)} g",
+                                                        text = "${NumberUtils.format(aliment.quantite.coerceAtLeast(0.0), 1)} g",
                                                         style =
                                                                 MaterialTheme.typography
                                                                         .caption, // texte réduit
