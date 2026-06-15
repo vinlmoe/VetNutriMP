@@ -91,6 +91,14 @@ fun AnonymizationDialog(
                         style = MaterialTheme.typography.body2
                     )
                 }
+
+                if (!shouldEncrypt) {
+                    Text(
+                        "⚠️ Sans chiffrement, les données vétérinaires seront stockées en clair sur jsonbin.io (serveurs US).",
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.error
+                    )
+                }
             }
         },
         confirmButton = {

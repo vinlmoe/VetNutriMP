@@ -70,7 +70,15 @@ fun ShareLinkDialog(
                     style = MaterialTheme.typography.body2,
                     fontWeight = FontWeight.Bold
                 )
-                
+
+                if (shareLink.qrCodeData != null && shareLink.qrCodeData.contains("\"key\"")) {
+                    Text(
+                        "⚠️ Ce QR Code contient la clé de déchiffrement. Toute personne le scannant accédera aux données vétérinaires. Ne le partagez qu'avec le destinataire concerné.",
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.error
+                    )
+                }
+
                 QRCodeView(
                     text = shareLink.qrCodeData ?: shareLink.binId,
                     size = 256,
@@ -112,6 +120,15 @@ fun ShareLinkDialog(
                         "ℹ️ Cet export ne expire pas automatiquement",
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.secondary
+                    )
+                }
+
+                // Avertissements liés à l'absence de clé API
+                shareLink.warnings.forEach { warning ->
+                    Text(
+                        "⚠️ $warning",
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.error
                     )
                 }
             }
