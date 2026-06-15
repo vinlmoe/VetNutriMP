@@ -8,8 +8,9 @@ import kotlinx.serialization.Serializable
 data class ShareLink(
     val url: String,
     val binId: String,
-    val expiresAt: Long? = null, // timestamp Unix en millisecondes
-    val qrCodeData: String? = null // Données pour générer QR Code (ex: JSON {binId,key,iv})
+    val expiresAt: Long? = null,
+    val qrCodeData: String? = null,
+    val warnings: List<String> = emptyList()
 )
 
 /**
