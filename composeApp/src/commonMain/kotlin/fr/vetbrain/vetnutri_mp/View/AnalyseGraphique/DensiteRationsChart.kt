@@ -407,9 +407,19 @@ fun DensiteRationsChart(
                                                                         text =
                                                                                 if (useDryMatterPer100g
                                                                                 )
-                                                                                        "${translate(LocalizationKeys.Graph.DENSITY_LABEL)}${GraphFormattingUtils.formatEnergyDensity(data.energieTotale / data.matiereSeche * 100.0)}"
+                                                                                        "${translate(LocalizationKeys.Graph.DENSITY_LABEL)}${
+                                                                                            if (data.matiereSeche > 0)
+                                                                                                GraphFormattingUtils.formatEnergyDensity(data.energieTotale / data.matiereSeche * 100.0)
+                                                                                            else
+                                                                                                GraphFormattingUtils.formatEnergyDensity(0.0)
+                                                                                        }"
                                                                                 else
-                                                                                        "${translate(LocalizationKeys.Graph.DENSITY_LABEL)}${GraphFormattingUtils.formatEnergyDensity(data.poidsTotal / data.energieTotale * 1000.0)}",
+                                                                                        "${translate(LocalizationKeys.Graph.DENSITY_LABEL)}${
+                                                                                            if (data.energieTotale > 0)
+                                                                                                GraphFormattingUtils.formatEnergyDensity(data.poidsTotal / data.energieTotale * 1000.0)
+                                                                                            else
+                                                                                                GraphFormattingUtils.formatEnergyDensity(0.0)
+                                                                                        }",
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography

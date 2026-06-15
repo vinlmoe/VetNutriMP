@@ -99,6 +99,13 @@ val VIEW_NUTRIMENT_OPTIONS =
                 ViewNutrimentOption("phosphore", "Phosphore", "g")
         )
 
+// Marges calibrées pour le layout interne de KoalaPlot (en dp)
+// Titre Y + labels ticks Y ≈ 58dp | Titre X + labels ticks X ≈ 38dp
+internal const val KOALAPLOT_LEFT_DP = 58f
+internal const val KOALAPLOT_BOTTOM_DP = 38f
+internal const val KOALAPLOT_TOP_DP = 6f
+internal const val KOALAPLOT_RIGHT_DP = 14f
+
 enum class ChartType(val displayName: String) {
         EVOLUTION_POIDS("Évolution du poids"),
         RATIONS_ENERGIE("Rations énergétiques"),

@@ -184,8 +184,15 @@ fun EvolutionPoidsChart(
                                         }
                                 }
 
-                                // Trier par date
-                                allWeights.sortedBy { it.date }
+                                // Trier par date, en dédupliquant les entrées à même date
+                                // (priorité aux poids de consultation sur l'historique libre)
+                                allWeights
+                                        .groupBy { it.date }
+                                        .map { (_, entries) ->
+                                                entries.firstOrNull { it.isFromConsultation }
+                                                        ?: entries.first()
+                                        }
+                                        .sortedBy { it.date }
                         }
                 }
 
@@ -343,9 +350,10 @@ fun EvolutionPoidsChart(
 
                 val courbeRef = selectedCurve
                 val param50 = courbeRef?.params?.find { it.name == "50%" }
+                val ageMaxMois = courbeRef?.ageMax ?: 12
                 val pointsRef0_12 =
                         param50?.let { param ->
-                                (0..12).map { mois ->
+                                (0..ageMaxMois).map { mois ->
                                         val ageInMonths = mois.toFloat()
                                         val ageAxis =
                                                 if (useYearsScale) {
@@ -467,7 +475,7 @@ fun EvolutionPoidsChart(
                                         if (showReferenceCurves && courbeRef != null) {
                                                 courbeRef.params.forEach { param ->
                                                         val pts =
-                                                                (0..12).map { mois ->
+                                                                (0..courbeRef.ageMax).map { mois ->
                                                                         val ageInMonths =
                                                                                 mois.toFloat()
                                                                         val xAxisValue =
@@ -1258,7 +1266,7 @@ fun GrowthZoomView(
                 val referenceCurves =
                         selectedCurve.params.map { param ->
                             val points =
-                                    (12..70).map { week ->
+                                    (0..70).map { week ->
                                         val ageInWeeks = week.toFloat()
                                         val ageInMonths = ageInWeeks / 4.345f
                                         val poids =
