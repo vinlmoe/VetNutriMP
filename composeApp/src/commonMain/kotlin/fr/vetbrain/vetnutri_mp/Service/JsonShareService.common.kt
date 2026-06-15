@@ -14,6 +14,9 @@ import fr.vetbrain.vetnutri_mp.Utils.AppSecrets
 import fr.vetbrain.vetnutri_mp.Utils.CryptoUtils
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import okio.ByteString.Companion.decodeBase64
+
+private fun String.decodeBase64OrNull(): ByteArray? = this.decodeBase64()?.toByteArray()
 
 /**
  * Helper class pour l'implémentation commune de JsonShareService
@@ -171,17 +174,29 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 }
                 val qrCodeData = json.encodeToString(JsonBinQrPayload.serializer(), qrPayload)
                 log("Upload done (binId=$binId, qrJsonSize=${qrCodeData.length})")
-                
-                // Calculer la date d'expiration si spécifiée
-                val expiresAt = options.expiresInHours?.let { hours ->
-                    Clock.System.now().toEpochMilliseconds() + (hours * 3600 * 1000L)
+
+                // Expiration réellement appliquée uniquement si une clé API était disponible
+                val expiresAt = if (options.expiresInHours != null && createUpdateApiKey != null) {
+                    Clock.System.now().toEpochMilliseconds() + (options.expiresInHours * 3600 * 1000L)
+                } else {
+                    null
                 }
-                
+
+                val warnings = buildList {
+                    if (createUpdateApiKey == null) {
+                        add("Ce bin est public (aucune clé API configurée) — tout le monde peut y accéder par URL directe.")
+                        if (options.expiresInHours != null) {
+                            add("L'expiration n'a pas été appliquée faute de clé API — ce bin ne sera pas supprimé automatiquement.")
+                        }
+                    }
+                }
+
                 Result.success(ShareLink(
                     url = shareUrl,
                     binId = binId,
                     expiresAt = expiresAt,
-                    qrCodeData = qrCodeData
+                    qrCodeData = qrCodeData,
+                    warnings = warnings
                 ))
             } else {
                 val responseText = response.body<String>()
@@ -253,15 +268,23 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 
                 if (content != null) {
                     if (keyBase64 != null && ivBase64 != null) {
-                        try {
-                            val cipherTextBase64 = extractCipherText(content)
-                            log("Decrypting content (cipherBase64Size=${cipherTextBase64.length})")
-                            val decrypted = CryptoUtils.decryptJson(cipherTextBase64, keyBase64, ivBase64)
-                            log("Decrypt success (plainSize=${decrypted.length})")
-                            Result.success(decrypted)
-                        } catch (e: Exception) {
-                            log("Decrypt error: ${e.message}")
-                            Result.failure(Exception("Erreur lors du déchiffrement: ${e.message}", e))
+                        val keyBytes = keyBase64.decodeBase64OrNull()
+                        val ivBytes  = ivBase64.decodeBase64OrNull()
+                        when {
+                            keyBytes == null || keyBytes.size != 32 ->
+                                Result.failure(Exception("Clé de déchiffrement invalide (doit être 32 octets, reçu ${keyBytes?.size ?: "null"})"))
+                            ivBytes == null || ivBytes.size != 16 ->
+                                Result.failure(Exception("IV de déchiffrement invalide (doit être 16 octets, reçu ${ivBytes?.size ?: "null"})"))
+                            else -> try {
+                                val cipherTextBase64 = extractCipherText(content)
+                                log("Decrypting content (cipherBase64Size=${cipherTextBase64.length})")
+                                val decrypted = CryptoUtils.decryptJson(cipherTextBase64, keyBase64, ivBase64)
+                                log("Decrypt success (plainSize=${decrypted.length})")
+                                Result.success(decrypted)
+                            } catch (e: Exception) {
+                                log("Decrypt error: ${e.message}")
+                                Result.failure(Exception("Erreur lors du déchiffrement", e))
+                            }
                         }
                     } else {
                         Result.success(content)
@@ -301,7 +324,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
             Regex("jsonbin\\.io/([a-zA-Z0-9]+)", RegexOption.IGNORE_CASE),
             Regex("https?://jsonbin\\.io/v3/b/([a-zA-Z0-9]+)", RegexOption.IGNORE_CASE),
             Regex("https?://jsonbin\\.io/([a-zA-Z0-9]+)", RegexOption.IGNORE_CASE),
-            Regex("([a-zA-Z0-9]{10,})") // ID seul (au moins 10 caractères alphanumériques)
+            Regex("([a-f0-9]{24})") // ID seul — format JSONBin : 24 caractères hexadécimaux
         )
         
         for (pattern in patterns) {

@@ -701,13 +701,8 @@ private suspend fun partagerAnimalEnLigne(
                                                 }
                                         }
                                         onShareLinkGenerated(shareLink)
-                                        val message = if (existingBinId != null) {
-                                                translate(AnimalDetail.SHARE_SUCCESS)
-                                        } else {
-                                                translate(AnimalDetail.SHARE_SUCCESS)
-                                        }
                                         snackbarHostState.showSnackbar(
-                                                message = message,
+                                                message = translate(AnimalDetail.SHARE_SUCCESS),
                                                 duration = SnackbarDuration.Short
                                         )
                                 },
