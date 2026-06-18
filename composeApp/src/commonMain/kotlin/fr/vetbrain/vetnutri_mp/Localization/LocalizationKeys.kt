@@ -458,6 +458,8 @@ object LocalizationKeys {
         val EXPORT_EXAM_NOTE = "animalList.exportExamNote"
         val EXPORT_EXAM_ERROR = "animalList.exportExamError"
         val EXPORT_EXAM_MODE_REQUIRED = "animalList.exportExamModeRequired"
+        val SHOW_EXAM_DOSSIERS = "animalList.showExamDossiers"
+        val NO_EXAM_DOSSIERS_FOUND = "animalList.noExamDossiersFound"
     }
 
     object Chart {

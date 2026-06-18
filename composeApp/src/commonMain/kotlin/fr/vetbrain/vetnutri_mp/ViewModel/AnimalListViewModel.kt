@@ -83,6 +83,9 @@ class AnimalListViewModel(
     private val _examSession = MutableStateFlow<ExamSession?>(null)
     val examSession: StateFlow<ExamSession?> = _examSession.asStateFlow()
 
+    private val _showExamDossiers = MutableStateFlow(false)
+    val showExamDossiers: StateFlow<Boolean> = _showExamDossiers.asStateFlow()
+
     // Liste de toutes les espèces disponibles, avec une option "Toutes" (null)
     val availableEspeces: List<Espece?> = listOf(null) + Espece.entries.toList()
 
@@ -101,7 +104,8 @@ class AnimalListViewModel(
             val lastConsultationMap: Map<String, kotlinx.datetime.LocalDate?>,
             val includeIds: Set<String>,
             val examSession: ExamSession?,
-            val sortOrder: AnimalSortOrder
+            val sortOrder: AnimalSortOrder,
+            val showExamDossiers: Boolean
     )
 
     val animals: StateFlow<List<AnimalEv>> =
@@ -120,7 +124,8 @@ class AnimalListViewModel(
                                 lastConsultationMap,
                                 emptySet(),
                                 null,
-                                AnimalSortOrder.NAME_ASC
+                                AnimalSortOrder.NAME_ASC,
+                                false
                         )
                     }
                     .combine(_keywordIncludeIds) { state, includeIds ->
@@ -132,6 +137,9 @@ class AnimalListViewModel(
                     .combine(_examSession) { state, examSession ->
                         state.copy(examSession = examSession)
                     }
+                    .combine(_showExamDossiers) { state, showExamDossiers ->
+                        state.copy(showExamDossiers = showExamDossiers)
+                    }
                     .combine(_keywordExcludeIds) { state, excludeIds ->
                         filterAnimals(
                                 state.animals,
@@ -142,7 +150,8 @@ class AnimalListViewModel(
                                 state.includeIds,
                                 excludeIds,
                                 state.examSession,
-                                state.sortOrder
+                                state.sortOrder,
+                                state.showExamDossiers
                         )
                     }
                     .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -191,6 +200,10 @@ class AnimalListViewModel(
         _examSession.value = session
     }
 
+    fun setShowExamDossiers(show: Boolean) {
+        _showExamDossiers.value = show
+    }
+
     private fun filterAnimals(
             animals: List<AnimalEv>,
             query: String,
@@ -200,7 +213,8 @@ class AnimalListViewModel(
             includeIds: Set<String>,
             excludeIds: Set<String>,
             examSession: ExamSession?,
-            sortOrder: AnimalSortOrder
+            sortOrder: AnimalSortOrder,
+            showExamDossiers: Boolean = false
     ): List<AnimalEv> {
         val trimmedQuery = query.trim()
 
@@ -209,8 +223,13 @@ class AnimalListViewModel(
                 .filter { animal ->
                     val matchesExam =
                             if (examSession == null) {
-                                // Hors mode examen, masquer les animaux d'examen de la recherche standard.
-                                animal.examExerciseId.isNullOrBlank()
+                                if (showExamDossiers) {
+                                    // Mode "dossiers d'examen" : afficher uniquement les animaux d'examen.
+                                    !animal.examExerciseId.isNullOrBlank()
+                                } else {
+                                    // Mode standard : masquer les animaux d'examen.
+                                    animal.examExerciseId.isNullOrBlank()
+                                }
                             } else {
                                 !animal.examExerciseId.isNullOrBlank() &&
                                     (examSession.studentId.isBlank() ||
