@@ -243,7 +243,9 @@ class AnimalListViewModel(
                                     animal.id.orEmpty().contains(trimmedQuery, ignoreCase = true) ||
                                     animal.nom.contains(trimmedQuery, ignoreCase = true) ||
                                     animal.ownerName.contains(trimmedQuery, ignoreCase = true) ||
-                                    animal.race.contains(trimmedQuery, ignoreCase = true)
+                                    animal.race.contains(trimmedQuery, ignoreCase = true) ||
+                                    (showExamDossiers &&
+                                        animal.examStudentId.orEmpty().contains(trimmedQuery, ignoreCase = true))
 
                     val matchesEspece = espece == null || animal.getEspece() == espece
                     val animalKeywords = keywordMap[animal.uuid] ?: emptySet()
