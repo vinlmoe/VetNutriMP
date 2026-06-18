@@ -68,6 +68,7 @@ fun AnimalListView(
         val availableKeywords = viewModel.availableKeywords.collectAsState().value
         val keywordIncludeIds = viewModel.keywordIncludeIds.collectAsState().value
         val keywordExcludeIds = viewModel.keywordExcludeIds.collectAsState().value
+        val showExamDossiers = viewModel.showExamDossiers.collectAsState().value
         val coroutineScope = rememberCoroutineScope()
 
         // États pour l'export examen
@@ -371,6 +372,39 @@ fun AnimalListView(
                                 }
                         }
 
+                        if (!isExamMode) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(
+                                        onClick = { viewModel.setShowExamDossiers(!showExamDossiers) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = if (showExamDossiers)
+                                                ButtonDefaults.outlinedButtonColors(
+                                                        backgroundColor = VetNutriColors.Secondary.copy(alpha = 0.12f),
+                                                        contentColor = VetNutriColors.Secondary
+                                                )
+                                        else
+                                                ButtonDefaults.outlinedButtonColors()
+                                ) {
+                                        Icon(
+                                                imageVector = AppIcons.ViewList,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(translate(AnimalList.SHOW_EXAM_DOSSIERS))
+                                        if (showExamDossiers) {
+                                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                                Box(
+                                                        modifier = Modifier.size(8.dp)
+                                                                .background(
+                                                                        VetNutriColors.Secondary,
+                                                                        shape = MaterialTheme.shapes.small
+                                                                )
+                                                )
+                                        }
+                                }
+                        }
+
                         Spacer(modifier = Modifier.height(16.dp))
 
                         if (animals.isEmpty()) {
@@ -380,7 +414,9 @@ fun AnimalListView(
                                 ) {
                                         Text(
                                                 text =
-                                                        if (searchQuery.isEmpty() &&
+                                                        if (showExamDossiers)
+                                                                translate(AnimalList.NO_EXAM_DOSSIERS_FOUND)
+                                                        else if (searchQuery.isEmpty() &&
                                                                         selectedEspece == null &&
                                                                         !hasKeywordFilter
                                                         )
@@ -402,7 +438,8 @@ fun AnimalListView(
                                                         onDelete = {
                                                                 viewModel.deleteAnimal(animal)
                                                         },
-                                                        isExamMode = isExamMode
+                                                        isExamMode = isExamMode,
+                                                        showExamDossiers = showExamDossiers
                                                 )
                                         }
                                 }
@@ -732,6 +769,7 @@ private fun AnimalCard(
         onClick: () -> Unit,
         onDelete: () -> Unit,
         isExamMode: Boolean,
+        showExamDossiers: Boolean = false,
         modifier: Modifier = Modifier
 ) {
         var showDeleteConfirmation by remember { mutableStateOf(false) }
@@ -773,12 +811,19 @@ private fun AnimalCard(
                                                         style = MaterialTheme.typography.body2
                                                 )
                                         }
-                                        if (isExamMode && !animal.examExerciseId.isNullOrBlank()) {
+                                        if ((isExamMode || showExamDossiers) && !animal.examExerciseId.isNullOrBlank()) {
                                                 Text(
                                                         text =
                                                                 "${Animal.EXAM_EXERCISE_ID.translate()}: ${animal.examExerciseId}",
                                                         style = MaterialTheme.typography.body2,
-                                                        color = VetNutriColors.Primary
+                                                        color = if (showExamDossiers) VetNutriColors.Secondary else VetNutriColors.Primary
+                                                )
+                                        }
+                                        if (showExamDossiers && !animal.examStudentId.isNullOrBlank()) {
+                                                Text(
+                                                        text = "ID étudiant: ${animal.examStudentId}",
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = VetNutriColors.Secondary
                                                 )
                                         }
                                 }

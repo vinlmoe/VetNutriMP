@@ -131,6 +131,8 @@
         "animalList.exportExamNote": "Indiquez ce BinID sur votre copie.",
         "animalList.exportExamError": "Erreur lors de l'export examen.",
         "animalList.exportExamModeRequired": "Mode examen non activé.",
+        "animalList.showExamDossiers": "Dossiers d'examen",
+        "animalList.noExamDossiersFound": "Aucun dossier d'examen trouvé",
         "ration.consultationRations": "Rations de la consultation",
         "ration.noRationAvailable": "Aucune ration disponible",
         "ration.selectRationHint": "Sélectionnez une ration pour voir les aliments",

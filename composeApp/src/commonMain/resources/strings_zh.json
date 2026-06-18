@@ -131,6 +131,8 @@
         "animalList.exportExamNote": "请将此 BinID 写在试卷上。",
         "animalList.exportExamError": "考试导出出错。",
         "animalList.exportExamModeRequired": "未启用考试模式。",
+        "animalList.showExamDossiers": "考试档案",
+        "animalList.noExamDossiersFound": "未找到考试档案",
         "ration.consultationRations": "咨询口粮",
         "ration.noRationAvailable": "没有口粮可用",
         "ration.selectRationHint": "选择口粮查看食物",
