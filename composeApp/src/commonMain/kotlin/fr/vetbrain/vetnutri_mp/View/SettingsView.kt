@@ -39,8 +39,11 @@ import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import fr.vetbrain.vetnutri_mp.Export.SectionCategory
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsTabs
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.AdministrationSettings
+import fr.vetbrain.vetnutri_mp.View.SettingsSections.DatabaseSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
+import fr.vetbrain.vetnutri_mp.Utils.isAndroidPlatform
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
@@ -2625,6 +2628,11 @@ fun SettingsView(
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                 }
+                                6 -> { // Base de données NAS (desktop uniquement)
+                                        if (!isAndroidPlatform && !isIosPlatform) {
+                                                DatabaseSettings(modifier = Modifier.fillMaxWidth())
+                                        }
+                                }
                         }
                 }
         }
@@ -2674,7 +2682,8 @@ enum class SettingsSection(val title: String) {
         IMPORTATION("Importation"),
         EXCEL("Import/Export Excel"),
         RECIPES("Recettes"),
-        ADMINISTRATION("Administration")
+        ADMINISTRATION("Administration"),
+        DATABASE("Base de données")
 }
 
 /** Composant pour la section des préférences */

@@ -533,6 +533,7 @@
         "settings.tabExcel": "Excel",
         "settings.tabRecipes": "Recipes",
         "settings.tabAdministration": "Administration",
+        "settings.tabDatabase": "Database",
         "settings.conseilsCount": "Advice count in DB:",
         "settings.selectAnimals": "Select animals (toggle all)",
         "settings.selectFoods": "Select foods (toggle all)",

@@ -69,6 +69,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
+        const val DATABASE_VERSION = 36
     }
 }
 
@@ -87,12 +88,19 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
  * IMPORTANT: Cette configuration remplace la stratégie destructive précédente qui détruisait toutes
  * les données en cas d'erreur de migration.
  */
-fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String): AppDatabase {
+fun getRoomDatabase(
+    builder: RoomDatabase.Builder<AppDatabase>,
+    dbPath: String,
+    useWal: Boolean = true
+): AppDatabase {
     backupDatabaseFiles(dbPath)
 
     return try {
         // ✅ Configuration sécurisée avec migrations explicites
-        builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+        builder.setJournalMode(
+            if (useWal) RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING
+            else RoomDatabase.JournalMode.TRUNCATE
+        )
                 .addMigrations(
                         // Migration 17→18 : Test de montée de version sécurisée
                         createMigration17to18(),

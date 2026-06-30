@@ -11,6 +11,6 @@ fun getDatabasePath(): String {
     return File(dataDir, AppDatabase.DATABASE_NAME).absolutePath
 }
 
-fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
-    return Room.databaseBuilder<AppDatabase>(name = getDatabasePath())
+fun getDatabaseBuilder(path: String = getDatabasePath()): RoomDatabase.Builder<AppDatabase> {
+    return Room.databaseBuilder<AppDatabase>(name = path)
 }

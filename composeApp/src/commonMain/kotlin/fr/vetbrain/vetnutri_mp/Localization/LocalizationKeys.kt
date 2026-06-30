@@ -91,6 +91,7 @@ object LocalizationKeys {
         val SELECT_ANIMALS = "settings.selectAnimals"
         val SELECT_FOODS = "settings.selectFoods"
         val TAB_ADMINISTRATION = "settings.tabAdministration"
+        val TAB_DATABASE = "settings.tabDatabase"
         val TAB_EXCEL = "settings.tabExcel"
         val TAB_IMPORT = "settings.tabImport"
         val TAB_INTERFACE = "settings.tabInterface"

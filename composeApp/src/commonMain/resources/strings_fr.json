@@ -558,6 +558,7 @@
         "settings.tabExcel": "Excel",
         "settings.tabRecipes": "Recettes",
         "settings.tabAdministration": "Administration",
+        "settings.tabDatabase": "Base de données",
         "settings.conseilsCount": "Conseils dans la base : ",
         "settings.selectAnimals": "Sélectionner animaux (toggle tout)",
         "settings.selectFoods": "Sélectionner aliments (toggle tout)",

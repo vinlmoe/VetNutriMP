@@ -7,9 +7,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabaseBuilder
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabasePath
 import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
+import fr.vetbrain.vetnutri_mp.Utils.NasDatabaseChecker
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseAnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
@@ -104,8 +106,29 @@ suspend fun main(args: Array<String> = emptyArray()) {
     // Initialisation de la localisation
     LocalizationManager.initialize()
 
+    // Vérification NAS avant toute initialisation Room (synchrone, dialogues Swing si besoin)
+    val localDbPath = getDatabasePath()
+    val nasCheckResult = NasDatabaseChecker.performStartupCheck(localDbPath)
+
+    if (nasCheckResult is NasDatabaseChecker.NasCheckResult.Exit) {
+        exitProcess(0)
+    }
+
+    val effectiveDbPath: String
+    val useWalMode: Boolean
+    when (nasCheckResult) {
+        is NasDatabaseChecker.NasCheckResult.UseNas -> {
+            effectiveDbPath = nasCheckResult.resolvedPath
+            useWalMode = false  // NAS → mode TRUNCATE (WAL incompatible SMB/NFS)
+        }
+        else -> {
+            effectiveDbPath = localDbPath
+            useWalMode = true
+        }
+    }
+
     // Initialisation de la base de données
-    val appDatabase = getRoomDatabase(getDatabaseBuilder(), getDatabasePath())
+    val appDatabase = getRoomDatabase(getDatabaseBuilder(effectiveDbPath), effectiveDbPath, useWalMode)
     desktopAppDatabase = appDatabase
 
     // Création du repository des animaux
@@ -228,6 +251,31 @@ suspend fun main(args: Array<String> = emptyArray()) {
             ) { App(appDatabase) }
         }
     }
+}
+
+actual fun browseNasDbPath(): String? {
+    var path: String? = null
+    val open = {
+        val chooser = javax.swing.JFileChooser().apply {
+            dialogTitle = "Sélectionner le fichier de base de données NAS"
+            fileSelectionMode = javax.swing.JFileChooser.FILES_AND_DIRECTORIES
+            fileFilter = javax.swing.filechooser.FileNameExtensionFilter(
+                "Base de données SQLite (*.db)", "db"
+            )
+        }
+        if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+            val selected = chooser.selectedFile
+            // Si un répertoire est sélectionné, ajouter le nom de fichier par défaut
+            path = if (selected.isDirectory) {
+                File(selected, AppDatabase.DATABASE_NAME).absolutePath
+            } else {
+                selected.absolutePath
+            }
+        }
+    }
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) open()
+    else javax.swing.SwingUtilities.invokeAndWait { open() }
+    return path
 }
 
 actual fun performDatabaseFactoryReset(): String? {

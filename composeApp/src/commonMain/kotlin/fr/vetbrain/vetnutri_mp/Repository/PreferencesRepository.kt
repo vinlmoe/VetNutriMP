@@ -119,7 +119,8 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         sb.append("\"postalCode\":\"" + preferences.codePostal.replace("\"", "\\\"") + "\",")
         sb.append("\"city\":\"" + preferences.ville.replace("\"", "\\\"") + "\",")
         sb.append("\"phone\":\"" + preferences.telephone.replace("\"", "\\\"") + "\",")
-        sb.append("\"email\":\"" + preferences.email.replace("\"", "\\\"") + "\"},")
+        sb.append("\"email\":\"" + preferences.email.replace("\"", "\\\"") + "\",")
+        sb.append("\"nasDbPath\":\"" + preferences.nasDbPath.replace("\\", "\\\\").replace("\"", "\\\"") + "\"},")
         sb.append("\"species\":{")
 
         val speciesEntries = mutableListOf<String>()
@@ -212,6 +213,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
             var ville = ""
             var telephone = ""
             var email = ""
+            var nasDbPath = ""
             if (userStart != -1) {
                 val braceIndex = json.indexOf('{', userStart)
                 val userEnd = findMatchingClosingBrace(json, braceIndex)
@@ -232,6 +234,10 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                     telephone =
                             Regex("\"phone\":\"(.*?)\"").find(userJson)?.groupValues?.get(1) ?: ""
                     email = Regex("\"email\":\"(.*?)\"").find(userJson)?.groupValues?.get(1) ?: ""
+                    nasDbPath = Regex("\"nasDbPath\":\"([^\"]*?)\"").find(userJson)
+                            ?.groupValues?.get(1)
+                            ?.replace("\\\\", "\\")
+                            ?: ""
                 }
             }
 
@@ -243,7 +249,8 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                     codePostal = codePostal,
                     ville = ville,
                     telephone = telephone,
-                    email = email
+                    email = email,
+                    nasDbPath = nasDbPath
             )
         } catch (e: Exception) {
             return PreferencesApplication.createDefault()

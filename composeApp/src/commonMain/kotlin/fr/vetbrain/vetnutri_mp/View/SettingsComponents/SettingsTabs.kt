@@ -17,6 +17,8 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.View.SettingsSection
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Settings
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Utils.isAndroidPlatform
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Navigation par onglets pour les paramètres avec animations
@@ -63,7 +65,13 @@ fun SettingsTabs(
                             icon = Icons.Default.AdminPanelSettings,
                             section = SettingsSection.ADMINISTRATION
                     )
-            )
+            ) + if (!isAndroidPlatform && !isIosPlatform) listOf(
+                    TabInfo(
+                            title = translate(Settings.TAB_DATABASE),
+                            icon = Icons.Default.Storage,
+                            section = SettingsSection.DATABASE
+                    )
+            ) else emptyList()
 
     Column(modifier = modifier) {
         // Navigation par onglets avec animations
