@@ -162,7 +162,8 @@ data class PreferencesApplication(
         val ville: String = "",
         val telephone: String = "",
         val email: String = "",
-        val nasDbPath: String = ""
+        val nasDbPath: String = "",
+        val lastSyncTimestampMs: Long = -1L
 ) {
     /** Obtient les préférences pour une espèce donnée */
     fun getPreferencesEspece(espece: Espece): PreferencesEspece {

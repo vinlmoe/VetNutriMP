@@ -563,7 +563,7 @@ class DatabaseFoodRepository(
      * @param food L'aliment à insérer
      */
     override suspend fun insert(food: AlimentEv) {
-        withContext(AppDispatchers.IO) { foodDao.insertFood(food.toFoodEntity()) }
+        withContext(AppDispatchers.IO) { foodDao.insertFood(food.toFoodEntity().copy(updatedAtMs = System.currentTimeMillis())) }
         // Invalider le cache après insertion
         clearCache()
         if (batchModeCounter.value == 0) {
@@ -576,7 +576,7 @@ class DatabaseFoodRepository(
      * @param food L'aliment à mettre à jour
      */
     override suspend fun update(food: AlimentEv) {
-        withContext(AppDispatchers.IO) { foodDao.update(food.toFoodEntity()) }
+        withContext(AppDispatchers.IO) { foodDao.update(food.toFoodEntity().copy(updatedAtMs = System.currentTimeMillis())) }
         // Invalider le cache après mise à jour
         clearCache()
         if (batchModeCounter.value == 0) {
@@ -1303,7 +1303,7 @@ class DatabaseFoodRepository(
                         "valMapCount=${food.valMap.size}"
                 )
                 // Convertir en FoodEntity et insérer
-                val foodEntity = food.toFoodEntity().copy(RefRation = null)
+                val foodEntity = food.toFoodEntity().copy(RefRation = null, updatedAtMs = System.currentTimeMillis())
                 foodDao.insertFood(foodEntity)
 
                 // Ajout d'un espèce par défaut "AUTRE" si la liste est vide pour éviter l'erreur de
@@ -1500,7 +1500,7 @@ class DatabaseFoodRepository(
 
                 // Au lieu de modifier toute l'entité, on garde la référence à la ration de
                 // l'existant pour éviter les problèmes de clé étrangère
-                val foodEntity = food.toFoodEntity().copy(RefRation = existingFood.RefRation)
+                val foodEntity = food.toFoodEntity().copy(RefRation = existingFood.RefRation, updatedAtMs = System.currentTimeMillis())
 
                 try {
                     // Mettre à jour l'entité principale

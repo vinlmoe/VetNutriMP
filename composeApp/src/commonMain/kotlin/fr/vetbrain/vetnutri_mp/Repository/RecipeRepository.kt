@@ -24,7 +24,8 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
                             name = name,
                             number = 1,
                             espece = espece,
-                            description = description
+                            description = description,
+                            updatedAtMs = System.currentTimeMillis()
                     )
             recipeDao.insertRecipe(entity)
             Ration(
@@ -56,7 +57,8 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
                             name = name,
                             number = number,
                             espece = espece,
-                            description = description
+                            description = description,
+                            updatedAtMs = System.currentTimeMillis()
                     )
             recipeDao.insertRecipe(entity)
             Ration(
@@ -150,18 +152,16 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
 
     suspend fun addAliments(recipeId: String, aliments: List<AlimentRation>) {
         return withContext(AppDispatchers.IO) {
+            val now = System.currentTimeMillis()
             aliments.forEach { al ->
                 val entity: AlimentRecetteEntity =
                         AlimentRecetteEntity(
-                                uuid =
-                                        fr.vetbrain.vetnutri_mp.Utils
-                                                .genUUID(), // Générer un nouvel UUID pour l'entrée
-                                // de recette
-                                refAlimUnif = al.refAlimUnif
-                                                ?: al.uuidUnif, // Référence vers l'aliment original
+                                uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(),
+                                refAlimUnif = al.refAlimUnif ?: al.uuidUnif,
                                 refRecipe = recipeId,
                                 quantity = al.quantite,
-                                refTarget = al.refTarget ?: 0
+                                refTarget = al.refTarget ?: 0,
+                                updatedAtMs = now
                         )
                 recipeDao.insertAlimentRecette(entity)
             }
@@ -178,7 +178,7 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
     suspend fun renameRecipe(recipeId: String, newName: String) {
         return withContext(AppDispatchers.IO) {
             val entity: RecetteEntity = recipeDao.getRecipeById(recipeId) ?: return@withContext
-            recipeDao.updateRecipe(entity.copy(name = newName))
+            recipeDao.updateRecipe(entity.copy(name = newName, updatedAtMs = System.currentTimeMillis()))
         }
     }
 
@@ -187,11 +187,12 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
             val src: RecetteEntity = recipeDao.getRecipeById(recipeId) ?: return@withContext null
             val srcAliments: List<AlimentRecetteEntity> = recipeDao.getAlimentsForRecipe(recipeId)
             val newId: String = fr.vetbrain.vetnutri_mp.Utils.genUUID()
-            val copy: RecetteEntity = src.copy(uuid = newId, name = (src.name ?: "") + " bis")
+            val now = System.currentTimeMillis()
+            val copy: RecetteEntity = src.copy(uuid = newId, name = (src.name ?: "") + " bis", updatedAtMs = now)
             recipeDao.insertRecipe(copy)
             srcAliments.forEach { a ->
                 recipeDao.insertAlimentRecette(
-                        a.copy(uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(), refRecipe = newId)
+                        a.copy(uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(), refRecipe = newId, updatedAtMs = now)
                 )
             }
             getRecipeById(newId)

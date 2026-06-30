@@ -52,7 +52,8 @@ data class FoodEntity(
         val name: String? = null,
         val quantite: Double = 0.0,
         val lastUpdateDate: String? = null,
-        val imageRef: String? = null
+        val imageRef: String? = null,
+        val updatedAtMs: Long = 0L
 )
 
 @Serializable
@@ -85,11 +86,12 @@ data class AnimalEntity(
         val birthdate: String?,
         val race: String?,
         val summary: String?,
-        val jsonbinId: String? = null, // ID du bin jsonbin.io pour le partage en ligne
-        val exam: Boolean = false, // Indique si l'animal est lié à un examen
-        val examStudentId: String? = null, // Identifiant de l'étudiant
-        val examStudentNumber: String? = null, // Numéro de l'étudiant
-        val examExerciseId: String? = null // ID de l'exercice
+        val jsonbinId: String? = null,
+        val exam: Boolean = false,
+        val examStudentId: String? = null,
+        val examStudentNumber: String? = null,
+        val examExerciseId: String? = null,
+        val updatedAtMs: Long = 0L
 )
 
 @Serializable
@@ -162,14 +164,14 @@ data class ConsultationEntity(
         val referencesMaladiesJson: String? = null,
         val keywordsJson: String? = null,
         val coefficientAjustement: Double = 1.0,
-        // Ordonnance: état sauvegardé par consultation
         val prescriptionAnamnese: String? = null,
         val prescriptionExamenClinique: String? = null,
         val prescriptionFacteurNutritionnelClef: String? = null,
         val prescriptionAdditionalText: String? = null,
         val prescriptionSelectedConseilIdsJson: String? = null,
         val prescriptionLocalHtmlSectionsJson: String? = null,
-        val prescriptionSelectedRationIdsJson: String? = null
+        val prescriptionSelectedRationIdsJson: String? = null,
+        val updatedAtMs: Long = 0L
 )
 
 @Serializable
@@ -179,7 +181,8 @@ data class ConsultationEntity(
 )
 data class ConsultationKeywordEntity(
         @PrimaryKey val uuid: String,
-        val label: String
+        val label: String,
+        val updatedAtMs: Long = 0L
 )
 
 @Serializable
@@ -199,7 +202,8 @@ data class WeightEntity(
         @PrimaryKey val uuid: String,
         val refAnimal: String,
         val date: String,
-        val value: Double
+        val value: Double,
+        val updatedAtMs: Long = 0L
 )
 
 @Serializable
@@ -224,7 +228,8 @@ data class RationEntity(
         val number: Int = 0,
         val espece: String?,
         val recette: Boolean = false,
-        val description: String?
+        val description: String?,
+        val updatedAtMs: Long = 0L
 )
 
 @Serializable
@@ -255,7 +260,8 @@ data class AlimentRationEntity(
         val refAlimUnif: String = "",
         val refRation: String,
         val quantity: Double = 0.0,
-        val refTarget: Int = 0
+        val refTarget: Int = 0,
+        val updatedAtMs: Long = 0L
 )
 
 @Serializable
@@ -265,7 +271,8 @@ data class RecetteEntity(
         val name: String?,
         val number: Int = 0,
         val espece: String?,
-        val description: String?
+        val description: String?,
+        val updatedAtMs: Long = 0L
 )
 
 @Serializable
@@ -296,7 +303,8 @@ data class AlimentRecetteEntity(
         val refAlimUnif: String = "",
         val refRecipe: String,
         val quantity: Double = 0.0,
-        val refTarget: Int = 0
+        val refTarget: Int = 0,
+        val updatedAtMs: Long = 0L
 )
 
 @Serializable
@@ -566,7 +574,8 @@ data class CustomNutrientEntity(
         val displayName: String,
         val unite: String,
         val ueCode: String,
-        val categoryCode: String
+        val categoryCode: String,
+        val updatedAtMs: Long = 0L
 )
 
 /** Entité pour la table des références bibliographiques */
@@ -579,7 +588,8 @@ data class BiblioRefEntity(
         val completeRef: String,
         val comments: String,
         val bibtex: String,
-        val consistent: Int
+        val consistent: Int,
+        val updatedAtMs: Long = 0L
 )
 
 /** Table de jonction aliment ↔ référence bibliographique (relation many-to-many) */
@@ -631,9 +641,10 @@ data class EquationEntity(
         val kind: String,
         val consistent: Boolean,
         val bibRef: String?,
-        val variables: String, // Stocké en JSON
-        val nutrient: String?, // Label du nutriment associé
-        val ratio: Boolean
+        val variables: String,
+        val nutrient: String?,
+        val ratio: Boolean,
+        val updatedAtMs: Long = 0L
 )
 
 @Serializable
@@ -652,7 +663,8 @@ data class ReferenceEvEntity(
         val nomk2: String,
         val nomk3: String,
         val nomk4: String,
-        val nomk5: String
+        val nomk5: String,
+        val updatedAtMs: Long = 0L
 )
 
 /** Entité pour les relations entre ReferenceEv et Equations */
@@ -758,6 +770,15 @@ data class HtmlSectionEntity(
         val targetAgeGroupsJson: String, // JSON array des groupes d'âge
         val usageCount: Int, // Compteur d'utilisation
         val lastUsed: Long? = null // Dernière utilisation (timestamp)
+)
+
+/** Tombstones de synchronisation NAS : trace les suppressions pour propagation inter-postes */
+@Serializable
+@Entity(tableName = "SYNC_TOMBSTONES", primaryKeys = ["uuid", "entityType"])
+data class SyncTombstoneEntity(
+        val uuid: String,
+        val entityType: String,
+        val deletedAtMs: Long
 )
 
 @Serializable

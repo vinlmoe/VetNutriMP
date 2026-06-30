@@ -22,6 +22,15 @@ interface AnimalDao {
         suspend fun getAnimalById(id: String): AnimalEntity?
 
         @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsert(animal: AnimalEntity)
+
+        @Query("SELECT * FROM ANIMALS WHERE updatedAtMs > :since")
+        suspend fun getAnimalsUpdatedAfter(since: Long): List<AnimalEntity>
+
+        @Query("SELECT * FROM ANIMALS WHERE uuid = :uuid LIMIT 1")
+        suspend fun getAnimalByUuid(uuid: String): AnimalEntity?
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertWeight(weight: WeightEntity)
 
         @Insert suspend fun insertConsultation(consultation: ConsultationEntity)
@@ -125,6 +134,60 @@ interface ConsultationDao {
 
         @Delete suspend fun delete(consultation: ConsultationEntity)
 
+        @Query("SELECT * FROM CONSULTATIONS WHERE updatedAtMs > :since")
+        suspend fun getConsultationsUpdatedAfter(since: Long): List<ConsultationEntity>
+
+        @Query("SELECT * FROM RATIONS WHERE updatedAtMs > :since")
+        suspend fun getRationsUpdatedAfter(since: Long): List<RationEntity>
+
+        @Query("SELECT * FROM ALIMENTS WHERE updatedAtMs > :since")
+        suspend fun getAlimentRationsUpdatedAfter(since: Long): List<AlimentRationEntity>
+
+        @Query("SELECT * FROM WEIGHT WHERE updatedAtMs > :since")
+        suspend fun getWeightsUpdatedAfter(since: Long): List<WeightEntity>
+
+        @Query("SELECT * FROM CONSULTATION_KEYWORDS WHERE updatedAtMs > :since")
+        suspend fun getKeywordsUpdatedAfter(since: Long): List<ConsultationKeywordEntity>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsertConsultation(consultation: ConsultationEntity)
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsertRation(ration: RationEntity)
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsertAlimentRation(aliment: AlimentRationEntity)
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsertWeight(weight: WeightEntity)
+
+        @Query("SELECT * FROM CONSULTATIONS WHERE uuid = :uuid LIMIT 1")
+        suspend fun getConsultationByUuid(uuid: String): ConsultationEntity?
+
+        @Query("SELECT * FROM RATIONS WHERE uuid = :uuid LIMIT 1")
+        suspend fun getRationByUuid(uuid: String): RationEntity?
+
+        @Query("SELECT * FROM ALIMENTS WHERE uuid = :uuid LIMIT 1")
+        suspend fun getAlimentRationByUuid(uuid: String): AlimentRationEntity?
+
+        @Query("SELECT * FROM WEIGHT WHERE uuid = :uuid LIMIT 1")
+        suspend fun getWeightByUuid(uuid: String): WeightEntity?
+
+        @Query("DELETE FROM CONSULTATIONS WHERE uuid = :uuid")
+        suspend fun deleteConsultationByUuid(uuid: String)
+
+        @Query("DELETE FROM RATIONS WHERE uuid = :uuid")
+        suspend fun deleteRationByUuid(uuid: String)
+
+        @Query("DELETE FROM ALIMENTS WHERE uuid = :uuid")
+        suspend fun deleteAlimentRationByUuid(uuid: String)
+
+        @Query("DELETE FROM WEIGHT WHERE uuid = :uuid")
+        suspend fun deleteWeightByUuid(uuid: String)
+
+        @Query("DELETE FROM ANIMALS WHERE uuid = :uuid")
+        suspend fun deleteAnimalByUuid(uuid: String)
+
         @Query("SELECT * FROM CONSULTATIONS WHERE idAnim = :animalId")
         suspend fun getConsultationsForAnimal(animalId: String): List<ConsultationEntity>
 
@@ -206,6 +269,9 @@ interface ExamGradingDao {
 
 @Dao
 interface RecipeDao {
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsertRecipe(recipe: RecetteEntity)
+
         @Insert suspend fun insertRecipe(recipe: RecetteEntity)
         @Update suspend fun updateRecipe(recipe: RecetteEntity)
         @Delete suspend fun deleteRecipe(recipe: RecetteEntity)
@@ -224,6 +290,24 @@ interface RecipeDao {
 
         @Query("DELETE FROM ALIMENTS_RECETTES WHERE refRecipe = :recipeId")
         suspend fun deleteAlimentsForRecipe(recipeId: String)
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsertAlimentRecette(aliment: AlimentRecetteEntity)
+
+        @Query("SELECT * FROM RECETTES WHERE updatedAtMs > :since")
+        suspend fun getRecettesUpdatedAfter(since: Long): List<RecetteEntity>
+
+        @Query("SELECT * FROM ALIMENTS_RECETTES WHERE updatedAtMs > :since")
+        suspend fun getAlimentRecettesUpdatedAfter(since: Long): List<AlimentRecetteEntity>
+
+        @Query("SELECT * FROM RECETTES WHERE uuid = :uuid LIMIT 1")
+        suspend fun getRecetteByUuid(uuid: String): RecetteEntity?
+
+        @Query("DELETE FROM RECETTES WHERE uuid = :uuid")
+        suspend fun deleteRecetteByUuid(uuid: String)
+
+        @Query("DELETE FROM ALIMENTS_RECETTES WHERE uuid = :uuid")
+        suspend fun deleteAlimentRecetteByUuid(uuid: String)
 }
 
 @Dao
@@ -323,6 +407,12 @@ interface FoodDao {
                 especeText: String?,
                 limit: Int = 5000
         ): List<FoodEntity>
+
+        @Query("SELECT * FROM FOOD WHERE updatedAtMs > :since")
+        suspend fun getFoodsUpdatedAfter(since: Long): List<FoodEntity>
+
+        @Query("DELETE FROM FOOD WHERE uuid = :uuid")
+        suspend fun deleteFoodByUuid(uuid: String)
 }
 
 @Dao
@@ -399,6 +489,12 @@ interface BiblioRefDao {
                 "SELECT * FROM BIBLIO_REFS WHERE firstAuthor LIKE '%' || :query || '%' OR completeRef LIKE '%' || :query || '%' OR comments LIKE '%' || :query || '%'"
         )
         suspend fun searchBiblioRefs(query: String): List<BiblioRefEntity>
+
+        @Query("SELECT * FROM BIBLIO_REFS WHERE updatedAtMs > :since")
+        suspend fun getBiblioRefsUpdatedAfter(since: Long): List<BiblioRefEntity>
+
+        @Query("DELETE FROM BIBLIO_REFS WHERE uuid = :uuid")
+        suspend fun deleteBiblioRefByUuid(uuid: String)
 }
 
 /** DAO pour accéder aux équations dans la base de données */
@@ -425,6 +521,12 @@ interface EquationDao {
 
         @Query("SELECT * FROM EQUATIONS WHERE specie = :specie")
         suspend fun getEquationsBySpecie(specie: String): List<EquationEntity>
+
+        @Query("SELECT * FROM EQUATIONS WHERE updatedAtMs > :since")
+        suspend fun getEquationsUpdatedAfter(since: Long): List<EquationEntity>
+
+        @Query("DELETE FROM EQUATIONS WHERE uuid = :uuid")
+        suspend fun deleteEquationByUuid(uuid: String)
 }
 
 /** DAO pour persister les métadonnées des nutriments personnalisés */
@@ -444,6 +546,12 @@ interface CustomNutrientDao {
 
         @Query("DELETE FROM CUSTOM_NUTRIENTS")
         suspend fun deleteAll()
+
+        @Query("SELECT * FROM CUSTOM_NUTRIENTS WHERE updatedAtMs > :since")
+        suspend fun getCustomNutrientsUpdatedAfter(since: Long): List<CustomNutrientEntity>
+
+        @Query("DELETE FROM CUSTOM_NUTRIENTS WHERE label = :label")
+        suspend fun deleteByLabel(label: String)
 }
 
 /** DAO pour accéder aux références évaluées dans la base de données */
@@ -574,6 +682,18 @@ interface ReferenceEvDao {
         @Query("DELETE FROM REFERENCE_EV_COEFFICIENTS") suspend fun deleteAllCoefficients()
 
         @Query("DELETE FROM REFERENCE_EV_NUTRIENTS") suspend fun deleteAllNutrients()
+
+        @Query("SELECT * FROM REFERENCE_EV WHERE updatedAtMs > :since")
+        suspend fun getReferenceEvsUpdatedAfter(since: Long): List<ReferenceEvEntity>
+
+        @Query("SELECT * FROM REFERENCE_EV_EQUATIONS WHERE referenceEvId IN (SELECT uuid FROM REFERENCE_EV WHERE updatedAtMs > :since)")
+        suspend fun getEquationRelationsUpdatedAfter(since: Long): List<ReferenceEvEquationEntity>
+
+        @Query("SELECT * FROM REFERENCE_EV_COEFFICIENTS WHERE referenceEvId IN (SELECT uuid FROM REFERENCE_EV WHERE updatedAtMs > :since)")
+        suspend fun getCoefficientRelationsUpdatedAfter(since: Long): List<ReferenceEvCoefficientEntity>
+
+        @Query("SELECT * FROM REFERENCE_EV_NUTRIENTS WHERE referenceEvId IN (SELECT uuid FROM REFERENCE_EV WHERE updatedAtMs > :since)")
+        suspend fun getNutrientRelationsUpdatedAfter(since: Long): List<ReferenceEvNutrientEntity>
 }
 
 /** DAO pour la table de jonction aliment ↔ référence bibliographique */
@@ -587,6 +707,25 @@ interface AlimentBiblioRefDao {
 
     @Query("SELECT biblioRefUuid FROM ALIMENT_BIBLIO_REFS WHERE alimentUuid = :alimentUuid")
     suspend fun getBiblioRefUuids(alimentUuid: String): List<String>
+}
+
+/** DAO pour la table des suppressions synchronisées */
+@Dao
+interface SyncTombstoneDao {
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insert(tombstone: SyncTombstoneEntity)
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertAll(tombstones: List<SyncTombstoneEntity>)
+
+        @Query("SELECT * FROM SYNC_TOMBSTONES WHERE deletedAtMs > :since")
+        suspend fun getTombstonesAfter(since: Long): List<SyncTombstoneEntity>
+
+        @Query("SELECT * FROM SYNC_TOMBSTONES WHERE uuid = :uuid AND entityType = :entityType LIMIT 1")
+        suspend fun find(uuid: String, entityType: String): SyncTombstoneEntity?
+
+        @Query("DELETE FROM SYNC_TOMBSTONES WHERE uuid = :uuid AND entityType = :entityType")
+        suspend fun delete(uuid: String, entityType: String)
 }
 
 /** DAO pour accéder aux sections HTML réutilisables */

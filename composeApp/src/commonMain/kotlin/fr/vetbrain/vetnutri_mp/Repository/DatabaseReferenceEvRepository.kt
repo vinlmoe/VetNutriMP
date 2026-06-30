@@ -44,7 +44,7 @@ class DatabaseReferenceEvRepository(
 
     suspend fun saveReferenceEv(referenceEv: ReferenceEv): String {
         return withContext(AppDispatchers.IO) {
-            val entity = convertReferenceEvToEntity(referenceEv)
+            val entity = convertReferenceEvToEntity(referenceEv).copy(updatedAtMs = System.currentTimeMillis())
             referenceEvDao.insertReferenceEv(entity)
             saveEquationRelations(referenceEv)
             saveCoefficients(referenceEv)
@@ -55,7 +55,7 @@ class DatabaseReferenceEvRepository(
 
     suspend fun updateReferenceEv(referenceEv: ReferenceEv) {
         withContext(AppDispatchers.IO) {
-            val entity = convertReferenceEvToEntity(referenceEv)
+            val entity = convertReferenceEvToEntity(referenceEv).copy(updatedAtMs = System.currentTimeMillis())
             referenceEvDao.updateReferenceEv(entity)
             referenceEvDao.deleteEquationsForReference(referenceEv.uuid)
             referenceEvDao.deleteCoefficientsForReference(referenceEv.uuid)
@@ -80,7 +80,7 @@ class DatabaseReferenceEvRepository(
 
     suspend fun saveReferenceEvForImport(referenceEv: ReferenceEv): String {
         return withContext(AppDispatchers.IO) {
-            val entity = convertReferenceEvToEntity(referenceEv)
+            val entity = convertReferenceEvToEntity(referenceEv).copy(updatedAtMs = System.currentTimeMillis())
             referenceEvDao.insertReferenceEv(entity)
             saveEquationRelations(referenceEv)
             saveCoefficientsForImport(referenceEv)

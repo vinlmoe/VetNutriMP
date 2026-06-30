@@ -46,8 +46,9 @@ import kotlinx.coroutines.withContext
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class,
                         CustomNutrientEntity::class,
-                        EnergyPerSpeciesEntity::class],
-        version = 36,
+                        EnergyPerSpeciesEntity::class,
+                        SyncTombstoneEntity::class],
+        version = 37,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -66,10 +67,11 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun htmlSectionDao(): HtmlSectionDao
     abstract fun examGradingDao(): ExamGradingDao
     abstract fun energyPerSpeciesDao(): EnergyPerSpeciesDao
+    abstract fun syncTombstoneDao(): SyncTombstoneDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
-        const val DATABASE_VERSION = 36
+        const val DATABASE_VERSION = 37
     }
 }
 
@@ -90,17 +92,12 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
  */
 fun getRoomDatabase(
     builder: RoomDatabase.Builder<AppDatabase>,
-    dbPath: String,
-    useWal: Boolean = true
+    dbPath: String
 ): AppDatabase {
     backupDatabaseFiles(dbPath)
 
     return try {
-        // ✅ Configuration sécurisée avec migrations explicites
-        builder.setJournalMode(
-            if (useWal) RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING
-            else RoomDatabase.JournalMode.TRUNCATE
-        )
+        builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 .addMigrations(
                         // Migration 17→18 : Test de montée de version sécurisée
                         createMigration17to18(),
@@ -137,7 +134,9 @@ fun getRoomDatabase(
                         // Migration 34→35 : Table CUSTOM_NUTRIENTS pour persister les métadonnées des nutriments personnalisés
                         createMigration34to35(),
                         // Migration 35→36 : Table ENERGY_PER_SPECIES pour l'énergie par espèce
-                        createMigration35to36()
+                        createMigration35to36(),
+                        // Migration 36→37 : Champs updatedAtMs pour la synchronisation NAS
+                        createMigration36to37()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -707,6 +706,37 @@ fun createMigration34to35(): Migration {
                     categoryCode TEXT NOT NULL
                 )
             """.trimIndent()).use { it.step() }
+        }
+    }
+}
+
+fun createMigration36to37(): Migration {
+    return object : Migration(36, 37) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            listOf(
+                "ALTER TABLE ANIMALS ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE CONSULTATIONS ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE RATIONS ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE WEIGHT ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE ALIMENTS ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE FOOD ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE EQUATIONS ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE BIBLIO_REFS ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE REFERENCE_EV ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE RECETTES ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE ALIMENTS_RECETTES ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE CONSULTATION_KEYWORDS ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE CUSTOM_NUTRIENTS ADD COLUMN updatedAtMs INTEGER NOT NULL DEFAULT 0"
+            ).forEach { sql -> runStatementIgnoreIfExists(connection, sql) }
+
+            runStatementIgnoreIfExists(connection, """
+                CREATE TABLE IF NOT EXISTS SYNC_TOMBSTONES (
+                    uuid TEXT NOT NULL,
+                    entityType TEXT NOT NULL,
+                    deletedAtMs INTEGER NOT NULL,
+                    PRIMARY KEY (uuid, entityType)
+                )
+            """.trimIndent())
         }
     }
 }

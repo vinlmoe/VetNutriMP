@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.*
@@ -20,17 +21,26 @@ import fr.vetbrain.vetnutri_mp.View.SettingsComponents.InfoSection
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsSection
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.WarningSection
 import fr.vetbrain.vetnutri_mp.Utils.NasTestResult
+import fr.vetbrain.vetnutri_mp.Utils.NasSyncStatus
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.testNasDbPath
+import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.browseNasDbPath
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 private enum class UiNasStatus { NONE, OK, VERSION_TOO_HIGH, INACCESSIBLE, TESTING }
 
 @Composable
-fun DatabaseSettings(modifier: Modifier = Modifier) {
+fun DatabaseSettings(
+    modifier: Modifier = Modifier,
+    settingsViewModel: SettingsViewModel? = null
+) {
     val preferencesStorage = remember {
         try { createPreferencesStorage() } catch (_: Exception) { null }
     }
@@ -44,6 +54,9 @@ fun DatabaseSettings(modifier: Modifier = Modifier) {
     var editedPath by remember { mutableStateOf("") }
     var uiStatus by remember { mutableStateOf(UiNasStatus.NONE) }
     var versionFound by remember { mutableStateOf(0) }
+
+    val syncStatusFallback = remember { kotlinx.coroutines.flow.MutableStateFlow<NasSyncStatus>(NasSyncStatus.Idle) }
+    val syncStatus: NasSyncStatus by (settingsViewModel?.syncStatus ?: syncStatusFallback).collectAsState()
 
     LaunchedEffect(Unit) {
         preferencesRepository.loadPreferences()
@@ -254,6 +267,110 @@ fun DatabaseSettings(modifier: Modifier = Modifier) {
                         message = "SQLite n'est pas conçu pour les accès simultanés depuis plusieurs " +
                                   "postes. N'ouvrez pas la même base depuis plusieurs instances en même temps."
                     )
+
+                    if (settingsViewModel != null && currentPath.isNotBlank()) {
+                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        // Section synchronisation
+                        Text(
+                            "Synchronisation",
+                            style = MaterialTheme.typography.subtitle2,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Badge de statut
+                            when (val s = syncStatus) {
+                                is NasSyncStatus.Idle -> Text(
+                                    "Prêt",
+                                    style = MaterialTheme.typography.caption,
+                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                is NasSyncStatus.InProgress -> Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(14.dp),
+                                        strokeWidth = 2.dp,
+                                        color = VetNutriColors.Primary
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        "Synchronisation en cours…",
+                                        style = MaterialTheme.typography.caption,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                    )
+                                }
+                                is NasSyncStatus.Ok -> {
+                                    val timeStr = try {
+                                        val dt = Instant.fromEpochMilliseconds(s.syncedAt)
+                                            .toLocalDateTime(TimeZone.currentSystemDefault())
+                                        "${dt.hour.toString().padStart(2, '0')}:${dt.minute.toString().padStart(2, '0')}"
+                                    } catch (_: Exception) { "" }
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = Color(0xFF2E7D32),
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            "OK à $timeStr — ${s.pushed} envoyés, ${s.pulled} reçus",
+                                            style = MaterialTheme.typography.caption,
+                                            color = Color(0xFF2E7D32)
+                                        )
+                                    }
+                                }
+                                is NasSyncStatus.NotConfigured -> Text(
+                                    "NAS non configuré",
+                                    style = MaterialTheme.typography.caption,
+                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                is NasSyncStatus.Error -> Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = VetNutriColors.Error,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        s.message,
+                                        style = MaterialTheme.typography.caption,
+                                        color = VetNutriColors.Error
+                                    )
+                                }
+                            }
+
+                            OutlinedButton(
+                                onClick = { settingsViewModel.syncNow() },
+                                enabled = syncStatus !is NasSyncStatus.InProgress
+                            ) {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Synchroniser")
+                            }
+                        }
+                    }
                 }
             },
             modifier = Modifier.fillMaxWidth()

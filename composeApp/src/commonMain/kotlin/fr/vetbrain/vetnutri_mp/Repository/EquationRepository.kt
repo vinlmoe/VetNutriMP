@@ -158,7 +158,7 @@ class DatabaseEquationRepository(
                         equation
                     }
 
-            val entity = equationToSave.toEntity()
+            val entity = equationToSave.toEntity().copy(updatedAtMs = System.currentTimeMillis())
 
             // Vérifier si l'équation existe déjà
             val existingEquation = equationDao.getEquationById(equationToSave.uuid)
@@ -178,7 +178,7 @@ class DatabaseEquationRepository(
     }
 
     override suspend fun updateEquation(equation: Equation) {
-        equationDao.updateEquation(equation.toEntity())
+        equationDao.updateEquation(equation.toEntity().copy(updatedAtMs = System.currentTimeMillis()))
         loadEquations()
     }
 

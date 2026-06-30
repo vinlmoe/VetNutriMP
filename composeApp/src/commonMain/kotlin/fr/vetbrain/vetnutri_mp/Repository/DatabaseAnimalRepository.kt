@@ -33,16 +33,17 @@ class DatabaseAnimalRepository(
 ) : AnimalRepository {
         override suspend fun saveAnimal(animal: AnimalEv) {
                 withContext(AppDispatchers.IO) {
+                        val now = System.currentTimeMillis()
                         val consultationEntities = animal.consultations.map { consultation ->
                                 consultation.idAnim = animal.uuid
-                                consultation.toEntity(includeRelations = false)
+                                consultation.toEntity(includeRelations = false).copy(updatedAtMs = now)
                         }
                         val weightEntities = animal.weightHistory.map { weight ->
                                 weight.refAnimal = animal.uuid
-                                weight.toEntity()
+                                weight.toEntity().copy(updatedAtMs = now)
                         }
                         animalDao.saveAnimalWithRelations(
-                                animal.toEntity(),
+                                animal.toEntity().copy(updatedAtMs = now),
                                 consultationEntities,
                                 weightEntities
                         )
@@ -72,11 +73,12 @@ class DatabaseAnimalRepository(
 
         override suspend fun updateAnimal(animal: AnimalEv) {
                 withContext(AppDispatchers.IO) {
-                        animalDao.update(animal.toEntity(includeRelations = false))
+                        val now = System.currentTimeMillis()
+                        animalDao.update(animal.toEntity(includeRelations = false).copy(updatedAtMs = now))
 
                         val weightEntities = animal.weightHistory.map { weight ->
                                 weight.refAnimal = animal.uuid
-                                weight.toEntity()
+                                weight.toEntity().copy(updatedAtMs = now)
                         }
                         // DELETE + INSERT atomiques : sans transaction, un échec entre les deux
                         // supprimerait définitivement les poids existants

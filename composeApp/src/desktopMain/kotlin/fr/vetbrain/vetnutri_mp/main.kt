@@ -11,8 +11,8 @@ import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabaseBuilder
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabasePath
 import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
-import fr.vetbrain.vetnutri_mp.Utils.NasDatabaseChecker
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
+import fr.vetbrain.vetnutri_mp.Service.NasSyncService
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseAnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
 import fr.vetbrain.vetnutri_mp.Utils.FileUtils
@@ -45,7 +45,7 @@ private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
 }
 
 private var appScope: CoroutineScope? = null
-private var desktopAppDatabase: fr.vetbrain.vetnutri_mp.DataBase.AppDatabase? = null
+internal var desktopAppDatabase: fr.vetbrain.vetnutri_mp.DataBase.AppDatabase? = null
 
 private fun desktopDatabaseFiles(): List<File> {
     val userHome = System.getProperty("user.home")
@@ -106,29 +106,9 @@ suspend fun main(args: Array<String> = emptyArray()) {
     // Initialisation de la localisation
     LocalizationManager.initialize()
 
-    // Vérification NAS avant toute initialisation Room (synchrone, dialogues Swing si besoin)
+    // Initialisation de la base de données locale (toujours en WAL local)
     val localDbPath = getDatabasePath()
-    val nasCheckResult = NasDatabaseChecker.performStartupCheck(localDbPath)
-
-    if (nasCheckResult is NasDatabaseChecker.NasCheckResult.Exit) {
-        exitProcess(0)
-    }
-
-    val effectiveDbPath: String
-    val useWalMode: Boolean
-    when (nasCheckResult) {
-        is NasDatabaseChecker.NasCheckResult.UseNas -> {
-            effectiveDbPath = nasCheckResult.resolvedPath
-            useWalMode = false  // NAS → mode TRUNCATE (WAL incompatible SMB/NFS)
-        }
-        else -> {
-            effectiveDbPath = localDbPath
-            useWalMode = true
-        }
-    }
-
-    // Initialisation de la base de données
-    val appDatabase = getRoomDatabase(getDatabaseBuilder(effectiveDbPath), effectiveDbPath, useWalMode)
+    val appDatabase = getRoomDatabase(getDatabaseBuilder(localDbPath), localDbPath)
     desktopAppDatabase = appDatabase
 
     // Création du repository des animaux
@@ -227,6 +207,11 @@ suspend fun main(args: Array<String> = emptyArray()) {
         // Lancement normal de l'application avec interface graphique
         appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
 
+        // Sync NAS au démarrage si un chemin est configuré
+        appScope?.launch {
+            NasSyncService.syncIfConfigured(appDatabase)
+        }
+
         application {
             // Vérification de l'existence du fichier d'importation par défaut
             val defaultImportFile = File("animaux_import.json")
@@ -242,6 +227,10 @@ suspend fun main(args: Array<String> = emptyArray()) {
 
             Window(
                     onCloseRequest = {
+                        // Sync NAS à la fermeture (bloquant sur un scope dédié)
+                        kotlinx.coroutines.runBlocking {
+                            NasSyncService.syncIfConfigured(appDatabase)
+                        }
                         appScope?.cancel()
                         exitApplication()
                     },

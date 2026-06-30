@@ -2630,7 +2630,10 @@ fun SettingsView(
                                 }
                                 6 -> { // Base de données NAS (desktop uniquement)
                                         if (!isAndroidPlatform && !isIosPlatform) {
-                                                DatabaseSettings(modifier = Modifier.fillMaxWidth())
+                                                DatabaseSettings(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            settingsViewModel = viewModel
+                                        )
                                         }
                                 }
                         }

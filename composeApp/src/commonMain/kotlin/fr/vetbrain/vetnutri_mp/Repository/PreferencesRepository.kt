@@ -120,7 +120,8 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         sb.append("\"city\":\"" + preferences.ville.replace("\"", "\\\"") + "\",")
         sb.append("\"phone\":\"" + preferences.telephone.replace("\"", "\\\"") + "\",")
         sb.append("\"email\":\"" + preferences.email.replace("\"", "\\\"") + "\",")
-        sb.append("\"nasDbPath\":\"" + preferences.nasDbPath.replace("\\", "\\\\").replace("\"", "\\\"") + "\"},")
+        sb.append("\"nasDbPath\":\"" + preferences.nasDbPath.replace("\\", "\\\\").replace("\"", "\\\"") + "\",")
+        sb.append("\"lastSyncTimestampMs\":${preferences.lastSyncTimestampMs}},")
         sb.append("\"species\":{")
 
         val speciesEntries = mutableListOf<String>()
@@ -214,6 +215,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
             var telephone = ""
             var email = ""
             var nasDbPath = ""
+            var lastSyncTimestampMs = -1L
             if (userStart != -1) {
                 val braceIndex = json.indexOf('{', userStart)
                 val userEnd = findMatchingClosingBrace(json, braceIndex)
@@ -238,6 +240,8 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                             ?.groupValues?.get(1)
                             ?.replace("\\\\", "\\")
                             ?: ""
+                    lastSyncTimestampMs = Regex("\"lastSyncTimestampMs\":(-?[0-9]+)")
+                            .find(userJson)?.groupValues?.get(1)?.toLongOrNull() ?: -1L
                 }
             }
 
@@ -250,7 +254,8 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                     ville = ville,
                     telephone = telephone,
                     email = email,
-                    nasDbPath = nasDbPath
+                    nasDbPath = nasDbPath,
+                    lastSyncTimestampMs = lastSyncTimestampMs
             )
         } catch (e: Exception) {
             return PreferencesApplication.createDefault()

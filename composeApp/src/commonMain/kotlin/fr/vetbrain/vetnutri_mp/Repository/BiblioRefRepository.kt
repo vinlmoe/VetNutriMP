@@ -228,7 +228,7 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
             writeMutex.withLock {
                 try {
                     val safeRef = if (biblioRef.consistent <= 0) biblioRef.copy(consistent = 1) else biblioRef
-                    val entity = safeRef.toEntity()
+                    val entity = safeRef.toEntity().copy(updatedAtMs = System.currentTimeMillis())
                     val existingRef = biblioRefDao.getBiblioRefById(safeRef.uuid)
                     if (existingRef != null) {
                         biblioRefDao.updateBiblioRef(entity)
@@ -248,7 +248,7 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
         withContext(AppDispatchers.IO) {
             writeMutex.withLock {
                 try {
-                    biblioRefDao.updateBiblioRef(biblioRef.toEntity())
+                    biblioRefDao.updateBiblioRef(biblioRef.toEntity().copy(updatedAtMs = System.currentTimeMillis()))
                     refreshFromDatabase()
                 } catch (e: Exception) {
                     e.printStackTrace()

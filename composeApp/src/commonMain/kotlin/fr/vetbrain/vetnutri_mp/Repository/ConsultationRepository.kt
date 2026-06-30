@@ -37,8 +37,9 @@ class DatabaseConsultationRepository(
     override suspend fun saveConsultation(consultation: ConsultationEv) {
         withContext(AppDispatchers.IO) {
             try {
+                val now = System.currentTimeMillis()
                 val existingConsultation = consultationDao.getConsultationById(consultation.uuid)
-                val entity = consultation.toEntity()
+                val entity = consultation.toEntity().copy(updatedAtMs = now)
 
                 if (existingConsultation == null) {
                     try {
@@ -58,14 +59,14 @@ class DatabaseConsultationRepository(
 
                 // Pré-construire toutes les entités avant la transaction
                 val rationEntities = consultation.rations.map { ration ->
-                    ration.toEntity().also { it.idConsult = consultation.uuid }
+                    ration.toEntity().copy(updatedAtMs = now).also { it.idConsult = consultation.uuid }
                 }
                 val alimentEntities = consultation.rations.flatMap { ration ->
                     ration.alimentMutableList
                         .filter { it.refAlimUnif != null }
                         .map { aliment ->
                             aliment.refRation = ration.uuid
-                            aliment.toEntity()
+                            aliment.toEntity().copy(updatedAtMs = now)
                         }
                 }
                 val suppVarEntities = consultation.suppVarp.mapNotNull { suppVar ->

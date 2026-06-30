@@ -25,6 +25,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.NasSyncStatus
+import fr.vetbrain.vetnutri_mp.Utils.syncNasDatabase
 
 /** ViewModel pour la gestion des paramètres de l'application */
 class SettingsViewModel(
@@ -734,6 +736,18 @@ class SettingsViewModel(
             e.printStackTrace()
             log("=".repeat(60))
             ImportResult.Error("Erreur lors de l'import automatique: ${e.message}")
+        }
+    }
+
+    // État de synchronisation NAS
+    private val _syncStatus = MutableStateFlow<NasSyncStatus>(NasSyncStatus.Idle)
+    val syncStatus: StateFlow<NasSyncStatus> = _syncStatus.asStateFlow()
+
+    fun syncNow() {
+        viewModelScope.launch {
+            _syncStatus.value = NasSyncStatus.InProgress
+            val result = withContext(AppDispatchers.IO) { syncNasDatabase() }
+            _syncStatus.value = result
         }
     }
 
