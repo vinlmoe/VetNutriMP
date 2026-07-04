@@ -8,10 +8,10 @@ import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRation
 import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations
 import fr.vetbrain.vetnutri_mp.Data.calculerAffichageNutriment
-import fr.vetbrain.vetnutri_mp.Data.calculerConformite
 import fr.vetbrain.vetnutri_mp.Data.calculerCompositionPourcentages
 import fr.vetbrain.vetnutri_mp.Data.calculerOrigineEnergetiquePourcentages
-import fr.vetbrain.vetnutri_mp.Data.ConformiteStatus
+import fr.vetbrain.vetnutri_mp.Data.calculerBulletGraphData
+import fr.vetbrain.vetnutri_mp.Data.BulletGraphData
 import fr.vetbrain.vetnutri_mp.Data.grouperNutrimentsParCategorie
 import fr.vetbrain.vetnutri_mp.Data.obtenirTitreCategorie
 import fr.vetbrain.vetnutri_mp.Enumer.ContEnum
@@ -339,6 +339,7 @@ object HtmlDocumentBuilder {
                         energieApportee,
                         pourcentageCouverture
                 ) +
+                (if (ration != null) buildRationBlock(ration) else "") +
                 (
                         if (ration != null) {
                             buildNutrientTableBlock(
@@ -358,7 +359,6 @@ object HtmlDocumentBuilder {
                 ) +
                 buildAdditionalTextBlock(additionalText) +
                 buildHtmlSectionsBlock(htmlSections) +
-                (if (ration != null) buildRationBlock(ration) else "") +
                 buildFooter()
     }
 
@@ -470,24 +470,18 @@ object HtmlDocumentBuilder {
                         besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
                         referenceUtilisee = reference
                 )
-                val conformite = calculerConformite(
-                        valeur, reference, besoinEnergetiqueEntretien, poidsAnimal, poidsMetabolique, referencesMaladies
+                val bulletGraphData = calculerBulletGraphData(
+                        valeur, reference, typeExpressionBesoin, poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien
                 )
-                val statutHtml = when (conformite?.status) {
-                    ConformiteStatus.CARENCE -> "<span style='color:#B00020'>↓ Carence</span>"
-                    ConformiteStatus.EXCES -> "<span style='color:#B00020'>↑ Excès</span>"
-                    ConformiteStatus.CARENCE_MALADIE -> "<span style='color:#9C27B0'>↓ Carence (réf. maladie)</span>"
-                    ConformiteStatus.EXCES_MALADIE -> "<span style='color:#9C27B0'>↑ Excès (réf. maladie)</span>"
-                    else -> ""
-                }
+                val repereHtml = bulletGraphData?.let { buildBulletGraphSvg(it) } ?: "—"
                 val valeurCell = if (uniteAffichee.isNotBlank()) "$valeurAffichee $uniteAffichee" else valeurAffichee
-                "<tr><td>${nomTraduit}</td><td class='right'>${valeurCell}</td><td>${statutHtml}</td></tr>"
+                "<tr><td>${nomTraduit}</td><td class='right'>${valeurCell}</td><td>${repereHtml}</td></tr>"
             }
 
             """
                 <h3>${obtenirTitreCategorie(categorie)}</h3>
                 <table>
-                    <thead><tr><th>Nutriment</th><th>Valeur</th><th>Conformité</th></tr></thead>
+                    <thead><tr><th>Nutriment</th><th>Valeur</th><th>Repère</th></tr></thead>
                     <tbody>
                         $rows
                     </tbody>
@@ -503,6 +497,69 @@ object HtmlDocumentBuilder {
                 ${buildQuantitativeSectionBlock(ration, valeurs)}
             </div>
         """.trimIndent()
+    }
+
+    /**
+     * Rendu SVG (inline, pas d'image bitmap) d'un bullet graph : mêmes zones colorées et mêmes
+     * bornes que `DetailNutrimentAnalysis.kt::ReferenceBulletGraph` (rouge hors MIN/MAX, bleu entre
+     * MIN/OPTIMIN et OPTIMAX/MAX, vert dans la zone optimale), avec une barre sombre représentant
+     * l'apport actuel.
+     */
+    private fun buildBulletGraphSvg(data: BulletGraphData): String {
+        val width = 150.0
+        val height = 20.0
+        val axisMax = data.maxAxis
+        fun fmt(v: Double): String = TextUtils.formatDecimal(v, 1)
+        fun x(v: Double): Double = (v / axisMax).coerceIn(0.0, 1.0) * width
+
+        val bornes = buildList {
+            add(0.0)
+            data.minRef?.let { add(it) }
+            data.optiminRef?.let { add(it) }
+            data.optimaxRef?.let { add(it) }
+            data.maxRef?.let { add(it) }
+            add(axisMax)
+        }.distinct().sorted()
+
+        val segments = StringBuilder()
+        for (i in 0 until bornes.size - 1) {
+            val start = bornes[i]
+            val end = bornes[i + 1]
+            if (end <= start) continue
+            val color = when {
+                data.minRef != null && start == 0.0 && end == data.minRef -> "#B00020"
+                data.maxRef != null && start == data.maxRef && end == axisMax -> "#B00020"
+                data.minRef != null && data.optiminRef != null &&
+                        start == data.minRef && end == data.optiminRef -> "#2196F3"
+                data.optimaxRef != null && data.maxRef != null &&
+                        start == data.optimaxRef && end == data.maxRef -> "#2196F3"
+                data.optimaxRef != null && data.maxRef == null &&
+                        start == data.optimaxRef && end == axisMax -> "#2196F3"
+                data.minRef == null && data.optiminRef != null &&
+                        start == 0.0 && end == data.optiminRef -> "#2196F3"
+                else -> "#4CAF50"
+            }
+            val xStart = x(start)
+            val w = x(end) - xStart
+            segments.append(
+                "<rect x='${fmt(xStart)}' y='0' width='${fmt(w)}' height='${fmt(height)}' fill='$color' />"
+            )
+        }
+
+        val lines = StringBuilder()
+        listOfNotNull(data.minRef, data.optiminRef, data.optimaxRef, data.maxRef).forEach { v ->
+            val xp = x(v)
+            lines.append(
+                "<line x1='${fmt(xp)}' y1='0' x2='${fmt(xp)}' y2='${fmt(height)}' stroke='#333333' stroke-width='1' />"
+            )
+        }
+
+        val barHeight = height * 0.4
+        val barY = (height - barHeight) / 2
+        val apportBar =
+            "<rect x='0' y='${fmt(barY)}' width='${fmt(x(data.apport))}' height='${fmt(barHeight)}' fill='#222222' />"
+
+        return "<svg width='${fmt(width)}' height='${fmt(height)}' viewBox='0 0 ${fmt(width)} ${fmt(height)}' xmlns='http://www.w3.org/2000/svg'>$segments$apportBar$lines</svg>"
     }
 
     /** Composition (matière sèche) et origine énergétique, mêmes calculs que cardNutrient.kt. */

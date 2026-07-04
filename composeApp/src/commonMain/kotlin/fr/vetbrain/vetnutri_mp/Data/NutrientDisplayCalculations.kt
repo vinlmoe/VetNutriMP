@@ -55,6 +55,142 @@ fun calculerBesoinAbsolu(
     }
 }
 
+/**
+ * Convertit une valeur de référence (stockée dans son unité `uniteRef`) vers l'unité des
+ * préférences utilisateur `unitePreferences`, en passant par une valeur absolue intermédiaire.
+ * Utilisé pour aligner les bornes de référence (MIN/OPTIMIN/OPTIMAX/MAX) sur la même échelle que
+ * l'apport affiché dans le bullet graph.
+ */
+fun convertirVersUnitePreferences(
+    valeurRef: Double,
+    uniteRef: UnitReqEnum,
+    unitePreferences: UnitReqEnum,
+    besoinEnergetiqueEntretien: Double?,
+    poidsAnimal: Double?,
+    poidsMetabolique: Double?
+): Double? {
+    if (uniteRef == unitePreferences) {
+        return valeurRef
+    }
+
+    val valeurAbsolue = calculerBesoinAbsolu(
+        valeurRef, uniteRef, besoinEnergetiqueEntretien, poidsAnimal, poidsMetabolique
+    ) ?: return null
+
+    return when (unitePreferences) {
+        UnitReqEnum.PERKG -> poidsAnimal?.let { poids -> if (poids > 0.0) (valeurAbsolue / poids) else null }
+        UnitReqEnum.PERMS -> poidsMetabolique?.let { poidsMetab -> if (poidsMetab > 0.0) (valeurAbsolue / poidsMetab) else null }
+        UnitReqEnum.PERKCAL -> besoinEnergetiqueEntretien?.let { bee -> if (bee > 0.0) ((valeurAbsolue * 1000.0) / bee) else null }
+        UnitReqEnum.PERKJ -> besoinEnergetiqueEntretien?.let { bee ->
+            if (bee > 0.0) {
+                val beeEnKj = bee * 4.184
+                (valeurAbsolue * 1000.0) / beeEnKj
+            } else null
+        }
+        UnitReqEnum.ABSOLUTE -> valeurAbsolue
+        UnitReqEnum.RATIO -> null
+    }
+}
+
+/** true si NutrientMain.ENERGIE a une bande synthétique par défaut (pas de référence explicite). */
+fun hasDefaultEnergyReferenceLevels(nutriment: Nutrient, besoinEnergetiqueEntretien: Double?): Boolean {
+    return nutriment == NutrientMain.ENERGIE && besoinEnergetiqueEntretien != null && besoinEnergetiqueEntretien > 0.0
+}
+
+/**
+ * Borne synthétique (MIN=90, MAX=110) exprimée en % du BEE pour NutrientMain.ENERGIE quand
+ * aucune référence explicite n'est disponible — même échelle que le bullet graph (apport en % BEE).
+ * `typeExpressionBesoin`/`poidsAnimal`/`poidsMetabolique` ne sont pas utilisés par ce calcul
+ * (conservés pour compatibilité de signature avec les appels existants).
+ */
+fun defaultEnergyReferenceLevel(
+    nutriment: Nutrient,
+    level: Reflevel,
+    typeExpressionBesoin: TypeExpressionBesoin? = null,
+    besoinEnergetiqueEntretien: Double?,
+    poidsAnimal: Double? = null,
+    poidsMetabolique: Double? = null
+): Double? {
+    if (!hasDefaultEnergyReferenceLevels(nutriment, besoinEnergetiqueEntretien)) return null
+    val factor = when (level) {
+        Reflevel.MIN -> 0.9
+        Reflevel.MAX -> 1.1
+        else -> return null
+    }
+    return factor * 100.0
+}
+
+/** Données prêtes à tracer pour un bullet graph (apport + bornes de référence, même échelle). */
+data class BulletGraphData(
+    val apport: Double,
+    val minRef: Double?,
+    val optiminRef: Double?,
+    val optimaxRef: Double?,
+    val maxRef: Double?,
+    val maxAxis: Double
+)
+
+/**
+ * Calcule les données du bullet graph pour un nutriment, exactement comme
+ * `DetailNutrimentAnalysis.kt::ReferenceBulletGraph` : apport et bornes de référence convertis
+ * dans la même unité de préférences, échelle 0..max(valeurs)*1.1. Retourne null si rien à tracer
+ * (aucune référence, ou toutes les valeurs à 0).
+ */
+fun calculerBulletGraphData(
+    valeurNutritionnelle: ValeurNutritionnelle,
+    reference: ReferenceEv?,
+    typeExpressionBesoin: TypeExpressionBesoin?,
+    poidsAnimal: Double?,
+    poidsMetabolique: Double?,
+    besoinEnergetiqueEntretien: Double?
+): BulletGraphData? {
+    if (reference == null) return null
+    val nutrient = valeurNutritionnelle.nutriment
+    val typeExpr = typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
+    val isAnalysisNoUnit = nutrient is NutrientAnalysis && nutrient.unite.isBlank()
+
+    fun convertirRef(valeurRef: Double, uniteRef: UnitReqEnum): Double? =
+        if (isAnalysisNoUnit) valeurRef
+        else convertirVersUnitePreferences(
+            valeurRef, uniteRef, typeExpr.unitReqEnum, besoinEnergetiqueEntretien, poidsAnimal, poidsMetabolique
+        ) ?: valeurRef
+
+    fun refLevel(level: Reflevel, defaultLevel: Reflevel?): Double? {
+        val valeurRef = reference.obtenirNutriment(nutrient, level)
+        return if (valeurRef > 0.0) {
+            convertirRef(valeurRef, UnitReqEnum.getById(reference.obtenirUniteNutriment(nutrient, level)))
+        } else if (defaultLevel != null) {
+            defaultEnergyReferenceLevel(nutrient, defaultLevel, besoinEnergetiqueEntretien = besoinEnergetiqueEntretien)
+        } else null
+    }
+
+    val minRef = refLevel(Reflevel.MIN, Reflevel.MIN)
+    val optiminRef = refLevel(Reflevel.OPTIMIN, null)
+    val optimaxRef = refLevel(Reflevel.OPTIMAX, null)
+    val maxRef = refLevel(Reflevel.MAX, Reflevel.MAX)
+
+    val apportConverti = if (isAnalysisNoUnit) {
+        valeurNutritionnelle.valeur
+    } else {
+        convertirVersUnitePreferences(
+            valeurNutritionnelle.valeur, UnitReqEnum.ABSOLUTE, typeExpr.unitReqEnum,
+            besoinEnergetiqueEntretien, poidsAnimal, poidsMetabolique
+        ) ?: valeurNutritionnelle.valeur
+    }
+    val apport = if (hasDefaultEnergyReferenceLevels(nutrient, besoinEnergetiqueEntretien)) {
+        (valeurNutritionnelle.valeur / besoinEnergetiqueEntretien!!) * 100.0
+    } else {
+        apportConverti
+    }
+
+    val valeurs = listOfNotNull(apport, minRef, optiminRef, optimaxRef, maxRef)
+    if (valeurs.isEmpty()) return null
+    val maxAxis = valeurs.max() * 1.1
+    if (maxAxis <= 0.0) return null
+
+    return BulletGraphData(apport, minRef, optiminRef, optimaxRef, maxRef, maxAxis)
+}
+
 /** Bande synthétique ±10% autour du BEE pour NutrientMain.ENERGIE quand aucune référence explicite n'existe. */
 private fun defaultEnergyNeed(
     nutrient: Nutrient,
