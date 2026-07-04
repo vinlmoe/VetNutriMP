@@ -29,6 +29,9 @@ import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Data.calculerAffichageNutriment
 import fr.vetbrain.vetnutri_mp.Data.calculerBesoinAbsolu
+import fr.vetbrain.vetnutri_mp.Data.convertirVersUnitePreferences
+import fr.vetbrain.vetnutri_mp.Data.hasDefaultEnergyReferenceLevels
+import fr.vetbrain.vetnutri_mp.Data.defaultEnergyReferenceLevel
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -705,104 +708,12 @@ fun ReferenceBulletGraph(
  * @param poidsMetabolique Poids métabolique en kg^0.75
  * @return Valeur convertie dans l'unité des préférences ou null si impossible à calculer
  */
-private fun convertirVersUnitePreferences(
-        valeurRef: Double,
-        uniteRef: UnitReqEnum,
-        unitePreferences: UnitReqEnum,
-        besoinEnergetiqueEntretien: Double?,
-        poidsAnimal: Double?,
-        poidsMetabolique: Double?
-): Double? {
-        // Si les unités sont identiques, pas de conversion nécessaire
-        if (uniteRef == unitePreferences) {
-                return valeurRef
-        }
-
-        // Convertir d'abord vers une valeur absolue (g/jour)
-        val valeurAbsolue =
-                calculerBesoinAbsolu(
-                        valeurRef,
-                        uniteRef,
-                        besoinEnergetiqueEntretien,
-                        poidsAnimal,
-                        poidsMetabolique
-                )
-                        ?: return null
-
-        // Puis convertir de la valeur absolue vers l'unité des préférences
-        return when (unitePreferences) {
-                // Vers PERKG (par kg de poids vif)
-                UnitReqEnum.PERKG -> {
-                        poidsAnimal?.let { poids ->
-                                if (poids > 0.0) (valeurAbsolue / poids) else null
-                        }
-                }
-
-                // Vers PERMS (par kg de poids métabolique)
-                UnitReqEnum.PERMS -> {
-                        poidsMetabolique?.let { poidsMetab ->
-                                if (poidsMetab > 0.0) (valeurAbsolue / poidsMetab) else null
-                        }
-                }
-
-                // Vers PERKCAL (par 1000 kcal)
-                UnitReqEnum.PERKCAL -> {
-                        besoinEnergetiqueEntretien?.let { bee ->
-                                if (bee > 0.0) ((valeurAbsolue * 1000.0) / bee) else null
-                        }
-                }
-
-                // Vers PERKJ (par 1000 kJ)
-                UnitReqEnum.PERKJ -> {
-                        besoinEnergetiqueEntretien?.let { bee ->
-                                if (bee > 0.0) {
-                                        // Convertir kcal en kJ : 1 kcal = 4.184 kJ
-                                        val beeEnKj = bee * 4.184
-                                        ((valeurAbsolue * 1000.0) / beeEnKj)
-                                } else null
-                        }
-                }
-
-                // Vers ABSOLUTE (valeur absolue)
-                UnitReqEnum.ABSOLUTE -> {
-                        valeurAbsolue
-                }
-
-                // Vers RATIO - pas de conversion possible
-                UnitReqEnum.RATIO -> null
-        }
-}
+// convertirVersUnitePreferences/hasDefaultEnergyReferenceLevels/defaultEnergyReferenceLevel
+// vivent maintenant dans Data/NutrientDisplayCalculations.kt (partagés avec l'export PDF).
 
 @Composable
 private fun AxisText(text: String) {
         Text(text, style = MaterialTheme.typography.caption, textAlign = TextAlign.Center)
-}
-
-private fun hasDefaultEnergyReferenceLevels(
-        nutriment: Nutrient,
-        besoinEnergetiqueEntretien: Double?
-): Boolean {
-        return nutriment == fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE &&
-                besoinEnergetiqueEntretien != null &&
-                besoinEnergetiqueEntretien > 0.0
-}
-
-private fun defaultEnergyReferenceLevel(
-        nutriment: Nutrient,
-        level: Reflevel,
-        typeExpressionBesoin: TypeExpressionBesoin,
-        besoinEnergetiqueEntretien: Double?,
-        poidsAnimal: Double?,
-        poidsMetabolique: Double?
-): Double? {
-        if (!hasDefaultEnergyReferenceLevels(nutriment, besoinEnergetiqueEntretien)) return null
-        val factor =
-                when (level) {
-                        Reflevel.MIN -> 0.9
-                        Reflevel.MAX -> 1.1
-                        else -> return null
-                }
-        return factor * 100.0
 }
 
 private data class ContributionSegment(
