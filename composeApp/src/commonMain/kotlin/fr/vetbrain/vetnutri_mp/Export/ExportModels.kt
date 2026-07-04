@@ -4,6 +4,7 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 
 enum class DocumentType {
     RATION_ANALYSIS,
@@ -35,5 +36,16 @@ data class ExportData(
         val poidsMetabolique: Double? = null,
         val besoinEnergetiqueEntretien: Double? = null,
         val bulletGraphImages: Map<String, Map<String, String>> = emptyMap(),
-        val isLandscape: Boolean = false
+        val isLandscape: Boolean = false,
+        // Bilan énergétique complet de la ration (RATION_ANALYSIS), pour reproduire à l'identique
+        // les valeurs affichées dans RationsView.kt.
+        val besoinEnergetiqueTotal: Double? = null,
+        val besoinEnergetiqueStandard: Double? = null,
+        val energieApportee: Double? = null,
+        val energieAdditionnelle: Double? = null,
+        val kCalcule: Double? = null,
+        val kObserve: Double? = null,
+        val pourcentageCouverture: Double? = null,
+        val equationRepository: EquationRepository? = null,
+        val referencesMaladies: List<ReferenceEv> = emptyList()
 )
