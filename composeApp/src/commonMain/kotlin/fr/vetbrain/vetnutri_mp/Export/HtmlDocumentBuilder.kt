@@ -4,7 +4,16 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
+import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRation
+import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations
+import fr.vetbrain.vetnutri_mp.Data.calculerAffichageNutriment
+import fr.vetbrain.vetnutri_mp.Data.calculerConformite
+import fr.vetbrain.vetnutri_mp.Data.calculerCompositionPourcentages
+import fr.vetbrain.vetnutri_mp.Data.calculerOrigineEnergetiquePourcentages
+import fr.vetbrain.vetnutri_mp.Data.ConformiteStatus
+import fr.vetbrain.vetnutri_mp.Data.grouperNutrimentsParCategorie
+import fr.vetbrain.vetnutri_mp.Data.obtenirTitreCategorie
 import fr.vetbrain.vetnutri_mp.Enumer.ContEnum
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
@@ -68,130 +77,8 @@ object HtmlDocumentBuilder {
         }
     }
 
-    /**
-     * Calcule l'affichage d'un nutriment selon le type d'expression des besoins choisi
-     * @param valeurNutritionnelle Valeur nutritionnelle du nutriment
-     * @param typeExpressionBesoin Type d'expression des besoins (préférences utilisateur)
-     * @param poidsMetabolique Poids métabolique de l'animal
-     * @param poidsAnimal Poids vif de l'animal
-     * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien (BEE)
-     * @param referenceUtilisee Référence utilisée pour extraire la puissance de l'équation BW
-     * @return Pair<valeur formatée, unité d'affichage>
-     */
-    private fun calculerAffichageNutriment(
-        valeurNutritionnelle: fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle,
-        typeExpressionBesoin: TypeExpressionBesoin?,
-        poidsMetabolique: Double?,
-        poidsAnimal: Double?,
-        besoinEnergetiqueEntretien: Double?,
-        referenceUtilisee: ReferenceEv? = null
-    ): Pair<String, String> {
-
-        val valeurAbsolue = valeurNutritionnelle.valeur
-        val uniteOriginale = valeurNutritionnelle.unite.displayName
-
-        // Cas spécial: nutriments d'analyse/ratio sans unité (ex: CAP, KNA, O6O3...)
-        // - Ne pas afficher d'unité
-        // - Ne pas appliquer de transformation UnitReqEnum
-        val isUnitEmpty = uniteOriginale.isBlank()
-        val isAnalysis = valeurNutritionnelle.nutriment is NutrientAnalysis
-        if (isAnalysis && isUnitEmpty) {
-            return Pair(TextUtils.formatDecimal(valeurAbsolue, 2), "")
-        }
-
-        // Si pas de type d'expression défini, affichage par défaut
-        val typeExpression = typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
-
-        return when (typeExpression) {
-            TypeExpressionBesoin.PAR_KG -> {
-                // Par kg de poids vif
-                poidsAnimal?.let { poids ->
-                    if (poids > 0) {
-                        val valeurParKg = valeurAbsolue / poids
-                        Pair(TextUtils.formatDecimal(valeurParKg, 2), "$uniteOriginale/kg")
-                    } else {
-                        // Si pas de poids disponible, garder l'unité originale mais indiquer le type
-                        // d'expression
-                        Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
-                            "$uniteOriginale (par kg si poids disponible)"
-                        )
-                    }
-                }
-                    ?: Pair(
-                        TextUtils.formatDecimal(valeurAbsolue, 2),
-                        "$uniteOriginale (par kg si poids disponible)"
-                    )
-            }
-            TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
-                // Par kg de poids métabolique (kg^puissance)
-                val puissance = TextUtils.extrairePuissanceEquationBW(
-                        referenceUtilisee?.equationBW?.equationScript
-                )
-                poidsMetabolique?.let { poidsMetab ->
-                    if (poidsMetab > 0) {
-                        val valeurParKgMetab = valeurAbsolue / poidsMetab
-                        Pair(
-                            TextUtils.formatDecimal(valeurParKgMetab, 2),
-                            "$uniteOriginale/kg${TextUtils.toSuperscript(puissance)}"
-                        )
-                    } else {
-                        // Si pas de poids métabolique disponible, garder l'unité originale mais
-                        // indiquer le type d'expression
-                        Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
-                            "$uniteOriginale (par kg^$puissance si poids métabolique disponible)"
-                        )
-                    }
-                }
-                    ?: Pair(
-                        TextUtils.formatDecimal(valeurAbsolue, 2),
-                        "$uniteOriginale (par kg^$puissance si poids métabolique disponible)"
-                    )
-            }
-            TypeExpressionBesoin.PAR_KCAL -> {
-                // Par 1000 kcal de BEE (Besoin Énergétique d'Entretien)
-                besoinEnergetiqueEntretien?.let { bee ->
-                    if (bee > 0) {
-                        val valeurPar1000Kcal = (valeurAbsolue / bee) * 1000
-                        Pair(TextUtils.formatDecimal(valeurPar1000Kcal, 2), "$uniteOriginale/1000 kcal")
-                    } else {
-                        // Si pas de BEE disponible, garder l'unité originale mais indiquer le type
-                        // d'expression
-                        Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
-                            "$uniteOriginale (par 1000 kcal si BEE disponible)"
-                        )
-                    }
-                }
-                    ?: Pair(
-                        TextUtils.formatDecimal(valeurAbsolue, 2),
-                        "$uniteOriginale (par 1000 kcal si BEE disponible)"
-                    )
-            }
-            TypeExpressionBesoin.PAR_KJ -> {
-                // Par 1000 kJ de BEE (conversion : 1 kcal = 4.184 kJ)
-                besoinEnergetiqueEntretien?.let { bee ->
-                    if (bee > 0) {
-                        val beeEnKj = bee * 4.184 // Conversion kcal vers kJ
-                        val valeurPar1000Kj = (valeurAbsolue / beeEnKj) * 1000
-                        Pair(TextUtils.formatDecimal(valeurPar1000Kj, 2), "$uniteOriginale/1000 kJ")
-                    } else {
-                        // Si pas de BEE disponible, garder l'unité originale mais indiquer le type
-                        // d'expression
-                        Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
-                            "$uniteOriginale (par 1000 kJ si BEE disponible)"
-                        )
-                    }
-                }
-                    ?: Pair(
-                        TextUtils.formatDecimal(valeurAbsolue, 2),
-                        "$uniteOriginale (par 1000 kJ si BEE disponible)"
-                    )
-            }
-        }
-    }
+    // calculerAffichageNutriment vit maintenant dans Data/NutrientDisplayCalculations.kt
+    // (partagé avec l'écran RationsView).
 
     /**
      * Calcule la quantité en unités (sachet, cuillère, etc.) pour un aliment ration
@@ -241,8 +128,19 @@ object HtmlDocumentBuilder {
                             title = data.title,
                             additionalText = data.additionalText,
                             htmlSections = data.htmlSections,
-                            bulletGraphImages = data.bulletGraphImages,
-                            isLandscape = data.isLandscape
+                            isLandscape = data.isLandscape,
+                            preferences = data.preferences,
+                            poidsAnimal = data.poidsAnimal,
+                            poidsMetabolique = data.poidsMetabolique,
+                            besoinEnergetiqueStandard = data.besoinEnergetiqueStandard,
+                            besoinEnergetiqueTotal = data.besoinEnergetiqueTotal,
+                            energieApportee = data.energieApportee,
+                            energieAdditionnelle = data.energieAdditionnelle,
+                            kCalcule = data.kCalcule,
+                            kObserve = data.kObserve,
+                            pourcentageCouverture = data.pourcentageCouverture,
+                            equationRepository = data.equationRepository,
+                            referencesMaladies = data.referencesMaladies
                     )
             DocumentType.PRESCRIPTION ->
                     buildPrescriptionHtml(
@@ -371,33 +269,13 @@ object HtmlDocumentBuilder {
         """.trimIndent()
     }
 
-    private suspend fun buildRationsBlocks(
-            rations: List<Ration>,
-            reference: ReferenceEv? = null,
-            animal: AnimalEv? = null,
-            preferences: PreferencesEspece? = null,
-            poidsAnimal: Double? = null,
-            poidsMetabolique: Double? = null,
-            besoinEnergetiqueEntretien: Double? = null,
-            bulletGraphImages: Map<String, Map<String, String>> = emptyMap(),
-            includeBulletGraphs: Boolean = true
-    ): String {
+    private fun buildRationsBlocks(rations: List<Ration>): String {
         if (rations.isEmpty()) return ""
         return buildString {
             rations.forEach { ration ->
                 val header = if (ration.name.isNotBlank()) "<h2>Ration: ${ration.name}</h2>" else ""
                 val block = buildRationBlock(ration)
-                val rationImages = bulletGraphImages[ration.uuid] ?: emptyMap()
-                val bulletGraphs =
-                    if (includeBulletGraphs) {
-                        buildNutrientAnalysisBulletGraphs(
-                                ration, reference, animal, preferences,
-                                poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, rationImages
-                        )
-                    } else {
-                        ""
-                    }
-                append("<div class='section'>${header}${block}${bulletGraphs}</div>")
+                append("<div class='section'>${header}${block}</div>")
             }
         }
     }
@@ -431,29 +309,264 @@ object HtmlDocumentBuilder {
             title: String,
             additionalText: String,
             htmlSections: List<HtmlSection> = emptyList(),
-            bulletGraphImages: Map<String, Map<String, String>> = emptyMap(),
-            isLandscape: Boolean = false
+            isLandscape: Boolean = false,
+            preferences: PreferencesEspece? = null,
+            poidsAnimal: Double? = null,
+            poidsMetabolique: Double? = null,
+            besoinEnergetiqueStandard: Double? = null,
+            besoinEnergetiqueTotal: Double? = null,
+            energieApportee: Double? = null,
+            energieAdditionnelle: Double? = null,
+            kCalcule: Double? = null,
+            kObserve: Double? = null,
+            pourcentageCouverture: Double? = null,
+            equationRepository: EquationRepository? = null,
+            referencesMaladies: List<ReferenceEv> = emptyList()
     ): String {
         return buildHeader(
                         if (title.isNotBlank()) title else "Analyse de ration",
                         isLandscape
                 ) +
                 buildAnimalBlock(animal) +
-                
                 buildReferencesBlock(reference) +
+                buildBilanEnergetiqueBlock(
+                        poidsMetabolique,
+                        besoinEnergetiqueStandard,
+                        besoinEnergetiqueTotal,
+                        energieAdditionnelle,
+                        kCalcule,
+                        kObserve,
+                        energieApportee,
+                        pourcentageCouverture
+                ) +
+                (
+                        if (ration != null) {
+                            buildNutrientTableBlock(
+                                    ration,
+                                    reference,
+                                    preferences,
+                                    equationRepository,
+                                    poidsAnimal,
+                                    poidsMetabolique,
+                                    // Même piège de nommage que RationsView.kt : le "besoin énergétique
+                                    // d'entretien" utilisé pour l'affichage PAR_KCAL/PAR_KJ est en réalité
+                                    // le BE total, pas le BEE brut.
+                                    besoinEnergetiqueTotal,
+                                    referencesMaladies
+                            )
+                        } else ""
+                ) +
                 buildAdditionalTextBlock(additionalText) +
                 buildHtmlSectionsBlock(htmlSections) +
-                buildRationsBlocks(
-                    listOfNotNull(ration),
-                    reference,
-                    animal,
-                    null, // preferences
-                    null, // poidsAnimal
-                    null, // poidsMetabolique
-                    null, // besoinEnergetiqueEntretien
-                    bulletGraphImages
-                ) +
+                (if (ration != null) buildRationBlock(ration) else "") +
                 buildFooter()
+    }
+
+    /**
+     * Bloc "Bilan énergétique" : mêmes chiffres que MetabolicSummarySection.kt (poids métabolique,
+     * BEE, énergie additionnelle, BE total, K calculé/observé, énergie apportée, % de couverture),
+     * avec les mêmes seuils de couleur.
+     */
+    private fun buildBilanEnergetiqueBlock(
+            poidsMetabolique: Double?,
+            besoinEnergetiqueStandard: Double?,
+            besoinEnergetiqueTotal: Double?,
+            energieAdditionnelle: Double?,
+            kCalcule: Double?,
+            kObserve: Double?,
+            energieApportee: Double?,
+            pourcentageCouverture: Double?
+    ): String {
+        if (besoinEnergetiqueStandard == null && besoinEnergetiqueTotal == null && energieApportee == null) {
+            return ""
+        }
+
+        fun kcal(v: Double?): String = v?.let { "${TextUtils.formatDecimal(it, 0)} kcal/j" } ?: "—"
+
+        val couvertureColor = pourcentageCouverture?.let {
+            when {
+                it in 90.0..110.0 -> "#4CAF50"
+                it in 80.0..120.0 -> "#FF9800"
+                else -> "#F44336"
+            }
+        } ?: "#222"
+
+        val kObserveColor = if (kObserve != null && kCalcule != null && kCalcule > 0.0) {
+            val ratio = kObserve / kCalcule
+            when {
+                ratio in 0.9..1.1 -> "#4CAF50"
+                ratio in 0.8..1.2 -> "#FF9800"
+                else -> "#F44336"
+            }
+        } else "#222"
+
+        return """
+            <div class='section'>
+                <h2>Bilan énergétique</h2>
+                <table>
+                    <tbody>
+                        <tr><td>Poids métabolique</td><td class='right'>${poidsMetabolique?.let { TextUtils.formatDecimal(it, 3) } ?: "—"} kg<sup>p</sup></td></tr>
+                        <tr><td>Besoin énergétique standard (BEE)</td><td class='right'>${kcal(besoinEnergetiqueStandard)}</td></tr>
+                        <tr><td>Énergie additionnelle (réf. maladies)</td><td class='right'>${kcal(energieAdditionnelle)}</td></tr>
+                        <tr><td><b>Besoin énergétique total (BE)</b></td><td class='right'><b>${kcal(besoinEnergetiqueTotal)}</b></td></tr>
+                        <tr><td>Énergie apportée par la ration</td><td class='right'>${kcal(energieApportee)}</td></tr>
+                        <tr><td>% de couverture</td><td class='right'><span style='color:${couvertureColor}'>${pourcentageCouverture?.let { TextUtils.formatDecimal(it, 0) } ?: "—"}%</span></td></tr>
+                        <tr><td>K calculé</td><td class='right'>${kCalcule?.let { TextUtils.formatDecimal(it, 2) } ?: "—"}</td></tr>
+                        <tr><td>K observé</td><td class='right'><span style='color:${kObserveColor}'>${kObserve?.let { TextUtils.formatDecimal(it, 2) } ?: "—"}</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        """.trimIndent()
+    }
+
+    /**
+     * Tableau nutriments complet, groupé/ordonné comme l'écran (grouperNutrimentsParCategorie),
+     * toujours en mode "tous les nutriments" (un document imprimé doit être complet, quel que soit
+     * l'état du filtre à l'écran au moment de l'export).
+     */
+    private suspend fun buildNutrientTableBlock(
+            ration: Ration,
+            reference: ReferenceEv?,
+            preferences: PreferencesEspece?,
+            equationRepository: EquationRepository?,
+            poidsAnimal: Double?,
+            poidsMetabolique: Double?,
+            besoinEnergetiqueEntretien: Double?,
+            referencesMaladies: List<ReferenceEv>
+    ): String {
+        val valeurs: Map<String, ValeurNutritionnelle> =
+                if (reference != null && preferences != null && equationRepository != null) {
+                    try {
+                        analyserValeursNutritionnellesRationAvecEquations(
+                                ration = ration,
+                                preferencesEspece = preferences,
+                                equationRepository = equationRepository,
+                                referenceEv = reference
+                        )
+                    } catch (e: Exception) {
+                        analyserValeursNutritionnellesRation(ration)
+                    }
+                } else {
+                    analyserValeursNutritionnellesRation(ration)
+                }
+
+        if (valeurs.isEmpty()) return ""
+
+        val typeExpressionBesoin = preferences?.getTypeExpressionBesoinEnum() ?: TypeExpressionBesoin.DEFAULT
+        val groupes = grouperNutrimentsParCategorie(valeurs)
+        val ordreCategories = listOf("BASE", "MACRO", "MIN", "VITAM", "LIPID", "AMA", "ANA", "OTHER", "ENERGY")
+
+        val sectionsHtml = ordreCategories.mapNotNull { categorie ->
+            val nutriments = groupes[categorie]
+            if (nutriments.isNullOrEmpty()) return@mapNotNull null
+
+            val rows = nutriments.joinToString("\n") { (nom, valeur) ->
+                val nomTraduit = obtenirNomTraduitNutriment(nom, valeur.nutriment)
+                val (valeurAffichee, uniteAffichee) = calculerAffichageNutriment(
+                        valeurNutritionnelle = valeur,
+                        typeExpressionBesoin = typeExpressionBesoin,
+                        poidsMetabolique = poidsMetabolique,
+                        poidsAnimal = poidsAnimal,
+                        besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                        referenceUtilisee = reference
+                )
+                val conformite = calculerConformite(
+                        valeur, reference, besoinEnergetiqueEntretien, poidsAnimal, poidsMetabolique, referencesMaladies
+                )
+                val statutHtml = when (conformite?.status) {
+                    ConformiteStatus.CARENCE -> "<span style='color:#B00020'>↓ Carence</span>"
+                    ConformiteStatus.EXCES -> "<span style='color:#B00020'>↑ Excès</span>"
+                    ConformiteStatus.CARENCE_MALADIE -> "<span style='color:#9C27B0'>↓ Carence (réf. maladie)</span>"
+                    ConformiteStatus.EXCES_MALADIE -> "<span style='color:#9C27B0'>↑ Excès (réf. maladie)</span>"
+                    else -> ""
+                }
+                val valeurCell = if (uniteAffichee.isNotBlank()) "$valeurAffichee $uniteAffichee" else valeurAffichee
+                "<tr><td>${nomTraduit}</td><td class='right'>${valeurCell}</td><td>${statutHtml}</td></tr>"
+            }
+
+            """
+                <h3>${obtenirTitreCategorie(categorie)}</h3>
+                <table>
+                    <thead><tr><th>Nutriment</th><th>Valeur</th><th>Conformité</th></tr></thead>
+                    <tbody>
+                        $rows
+                    </tbody>
+                </table>
+            """.trimIndent()
+        }.joinToString("\n")
+
+        return """
+            <div class='section'>
+                <h2>Analyse nutritionnelle</h2>
+                $sectionsHtml
+                ${buildCompositionEnergyBlock(valeurs)}
+                ${buildQuantitativeSectionBlock(ration, valeurs)}
+            </div>
+        """.trimIndent()
+    }
+
+    /** Composition (matière sèche) et origine énergétique, mêmes calculs que cardNutrient.kt. */
+    private fun buildCompositionEnergyBlock(valeurs: Map<String, ValeurNutritionnelle>): String {
+        val composition = calculerCompositionPourcentages(valeurs)
+        val energie = calculerOrigineEnergetiquePourcentages(valeurs)
+        if (composition.isEmpty() && energie.isEmpty()) return ""
+
+        fun table(titre: String, data: List<Pair<String, Double>>): String {
+            if (data.isEmpty()) return ""
+            val rows = data.joinToString("\n") { (nom, pct) ->
+                "<tr><td>${nom}</td><td class='right'>${TextUtils.formatDecimal(pct, 1)}%</td></tr>"
+            }
+            return """
+                <h3>${titre}</h3>
+                <table><tbody>$rows</tbody></table>
+            """.trimIndent()
+        }
+
+        return """
+            ${table("Composition", composition)}
+            ${table("Origine de l'énergie", energie)}
+        """.trimIndent()
+    }
+
+    /**
+     * Section quantitative (par 100g de ration / par 100g de matière sèche / par 1000 kcal),
+     * mêmes formules que RationQuantitativeSection.kt::facteurConversionQuantite.
+     */
+    private fun buildQuantitativeSectionBlock(ration: Ration, valeurs: Map<String, ValeurNutritionnelle>): String {
+        val quantiteTotaleRation = ration.getQuantiteTotale()
+        val humiditeTotale = valeurs["HUMIDITE"]?.valeur ?: 0.0
+        val matiereSecheTotale = (quantiteTotaleRation - humiditeTotale).coerceAtLeast(0.0)
+        val energieTotaleKcal = valeurs["ENERGIE"]?.valeur ?: 0.0
+
+        data class Mode(val titre: String, val factor: Double?)
+        val modes = listOf(
+                Mode("Par 100g de ration", if (quantiteTotaleRation > 0.0) 100.0 / quantiteTotaleRation else null),
+                Mode("Par 100g de matière sèche", if (matiereSecheTotale > 0.0) 100.0 / matiereSecheTotale else null),
+                Mode("Par 1000 kcal", if (energieTotaleKcal > 0.0) 1000.0 / energieTotaleKcal else null)
+        )
+
+        val tables = modes.mapNotNull { mode ->
+            val factor = mode.factor ?: return@mapNotNull null
+            val rows = valeurs.entries
+                    .filter { (_, valeur) -> valeur.nutriment is NutrientAnalysis || valeur.valeur > 0.0 }
+                    .joinToString("\n") { (nom, valeur) ->
+                        val isRatio = valeur.nutriment is NutrientAnalysis
+                        val valeurAffichee = if (isRatio) valeur.valeur else valeur.valeur * factor
+                        val nomTraduit = obtenirNomTraduitNutriment(nom, valeur.nutriment)
+                        "<tr><td>${nomTraduit}</td><td class='right'>${TextUtils.formatDecimal(valeurAffichee, 2)} ${valeur.unite.displayName}</td></tr>"
+                    }
+            """
+                <h3>${mode.titre}</h3>
+                <table><tbody>$rows</tbody></table>
+            """.trimIndent()
+        }.joinToString("\n")
+
+        if (tables.isBlank()) return ""
+
+        return """
+            <h2>Section quantitative</h2>
+            $tables
+        """.trimIndent()
     }
 
     private suspend fun buildPrescriptionHtml(
@@ -477,7 +590,7 @@ object HtmlDocumentBuilder {
                 ) +
                 buildPractitionerHeader(practitioner) +
                 buildAnimalBlock(animal) +
-                buildRationsBlocks(rations, reference, animal, preferences, poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, bulletGraphImages, includeBulletGraphs = false) +
+                buildRationsBlocks(rations) +
                 buildConseilsBlock(conseils) +
                 buildAdditionalTextBlock(additionalText) +
                 buildHtmlSectionsBlock(htmlSections) +
@@ -514,86 +627,7 @@ object HtmlDocumentBuilder {
         """.trimIndent()
     }
 
-    /**
-     * Génère les bullet graphs pour l'analyse nutritionnelle d'une ration
-     */
-    private suspend fun buildNutrientAnalysisBulletGraphs(
-        ration: Ration,
-        reference: ReferenceEv?,
-        animal: AnimalEv?,
-        preferences: PreferencesEspece?,
-        poidsAnimal: Double?,
-        poidsMetabolique: Double?,
-        besoinEnergetiqueEntretien: Double?,
-        bulletGraphImages: Map<String, String> = emptyMap()
-    ): String {
-       
-
-        if (bulletGraphImages.isEmpty()) {
-           
-            return """
-                <div class='section'>
-                    <h2>Analyse nutritionnelle - Bullet Graphs</h2>
-                    <div class='bullet-graphs-container'>
-                        <p><em>Les bullet graphs d'analyse nutritionnelle seront affichés ici pour chaque nutriment de la ration.</em></p>
-                        <p>Ration: ${ration.name}</p>
-                        <p>Référence: ${reference?.nom ?: "Non spécifiée"}</p>
-                      
-                    </div>
-                </div>
-            """.trimIndent()
-        }
-
-        // Obtenir les valeurs nutritionnelles pour calculer les affichages
-        val valeursNutritionnelles =
-            try {
-                analyserValeursNutritionnellesRation(ration)
-            } catch (e: Exception) {
-                emptyMap()
-            }
-
-        // Obtenir le type d'expression des besoins depuis les préférences
-        val typeExpressionBesoin = preferences?.getTypeExpressionBesoinEnum() ?: TypeExpressionBesoin.DEFAULT
-
-        val bulletGraphsHtml = bulletGraphImages.entries.joinToString("\n") { (nutrientName, imagePath) ->
-            // Trouver la valeur nutritionnelle correspondante
-            val valeurNutritionnelle = valeursNutritionnelles[nutrientName]
-            val nomTraduit = if (valeurNutritionnelle != null) {
-                obtenirNomTraduitNutriment(nutrientName, valeurNutritionnelle.nutriment)
-            } else {
-                nutrientName
-            }
-            
-            val valeurAffichee = if (valeurNutritionnelle != null) {
-                val (valeur, unite) = calculerAffichageNutriment(
-                    valeurNutritionnelle = valeurNutritionnelle,
-                    typeExpressionBesoin = typeExpressionBesoin,
-                    poidsMetabolique = poidsMetabolique,
-                    poidsAnimal = poidsAnimal,
-                    besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
-                    referenceUtilisee = reference
-                )
-                if (unite.isNotBlank()) "$valeur $unite" else valeur
-            } else {
-                "Valeur non disponible"
-            }
-
-            """
-                <div class='bullet-graph-item'>
-              
-                    <img src='$imagePath' alt='Bullet graph pour $nomTraduit' class='bullet-graph-image' />
-                </div>
-            """.trimIndent()
-        }
-
-        return """
-            <div class='section'>
-                <h2>Analyse nutritionnelle - Bullet Graphs</h2>
-                <div class='bullet-graphs-container'>
-                    $bulletGraphsHtml
-                </div>
-            </div>
-        """.trimIndent()
-    }
+    // buildNutrientAnalysisBulletGraphs (capture PNG de bullet graphs) a été retiré : remplacé par
+    // buildNutrientTableBlock (tableau HTML/CSS, fiable sur toutes les plateformes y compris iOS).
 
 }
