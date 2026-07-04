@@ -20,8 +20,8 @@ import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
 /**
- * Calculs d'affichage/conformité partagés entre l'écran d'analyse de ration (View/AnalNut/*.kt,
- * via Compose) et l'export PDF (Export/HtmlDocumentBuilder.kt, via HTML). Pas de dépendance
+ * Calculs d'affichage/conformité partagés entre l'écran d'analyse de ration (View/AnalNut, via
+ * Compose) et l'export PDF (Export/HtmlDocumentBuilder.kt, via HTML). Pas de dépendance
  * Compose ici : c'est ce qui garantit que le PDF ne peut pas diverger de l'écran.
  */
 enum class ConformiteStatus { CONFORME, CARENCE, EXCES, CARENCE_MALADIE, EXCES_MALADIE }
