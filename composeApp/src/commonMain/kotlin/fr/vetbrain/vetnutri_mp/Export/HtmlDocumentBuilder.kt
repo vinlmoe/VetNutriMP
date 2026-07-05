@@ -509,7 +509,7 @@ object HtmlDocumentBuilder {
      * l'apport actuel.
      */
     private fun buildBulletGraphSvg(data: BulletGraphData): String {
-        val width = 150.0
+        val width = 200.0
         val height = 12.0
         val axisMax = data.maxAxis
         fun fmt(v: Double): String = TextUtils.formatDecimal(v, 1)
