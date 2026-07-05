@@ -180,6 +180,14 @@ object HtmlDocumentBuilder {
                 .header-card { border: 2px solid #222; padding: 10px; margin-bottom: 12px; }
                 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
                 .right { text-align: right; }
+
+                /* Table nutriments : layout fixe requis pour que le bullet graph SVG (width:100%)
+                   ait une largeur de colonne déjà connue, sinon le moteur PDF plante en essayant
+                   de résoudre le pourcentage avant que la largeur de colonne soit calculée. */
+                .nutrient-table { table-layout: fixed; }
+                .nutrient-table col.col-nom { width: 28%; }
+                .nutrient-table col.col-valeur { width: 27%; }
+                .nutrient-table col.col-repere { width: 45%; }
                 
                 /* Styles pour les bullet graphs */
                 .bullet-graphs-container { margin-top: 12px; }
@@ -483,7 +491,10 @@ object HtmlDocumentBuilder {
 
             """
                 <h3>${obtenirTitreCategorie(categorie)}</h3>
-                <table>
+                <table class='nutrient-table'>
+                    <colgroup>
+                        <col class='col-nom'/><col class='col-valeur'/><col class='col-repere'/>
+                    </colgroup>
                     <thead><tr><th>Nutriment</th><th>Valeur</th><th>Repère</th></tr></thead>
                     <tbody>
                         $rows
