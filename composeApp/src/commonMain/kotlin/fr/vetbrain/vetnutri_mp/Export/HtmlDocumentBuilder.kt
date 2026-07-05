@@ -564,7 +564,7 @@ object HtmlDocumentBuilder {
 
         val widthInt = width.toInt()
         val heightInt = height.toInt()
-        return "<svg width='$widthInt' height='$heightInt' viewBox='0 0 $widthInt $heightInt' style='display:block' xmlns='http://www.w3.org/2000/svg'>$segments$apportBar$lines</svg>"
+        return "<svg width='$widthInt' height='$heightInt' viewBox='0 0 $widthInt $heightInt' preserveAspectRatio='none' style='display:block;width:100%;height:${heightInt}px' xmlns='http://www.w3.org/2000/svg'>$segments$apportBar$lines</svg>"
     }
 
     /** Composition (matière sèche) et origine énergétique, mêmes calculs que cardNutrient.kt. */
