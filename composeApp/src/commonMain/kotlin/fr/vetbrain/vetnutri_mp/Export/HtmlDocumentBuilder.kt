@@ -457,10 +457,13 @@ object HtmlDocumentBuilder {
         val ordreCategories = listOf("BASE", "MACRO", "MIN", "VITAM", "LIPID", "AMA", "ANA", "OTHER", "ENERGY")
 
         val sectionsHtml = ordreCategories.mapNotNull { categorie ->
-            val nutriments = groupes[categorie]
-            if (nutriments.isNullOrEmpty()) return@mapNotNull null
+            val nutrimentsAvecDonnees = groupes[categorie]?.filter { (_, valeur) ->
+                val isRatio = valeur.nutriment is NutrientAnalysis
+                isRatio || valeur.valeur > 0.0
+            }
+            if (nutrimentsAvecDonnees.isNullOrEmpty()) return@mapNotNull null
 
-            val rows = nutriments.joinToString("\n") { (nom, valeur) ->
+            val rows = nutrimentsAvecDonnees.joinToString("\n") { (nom, valeur) ->
                 val nomTraduit = obtenirNomTraduitNutriment(nom, valeur.nutriment)
                 val (valeurAffichee, uniteAffichee) = calculerAffichageNutriment(
                         valeurNutritionnelle = valeur,
