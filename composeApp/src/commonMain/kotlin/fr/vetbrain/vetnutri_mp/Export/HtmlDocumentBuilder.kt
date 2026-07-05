@@ -507,7 +507,7 @@ object HtmlDocumentBuilder {
      */
     private fun buildBulletGraphSvg(data: BulletGraphData): String {
         val width = 150.0
-        val height = 20.0
+        val height = 12.0
         val axisMax = data.maxAxis
         fun fmt(v: Double): String = TextUtils.formatDecimal(v, 1)
         fun x(v: Double): Double = (v / axisMax).coerceIn(0.0, 1.0) * width
@@ -559,7 +559,7 @@ object HtmlDocumentBuilder {
         val apportBar =
             "<rect x='0' y='${fmt(barY)}' width='${fmt(x(data.apport))}' height='${fmt(barHeight)}' fill='#222222' />"
 
-        return "<svg width='${fmt(width)}' height='${fmt(height)}' viewBox='0 0 ${fmt(width)} ${fmt(height)}' xmlns='http://www.w3.org/2000/svg'>$segments$apportBar$lines</svg>"
+        return "<svg width='${fmt(width)}' height='${fmt(height)}' viewBox='0 0 ${fmt(width)} ${fmt(height)}' style='display:block' xmlns='http://www.w3.org/2000/svg'>$segments$apportBar$lines</svg>"
     }
 
     /** Composition (matière sèche) et origine énergétique, mêmes calculs que cardNutrient.kt. */
