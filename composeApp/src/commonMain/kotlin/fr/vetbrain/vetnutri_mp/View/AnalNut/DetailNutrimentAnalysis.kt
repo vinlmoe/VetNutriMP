@@ -27,6 +27,11 @@ import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
+import fr.vetbrain.vetnutri_mp.Data.calculerAffichageNutriment
+import fr.vetbrain.vetnutri_mp.Data.calculerBesoinAbsolu
+import fr.vetbrain.vetnutri_mp.Data.convertirVersUnitePreferences
+import fr.vetbrain.vetnutri_mp.Data.hasDefaultEnergyReferenceLevels
+import fr.vetbrain.vetnutri_mp.Data.defaultEnergyReferenceLevel
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -90,111 +95,6 @@ private fun obtenirCouleurConformite(
         }
         // Si pas de calcul possible, couleur normale
         return VetNutriColors.Secondary
-}
-
-/**
- * Calcule l'affichage d'un nutriment selon le type d'expression des besoins choisi
- * @param valeurNutritionnelle Valeur nutritionnelle du nutriment
- * @param typeExpressionBesoin Type d'expression des besoins (préférences utilisateur)
- * @param poidsMetabolique Poids métabolique de l'animal
- * @param poidsAnimal Poids vif de l'animal
- * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien (BEE)
- * @param referenceUtilisee Référence utilisée pour extraire la puissance de l'équation BW
- * @return Pair<valeur formatée, unité d'affichage>
- */
-private fun calculerAffichageNutriment(
-        valeurNutritionnelle: ValeurNutritionnelle,
-        typeExpressionBesoin: TypeExpressionBesoin?,
-        poidsMetabolique: Double?,
-        poidsAnimal: Double?,
-        besoinEnergetiqueEntretien: Double?,
-        referenceUtilisee: ReferenceEv? = null
-): Pair<String, String> {
-
-        val valeurAbsolue = valeurNutritionnelle.valeur
-        val uniteOriginale = valeurNutritionnelle.unite.displayName
-
-        // Si pas de type d'expression défini, affichage par défaut
-        val typeExpression = typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
-
-        return when (typeExpression) {
-                TypeExpressionBesoin.PAR_KG -> {
-                        // Par kg de poids vif
-                        poidsAnimal?.let { poids ->
-                                if (poids > 0) {
-                                        val valeurParKg = valeurAbsolue / poids
-                                        Pair(
-                                                GraphFormattingUtils.formatSmartDecimal(valeurParKg),
-                                                "$uniteOriginale/kg"
-                                        )
-                                } else {
-                                        Pair(
-                                                GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
-                                                uniteOriginale
-                                        )
-                                }
-                        }
-                                ?: Pair(GraphFormattingUtils.formatSmartDecimal(valeurAbsolue), uniteOriginale)
-                }
-                TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
-                        // Par kg de poids métabolique (kg^puissance)
-                        val puissance = TextUtils.extrairePuissanceEquationBW(
-                                referenceUtilisee?.equationBW?.equationScript
-                        )
-                        poidsMetabolique?.let { poidsMetab ->
-                                if (poidsMetab > 0) {
-                                        val valeurParKgMetab = valeurAbsolue / poidsMetab
-                                        Pair(
-                                                GraphFormattingUtils.formatSmartDecimal(valeurParKgMetab),
-                                                "$uniteOriginale/kg${TextUtils.toSuperscript(puissance)}"
-                                        )
-                                } else {
-                                        Pair(
-                                                GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
-                                                uniteOriginale
-                                        )
-                                }
-                        }
-                                ?: Pair(GraphFormattingUtils.formatSmartDecimal(valeurAbsolue), uniteOriginale)
-                }
-                TypeExpressionBesoin.PAR_KCAL -> {
-                        // Par 1000 kcal de BEE (Besoin Énergétique d'Entretien)
-                        besoinEnergetiqueEntretien?.let { bee ->
-                                if (bee > 0) {
-                                        val valeurPar1000Kcal = (valeurAbsolue / bee) * 1000
-                                        Pair(
-                                                GraphFormattingUtils.formatSmartDecimal(valeurPar1000Kcal),
-                                                "$uniteOriginale/1000 kcal"
-                                        )
-                                } else {
-                                        Pair(
-                                                GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
-                                                uniteOriginale
-                                        )
-                                }
-                        }
-                                ?: Pair(GraphFormattingUtils.formatSmartDecimal(valeurAbsolue), uniteOriginale)
-                }
-                TypeExpressionBesoin.PAR_KJ -> {
-                        // Par 1000 kJ de BEE (conversion : 1 kcal = 4.184 kJ)
-                        besoinEnergetiqueEntretien?.let { bee ->
-                                if (bee > 0) {
-                                        val beeEnKj = bee * 4.184 // Conversion kcal vers kJ
-                                        val valeurPar1000Kj = (valeurAbsolue / beeEnKj) * 1000
-                                        Pair(
-                                                GraphFormattingUtils.formatSmartDecimal(valeurPar1000Kj),
-                                                "$uniteOriginale/1000 kJ"
-                                        )
-                                } else {
-                                        Pair(
-                                                GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
-                                                uniteOriginale
-                                        )
-                                }
-                        }
-                                ?: Pair(GraphFormattingUtils.formatSmartDecimal(valeurAbsolue), uniteOriginale)
-                }
-        }
 }
 
 /**
@@ -808,104 +708,12 @@ fun ReferenceBulletGraph(
  * @param poidsMetabolique Poids métabolique en kg^0.75
  * @return Valeur convertie dans l'unité des préférences ou null si impossible à calculer
  */
-private fun convertirVersUnitePreferences(
-        valeurRef: Double,
-        uniteRef: UnitReqEnum,
-        unitePreferences: UnitReqEnum,
-        besoinEnergetiqueEntretien: Double?,
-        poidsAnimal: Double?,
-        poidsMetabolique: Double?
-): Double? {
-        // Si les unités sont identiques, pas de conversion nécessaire
-        if (uniteRef == unitePreferences) {
-                return valeurRef
-        }
-
-        // Convertir d'abord vers une valeur absolue (g/jour)
-        val valeurAbsolue =
-                calculerBesoinAbsolu(
-                        valeurRef,
-                        uniteRef,
-                        besoinEnergetiqueEntretien,
-                        poidsAnimal,
-                        poidsMetabolique
-                )
-                        ?: return null
-
-        // Puis convertir de la valeur absolue vers l'unité des préférences
-        return when (unitePreferences) {
-                // Vers PERKG (par kg de poids vif)
-                UnitReqEnum.PERKG -> {
-                        poidsAnimal?.let { poids ->
-                                if (poids > 0.0) (valeurAbsolue / poids) else null
-                        }
-                }
-
-                // Vers PERMS (par kg de poids métabolique)
-                UnitReqEnum.PERMS -> {
-                        poidsMetabolique?.let { poidsMetab ->
-                                if (poidsMetab > 0.0) (valeurAbsolue / poidsMetab) else null
-                        }
-                }
-
-                // Vers PERKCAL (par 1000 kcal)
-                UnitReqEnum.PERKCAL -> {
-                        besoinEnergetiqueEntretien?.let { bee ->
-                                if (bee > 0.0) ((valeurAbsolue * 1000.0) / bee) else null
-                        }
-                }
-
-                // Vers PERKJ (par 1000 kJ)
-                UnitReqEnum.PERKJ -> {
-                        besoinEnergetiqueEntretien?.let { bee ->
-                                if (bee > 0.0) {
-                                        // Convertir kcal en kJ : 1 kcal = 4.184 kJ
-                                        val beeEnKj = bee * 4.184
-                                        ((valeurAbsolue * 1000.0) / beeEnKj)
-                                } else null
-                        }
-                }
-
-                // Vers ABSOLUTE (valeur absolue)
-                UnitReqEnum.ABSOLUTE -> {
-                        valeurAbsolue
-                }
-
-                // Vers RATIO - pas de conversion possible
-                UnitReqEnum.RATIO -> null
-        }
-}
+// convertirVersUnitePreferences/hasDefaultEnergyReferenceLevels/defaultEnergyReferenceLevel
+// vivent maintenant dans Data/NutrientDisplayCalculations.kt (partagés avec l'export PDF).
 
 @Composable
 private fun AxisText(text: String) {
         Text(text, style = MaterialTheme.typography.caption, textAlign = TextAlign.Center)
-}
-
-private fun hasDefaultEnergyReferenceLevels(
-        nutriment: Nutrient,
-        besoinEnergetiqueEntretien: Double?
-): Boolean {
-        return nutriment == fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE &&
-                besoinEnergetiqueEntretien != null &&
-                besoinEnergetiqueEntretien > 0.0
-}
-
-private fun defaultEnergyReferenceLevel(
-        nutriment: Nutrient,
-        level: Reflevel,
-        typeExpressionBesoin: TypeExpressionBesoin,
-        besoinEnergetiqueEntretien: Double?,
-        poidsAnimal: Double?,
-        poidsMetabolique: Double?
-): Double? {
-        if (!hasDefaultEnergyReferenceLevels(nutriment, besoinEnergetiqueEntretien)) return null
-        val factor =
-                when (level) {
-                        Reflevel.MIN -> 0.9
-                        Reflevel.MAX -> 1.1
-                        else -> return null
-                }
-        return factor * 100.0
 }
 
 private data class ContributionSegment(
@@ -1603,54 +1411,5 @@ private fun ReferenceLevelsList(
         }
 }
 
-/**
- * Calcule le besoin absolu d'un nutriment selon son unité de référence
- *
- * @param valeurRef Valeur de référence du nutriment
- * @param uniteRef Unité de la référence (PERKG, PERKCAL, PERMS, etc.)
- * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien en kcal/jour
- * @param poidsAnimal Poids de l'animal en kg
- * @param poidsMetabolique Poids métabolique en kg^0.75
- * @return Besoin absolu calculé ou null si impossible à calculer
- */
-private fun calculerBesoinAbsolu(
-        valeurRef: Double,
-        uniteRef: UnitReqEnum,
-        besoinEnergetiqueEntretien: Double?,
-        poidsAnimal: Double?,
-        poidsMetabolique: Double?
-): Double? {
-        return when (uniteRef) {
-                // Basé sur l'énergie (par 1000 kcal)
-                UnitReqEnum.PERKCAL -> {
-                        besoinEnergetiqueEntretien?.let { bee -> (valeurRef * bee) / 1000.0 }
-                }
-
-                // Basé sur l'énergie (par 1000 kJ) - conversion en kcal puis calcul
-                UnitReqEnum.PERKJ -> {
-                        besoinEnergetiqueEntretien?.let { bee ->
-                                // Convertir kJ en kcal : 1 kcal = 4.184 kJ
-                                val beeEnKj: Double = bee * 4.184
-                                (valeurRef * beeEnKj) / 1000.0
-                        }
-                }
-
-                // Basé sur le poids corporel (par kg de poids vif)
-                UnitReqEnum.PERKG -> {
-                        poidsAnimal?.let { poids -> valeurRef * poids }
-                }
-
-                // Basé sur le poids métabolique (par kg^0.75)
-                UnitReqEnum.PERMS -> {
-                        poidsMetabolique?.let { poidsMetab -> valeurRef * poidsMetab }
-                }
-
-                // Valeur absolue (déjà en unité finale)
-                UnitReqEnum.ABSOLUTE -> {
-                        valeurRef
-                }
-
-                // Ratio - pas de calcul absolu possible
-                UnitReqEnum.RATIO -> null
-        }
-}
+// calculerAffichageNutriment/calculerBesoinAbsolu vivent maintenant dans
+// Data/NutrientDisplayCalculations.kt (partagés avec l'écran principal et l'export PDF).

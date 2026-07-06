@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -415,6 +416,71 @@ fun RationsView(
                                         }
                                 }
                         }
+                }
+
+                if (selectedRation != null && referenceUtilisee != null) {
+                        IconButtonWithTooltip(
+                                imageVector = Icons.Filled.Share,
+                                contentDescription = "Exporter l'analyse en PDF",
+                                tooltip = "Exporter l'analyse en PDF",
+                                tint = VetNutriColors.Primary,
+                                onClick = {
+                                        val rationAExporter = selectedRation
+                                        val animalActuel = animal
+                                        if (rationAExporter != null && animalActuel != null) {
+                                                val prefsEspece =
+                                                        preferencesApplication?.getPreferencesEspece(
+                                                                animalActuel.getEspece()
+                                                        )
+                                                val exportData =
+                                                        fr.vetbrain.vetnutri_mp.Export.ExportData(
+                                                                animal = animalActuel,
+                                                                ration = rationAExporter,
+                                                                reference = referenceUtilisee,
+                                                                title =
+                                                                        "Analyse de ration${rationAExporter.name.let { if (it.isNotBlank()) " - $it" else "" }}",
+                                                                preferences = prefsEspece,
+                                                                poidsAnimal =
+                                                                        selectedConsultation
+                                                                                ?.weight
+                                                                                ?.toDouble(),
+                                                                poidsMetabolique =
+                                                                        poidsMetabolique,
+                                                                besoinEnergetiqueEntretien =
+                                                                        besoinEnergetiqueTotal,
+                                                                besoinEnergetiqueStandard =
+                                                                        besoinEnergetiqueStandard,
+                                                                besoinEnergetiqueTotal =
+                                                                        besoinEnergetiqueTotal,
+                                                                energieApportee = energieApportee,
+                                                                energieAdditionnelle =
+                                                                        energieAdditionnelle,
+                                                                kCalcule = kCalcule,
+                                                                kObserve = kObserve,
+                                                                pourcentageCouverture =
+                                                                        pourcentageCouverture,
+                                                                equationRepository =
+                                                                        equationRepository,
+                                                                referencesMaladies =
+                                                                        referencesMaladiesResolues
+                                                        )
+                                                coroutineScope.launch(
+                                                        fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+                                                                .IO
+                                                ) {
+                                                        fr.vetbrain.vetnutri_mp.Export.PdfExporter
+                                                                .exportDocument(
+                                                                        fr.vetbrain.vetnutri_mp
+                                                                                .Export
+                                                                                .DocumentType
+                                                                                .RATION_ANALYSIS,
+                                                                        exportData,
+                                                                        "analyse_ration_${animalActuel.nom}_${rationAExporter.name}.pdf"
+                                                                )
+                                                }
+                                        }
+                                }
+                        )
                 }
         }
 
