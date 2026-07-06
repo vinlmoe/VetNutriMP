@@ -731,17 +731,12 @@ private suspend fun partagerAnimalEnLigne(
 private fun handlePdfExport(
     previewHtml: String,
     previewMode: String,
-    compteRenduText: String,
     animalDetails: AnimalEv,
     selectedConsultation: ConsultationEv?,
-    selectedRation: Ration?,
     selectedRationsForPrescription: List<Ration>?,
     referenceUtilisee: fr.vetbrain.vetnutri_mp.Data.ReferenceEv?,
     additionalText: String,
     getSelectedConseils: () -> List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>,
-    besoinEnergetiqueStandard: Double?,
-    poidsMetabolique: Double?,
-    equationRepository: EquationRepository,
     scope: CoroutineScope
 ) {
     if (previewMode == "CR") {
@@ -814,88 +809,10 @@ private fun handlePdfExport(
                 )
             }
         }
-    } else {
-        scope.launch(AppDispatchers.Default) {
-            // Export analyse de ration avec bullet graphs
-            val bulletGraphImages = mutableMapOf<String, Map<String, String>>()
-
-            selectedRation?.let { ration: Ration ->
-                try {
-                    val prefsStorage = createPreferencesStorage()
-                    val prefsRepo = PreferencesRepository(prefsStorage)
-                    prefsRepo.loadPreferences()
-                    val prefs = prefsRepo.preferences
-                    val prefsEspece = prefs?.getPreferencesEspece(animalDetails.getEspece())
-
-                    val ref = referenceUtilisee
-                    if (prefsEspece != null && ref != null) {
-                        val images =
-                            fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture
-                                .generateRationBulletGraphImages(
-                                    ration = ration,
-                                    reference = ref,
-                                    animal = animalDetails,
-                                    preferences = prefsEspece,
-                                    poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
-                                    poidsMetabolique = poidsMetabolique,
-                                    besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
-                                    equationRepository = equationRepository
-                                )
-
-                        val imagePaths =
-                            images.mapValues { (_, imageBytes) ->
-                                val tempFilePath =
-                                    fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture
-                                        .saveImageToTempFile(imageBytes, "export")
-                                "file://$tempFilePath"
-                            }
-
-                        bulletGraphImages[ration.uuid] = imagePaths
-                    } else {
-                        // Générer des images de test
-                        val testImages = mutableMapOf<String, ByteArray>()
-                        listOf("PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE", "CAL", "PHOS")
-                            .forEach { nom ->
-                                val imageBytes =
-                                    fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture
-                                        .generateBulletGraphImage(
-                                            nom, 25.0, 15.0, 40.0, 20.0, 35.0, "g/kg DM"
-                                        )
-                                testImages[nom] = imageBytes
-                            }
-
-                        val testImagePaths =
-                            testImages.mapValues { (_, imageBytes) ->
-                                val tempFilePath =
-                                    fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture
-                                        .saveImageToTempFile(imageBytes, "export_test")
-                                "file://$tempFilePath"
-                            }
-
-                        bulletGraphImages[ration.uuid] = testImagePaths
-                    }
-                } catch (_: Exception) {}
-            }
-
-            PdfExporter.exportDocument(
-                DocumentType.RATION_ANALYSIS,
-                ExportData(
-                    animal = animalDetails,
-                    ration = selectedRation,
-                    reference = referenceUtilisee,
-                    title = translate(AnimalDetail.RATION_ANALYSIS_TITLE),
-                    additionalText = additionalText,
-                    htmlSections = getSelectedConseils(),
-                    preferences = null,
-                    poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
-                    poidsMetabolique = null,
-                    besoinEnergetiqueEntretien = null,
-                    bulletGraphImages = bulletGraphImages
-                ),
-                defaultFileName = "analyse_ration.pdf"
-            )
-        }
     }
+    // L'export PDF de l'analyse de ration se fait désormais directement depuis RationsView.kt
+    // (bouton dédié), avec les vraies valeurs de l'écran plutôt qu'en devinant le mode via
+    // previewMode/contenu HTML.
 }
 
 /**
@@ -2613,17 +2530,12 @@ private fun WideScreenLayout(
                                                                         handlePdfExport(
                                                                                 previewHtml = previewHtml,
                                                                                 previewMode = previewMode,
-                                                                                compteRenduText = previewCompteRenduText,
                                                                                 animalDetails = animalDetails,
                                                                                 selectedConsultation = selectedConsultation,
-                                                                                selectedRation = selectedRation,
                                                                                 selectedRationsForPrescription = selectedRationsForPrescription,
                                                                                 referenceUtilisee = referenceUtilisee,
                                                                                 additionalText = additionalText,
                                                                                 getSelectedConseils = getSelectedConseils,
-                                                                                besoinEnergetiqueStandard = besoinEnergetiqueStandard,
-                                                                                poidsMetabolique = poidsMetabolique,
-                                                                                equationRepository = equationRepository,
                                                                                 scope = scope
                                                                         )
                                                                         showPreview = false
@@ -3645,17 +3557,12 @@ private fun NarrowScreenLayout(
                                                                         handlePdfExport(
                                                                                 previewHtml = previewHtml,
                                                                                 previewMode = previewMode,
-                                                                                compteRenduText = previewCompteRenduText,
                                                                                 animalDetails = animalDetails,
                                                                                 selectedConsultation = selectedConsultation,
-                                                                                selectedRation = selectedRation,
                                                                                 selectedRationsForPrescription = selectedRationsForPrescription,
                                                                                 referenceUtilisee = referenceUtilisee,
                                                                                 additionalText = additionalText,
                                                                                 getSelectedConseils = getSelectedConseils,
-                                                                                besoinEnergetiqueStandard = besoinEnergetiqueStandard,
-                                                                                poidsMetabolique = poidsMetabolique,
-                                                                                equationRepository = equationRepository,
                                                                                 scope = scope
                                                                         )
                                                                         showPreview = false
