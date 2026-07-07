@@ -54,7 +54,7 @@ API_KEY  <- Sys.getenv(
 # --- Cache local des bins (évite de re-télécharger à chaque knit) ------------
 CACHE_DIR     <- "cache_jsonbin"
 FORCE_REFRESH <- FALSE   # TRUE = re-télécharge TOUS les bins
-OFFLINE_ONLY  <- TRUE   # TRUE = utilise UNIQUEMENT le cache, ne télécharge rien
+OFFLINE_ONLY  <- FALSE   # TRUE = utilise UNIQUEMENT le cache, ne télécharge rien
                           #        (les bins sans fichier cache seront marqués en erreur)
 
 # --- Sortie -------------------------------------------------------------------
