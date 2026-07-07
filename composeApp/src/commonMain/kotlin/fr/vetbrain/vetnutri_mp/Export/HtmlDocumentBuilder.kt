@@ -484,7 +484,7 @@ object HtmlDocumentBuilder {
                 val bulletGraphData = calculerBulletGraphData(
                         valeur, reference, typeExpressionBesoin, poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien
                 )
-                val repereHtml = bulletGraphData?.let { buildBulletGraphSvg(it) } ?: "—"
+                val repereHtml = bulletGraphData?.let { buildBulletGraphHtml(it) } ?: "—"
                 val valeurCell = if (uniteAffichee.isNotBlank()) "$valeurAffichee $uniteAffichee" else valeurAffichee
                 "<tr><td>${nomTraduit}</td><td class='right'>${valeurCell}</td><td>${repereHtml}</td></tr>"
             }
@@ -514,17 +514,17 @@ object HtmlDocumentBuilder {
     }
 
     /**
-     * Rendu SVG (inline, pas d'image bitmap) d'un bullet graph : mêmes zones colorées et mêmes
-     * bornes que `DetailNutrimentAnalysis.kt::ReferenceBulletGraph` (rouge hors MIN/MAX, bleu entre
-     * MIN/OPTIMIN et OPTIMAX/MAX, vert dans la zone optimale), avec une barre sombre représentant
-     * l'apport actuel.
+     * Rendu HTML/CSS pur (pas de SVG, pas d'image bitmap) d'un bullet graph : mêmes zones
+     * colorées et mêmes bornes que `DetailNutrimentAnalysis.kt::ReferenceBulletGraph` (rouge hors
+     * MIN/MAX, bleu entre MIN/OPTIMIN et OPTIMAX/MAX, vert dans la zone optimale), avec une barre
+     * sombre représentant l'apport actuel. Volontairement sans SVG : `UIMarkupTextPrintFormatter`
+     * (export PDF iOS) ne le rend pas (page blanche), alors que des <div> avec largeurs en %
+     * fonctionnent sur toutes les plateformes (Desktop/openhtmltopdf, Android/WebView, iOS).
      */
-    private fun buildBulletGraphSvg(data: BulletGraphData): String {
-        val width = 200.0
-        val height = 12.0
+    private fun buildBulletGraphHtml(data: BulletGraphData): String {
         val axisMax = data.maxAxis
-        fun fmt(v: Double): String = TextUtils.formatDecimal(v, 1)
-        fun x(v: Double): Double = (v / axisMax).coerceIn(0.0, 1.0) * width
+        fun fmt(v: Double): String = TextUtils.formatDecimal(v, 2)
+        fun pct(v: Double): Double = (v / axisMax).coerceIn(0.0, 1.0) * 100.0
 
         val bornes = buildList {
             add(0.0)
@@ -535,7 +535,8 @@ object HtmlDocumentBuilder {
             add(axisMax)
         }.distinct().sorted()
 
-        val segments = StringBuilder()
+        val zoneSegments = StringBuilder()
+        var cumulPct = 0.0
         for (i in 0 until bornes.size - 1) {
             val start = bornes[i]
             val end = bornes[i + 1]
@@ -553,29 +554,24 @@ object HtmlDocumentBuilder {
                         start == 0.0 && end == data.optiminRef -> "#2196F3"
                 else -> "#4CAF50"
             }
-            val xStart = x(start)
-            val w = x(end) - xStart
-            segments.append(
-                "<rect x='${fmt(xStart)}' y='0' width='${fmt(w)}' height='${fmt(height)}' fill='$color' />"
+            // Le dernier segment prend la largeur restante pour éviter qu'un arrondi décalé
+            // ne fasse dépasser 100% et retombe à la ligne suivante.
+            val isLast = i == bornes.size - 2
+            val widthPct = if (isLast) (100.0 - cumulPct).coerceAtLeast(0.0) else (pct(end) - pct(start))
+            cumulPct += widthPct
+            if (widthPct <= 0.0) continue
+            zoneSegments.append(
+                "<div style='display:inline-block;height:8px;width:${fmt(widthPct)}%;background:$color;'></div>"
             )
         }
 
-        val lines = StringBuilder()
-        listOfNotNull(data.minRef, data.optiminRef, data.optimaxRef, data.maxRef).forEach { v ->
-            val xp = x(v)
-            lines.append(
-                "<line x1='${fmt(xp)}' y1='0' x2='${fmt(xp)}' y2='${fmt(height)}' stroke='#333333' stroke-width='1' />"
-            )
-        }
+        val apportPct = pct(data.apport)
+        val apportRow =
+            "<div style='display:inline-block;height:4px;width:${fmt(apportPct)}%;background:#222222;'></div>" +
+                "<div style='display:inline-block;height:4px;width:${fmt(100.0 - apportPct)}%;background:transparent;'></div>"
 
-        val barHeight = height * 0.4
-        val barY = (height - barHeight) / 2
-        val apportBar =
-            "<rect x='0' y='${fmt(barY)}' width='${fmt(x(data.apport))}' height='${fmt(barHeight)}' fill='#222222' />"
-
-        val widthInt = width.toInt()
-        val heightInt = height.toInt()
-        return "<svg width='$widthInt' height='$heightInt' viewBox='0 0 $widthInt $heightInt' preserveAspectRatio='none' style='display:block;width:100%;height:${heightInt}px' xmlns='http://www.w3.org/2000/svg'>$segments$apportBar$lines</svg>"
+        return "<div style='width:100%;font-size:0;line-height:0;'>$zoneSegments</div>" +
+            "<div style='width:100%;font-size:0;line-height:0;margin-top:1px;'>$apportRow</div>"
     }
 
     /** Composition (matière sèche) et origine énergétique, mêmes calculs que cardNutrient.kt. */
