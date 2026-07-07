@@ -775,7 +775,7 @@ private fun ContributionsList(
         equationRepository: EquationRepository?
 ) {
         Text(
-                text = "Contribution par ingrédient (par ordre décroissant)",
+                text = translate("analnut.contribution.title"),
                 style = MaterialTheme.typography.subtitle1,
                 fontWeight = FontWeight.Bold,
                 color = VetNutriColors.Primary

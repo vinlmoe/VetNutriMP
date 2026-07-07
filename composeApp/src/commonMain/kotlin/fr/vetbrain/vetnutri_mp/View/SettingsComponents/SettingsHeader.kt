@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * En-tête des paramètres avec bouton de retour et animations
@@ -77,7 +79,7 @@ fun SettingsHeader(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                    contentDescription = "Retour",
+                    contentDescription = translate(LocalizationKeys.AnimalDetail.BACK),
                     modifier = Modifier.size(AppSizes.iconSizeMedium),
                     tint = VetNutriColors.Primary
                 )
@@ -95,7 +97,7 @@ fun SettingsHeader(
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
-                    text = "Paramètres",
+                    text = translate(LocalizationKeys.Settings.TITLE),
                     style = MaterialTheme.typography.h5.copy(
                         fontSize = AppSizes.fontSizeH5
                     ),

@@ -84,12 +84,12 @@ fun RecipeDialog(
                         ) {
                             Icon(
                                     imageVector = Icons.Default.Add,
-                                    contentDescription = "Créer une recette",
+                                    contentDescription = translate(LocalizationKeys.Recipe.CREATE_NEW),
                                     tint = VetNutriColors.Primary,
                                     modifier = Modifier.size(24.dp)
                             )
                             Text(
-                                    text = "Créer une recette",
+                                    text = translate(LocalizationKeys.Recipe.CREATE_NEW),
                                     color = VetNutriColors.Primary,
                                     style = MaterialTheme.typography.button
                             )
@@ -173,7 +173,11 @@ fun RecipeDialog(
                                                             (kotlin.math.round(q * 10.0) / 10.0)
                                                                     .toString()
                                                     Text(
-                                                            "- $nom: $qStr g",
+                                                            translate(
+                                                                    LocalizationKeys.Recipe.FOOD_LINE,
+                                                                    nom.toString(),
+                                                                    qStr
+                                                            ),
                                                             style = MaterialTheme.typography.caption
                                                     )
                                                 }
@@ -199,7 +203,7 @@ fun RecipeDialog(
     if (showCreateDialog) {
         AlertDialog(
                 onDismissRequest = { showCreateDialog = false },
-                title = { Text("Créer une recette") },
+                title = { Text(translate(LocalizationKeys.Recipe.CREATE_NEW)) },
                 text = {
                     OutlinedTextField(
                             value = newName,

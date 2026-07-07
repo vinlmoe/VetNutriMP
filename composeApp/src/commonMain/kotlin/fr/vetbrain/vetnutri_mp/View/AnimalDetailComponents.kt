@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -127,7 +129,7 @@ fun ConsultationCard(
                                         )
                                         Text(
                                                 text = consultation.date?.toString()
-                                                                ?: "Date inconnue",
+                                                                ?: translate(LocalizationKeys.AnimalDetail.UNKNOWN_DATE),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 color = VetNutriColors.Primary
                                         )
@@ -150,7 +152,7 @@ fun ConsultationCard(
                                                                 )
                                                 )
                                                 Text(
-                                                        text = "$weight kg",
+                                                        text = translate(LocalizationKeys.AnimalDetail.WEIGHT_KG_FORMAT, weight.toString()),
                                                         style = MaterialTheme.typography.caption,
                                                         color = Color.Gray
                                                 )
@@ -230,7 +232,7 @@ fun ConsultationCard(
                                                 )
                                                 Text(
                                                         text =
-                                                                "Rations: ${consultation.rations.size}",
+                                                                translate(LocalizationKeys.AnimalDetail.RATIONS_COUNT_FORMAT, consultation.rations.size.toString()),
                                                         style = MaterialTheme.typography.caption,
                                                         color = VetNutriColors.Secondary
                                                 )
@@ -251,8 +253,8 @@ fun ConsultationCard(
                                         onClick = onEdit,
                                         modifier = Modifier.size(AppSizes.iconSizeMedium),
                                         imageVector = AppIcons.Edit,
-                                        contentDescription = "Modifier la consultation",
-                                        tooltip = "Modifier la consultation",
+                                        contentDescription = translate(LocalizationKeys.Consultation.EDIT_CONSULTATION),
+                                        tooltip = translate(LocalizationKeys.Consultation.EDIT_CONSULTATION),
                                         tint = VetNutriColors.Primary,
                                         iconModifier = Modifier.size(AppSizes.iconSizeSmall)
                                 )
@@ -262,8 +264,8 @@ fun ConsultationCard(
                                         onClick = onDuplicate,
                                         modifier = Modifier.size(AppSizes.iconSizeMedium),
                                         imageVector = AppIcons.ContentCopy,
-                                        contentDescription = "Dupliquer la consultation",
-                                        tooltip = "Dupliquer la consultation",
+                                        contentDescription = translate(LocalizationKeys.Consultation.DUPLICATE_CONSULTATION),
+                                        tooltip = translate(LocalizationKeys.Consultation.DUPLICATE_CONSULTATION),
                                         tint = VetNutriColors.Primary,
                                         iconModifier = Modifier.size(AppSizes.iconSizeSmall)
                                 )
@@ -274,8 +276,8 @@ fun ConsultationCard(
                                         enabled = isDeleteEnabled,
                                         modifier = Modifier.size(AppSizes.iconSizeMedium),
                                         imageVector = AppIcons.Delete,
-                                        contentDescription = "Supprimer la consultation",
-                                        tooltip = "Supprimer la consultation",
+                                        contentDescription = translate(LocalizationKeys.Consultation.DELETE_CONSULTATION),
+                                        tooltip = translate(LocalizationKeys.Consultation.DELETE_CONSULTATION),
                                         tint =
                                                 if (isDeleteEnabled) Color.Red
                                                 else Color.Gray.copy(alpha = 0.5f),
@@ -342,14 +344,14 @@ fun RationItem(
                                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = if (ration.actual) "Proposée" else "Actuelle",
+                                        text = if (ration.actual) translate(LocalizationKeys.Ration.PROPOSED) else translate(LocalizationKeys.Ration.ACTUAL),
                                         style = MaterialTheme.typography.caption,
                                         color =
                                                 if (ration.actual) VetNutriColors.Primary
                                                 else Color.Gray
                                 )
                                 Text(
-                                        text = "Coef: ${ration.coef}",
+                                        text = translate(LocalizationKeys.Ration.COEF_FORMAT, ration.coef.toString()),
                                         style = MaterialTheme.typography.caption,
                                         color = Color.Gray
                                 )
@@ -365,8 +367,8 @@ fun RationItem(
                                 onClick = { onEdit() },
                                 modifier = Modifier.size(AppSizes.iconSizeLarge),
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = "Modifier",
-                                tooltip = "Modifier",
+                                contentDescription = translate(LocalizationKeys.Ration.EDIT_ACTION),
+                                tooltip = translate(LocalizationKeys.Ration.EDIT_ACTION),
                                 tint = VetNutriColors.Primary.copy(alpha = 0.8f)
                         )
 
@@ -374,8 +376,8 @@ fun RationItem(
                                 onClick = { onDuplicate() },
                                 modifier = Modifier.size(AppSizes.iconSizeLarge),
                                 imageVector = AppIcons.ContentCopy,
-                                contentDescription = "Dupliquer",
-                                tooltip = "Dupliquer",
+                                contentDescription = translate(LocalizationKeys.Ration.DUPLICATE_ACTION),
+                                tooltip = translate(LocalizationKeys.Ration.DUPLICATE_ACTION),
                                 tint = VetNutriColors.Primary.copy(alpha = 0.8f)
                         )
 
@@ -384,8 +386,8 @@ fun RationItem(
                                 modifier = Modifier.size(AppSizes.iconSizeLarge),
                                 enabled = isDeleteEnabled,
                                 imageVector = AppIcons.Delete,
-                                contentDescription = "Supprimer",
-                                tooltip = "Supprimer",
+                                contentDescription = translate(LocalizationKeys.General.DELETE),
+                                tooltip = translate(LocalizationKeys.General.DELETE),
                                 tint =
                                         if (isDeleteEnabled) Color.Red.copy(alpha = 0.8f)
                                         else Color.Gray.copy(alpha = 0.5f)
@@ -445,7 +447,7 @@ fun AlimentItem(
                                 style = MaterialTheme.typography.subtitle1
                         )
                         Text(
-                                text = "Catégorie: ${aliment.category}",
+                                text = translate(LocalizationKeys.AnimalDetail.CATEGORY_LABEL, aliment.category.toString()),
                                 style = MaterialTheme.typography.caption,
                                 color = Color.Gray
                         )
@@ -478,7 +480,7 @@ fun AlimentItem(
                                                         quantityText = texteFiltre
                                                 }
                                         },
-                                        label = { Text("Quantité") },
+                                        label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_QUANTITY)) },
                                         keyboardOptions =
                                                 KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                         singleLine = true,
@@ -489,15 +491,15 @@ fun AlimentItem(
                                 IconButtonWithTooltip(
                                         onClick = validateQuantity,
                                         imageVector = AppIcons.Check,
-                                        contentDescription = "Valider",
-                                        tooltip = "Valider",
+                                        contentDescription = translate(LocalizationKeys.General.VALIDATE),
+                                        tooltip = translate(LocalizationKeys.General.VALIDATE),
                                         tint = Color.Green
                                 )
                                 IconButtonWithTooltip(
                                         onClick = cancelEdit,
                                         imageVector = AppIcons.Close,
-                                        contentDescription = "Annuler",
-                                        tooltip = "Annuler",
+                                        contentDescription = translate(LocalizationKeys.General.CANCEL),
+                                        tooltip = translate(LocalizationKeys.General.CANCEL),
                                         tint = Color.Red.copy(alpha = 0.8f)
                                 )
                         }
@@ -508,7 +510,7 @@ fun AlimentItem(
                                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = "${aliment.quantity} g",
+                                        text = translate(LocalizationKeys.Ration.QUANTITY_GRAMS_FORMAT, aliment.quantity.toString()),
                                         style = MaterialTheme.typography.body1,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.clickable(onClick = onStartEditing)
@@ -516,15 +518,15 @@ fun AlimentItem(
                                 IconButtonWithTooltip(
                                         onClick = onStartEditing,
                                         imageVector = AppIcons.Edit,
-                                        contentDescription = "Modifier la quantité",
-                                        tooltip = "Modifier la quantité",
+                                        contentDescription = translate(LocalizationKeys.Ration.EDIT_QUANTITY_TOOLTIP),
+                                        tooltip = translate(LocalizationKeys.Ration.EDIT_QUANTITY_TOOLTIP),
                                         tint = VetNutriColors.Primary
                                 )
                                 IconButtonWithTooltip(
                                         onClick = onDelete,
                                         imageVector = AppIcons.Delete,
-                                        contentDescription = "Supprimer",
-                                        tooltip = "Supprimer",
+                                        contentDescription = translate(LocalizationKeys.General.DELETE),
+                                        tooltip = translate(LocalizationKeys.General.DELETE),
                                         tint = Color.Red.copy(alpha = 0.8f)
                                 )
                         }

@@ -9,6 +9,8 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
@@ -116,7 +118,7 @@ class RecipeEditViewModel(
             _recipes.clear()
             _recipes.addAll(loadedRecipes)
         } catch (e: Exception) {
-            _message.value = "Erreur lors du chargement des recettes: ${e.message}"
+            _message.value = translate(LocalizationKeys.Recipe.LOAD_ERROR, e.message ?: "")
         } finally {
             _isLoading.value = false
         }
@@ -236,7 +238,7 @@ class RecipeEditViewModel(
                     val existingAliment = _selectedIngredients.find { it.refAlimUnif == aliment.uuid }
                     if (existingAliment != null) {
                         
-                        _message.value = "Cet aliment est déjà dans la recette"
+                        _message.value = translate(LocalizationKeys.Recipe.ALIMENT_ALREADY_ADDED)
                         return
                     }
                     
@@ -304,12 +306,12 @@ class RecipeEditViewModel(
      */
     fun saveRecipe() {
         if (_newRecipeName.value.isBlank()) {
-            _message.value = "Le nom de la recette ne peut pas être vide"
+            _message.value = translate(LocalizationKeys.Recipe.NAME_REQUIRED_ERROR)
             return
         }
-        
+
         if (_selectedIngredients.isEmpty()) {
-            _message.value = "La recette doit contenir au moins un aliment"
+            _message.value = translate(LocalizationKeys.Recipe.INGREDIENT_REQUIRED_ERROR)
             return
         }
         
@@ -342,7 +344,7 @@ class RecipeEditViewModel(
                     // Modification d'une recette existante
                     recipeRepository.renameRecipe(recipeToSave.uuid, recipeToSave.name)
                     recipeRepository.replaceAliments(recipeToSave.uuid, recipeToSave.alimentMutableList)
-                    _message.value = "Recette modifiée avec succès"
+                    _message.value = translate(LocalizationKeys.Recipe.UPDATE_SUCCESS)
                 } else {
                     // Création d'une nouvelle recette
                     val newRecipe = recipeRepository.createRecipe(
@@ -351,7 +353,7 @@ class RecipeEditViewModel(
                         description = recipeToSave.description
                     )
                     recipeRepository.addAliments(newRecipe.uuid, recipeToSave.alimentMutableList)
-                    _message.value = "Recette créée avec succès"
+                    _message.value = translate(LocalizationKeys.Recipe.CREATE_SUCCESS)
                 }
                 
                 // Recharger les recettes et sortir du mode édition
@@ -359,13 +361,13 @@ class RecipeEditViewModel(
                 cancelEditing()
                 
             } catch (e: Exception) {
-                _message.value = "Erreur lors de la sauvegarde: ${e.message}"
+                _message.value = translate(LocalizationKeys.Recipe.SAVE_ERROR, e.message ?: "")
             } finally {
                 _isLoading.value = false
             }
         }
     }
-    
+
     /**
      * Supprime une recette
      */
@@ -374,16 +376,16 @@ class RecipeEditViewModel(
             try {
                 _isLoading.value = true
                 recipeRepository.deleteRecipe(recipe.uuid)
-                _message.value = "Recette supprimée avec succès"
+                _message.value = translate(LocalizationKeys.Recipe.DELETE_SUCCESS)
                 loadRecipesInternal()
             } catch (e: Exception) {
-                _message.value = "Erreur lors de la suppression: ${e.message}"
+                _message.value = translate(LocalizationKeys.Recipe.DELETE_ERROR, e.message ?: "")
             } finally {
                 _isLoading.value = false
             }
         }
     }
-    
+
     /**
      * Duplique une recette
      */
@@ -393,13 +395,13 @@ class RecipeEditViewModel(
                 _isLoading.value = true
                 val duplicatedRecipe = recipeRepository.cloneRecipe(recipe.uuid)
                 if (duplicatedRecipe != null) {
-                    _message.value = "Recette dupliquée avec succès"
+                    _message.value = translate(LocalizationKeys.Recipe.DUPLICATE_SUCCESS)
                 } else {
-                    _message.value = "Erreur lors de la duplication"
+                    _message.value = translate(LocalizationKeys.Recipe.DUPLICATE_ERROR)
                 }
                 loadRecipesInternal()
             } catch (e: Exception) {
-                _message.value = "Erreur lors de la duplication: ${e.message}"
+                _message.value = translate(LocalizationKeys.Recipe.DUPLICATE_ERROR_DETAIL, e.message ?: "")
             } finally {
                 _isLoading.value = false
             }
