@@ -79,7 +79,7 @@ fun SpeciesPreferencesView(
                                         Column(modifier = Modifier.padding(16.dp)) {
                                                 Text(
                                                         text =
-                                                                "${"preferences.speciesTitle".translate()} ${species.translateEnum()}",
+                                                                "${"preferences.species_title".translate()} ${species.translateEnum()}",
                                                         style = MaterialTheme.typography.h5,
                                                         fontWeight = FontWeight.Bold,
                                                         color = VetNutriColors.Primary
