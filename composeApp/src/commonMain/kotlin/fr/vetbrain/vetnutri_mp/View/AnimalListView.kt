@@ -86,7 +86,9 @@ fun AnimalListView(
         var shouldAutoOpenAfterDialog by remember { mutableStateOf(false) }
         var showKeywordFilterDialog by remember { mutableStateOf(false) }
         val hasKeywordFilter = keywordIncludeIds.isNotEmpty() || keywordExcludeIds.isNotEmpty()
-        val hasSortFilter = selectedSortOrder != AnimalListViewModel.AnimalSortOrder.NAME_ASC
+        val hasSortFilter =
+                selectedSortOrder != AnimalListViewModel.AnimalSortOrder.NAME_ASC ||
+                        showExamDossiers
         val isExamMode = examSession != null
 
         LaunchedEffect(Unit) { viewModel.loadAnimals() }
@@ -369,39 +371,6 @@ fun AnimalListView(
                                                 }
                                         }
 
-                                }
-                        }
-
-                        if (!isExamMode) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                OutlinedButton(
-                                        onClick = { viewModel.setShowExamDossiers(!showExamDossiers) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = if (showExamDossiers)
-                                                ButtonDefaults.outlinedButtonColors(
-                                                        backgroundColor = VetNutriColors.Secondary.copy(alpha = 0.12f),
-                                                        contentColor = VetNutriColors.Secondary
-                                                )
-                                        else
-                                                ButtonDefaults.outlinedButtonColors()
-                                ) {
-                                        Icon(
-                                                imageVector = AppIcons.ViewList,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(translate(AnimalList.SHOW_EXAM_DOSSIERS))
-                                        if (showExamDossiers) {
-                                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                                Box(
-                                                        modifier = Modifier.size(8.dp)
-                                                                .background(
-                                                                        VetNutriColors.Secondary,
-                                                                        shape = MaterialTheme.shapes.small
-                                                                )
-                                                )
-                                        }
                                 }
                         }
 
@@ -693,13 +662,19 @@ fun AnimalListView(
                 FilterSortDialog(
                         selectedSortOrder = selectedSortOrder,
                         onSortOrderSelected = { viewModel.setSortOrder(it) },
+                        canShowExamDossiers = !isExamMode,
+                        showExamDossiers = showExamDossiers,
+                        onShowExamDossiersChanged = { viewModel.setShowExamDossiers(it) },
                         availableKeywords = availableKeywords,
                         includeIds = keywordIncludeIds,
                         excludeIds = keywordExcludeIds,
                         onUpdateFilters = { includeIds, excludeIds ->
                                 viewModel.setKeywordFilters(includeIds, excludeIds)
                         },
-                        onReset = { viewModel.clearKeywordFilters() },
+                        onReset = {
+                                viewModel.clearKeywordFilters()
+                                viewModel.setShowExamDossiers(false)
+                        },
                         onDismiss = { showKeywordFilterDialog = false }
                 )
         }
@@ -863,6 +838,9 @@ private fun AnimalCard(
 private fun FilterSortDialog(
         selectedSortOrder: AnimalListViewModel.AnimalSortOrder,
         onSortOrderSelected: (AnimalListViewModel.AnimalSortOrder) -> Unit,
+        canShowExamDossiers: Boolean,
+        showExamDossiers: Boolean,
+        onShowExamDossiersChanged: (Boolean) -> Unit,
         availableKeywords: List<ConsultationKeyword>,
         includeIds: Set<String>,
         excludeIds: Set<String>,
@@ -924,6 +902,35 @@ private fun FilterSortDialog(
                                                         )
                                                 }
                                         )
+                                }
+
+                                if (canShowExamDossiers) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Divider()
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text("Examens", style = MaterialTheme.typography.subtitle1)
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Checkbox(
+                                                        checked = showExamDossiers,
+                                                        onCheckedChange = onShowExamDossiersChanged
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Icon(
+                                                        imageVector = AppIcons.ViewList,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(18.dp),
+                                                        tint =
+                                                                if (showExamDossiers)
+                                                                        VetNutriColors.Secondary
+                                                                else LocalContentColor.current
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(translate(AnimalList.SHOW_EXAM_DOSSIERS))
+                                        }
                                 }
 
                                 Spacer(modifier = Modifier.height(12.dp))
