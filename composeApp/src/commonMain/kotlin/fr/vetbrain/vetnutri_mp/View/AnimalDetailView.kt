@@ -83,7 +83,7 @@ private data class PractitionerContact(
         val email: String = ""
 )
 
-private fun formatAlimentDisplayName(aliment: AlimentEv?): String {
+internal fun formatAlimentDisplayName(aliment: AlimentEv?): String {
         if (aliment == null) return "Ingredient"
         fun debugChars(input: String): String =
                 input.map { c -> "${c.code.toString(16).padStart(4, '0')}(${c})" }.joinToString(" ")
@@ -100,8 +100,7 @@ private fun formatAlimentDisplayName(aliment: AlimentEv?): String {
                                 .replace('\u00A0', ' ')
                                 .replace(Regex("""^[\s"'`]+|[\s"'`]+$"""), "")
                 if (normalized.isBlank()) return null
-                val semantic =
-                        normalized.lowercase().replace(Regex("""[^\p{L}\p{N}]+"""), "")
+                val semantic = normalized.lowercase().filter { it.isLetterOrDigit() }
                 if (semantic == "null" || semantic == "none" || semantic == "na") return null
                 return normalized
         }
@@ -114,8 +113,7 @@ private fun formatAlimentDisplayName(aliment: AlimentEv?): String {
                         .filterNotNull()
                         .map { it.trim() }
                         .filter { value ->
-                                val semantic =
-                                        value.lowercase().replace(Regex("""[^\p{L}\p{N}]+"""), "")
+                                val semantic = value.lowercase().filter { it.isLetterOrDigit() }
                                 value.isNotBlank() &&
                                         semantic != "null" &&
                                         semantic != "none" &&
