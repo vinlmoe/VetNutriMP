@@ -92,7 +92,7 @@ fun CrossConsultationAnalysisView(
                 ) { Text(CrossConsultationAnalysis.SELECT_ALL.translate()) }
                 OutlinedButton(
                         onClick = onOpenGrading
-                ) { Text("Notation") }
+                ) { Text(CrossConsultationAnalysis.OPEN_GRADING.translate()) }
             }
         }
 
@@ -302,7 +302,7 @@ fun CrossConsultationAnalysisView(
                                 val agg = viewModel.computeEnergyAggregates()
                                 aggregatesText =
                                         agg.joinToString("\n") {
-                                            "- ${it.animalName}: ${it.value} (placeholder énergie)"
+                                            "- ${it.animalName}: ${it.value} ${CrossConsultationAnalysis.ENERGY_PLACEHOLDER_SUFFIX.translate()}"
                                         }
                             }
                         },

@@ -2,14 +2,16 @@ package fr.vetbrain.vetnutri_mp.View.SettingsComponents
 
 import androidx.compose.runtime.Composable
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /** Délègue à [ConfirmDialog] — conservé pour compatibilité avec les appelants existants. */
 @Composable
 fun ConfirmationDialog(
         title: String,
         message: String,
-        confirmText: String = "Confirmer",
-        dismissText: String = "Annuler",
+        confirmText: String = translate(LocalizationKeys.General.CONFIRM),
+        dismissText: String = translate(LocalizationKeys.General.CANCEL),
         isDestructive: Boolean = true,
         onConfirm: () -> Unit,
         onDismiss: () -> Unit,
@@ -35,10 +37,10 @@ fun DatabaseClearConfirmationDialog(
         onDismiss: () -> Unit
 ) {
     ConfirmDialog(
-            title = "Confirmation de suppression",
-            message = "Êtes-vous sûr de vouloir supprimer TOUS les $entityName de la base de données ? Cette action est irréversible.",
-            confirmText = "Oui, vider la base",
-            dismissText = "Annuler",
+            title = translate(LocalizationKeys.Settings.CLEAR_CONFIRMATION_TITLE),
+            message = translate(LocalizationKeys.Settings.CLEAR_CONFIRMATION_MESSAGE, entityName),
+            confirmText = translate(LocalizationKeys.Settings.CLEAR_CONFIRMATION_CONFIRM),
+            dismissText = translate(LocalizationKeys.General.CANCEL),
             isDestructive = true,
             onConfirm = onConfirm,
             onDismiss = onDismiss

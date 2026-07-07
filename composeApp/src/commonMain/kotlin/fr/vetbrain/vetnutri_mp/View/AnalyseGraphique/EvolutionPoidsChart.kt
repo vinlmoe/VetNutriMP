@@ -792,8 +792,8 @@ fun PoidsTableau(
                                                                 if (consultationData
                                                                                 .isFromConsultation
                                                                 )
-                                                                        "Consultation"
-                                                                else "Hors consultation",
+                                                                        translate(LocalizationKeys.Graph.SOURCE_CONSULTATION)
+                                                                else translate(LocalizationKeys.Graph.SOURCE_OTHER),
                                                         modifier = Modifier.weight(1f),
                                                         style = MaterialTheme.typography.caption,
                                                         color =

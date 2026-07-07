@@ -13,6 +13,8 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.*
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 
 @OptIn(ExperimentalKoalaPlotApi::class)
@@ -60,7 +62,7 @@ fun AnalyseGraphiqueView(
                                         verticalAlignment = Alignment.CenterVertically
                                 ) {
                                         Text(
-                                                text = "/1000 kcal",
+                                                text = translate(LocalizationKeys.Chart.TOGGLE_PER_1000_KCAL),
                                                 style = MaterialTheme.typography.caption,
                                                 color =
                                                         if (!useDryMatterPer100g)
@@ -75,7 +77,7 @@ fun AnalyseGraphiqueView(
                                                 onCheckedChange = { useDryMatterPer100g = it }
                                         )
                                         Text(
-                                                text = "/100g MS",
+                                                text = translate(LocalizationKeys.Chart.TOGGLE_PER_100G_DM),
                                                 style = MaterialTheme.typography.caption,
                                                 color =
                                                         if (useDryMatterPer100g)

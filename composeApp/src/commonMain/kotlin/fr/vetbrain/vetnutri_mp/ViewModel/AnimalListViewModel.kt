@@ -30,6 +30,8 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * ViewModel liste animaux.
@@ -291,11 +293,11 @@ class AnimalListViewModel(
                         }
 
                 if (examAnimals.isEmpty()) {
-                    return@withContext Result.failure(Exception("Aucun animal d'examen à exporter."))
+                    return@withContext Result.failure(Exception(translate(LocalizationKeys.AnimalList.EXPORT_EXAM_NO_ANIMALS)))
                 }
 
                 if (consultationRepository == null) {
-                    return@withContext Result.failure(Exception("Références manquantes pour exporter les consultations."))
+                    return@withContext Result.failure(Exception(translate(LocalizationKeys.AnimalList.EXPORT_EXAM_MISSING_REFS)))
                 }
 
                 val exportImportRepo = fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
@@ -332,7 +334,7 @@ class AnimalListViewModel(
 
                 shareService.uploadJson(jsonContent, shareOptions)
             } catch (e: Exception) {
-                Result.failure(Exception("Erreur lors de l'export examen: ${e.message}", e))
+                Result.failure(Exception(translate(LocalizationKeys.AnimalList.EXPORT_EXAM_ERROR_DETAIL, e.message ?: ""), e))
             }
         }
     }
@@ -422,7 +424,7 @@ class AnimalListViewModel(
                         ImportResult.Success(importResult.importedCount + importResult.updatedCount)
                 loadAnimals() // Refresh the list after import
             } catch (e: Exception) {
-                _importResult.value = ImportResult.Error(e.message ?: "Erreur inconnue")
+                _importResult.value = ImportResult.Error(e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR))
             }
         }
     }
@@ -459,7 +461,7 @@ class AnimalListViewModel(
     suspend fun importFromJsonBin(binIdOrUrl: String): ImportResult {
         return try {
             startApiImport()
-            appendApiImportLog("🔄 Début de l'import depuis jsonbin.io...")
+            appendApiImportLog(translate(LocalizationKeys.AnimalList.IMPORT_LOG_START))
             val preImportIds = try {
                 animalRepository.getAllAnimals().map { it.uuid }.toSet()
             } catch (_: Exception) {
@@ -476,7 +478,7 @@ class AnimalListViewModel(
                 binIdOrUrl.contains("jsonbin.io") -> {
                     shareService.extractBinIdFromUrl(binIdOrUrl) ?: run {
                         finishApiImport()
-                        return ImportResult.Error("Impossible d'extraire l'ID du bin depuis l'URL: $binIdOrUrl")
+                        return ImportResult.Error(translate(LocalizationKeys.AnimalList.IMPORT_BIN_ID_EXTRACT_ERROR, binIdOrUrl))
                     }
                 }
                 else -> binIdOrUrl
@@ -484,10 +486,10 @@ class AnimalListViewModel(
             val keyBase64 = qrPayload?.key
             val ivBase64 = qrPayload?.iv
             if (qrPayload != null) {
-                appendApiImportLog("🔐 QR chiffré détecté (bin: $binId)")
+                appendApiImportLog(translate(LocalizationKeys.AnimalList.IMPORT_LOG_QR_DETECTED, binId))
             }
 
-            appendApiImportLog("📥 Téléchargement du bin: $binId")
+            appendApiImportLog(translate(LocalizationKeys.AnimalList.IMPORT_LOG_DOWNLOADING, binId))
             updateApiImportProgress(0.1)
 
             // Télécharger le JSON depuis jsonbin.io
@@ -495,7 +497,7 @@ class AnimalListViewModel(
 
             val jsonContent = downloadResult.getOrElse { error ->
                 finishApiImport()
-                return ImportResult.Error("Erreur lors du téléchargement depuis jsonbin.io: ${error.message}")
+                return ImportResult.Error(translate(LocalizationKeys.AnimalList.IMPORT_DOWNLOAD_ERROR, error.message ?: ""))
             }
 
             val importedAnimalIds: List<String> =
@@ -512,15 +514,15 @@ class AnimalListViewModel(
                     emptyList()
                 }
 
-            appendApiImportLog("✅ JSON téléchargé (${jsonContent.length} caractères)")
+            appendApiImportLog(translate(LocalizationKeys.AnimalList.IMPORT_LOG_JSON_DOWNLOADED, jsonContent.length.toString()))
             updateApiImportProgress(0.3)
 
             // Vérifier que tous les repositories sont disponibles
-            if (foodRepository == null || recipeRepository == null || referenceEvRepository == null || 
-                equationRepository == null || biblioRefRepository == null || consultationRepository == null || 
+            if (foodRepository == null || recipeRepository == null || referenceEvRepository == null ||
+                equationRepository == null || biblioRefRepository == null || consultationRepository == null ||
                 conseilRepository == null) {
                 finishApiImport()
-                return ImportResult.Error("Erreur interne: repositories manquants pour l'import complet")
+                return ImportResult.Error(translate(LocalizationKeys.AnimalList.IMPORT_MISSING_REPOSITORIES))
             }
 
             // Créer l'ExportImportRepository avec tous les repositories nécessaires
@@ -535,7 +537,7 @@ class AnimalListViewModel(
                 conseilRepository = conseilRepository
             )
 
-            appendApiImportLog("🔄 Parsing et import des données...")
+            appendApiImportLog(translate(LocalizationKeys.AnimalList.IMPORT_LOG_PARSING))
             updateApiImportProgress(0.4)
 
             // Importer les données avec un listener de progression
@@ -567,8 +569,8 @@ class AnimalListViewModel(
                            importCounts.references + importCounts.biblios + importCounts.rations +
                            importCounts.recipes + importCounts.conseils
 
-            appendApiImportLog("✅ Import terminé avec succès!")
-            appendApiImportLog("📊 Résultat: $totalCount éléments importés")
+            appendApiImportLog(translate(LocalizationKeys.AnimalList.IMPORT_LOG_SUCCESS))
+            appendApiImportLog(translate(LocalizationKeys.AnimalList.IMPORT_LOG_RESULT_COUNT, totalCount.toString()))
 
             finishApiImport()
             
@@ -586,8 +588,8 @@ class AnimalListViewModel(
             )
         } catch (e: Exception) {
             finishApiImport()
-            appendApiImportLog("❌ Erreur: ${e.message}")
-            ImportResult.Error("Erreur lors de l'import depuis jsonbin.io: ${e.message}")
+            appendApiImportLog(translate(LocalizationKeys.AnimalList.IMPORT_LOG_ERROR, e.message ?: ""))
+            ImportResult.Error(translate(LocalizationKeys.AnimalList.IMPORT_JSONBIN_ERROR, e.message ?: ""))
         }
     }
 
@@ -680,21 +682,21 @@ class AnimalListViewModel(
                             loadAnimals() // Actualiser la liste après l'importation
                         } else {
                             _importResult.value =
-                                    ImportResult.Error("Échec de l'importation des animaux")
+                                    ImportResult.Error(translate(LocalizationKeys.AnimalList.IMPORT_ANIMALS_FAILED))
                         }
                     } catch (e: Exception) {
                         _importResult.value =
                                 ImportResult.Error(
-                                        "Erreur lors de l'importation des animaux: ${e.message}"
+                                        translate(LocalizationKeys.AnimalList.IMPORT_ANIMALS_ERROR, e.message ?: "")
                                 )
                         e.printStackTrace()
                     }
                 } else {
                     _importResult.value =
-                            ImportResult.Error("Aucun animal trouvé dans le fichier JSON")
+                            ImportResult.Error(translate(LocalizationKeys.AnimalList.IMPORT_NO_ANIMAL_FOUND))
                 }
             } catch (e: Exception) {
-                _importResult.value = ImportResult.Error(e.message ?: "Erreur inconnue")
+                _importResult.value = ImportResult.Error(e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR))
                 e.printStackTrace()
             } finally {
                 _isImportingAnimals.value = false

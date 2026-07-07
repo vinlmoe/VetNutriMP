@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.View.SettingsSection
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Menu latéral pour la navigation dans les paramètres
@@ -45,7 +47,7 @@ fun SettingsDrawer(
                 verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Fermer", tint = Color.Gray)
+                Icon(Icons.Default.Close, contentDescription = translate(LocalizationKeys.General.CLOSE), tint = Color.Gray)
             }
         }
 
@@ -86,12 +88,12 @@ fun SettingsDrawer(
 
         // Informations de version
         Text(
-                "VetNutri MP",
+                translate(LocalizationKeys.General.APP_NAME),
                 style = MaterialTheme.typography.caption,
                 color = Color.Gray,
                 modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
         )
-        Text("Version 1.0", style = MaterialTheme.typography.caption, color = Color.Gray)
+        Text(translate(LocalizationKeys.Startup.VERSION, "1.0"), style = MaterialTheme.typography.caption, color = Color.Gray)
     }
 }
 

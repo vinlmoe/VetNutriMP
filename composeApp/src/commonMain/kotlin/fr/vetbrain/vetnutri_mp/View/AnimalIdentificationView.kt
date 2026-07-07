@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -42,19 +43,19 @@ fun AnimalIdentificationView(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "Identification de l'animal", style = MaterialTheme.typography.h6)
+            Text(text = translate(Animal.IDENTIFICATION_TITLE), style = MaterialTheme.typography.h6)
             Row {
                 IconButton(onClick = onEdit) {
                     Icon(
                             imageVector = Icons.Default.Edit,
-                            contentDescription = "Modifier",
+                            contentDescription = translate(General.EDIT),
                             tint = VetNutriColors.Primary
                     )
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Supprimer",
+                            contentDescription = translate(General.DELETE),
                             tint = Color.Red
                     )
                 }
@@ -93,7 +94,7 @@ fun AnimalIdentificationView(
                                 else 0)
 
                 InfoRow(label = Animal.BIRTH_DATE.translate(), value = birthdate.toString())
-                InfoRow(label = Animal.AGE.translate(), value = "$age ans")
+                InfoRow(label = Animal.AGE.translate(), value = translate(Animal.AGE_YEARS_VALUE, age.toString()))
             }
 
             // Propriétaire
@@ -102,7 +103,10 @@ fun AnimalIdentificationView(
             }
 
             // Statut (vivant/décédé)
-            InfoRow(label = "Statut", value = if (animal.dead) "Décédé" else "Vivant")
+            InfoRow(
+                    label = translate(Animal.STATUS),
+                    value = if (animal.dead) translate(Animal.STATUS_DEAD) else translate(Animal.STATUS_ALIVE)
+            )
 
             // Résumé
             if (animal.summary.isNotEmpty()) {

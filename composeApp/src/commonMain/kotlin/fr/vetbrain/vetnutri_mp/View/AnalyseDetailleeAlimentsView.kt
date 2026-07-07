@@ -27,6 +27,8 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.launch
 
 /**
@@ -70,18 +72,18 @@ fun AnalyseDetailleeAlimentsView(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                        text = "Analyse détaillée des aliments",
+                        text = translate(LocalizationKeys.Chart.DETAILED_ANALYSIS_TITLE),
                         style = MaterialTheme.typography.h6,
                         fontWeight = FontWeight.Bold,
                         color = VetNutriColors.Primary
                 )
                 Text(
-                        text = "Cliquez sur un aliment pour voir ses détails nutritionnels complets",
+                        text = translate(LocalizationKeys.Chart.DETAILED_ANALYSIS_HINT),
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
             }
-            
+
             // Toggle pour /1000 kcal vs /100g MS
             if (onUseDryMatterPer100gChange != null) {
                 Row(
@@ -89,7 +91,7 @@ fun AnalyseDetailleeAlimentsView(
                         verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                            text = "/1000 kcal",
+                            text = translate(LocalizationKeys.Chart.TOGGLE_PER_1000_KCAL),
                             style = MaterialTheme.typography.caption,
                             color = if (!localUseDryMatterPer100g) VetNutriColors.Primary else MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                     )
@@ -101,16 +103,16 @@ fun AnalyseDetailleeAlimentsView(
                             }
                     )
                     Text(
-                            text = "/100g MS",
+                            text = translate(LocalizationKeys.Chart.TOGGLE_PER_100G_DM),
                             style = MaterialTheme.typography.caption,
                             color = if (localUseDryMatterPer100g) VetNutriColors.Primary else MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                     )
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-        
+
         // Liste des aliments avec détails
         if (alimentsAnalyses.isEmpty()) {
             Box(
@@ -118,7 +120,7 @@ fun AnalyseDetailleeAlimentsView(
                     contentAlignment = Alignment.Center
             ) {
                 Text(
-                        text = "Aucun aliment à analyser",
+                        text = translate(LocalizationKeys.Chart.NO_FOOD_TO_ANALYZE),
                         style = MaterialTheme.typography.body1,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
@@ -184,36 +186,36 @@ private fun AlimentDetailCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                            text = "${data.numero}. ${data.aliment.nom ?: "Sans nom"}",
+                            text = "${data.numero}. ${data.aliment.nom ?: translate(LocalizationKeys.NewReference.COEF_UNNAMED)}",
                             style = MaterialTheme.typography.h6,
                             fontWeight = FontWeight.Bold,
                             color = VetNutriColors.Primary
                     )
                     if (data.aliment.brand != null) {
                         Text(
-                                text = "Marque: ${data.aliment.brand}",
+                                text = translate(LocalizationKeys.Chart.BRAND_PREFIX, data.aliment.brand ?: ""),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
                     }
                     if (data.aliment.gamme != null) {
                         Text(
-                                text = "Gamme: ${data.aliment.gamme}",
+                                text = translate(LocalizationKeys.Chart.GAMME_PREFIX, data.aliment.gamme ?: ""),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
                     }
                 }
-                
+
                 // Bouton d'expansion
                 IconButton(onClick = { onExpandedChange(data.aliment.uuid) }) {
                     Icon(
                             imageVector = if (isExpanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
-                            contentDescription = if (isExpanded) "Réduire" else "Développer"
+                            contentDescription = if (isExpanded) translate(LocalizationKeys.General.REDUCE) else translate(LocalizationKeys.Chart.EXPAND_TOOLTIP)
                     )
                 }
             }
-            
+
             // Informations principales (toujours visibles)
             Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -221,7 +223,7 @@ private fun AlimentDetailCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                            text = "Densité énergétique",
+                            text = translate(LocalizationKeys.Chart.ENERGY_DENSITY_LABEL),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
                     )
@@ -233,7 +235,7 @@ private fun AlimentDetailCard(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                            text = "Protéines (% énergie)",
+                            text = translate(LocalizationKeys.Chart.PROTEIN_ENERGY_PERCENT),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
                     )
@@ -244,7 +246,7 @@ private fun AlimentDetailCard(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                            text = "Lipides (% énergie)",
+                            text = translate(LocalizationKeys.Chart.FAT_ENERGY_PERCENT),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
                     )

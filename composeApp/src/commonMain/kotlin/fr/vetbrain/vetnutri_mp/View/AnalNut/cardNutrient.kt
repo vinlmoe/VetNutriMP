@@ -874,7 +874,7 @@ private fun NutrimentCard(
                     if (!valeurNutritionnelle.complete) {
                         Icon(
                                 imageVector = Icons.Filled.Warning,
-                                contentDescription = "Informations incomplètes",
+                                contentDescription = translate("analnut.status.incomplete_info"),
                                 tint = VetNutriColors.Error,
                                 modifier = Modifier.size(12.dp)
                         )
@@ -910,7 +910,7 @@ private fun NutrimentCard(
             } else {
                 // Afficher un indicateur de chargement des préférences
                 Text(
-                        text = "Chargement des préférences...",
+                        text = translate("analnut.msg.loading_preferences"),
                         style = MaterialTheme.typography.overline,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
                         maxLines = 2

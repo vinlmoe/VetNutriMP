@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Section de paramètres avec titre et contenu, avec animations
@@ -153,7 +155,7 @@ fun InfoSection(
         ) {
             Icon(
                 imageVector = Icons.Default.Info,
-                contentDescription = "Information",
+                contentDescription = translate(LocalizationKeys.Settings.FEEDBACK_INFO),
                 tint = VetNutriColors.Primary,
                 modifier = Modifier.size(20.dp)
             )
@@ -217,7 +219,7 @@ fun WarningSection(
         ) {
             Icon(
                 imageVector = Icons.Default.Info,
-                contentDescription = "Avertissement",
+                contentDescription = translate(LocalizationKeys.Settings.FEEDBACK_WARNING),
                 tint = VetNutriColors.Error,
                 modifier = Modifier.size(20.dp)
             )
