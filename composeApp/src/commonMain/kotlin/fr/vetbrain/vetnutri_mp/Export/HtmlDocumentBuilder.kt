@@ -47,8 +47,7 @@ object HtmlDocumentBuilder {
                     .replace('\u00A0', ' ')
                     .replace(Regex("""^[\s"'`]+|[\s"'`]+$"""), "")
             if (normalized.isBlank()) return null
-            val semantic =
-                normalized.lowercase().replace(Regex("""[^\p{L}\p{N}]+"""), "")
+            val semantic = normalized.lowercase().filter { it.isLetterOrDigit() }
             if (semantic == "null" || semantic == "none" || semantic == "na") return null
             return normalized
         }
