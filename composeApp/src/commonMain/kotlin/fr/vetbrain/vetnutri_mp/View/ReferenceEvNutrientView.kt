@@ -16,6 +16,8 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.ViewModel.NutrientRefViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Vue pour l'édition des besoins nutritionnels d'une référence évaluée
@@ -76,23 +78,23 @@ fun ReferenceEvNutrientView(
                         Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                         Text(
-                                                text = "Référence: ${currentReferenceEv.nom}",
+                                                text = translate(LocalizationKeys.Reference.NUTRIENT_REFERENCE_FORMAT, currentReferenceEv.nom),
                                                 style = MaterialTheme.typography.h6,
                                                 color = VetNutriColors.Primary
                                         )
                                         Text(
-                                                text = "Espèce: ${currentReferenceEv.espece}",
+                                                text = translate(LocalizationKeys.Reference.NUTRIENT_SPECIES_FORMAT, currentReferenceEv.espece.toString()),
                                                 style = MaterialTheme.typography.body1
                                         )
                                         Text(
                                                 text =
-                                                        "Stade physiologique: ${currentReferenceEv.stadePhysio}",
+                                                        translate(LocalizationKeys.Reference.NUTRIENT_PHYSIO_STAGE_FORMAT, currentReferenceEv.stadePhysio.toString()),
                                                 style = MaterialTheme.typography.body1
                                         )
                                         if (currentReferenceEv.maladie) {
                                                 Text(
                                                         text =
-                                                                "Maladie: ${currentReferenceEv.nomMaladie}",
+                                                                translate(LocalizationKeys.Reference.NUTRIENT_DISEASE_FORMAT, currentReferenceEv.nomMaladie),
                                                         style = MaterialTheme.typography.body1,
                                                         color = Color.Red
                                                 )
@@ -104,7 +106,7 @@ fun ReferenceEvNutrientView(
 
                         // Sélection du type de nutriments à éditer
                         Text(
-                                text = "Sélectionnez une catégorie de nutriments :",
+                                text = translate(LocalizationKeys.Reference.NUTRIENT_SELECT_CATEGORY_TITLE),
                                 style = MaterialTheme.typography.h6
                         )
 
@@ -180,7 +182,7 @@ fun ReferenceEvNutrientView(
                                 ) {
                                         Text(
                                                 text =
-                                                        "Sélectionnez une catégorie de nutriments pour éditer les besoins",
+                                                        translate(LocalizationKeys.Reference.NUTRIENT_SELECT_CATEGORY_HINT),
                                                 style = MaterialTheme.typography.body1,
                                                 color = Color.Gray
                                         )
@@ -196,7 +198,7 @@ fun ReferenceEvNutrientView(
                 Scaffold(
                         topBar = {
                                 TopBarSimple(
-                                        title = "Besoins nutritionnels - ${currentReferenceEv.nom}",
+                                        title = translate(LocalizationKeys.Reference.NUTRIENT_VIEW_TITLE_FORMAT, currentReferenceEv.nom),
                                         onNavigateBack = onNavigateBack
                                 )
                         }

@@ -16,6 +16,7 @@ import fr.vetbrain.vetnutri_mp.Components.RichTextEditor
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Export.*
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import kotlinx.datetime.Clock
@@ -77,15 +78,15 @@ fun ConseilEditView(
 
                         content = conseil.content
                     } else {
-                        errorMessage = "Conseil non trouvé"
+                        errorMessage = translate("conseil.edit.notFoundError")
                         showErrorDialog = true
                     }
                 } else {
-                    errorMessage = "Erreur lors du chargement du conseil"
+                    errorMessage = translate("conseil.edit.loadError")
                     showErrorDialog = true
                 }
             } catch (e: Exception) {
-                errorMessage = "Erreur: ${e.message}"
+                errorMessage = translate("conseil.edit.exceptionErrorFormat", e.message.orEmpty())
                 showErrorDialog = true
             }
         }
@@ -94,7 +95,7 @@ fun ConseilEditView(
 
     // Mode d'édition ou de création
     val isEditMode = conseilId != null
-    val screenTitle = if (isEditMode) "Modifier le conseil" else "Nouveau conseil"
+    val screenTitle = if (isEditMode) translate("conseil.edit.titleEdit") else translate("conseil.edit.titleCreate")
 
     Scaffold(topBar = { TopBarSimple(title = screenTitle, onNavigateBack = onNavigateBack) }) {
             paddingValues ->
@@ -116,7 +117,7 @@ fun ConseilEditView(
                 Card(elevation = 4.dp, shape = MaterialTheme.shapes.medium) {
                     Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                         Text(
-                                text = "Informations générales",
+                                text = translate("conseil.edit.generalInfoTitle"),
                                 style = MaterialTheme.typography.h6,
                                 fontWeight = FontWeight.Bold,
                                 color = VetNutriColors.Primary
@@ -128,7 +129,7 @@ fun ConseilEditView(
                         OutlinedTextField(
                                 value = conseilTitle,
                                 onValueChange = { conseilTitle = it },
-                                label = { Text("Titre du conseil") },
+                                label = { Text(translate("conseil.edit.conseilTitleLabel")) },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors =
                                         TextFieldDefaults.outlinedTextFieldColors(
@@ -143,7 +144,7 @@ fun ConseilEditView(
                         DropdownField(
                                 selectedValue = category,
                                 onValueChange = { category = it },
-                                label = "Catégorie",
+                                label = translate("conseil.edit.categoryLabel"),
                                 options =
                                         SectionCategory.values().filter {
                                             it.name.contains("CONSEIL")

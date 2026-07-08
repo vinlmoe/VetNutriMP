@@ -532,7 +532,7 @@ fun <T> MultiSelectDropdownField(
                                                 ) {
                                                         Icon(
                                                                                 Icons.Default.Check,
-                                                                                contentDescription = "Valider",
+                                                                                contentDescription = translate(LocalizationKeys.General.VALIDATE),
                                                                                 tint = MaterialTheme.colors.onPrimary
                                                                         )
                                                                 }

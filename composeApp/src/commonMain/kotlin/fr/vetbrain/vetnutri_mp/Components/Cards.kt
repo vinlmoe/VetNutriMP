@@ -12,6 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Composant de carte générique pour les sélections multiples.
@@ -60,8 +62,8 @@ fun <T> MultiSelectionCard(
                         verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                            if (elementsSelectionnes.isEmpty()) "Sélectionner..."
-                            else "${elementsSelectionnes.size} élément(s) sélectionné(s)"
+                            if (elementsSelectionnes.isEmpty()) translate(LocalizationKeys.General.SELECT_PLACEHOLDER)
+                            else translate("cards.selectedItemsCount", elementsSelectionnes.size.toString())
                     )
                     Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                 }
@@ -92,7 +94,7 @@ fun <T> MultiSelectionCard(
                         }
                     }
                     if (elementsSelectionnes.size > 5) {
-                        Text("+ ${elementsSelectionnes.size - 5} autres")
+                        Text(translate("cards.moreItemsCount", (elementsSelectionnes.size - 5).toString()))
                     }
                 }
             }
@@ -159,7 +161,7 @@ fun <T> MultiSelectionCard(
                     Button(
                             onClick = { afficherDialogue = false },
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-                    ) { Text("Fermer") }
+                    ) { Text(translate(LocalizationKeys.General.CLOSE)) }
                 }
             }
         }

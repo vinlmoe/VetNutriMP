@@ -42,6 +42,8 @@ import fr.vetbrain.vetnutri_mp.Export.PdfExporter
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Chart
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Settings
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -363,59 +365,59 @@ private fun buildCompteRenduHtml(
                 </style>
             </head>
             <body>
-                <h1>Compte rendu nutritionnel</h1>
-                <div class='meta'><b>ID animal:</b> ${escapeHtml(animal?.id?.takeIf { it.isNotBlank() } ?: "-")} | <b>Nom:</b> ${escapeHtml(animal?.nom ?: "-")}</div>
-                <div class='meta'><b>Date de consultation:</b> ${escapeHtml(consultation?.date?.toString() ?: "-")} | <b>Objet:</b> ${escapeHtml(consultation?.objectConsult?.takeIf { it.isNotBlank() } ?: "-")}</div>
+                <h1>${translate(AnimalDetail.CR_TITLE)}</h1>
+                <div class='meta'><b>${translate(AnimalDetail.CR_LABEL_ANIMAL_ID)}:</b> ${escapeHtml(animal?.id?.takeIf { it.isNotBlank() } ?: "-")} | <b>${translate(AnimalDetail.CR_LABEL_NAME)}:</b> ${escapeHtml(animal?.nom ?: "-")}</div>
+                <div class='meta'><b>${translate(AnimalDetail.CR_LABEL_CONSULT_DATE)}:</b> ${escapeHtml(consultation?.date?.toString() ?: "-")} | <b>${translate(AnimalDetail.CR_LABEL_OBJECT_SHORT)}:</b> ${escapeHtml(consultation?.objectConsult?.takeIf { it.isNotBlank() } ?: "-")}</div>
 
                 <div class='section'>
-                    <h2>Identification animal</h2>
-                    <div><b>Nom:</b> ${escapeHtml(animal?.nom?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>Proprietaire:</b> ${escapeHtml(animal?.ownerName?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>Sexe:</b> ${escapeHtml(animal?.getSex()?.displayName?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>Espece:</b> ${escapeHtml(animal?.getEspece()?.label?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>Race:</b> ${escapeHtml(animal?.race?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>Date de naissance:</b> ${escapeHtml(animal?.birthdate?.toString() ?: "-")}</div>
-                    <div><b>Poids consultation:</b> ${escapeHtml(consultation?.effectiveWeight?.let { "${(it * 10.0).roundToInt() / 10.0} kg" } ?: "-")}</div>
-                    <div><b>UUID:</b> ${escapeHtml(animal?.uuid ?: "-")}</div>
+                    <h2>${translate(AnimalDetail.CR_SECTION_IDENTIFICATION)}</h2>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_NAME)}:</b> ${escapeHtml(animal?.nom?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_OWNER)}:</b> ${escapeHtml(animal?.ownerName?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_SEX)}:</b> ${escapeHtml(animal?.getSex()?.displayName?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_SPECIES)}:</b> ${escapeHtml(animal?.getEspece()?.label?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_BREED)}:</b> ${escapeHtml(animal?.race?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_BIRTHDATE)}:</b> ${escapeHtml(animal?.birthdate?.toString() ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_CONSULT_WEIGHT)}:</b> ${escapeHtml(consultation?.effectiveWeight?.let { translate(AnimalDetail.WEIGHT_KG_FORMAT, ((it * 10.0).roundToInt() / 10.0).toString()) } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_UUID)}:</b> ${escapeHtml(animal?.uuid ?: "-")}</div>
                 </div>
 
                 <div class='section'>
-                    <h2>Coordonnees veterinaire</h2>
-                    <div><b>Nom:</b> ${escapeHtml(practitionerContact?.nom?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>N° ordre:</b> ${escapeHtml(practitionerContact?.numeroOrdre?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>Adresse:</b> ${escapeHtml(practitionerContact?.adressePostale?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>Code postal:</b> ${escapeHtml(practitionerContact?.codePostal?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>Ville:</b> ${escapeHtml(practitionerContact?.ville?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>Telephone:</b> ${escapeHtml(practitionerContact?.telephone?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>Email:</b> ${escapeHtml(practitionerContact?.email?.ifBlank { "-" } ?: "-")}</div>
+                    <h2>${translate(AnimalDetail.CR_SECTION_VET_CONTACT)}</h2>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_NAME)}:</b> ${escapeHtml(practitionerContact?.nom?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_ORDER_NUMBER)}:</b> ${escapeHtml(practitionerContact?.numeroOrdre?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_ADDRESS)}:</b> ${escapeHtml(practitionerContact?.adressePostale?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_POSTAL_CODE)}:</b> ${escapeHtml(practitionerContact?.codePostal?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_CITY)}:</b> ${escapeHtml(practitionerContact?.ville?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_PHONE)}:</b> ${escapeHtml(practitionerContact?.telephone?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_EMAIL)}:</b> ${escapeHtml(practitionerContact?.email?.ifBlank { "-" } ?: "-")}</div>
                 </div>
 
                 <div class='section'>
-                    <h2>Anamnese</h2>
+                    <h2>${translate(AnimalDetail.CR_SECTION_ANAMNESE)}</h2>
                     <p>${textOrDash(anamnese)}</p>
                 </div>
 
                 <div class='section'>
-                    <h2>Examen clinique</h2>
+                    <h2>${translate(AnimalDetail.CR_EXAM_CLINIQUE)}</h2>
                     <p>${textOrDash(examenClinique)}</p>
                 </div>
 
-                ${rationBlock("Rations actuelles", consultation?.rations?.filter { it.actual } ?: emptyList())}
+                ${rationBlock(translate(AnimalDetail.CR_CURRENT_RATIONS), consultation?.rations?.filter { it.actual } ?: emptyList())}
 
                 <div class='section'>
-                    <h2>Facteur nutritionnel clef</h2>
+                    <h2>${translate(AnimalDetail.CR_KEY_NUTRITIONAL_FACTOR)}</h2>
                     <p>${textOrDash(facteurNutritionnelClef)}</p>
                 </div>
 
-                ${rationBlock("Rations proposees", consultation?.rations?.filter { !it.actual } ?: emptyList())}
+                ${rationBlock(translate(AnimalDetail.CR_PROPOSED_RATIONS), consultation?.rations?.filter { !it.actual } ?: emptyList())}
 
                 <div class='section'>
-                    <h2>Conseils ordonnance</h2>
+                    <h2>${translate(AnimalDetail.CR_ADVICE_SECTION)}</h2>
                     $conseilsHtml
                 </div>
 
                 <div class='section'>
-                    <h2>Texte additionnel ordonnance</h2>
+                    <h2>${translate(AnimalDetail.CR_ADDITIONAL_TEXT_SECTION)}</h2>
                     <p>${textOrDash(additionalText)}</p>
                 </div>
             </body>
@@ -1265,7 +1267,7 @@ private fun WideScreenLayout(
                                 if (isExamMode && !animalDetails.examExerciseId.isNullOrBlank()) {
                                         Text(
                                                 text =
-                                                        "ID exercice: ${animalDetails.examExerciseId}",
+                                                        "${translate(Animal.EXAM_EXERCISE_ID)}: ${animalDetails.examExerciseId}",
                                                 style = MaterialTheme.typography.body2,
                                                 color = VetNutriColors.Primary
                                         )
@@ -1709,7 +1711,7 @@ private fun WideScreenLayout(
                                                                                         aliments
                                                                                 )
                                                                 },
-                                                                primaryActionLabel = "Voir l'analyse graphique",
+                                                                primaryActionLabel = translate(Chart.VIEW_GRAPHIC_ANALYSIS_ACTION),
                                                                 alimentsInitialementSelectionnes =
                                                                         alimentsSelectionnes,
                                                                 onSelectionChanged = {
@@ -2019,7 +2021,7 @@ private fun WideScreenLayout(
                                                         if (isExamMode) {
                                                                 item {
                                                                         Text(
-                                                                                "Conseils personnalisés indisponibles en mode examen.",
+                                                                                translate(AnimalDetail.CUSTOM_ADVICE_UNAVAILABLE_EXAM_MODE),
                                                                                 style = MaterialTheme.typography.body2,
                                                                                 color = Color.Gray
                                                                         )
@@ -2308,7 +2310,7 @@ private fun WideScreenLayout(
                                                                         schedulePrescriptionSave()
                                                                 },
                                                                 modifier = Modifier.fillMaxWidth(),
-                                                                label = { Text("Anamnese") },
+                                                                label = { Text(translate(AnimalDetail.CR_SECTION_ANAMNESE)) },
                                                                 maxLines = 6
                                                         )
                                                         }
@@ -2321,7 +2323,7 @@ private fun WideScreenLayout(
                                                                         schedulePrescriptionSave()
                                                                 },
                                                                 modifier = Modifier.fillMaxWidth(),
-                                                                label = { Text("Examen clinique") },
+                                                                label = { Text(translate(AnimalDetail.CR_EXAM_CLINIQUE)) },
                                                                 maxLines = 6
                                                         )
                                                         }
@@ -2335,7 +2337,7 @@ private fun WideScreenLayout(
                                                                 },
                                                                 modifier = Modifier.fillMaxWidth(),
                                                                 label = {
-                                                                        Text("Facteur nutritionnel clef")
+                                                                        Text(translate(AnimalDetail.CR_KEY_NUTRITIONAL_FACTOR))
                                                                 },
                                                                 maxLines = 4
                                                         )
@@ -2380,10 +2382,10 @@ private fun WideScreenLayout(
                                                                         onClick = {
                                                                                 pendingCopyText = compteRenduText
                                                                                 scope.launch {
-                                                                                        snackbarHostState.showSnackbar("CR copié dans le presse-papiers")
+                                                                                        snackbarHostState.showSnackbar(translate(AnimalDetail.CR_COPY_SUCCESS))
                                                                                 }
                                                                         }
-                                                                ) { Text("Copier le CR") }
+                                                                ) { Text(translate(AnimalDetail.CR_COPY_BUTTON)) }
                                                                 OutlinedButton(
                                                                         onClick = {
                                                                                 previewMode = "CR"
@@ -2401,7 +2403,7 @@ private fun WideScreenLayout(
                                                                                         )
                                                                                 showPreview = true
                                                                         }
-                                                                ) { Text("Compte rendu") }
+                                                                ) { Text(translate(AnimalDetail.CR_PREVIEW_BUTTON)) }
                                                                 Button(
                                                                         onClick = {
                                                                                 val prefsStorage = createPreferencesStorage()
@@ -3449,7 +3451,7 @@ private fun NarrowScreenLayout(
                                                                                                         aliments
                                                                                                 )
                                                                                 },
-                                                                                primaryActionLabel = "Voir l'analyse graphique",
+                                                                                primaryActionLabel = translate(Chart.VIEW_GRAPHIC_ANALYSIS_ACTION),
                                                                                 alimentsInitialementSelectionnes =
                                                                                         alimentsSelectionnes,
                                                                                 onSelectionChanged = {
@@ -3838,7 +3840,7 @@ private fun NarrowScreenLayout(
                                                                         if (isExamMode) {
                                                                                 item {
                                                                                 Text(
-                                                                                        "Conseils personnalisés indisponibles en mode examen.",
+                                                                                        translate(AnimalDetail.CUSTOM_ADVICE_UNAVAILABLE_EXAM_MODE),
                                                                                         style = MaterialTheme.typography.body2,
                                                                                         color = Color.Gray
                                                                                 )
@@ -4156,7 +4158,7 @@ private fun NarrowScreenLayout(
                                                                                         schedulePrescriptionSave()
                                                                                 },
                                                                                 modifier = Modifier.fillMaxWidth(),
-                                                                                label = { Text("Anamnese") },
+                                                                                label = { Text(translate(AnimalDetail.CR_SECTION_ANAMNESE)) },
                                                                                 maxLines = 6
                                                                         )
                                                                                 }
@@ -4169,7 +4171,7 @@ private fun NarrowScreenLayout(
                                                                                         schedulePrescriptionSave()
                                                                                 },
                                                                                 modifier = Modifier.fillMaxWidth(),
-                                                                                label = { Text("Examen clinique") },
+                                                                                label = { Text(translate(AnimalDetail.CR_EXAM_CLINIQUE)) },
                                                                                 maxLines = 6
                                                                         )
                                                                                 }
@@ -4182,7 +4184,7 @@ private fun NarrowScreenLayout(
                                                                                         schedulePrescriptionSave()
                                                                                 },
                                                                                 modifier = Modifier.fillMaxWidth(),
-                                                                                label = { Text("Facteur nutritionnel clef") },
+                                                                                label = { Text(translate(AnimalDetail.CR_KEY_NUTRITIONAL_FACTOR)) },
                                                                                 maxLines = 4
                                                                         )
                                                                                 }
@@ -4227,11 +4229,11 @@ private fun NarrowScreenLayout(
                                                                                         onClick = {
                                                                                                 pendingCopyText = compteRenduText
                                                                                                 scope.launch {
-                                                                                                        snackbarHostState.showSnackbar("CR copié dans le presse-papiers")
+                                                                                                        snackbarHostState.showSnackbar(translate(AnimalDetail.CR_COPY_SUCCESS))
                                                                                                 }
                                                                                         }
                                                                                 ) {
-                                                                                        Text("Copier le CR")
+                                                                                        Text(translate(AnimalDetail.CR_COPY_BUTTON))
                                                                                 }
                                                                                 OutlinedButton(
                                                                                         onClick = {
@@ -4251,7 +4253,7 @@ private fun NarrowScreenLayout(
                                                                                                 showPreview = true
                                                                                         }
                                                                                 ) {
-                                                                                        Text("Compte rendu")
+                                                                                        Text(translate(AnimalDetail.CR_PREVIEW_BUTTON))
                                                                                 }
 
                                                                                 Button(

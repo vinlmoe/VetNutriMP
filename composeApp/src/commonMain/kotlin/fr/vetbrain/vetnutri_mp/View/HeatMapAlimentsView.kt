@@ -110,7 +110,7 @@ fun HeatMapAlimentsView(
                     contentAlignment = Alignment.Center
             ) {
                 Text(
-                        text = "Aucune référence disponible pour la HeatMap",
+                        text = translate("chart.heatmapNoReference"),
                         style = MaterialTheme.typography.body1,
                         color = VetNutriColors.Error
                 )
@@ -124,7 +124,7 @@ fun HeatMapAlimentsView(
                     contentAlignment = Alignment.Center
             ) {
                 Text(
-                        text = "Chargement des données...",
+                        text = translate("chart.heatmapLoadingData"),
                         style = MaterialTheme.typography.body1,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
@@ -138,7 +138,7 @@ fun HeatMapAlimentsView(
                     contentAlignment = Alignment.Center
             ) {
                 Text(
-                        text = "Aucune donnée disponible pour la HeatMap",
+                        text = translate("chart.heatmapNoData"),
                         style = MaterialTheme.typography.body1,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
@@ -160,7 +160,7 @@ fun HeatMapAlimentsView(
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                        text = "Légende: ",
+                        text = translate("chart.heatmapLegendLabel"),
                         style = MaterialTheme.typography.caption,
                         fontWeight = FontWeight.Bold
                 )
@@ -213,7 +213,7 @@ fun HeatMapAlimentsView(
                         horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
                     Text(
-                            text = "MIN uniquement:",
+                            text = translate("chart.heatmapMinOnlyToggle"),
                             style = MaterialTheme.typography.body2,
                             fontWeight = FontWeight.Medium
                     )
@@ -228,7 +228,7 @@ fun HeatMapAlimentsView(
                         horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
                     Text(
-                            text = "Coeff.:",
+                            text = translate("chart.heatmapCoefficientLabel"),
                             style = MaterialTheme.typography.body2,
                             fontWeight = FontWeight.Medium
                     )
@@ -416,7 +416,7 @@ fun HeatMapAlimentsView(
                         contentAlignment = Alignment.Center
                 ) {
                     Text(
-                            text = "Nutriment",
+                            text = translate("chart.heatmapNutrientHeader"),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
@@ -673,7 +673,7 @@ private suspend fun calculerHeatMapData(
     val alimentsHeatMap = alimentsAnalyses.map { data ->
         AlimentHeatMap(
                 aliment = data.aliment,
-                nom = data.aliment.nom ?: "Aliment ${data.numero}"
+                nom = data.aliment.nom ?: translate("chart.heatmapDefaultFoodName", data.numero.toString())
         )
     }
     

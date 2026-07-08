@@ -268,7 +268,7 @@ class SettingsViewModel(
     suspend fun importFromJsonBin(binIdOrUrl: String): ImportResult {
         return try {
             startApiImport()
-            appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_START))
+            appendApiImportLog(translate("settings.jsonbinLogStart"))
 
             // Créer le service de partage JSON
             val shareService = fr.vetbrain.vetnutri_mp.Service.createJsonShareService()
@@ -280,7 +280,7 @@ class SettingsViewModel(
                 binIdOrUrl.contains("jsonbin.io") -> {
                     shareService.extractBinIdFromUrl(binIdOrUrl) ?: run {
                         finishApiImport()
-                        return ImportResult.Error(translate(LocalizationKeys.Settings.JSONBIN_ERROR_EXTRACT_ID, binIdOrUrl))
+                        return ImportResult.Error(translate("settings.jsonbinErrorExtractId", binIdOrUrl))
                     }
                 }
                 else -> binIdOrUrl
@@ -288,10 +288,10 @@ class SettingsViewModel(
             val keyBase64 = qrPayload?.key
             val ivBase64 = qrPayload?.iv
             if (qrPayload != null) {
-                appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_QR_DETECTED, binId))
+                appendApiImportLog(translate("settings.jsonbinLogQrDetected", binId))
             }
 
-            appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_DOWNLOADING, binId))
+            appendApiImportLog(translate("settings.jsonbinLogDownloading", binId))
             updateApiImportProgress(0.1)
 
             // Télécharger le JSON depuis jsonbin.io
@@ -299,10 +299,10 @@ class SettingsViewModel(
 
             val jsonContent = downloadResult.getOrElse { error ->
                 finishApiImport()
-                return ImportResult.Error(translate(LocalizationKeys.Settings.JSONBIN_ERROR_DOWNLOAD, error.message ?: ""))
+                return ImportResult.Error(translate("settings.jsonbinErrorDownload", error.message ?: ""))
             }
 
-            appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_DOWNLOADED, jsonContent.length.toString()))
+            appendApiImportLog(translate("settings.jsonbinLogDownloaded", jsonContent.length.toString()))
             updateApiImportProgress(0.3)
             
             // Créer l'ExportImportRepository avec tous les repositories nécessaires
@@ -317,7 +317,7 @@ class SettingsViewModel(
                 conseilRepository = conseilRepository
             )
             
-            appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_PARSING))
+            appendApiImportLog(translate("settings.jsonbinLogParsing"))
             updateApiImportProgress(0.4)
             
             // Importer les données avec un listener de progression
@@ -341,8 +341,8 @@ class SettingsViewModel(
                            importCounts.references + importCounts.biblios + importCounts.rations + 
                            importCounts.recipes + importCounts.conseils
             
-            appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_SUCCESS))
-            appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_RESULT_COUNT, totalCount.toString()))
+            appendApiImportLog(translate("settings.jsonbinLogSuccess"))
+            appendApiImportLog(translate("settings.jsonbinLogResultCount", totalCount.toString()))
             
             finishApiImport()
             
@@ -358,8 +358,8 @@ class SettingsViewModel(
             )
         } catch (e: Exception) {
             finishApiImport()
-            appendApiImportLog(translate(LocalizationKeys.Settings.ERROR_FORMAT, e.message ?: ""))
-            ImportResult.Error(translate(LocalizationKeys.Settings.JSONBIN_ERROR_IMPORT, e.message ?: ""))
+            appendApiImportLog(translate("settings.errorFormat", e.message ?: ""))
+            ImportResult.Error(translate("settings.jsonbinErrorImport", e.message ?: ""))
         }
     }
 
@@ -370,15 +370,15 @@ class SettingsViewModel(
     fun importNutritionalRequirementsFromFileUI() {
         try {
             // Lancer l'importation avec feedback dans SettingsViewModel
-            _nutritionalRequirementMessage.value = translate(LocalizationKeys.Settings.NUTRITIONAL_REQ_SELECTING_FILE)
+            _nutritionalRequirementMessage.value = translate("settings.nutritionalReqSelectingFile")
 
             // Créer un ImportViewModel temporaire avec les repositories nécessaires
             // Note: Nous devons utiliser l'ImportViewModel car il a les bons repositories
             // Cette fonction devrait plutôt être appelée depuis l'ImportViewModel
             _nutritionalRequirementMessage.value =
-                    translate(LocalizationKeys.Settings.NUTRITIONAL_REQ_WRONG_VIEWMODEL)
+                    translate("settings.nutritionalReqWrongViewModel")
         } catch (e: Exception) {
-            _nutritionalRequirementMessage.value = translate(LocalizationKeys.Settings.ERROR_FORMAT, e.message ?: "")
+            _nutritionalRequirementMessage.value = translate("settings.errorFormat", e.message ?: "")
         }
     }
 
@@ -511,11 +511,11 @@ class SettingsViewModel(
             }
         }
 
-        attemptReset(translate(LocalizationKeys.Settings.RESET_STEP_ANIMALS)) { clearAllAnimals() }
-        attemptReset(translate(LocalizationKeys.Settings.RESET_STEP_FOODS)) { clearAllFoods() }
-        attemptReset(translate(LocalizationKeys.Settings.RESET_STEP_REFERENCES)) { clearAllReferences() }
-        attemptReset(translate(LocalizationKeys.Settings.RESET_STEP_EQUATIONS)) { clearAllEquations() }
-        attemptReset(translate(LocalizationKeys.Settings.RESET_STEP_BIBLIO)) { clearAllBiblioRefs() }
+        attemptReset(translate("settings.resetStepAnimals")) { clearAllAnimals() }
+        attemptReset(translate("settings.resetStepFoods")) { clearAllFoods() }
+        attemptReset(translate("settings.resetStepReferences")) { clearAllReferences() }
+        attemptReset(translate("settings.resetStepEquations")) { clearAllEquations() }
+        attemptReset(translate("settings.resetStepBiblio")) { clearAllBiblioRefs() }
 
         val importResult = relaunchAutomaticImport(forceImport = true)
 
@@ -542,7 +542,7 @@ class SettingsViewModel(
                     ImportResult.Error(
                         buildString {
                             append(importResult.message)
-                            append(translate(LocalizationKeys.Settings.RESET_PARTIAL_SUFFIX))
+                            append(translate("settings.resetPartialSuffix"))
                             append(resetErrors.joinToString("; "))
                         }
                     )
@@ -654,13 +654,13 @@ class SettingsViewModel(
                     } catch (e: Exception) {
                         log("❌ ERREUR: Fichier introuvable - ${e.message}")
                         throw IllegalStateException(
-                                translate(LocalizationKeys.Settings.IMPORT_FILE_NOT_FOUND, e.message ?: "")
+                                translate("settings.importFileNotFound", e.message ?: "")
                         )
                     }
 
             if (json.isEmpty()) {
                 log("❌ ERREUR: Le fichier JSON est vide")
-                throw IllegalStateException(translate(LocalizationKeys.Settings.IMPORT_FILE_EMPTY))
+                throw IllegalStateException(translate("settings.importFileEmpty"))
             }
 
             // Lancer l'import avec un listener de progression
@@ -735,7 +735,7 @@ class SettingsViewModel(
             log("Stack trace:")
             e.printStackTrace()
             log("=".repeat(60))
-            ImportResult.Error(translate(LocalizationKeys.Settings.AUTO_IMPORT_ERROR_FORMAT, e.message ?: ""))
+            ImportResult.Error(translate("settings.autoImportErrorFormat", e.message ?: ""))
         }
     }
 
