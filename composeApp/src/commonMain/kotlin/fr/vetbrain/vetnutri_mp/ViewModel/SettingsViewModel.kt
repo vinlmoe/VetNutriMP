@@ -17,6 +17,8 @@ import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodImportResult
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -266,11 +268,11 @@ class SettingsViewModel(
     suspend fun importFromJsonBin(binIdOrUrl: String): ImportResult {
         return try {
             startApiImport()
-            appendApiImportLog("🔄 Début de l'import depuis jsonbin.io...")
-            
+            appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_START))
+
             // Créer le service de partage JSON
             val shareService = fr.vetbrain.vetnutri_mp.Service.createJsonShareService()
-            
+
             // Support QR JSON chiffré {binId, key, iv}
             val qrPayload = shareService.parseQrPayload(binIdOrUrl)
             val binId = when {
@@ -278,7 +280,7 @@ class SettingsViewModel(
                 binIdOrUrl.contains("jsonbin.io") -> {
                     shareService.extractBinIdFromUrl(binIdOrUrl) ?: run {
                         finishApiImport()
-                        return ImportResult.Error("Impossible d'extraire l'ID du bin depuis l'URL: $binIdOrUrl")
+                        return ImportResult.Error(translate(LocalizationKeys.Settings.JSONBIN_ERROR_EXTRACT_ID, binIdOrUrl))
                     }
                 }
                 else -> binIdOrUrl
@@ -286,21 +288,21 @@ class SettingsViewModel(
             val keyBase64 = qrPayload?.key
             val ivBase64 = qrPayload?.iv
             if (qrPayload != null) {
-                appendApiImportLog("🔐 QR chiffré détecté (bin: $binId)")
+                appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_QR_DETECTED, binId))
             }
-            
-            appendApiImportLog("📥 Téléchargement du bin: $binId")
+
+            appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_DOWNLOADING, binId))
             updateApiImportProgress(0.1)
-            
+
             // Télécharger le JSON depuis jsonbin.io
             val downloadResult = shareService.downloadJson(binId, keyBase64, ivBase64)
-            
+
             val jsonContent = downloadResult.getOrElse { error ->
                 finishApiImport()
-                return ImportResult.Error("Erreur lors du téléchargement depuis jsonbin.io: ${error.message}")
+                return ImportResult.Error(translate(LocalizationKeys.Settings.JSONBIN_ERROR_DOWNLOAD, error.message ?: ""))
             }
-            
-            appendApiImportLog("✅ JSON téléchargé (${jsonContent.length} caractères)")
+
+            appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_DOWNLOADED, jsonContent.length.toString()))
             updateApiImportProgress(0.3)
             
             // Créer l'ExportImportRepository avec tous les repositories nécessaires
@@ -315,7 +317,7 @@ class SettingsViewModel(
                 conseilRepository = conseilRepository
             )
             
-            appendApiImportLog("🔄 Parsing et import des données...")
+            appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_PARSING))
             updateApiImportProgress(0.4)
             
             // Importer les données avec un listener de progression
@@ -339,8 +341,8 @@ class SettingsViewModel(
                            importCounts.references + importCounts.biblios + importCounts.rations + 
                            importCounts.recipes + importCounts.conseils
             
-            appendApiImportLog("✅ Import terminé avec succès!")
-            appendApiImportLog("📊 Résultat: $totalCount éléments importés")
+            appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_SUCCESS))
+            appendApiImportLog(translate(LocalizationKeys.Settings.JSONBIN_LOG_RESULT_COUNT, totalCount.toString()))
             
             finishApiImport()
             
@@ -356,8 +358,8 @@ class SettingsViewModel(
             )
         } catch (e: Exception) {
             finishApiImport()
-            appendApiImportLog("❌ Erreur: ${e.message}")
-            ImportResult.Error("Erreur lors de l'import depuis jsonbin.io: ${e.message}")
+            appendApiImportLog(translate(LocalizationKeys.Settings.ERROR_FORMAT, e.message ?: ""))
+            ImportResult.Error(translate(LocalizationKeys.Settings.JSONBIN_ERROR_IMPORT, e.message ?: ""))
         }
     }
 
@@ -368,15 +370,15 @@ class SettingsViewModel(
     fun importNutritionalRequirementsFromFileUI() {
         try {
             // Lancer l'importation avec feedback dans SettingsViewModel
-            _nutritionalRequirementMessage.value = "🔄 Sélection du fichier en cours..."
+            _nutritionalRequirementMessage.value = translate(LocalizationKeys.Settings.NUTRITIONAL_REQ_SELECTING_FILE)
 
             // Créer un ImportViewModel temporaire avec les repositories nécessaires
             // Note: Nous devons utiliser l'ImportViewModel car il a les bons repositories
             // Cette fonction devrait plutôt être appelée depuis l'ImportViewModel
             _nutritionalRequirementMessage.value =
-                    "❌ Cette fonction doit être appelée depuis l'ImportViewModel qui a accès aux repositories nécessaires."
+                    translate(LocalizationKeys.Settings.NUTRITIONAL_REQ_WRONG_VIEWMODEL)
         } catch (e: Exception) {
-            _nutritionalRequirementMessage.value = "❌ Erreur: ${e.message}"
+            _nutritionalRequirementMessage.value = translate(LocalizationKeys.Settings.ERROR_FORMAT, e.message ?: "")
         }
     }
 
@@ -505,15 +507,15 @@ class SettingsViewModel(
             try {
                 action()
             } catch (e: Exception) {
-                resetErrors += "$step: ${e.message ?: "erreur inconnue"}"
+                resetErrors += "$step: ${e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR)}"
             }
         }
 
-        attemptReset("suppression des animaux") { clearAllAnimals() }
-        attemptReset("suppression des aliments") { clearAllFoods() }
-        attemptReset("suppression des références") { clearAllReferences() }
-        attemptReset("suppression des équations") { clearAllEquations() }
-        attemptReset("suppression des bibliographies") { clearAllBiblioRefs() }
+        attemptReset(translate(LocalizationKeys.Settings.RESET_STEP_ANIMALS)) { clearAllAnimals() }
+        attemptReset(translate(LocalizationKeys.Settings.RESET_STEP_FOODS)) { clearAllFoods() }
+        attemptReset(translate(LocalizationKeys.Settings.RESET_STEP_REFERENCES)) { clearAllReferences() }
+        attemptReset(translate(LocalizationKeys.Settings.RESET_STEP_EQUATIONS)) { clearAllEquations() }
+        attemptReset(translate(LocalizationKeys.Settings.RESET_STEP_BIBLIO)) { clearAllBiblioRefs() }
 
         val importResult = relaunchAutomaticImport(forceImport = true)
 
@@ -540,7 +542,7 @@ class SettingsViewModel(
                     ImportResult.Error(
                         buildString {
                             append(importResult.message)
-                            append(" | Réinitialisation partielle: ")
+                            append(translate(LocalizationKeys.Settings.RESET_PARTIAL_SUFFIX))
                             append(resetErrors.joinToString("; "))
                         }
                     )
