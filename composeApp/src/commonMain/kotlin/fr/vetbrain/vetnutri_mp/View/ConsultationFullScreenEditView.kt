@@ -383,6 +383,62 @@ fun ConsultationFullScreenEditView(
                                 }
                         }
 
+                        // Section Note d'État Corporel
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = AppSizes.elevationSmall,
+                                backgroundColor = VetNutriColors.Surface
+                        ) {
+                                Column(
+                                        modifier = Modifier.padding(AppSizes.paddingLarge),
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingMedium)
+                                ) {
+                                        Text(
+                                                text = ConsultationEdit.BCS_SECTION_TITLE.translate(),
+                                                style = MaterialTheme.typography.h6,
+                                                color = VetNutriColors.Primary
+                                        )
+
+                                        Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
+
+                                        // Sélecteur de BCS
+                                        ScoreSelector(
+                                                label = ConsultationEdit.BCS_SELECTOR_LABEL.translate(),
+                                                valeurSelectionnee =
+                                                        editedConsultation.BCS?.toDouble(),
+                                                onScoreSelected = { score ->
+                                                        editedConsultation =
+                                                                editedConsultation.copy(
+                                                                        BCS = score?.toInt()
+                                                                )
+                                                },
+                                                plageScore = 1..9,
+                                                descriptions =
+                                                        mapOf(
+                                                                1 to
+                                                                        ConsultationEdit.BCS_DESC_1.translate(),
+                                                                2 to
+                                                                        ConsultationEdit.BCS_DESC_2.translate(),
+                                                                3 to
+                                                                        ConsultationEdit.BCS_DESC_3.translate(),
+                                                                4 to
+                                                                        ConsultationEdit.BCS_DESC_4.translate(),
+                                                                5 to
+                                                                        ConsultationEdit.BCS_DESC_5.translate(),
+                                                                6 to
+                                                                        ConsultationEdit.BCS_DESC_6.translate(),
+                                                                7 to
+                                                                        ConsultationEdit.BCS_DESC_7.translate(),
+                                                                8 to
+                                                                        ConsultationEdit.BCS_DESC_8.translate(),
+                                                                9 to
+                                                                        ConsultationEdit.BCS_DESC_9.translate()
+                                                        )
+                                        )
+                                }
+                        }
+
                         // Poids idéal
                         var idealWeightText by
                                 remember(consultation) {
@@ -562,6 +618,139 @@ fun ConsultationFullScreenEditView(
                                 modifier = Modifier.fillMaxWidth()
                         )
 
+                        // Section Mots-clés
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = AppSizes.elevationSmall,
+                                backgroundColor = VetNutriColors.Surface
+                        ) {
+                                Column(
+                                        modifier = Modifier.padding(AppSizes.paddingLarge),
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingMedium)
+                                ) {
+                                        Text(
+                                                text = ConsultationEdit.KEYWORDS_SECTION_TITLE.translate(),
+                                                style = MaterialTheme.typography.h6,
+                                                color = VetNutriColors.Primary
+                                        )
+
+                                        Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
+
+                                        if (editedConsultation.keywordIds.isNotEmpty()) {
+                                                Column(
+                                                        verticalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                ) {
+                                                        editedConsultation.keywordIds.forEach {
+                                                                keywordId ->
+                                                                val keywordLabel =
+                                                                        keywordsById[keywordId]
+                                                                                ?.label
+                                                                                ?: ConsultationEdit.KEYWORDS_UNKNOWN.translate()
+
+                                                                Card(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Surface
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.7f
+                                                                                        ),
+                                                                        elevation = 2.dp
+                                                                ) {
+                                                                        Row(
+                                                                                modifier =
+                                                                                        Modifier.padding(
+                                                                                                AppSizes.paddingMedium
+                                                                                        ),
+                                                                                horizontalArrangement =
+                                                                                        Arrangement
+                                                                                                .SpaceBetween,
+                                                                                verticalAlignment =
+                                                                                        Alignment
+                                                                                                .CenterVertically
+                                                                        ) {
+                                                                                Text(
+                                                                                        text = keywordLabel,
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .body1,
+                                                                                        fontWeight =
+                                                                                                FontWeight
+                                                                                                        .Bold,
+                                                                                        modifier =
+                                                                                                Modifier.weight(
+                                                                                                        1f
+                                                                                                )
+                                                                                )
+                                                                                IconButtonWithTooltip(
+                                                                                        onClick = {
+                                                                                                val updatedKeywords =
+                                                                                                        editedConsultation
+                                                                                                                .keywordIds
+                                                                                                                .toMutableList()
+                                                                                                updatedKeywords.remove(
+                                                                                                        keywordId
+                                                                                                )
+                                                                                                editedConsultation =
+                                                                                                        editedConsultation
+                                                                                                                .copy(
+                                                                                                                        keywordIds =
+                                                                                                                                updatedKeywords
+                                                                                                                )
+                                                                                        },
+                                                                                        imageVector = AppIcons.Delete,
+                                                                                        contentDescription = ConsultationEdit.KEYWORDS_DELETE_TOOLTIP.translate(),
+                                                                                        tooltip = ConsultationEdit.KEYWORDS_DELETE_TOOLTIP.translate(),
+                                                                                        tint = Color.Red
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        } else {
+                                                Text(
+                                                        text = ConsultationEdit.KEYWORDS_NONE.translate(),
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = Color.Gray
+                                                )
+                                        }
+
+                                        OutlinedButton(
+                                                onClick = { showKeywordDialog = true },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors =
+                                                        ButtonDefaults.outlinedButtonColors(
+                                                                contentColor =
+                                                                        VetNutriColors.Primary
+                                                        )
+                                        ) {
+                                                Icon(
+                                                        AppIcons.Add,
+                                                        contentDescription =
+                                                                ConsultationEdit.KEYWORDS_ADD.translate(),
+                                                        modifier =
+                                                                Modifier.size(
+                                                                        AppSizes.iconSizeSmall
+                                                                )
+                                                )
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.width(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                )
+                                                Text(ConsultationEdit.KEYWORDS_ADD.translate())
+                                        }
+                                }
+                        }
+
                         // Observations
                         AppTextField(
                                 value = editedConsultation.observation,
@@ -575,62 +764,6 @@ fun ConsultationFullScreenEditView(
                                 maxLines = 6,
                                 singleLine = false
                         )
-
-                        // Section Note d'État Corporel
-                        Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                elevation = AppSizes.elevationSmall,
-                                backgroundColor = VetNutriColors.Surface
-                        ) {
-                                Column(
-                                        modifier = Modifier.padding(AppSizes.paddingLarge),
-                                        verticalArrangement =
-                                                Arrangement.spacedBy(AppSizes.paddingMedium)
-                                ) {
-                                        Text(
-                                                text = ConsultationEdit.BCS_SECTION_TITLE.translate(),
-                                                style = MaterialTheme.typography.h6,
-                                                color = VetNutriColors.Primary
-                                        )
-
-                                        Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
-
-                                        // Sélecteur de BCS
-                                        ScoreSelector(
-                                                label = ConsultationEdit.BCS_SELECTOR_LABEL.translate(),
-                                                valeurSelectionnee =
-                                                        editedConsultation.BCS?.toDouble(),
-                                                onScoreSelected = { score ->
-                                                        editedConsultation =
-                                                                editedConsultation.copy(
-                                                                        BCS = score?.toInt()
-                                                                )
-                                                },
-                                                plageScore = 1..9,
-                                                descriptions =
-                                                        mapOf(
-                                                                1 to
-                                                                        ConsultationEdit.BCS_DESC_1.translate(),
-                                                                2 to
-                                                                        ConsultationEdit.BCS_DESC_2.translate(),
-                                                                3 to
-                                                                        ConsultationEdit.BCS_DESC_3.translate(),
-                                                                4 to
-                                                                        ConsultationEdit.BCS_DESC_4.translate(),
-                                                                5 to
-                                                                        ConsultationEdit.BCS_DESC_5.translate(),
-                                                                6 to
-                                                                        ConsultationEdit.BCS_DESC_6.translate(),
-                                                                7 to
-                                                                        ConsultationEdit.BCS_DESC_7.translate(),
-                                                                8 to
-                                                                        ConsultationEdit.BCS_DESC_8.translate(),
-                                                                9 to
-                                                                        ConsultationEdit.BCS_DESC_9.translate()
-                                                        )
-                                        )
-                                }
-                        }
 
                         // Section Références Nutritionnelles
                         Card(
@@ -818,139 +951,6 @@ fun ConsultationFullScreenEditView(
                                                                 )
                                                 )
                                                 Text(ConsultationEdit.REF_ADD_DISEASE.translate())
-                                        }
-                                }
-                        }
-
-                        // Section Mots-clés
-                        Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                elevation = AppSizes.elevationSmall,
-                                backgroundColor = VetNutriColors.Surface
-                        ) {
-                                Column(
-                                        modifier = Modifier.padding(AppSizes.paddingLarge),
-                                        verticalArrangement =
-                                                Arrangement.spacedBy(AppSizes.paddingMedium)
-                                ) {
-                                        Text(
-                                                text = ConsultationEdit.KEYWORDS_SECTION_TITLE.translate(),
-                                                style = MaterialTheme.typography.h6,
-                                                color = VetNutriColors.Primary
-                                        )
-
-                                        Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
-
-                                        if (editedConsultation.keywordIds.isNotEmpty()) {
-                                                Column(
-                                                        verticalArrangement =
-                                                                Arrangement.spacedBy(
-                                                                        AppSizes.paddingSmall
-                                                                )
-                                                ) {
-                                                        editedConsultation.keywordIds.forEach {
-                                                                keywordId ->
-                                                                val keywordLabel =
-                                                                        keywordsById[keywordId]
-                                                                                ?.label
-                                                                                ?: ConsultationEdit.KEYWORDS_UNKNOWN.translate()
-
-                                                                Card(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        backgroundColor =
-                                                                                VetNutriColors
-                                                                                        .Surface
-                                                                                        .copy(
-                                                                                                alpha =
-                                                                                                        0.7f
-                                                                                        ),
-                                                                        elevation = 2.dp
-                                                                ) {
-                                                                        Row(
-                                                                                modifier =
-                                                                                        Modifier.padding(
-                                                                                                AppSizes.paddingMedium
-                                                                                        ),
-                                                                                horizontalArrangement =
-                                                                                        Arrangement
-                                                                                                .SpaceBetween,
-                                                                                verticalAlignment =
-                                                                                        Alignment
-                                                                                                .CenterVertically
-                                                                        ) {
-                                                                                Text(
-                                                                                        text = keywordLabel,
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .body1,
-                                                                                        fontWeight =
-                                                                                                FontWeight
-                                                                                                        .Bold,
-                                                                                        modifier =
-                                                                                                Modifier.weight(
-                                                                                                        1f
-                                                                                                )
-                                                                                )
-                                                                                IconButtonWithTooltip(
-                                                                                        onClick = {
-                                                                                                val updatedKeywords =
-                                                                                                        editedConsultation
-                                                                                                                .keywordIds
-                                                                                                                .toMutableList()
-                                                                                                updatedKeywords.remove(
-                                                                                                        keywordId
-                                                                                                )
-                                                                                                editedConsultation =
-                                                                                                        editedConsultation
-                                                                                                                .copy(
-                                                                                                                        keywordIds =
-                                                                                                                                updatedKeywords
-                                                                                                                )
-                                                                                        },
-                                                                                        imageVector = AppIcons.Delete,
-                                                                                        contentDescription = ConsultationEdit.KEYWORDS_DELETE_TOOLTIP.translate(),
-                                                                                        tooltip = ConsultationEdit.KEYWORDS_DELETE_TOOLTIP.translate(),
-                                                                                        tint = Color.Red
-                                                                                )
-                                                                        }
-                                                                }
-                                                        }
-                                                }
-                                        } else {
-                                                Text(
-                                                        text = ConsultationEdit.KEYWORDS_NONE.translate(),
-                                                        style = MaterialTheme.typography.body2,
-                                                        color = Color.Gray
-                                                )
-                                        }
-
-                                        OutlinedButton(
-                                                onClick = { showKeywordDialog = true },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                colors =
-                                                        ButtonDefaults.outlinedButtonColors(
-                                                                contentColor =
-                                                                        VetNutriColors.Primary
-                                                        )
-                                        ) {
-                                                Icon(
-                                                        AppIcons.Add,
-                                                        contentDescription =
-                                                                ConsultationEdit.KEYWORDS_ADD.translate(),
-                                                        modifier =
-                                                                Modifier.size(
-                                                                        AppSizes.iconSizeSmall
-                                                                )
-                                                )
-                                                Spacer(
-                                                        modifier =
-                                                                Modifier.width(
-                                                                        AppSizes.paddingSmall
-                                                                )
-                                                )
-                                                Text(ConsultationEdit.KEYWORDS_ADD.translate())
                                         }
                                 }
                         }
