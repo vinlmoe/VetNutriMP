@@ -133,7 +133,7 @@ fun SectionAlimentsRation(
                                                                 selectedRation?.let { ration ->
                                                                         val text = genererTexteRationPressePapier(ration)
                                                                         clipboardManager.setText(AnnotatedString(text))
-                                                                        showSnackbar("Ration copiée dans le presse-papier")
+                                                                        showSnackbar(translate(LocalizationKeys.Ration.COPIED_TO_CLIPBOARD))
                                                                 }
                                                         }
                                                 )
@@ -269,7 +269,7 @@ fun SectionAlimentsRation(
                                                                                                                 e:
                                                                                                                         Exception) {
                                                                                                                 showSnackbar(
-                                                                                                                        translate(LocalizationKeys.AnalNut.ADJUST_ERROR, e.message ?: "Unknown error")
+                                                                                                                        translate(LocalizationKeys.AnalNut.ADJUST_ERROR, e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR))
                                                                                                                 )
                                                                                                         }
                                                                                                 }

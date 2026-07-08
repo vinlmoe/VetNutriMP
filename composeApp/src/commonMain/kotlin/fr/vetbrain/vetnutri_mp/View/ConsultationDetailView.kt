@@ -15,9 +15,13 @@ import fr.vetbrain.vetnutri_mp.Components.AppTextField
 import fr.vetbrain.vetnutri_mp.Components.NumberTextField
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnalNut
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.ConsultationEdit
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Reference
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -87,14 +91,14 @@ fun AppConsultationDetailView(
                                                         onSave(editedConsultation)
                                                 } else if (editedConsultation.date == null) {
                                                         showDateError = true
-                                                        dateErrorMessage = "La date est obligatoire"
+                                                        dateErrorMessage = ConsultationEdit.DATE_REQUIRED.translate()
                                                 }
                                         },
                                         backgroundColor = VetNutriColors.Primary
                                 ) {
                                         Icon(
                                                 imageVector = AppIcons.Check,
-                                                contentDescription = "Valider la consultation",
+                                                contentDescription = ConsultationEdit.CONFIRM_VALIDE.translate(),
                                                 tint = VetNutriColors.OnPrimary
                                         )
                                 }
@@ -112,7 +116,7 @@ fun AppConsultationDetailView(
                         Text(
                                 text =
                                         if (isNewConsultation) General.ADD.translate()
-                                        else "Détails de la consultation",
+                                        else translate("consultationDetail.title"),
                                 style = MaterialTheme.typography.h6
                         )
 
@@ -163,7 +167,7 @@ fun AppConsultationDetailView(
                                                 } catch (e: Exception) {
                                                         showWeightError = true
                                                         weightErrorMessage =
-                                                                "Format de poids invalide (nombre décimal)"
+                                                                ConsultationEdit.FORMAT_WEIGHT_ERROR.translate()
                                                 }
                                         },
                                         label = Animal.WEIGHT.translate(),
@@ -206,7 +210,7 @@ fun AppConsultationDetailView(
                                 // Mode affichage pour consultation existante
                                 InfoRow(
                                         label = Consultation.DATE.translate(),
-                                        value = consultation?.date?.toString() ?: "Non renseignée"
+                                        value = consultation?.date?.toString() ?: translate("consultationDetail.dateNotSpecified")
                                 )
 
                                 InfoRow(
@@ -214,16 +218,16 @@ fun AppConsultationDetailView(
                                         value =
                                                 if (consultation?.weight != null)
                                                         "${consultation.weight} kg"
-                                                else "Non renseigné"
+                                                else General.NOT_SPECIFIED.translate()
                                 )
 
                                 InfoRow(
                                         label = Consultation.OBJECTIVE.translate(),
                                         value =
                                                 consultation?.objectConsult?.ifBlank {
-                                                        "Non renseigné"
+                                                        General.NOT_SPECIFIED.translate()
                                                 }
-                                                        ?: "Non renseigné"
+                                                        ?: General.NOT_SPECIFIED.translate()
                                 )
 
                                 // Observations avec plus d'espace
@@ -244,9 +248,9 @@ fun AppConsultationDetailView(
                                                 Text(
                                                         text =
                                                                 consultation?.observation?.ifBlank {
-                                                                        "Aucune observation"
+                                                                        translate("consultationDetail.noObservation")
                                                                 }
-                                                                        ?: "Aucune observation",
+                                                                        ?: translate("consultationDetail.noObservation"),
                                                         style = MaterialTheme.typography.body1,
                                                         modifier =
                                                                 Modifier.padding(
@@ -269,7 +273,7 @@ fun AppConsultationDetailView(
                                                 Arrangement.spacedBy(AppSizes.paddingSmall)
                                 ) {
                                         Text(
-                                                text = "Note d'État Corporel (BCS)",
+                                                text = ConsultationEdit.BCS_SECTION_TITLE.translate(),
                                                 style = MaterialTheme.typography.h6,
                                                 color = VetNutriColors.Primary
                                         )
@@ -282,10 +286,10 @@ fun AppConsultationDetailView(
                                         val bcsDescription = getBCSDescription(bcsValue)
 
                                         InfoRow(
-                                                label = "Note BCS",
+                                                label = translate("consultationDetail.bcsScoreLabel"),
                                                 value =
                                                         if (bcsValue != null) "$bcsValue/9"
-                                                        else "Non renseigné"
+                                                        else General.NOT_SPECIFIED.translate()
                                         )
 
                                         if (bcsValue != null) {
@@ -315,7 +319,7 @@ fun AppConsultationDetailView(
                                                 Arrangement.spacedBy(AppSizes.paddingSmall)
                                 ) {
                                         Text(
-                                                text = "Valeurs métaboliques et énergétiques",
+                                                text = translate("consultationDetail.metabolicEnergyTitle"),
                                                 style = MaterialTheme.typography.h6,
                                                 color = VetNutriColors.Primary
                                         )
@@ -326,21 +330,21 @@ fun AppConsultationDetailView(
                                                 // Mode édition - champs éditables pour nouvelle
                                                 // consultation
                                                 InfoRow(
-                                                        label = "Poids métabolique",
-                                                        value = "Non calculé"
+                                                        label = AnalNut.WEIGHT_METABOLIC.translate(),
+                                                        value = General.NOT_CALCULATED.translate()
                                                 )
                                                 InfoRow(
-                                                        label = "Besoin énergétique à l'entretien",
-                                                        value = "Non calculé"
+                                                        label = translate("consultationDetail.energyMaintenanceLabel"),
+                                                        value = General.NOT_CALCULATED.translate()
                                                 )
                                                 InfoRow(
-                                                        label = "Besoin énergétique",
-                                                        value = "Non calculé"
+                                                        label = translate("consultationDetail.energyLabel"),
+                                                        value = General.NOT_CALCULATED.translate()
                                                 )
 
                                                 // Section Coefficients
                                                 Text(
-                                                        text = "Coefficients",
+                                                        text = AnalNut.COEFFICIENTS_TITLE.translate(),
                                                         style = MaterialTheme.typography.subtitle2,
                                                         fontWeight = FontWeight.Bold,
                                                         modifier =
@@ -356,34 +360,34 @@ fun AppConsultationDetailView(
                                                 ) {
                                                         Column(modifier = Modifier.weight(1f)) {
                                                                 InfoRow(
-                                                                        label = "Coefficient 1",
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "1"),
                                                                         value =
                                                                                 consultation
                                                                                         ?.k1Value
                                                                                         ?.let {
                                                                                                 NumberUtils.format(it, 2)
                                                                                         }
-                                                                                        ?: "Non défini"
+                                                                                        ?: Reference.NOT_DEFINED.translate()
                                                                 )
                                                                 InfoRow(
-                                                                        label = "Coefficient 2",
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "2"),
                                                                         value =
                                                                                 consultation
                                                                                         ?.k2Value
                                                                                         ?.let {
                                                                                                 NumberUtils.format(it, 2)
                                                                                         }
-                                                                                        ?: "Non défini"
+                                                                                        ?: Reference.NOT_DEFINED.translate()
                                                                 )
                                                                 InfoRow(
-                                                                        label = "Coefficient 3",
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "3"),
                                                                         value =
                                                                                 consultation
                                                                                         ?.k3Value
                                                                                         ?.let {
                                                                                                 NumberUtils.format(it, 2)
                                                                                         }
-                                                                                        ?: "Non défini"
+                                                                                        ?: Reference.NOT_DEFINED.translate()
                                                                 )
                                                         }
                                                         Spacer(
@@ -394,57 +398,57 @@ fun AppConsultationDetailView(
                                                         )
                                                         Column(modifier = Modifier.weight(1f)) {
                                                                 InfoRow(
-                                                                        label = "Coefficient 4",
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "4"),
                                                                         value =
                                                                                 consultation
                                                                                         ?.k4Value
                                                                                         ?.let {
                                                                                                 NumberUtils.format(it, 2)
                                                                                         }
-                                                                                        ?: "Non défini"
+                                                                                        ?: Reference.NOT_DEFINED.translate()
                                                                 )
                                                                 InfoRow(
-                                                                        label = "Coefficient 5",
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "5"),
                                                                         value =
                                                                                 consultation
                                                                                         ?.k5Value
                                                                                         ?.let {
                                                                                                 NumberUtils.format(it, 2)
                                                                                         }
-                                                                                        ?: "Non défini"
+                                                                                        ?: Reference.NOT_DEFINED.translate()
                                                                 )
                                                         }
                                                 }
                                         } else {
                                                 // Mode affichage - valeurs en lecture seule
                                                 InfoRow(
-                                                        label = "Poids métabolique",
+                                                        label = AnalNut.WEIGHT_METABOLIC.translate(),
                                                         value =
                                                                 poidsMetabolique?.let {
                                                                         NumberUtils.format(it, 2) + " kg"
                                                                 }
-                                                                        ?: "Non calculé"
+                                                                        ?: General.NOT_CALCULATED.translate()
                                                 )
                                                 InfoRow(
-                                                        label = "Besoin énergétique à l'entretien",
+                                                        label = translate("consultationDetail.energyMaintenanceLabel"),
                                                         value =
                                                                 besoinEnergetiqueStandard?.let {
                                                                         NumberUtils.format(it, 0) + " kcal/j"
                                                                 }
-                                                                        ?: "Non calculé"
+                                                                        ?: General.NOT_CALCULATED.translate()
                                                 )
                                                 InfoRow(
-                                                        label = "Besoin énergétique total",
+                                                        label = AnalNut.ENERGY_TOTAL.translate(),
                                                         value =
                                                                 besoinEnergetiqueTotal?.let {
                                                                         NumberUtils.format(it, 0) + " kcal/j"
                                                                 }
-                                                                        ?: "Non calculé"
+                                                                        ?: General.NOT_CALCULATED.translate()
                                                 )
 
                                                 // Section Coefficients
                                                 Text(
-                                                        text = "Coefficients",
+                                                        text = AnalNut.COEFFICIENTS_TITLE.translate(),
                                                         style = MaterialTheme.typography.subtitle2,
                                                         fontWeight = FontWeight.Bold,
                                                         modifier =
@@ -460,34 +464,34 @@ fun AppConsultationDetailView(
                                                 ) {
                                                         Column(modifier = Modifier.weight(1f)) {
                                                                 InfoRow(
-                                                                        label = "Coefficient 1",
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "1"),
                                                                         value =
                                                                                 consultation
                                                                                         ?.k1Value
                                                                                         ?.let {
                                                                                                 NumberUtils.format(it, 2)
                                                                                         }
-                                                                                        ?: "Non défini"
+                                                                                        ?: Reference.NOT_DEFINED.translate()
                                                                 )
                                                                 InfoRow(
-                                                                        label = "Coefficient 2",
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "2"),
                                                                         value =
                                                                                 consultation
                                                                                         ?.k2Value
                                                                                         ?.let {
                                                                                                 NumberUtils.format(it, 2)
                                                                                         }
-                                                                                        ?: "Non défini"
+                                                                                        ?: Reference.NOT_DEFINED.translate()
                                                                 )
                                                                 InfoRow(
-                                                                        label = "Coefficient 3",
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "3"),
                                                                         value =
                                                                                 consultation
                                                                                         ?.k3Value
                                                                                         ?.let {
                                                                                                 NumberUtils.format(it, 2)
                                                                                         }
-                                                                                        ?: "Non défini"
+                                                                                        ?: Reference.NOT_DEFINED.translate()
                                                                 )
                                                         }
                                                         Spacer(
@@ -498,24 +502,24 @@ fun AppConsultationDetailView(
                                                         )
                                                         Column(modifier = Modifier.weight(1f)) {
                                                                 InfoRow(
-                                                                        label = "Coefficient 4",
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "4"),
                                                                         value =
                                                                                 consultation
                                                                                         ?.k4Value
                                                                                         ?.let {
                                                                                                 NumberUtils.format(it, 2)
                                                                                         }
-                                                                                        ?: "Non défini"
+                                                                                        ?: Reference.NOT_DEFINED.translate()
                                                                 )
                                                                 InfoRow(
-                                                                        label = "Coefficient 5",
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "5"),
                                                                         value =
                                                                                 consultation
                                                                                         ?.k5Value
                                                                                         ?.let {
                                                                                                 NumberUtils.format(it, 2)
                                                                                         }
-                                                                                        ?: "Non défini"
+                                                                                        ?: Reference.NOT_DEFINED.translate()
                                                                 )
                                                         }
                                                 }
@@ -524,7 +528,7 @@ fun AppConsultationDetailView(
                         }
 
                         // Liste des rations
-                        Text(text = "Rations", style = MaterialTheme.typography.subtitle1)
+                        Text(text = AnimalDetail.RATIONS.translate(), style = MaterialTheme.typography.subtitle1)
 
                         if (isNewConsultation) {
                                 // Mode édition - affichage simple du nombre de rations
@@ -543,16 +547,16 @@ fun AppConsultationDetailView(
                                                 modifier = Modifier.padding(AppSizes.paddingMedium)
                                         ) {
                                                 InfoRow(
-                                                        label = "Total",
-                                                        value = "$rationCount ration(s)"
+                                                        label = translate("consultationDetail.totalLabel"),
+                                                        value = translate("consultationDetail.rationCountFormat", rationCount.toString())
                                                 )
                                                 InfoRow(
-                                                        label = "Actuelles",
-                                                        value = "$rationCountActuelle ration(s)"
+                                                        label = translate("consultationDetail.currentRationsLabel"),
+                                                        value = translate("consultationDetail.rationCountFormat", rationCountActuelle.toString())
                                                 )
                                                 InfoRow(
-                                                        label = "Proposées",
-                                                        value = "$rationCountProposee ration(s)"
+                                                        label = translate("consultationDetail.proposedRationsLabel"),
+                                                        value = translate("consultationDetail.rationCountFormat", rationCountProposee.toString())
                                                 )
                                         }
                                 }
@@ -573,16 +577,16 @@ fun AppConsultationDetailView(
                                                 modifier = Modifier.padding(AppSizes.paddingMedium)
                                         ) {
                                                 InfoRow(
-                                                        label = "Total",
-                                                        value = "$rationCount ration(s)"
+                                                        label = translate("consultationDetail.totalLabel"),
+                                                        value = translate("consultationDetail.rationCountFormat", rationCount.toString())
                                                 )
                                                 InfoRow(
-                                                        label = "Actuelles",
-                                                        value = "$rationCountActuelle ration(s)"
+                                                        label = translate("consultationDetail.currentRationsLabel"),
+                                                        value = translate("consultationDetail.rationCountFormat", rationCountActuelle.toString())
                                                 )
                                                 InfoRow(
-                                                        label = "Proposées",
-                                                        value = "$rationCountProposee ration(s)"
+                                                        label = translate("consultationDetail.proposedRationsLabel"),
+                                                        value = translate("consultationDetail.rationCountFormat", rationCountProposee.toString())
                                                 )
                                         }
                                 }
@@ -607,7 +611,7 @@ fun AppConsultationDetailView(
                                                 Arrangement.spacedBy(AppSizes.paddingSmall)
                                 ) {
                                         Text(
-                                                text = "Références nutritionnelles",
+                                                text = ConsultationEdit.REF_SECTION_TITLE.translate(),
                                                 style = MaterialTheme.typography.h6,
                                                 color = VetNutriColors.Primary
                                         )
@@ -619,7 +623,7 @@ fun AppConsultationDetailView(
                                                 // consultation
                                                 // Référence générale
                                                 Text(
-                                                        text = "Référence générale",
+                                                        text = ConsultationEdit.REF_GENERAL_SUBTITLE.translate(),
                                                         style = MaterialTheme.typography.subtitle2,
                                                         fontWeight = FontWeight.Bold
                                                 )
@@ -628,9 +632,9 @@ fun AppConsultationDetailView(
                                                         value =
                                                                 editedConsultation
                                                                         .referenceGeneraleId
-                                                                        ?: "Aucune référence sélectionnée",
+                                                                        ?: ConsultationEdit.REF_GENERAL_NONE.translate(),
                                                         onValueChange = {},
-                                                        label = { Text("Référence générale") },
+                                                        label = { Text(ConsultationEdit.REF_GENERAL_SUBTITLE.translate()) },
                                                         readOnly = true,
                                                         modifier = Modifier.fillMaxWidth(),
                                                         trailingIcon = {
@@ -645,7 +649,7 @@ fun AppConsultationDetailView(
                                                                         Icon(
                                                                                 AppIcons.ArrowDropDown,
                                                                                 contentDescription =
-                                                                                        "Sélectionner une référence"
+                                                                                        ConsultationEdit.REF_SELECT_TOOLTIP.translate()
                                                                         )
                                                                 }
                                                         }
@@ -660,7 +664,7 @@ fun AppConsultationDetailView(
 
                                                 // Références de maladies
                                                 Text(
-                                                        text = "Références de maladies",
+                                                        text = translate("consultationDetail.diseaseReferencesTitle"),
                                                         style = MaterialTheme.typography.subtitle2,
                                                         fontWeight = FontWeight.Bold
                                                 )
@@ -669,7 +673,7 @@ fun AppConsultationDetailView(
                                                 ) {
                                                         Text(
                                                                 text =
-                                                                        "Aucune référence complémentaire",
+                                                                        translate("consultationDetail.noComplementaryReference"),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,
@@ -708,7 +712,7 @@ fun AppConsultationDetailView(
                                                                                 ) {
                                                                                         Text(
                                                                                                 text =
-                                                                                                        "Référence: $referenceId",
+                                                                                                        translate("consultationDetail.referenceIdFormat", referenceId),
                                                                                                 style =
                                                                                                         MaterialTheme
                                                                                                                 .typography
@@ -729,7 +733,7 @@ fun AppConsultationDetailView(
                                                                                                 Icon(
                                                                                                         AppIcons.Delete,
                                                                                                         contentDescription =
-                                                                                                                "Supprimer la référence",
+                                                                                                                ConsultationEdit.REF_DELETE_TOOLTIP.translate(),
                                                                                                         tint =
                                                                                                                 Color.Red
                                                                                                 )
@@ -758,7 +762,7 @@ fun AppConsultationDetailView(
                                                         Icon(
                                                                 AppIcons.Add,
                                                                 contentDescription =
-                                                                        "Ajouter une référence complémentaire",
+                                                                        ConsultationEdit.REF_ADD_DISEASE.translate(),
                                                                 modifier =
                                                                         Modifier.size(
                                                                                 AppSizes.iconSizeSmall
@@ -770,30 +774,30 @@ fun AppConsultationDetailView(
                                                                                 AppSizes.paddingSmall
                                                                         )
                                                         )
-                                                        Text("Ajouter une référence complémentaire")
+                                                        Text(ConsultationEdit.REF_ADD_DISEASE.translate())
                                                 }
                                         } else {
                                                 // Mode affichage des références pour consultation
                                                 // existante
                                                 InfoRow(
-                                                        label = "Référence générale",
+                                                        label = ConsultationEdit.REF_GENERAL_SUBTITLE.translate(),
                                                         value =
                                                                 consultation?.referenceGeneraleId
                                                                         ?.let { id ->
                                                                                 if (id.isBlank())
-                                                                                        "Aucune"
+                                                                                        General.NONE.translate()
                                                                                 else
                                                                                         getReferenceNameById(
                                                                                                 id,
                                                                                                 availableReferences
                                                                                         )
                                                                         }
-                                                                        ?: "Aucune"
+                                                                        ?: General.NONE.translate()
                                                 )
 
                                                 Column(modifier = Modifier.fillMaxWidth()) {
                                                         Text(
-                                                                text = "Références de maladies :",
+                                                                text = translate("consultationDetail.diseaseReferencesTitleColon"),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .subtitle2,
@@ -810,7 +814,7 @@ fun AppConsultationDetailView(
                                                         ) {
                                                                 Text(
                                                                         text =
-                                                                                "Aucune référence complémentaire",
+                                                                                translate("consultationDetail.noComplementaryReference"),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -897,7 +901,7 @@ fun AppConsultationDetailView(
                                                 Text(
                                                         if (isNewConsultation)
                                                                 General.CANCEL.translate()
-                                                        else "Fermer"
+                                                        else General.CLOSE.translate()
                                                 )
                                         }
                                 }
@@ -911,16 +915,16 @@ fun AppConsultationDetailView(
 /** Fonction helper pour obtenir la description du BCS */
 private fun getBCSDescription(bcs: Int?): String {
         return when (bcs) {
-                1 -> "Très maigre - Côtes, vertèbres et os du bassin très saillants"
-                2 -> "Maigre - Côtes facilement palpables, graisse corporelle minimale"
-                3 -> "Mince - Côtes palpables avec une légère couche de graisse"
-                4 -> "Sous-optimal - Côtes palpables avec un peu d'effort"
-                5 -> "Idéal - Côtes palpables sans excès de graisse"
-                6 -> "Légèrement en surpoids - Côtes difficilement palpables"
-                7 -> "En surpoids - Côtes difficiles à palper, graisse visible"
-                8 -> "Obèse - Côtes non palpables, accumulation de graisse"
-                9 -> "Très obèse - Accumulation massive de graisse, problèmes de mobilité"
-                else -> "Non renseigné"
+                1 -> ConsultationEdit.BCS_DESC_1.translate()
+                2 -> translate("consultationDetail.bcsDesc2")
+                3 -> translate("consultationDetail.bcsDesc3")
+                4 -> translate("consultationDetail.bcsDesc4")
+                5 -> translate("consultationDetail.bcsDesc5")
+                6 -> translate("consultationDetail.bcsDesc6")
+                7 -> translate("consultationDetail.bcsDesc7")
+                8 -> translate("consultationDetail.bcsDesc8")
+                9 -> translate("consultationDetail.bcsDesc9")
+                else -> General.NOT_SPECIFIED.translate()
         }
 }
 
@@ -929,5 +933,5 @@ private fun getReferenceNameById(
         referenceId: String,
         availableReferences: List<ReferenceEv>
 ): String {
-        return availableReferences.find { it.uuid == referenceId }?.nom ?: "Référence inconnue"
+        return availableReferences.find { it.uuid == referenceId }?.nom ?: ConsultationEdit.REF_UNKNOWN.translate()
 }

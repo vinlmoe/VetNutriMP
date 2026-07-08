@@ -10,6 +10,8 @@ import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -77,7 +79,11 @@ fun ReferenceEvTabsView(
     }
 
     // Définir les onglets disponibles
-    val tabs = listOf("Informations", "Équations", "Besoins nutritionnels")
+    val tabs = listOf(
+            translate(LocalizationKeys.Reference.TABS_INFO),
+            translate(LocalizationKeys.Reference.TABS_EQUATIONS),
+            translate(LocalizationKeys.Reference.TABS_NUTRITIONAL_NEEDS)
+    )
 
     // Si la vue est intégrée, ne pas afficher de Scaffold ni de TopBar
     val content: @Composable (PaddingValues) -> Unit = { paddingValues ->
@@ -142,7 +148,7 @@ fun ReferenceEvTabsView(
         Scaffold(
                 topBar = {
                     TopBarSimple(
-                            title = "Référence : ${currentReferenceEv.nom}",
+                            title = translate(LocalizationKeys.Reference.TABS_TITLE_FORMAT, currentReferenceEv.nom),
                             onNavigateBack = onNavigateBack
                     )
                 }
@@ -170,7 +176,7 @@ fun PersonnalizedEquationView(equationViewModel: EquationViewModel, modifier: Mo
     Column(modifier = modifier.fillMaxWidth().padding(16.dp)) {
         // Poids corporel
         EquationDropdown(
-                label = "Équation de poids corporel",
+                label = translate(LocalizationKeys.Reference.TABS_LABEL_BODY_WEIGHT),
                 equations = equations,
                 selectedEquation =
                         equationViewModel.equationBW.collectAsState(initial = null).value,
@@ -183,7 +189,7 @@ fun PersonnalizedEquationView(equationViewModel: EquationViewModel, modifier: Mo
 
         // Dépense énergétique basale
         EquationDropdown(
-                label = "Équation de dépense énergétique basale",
+                label = translate(LocalizationKeys.Reference.TABS_LABEL_BASAL_ENERGY),
                 equations = equations,
                 selectedEquation =
                         equationViewModel.equationBEE.collectAsState(initial = null).value,
@@ -196,7 +202,7 @@ fun PersonnalizedEquationView(equationViewModel: EquationViewModel, modifier: Mo
 
         // Énergie métabolisable
         EquationDropdown(
-                label = "Équation d'énergie métabolisable",
+                label = translate(LocalizationKeys.Reference.TABS_LABEL_METABOLIZABLE_ENERGY),
                 equations = equations,
                 selectedEquation =
                         equationViewModel.equationME.collectAsState(initial = null).value,
@@ -209,7 +215,7 @@ fun PersonnalizedEquationView(equationViewModel: EquationViewModel, modifier: Mo
 
         // Énergie digestible commerciale
         EquationDropdown(
-                label = "Équation d'énergie digestible commerciale",
+                label = translate(LocalizationKeys.Reference.TABS_LABEL_COMMERCIAL_DIGESTIBLE_ENERGY),
                 equations = equations,
                 selectedEquation =
                         equationViewModel.equationDEcom.collectAsState(initial = null).value,
@@ -222,7 +228,7 @@ fun PersonnalizedEquationView(equationViewModel: EquationViewModel, modifier: Mo
 
         // Énergie digestible brute
         EquationDropdown(
-                label = "Équation d'énergie digestible brute",
+                label = translate(LocalizationKeys.Reference.TABS_LABEL_RAW_DIGESTIBLE_ENERGY),
                 equations = equations,
                 selectedEquation =
                         equationViewModel.equationDEraw.collectAsState(initial = null).value,
@@ -241,7 +247,7 @@ fun EquationDropdown(
         onEquationSelected: (Equation?) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val displayText = selectedEquation?.name ?: "Sélectionner une équation"
+    val displayText = selectedEquation?.name ?: translate(LocalizationKeys.NewReference.SELECT_EQUATION)
     
     // Debug temporaire pour DM sélectionné
     LaunchedEffect(selectedEquation) {
