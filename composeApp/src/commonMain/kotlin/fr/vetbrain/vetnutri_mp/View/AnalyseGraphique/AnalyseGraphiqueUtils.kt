@@ -174,7 +174,7 @@ suspend fun calculerNutrimentsRation(
                 return RationNutrimentData(
                         consultationDate = null, // Sera rempli plus tard
                         consultationId = ration.idConsult,
-                        rationName = ration.name.ifEmpty { "Ration ${ration.number}" },
+                        rationName = ration.name.ifEmpty { translate("graph.rationFallbackName", ration.number.toString()) },
                         rationId = ration.uuid,
                         numero = ration.number,
                         proteines = proteines,
@@ -411,7 +411,7 @@ suspend fun calculerPourcentagesEnergieRation(
                 return RationEnergyData(
                         consultationDate = null, // Sera rempli plus tard
                         consultationId = ration.idConsult,
-                        rationName = ration.name.ifEmpty { "Ration ${ration.number}" },
+                        rationName = ration.name.ifEmpty { translate("graph.rationFallbackName", ration.number.toString()) },
                         rationId = ration.uuid,
                         numero = ration.number,
                         proteineEnergyPercentage = pourcentageProteines,

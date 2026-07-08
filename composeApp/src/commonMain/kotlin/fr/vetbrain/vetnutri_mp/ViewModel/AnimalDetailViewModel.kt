@@ -15,6 +15,7 @@ import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
@@ -538,7 +539,7 @@ class AnimalDetailViewModel(
                             AnalyseResultat(
                                     rationId = rationActuelle.uuid,
                                     rationName = rationActuelle.name,
-                                    alertes = listOf("Cette ration ne contient aucun aliment")
+                                    alertes = listOf(translate(LocalizationKeys.AnalNut.RATION_EMPTY_ALERT))
                             )
                     return@launch
                 }
@@ -554,7 +555,7 @@ class AnimalDetailViewModel(
                         AnalyseResultat(
                                 rationId = rationActuelle.uuid,
                                 rationName = rationActuelle.name,
-                                alertes = listOf("Erreur lors de l'analyse: ${e.message}")
+                                alertes = listOf(translate(LocalizationKeys.AnalNut.ANALYSIS_ERROR_FORMAT, e.message ?: ""))
                         )
             } finally {
                 _isAnalyzing.value = false
@@ -638,84 +639,84 @@ class AnimalDetailViewModel(
      * @return Une chaîne formatée contenant le rapport d'analyse
      */
     fun genererRapportAnalyse(): String {
-        val analyse = _rationAnalyseResultat.value ?: return "Aucune analyse disponible"
-        val ration = _selectedRation.value ?: return "Aucune ration sélectionnée"
+        val analyse = _rationAnalyseResultat.value ?: return translate(LocalizationKeys.RationReport.NO_ANALYSIS_AVAILABLE)
+        val ration = _selectedRation.value ?: return translate(LocalizationKeys.AnalNut.NO_RATION_SELECTED)
 
         val rapport = StringBuilder()
 
         // En-tête
-        rapport.append("RAPPORT D'ANALYSE NUTRITIONNELLE\n")
+        rapport.append("${translate(LocalizationKeys.RationReport.TITLE)}\n")
         rapport.append("===============================\n\n")
 
         // Informations générales
-        rapport.append("Ration: ${analyse.rationName}\n")
-        rapport.append("Quantité totale: ${analyse.quantiteTotale}g\n")
-        rapport.append("Densité énergétique: ${analyse.densiteEnergetique} kcal/g\n\n")
+        rapport.append("${translate(LocalizationKeys.RationReport.RATION_FORMAT, analyse.rationName)}\n")
+        rapport.append("${translate(LocalizationKeys.RationReport.TOTAL_QUANTITY_FORMAT, analyse.quantiteTotale.toString())}\n")
+        rapport.append("${translate(LocalizationKeys.RationReport.ENERGY_DENSITY_FORMAT, analyse.densiteEnergetique.toString())}\n\n")
 
         // Scores
-        rapport.append("Score de complétude: ${analyse.completude.toInt()}%\n")
-        rapport.append("Score d'équilibre: ${analyse.equilibre.toInt()}%\n\n")
+        rapport.append("${translate(LocalizationKeys.RationReport.COMPLETENESS_SCORE_FORMAT, analyse.completude.toInt().toString())}\n")
+        rapport.append("${translate(LocalizationKeys.RationReport.BALANCE_SCORE_FORMAT, analyse.equilibre.toInt().toString())}\n\n")
 
         // Macronutriments
-        rapport.append("MACRONUTRIMENTS\n")
+        rapport.append("${translate(LocalizationKeys.RationReport.SECTION_MACRONUTRIENTS)}\n")
         rapport.append("--------------\n")
         analyse.macronutriments.forEach { (nutriment, valeur) ->
-            rapport.append("$nutriment: $valeur g\n")
+            rapport.append("${translate(LocalizationKeys.RationReport.NUTRIENT_GRAMS_FORMAT, nutriment.toString(), valeur.toString())}\n")
         }
         rapport.append("\n")
 
         // Minéraux
-        rapport.append("MINÉRAUX\n")
+        rapport.append("${translate(LocalizationKeys.RationReport.SECTION_MINERALS)}\n")
         rapport.append("--------\n")
         analyse.mineraux.forEach { (nutriment, valeur) ->
-            rapport.append("$nutriment: $valeur g\n")
+            rapport.append("${translate(LocalizationKeys.RationReport.NUTRIENT_GRAMS_FORMAT, nutriment.toString(), valeur.toString())}\n")
         }
         rapport.append("\n")
 
         // Vitamines
-        rapport.append("VITAMINES\n")
+        rapport.append("${translate(LocalizationKeys.RationReport.SECTION_VITAMINS)}\n")
         rapport.append("---------\n")
         analyse.vitamines.forEach { (nutriment, valeur) ->
-            rapport.append("$nutriment: $valeur UI/mg\n")
+            rapport.append("${translate(LocalizationKeys.RationReport.NUTRIENT_UI_MG_FORMAT, nutriment.toString(), valeur.toString())}\n")
         }
         rapport.append("\n")
 
         // Lipides
-        rapport.append("LIPIDES\n")
+        rapport.append("${translate(LocalizationKeys.RationReport.SECTION_LIPIDS)}\n")
         rapport.append("-------\n")
-        analyse.lipides.forEach { (nutriment, valeur) -> rapport.append("$nutriment: $valeur g\n") }
+        analyse.lipides.forEach { (nutriment, valeur) -> rapport.append("${translate(LocalizationKeys.RationReport.NUTRIENT_GRAMS_FORMAT, nutriment.toString(), valeur.toString())}\n") }
         rapport.append("\n")
 
         // Ratios
-        rapport.append("RATIOS NUTRITIONNELS\n")
+        rapport.append("${translate(LocalizationKeys.RationReport.SECTION_RATIOS)}\n")
         rapport.append("-------------------\n")
-        analyse.ratios.forEach { (ratio, valeur) -> rapport.append("$ratio: $valeur\n") }
+        analyse.ratios.forEach { (ratio, valeur) -> rapport.append("${translate(LocalizationKeys.RationReport.RATIO_FORMAT, ratio.toString(), valeur.toString())}\n") }
         rapport.append("\n")
 
         // Nutriments personnalisés
         if (analyse.customNutriments.isNotEmpty()) {
-            rapport.append("NUTRIMENTS PERSONNALISÉS\n")
+            rapport.append("${translate(LocalizationKeys.RationReport.SECTION_CUSTOM_NUTRIENTS)}\n")
             rapport.append("------------------------\n")
             analyse.customNutriments.forEach { (nutriment, valeur) ->
-                rapport.append("$nutriment: $valeur\n")
+                rapport.append("${translate(LocalizationKeys.RationReport.RATIO_FORMAT, nutriment.toString(), valeur.toString())}\n")
             }
             rapport.append("\n")
         }
 
         // Alertes
         if (analyse.alertes.isNotEmpty()) {
-            rapport.append("ALERTES\n")
+            rapport.append("${translate(LocalizationKeys.RationReport.SECTION_ALERTS)}\n")
             rapport.append("-------\n")
-            analyse.alertes.forEach { alerte -> rapport.append("- $alerte\n") }
+            analyse.alertes.forEach { alerte -> rapport.append("${translate(LocalizationKeys.RationReport.ALERT_ITEM_FORMAT, alerte.toString())}\n") }
             rapport.append("\n")
         }
 
         // Aliments de la ration
-        rapport.append("COMPOSITION DE LA RATION\n")
+        rapport.append("${translate(LocalizationKeys.RationReport.SECTION_RATION_COMPOSITION)}\n")
         rapport.append("----------------------\n")
         ration.alimentMutableList.forEach { aliment ->
             rapport.append(
-                    "- ${aliment.aliment?.nom ?: "Aliment sans nom"}: ${aliment.quantite}g\n"
+                    "${translate(LocalizationKeys.RationReport.RATION_FOOD_ITEM_FORMAT, aliment.aliment?.nom ?: translate(LocalizationKeys.RationReport.FOOD_NO_NAME), aliment.quantite.toString())}\n"
             )
         }
 
@@ -1057,7 +1058,7 @@ class AnimalDetailViewModel(
             // Créer une nouvelle ration avec un nom par défaut
             val newRation =
                     Ration(
-                            name = "Ration proposée",
+                            name = translate(RationKeys.PROPOSED_NAME),
                             actual = false,
                             alimentMutableList = mutableListOf()
                     )
@@ -1149,7 +1150,7 @@ class AnimalDetailViewModel(
             val duplicatedRation =
                     ration.copy(
                             uuid = Uuid.random().toString(),
-                            name = "${ration.name} (copie)",
+                            name = translate(RationKeys.DUPLICATED_NAME_FORMAT, ration.name),
                             alimentMutableList =
                                     mutableListOf() // Liste vide temporaire, nous allons la remplir
                             // juste après

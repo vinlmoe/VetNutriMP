@@ -676,7 +676,7 @@ fun RationsEnergieChart(
                                                         )
                                                         Text(
                                                                 text =
-                                                                        "Protéines: ${GraphFormattingUtils.formatPercentage(data.proteineEnergyPercentage)} | Lipides: ${GraphFormattingUtils.formatPercentage(data.lipideEnergyPercentage)}",
+                                                                        "${translate(LocalizationKeys.Chart.PROTEIN)}: ${GraphFormattingUtils.formatPercentage(data.proteineEnergyPercentage)} | ${translate(LocalizationKeys.Chart.FAT)}: ${GraphFormattingUtils.formatPercentage(data.lipideEnergyPercentage)}",
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,

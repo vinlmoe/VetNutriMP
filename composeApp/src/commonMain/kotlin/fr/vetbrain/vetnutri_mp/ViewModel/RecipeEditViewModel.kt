@@ -9,7 +9,6 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Ration
-import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
@@ -118,7 +117,7 @@ class RecipeEditViewModel(
             _recipes.clear()
             _recipes.addAll(loadedRecipes)
         } catch (e: Exception) {
-            _message.value = translate(LocalizationKeys.Recipe.LOAD_ERROR, e.message ?: "")
+            _message.value = translate("recipe.error.load", e.message ?: "")
         } finally {
             _isLoading.value = false
         }
@@ -238,7 +237,7 @@ class RecipeEditViewModel(
                     val existingAliment = _selectedIngredients.find { it.refAlimUnif == aliment.uuid }
                     if (existingAliment != null) {
                         
-                        _message.value = translate(LocalizationKeys.Recipe.ALIMENT_ALREADY_ADDED)
+                        _message.value = translate("recipe.error.alimentAlreadyAdded")
                         return
                     }
                     
@@ -306,12 +305,12 @@ class RecipeEditViewModel(
      */
     fun saveRecipe() {
         if (_newRecipeName.value.isBlank()) {
-            _message.value = translate(LocalizationKeys.Recipe.NAME_REQUIRED_ERROR)
+            _message.value = translate("recipe.error.nameRequired")
             return
         }
 
         if (_selectedIngredients.isEmpty()) {
-            _message.value = translate(LocalizationKeys.Recipe.INGREDIENT_REQUIRED_ERROR)
+            _message.value = translate("recipe.error.ingredientRequired")
             return
         }
         
@@ -344,7 +343,7 @@ class RecipeEditViewModel(
                     // Modification d'une recette existante
                     recipeRepository.renameRecipe(recipeToSave.uuid, recipeToSave.name)
                     recipeRepository.replaceAliments(recipeToSave.uuid, recipeToSave.alimentMutableList)
-                    _message.value = translate(LocalizationKeys.Recipe.UPDATE_SUCCESS)
+                    _message.value = translate("recipe.success.updated")
                 } else {
                     // Création d'une nouvelle recette
                     val newRecipe = recipeRepository.createRecipe(
@@ -353,7 +352,7 @@ class RecipeEditViewModel(
                         description = recipeToSave.description
                     )
                     recipeRepository.addAliments(newRecipe.uuid, recipeToSave.alimentMutableList)
-                    _message.value = translate(LocalizationKeys.Recipe.CREATE_SUCCESS)
+                    _message.value = translate("recipe.success.created")
                 }
                 
                 // Recharger les recettes et sortir du mode édition
@@ -361,7 +360,7 @@ class RecipeEditViewModel(
                 cancelEditing()
                 
             } catch (e: Exception) {
-                _message.value = translate(LocalizationKeys.Recipe.SAVE_ERROR, e.message ?: "")
+                _message.value = translate("recipe.error.save", e.message ?: "")
             } finally {
                 _isLoading.value = false
             }
@@ -376,10 +375,10 @@ class RecipeEditViewModel(
             try {
                 _isLoading.value = true
                 recipeRepository.deleteRecipe(recipe.uuid)
-                _message.value = translate(LocalizationKeys.Recipe.DELETE_SUCCESS)
+                _message.value = translate("recipe.success.deleted")
                 loadRecipesInternal()
             } catch (e: Exception) {
-                _message.value = translate(LocalizationKeys.Recipe.DELETE_ERROR, e.message ?: "")
+                _message.value = translate("recipe.error.delete", e.message ?: "")
             } finally {
                 _isLoading.value = false
             }
@@ -395,13 +394,13 @@ class RecipeEditViewModel(
                 _isLoading.value = true
                 val duplicatedRecipe = recipeRepository.cloneRecipe(recipe.uuid)
                 if (duplicatedRecipe != null) {
-                    _message.value = translate(LocalizationKeys.Recipe.DUPLICATE_SUCCESS)
+                    _message.value = translate("recipe.success.duplicated")
                 } else {
-                    _message.value = translate(LocalizationKeys.Recipe.DUPLICATE_ERROR)
+                    _message.value = translate("recipe.error.duplicate")
                 }
                 loadRecipesInternal()
             } catch (e: Exception) {
-                _message.value = translate(LocalizationKeys.Recipe.DUPLICATE_ERROR_DETAIL, e.message ?: "")
+                _message.value = translate("recipe.error.duplicateDetail", e.message ?: "")
             } finally {
                 _isLoading.value = false
             }

@@ -58,6 +58,7 @@ object LocalizationKeys {
         val UNIT_MONTH = "general.unitMonth"
         val UNIT_YEAR = "general.unitYear"
         val UNIT_YEARS = "general.unitYears"
+        val UNKNOWN_ERROR = "general.unknownError"
     }
 
     object Settings {
@@ -98,6 +99,11 @@ object LocalizationKeys {
         val TAB_RECIPES = "settings.tabRecipes"
         val TITLE = "settings.title"
         val UI_SCALE = "settings.uiScale"
+        val CLEAR_CONFIRMATION_CONFIRM = "settings.clearConfirmation.confirm"
+        val CLEAR_CONFIRMATION_MESSAGE = "settings.clearConfirmation.message"
+        val CLEAR_CONFIRMATION_TITLE = "settings.clearConfirmation.title"
+        val FEEDBACK_INFO = "settings.feedback.info"
+        val FEEDBACK_WARNING = "settings.feedback.warning"
     }
 
     object NewReference {
@@ -267,6 +273,18 @@ object LocalizationKeys {
         val SUBTITLE = "admin.subtitle"
         val TITLE = "admin.title"
         val UNEXPECTED_ERROR = "admin.error.unexpected"
+        val DELETE_ANIMALS_SUCCESS = "admin.delete.animalsSuccess"
+        val DELETE_BIBLIO_SUCCESS = "admin.delete.biblioSuccess"
+        val DELETE_EQUATIONS_SUCCESS = "admin.delete.equationsSuccess"
+        val DELETE_ERROR = "admin.delete.error"
+        val DELETE_FOODS_SUCCESS = "admin.delete.foodsSuccess"
+        val DELETE_REFERENCES_SUCCESS = "admin.delete.referencesSuccess"
+        val ENTITY_ANIMALS = "admin.entity.animals"
+        val ENTITY_BIBLIO = "admin.entity.biblio"
+        val ENTITY_EQUATIONS = "admin.entity.equations"
+        val ENTITY_FOODS = "admin.entity.foods"
+        val ENTITY_REFERENCES_ALL = "admin.entity.referencesAll"
+        val IMPORT_LEGACY = "admin.import.legacy"
     }
 
     object AnalNut {
@@ -361,6 +379,8 @@ object LocalizationKeys {
         const val QUANTITY_MODE_PER_MCAL = "analnut.quantity_mode.per_mcal"
         const val QUANTITY_MODE_PER_MJ = "analnut.quantity_mode.per_mj"
         const val NO_VALUE_AVAILABLE = "analnut.no_value_available"
+        val ANALYSIS_ERROR_FORMAT = "analnut.error.analysisFormat"
+        val RATION_EMPTY_ALERT = "analnut.alert.rationEmpty"
     }
 
     object Animal {
@@ -382,6 +402,12 @@ object LocalizationKeys {
         val NEW_ANIMAL = "animal.new"
         val DELETE_ANIMAL = "general.delete"
         val DELETE_ANIMAL_CONFIRM = "animalDetail.deleteConfirmMessage"
+        val AGE_YEARS_VALUE = "animal.ageYearsValue"
+        val IDENTIFICATION_TITLE = "animal.identificationTitle"
+        val STATUS = "animal.status"
+        val STATUS_ALIVE = "animal.statusAlive"
+        val STATUS_DEAD = "animal.statusDead"
+        val WEIGHT_VALUE_WITH_DATE = "animal.weightValueWithDate"
     }
 
     object AnimalDetail {
@@ -433,6 +459,8 @@ object LocalizationKeys {
         val BACK_TO_EXPORT = "animalDetail.backToExport"
         val HTML_EDITOR = "animalDetail.htmlEditor"
         val DELETE_CONFIRM_MESSAGE = "animalDetail.deleteConfirmMessage"
+        val RATIONS_COUNT_FORMAT = "animalDetail.rationsCountFormat"
+        val WEIGHT_KG_FORMAT = "animalDetail.weightKgFormat"
     }
 
     object AnimalList {
@@ -460,6 +488,44 @@ object LocalizationKeys {
         val EXPORT_EXAM_MODE_REQUIRED = "animalList.exportExamModeRequired"
         val SHOW_EXAM_DOSSIERS = "animalList.showExamDossiers"
         val NO_EXAM_DOSSIERS_FOUND = "animalList.noExamDossiersFound"
+        val ADD_ANIMAL_DESC = "animalList.addAnimalDesc"
+        val CLEAR_SEARCH = "animalList.clearSearch"
+        val DETAILS_DESC = "animalList.detailsDesc"
+        val EXAMS_SECTION_TITLE = "animalList.examsSectionTitle"
+        val EXPORT_EXAM_ERROR_DETAIL = "animalList.exportExamErrorDetail"
+        val EXPORT_EXAM_MISSING_REFS = "animalList.exportExamMissingRefs"
+        val EXPORT_EXAM_NO_ANIMALS = "animalList.exportExamNoAnimals"
+        val ID_VALUE = "animalList.idValue"
+        val IMPORT_ANIMALS_ERROR = "animalList.importAnimalsError"
+        val IMPORT_ANIMALS_FAILED = "animalList.importAnimalsFailed"
+        val IMPORT_BIN_ID_EXTRACT_ERROR = "animalList.importBinIdExtractError"
+        val IMPORT_CONSEILS_COUNT = "animalList.importConseilsCount"
+        val IMPORT_DELETED_COUNT = "animalList.importDeletedCount"
+        val IMPORT_DOWNLOAD_ERROR = "animalList.importDownloadError"
+        val IMPORT_ERROR_COUNT = "animalList.importErrorCount"
+        val IMPORT_ERROR_MESSAGE = "animalList.importErrorMessage"
+        val IMPORT_IMPORTED_COUNT = "animalList.importImportedCount"
+        val IMPORT_JSONBIN_ERROR = "animalList.importJsonbinError"
+        val IMPORT_LOG_DOWNLOADING = "animalList.importLogDownloading"
+        val IMPORT_LOG_ERROR = "animalList.importLogError"
+        val IMPORT_LOG_JSON_DOWNLOADED = "animalList.importLogJsonDownloaded"
+        val IMPORT_LOG_PARSING = "animalList.importLogParsing"
+        val IMPORT_LOG_QR_DETECTED = "animalList.importLogQrDetected"
+        val IMPORT_LOG_RESULT_COUNT = "animalList.importLogResultCount"
+        val IMPORT_LOG_START = "animalList.importLogStart"
+        val IMPORT_LOG_SUCCESS = "animalList.importLogSuccess"
+        val IMPORT_MISSING_REPOSITORIES = "animalList.importMissingRepositories"
+        val IMPORT_NO_ANIMAL_FOUND = "animalList.importNoAnimalFound"
+        val IMPORT_RESULT_TITLE = "animalList.importResultTitle"
+        val IMPORT_TOTAL_COUNT = "animalList.importTotalCount"
+        val IMPORT_UPDATED_COUNT = "animalList.importUpdatedCount"
+        val SORT_AGE = "animalList.sortAge"
+        val SORT_AND_FILTERS = "animalList.sortAndFilters"
+        val SORT_LAST_CONSULTATION = "animalList.sortLastConsultation"
+        val SORT_NAME_ASC = "animalList.sortNameAsc"
+        val SORT_SECTION_TITLE = "animalList.sortSectionTitle"
+        val STUDENT_ID_VALUE = "animalList.studentIdValue"
+        val VIEW_DETAILS_TOOLTIP = "animalList.viewDetailsTooltip"
     }
 
     object Chart {
@@ -471,6 +537,33 @@ object LocalizationKeys {
         const val MOISTURE = "chart.label.moisture"
         const val NO_DATA = "chart.no_data"
         const val PROTEIN = "chart.label.protein"
+        val ADD_ALL = "chart.addAll"
+        val ADVANCED_SORT_CONTENT_DESC = "chart.advancedSortContentDesc"
+        val ADVANCED_SORT_TOOLTIP = "chart.advancedSortTooltip"
+        val AVAILABLE_FOODS_COUNT = "chart.availableFoodsCount"
+        val BRAND_PREFIX = "chart.brandPrefix"
+        val DETAILED_ANALYSIS_HINT = "chart.detailedAnalysisHint"
+        val DETAILED_ANALYSIS_TITLE = "chart.detailedAnalysisTitle"
+        val ENERGY_DENSITY_LABEL = "chart.energyDensityLabel"
+        val EXPAND_TOOLTIP = "chart.expandTooltip"
+        val FAT_ENERGY_PERCENT = "chart.fatEnergyPercent"
+        val FILTER_DATABASE_LABEL = "chart.filterDatabaseLabel"
+        val FILTER_TYPE_LABEL = "chart.filterTypeLabel"
+        val GAMME_PREFIX = "chart.gammePrefix"
+        val NUTRITIONAL_COMPOSITION_PREFIX = "chart.nutritionalCompositionPrefix"
+        val NO_FOOD_TO_ANALYZE = "chart.noFoodToAnalyze"
+        val PERSONALIZED_NUTRIENTS = "chart.personalizedNutrients"
+        val PROTEIN_ENERGY_PERCENT = "chart.proteinEnergyPercent"
+        val RATIOS_SECTION = "chart.ratiosSection"
+        val RATIO_CA_P = "chart.ratioCaP"
+        val RATIO_PROTEIN_PHOSPHORUS = "chart.ratioProteinPhosphorus"
+        val REMOVE_ALL = "chart.removeAll"
+        val SEARCH_FILTERS_TITLE = "chart.searchFiltersTitle"
+        val SEARCH_PLACEHOLDER = "chart.searchPlaceholder"
+        val SELECTED_FOODS_COUNT = "chart.selectedFoodsCount"
+        val TOGGLE_PER_1000_KCAL = "chart.togglePer1000Kcal"
+        val TOGGLE_PER_100G_DM = "chart.togglePer100gDm"
+        val VIEW_GRAPHIC_ANALYSIS_ACTION = "chart.viewGraphicAnalysisAction"
     }
 
     object Consultation {
@@ -493,6 +586,8 @@ object LocalizationKeys {
         val BCS = "consultation.bcs"
         val MCS = "consultation.mcs"
         val WATER = "consultation.water"
+        val DUPLICATE_CONSULTATION = "consultation.duplicate"
+        val EDIT_CONSULTATION = "consultation.editAction"
     }
 
     object ConsultationEdit {
@@ -630,6 +725,8 @@ object LocalizationKeys {
 
     object Food {
         val LIST_TITLE = "food.list.title"
+        val NO_NAME = "food.noName"
+        val UNKNOWN_FOOD = "food.unknownFood"
     }
 
     object Graph {
@@ -793,6 +890,13 @@ object LocalizationKeys {
         val COEFFICIENTS_DETAIL_TITLE = "ration.coefficientsDetailTitle"
         val COEFFICIENTS_K_TITLE = "ration.coefficientsKTitle"
         val COEFFICIENT_ADJUST_LABEL = "ration.coefficientAdjustLabel"
+        val COEF_FORMAT = "ration.coefFormat"
+        val DUPLICATE_ACTION = "ration.duplicateAction"
+        val EDIT_ACTION = "ration.editAction"
+        val EDIT_QUANTITY_TOOLTIP = "ration.editQuantityTooltip"
+        val QUANTITY_GRAMS_FORMAT = "ration.quantityGramsFormat"
+        val DUPLICATED_NAME_FORMAT = "ration.duplicatedNameFormat"
+        val PROPOSED_NAME = "ration.proposedName"
     }
 
     object Recipe {
@@ -813,6 +917,11 @@ object LocalizationKeys {
         val SELECT_FOOD_HINT = "recipe.add_food.select_hint"
         val SPECIES = "recipe.detail.species"
         val TITLE = "recipe.title"
+        val ADD_ALIMENT_ACTION = "recipe.addAlimentAction"
+        val EMPTY_INGREDIENTS_HINT = "recipe.emptyIngredientsHint"
+        val GROUP = "recipe.group"
+        val NEW_RECIPE = "recipe.newRecipe"
+        val TYPE = "recipe.type"
     }
 
     object Reference {
@@ -970,5 +1079,29 @@ object LocalizationKeys {
         val DESC_MW = "variables.desc.mw"
         val DESC_WEEK_GESTATION = "variables.desc.week_gestation"
         val DESC_WEEK_LACTATION = "variables.desc.week_lactation"
+    }
+
+    object RationReport {
+        val ALERT_ITEM_FORMAT = "rationReport.alertItemFormat"
+        val BALANCE_SCORE_FORMAT = "rationReport.balanceScoreFormat"
+        val COMPLETENESS_SCORE_FORMAT = "rationReport.completenessScoreFormat"
+        val ENERGY_DENSITY_FORMAT = "rationReport.energyDensityFormat"
+        val FOOD_NO_NAME = "rationReport.foodNoName"
+        val NO_ANALYSIS_AVAILABLE = "rationReport.noAnalysisAvailable"
+        val NUTRIENT_GRAMS_FORMAT = "rationReport.nutrientGramsFormat"
+        val NUTRIENT_UI_MG_FORMAT = "rationReport.nutrientUiMgFormat"
+        val RATION_FOOD_ITEM_FORMAT = "rationReport.rationFoodItemFormat"
+        val RATION_FORMAT = "rationReport.rationFormat"
+        val RATIO_FORMAT = "rationReport.ratioFormat"
+        val SECTION_ALERTS = "rationReport.sectionAlerts"
+        val SECTION_CUSTOM_NUTRIENTS = "rationReport.sectionCustomNutrients"
+        val SECTION_LIPIDS = "rationReport.sectionLipids"
+        val SECTION_MACRONUTRIENTS = "rationReport.sectionMacronutrients"
+        val SECTION_MINERALS = "rationReport.sectionMinerals"
+        val SECTION_RATION_COMPOSITION = "rationReport.sectionRationComposition"
+        val SECTION_RATIOS = "rationReport.sectionRatios"
+        val SECTION_VITAMINS = "rationReport.sectionVitamins"
+        val TITLE = "rationReport.title"
+        val TOTAL_QUANTITY_FORMAT = "rationReport.totalQuantityFormat"
     }
 }

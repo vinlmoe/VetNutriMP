@@ -29,6 +29,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Espece.Companion.valuesExcept
 import fr.vetbrain.vetnutri_mp.Enumer.Espece.CH
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -88,7 +90,7 @@ fun RecipeEditView(
                     ) {
                         Icon(
                             Icons.Default.Check,
-                            contentDescription = "Sauvegarder",
+                            contentDescription = translate(LocalizationKeys.General.SAVE),
                             tint = Color.White
                         )
                     }
@@ -106,7 +108,7 @@ fun RecipeEditView(
                     ) {
                         Icon(
                             Icons.Default.Add,
-                            contentDescription = "Nouvelle recette",
+                            contentDescription = translate(LocalizationKeys.Recipe.NEW_RECIPE),
                             tint = Color.White
                         )
                     }
@@ -122,15 +124,15 @@ fun RecipeEditView(
                     TopAppBar(
                         title = { 
                             Text(
-                                text = editingRecipe?.name ?: "Nouvelle recette",
+                                text = editingRecipe?.name ?: translate(LocalizationKeys.Recipe.NEW_RECIPE),
                                 style = MaterialTheme.typography.h6
-                            ) 
+                            )
                         },
                         navigationIcon = {
                             IconButton(onClick = { viewModel.cancelEditing() }) {
                                 Icon(
                                     Icons.AutoMirrored.Default.ArrowBack,
-                                    contentDescription = "Retour"
+                                    contentDescription = translate(LocalizationKeys.AnimalDetail.BACK)
                                 )
                             }
                         },
@@ -219,16 +221,16 @@ private fun RecipeEditForm(
             BasicAppTextField(
                 value = viewModel.newRecipeName.value,
                 onValueChange = { viewModel.updateRecipeName(it) },
-                placeholder = "Nom de la recette",
+                placeholder = translate(LocalizationKeys.Recipe.NAME_LABEL),
                 modifier = Modifier.weight(1f)
             )
-            
+
             Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
-            
+
             // Bouton d'ajout d'aliment (petit + comme dans AlimentsRationSection)
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Ajouter un aliment",
+                contentDescription = translate(LocalizationKeys.Recipe.ADD_ALIMENT_ACTION),
                 tint = VetNutriColors.Primary,
                 modifier = Modifier
                     .size(AppSizes.iconSizeXSmall)
@@ -264,7 +266,7 @@ private fun RecipeEditForm(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Aucun aliment dans cette recette\nCliquez sur le + pour en ajouter",
+                    text = translate(LocalizationKeys.Recipe.EMPTY_INGREDIENTS_HINT),
                     style = MaterialTheme.typography.body1,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center
@@ -312,7 +314,7 @@ private fun RecipeIngredientItem(
             // Informations de l'aliment
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = ingredient.aliment?.nom ?: "Aliment inconnu",
+                    text = ingredient.aliment?.nom ?: translate(LocalizationKeys.Food.UNKNOWN_FOOD),
                     style = MaterialTheme.typography.subtitle2,
                     fontWeight = FontWeight.Medium
                 )

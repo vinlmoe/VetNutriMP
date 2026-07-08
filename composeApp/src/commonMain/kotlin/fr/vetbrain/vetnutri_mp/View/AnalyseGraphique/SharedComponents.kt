@@ -108,7 +108,7 @@ fun GraphiqueHeader(
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
                                                         Text(
-                                                                text = chartType.displayName,
+                                                                text = translate(chartType.displayName),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,
@@ -149,7 +149,7 @@ fun GraphiqueHeader(
                                                         modifier = Modifier.weight(1f)
                                                 ) {
                                                         Text(
-                                                                text = chartType.displayName,
+                                                                text = translate(chartType.displayName),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,
@@ -346,7 +346,7 @@ fun NutrimentSelector(
                         val selectedOption =
                                 VIEW_NUTRIMENT_OPTIONS.find { it.key == selectedNutriment }
                         Text(
-                                text = selectedOption?.displayName ?: translate(LocalizationKeys.General.SELECT_PLACEHOLDER),
+                                text = selectedOption?.let { translate(it.displayName) } ?: translate(LocalizationKeys.General.SELECT_PLACEHOLDER),
                                 style = MaterialTheme.typography.body2
                         )
                         Spacer(modifier = Modifier.weight(1f))
@@ -371,7 +371,7 @@ fun NutrimentSelector(
                                         }
                                 ) {
                                         Text(
-                                                text = "${option.displayName} (${option.unit})",
+                                                text = "${translate(option.displayName)} (${option.unit})",
                                                 style = MaterialTheme.typography.body2
                                         )
                                 }

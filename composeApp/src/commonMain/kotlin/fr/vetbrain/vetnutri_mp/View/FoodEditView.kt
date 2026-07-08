@@ -91,7 +91,7 @@ fun FoodEditView(
         val tabTitles = listOf(
                 translate(LocalizationKeys.FoodEdit.TAB_GENERAL),
                 translate(LocalizationKeys.FoodEdit.TAB_NUTRITION),
-                "Bibliographie"
+                translate("food_edit.tab_biblio")
         )
 
         // Fonction de validation des nutriments
@@ -488,7 +488,7 @@ fun FoodEditView(
                                                                         customNutrientErrorState.value = null
                                                                 } else if (nutrient == null) {
                                                                         customNutrientErrorState.value =
-                                                                                "Nom déjà utilisé par un nutriment existant."
+                                                                                translate("food_edit.error.custom_nutrient_name_used")
                                                                 }
                                                         },
                                                         onUpdateCustomNutrient = { original, newName, newUnit ->
@@ -516,7 +516,7 @@ fun FoodEditView(
                                                                         customNutrientErrorState.value = null
                                                                 } else {
                                                                         customNutrientErrorState.value =
-                                                                                "Modification impossible (doublon ou unité invalide)."
+                                                                                translate("food_edit.error.custom_nutrient_update_failed")
                                                                 }
                                                         },
                                                         onDeleteCustomNutrient = { nutrient ->
@@ -559,14 +559,14 @@ private fun BiblioRefTab(
                 ) {
                         Icon(Icons.Default.Add, contentDescription = null, tint = VetNutriColors.OnPrimary)
                         Spacer(Modifier.width(8.dp))
-                        Text("Ajouter une référence", color = VetNutriColors.OnPrimary)
+                        Text(translate("food_edit.biblio.add_button"), color = VetNutriColors.OnPrimary)
                 }
 
                 Spacer(Modifier.height(8.dp))
 
                 if (selectedRefs.isEmpty()) {
                         Text(
-                                "Aucune référence bibliographique associée",
+                                translate("food_edit.biblio.empty"),
                                 style = MaterialTheme.typography.body2,
                                 color = Color.Gray,
                                 modifier = Modifier.padding(vertical = 16.dp)
@@ -621,13 +621,13 @@ private fun BiblioRefTab(
                 }
                 AlertDialog(
                         onDismissRequest = { showPicker = false; searchQuery = "" },
-                        title = { Text("Choisir une référence") },
+                        title = { Text(translate("food_edit.biblio.picker_title")) },
                         text = {
                                 Column {
                                         OutlinedTextField(
                                                 value = searchQuery,
                                                 onValueChange = { searchQuery = it },
-                                                placeholder = { Text("Rechercher…") },
+                                                placeholder = { Text(translate("food_edit.biblio.search_placeholder")) },
                                                 singleLine = true,
                                                 modifier = Modifier.fillMaxWidth(),
                                                 colors = TextFieldDefaults.outlinedTextFieldColors(
@@ -637,7 +637,7 @@ private fun BiblioRefTab(
                                         )
                                         Spacer(Modifier.height(8.dp))
                                         if (filtered.isEmpty()) {
-                                                Text("Aucune référence disponible", color = Color.Gray)
+                                                Text(translate(LocalizationKeys.Reference.NONE_AVAILABLE), color = Color.Gray)
                                         } else {
                                                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
                                                         items(filtered, key = { it.uuid }) { ref ->
@@ -673,7 +673,7 @@ private fun BiblioRefTab(
                         confirmButton = {},
                         dismissButton = {
                                 TextButton(onClick = { showPicker = false; searchQuery = "" }) {
-                                        Text("Fermer")
+                                        Text(translate(LocalizationKeys.General.CLOSE))
                                 }
                         }
                 )
@@ -1084,21 +1084,21 @@ private fun NutritionInfoTab(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                                Text("Nutriments personnalisés", style = MaterialTheme.typography.h6)
+                                Text(translate("food_edit.custom_nutrients.title"), style = MaterialTheme.typography.h6)
                                 OutlinedTextField(
                                         value = customNutrientNameState.value,
                                         onValueChange = {
                                                 customNutrientNameState.value = it
                                                 customNutrientErrorState.value = null
                                         },
-                                        label = { Text("Nom du nutriment") },
+                                        label = { Text(translate("food_edit.custom_nutrients.name_label")) },
                                         modifier = Modifier.fillMaxWidth()
                                 )
                                 OutlinedTextField(
                                         value = customNutrientUnitState.value,
                                         onValueChange = {},
                                         readOnly = true,
-                                        label = { Text("Unité") },
+                                        label = { Text(translate("food_edit.custom_nutrients.unit_label")) },
                                         trailingIcon = {
                                                 IconButton(
                                                         onClick = {
@@ -1137,7 +1137,7 @@ private fun NutritionInfoTab(
                                                         customNutrientNameState.value.trim()
                                         },
                                         enabled = customNutrientNameState.value.isNotBlank()
-                                ) { Text("Ajouter") }
+                                ) { Text(translate(LocalizationKeys.General.ADD)) }
                                 customNutrientErrorState.value?.let { error ->
                                         Text(
                                                 text = error,
@@ -1150,7 +1150,7 @@ private fun NutritionInfoTab(
                                                 value = customNutrientSelectedLabelState.value,
                                                 onValueChange = {},
                                                 readOnly = true,
-                                                label = { Text("Sélectionner un nutriment existant") },
+                                                label = { Text(translate("food_edit.custom_nutrients.select_existing")) },
                                                 trailingIcon = {
                                                         IconButton(
                                                                 onClick = {
@@ -1198,7 +1198,7 @@ private fun NutritionInfoTab(
                                         ) {
                                                 Icon(Icons.Default.Add, contentDescription = null)
                                                 Spacer(modifier = Modifier.width(8.dp))
-                                                Text("Utiliser ce nutriment")
+                                                Text(translate("food_edit.custom_nutrients.use_button"))
                                         }
                                         Row(
                                                 modifier = Modifier.fillMaxWidth(),
@@ -1219,7 +1219,7 @@ private fun NutritionInfoTab(
                                                                 }
                                                         },
                                                         enabled = customNutrientSelectedLabelState.value.isNotBlank()
-                                                ) { Text("Modifier") }
+                                                ) { Text(translate(LocalizationKeys.General.EDIT)) }
                                                 OutlinedButton(
                                                         onClick = {
                                                                 val selected = customNutrients.firstOrNull {
@@ -1236,7 +1236,7 @@ private fun NutritionInfoTab(
                                                                         contentColor =
                                                                                 MaterialTheme.colors.error
                                                                 )
-                                                ) { Text("Supprimer") }
+                                                ) { Text(translate(LocalizationKeys.General.DELETE)) }
                                         }
                                 }
                         }
@@ -1251,12 +1251,12 @@ private fun NutritionInfoTab(
                         ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                         Text(
-                                                "Énergie par espèce (kcal/100g)",
+                                                translate("food_edit.energy_per_species.title"),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 color = MaterialTheme.colors.primary
                                         )
                                         Text(
-                                                "Définir ici l'énergie spécifique à chaque espèce. Si vide, l'équation du référentiel sera utilisée.",
+                                                translate("food_edit.energy_per_species.description"),
                                                 style = MaterialTheme.typography.caption,
                                                 color = Color.Gray
                                         )
@@ -1277,7 +1277,7 @@ private fun NutritionInfoTab(
                                                                 onValueChange = { v ->
                                                                         energieParEspece[key] = v
                                                                 },
-                                                                label = { Text("kcal/100g") },
+                                                                label = { Text(translate("food_edit.energy_per_species.unit_label")) },
                                                                 singleLine = true,
                                                                 modifier = Modifier.weight(1f)
                                                         )

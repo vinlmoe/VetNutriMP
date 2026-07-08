@@ -581,7 +581,7 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                 ) {
                         OutlinedButton(onClick = { viewModel.loadEquations() }) {
-                                Text("Rafraîchir les équations")
+                                Text(translate(LocalizationKeys.NewReference.REFRESH_EQUATIONS))
                         }
                 }
 
@@ -731,7 +731,7 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                                                 )
                                                                         expandedBW = false
                                                                 }
-                                                        ) { Text(text = "Aucune équation") }
+                                                        ) { Text(text = translate(LocalizationKeys.NewReference.EQ_NONE)) }
 
                                                         // Filtrer les équations de type MW
                                                         bwEquations.forEach { equation ->
@@ -792,7 +792,7 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                                                 )
                                                                         expandedBEE = false
                                                                 }
-                                                        ) { Text(text = "Aucune équation") }
+                                                        ) { Text(text = translate(LocalizationKeys.NewReference.EQ_NONE)) }
 
                                                         // Filtrer les équations de type ENERGYNEED
                                                         beeEquations.forEach { equation ->
@@ -855,7 +855,7 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                                                 )
                                                                         expandedDEcom = false
                                                                 }
-                                                        ) { Text(text = "Aucune équation") }
+                                                        ) { Text(text = translate(LocalizationKeys.NewReference.EQ_NONE)) }
 
                                                         // Filtrer les équations de type
                                                         // ENERGYDENSITY
@@ -920,7 +920,7 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                                                 )
                                                                         expandedDEraw = false
                                                                 }
-                                                        ) { Text(text = "Aucune équation") }
+                                                        ) { Text(text = translate(LocalizationKeys.NewReference.EQ_NONE)) }
 
                                                         // Filtrer les équations de type
                                                         // ENERGYDENSITY
@@ -1015,10 +1015,10 @@ fun ReferenceEvComplementaryTab(viewModel: NewReferenceEvViewModel) {
                                                                         eq.nutrient?.label ?: "?"
                                                                 val especeLabel =
                                                                         eq.specie?.label
-                                                                                ?: "Toutes espèces"
+                                                                                ?: translate(LocalizationKeys.NewReference.ALL_SPECIES)
                                                                 Text(
                                                                         text =
-                                                                                "Nutriment: $nutrientLabel · Espèce: $especeLabel",
+                                                                                translate(LocalizationKeys.NewReference.NUTRIENT_SPECIES_FOOTER, nutrientLabel, especeLabel),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -1211,7 +1211,7 @@ fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentRefere
                                         val coefficient = coefficients[editingCoefficientIndex]
                                         EditCoefficientDialog(
                                                 initialDescription = coefficient.description
-                                                                ?: "Normal",
+                                                                ?: translate(LocalizationKeys.NewReference.COEFF_NORMAL),
                                                 initialCoef = coefficient.coef ?: 1.0,
                                                 onDismiss = {
                                                         showEditCoefficientDialog = false
@@ -1527,7 +1527,7 @@ fun <T : Nutrient> NutrientCard(
                                 ) {
                                         Icon(
                                                 Icons.Default.Edit,
-                                                contentDescription = "Éditer",
+                                                contentDescription = translate(LocalizationKeys.General.EDIT),
                                                 tint = VetNutriColors.Primary,
                                                 modifier = Modifier.size(18.dp)
                                         )
@@ -1542,7 +1542,7 @@ fun <T : Nutrient> NutrientCard(
                                 Column(modifier = Modifier.fillMaxWidth()) {
                                         if (hasMin) {
                                                 CompactNutrientValueRow(
-                                                        label = "Min",
+                                                        label = translate("new_reference.level.min"),
                                                         value = minValue,
                                                         unit = minUnit?.label ?: "",
                                                         unitEnum = minUnitEnum?.displayName ?: "",
@@ -1553,7 +1553,7 @@ fun <T : Nutrient> NutrientCard(
                                         }
                                         if (hasOptMin) {
                                                 CompactNutrientValueRow(
-                                                        label = "Opt-",
+                                                        label = translate("new_reference.level.opt_min_compact"),
                                                         value = optMinValue,
                                                         unit = optMinUnit?.label ?: "",
                                                         unitEnum = optMinUnitEnum?.displayName
@@ -1568,7 +1568,7 @@ fun <T : Nutrient> NutrientCard(
                                         }
                                         if (hasOptMax) {
                                                 CompactNutrientValueRow(
-                                                        label = "Opt+",
+                                                        label = translate("new_reference.level.opt_max_compact"),
                                                         value = optMaxValue,
                                                         unit = optMaxUnit?.label ?: "",
                                                         unitEnum = optMaxUnitEnum?.displayName
@@ -1583,7 +1583,7 @@ fun <T : Nutrient> NutrientCard(
                                         }
                                         if (hasMax) {
                                                 CompactNutrientValueRow(
-                                                        label = "Max",
+                                                        label = translate("new_reference.level.max"),
                                                         value = maxValue,
                                                         unit = maxUnit?.label ?: "",
                                                         unitEnum = maxUnitEnum?.displayName ?: "",

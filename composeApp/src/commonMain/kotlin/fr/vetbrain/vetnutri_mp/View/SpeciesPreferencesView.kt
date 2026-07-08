@@ -319,7 +319,7 @@ fun SpeciesPreferencesView(
                                                                 imageVector =
                                                                         Icons.Default.CheckCircle,
                                                                 contentDescription =
-                                                                        "Persistance active",
+                                                                        LocalizationKeys.Preferences.PERSISTENCE_ACTIVE.translate(),
                                                                 tint = VetNutriColors.Primary
                                                         )
                                                         Spacer(modifier = Modifier.width(8.dp))

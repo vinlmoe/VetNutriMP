@@ -90,7 +90,7 @@ fun AnimalEditView(
                                 leadingIcon = {
                                         Icon(
                                                 imageVector = Icons.Default.Favorite,
-                                                contentDescription = "Nom",
+                                                contentDescription = Animal.NAME.translate(),
                                                 tint = VetNutriColors.Primary
                                         )
                                 }
@@ -115,7 +115,7 @@ fun AnimalEditView(
                                 leadingIcon = {
                                         Icon(
                                                 imageVector = Icons.Default.Person,
-                                                contentDescription = "Propriétaire",
+                                                contentDescription = Animal.OWNER.translate(),
                                                 tint = VetNutriColors.Primary
                                         )
                                 }
@@ -141,7 +141,7 @@ fun AnimalEditView(
                                 leadingIcon = {
                                         Icon(
                                                 imageVector = Icons.Default.DateRange,
-                                                contentDescription = "Date de naissance",
+                                                contentDescription = Animal.BIRTH_DATE.translate(),
                                                 tint = VetNutriColors.Primary
                                         )
                                 },
@@ -158,7 +158,7 @@ fun AnimalEditView(
 
                         if (!isDateValid) {
                                 Text(
-                                        text = "Format de date invalide (YYYY-MM-DD)",
+                                        text = Animal.INVALID_DATE_FORMAT.translate(),
                                         color = MaterialTheme.colors.error,
                                         style = MaterialTheme.typography.caption
                                 )

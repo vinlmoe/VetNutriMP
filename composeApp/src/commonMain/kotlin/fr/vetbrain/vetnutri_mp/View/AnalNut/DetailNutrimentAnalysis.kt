@@ -948,7 +948,7 @@ private fun RecapitulatifCard(
                                         )
                                 }
                         Text(
-                                text = "Apport: $valeurFormatee $uniteAffichage",
+                                text = translate("analnut.recap.intake", valeurFormatee, uniteAffichage),
                                 style = MaterialTheme.typography.body1,
                                 fontWeight = FontWeight.Bold,
                                 color = VetNutriColors.Primary
@@ -959,7 +959,11 @@ private fun RecapitulatifCard(
                         ) {
                                 Text(
                                         text =
-                                                "→ ${TextUtils.formatDecimal(valeurNutritionnelle.valeur, 2)} ${valeurNutritionnelle.unite.displayName}/jour",
+                                                translate(
+                                                        "analnut.recap.per_day",
+                                                        TextUtils.formatDecimal(valeurNutritionnelle.valeur, 2),
+                                                        valeurNutritionnelle.unite.displayName
+                                                ),
                                         style = MaterialTheme.typography.body2,
                                         fontWeight = FontWeight.Medium,
                                         color = VetNutriColors.Primary.copy(alpha = 0.8f)
@@ -972,8 +976,8 @@ private fun RecapitulatifCard(
                                                 if (isComplete) Icons.Filled.Check
                                                 else Icons.Filled.Warning,
                                         contentDescription =
-                                                if (isComplete) "Données complètes"
-                                                else "Données incomplètes",
+                                                if (isComplete) translate("analnut.status.complete_data")
+                                                else translate("analnut.status.incomplete_data"),
                                         tint =
                                                 if (isComplete) Color.Green
                                                 else VetNutriColors.Error,
@@ -982,8 +986,8 @@ private fun RecapitulatifCard(
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                         text =
-                                                if (isComplete) "Données complètes"
-                                                else "Données incomplètes",
+                                                if (isComplete) translate("analnut.status.complete_data")
+                                                else translate("analnut.status.incomplete_data"),
                                         style = MaterialTheme.typography.body2,
                                         color =
                                                 if (isComplete) Color.Green
@@ -1044,7 +1048,7 @@ private fun ContributionItem(
                                                 )
                                         }
                                         Text(
-                                                text = alimentRation.aliment?.nom ?: "Aliment inconnu",
+                                                text = alimentRation.aliment?.nom ?: translate("analnut.contribution.unknown_food"),
                                                 style = MaterialTheme.typography.subtitle2,
                                                 fontWeight = FontWeight.Bold
                                         )
@@ -1055,14 +1059,14 @@ private fun ContributionItem(
                                 if (hasEqForAliment) {
                                         Icon(
                                                 imageVector = Icons.Filled.Info,
-                                                contentDescription = "Valeur calculée",
+                                                contentDescription = translate("analnut.contribution.calculated_value"),
                                                 tint = Color(0xFFFF9800),
                                                 modifier = Modifier.size(16.dp)
                                         )
                                 } else if (valeurAlimentAffichee == null) {
                                         Icon(
                                                 imageVector = Icons.Filled.Warning,
-                                                contentDescription = "Information manquante",
+                                                contentDescription = translate("analnut.contribution.missing_info"),
                                                 tint = VetNutriColors.Error,
                                                 modifier = Modifier.size(16.dp)
                                         )
@@ -1076,7 +1080,10 @@ private fun ContributionItem(
                                 Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                                 text =
-                                                        "Quantité: ${TextUtils.formatDecimal(quantite.toDouble(), 1)}g",
+                                                        translate(
+                                                                "analnut.contribution.quantity",
+                                                                TextUtils.formatDecimal(quantite.toDouble(), 1)
+                                                        ),
                                                 style = MaterialTheme.typography.body2,
                                                 fontWeight = FontWeight.Medium,
                                                 color = VetNutriColors.Primary
@@ -1089,18 +1096,29 @@ private fun ContributionItem(
                                                 text =
                                                         if (isAnalysisNoUnit) {
                                                                 valeurPour100gItem?.let { valeur ->
-                                                                        "Valeur: ${TextUtils.formatDecimal(valeur, 2)}"
+                                                                        translate(
+                                                                                "analnut.contribution.value_ratio",
+                                                                                TextUtils.formatDecimal(valeur, 2)
+                                                                        )
                                                                 }
-                                                                        ?: "Valeur: NA"
+                                                                        ?: translate("analnut.contribution.value_na")
                                                         } else {
                                                                 if (valeurAlimentAffichee != null) {
-                                                                        "Valeur (100g): ${TextUtils.formatDecimal(valeurAlimentAffichee.toDouble(), 2)} ${valeurNutritionnelle.unite.displayName}"
+                                                                        translate(
+                                                                                "analnut.contribution.value_100g",
+                                                                                TextUtils.formatDecimal(valeurAlimentAffichee.toDouble(), 2),
+                                                                                valeurNutritionnelle.unite.displayName
+                                                                        )
                                                                 } else {
                                                                         valeurPour100gItem?.let {
                                                                                 valeur ->
-                                                                                "Valeur (100g): ${TextUtils.formatDecimal(valeur, 2)} ${valeurNutritionnelle.unite.displayName}"
+                                                                                translate(
+                                                                                        "analnut.contribution.value_100g",
+                                                                                        TextUtils.formatDecimal(valeur, 2),
+                                                                                        valeurNutritionnelle.unite.displayName
+                                                                                )
                                                                         }
-                                                                                ?: "Valeur (100g): NA"
+                                                                                ?: translate("analnut.contribution.value_100g_na")
                                                                 }
                                                         },
                                                 style = MaterialTheme.typography.body2,
@@ -1111,14 +1129,21 @@ private fun ContributionItem(
                                 Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                                 text =
-                                                        "Contribution: ${TextUtils.formatDecimal(contributionAbsolue, 2)} ${valeurNutritionnelle.unite.displayName}",
+                                                        translate(
+                                                                "analnut.contribution.amount",
+                                                                TextUtils.formatDecimal(contributionAbsolue, 2),
+                                                                valeurNutritionnelle.unite.displayName
+                                                        ),
                                                 style = MaterialTheme.typography.body2,
                                                 fontWeight = FontWeight.Medium,
                                                 color = VetNutriColors.Secondary
                                         )
                                         Text(
                                                 text =
-                                                        "Part: ${TextUtils.formatDecimal(contributionPourcentage, 1)}%",
+                                                        translate(
+                                                                "analnut.contribution.share",
+                                                                TextUtils.formatDecimal(contributionPourcentage, 1)
+                                                        ),
                                                 style = MaterialTheme.typography.body2,
                                                 color = VetNutriColors.Secondary
                                         )
@@ -1145,7 +1170,7 @@ private fun DialogTitre(titre: String, onDismiss: () -> Unit) {
                 IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                         Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Fermer",
+                                contentDescription = translate(LocalizationKeys.AnalNut.CLOSE),
                                 tint = VetNutriColors.Primary,
                                 modifier = Modifier.size(24.dp)
                         )
@@ -1249,10 +1274,10 @@ private fun ReferenceLevelsList(
 ) {
         val refLevels: List<Pair<Reflevel, String>> =
                 listOf(
-                        Reflevel.MIN to "Minimum",
-                        Reflevel.OPTIMIN to "Optimal minimum",
-                        Reflevel.OPTIMAX to "Optimal maximum",
-                        Reflevel.MAX to "Maximum"
+                        Reflevel.MIN to translate("analnut.level.minimum"),
+                        Reflevel.OPTIMIN to translate("analnut.level.optimal_minimum"),
+                        Reflevel.OPTIMAX to translate("analnut.level.optimal_maximum"),
+                        Reflevel.MAX to translate("analnut.level.maximum")
                 )
         refLevels.forEach { (level: Reflevel, levelName: String) ->
                 val hasExplicitReference = reference.contientNutriment(nutrient, level)
@@ -1309,7 +1334,7 @@ private fun ReferenceLevelsList(
                                         horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                         Text(
-                                                text = "$levelName:",
+                                                text = translate("analnut.reference.level_label", levelName),
                                                 style = MaterialTheme.typography.body2,
                                                 fontWeight = FontWeight.Medium
                                         )
@@ -1356,7 +1381,11 @@ private fun ReferenceLevelsList(
                                                                 )
                                                         Text(
                                                                 text =
-                                                                        "→ $valeurPreferee $unitePreferee",
+                                                                        translate(
+                                                                                "analnut.recap.converted_ref",
+                                                                                valeurPreferee,
+                                                                                unitePreferee
+                                                                        ),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,
@@ -1367,7 +1396,11 @@ private fun ReferenceLevelsList(
                                                 besoinAbsolu?.let { valeurAbsolue: Double ->
                                                         Text(
                                                                 text =
-                                                                        "→ ${TextUtils.formatDecimal(valeurAbsolue, 2)} ${valeurNutritionnelle.unite.displayName}/jour",
+                                                                        translate(
+                                                                                "analnut.recap.per_day",
+                                                                                TextUtils.formatDecimal(valeurAbsolue, 2),
+                                                                                valeurNutritionnelle.unite.displayName
+                                                                        ),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,
@@ -1382,7 +1415,11 @@ private fun ReferenceLevelsList(
                                                 ) {
                                                         Text(
                                                                 text =
-                                                                        ("Réf: ${biblioRef.firstAuthor} ${biblioRef.completeRef}")
+                                                                        (translate(
+                                                                                "analnut.reference.biblio_ref",
+                                                                                biblioRef.firstAuthor,
+                                                                                biblioRef.completeRef
+                                                                        ))
                                                                                 .take(30) +
                                                                                 if (biblioRef
                                                                                                 .firstAuthor

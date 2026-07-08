@@ -26,6 +26,7 @@ import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 
@@ -37,6 +38,7 @@ import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchLayout
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodEditViewModel
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 
 /**
  * Vue complète pour ajouter un aliment à une ration
@@ -189,8 +191,8 @@ fun AddAlimentView(
                         actions = {
                                 IconButtonWithTooltip(
                                         imageVector = Icons.Default.Add,
-                                        contentDescription = "Créer un aliment",
-                                        tooltip = "Créer un aliment",
+                                        contentDescription = translate("addAliment.createFood"),
+                                        tooltip = translate("addAliment.createFood"),
                                         onClick = {
                                                 foodEditViewModel = FoodEditViewModel(
                                                         foodRepository = viewModel.foodRepository,
@@ -218,12 +220,12 @@ fun AddAlimentView(
                                 ) {
                                         Icon(
                                                 imageVector = Icons.Default.Check,
-                                                contentDescription = "Succès",
+                                                contentDescription = translate(LocalizationKeys.General.SUCCESS),
                                                 tint = VetNutriColors.Primary,
                                                 modifier = Modifier.size(20.dp)
                                         )
                                         Text(
-                                                text = "Aliment ajouté à la ration avec succès !",
+                                                text = translate("addAliment.addedSuccess"),
                                                 style = MaterialTheme.typography.body2,
                                                 color = VetNutriColors.Primary
                                         )
@@ -283,7 +285,7 @@ fun AddAlimentView(
                                 ) {
                                         Icon(
                                                 imageVector = Icons.Default.Add,
-                                                contentDescription = "Ajouter l'aliment",
+                                                contentDescription = translate("addAliment.addFood"),
                                                 modifier = Modifier.size(24.dp)
                                         )
                                 }
@@ -301,7 +303,7 @@ fun AddAlimentView(
                                                                                         ?: return@launch
 
                                                                         // Créer une nouvelle ration avec le nom de la marque de l'aliment
-                                                                        val nomRation = alimentComplet.brand ?: alimentComplet.nom ?: "Nouvelle ration"
+                                                                        val nomRation = alimentComplet.brand ?: alimentComplet.nom ?: translate(LocalizationKeys.Ration.NEW_NAME)
                                                                         val nouvelleRation = Ration(
                                                                                 idConsult = selectedConsultation.uuid,
                                                                                 name = nomRation,

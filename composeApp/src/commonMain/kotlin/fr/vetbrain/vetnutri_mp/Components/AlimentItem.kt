@@ -19,6 +19,8 @@ import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Enumer.ContEnum
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
@@ -40,21 +42,23 @@ fun calculerQuantiteEnUnites(aliment: AlimentRation): String? {
         val nombreUnites = aliment.quantite / quantInt
 
         // Formater le résultat
+        val qte = NumberUtils.format(nombreUnites.toDouble(), 1)
+        val plural = if (nombreUnites > 1) "s" else ""
         return when (cont) {
                 ContEnum.SACHET ->
-                        "${NumberUtils.format(nombreUnites.toDouble(), 1)} sachet${if (nombreUnites > 1) "s" else ""} (${quantInt}g/sachet)"
+                        translate("alimentItem.unit.sachet", qte, plural, quantInt.toString())
                 ContEnum.CAN ->
-                        "${NumberUtils.format(nombreUnites.toDouble(), 1)} boîte${if (nombreUnites > 1) "s" else ""} (${quantInt}g/boîte)"
-                ContEnum.ML -> "${NumberUtils.format(nombreUnites.toDouble(), 1)} ml (${quantInt}g/ml)"
+                        translate("alimentItem.unit.can", qte, plural, quantInt.toString())
+                ContEnum.ML -> translate("alimentItem.unit.ml", qte, quantInt.toString())
                 ContEnum.COMP ->
-                        "${NumberUtils.format(nombreUnites.toDouble(), 1)} comprimé${if (nombreUnites > 1) "s" else ""} (${quantInt}g/comprimé)"
+                        translate("alimentItem.unit.comp", qte, plural, quantInt.toString())
                 ContEnum.BOUCH ->
-                        "${NumberUtils.format(nombreUnites.toDouble(), 1)} cuillère${if (nombreUnites > 1) "s" else ""} (${quantInt}g/cuillère)"
+                        translate("alimentItem.unit.bouch", qte, plural, quantInt.toString())
                 ContEnum.DOSETTE ->
-                        "${NumberUtils.format(nombreUnites.toDouble(), 1)} dosette${if (nombreUnites > 1) "s" else ""} (${quantInt}g/dosette)"
-                ContEnum.GEL -> "${NumberUtils.format(nombreUnites.toDouble(), 1)} gel (${quantInt}g/gel)"
+                        translate("alimentItem.unit.dosette", qte, plural, quantInt.toString())
+                ContEnum.GEL -> translate("alimentItem.unit.gel", qte, quantInt.toString())
                 ContEnum.PRESSION ->
-                        "${NumberUtils.format(nombreUnites.toDouble(), 1)} pression${if (nombreUnites > 1) "s" else ""} (${quantInt}g/pression)"
+                        translate("alimentItem.unit.pression", qte, plural, quantInt.toString())
                 else -> null
         }
 }
@@ -62,12 +66,12 @@ fun calculerQuantiteEnUnites(aliment: AlimentRation): String? {
 fun genererTexteRationPressePapier(ration: fr.vetbrain.vetnutri_mp.Data.Ration): String {
         val lignes = ration.alimentMutableList.map { aliment ->
                 val marque = aliment.aliment?.brand?.takeIf { it.isNotBlank() }?.let { "$it, " } ?: ""
-                val nom = aliment.aliment?.nom ?: "Aliment"
+                val nom = aliment.aliment?.nom ?: translate("alimentItem.unnamedFood")
                 val quantite = "${NumberUtils.format(aliment.quantite.coerceAtLeast(0.0), 1)} g"
                 val unite = calculerQuantiteEnUnites(aliment)?.let { " ($it)" } ?: ""
-                "- $marque$nom : $quantite$unite"
+                translate("alimentItem.clipboardLine", marque, nom, quantite, unite)
         }
-        val titre = "Ration : ${ration.name}"
+        val titre = translate("alimentItem.clipboardTitle", ration.name)
         return (listOf(titre) + lignes).joinToString("\n")
 }
 
@@ -138,7 +142,7 @@ fun AlimentItem(
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                                text = aliment.aliment?.nom ?: "Aliment sans nom",
+                                                text = aliment.aliment?.nom ?: translate("alimentItem.noNameLabel"),
                                                 style =
                                                         MaterialTheme.typography
                                                                 .body2, // taille réduite
@@ -186,8 +190,8 @@ fun AlimentItem(
                                                         // l'humidité
                                                         humidite?.let { hum ->
                                                                 val etatHumidite =
-                                                                        if (hum > 15.0) "Humide"
-                                                                        else "Sec"
+                                                                        if (hum > 15.0) translate("alimentItem.moist")
+                                                                        else translate("alimentItem.dry")
                                                                 Text(
                                                                         text = etatHumidite,
                                                                         style =
@@ -214,7 +218,7 @@ fun AlimentItem(
                                         ) {
                                                 Icon(
                                                         imageVector = Icons.Filled.Edit,
-                                                        contentDescription = "Éditer la quantité",
+                                                        contentDescription = translate("alimentItem.editQuantity"),
                                                         tint = VetNutriColors.Secondary,
                                                         modifier =
                                                                 Modifier.size(
@@ -229,7 +233,7 @@ fun AlimentItem(
                                         ) {
                                                 Icon(
                                                         imageVector = Icons.Filled.Delete,
-                                                        contentDescription = "Supprimer",
+                                                        contentDescription = translate(LocalizationKeys.General.DELETE),
                                                         tint = VetNutriColors.Error,
                                                         modifier =
                                                                 Modifier.size(
@@ -251,7 +255,7 @@ fun AlimentItem(
                                         verticalAlignment = Alignment.CenterVertically
                                 ) {
                                         Text(
-                                                text = "Quantité: ",
+                                                text = translate("alimentItem.quantityLabel"),
                                                 style = MaterialTheme.typography.caption
                                         ) // texte réduit
 
@@ -332,7 +336,7 @@ fun AlimentItem(
                                                                 )
                                                 ) {
                                                         Text(
-                                                                "OK",
+                                                                translate(LocalizationKeys.General.OK),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption

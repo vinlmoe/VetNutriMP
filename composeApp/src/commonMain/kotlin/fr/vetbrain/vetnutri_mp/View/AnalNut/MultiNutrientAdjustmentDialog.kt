@@ -29,6 +29,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
@@ -934,7 +935,7 @@ private fun AlimentAdjustmentItem(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = aliment.nom ?: "Aliment inconnu",
+                                        text = aliment.nom ?: translate("analnut.contribution.unknown_food"),
                                         style = MaterialTheme.typography.subtitle2,
                                         fontWeight = FontWeight.Bold,
                                         color =
@@ -955,7 +956,7 @@ private fun AlimentAdjustmentItem(
                                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
                                                 Text(
-                                                        text = "Énergie",
+                                                        text = NutrientMain.ENERGIE.translateEnum(),
                                                         style = MaterialTheme.typography.caption,
                                                         color =
                                                                 MaterialTheme.colors.onSurface.copy(
@@ -1417,13 +1418,13 @@ suspend fun calculerAjustement(
                 return RationAdjustmentResult(
                         success = true,
                         message =
-                                "Ajustement séquentiel réussi pour ${nutrimentsTraites.size} nutriments",
+                                translate("analnut.success.sequential_adjust", nutrimentsTraites.size.toString()),
                         adjustedAliments = adjustedAliments
                 )
         } catch (e: Exception) {
                 return RationAdjustmentResult(
                         success = false,
-                        message = "Erreur lors de l'ajustement séquentiel: ${e.message}"
+                        message = translate("analnut.error.sequential_adjust", e.message ?: "")
                 )
         }
 }
@@ -2056,12 +2057,12 @@ private suspend fun adjustRationForMultipleNutrients(
                 return RationAdjustmentResult(
                         success = true,
                         message =
-                                "Ajustement séquentiel réussi pour ${nutrimentsTraites.size} nutriments"
+                                translate("analnut.success.sequential_adjust", nutrimentsTraites.size.toString())
                 )
         } catch (e: Exception) {
                 return RationAdjustmentResult(
                         success = false,
-                        message = "Erreur lors de l'ajustement séquentiel: ${e.message}"
+                        message = translate("analnut.error.sequential_adjust", e.message ?: "")
                 )
         }
 }

@@ -122,7 +122,7 @@ fun CreateAnimalView(
                         ) {
                                 Icon(
                                         imageVector = AppIcons.Check,
-                                        contentDescription = "Enregistrer l'animal",
+                                        contentDescription = AnimalKeys.SAVE_ANIMAL_DESC.translate(),
                                         tint = VetNutriColors.OnPrimary
                                 )
                         }

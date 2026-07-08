@@ -120,7 +120,7 @@ fun AnimalIdentificationView(
                 lastWeight?.let { weight ->
                     InfoRow(
                             label = Animal.WEIGHT.translate(),
-                            value = "${weight.value} kg (${weight.date})"
+                            value = translate(Animal.WEIGHT_VALUE_WITH_DATE, weight.value.toString(), weight.date.toString())
                     )
                 }
             }
