@@ -84,7 +84,7 @@ private data class PractitionerContact(
 )
 
 internal fun formatAlimentDisplayName(aliment: AlimentEv?): String {
-        if (aliment == null) return "Ingredient"
+        if (aliment == null) return translate(AnimalDetail.CR_INGREDIENT_LABEL)
         fun debugChars(input: String): String =
                 input.map { c -> "${c.code.toString(16).padStart(4, '0')}(${c})" }.joinToString(" ")
         fun clean(value: String?): String? {
@@ -119,7 +119,7 @@ internal fun formatAlimentDisplayName(aliment: AlimentEv?): String {
                                         semantic != "none" &&
                                         semantic != "na"
                         }
-        val result = if (parts.isEmpty()) "Ingredient" else parts.joinToString(", ")
+        val result = if (parts.isEmpty()) translate(AnimalDetail.CR_INGREDIENT_LABEL) else parts.joinToString(", ")
         return result
 }
 
@@ -147,13 +147,13 @@ private fun buildCompteRenduText(
         fun text(value: String?): String = value?.takeIf { it.isNotBlank() } ?: "-"
 
         fun formatRationDetails(ration: Ration): String {
-                val rationName = if (ration.name.isBlank()) "Sans nom" else ration.name
+                val rationName = if (ration.name.isBlank()) translate(AnimalDetail.CR_NO_NAME) else ration.name
                 val ingredients = ration.alimentMutableList.joinToString("\n") { alimentRation ->
                         val ingredientName = formatAlimentDisplayName(alimentRation.aliment)
                         val quantity = (alimentRation.quantite * 10.0).roundToInt() / 10.0
                         "- $ingredientName: $quantity g"
                 }
-                val details = if (ingredients.isBlank()) "- Aucun ingredient" else ingredients
+                val details = if (ingredients.isBlank()) "- ${translate(AnimalDetail.CR_NO_INGREDIENT)}" else ingredients
                 return "- $rationName\n$details"
         }
 
@@ -199,49 +199,49 @@ private fun buildCompteRenduText(
         val conseilsText = selectedConseils.joinToString("\n\n") { formatConseilDetails(it) }
 
         return buildString {
-                appendLine("Compte rendu nutritionnel")
-                appendLine("ID animal: ${animal?.id?.takeIf { it.isNotBlank() } ?: "-"}")
-                appendLine("Date de consultation: ${consultation?.date?.toString() ?: "-"}")
-                appendLine("Objet de consultation: ${consultation?.objectConsult?.takeIf { it.isNotBlank() } ?: "-"}")
+                appendLine(translate(AnimalDetail.CR_TITLE))
+                appendLine("${translate(AnimalDetail.CR_LABEL_ANIMAL_ID)}: ${animal?.id?.takeIf { it.isNotBlank() } ?: "-"}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_CONSULT_DATE)}: ${consultation?.date?.toString() ?: "-"}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_CONSULT_OBJECT)}: ${consultation?.objectConsult?.takeIf { it.isNotBlank() } ?: "-"}")
                 appendLine()
-                appendLine("Identification animal")
-                appendLine("Nom: ${text(animal?.nom)}")
-                appendLine("Proprietaire: ${text(animal?.ownerName)}")
-                appendLine("Sexe: ${text(animal?.getSex()?.displayName)}")
-                appendLine("Espece: ${text(animal?.getEspece()?.label)}")
-                appendLine("Race: ${text(animal?.race)}")
-                appendLine("Date de naissance: ${text(animal?.birthdate?.toString())}")
-                appendLine("Poids consultation: ${consultation?.effectiveWeight?.let { "${(it * 10.0).roundToInt() / 10.0} kg" } ?: "-"}")
-                appendLine("UUID: ${text(animal?.uuid)}")
+                appendLine(translate(AnimalDetail.CR_SECTION_IDENTIFICATION))
+                appendLine("${translate(AnimalDetail.CR_LABEL_NAME)}: ${text(animal?.nom)}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_OWNER)}: ${text(animal?.ownerName)}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_SEX)}: ${text(animal?.getSex()?.displayName)}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_SPECIES)}: ${text(animal?.getEspece()?.label)}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_BREED)}: ${text(animal?.race)}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_BIRTHDATE)}: ${text(animal?.birthdate?.toString())}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_CONSULT_WEIGHT)}: ${consultation?.effectiveWeight?.let { translate(AnimalDetail.WEIGHT_KG_FORMAT, ((it * 10.0).roundToInt() / 10.0).toString()) } ?: "-"}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_UUID)}: ${text(animal?.uuid)}")
                 appendLine()
-                appendLine("Coordonnees veterinaire")
-                appendLine("Nom: ${practitionerContact?.nom?.ifBlank { "-" } ?: "-"}")
-                appendLine("N° ordre: ${practitionerContact?.numeroOrdre?.ifBlank { "-" } ?: "-"}")
-                appendLine("Adresse: ${practitionerContact?.adressePostale?.ifBlank { "-" } ?: "-"}")
-                appendLine("Code postal: ${practitionerContact?.codePostal?.ifBlank { "-" } ?: "-"}")
-                appendLine("Ville: ${practitionerContact?.ville?.ifBlank { "-" } ?: "-"}")
-                appendLine("Telephone: ${practitionerContact?.telephone?.ifBlank { "-" } ?: "-"}")
-                appendLine("Email: ${practitionerContact?.email?.ifBlank { "-" } ?: "-"}")
+                appendLine(translate(AnimalDetail.CR_SECTION_VET_CONTACT))
+                appendLine("${translate(AnimalDetail.CR_LABEL_NAME)}: ${practitionerContact?.nom?.ifBlank { "-" } ?: "-"}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_ORDER_NUMBER)}: ${practitionerContact?.numeroOrdre?.ifBlank { "-" } ?: "-"}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_ADDRESS)}: ${practitionerContact?.adressePostale?.ifBlank { "-" } ?: "-"}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_POSTAL_CODE)}: ${practitionerContact?.codePostal?.ifBlank { "-" } ?: "-"}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_CITY)}: ${practitionerContact?.ville?.ifBlank { "-" } ?: "-"}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_PHONE)}: ${practitionerContact?.telephone?.ifBlank { "-" } ?: "-"}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_EMAIL)}: ${practitionerContact?.email?.ifBlank { "-" } ?: "-"}")
                 appendLine()
-                appendLine("Anamnèse")
+                appendLine(translate(AnimalDetail.CR_TEXT_ANAMNESE_HEADER))
                 appendLine(if (anamnese.isBlank()) "-" else anamnese)
                 appendLine()
-                appendLine("Examen clinique")
+                appendLine(translate(AnimalDetail.CR_EXAM_CLINIQUE))
                 appendLine(if (examenClinique.isBlank()) "-" else examenClinique)
                 appendLine()
-                appendLine("Rations actuelles")
+                appendLine(translate(AnimalDetail.CR_CURRENT_RATIONS))
                 appendLine(if (currentRations.isBlank()) "-" else currentRations)
                 appendLine()
-                appendLine("Facteur nutritionnel clef")
+                appendLine(translate(AnimalDetail.CR_KEY_NUTRITIONAL_FACTOR))
                 appendLine(if (facteurNutritionnelClef.isBlank()) "-" else facteurNutritionnelClef)
                 appendLine()
-                appendLine("Rations proposees")
+                appendLine(translate(AnimalDetail.CR_PROPOSED_RATIONS))
                 appendLine(if (proposedRations.isBlank()) "-" else proposedRations)
                 appendLine()
-                appendLine("Conseils ordonnance")
+                appendLine(translate(AnimalDetail.CR_ADVICE_SECTION))
                 appendLine(if (conseilsText.isBlank()) "-" else conseilsText)
                 appendLine()
-                appendLine("Texte additionnel ordonnance")
+                appendLine(translate(AnimalDetail.CR_ADDITIONAL_TEXT_SECTION))
                 appendLine(if (additionalText.isBlank()) "-" else additionalText)
         }
 }
@@ -271,7 +271,7 @@ private fun buildCompteRenduHtml(
                         """.trimIndent()
                 }
                 val cards = rations.joinToString("\n") { ration ->
-                        val rationName = if (ration.name.isBlank()) "Sans nom" else escapeHtml(ration.name)
+                        val rationName = if (ration.name.isBlank()) translate(AnimalDetail.CR_NO_NAME) else escapeHtml(ration.name)
                         val rows = ration.alimentMutableList.joinToString("\n") { ar ->
                                 val ingredient = formatAlimentDisplayName(ar.aliment)
                                 val quantity = (ar.quantite * 10.0).roundToInt() / 10.0
@@ -279,7 +279,7 @@ private fun buildCompteRenduHtml(
                         }
                         val body =
                                 if (rows.isBlank()) {
-                                        "<tr><td colspan='2' class='muted'>Aucun ingredient</td></tr>"
+                                        "<tr><td colspan='2' class='muted'>${translate(AnimalDetail.CR_NO_INGREDIENT)}</td></tr>"
                                 } else {
                                         rows
                                 }
@@ -287,7 +287,7 @@ private fun buildCompteRenduHtml(
                             <div class='card'>
                                 <h3>$rationName</h3>
                                 <table>
-                                    <thead><tr><th>Ingredient</th><th>Quantite</th></tr></thead>
+                                    <thead><tr><th>${translate(AnimalDetail.CR_INGREDIENT_LABEL)}</th><th>${translate(AnimalDetail.CR_QUANTITY_LABEL)}</th></tr></thead>
                                     <tbody>$body</tbody>
                                 </table>
                             </div>

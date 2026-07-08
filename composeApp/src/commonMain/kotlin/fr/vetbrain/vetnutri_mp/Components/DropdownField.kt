@@ -24,6 +24,8 @@ import androidx.compose.ui.window.Dialog
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Composant générique de liste déroulante basé sur BasicTextField pour un contrôle total
@@ -56,8 +58,9 @@ fun <T> DropdownField(
         borderWidth: Dp = 0.5.dp
 ) {
         var expanded by remember { mutableStateOf(false) }
-        val displayValue = remember(selectedValue) { 
-            selectedValue?.let { valueToString(it) } ?: "Sélectionner" 
+        val selectDefaultText = translate("dropdownField.selectDefault")
+        val displayValue = remember(selectedValue, selectDefaultText) {
+            selectedValue?.let { valueToString(it) } ?: selectDefaultText
         }
 
         Column(modifier = modifier) {
@@ -146,7 +149,7 @@ fun <T> DropdownField(
 
                                                         // Contenu du champ
                                                         Box(modifier = Modifier.weight(1f)) {
-                                                                if (displayValue == "Sélectionner"
+                                                                if (displayValue == selectDefaultText
                                                                 ) {
                                                                         Text(
                                                                                 text = displayValue,
@@ -175,7 +178,7 @@ fun <T> DropdownField(
                                                         // Icône dropdown
                                                         Icon(
                                                                 Icons.Default.ArrowDropDown,
-                                                                contentDescription = "Dropdown",
+                                                                contentDescription = translate("dropdownField.dropdownIcon"),
                                                                 modifier = Modifier.size(18.dp),
                                                                 tint =
                                                                         MaterialTheme.colors
@@ -270,8 +273,8 @@ fun <T> MultiSelectDropdownField(
         }
         
         val displayValue =
-                if (selectedValues.isEmpty()) "Sélectionner"
-                else "${selectedValues.size} sélectionnée(s)"
+                if (selectedValues.isEmpty()) translate("dropdownField.selectDefault")
+                else translate("dropdownField.selectedCount", selectedValues.size.toString())
 
         Column(modifier = modifier) {
                         BasicTextField(
@@ -358,7 +361,7 @@ fun <T> MultiSelectDropdownField(
                                                                 if (selectedValues.isEmpty()) {
                                                                         Text(
                                                                                 text =
-                                                                                        "Sélectionner...",
+                                                                                        translate(LocalizationKeys.General.SELECT_PLACEHOLDER),
                                                                                 fontSize = fontSize,
                                                                                 color =
                                                                                         MaterialTheme
@@ -400,7 +403,7 @@ fun <T> MultiSelectDropdownField(
                                                         }
                                                         Icon(
                                                                 Icons.Default.ArrowDropDown,
-                                                                contentDescription = "Dropdown",
+                                                                contentDescription = translate("dropdownField.dropdownIcon"),
                                                                 modifier = Modifier.size(18.dp),
                                                                 tint =
                                                                         MaterialTheme.colors
@@ -462,7 +465,7 @@ fun <T> MultiSelectDropdownField(
                                                                 )
                                                                 Spacer(modifier = Modifier.width(12.dp))
                                                                 Text(
-                                                                        "Aucune sélection",
+                                                                        translate("dropdownField.noSelection"),
                                                                         style = MaterialTheme.typography.body1
                                                                 )
                                                         }
@@ -517,7 +520,7 @@ fun <T> MultiSelectDropdownField(
                                                                         },
                                                                         modifier = Modifier.padding(end = 8.dp)
                                                                 ) {
-                                                                        Text("Annuler")
+                                                                        Text(translate(LocalizationKeys.General.CANCEL))
                                                                 }
                                                                 FloatingActionButton(
                                                                         onClick = {

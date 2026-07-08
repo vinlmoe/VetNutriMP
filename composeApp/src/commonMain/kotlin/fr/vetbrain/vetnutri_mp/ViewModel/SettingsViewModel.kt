@@ -654,13 +654,13 @@ class SettingsViewModel(
                     } catch (e: Exception) {
                         log("❌ ERREUR: Fichier introuvable - ${e.message}")
                         throw IllegalStateException(
-                                "Fichier vetnutri_export_init.json introuvable: ${e.message}"
+                                translate(LocalizationKeys.Settings.IMPORT_FILE_NOT_FOUND, e.message ?: "")
                         )
                     }
 
             if (json.isEmpty()) {
                 log("❌ ERREUR: Le fichier JSON est vide")
-                throw IllegalStateException("Le fichier JSON d'import automatique est vide")
+                throw IllegalStateException(translate(LocalizationKeys.Settings.IMPORT_FILE_EMPTY))
             }
 
             // Lancer l'import avec un listener de progression
@@ -735,7 +735,7 @@ class SettingsViewModel(
             log("Stack trace:")
             e.printStackTrace()
             log("=".repeat(60))
-            ImportResult.Error("Erreur lors de l'import automatique: ${e.message}")
+            ImportResult.Error(translate(LocalizationKeys.Settings.AUTO_IMPORT_ERROR_FORMAT, e.message ?: ""))
         }
     }
 
