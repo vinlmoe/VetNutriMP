@@ -12,6 +12,8 @@ import fr.vetbrain.vetnutri_mp.Data.calculerCompositionPourcentages
 import fr.vetbrain.vetnutri_mp.Data.calculerOrigineEnergetiquePourcentages
 import fr.vetbrain.vetnutri_mp.Data.calculerBulletGraphData
 import fr.vetbrain.vetnutri_mp.Data.BulletGraphData
+import fr.vetbrain.vetnutri_mp.Data.calculerContributionsIngredients
+import fr.vetbrain.vetnutri_mp.Data.ContributionIngredient
 import fr.vetbrain.vetnutri_mp.Data.grouperNutrimentsParCategorie
 import fr.vetbrain.vetnutri_mp.Data.obtenirTitreCategorie
 import fr.vetbrain.vetnutri_mp.Enumer.ContEnum
@@ -247,10 +249,20 @@ object HtmlDocumentBuilder {
         """.trimIndent()
     }
 
+    // Même palette que VetNutriColors.FeedColors (Theme/Colors.kt), en hexadécimal brut pour
+    // l'export HTML : sert à la fois de repère couleur dans la liste des aliments et de couleur
+    // des segments de contribution dans le bullet graph, pour que les deux se correspondent.
+    private val FEED_COLORS_HEX = listOf(
+        "#2E7D32", "#1565C0", "#EF6C00", "#AD1457", "#6A1B9A",
+        "#00838F", "#D84315", "#4527A0", "#37474F", "#C2185B"
+    )
+
+    private fun feedColorHex(index: Int): String = FEED_COLORS_HEX[index % FEED_COLORS_HEX.size]
+
     private fun buildRationBlock(ration: Ration?): String {
         if (ration == null) return ""
         val rows =
-                ration.alimentMutableList.joinToString("\n") { a ->
+                ration.alimentMutableList.mapIndexed { index, a ->
                     val nom = formatAlimentDisplayName(a.aliment)
                     val qte = TextUtils.formatDecimal(a.quantite.toDouble(), 1)
                     val quantiteUnites = calculerQuantiteEnUnites(a)
@@ -261,14 +273,16 @@ object HtmlDocumentBuilder {
                             } else {
                                 "${qte} g"
                             }
+                    val couleurCell =
+                            "<div style='width:14px;height:14px;border-radius:2px;background:${feedColorHex(index)};'></div>"
 
-                    "<tr><td>${nom}</td><td style='text-align:right'>${quantiteCell}</td></tr>"
-                }
+                    "<tr><td>${couleurCell}</td><td>${nom}</td><td style='text-align:right'>${quantiteCell}</td></tr>"
+                }.joinToString("\n")
         return """
             <div class='section'>
                 <h2>Composition de la ration</h2>
                 <table>
-                    <thead><tr><th>Aliment</th><th>Quantité</th></tr></thead>
+                    <thead><tr><th>Couleur</th><th>Aliment</th><th>Quantité</th></tr></thead>
                     <tbody>
                         ${rows}
                     </tbody>
@@ -484,7 +498,12 @@ object HtmlDocumentBuilder {
                 val bulletGraphData = calculerBulletGraphData(
                         valeur, reference, typeExpressionBesoin, poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien
                 )
-                val repereHtml = bulletGraphData?.let { buildBulletGraphHtml(it) } ?: "—"
+                val repereHtml = bulletGraphData?.let { bgData ->
+                    val contributions = calculerContributionsIngredients(
+                            ration, valeur.nutriment, reference, equationRepository
+                    )
+                    buildBulletGraphHtml(bgData, contributions)
+                } ?: "—"
                 val valeurCell = if (uniteAffichee.isNotBlank()) "$valeurAffichee $uniteAffichee" else valeurAffichee
                 "<tr><td>${nomTraduit}</td><td class='right'>${valeurCell}</td><td>${repereHtml}</td></tr>"
             }
@@ -516,12 +535,14 @@ object HtmlDocumentBuilder {
     /**
      * Rendu HTML/CSS pur (pas de SVG, pas d'image bitmap) d'un bullet graph : mêmes zones
      * colorées et mêmes bornes que `DetailNutrimentAnalysis.kt::ReferenceBulletGraph` (rouge hors
-     * MIN/MAX, bleu entre MIN/OPTIMIN et OPTIMAX/MAX, vert dans la zone optimale), avec une barre
-     * sombre représentant l'apport actuel. Volontairement sans SVG : `UIMarkupTextPrintFormatter`
+     * MIN/MAX, bleu entre MIN/OPTIMIN et OPTIMAX/MAX, vert dans la zone optimale). La barre
+     * d'apport est segmentée par ingrédient (même couleur que la ligne correspondante dans la
+     * liste des aliments, via `feedColorHex`), ou une barre sombre unie si la contribution par
+     * ingrédient n'est pas disponible. Volontairement sans SVG : `UIMarkupTextPrintFormatter`
      * (export PDF iOS) ne le rend pas (page blanche), alors que des <div> avec largeurs en %
      * fonctionnent sur toutes les plateformes (Desktop/openhtmltopdf, Android/WebView, iOS).
      */
-    private fun buildBulletGraphHtml(data: BulletGraphData): String {
+    private fun buildBulletGraphHtml(data: BulletGraphData, contributions: List<ContributionIngredient>): String {
         val axisMax = data.maxAxis
         fun fmt(v: Double): String = TextUtils.formatDecimal(v, 2)
         fun pct(v: Double): Double = (v / axisMax).coerceIn(0.0, 1.0) * 100.0
@@ -566,9 +587,33 @@ object HtmlDocumentBuilder {
         }
 
         val apportPct = pct(data.apport)
-        val apportRow =
-            "<div style='display:inline-block;height:4px;width:${fmt(apportPct)}%;background:#222222;'></div>" +
-                "<div style='display:inline-block;height:4px;width:${fmt(100.0 - apportPct)}%;background:transparent;'></div>"
+        val totalContribution = contributions.sumOf { it.contribution }
+
+        val apportRow = StringBuilder()
+        if (contributions.isEmpty() || totalContribution <= 0.0) {
+            // Pas de détail par ingrédient disponible (ex: nutriment-ratio) : barre unie, comme avant.
+            apportRow.append(
+                "<div style='display:inline-block;height:4px;width:${fmt(apportPct)}%;background:#222222;'></div>"
+            )
+        } else {
+            var cumulApportPct = 0.0
+            contributions.forEachIndexed { i, contrib ->
+                val isLast = i == contributions.size - 1
+                val segPct = if (isLast) {
+                    (apportPct - cumulApportPct).coerceAtLeast(0.0)
+                } else {
+                    (contrib.contribution / totalContribution) * apportPct
+                }
+                cumulApportPct += segPct
+                if (segPct <= 0.0) return@forEachIndexed
+                apportRow.append(
+                    "<div style='display:inline-block;height:4px;width:${fmt(segPct)}%;background:${feedColorHex(contrib.index)};'></div>"
+                )
+            }
+        }
+        apportRow.append(
+            "<div style='display:inline-block;height:4px;width:${fmt(100.0 - apportPct)}%;background:transparent;'></div>"
+        )
 
         return "<div style='width:100%;font-size:0;line-height:0;'>$zoneSegments</div>" +
             "<div style='width:100%;font-size:0;line-height:0;margin-top:1px;'>$apportRow</div>"

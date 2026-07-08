@@ -16,6 +16,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
@@ -547,4 +548,60 @@ fun calculerOrigineEnergetiquePourcentages(
         if (energyLipid > 0) NutrientMain.LIPIDE.translateEnum() to (energyLipid / total) * 100.0 else null,
         if (energyEna > 0) NutrientMain.ENA.translateEnum() to (energyEna / total) * 100.0 else null
     )
+}
+
+/**
+ * Contribution absolue d'un ingrédient de la ration à l'apport total d'un nutriment — même calcul
+ * que `DetailNutrimentAnalysis.kt::calculateContributionForGraph` (segments colorés par ingrédient
+ * du bullet graph).
+ */
+suspend fun calculerContributionIngredient(
+    alimentRation: AlimentRation,
+    nutriment: Nutrient,
+    reference: ReferenceEv?,
+    equationRepository: EquationRepository?
+): Double {
+    val quantiteIngredient = alimentRation.quantite
+    if (quantiteIngredient <= 0.0) return 0.0
+
+    if (nutriment == NutrientMain.ENERGIE) {
+        return alimentRation.getEnergie(reference, equationRepository)
+    }
+
+    val valeurPour100g = alimentRation.getNutrientWithComplementary(
+        nutrient = nutriment,
+        preferences = null,
+        equationRepository = equationRepository,
+        referenceEv = reference
+    ) ?: 0.0
+
+    val valeurConvertie = if (nutriment is AAEnum) {
+        val teneurProteines = alimentRation.aliment?.getNutrient(NutrientMain.PROTEINE) ?: 0.0
+        (valeurPour100g * teneurProteines) / 100.0
+    } else {
+        valeurPour100g
+    }
+
+    return (valeurConvertie * quantiteIngredient) / 100.0
+}
+
+/** Contribution d'un ingrédient (son index dans la ration + sa contribution absolue au nutriment). */
+data class ContributionIngredient(val index: Int, val contribution: Double)
+
+/**
+ * Contributions par ingrédient pour un nutriment donné, dans l'ordre de la ration (index utilisé
+ * pour la couleur, via le même index que la liste des aliments). Vide pour les nutriments-ratio
+ * (pas de notion de contribution par ingrédient) ou si l'apport est nul.
+ */
+suspend fun calculerContributionsIngredients(
+    ration: Ration,
+    nutriment: Nutrient,
+    reference: ReferenceEv?,
+    equationRepository: EquationRepository?
+): List<ContributionIngredient> {
+    if (nutriment is NutrientAnalysis) return emptyList()
+    return ration.alimentMutableList.mapIndexedNotNull { index, alimentRation ->
+        val contribution = calculerContributionIngredient(alimentRation, nutriment, reference, equationRepository)
+        if (contribution > 0.0) ContributionIngredient(index, contribution) else null
+    }
 }
