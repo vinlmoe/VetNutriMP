@@ -296,7 +296,7 @@ fun EquationDropdown(
                         onEquationSelected(null)
                         expanded = false
                     }
-            ) { Text("Aucune équation") }
+            ) { Text(translate(LocalizationKeys.NewReference.EQ_NONE)) }
 
             // Liste des équations disponibles
             equations.forEach { equation ->

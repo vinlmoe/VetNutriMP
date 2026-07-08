@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -68,7 +69,7 @@ fun BiblioRefListView(
                 ) {
                     Icon(
                             imageVector = AppIcons.Add,
-                            contentDescription = "Ajouter une référence",
+                            contentDescription = translate("food_edit.biblio.add_button"),
                             tint = VetNutriColors.OnPrimary
                     )
                 }
@@ -84,14 +85,14 @@ fun BiblioRefListView(
             OutlinedTextField(
                     value = searchQuery.value,
                     onValueChange = { searchQuery.value = it },
-                    label = { Text("Rechercher une référence") },
+                    label = { Text(translate("biblioRef.list.searchLabel")) },
                     leadingIcon = {
-                        Icon(imageVector = AppIcons.Search, contentDescription = "Rechercher")
+                        Icon(imageVector = AppIcons.Search, contentDescription = translate("general.search"))
                     },
                     trailingIcon = {
                         if (searchQuery.value.isNotEmpty()) {
                             IconButton(onClick = { searchQuery.value = "" }) {
-                                Icon(imageVector = AppIcons.Close, contentDescription = "Effacer")
+                                Icon(imageVector = AppIcons.Close, contentDescription = translate("animalList.clearSearch"))
                             }
                         }
                     },
@@ -111,14 +112,14 @@ fun BiblioRefListView(
                     Text(
                             text =
                                     if (searchQuery.value.isBlank())
-                                            "Aucune référence bibliographique disponible"
-                                    else "Aucune référence ne correspond à votre recherche",
+                                            translate("biblioRef.list.empty")
+                                    else translate("biblioRef.list.noSearchResults"),
                             style = MaterialTheme.typography.h6
                     )
                 }
             } else {
                 Text(
-                        text = "Liste des références (${filteredRefs.size})",
+                        text = translate("biblioRef.list.countTitleFormat", filteredRefs.size.toString()),
                         style = MaterialTheme.typography.h6
                 )
 
@@ -148,9 +149,13 @@ fun BiblioRefListView(
         // Dialogue de confirmation de suppression
         refToDelete?.let { biblioRef ->
             ConfirmDialog(
-                    title = "Confirmation de suppression",
+                    title = translate("settings.clearConfirmation.title"),
                     message =
-                            "Êtes-vous sûr de vouloir supprimer la référence '${biblioRef.firstAuthor}, ${biblioRef.year}' ?",
+                            translate(
+                                    "biblioRef.list.deleteConfirmMessageFormat",
+                                    biblioRef.firstAuthor,
+                                    biblioRef.year.toString()
+                            ),
                     onConfirm = {
                         coroutineScope.launch { viewModel.deleteBiblioRef(biblioRef) }
                         refToDelete = null
@@ -197,7 +202,7 @@ private fun BiblioRefCard(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                                text = "Commentaire: ${biblioRef.comments}",
+                                text = translate("biblioRef.card.commentPrefixFormat", biblioRef.comments),
                                 style = MaterialTheme.typography.caption
                         )
                     }
@@ -208,7 +213,7 @@ private fun BiblioRefCard(
                     IconButton(onClick = onEdit) {
                         Icon(
                                 imageVector = AppIcons.Edit,
-                                contentDescription = "Modifier",
+                                contentDescription = translate("ration.editAction"),
                                 tint = VetNutriColors.Primary
                         )
                     }
@@ -216,7 +221,7 @@ private fun BiblioRefCard(
                     IconButton(onClick = onDuplicate) {
                         Icon(
                                 imageVector = AppIcons.ContentCopy,
-                                contentDescription = "Dupliquer",
+                                contentDescription = translate("ration.duplicateAction"),
                                 tint = VetNutriColors.Primary
                         )
                     }
@@ -224,7 +229,7 @@ private fun BiblioRefCard(
                     IconButton(onClick = onDelete) {
                         Icon(
                                 imageVector = AppIcons.Delete,
-                                contentDescription = "Supprimer",
+                                contentDescription = translate("general.delete"),
                                 tint = VetNutriColors.Error
                         )
                     }

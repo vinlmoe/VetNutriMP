@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 
 @Composable
@@ -38,7 +39,7 @@ fun TopBar(
                         ) {
                                 Icon(
                                         Icons.Default.Settings,
-                                        contentDescription = "Paramètres",
+                                        contentDescription = translate("topBar.settings"),
                                         modifier = Modifier.size(AppSizes.iconSizeMedium)
                                 )
                         }
@@ -69,7 +70,7 @@ fun TopBar(
                         ) {
                                 Icon(
                                         Icons.AutoMirrored.Default.ArrowBack,
-                                        contentDescription = "Retour",
+                                        contentDescription = translate("topBar.back"),
                                         modifier = Modifier.size(AppSizes.iconSizeMedium)
                                 )
                         }
@@ -93,7 +94,7 @@ fun TopBar(
                         ) {
                                 Icon(
                                         Icons.Default.Settings,
-                                        contentDescription = "Paramètres",
+                                        contentDescription = translate("topBar.settings"),
                                         modifier = Modifier.size(AppSizes.iconSizeMedium)
                                 )
                         }
@@ -124,7 +125,7 @@ fun TopBarSimple(
                         ) {
                                 Icon(
                                         Icons.AutoMirrored.Default.ArrowBack,
-                                        contentDescription = "Retour",
+                                        contentDescription = translate("topBar.back"),
                                         modifier = Modifier.size(AppSizes.iconSizeMedium)
                                 )
                         }

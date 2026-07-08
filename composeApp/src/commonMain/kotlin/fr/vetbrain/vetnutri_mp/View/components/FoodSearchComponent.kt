@@ -40,6 +40,7 @@ import fr.vetbrain.vetnutri_mp.Data.SortCriteria
 import fr.vetbrain.vetnutri_mp.Data.SortOrder
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -579,7 +580,7 @@ private fun SearchBar(
         BasicAppTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
-                placeholder = "Nom, marque, ingrédients...",
+                placeholder = translate(LocalizationKeys.Chart.SEARCH_PLACEHOLDER),
                 leadingIcon = Icons.Default.Search,
                 trailingIcon = if (searchQuery.isNotEmpty()) Icons.Default.Clear else null,
                 onTrailingIconClick = { onSearchQueryChange("") },

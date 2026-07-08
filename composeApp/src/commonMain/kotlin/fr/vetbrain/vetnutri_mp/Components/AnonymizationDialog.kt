@@ -9,6 +9,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Dialog pour demander si l'utilisateur souhaite anonymiser l'export
@@ -29,7 +31,7 @@ fun AnonymizationDialog(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(Icons.Default.Info, contentDescription = null)
-                Text("Anonymisation de l'export")
+                Text(translate("anonymizationDialog.title"))
             }
         },
         text = {
@@ -38,24 +40,23 @@ fun AnonymizationDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    "Souhaitez-vous anonymiser les données avant l'export ?",
+                    translate("anonymizationDialog.question"),
                     style = MaterialTheme.typography.body1
                 )
-                
+
                 Text(
-                    "L'anonymisation remplacera :",
+                    translate("anonymizationDialog.replacementIntro"),
                     style = MaterialTheme.typography.body2,
                     fontWeight = FontWeight.Bold
                 )
-                
+
                 Text(
-                    "• L'identifiant de l'animal par \"anonyme\"\n" +
-                    "• Le nom du propriétaire par \"anonyme\"",
+                    translate("anonymizationDialog.replacementDetails"),
                     style = MaterialTheme.typography.body2
                 )
-                
+
                 Divider()
-                
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -65,7 +66,7 @@ fun AnonymizationDialog(
                         onCheckedChange = { shouldAnonymize = it }
                     )
                     Text(
-                        "Anonymiser les données",
+                        translate("anonymizationDialog.anonymizeData"),
                         style = MaterialTheme.typography.body2
                     )
                 }
@@ -73,7 +74,7 @@ fun AnonymizationDialog(
                 Divider()
 
                 Text(
-                    "Souhaitez-vous chiffrer le JSON ?",
+                    translate("anonymizationDialog.encryptQuestion"),
                     style = MaterialTheme.typography.body2,
                     fontWeight = FontWeight.Bold
                 )
@@ -87,14 +88,14 @@ fun AnonymizationDialog(
                         onCheckedChange = { shouldEncrypt = it }
                     )
                     Text(
-                        "Chiffrer le JSON (recommandé)",
+                        translate("anonymizationDialog.encryptRecommended"),
                         style = MaterialTheme.typography.body2
                     )
                 }
 
                 if (!shouldEncrypt) {
                     Text(
-                        "⚠️ Sans chiffrement, les données vétérinaires seront stockées en clair sur jsonbin.io (serveurs US).",
+                        translate("anonymizationDialog.noEncryptionWarning"),
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.error
                     )
@@ -105,12 +106,12 @@ fun AnonymizationDialog(
             Button(
                 onClick = { onConfirm(shouldAnonymize, shouldEncrypt) }
             ) {
-                Text("Continuer")
+                Text(translate("anonymizationDialog.continueAction"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Annuler")
+                Text(translate(LocalizationKeys.General.CANCEL))
             }
         }
     )

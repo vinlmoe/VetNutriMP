@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -66,8 +67,8 @@ fun BiblioRefEditView(
                 topBar = {
                         TopBarSimple(
                                 title =
-                                        if (isEditMode) "Modifier une référence"
-                                        else "Ajouter une référence",
+                                        if (isEditMode) translate("biblioRef.edit.titleEdit")
+                                        else translate("biblioRef.edit.titleCreate"),
                                 onNavigateBack = onNavigateBack
                         )
                 }
@@ -89,7 +90,7 @@ fun BiblioRefEditView(
                                                         Arrangement.spacedBy(AppSizes.paddingSmall)
                                         ) {
                                                 Text(
-                                                        text = "Informations de la référence",
+                                                        text = translate("biblioRef.edit.sectionInfoTitle"),
                                                         style = MaterialTheme.typography.h6
                                                 )
 
@@ -97,7 +98,7 @@ fun BiblioRefEditView(
 
                                                 // Section import DOI
                                                 Text(
-                                                        "Importer depuis un DOI",
+                                                        translate("biblioRef.edit.importDoiTitle"),
                                                         style = MaterialTheme.typography.subtitle2
                                                 )
                                                 Row(
@@ -140,7 +141,7 @@ fun BiblioRefEditView(
                                                                                 tint = VetNutriColors.OnPrimary
                                                                         )
                                                                         Spacer(Modifier.width(4.dp))
-                                                                        Text("Remplir", color = VetNutriColors.OnPrimary)
+                                                                        Text(translate("biblioRef.edit.fillFromDoi"), color = VetNutriColors.OnPrimary)
                                                                 }
                                                         }
                                                 }
@@ -167,7 +168,7 @@ fun BiblioRefEditView(
                                                         onValueChange = {
                                                                 viewModel.updateFirstAuthor(it)
                                                         },
-                                                        label = { Text("Premier auteur*") },
+                                                        label = { Text(translate("biblioRef.edit.firstAuthorLabel")) },
                                                         modifier = Modifier.fillMaxWidth(),
                                                         singleLine = true,
                                                         colors =
@@ -194,7 +195,7 @@ fun BiblioRefEditView(
                                                         onValueChange = {
                                                                 viewModel.updateYear(it)
                                                         },
-                                                        label = { Text("Année*") },
+                                                        label = { Text(translate("biblioRef.edit.yearLabel")) },
                                                         modifier = Modifier.fillMaxWidth(),
                                                         keyboardOptions =
                                                                 KeyboardOptions(
@@ -226,7 +227,7 @@ fun BiblioRefEditView(
                                                         onValueChange = {
                                                                 viewModel.updateCompleteRef(it)
                                                         },
-                                                        label = { Text("Référence complète*") },
+                                                        label = { Text(translate("biblioRef.edit.completeRefLabel")) },
                                                         modifier =
                                                                 Modifier.fillMaxWidth()
                                                                         .height(120.dp),
@@ -255,7 +256,7 @@ fun BiblioRefEditView(
                                                         onValueChange = {
                                                                 viewModel.updateComments(it)
                                                         },
-                                                        label = { Text("Commentaires") },
+                                                        label = { Text(translate("biblioRef.edit.commentsLabel")) },
                                                         modifier =
                                                                 Modifier.fillMaxWidth()
                                                                         .height(120.dp),
@@ -286,7 +287,7 @@ fun BiblioRefEditView(
                                                         Modifier.padding(
                                                                 end = AppSizes.paddingMedium
                                                         )
-                                        ) { Text("Réinitialiser") }
+                                        ) { Text(translate("general.reset")) }
 
                                         Button(
                                                 onClick = {
@@ -299,7 +300,7 @@ fun BiblioRefEditView(
                                                         }
                                                 },
                                                 enabled = isValid && !actionInProgress
-                                        ) { Text(if (isEditMode) "Mettre à jour" else "Ajouter") }
+                                        ) { Text(if (isEditMode) translate("biblioRef.edit.updateButton") else translate("general.add")) }
                                 }
                         }
 
@@ -315,14 +316,14 @@ fun BiblioRefEditView(
                         operationMessage?.let { message ->
                                 AlertDialog(
                                         onDismissRequest = { viewModel.clearOperationMessage() },
-                                        title = { Text("Information") },
+                                        title = { Text(translate("biblioRef.edit.infoDialogTitle")) },
                                         text = { Text(message) },
                                         confirmButton = {
                                                 Button(
                                                         onClick = {
                                                                 viewModel.clearOperationMessage()
                                                         }
-                                                ) { Text("OK") }
+                                                ) { Text(translate("general.ok")) }
                                         }
                                 )
                         }

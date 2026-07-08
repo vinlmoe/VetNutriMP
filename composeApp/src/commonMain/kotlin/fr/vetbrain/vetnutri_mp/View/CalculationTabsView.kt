@@ -7,6 +7,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Reference
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
@@ -132,12 +135,12 @@ fun CalculationTabsView(
 
         Column(modifier = modifier.fillMaxSize()) {
                 TopAppBar(
-                        title = { Text("Gestion des données de calcul") },
+                        title = { Text(translate("calculationTabs.title")) },
                         navigationIcon = {
                                 IconButton(onClick = onNavigateBack) {
                                         Icon(
                                                 imageVector = AppIcons.ArrowBack,
-                                                contentDescription = "Retour"
+                                                contentDescription = AnimalDetail.BACK.translate()
                                         )
                                 }
                         },
@@ -153,23 +156,23 @@ fun CalculationTabsView(
                         Tab(
                                 selected = selectedTab == 0,
                                 onClick = { onTabChanged(0) },
-                                text = { Text("Équations") }
+                                text = { Text(Reference.TAB_EQUATIONS.translate()) }
                         )
                         Tab(
                                 selected = selectedTab == 1,
                                 onClick = { onTabChanged(1) },
-                                text = { Text("Références bibliographiques") }
+                                text = { Text(translate("calculationTabs.biblioRefTab")) }
                         )
                         Tab(
                                 selected = selectedTab == 2,
                                 onClick = { onTabChanged(2) },
-                                text = { Text("Systèmes de calcul") }
+                                text = { Text(translate("calculationTabs.calculationSystemsTab")) }
                         )
                         Tab(
                                 selected = selectedTab == 3,
                                 onClick = { if (!isExamMode) onTabChanged(3) },
                                 modifier = Modifier.alpha(if (isExamMode) 0.5f else 1f),
-                                text = { Text("Conseils personnalisés") }
+                                text = { Text(translate("calculationTabs.customAdviceTab")) }
                         )
                 }
 
@@ -206,7 +209,7 @@ fun CalculationTabsView(
                                                 modifier = Modifier.fillMaxSize().padding(16.dp),
                                                 contentAlignment = Alignment.Center
                                         ) {
-                                                Text("Conseils personnalisés indisponibles en mode examen.")
+                                                Text(translate("calculationTabs.customAdviceUnavailableExamMode"))
                                         }
                                 } else {
                                         ConseilsPersonnalisesView(
@@ -227,10 +230,10 @@ fun CalculationTabsView(
 @Composable
 fun NutrientRequirementViewTemp() {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                Text("Fonctionnalité en développement", style = MaterialTheme.typography.h5)
+                Text(translate("calculationTabs.featureInDevelopment"), style = MaterialTheme.typography.h5)
 
                 Text(
-                        "Cette fonctionnalité permettra de gérer les besoins nutritionnels des animaux. Elle sera disponible dans une prochaine version.",
+                        translate("calculationTabs.featureInDevelopmentDesc"),
                         style = MaterialTheme.typography.body1,
                         modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp)
                 )

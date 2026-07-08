@@ -13,6 +13,8 @@ import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -151,7 +153,7 @@ class NewReferenceEvViewModel(
                 // Charger les équations associées depuis la base de données
                 loadEquationsForReference(reference)
             } else {
-                _errorMessage.value = "Référence non trouvée"
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_REFERENCE_NOT_FOUND)
                 _currentReference.value = ReferenceEv()
                 _isEditMode.value = false
                 syncCoefficientsFromReference()
@@ -376,7 +378,7 @@ class NewReferenceEvViewModel(
         val reference = _currentReference.value
 
         if (reference.nom.isBlank()) {
-            _errorMessage.value = "Le nom de la référence est requis"
+            _errorMessage.value = translate(LocalizationKeys.Reference.VM_NAME_REQUIRED)
             return
         }
 
@@ -393,11 +395,11 @@ class NewReferenceEvViewModel(
                     _operationSuccess.value = true
                     _errorMessage.value = null
                 } else {
-                    _errorMessage.value = "Erreur lors de la sauvegarde"
+                    _errorMessage.value = translate(LocalizationKeys.Reference.VM_SAVE_ERROR)
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_SAVE_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             }
         }
@@ -469,11 +471,11 @@ class NewReferenceEvViewModel(
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value =
-                            "Erreur lors de la mise à jour de l'équation de poids corporel"
+                            translate(LocalizationKeys.Reference.VM_UPDATE_BW_ERROR)
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             } finally {
                 _isLoading.value = false
@@ -499,11 +501,11 @@ class NewReferenceEvViewModel(
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value =
-                            "Erreur lors de la mise à jour de l'équation de besoin énergétique basal"
+                            translate(LocalizationKeys.Reference.VM_UPDATE_BEE_ERROR)
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             } finally {
                 _isLoading.value = false
@@ -529,11 +531,11 @@ class NewReferenceEvViewModel(
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value =
-                            "Erreur lors de la mise à jour de l'équation d'énergie digestible pour aliments composés"
+                            translate(LocalizationKeys.Reference.VM_UPDATE_DECOM_ERROR)
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             } finally {
                 _isLoading.value = false
@@ -559,11 +561,11 @@ class NewReferenceEvViewModel(
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value =
-                            "Erreur lors de la mise à jour de l'équation d'énergie digestible pour aliments bruts"
+                            translate(LocalizationKeys.Reference.VM_UPDATE_DERAW_ERROR)
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             } finally {
                 _isLoading.value = false
@@ -587,7 +589,7 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
     }
@@ -607,7 +609,7 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
     }
@@ -626,7 +628,7 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
     }
@@ -645,7 +647,7 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
     }
@@ -696,10 +698,10 @@ class NewReferenceEvViewModel(
                     }
                 } else {
                     _errorMessage.value =
-                            "Erreur lors de la mise à jour des équations complémentaires"
+                            translate(LocalizationKeys.Reference.VM_UPDATE_COMPLEMENTARY_ERROR)
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
     }

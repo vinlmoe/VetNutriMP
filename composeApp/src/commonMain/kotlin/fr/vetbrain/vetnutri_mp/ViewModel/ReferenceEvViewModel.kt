@@ -11,6 +11,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -141,7 +143,7 @@ class ReferenceEvViewModel(
                 _allReferences.value = references
             } catch (e: Exception) {
                 _error.value =
-                        "Erreur lors du chargement des références: ${e.message ?: "Erreur inconnue"}"
+                        translate(LocalizationKeys.Reference.VM_LOAD_ALL_ERROR_FORMAT, e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR))
             } finally {
                 _loading.value = false
             }

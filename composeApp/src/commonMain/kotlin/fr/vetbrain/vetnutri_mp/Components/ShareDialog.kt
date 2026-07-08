@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Service.ShareLink
 import fr.vetbrain.vetnutri_mp.Utils.copyToClipboardComposable
 import fr.vetbrain.vetnutri_mp.Components.QRCodeView
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Dialog pour afficher le QR Code avec le BinID de l'export
@@ -45,7 +47,7 @@ fun ShareLinkDialog(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(Icons.Default.Share, contentDescription = null)
-                Text("Export généré avec succès")
+                Text(translate("shareDialog.exportSuccessTitle"))
             }
         },
         text = {
@@ -57,23 +59,23 @@ fun ShareLinkDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    "Votre fichier JSON a été uploadé avec succès.",
+                    translate("shareDialog.uploadSuccess"),
                     style = MaterialTheme.typography.body2
                 )
-                
+
                 // QR Code avec le BinID
                 Text(
                     if (shareLink.qrCodeData != null)
-                        "Scannez ce QR Code pour récupérer l'export chiffré :"
+                        translate("shareDialog.scanQrEncrypted")
                     else
-                        "Scannez ce QR Code pour récupérer l'ID de l'export :",
+                        translate("shareDialog.scanQrId"),
                     style = MaterialTheme.typography.body2,
                     fontWeight = FontWeight.Bold
                 )
 
                 if (shareLink.qrCodeData != null && shareLink.qrCodeData.contains("\"key\"")) {
                     Text(
-                        "⚠️ Ce QR Code contient la clé de déchiffrement. Toute personne le scannant accédera aux données vétérinaires. Ne le partagez qu'avec le destinataire concerné.",
+                        translate("shareDialog.decryptionKeyWarning"),
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.error
                     )
@@ -87,7 +89,7 @@ fun ShareLinkDialog(
 
                 if (shareLink.qrCodeData != null) {
                     Text(
-                        "Données QR (JSON) :",
+                        translate("shareDialog.qrDataLabel"),
                         style = MaterialTheme.typography.body2,
                         fontWeight = FontWeight.Bold
                     )
@@ -97,7 +99,7 @@ fun ShareLinkDialog(
                             onValueChange = { },
                             readOnly = true,
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("QR JSON") },
+                            label = { Text(translate("shareDialog.qrJsonFieldLabel")) },
                             maxLines = 3,
                             colors = TextFieldDefaults.outlinedTextFieldColors(
                                 disabledTextColor = MaterialTheme.colors.onSurface,
@@ -106,18 +108,18 @@ fun ShareLinkDialog(
                         )
                     }
                 }
-                
+
                 // Informations supplémentaires
                 if (shareLink.expiresAt != null) {
                     val expiresIn = (shareLink.expiresAt - kotlinx.datetime.Clock.System.now().toEpochMilliseconds()) / (1000 * 60 * 60)
                     Text(
-                        "⚠️ Cet export expirera dans ${expiresIn.toInt()} heures",
+                        translate("shareDialog.expiresInHours", expiresIn.toInt().toString()),
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.secondary
                     )
                 } else {
                     Text(
-                        "ℹ️ Cet export ne expire pas automatiquement",
+                        translate("shareDialog.noAutoExpiration"),
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.secondary
                     )
@@ -126,7 +128,7 @@ fun ShareLinkDialog(
                 // Avertissements liés à l'absence de clé API
                 shareLink.warnings.forEach { warning ->
                     Text(
-                        "⚠️ $warning",
+                        translate("shareDialog.warningPrefix", warning),
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.error
                     )
@@ -152,23 +154,23 @@ fun ShareLinkDialog(
                             contentDescription = null
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (qrDataCopied) "Copié !" else "Copier QR JSON")
+                        Text(if (qrDataCopied) translate("shareDialog.copiedConfirmation") else translate("shareDialog.copyQrJson"))
                     }
                 }
-                
+
                 // Bouton partager (si onShare est fourni)
                 onShare?.let {
                     Button(onClick = it) {
                         Icon(Icons.Default.Share, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Partager")
+                        Text(translate("shareDialog.share"))
                     }
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Fermer")
+                Text(translate(LocalizationKeys.General.CLOSE))
             }
         }
     )

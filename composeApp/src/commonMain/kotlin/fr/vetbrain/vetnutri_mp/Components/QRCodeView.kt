@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Composant pour afficher un QR code
@@ -38,7 +39,7 @@ fun QRCodeView(
             qrBitmap?.let { bitmap ->
                 Image(
                     bitmap = bitmap,
-                    contentDescription = "QR Code",
+                    contentDescription = translate("qrCodeView.contentDescription"),
                     modifier = Modifier.fillMaxSize()
                 )
             }

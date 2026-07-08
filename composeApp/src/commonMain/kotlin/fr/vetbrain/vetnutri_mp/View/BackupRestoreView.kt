@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Service.BackupService.BackupMetadata
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.ViewModel.BackupRestoreViewModel
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Vue sauvegardes/restauration.
@@ -63,19 +65,19 @@ fun BackupRestoreView(
                 IconButtonWithTooltip(
                     onClick = onBack,
                     imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                    contentDescription = "Retour",
-                    tooltip = "Retour"
+                    contentDescription = translate(LocalizationKeys.Backup.BACK),
+                    tooltip = translate(LocalizationKeys.Backup.BACK)
                 )
-                Text("Sauvegardes et Restauration", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
+                Text(translate(LocalizationKeys.Backup.TITLE), style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
             }
-            
+
             Button(
                 onClick = { viewModel.createManualBackup() },
                 enabled = !isLoading && !isRestoring
             ) {
                 Icon(Icons.Default.Backup, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Nouvelle sauvegarde")
+                Text(translate(LocalizationKeys.Backup.NEW_BACKUP_ACTION))
             }
         }
         
@@ -99,7 +101,7 @@ fun BackupRestoreView(
                     IconButton(onClick = { viewModel.clearError() }) {
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = "Fermer",
+                            contentDescription = translate(LocalizationKeys.General.CLOSE),
                             tint = MaterialTheme.colors.error
                         )
                     }
@@ -114,7 +116,7 @@ fun BackupRestoreView(
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    Text("Restauration en cours...", style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.Bold)
+                    Text(translate(LocalizationKeys.Backup.RESTORE_IN_PROGRESS), style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                     LinearProgressIndicator(progress = restoreProgress.toFloat(), modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
