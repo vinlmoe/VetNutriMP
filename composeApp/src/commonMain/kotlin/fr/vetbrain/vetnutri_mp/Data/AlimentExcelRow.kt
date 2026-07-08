@@ -44,7 +44,10 @@ data class AlimentExcelRow(
 
         // Nutriments - colonnes dynamiques pour chaque nutriment
         // Le format sera : Map<nutrientLabel, valeur>
-        val nutriments: Map<String, Double?> = emptyMap()
+        val nutriments: Map<String, Double?> = emptyMap(),
+
+        // Énergie par espèce - encodée dans une seule colonne au format "CHIEN:340;CHAT:330"
+        val energieParEspece: Map<String, Double> = emptyMap()
 ) {
 
     companion object {
@@ -191,7 +194,8 @@ data class AlimentExcelRow(
                     especes = alimentEv.especes.joinToString(", "),
                     indications = alimentEv.indicat.joinToString(", ") { it.nameToString() },
                     rationUUID = alimentEv.rationUUID,
-                    nutriments = nutrimentsMap
+                    nutriments = nutrimentsMap,
+                    energieParEspece = alimentEv.energieParEspece
             )
         }
 
@@ -239,7 +243,8 @@ data class AlimentExcelRow(
                             lastUpdateDate = row.lastUpdateDate,
                             especes = especes,
                             indicat = indicat,
-                            rationUUID = row.rationUUID
+                            rationUUID = row.rationUUID,
+                            energieParEspece = row.energieParEspece
                     )
         .apply {
             // Ajouter les nutriments avec logs
@@ -267,6 +272,32 @@ data class AlimentExcelRow(
         private fun getNutrientFromLabel(label: String): Nutrient? {
             // Utiliser le NutrientResolver qui gère tous les cas spéciaux et la normalisation
             return NutrientResolver.AllNutrientResolver(label)
+        }
+
+        /**
+         * Encode une map d'énergie par espèce dans une seule cellule CSV, au format
+         * "CHIEN:340;CHAT:330" (clé = nom de l'enum Espece, séparateur ";" entre espèces,
+         * ":" entre l'espèce et sa valeur).
+         */
+        fun encodeEnergieParEspece(energieParEspece: Map<String, Double>): String {
+            return energieParEspece.entries.joinToString(";") { (espece, valeur) -> "$espece:$valeur" }
+        }
+
+        /**
+         * Décode une cellule CSV au format "CHIEN:340;CHAT:330" vers une map d'énergie par espèce.
+         * Les entrées mal formées (sans ":" ou avec une valeur non numérique) sont ignorées.
+         */
+        fun decodeEnergieParEspece(value: String?): Map<String, Double> {
+            if (value.isNullOrBlank()) return emptyMap()
+            return value.split(";")
+                    .mapNotNull { entree ->
+                        val parts = entree.split(":")
+                        if (parts.size != 2) return@mapNotNull null
+                        val espece = parts[0].trim()
+                        val valeur = parts[1].trim().replace(",", ".").toDoubleOrNull()
+                        if (espece.isEmpty() || valeur == null) null else espece to valeur
+                    }
+                    .toMap()
         }
     }
 }

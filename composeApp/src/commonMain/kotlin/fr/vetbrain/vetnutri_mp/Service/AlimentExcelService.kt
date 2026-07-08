@@ -135,6 +135,7 @@ class AlimentExcelService {
             "Date dernière mise à jour",
             "Données Base",
             "Espèces",
+            "Énergie par Espèce",
             "Indications",
             "UUID Ration"
         )
@@ -208,6 +209,7 @@ class AlimentExcelService {
             escapeCsvValue(exportDate),
             escapeCsvValue(row.dataB ?: ""),
             escapeCsvValue(row.especes ?: ""),
+            escapeCsvValue(AlimentExcelRow.encodeEnergieParEspece(row.energieParEspece)),
             escapeCsvValue(row.indications ?: ""),
             escapeCsvValue(row.rationUUID ?: "")
         )
@@ -331,9 +333,18 @@ class AlimentExcelService {
             )
         )
         val especes = especesRaw?.takeIf { it.isNotBlank() }
+        val energieParEspeceRaw = headerValueMap.trouverValeurColonne(
+            listOf(
+                "Énergie par Espèce",
+                "Energie par Espece",
+                "�nergie par Esp�ce"
+            )
+        )
+        val energieParEspece = AlimentExcelRow.decodeEnergieParEspece(energieParEspeceRaw)
         val indications = headerValueMap["Indications"]?.takeIf { it.isNotBlank() }
-        
+
         logInfo("Espèces/Indications - Espèces: '$especes', Indications: '$indications'")
+        logInfo("Énergie par espèce - Brute: '$energieParEspeceRaw', Décodée: $energieParEspece")
         logInfo("Debug headerValueMap pour Espèces: ${headerValueMap.filterKeys { it.contains("Espèces") }}")
         logInfo("Debug headerValueMap pour Indications: ${headerValueMap.filterKeys { it.contains("Indications") }}")
 
@@ -361,6 +372,7 @@ class AlimentExcelService {
                 "Date dernière mise à jour",
                 "Données Base",
                 "Espèces",
+                "Énergie par Espèce",
                 "Indications",
                 "UUID Ration"
         )
@@ -435,7 +447,8 @@ class AlimentExcelService {
             especes = especes,
             indications = indications,
             rationUUID = rationUUID,
-            nutriments = nutrimentsMap
+            nutriments = nutrimentsMap,
+            energieParEspece = energieParEspece
         )
     }
 
@@ -733,7 +746,8 @@ class AlimentExcelService {
                 consistent = true,
                 lastUpdateDate = "2024-01-01",
                 especes = mutableListOf("Chat"),
-                indicat = mutableListOf(AlimIndic.NEUT, AlimIndic.SEN)
+                indicat = mutableListOf(AlimIndic.NEUT, AlimIndic.SEN),
+                energieParEspece = mapOf("CHIEN" to 340.0, "CHAT" to 330.0)
             ).apply {
                 // Ajouter quelques nutriments exemple
                 setNutrient(NutrientMain.PROTEINE, 30.0)
