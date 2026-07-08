@@ -485,7 +485,7 @@ object HtmlDocumentBuilder {
             }
             if (nutrimentsAvecDonnees.isNullOrEmpty()) return@mapNotNull null
 
-            val rows = nutrimentsAvecDonnees.joinToString("\n") { (nom, valeur) ->
+            val rows = nutrimentsAvecDonnees.map { (nom, valeur) ->
                 val nomTraduit = obtenirNomTraduitNutriment(nom, valeur.nutriment)
                 val (valeurAffichee, uniteAffichee) = calculerAffichageNutriment(
                         valeurNutritionnelle = valeur,
@@ -506,7 +506,7 @@ object HtmlDocumentBuilder {
                 } ?: "—"
                 val valeurCell = if (uniteAffichee.isNotBlank()) "$valeurAffichee $uniteAffichee" else valeurAffichee
                 "<tr><td>${nomTraduit}</td><td class='right'>${valeurCell}</td><td>${repereHtml}</td></tr>"
-            }
+            }.joinToString("\n")
 
             """
                 <h3>${obtenirTitreCategorie(categorie)}</h3>
