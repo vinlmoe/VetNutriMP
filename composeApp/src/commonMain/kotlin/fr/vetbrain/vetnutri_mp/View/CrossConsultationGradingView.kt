@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -146,7 +147,7 @@ fun CrossConsultationGradingView(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopBarSimple(
-            title = "Notation examen",
+            title = translate("auto.view.crossconsultationgradingview.notation_examen"),
             onNavigateBack = onNavigateBack
         )
 
@@ -158,14 +159,14 @@ fun CrossConsultationGradingView(
                 OutlinedTextField(
                     value = examId,
                     onValueChange = { examId = it },
-                    label = { Text("ID examen") },
+                    label = { Text(translate("auto.view.crossconsultationgradingview.id_examen")) },
                     modifier = Modifier.weight(1f),
                     singleLine = true
                 )
                 OutlinedTextField(
                     value = exerciseId,
                     onValueChange = { exerciseId = it },
-                    label = { Text("ID exercice") },
+                    label = { Text(translate("animal.examExerciseId")) },
                     modifier = Modifier.weight(1f),
                     singleLine = true
                 )
@@ -179,7 +180,7 @@ fun CrossConsultationGradingView(
                             gradingViewModel.loadGrades(examId.trim(), exerciseId.trim())
                         }
                     }
-                ) { Text("Charger règles") }
+                ) { Text(translate("auto.view.crossconsultationgradingview.charger_regles")) }
                 Button(
                     onClick = {
                         if (examId.isNotBlank() && exerciseId.isNotBlank()) {
@@ -187,11 +188,11 @@ fun CrossConsultationGradingView(
                         }
                     },
                     enabled = readyToGrade
-                ) { Text("Calculer notes") }
+                ) { Text(translate("auto.view.crossconsultationgradingview.calculer_notes")) }
                 Button(
                     onClick = { gradingViewModel.saveRule() },
                     enabled = rule != null
-                ) { Text("Sauver règles") }
+                ) { Text(translate("auto.view.crossconsultationgradingview.sauver_regles")) }
             }
 
             TabRow(selectedTabIndex = selectedStep.ordinal) {
@@ -213,7 +214,7 @@ fun CrossConsultationGradingView(
                         checked = wizardMode,
                         onCheckedChange = { wizardMode = it }
                     )
-                    Text("Mode wizard")
+                    Text(translate("auto.view.crossconsultationgradingview.mode_wizard"))
                 }
                 if (wizardMode) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -224,7 +225,7 @@ fun CrossConsultationGradingView(
                             },
                             enabled = selectedStep.ordinal > 0
                         ) {
-                            Text("Précédent")
+                            Text(translate("auto.view.crossconsultationgradingview.precedent"))
                         }
                         Button(
                             onClick = {
@@ -233,7 +234,7 @@ fun CrossConsultationGradingView(
                             },
                             enabled = selectedStep.ordinal < GradingWorkflowStep.entries.lastIndex && canGoNextStep
                         ) {
-                            Text("Suivant")
+                            Text(translate("auto.view.crossconsultationgradingview.suivant"))
                         }
                     }
                 }
@@ -244,7 +245,7 @@ fun CrossConsultationGradingView(
                     modifier = Modifier.fillMaxWidth().padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text("Analyse de cohérence du processus", style = MaterialTheme.typography.subtitle1)
+                    Text(translate("auto.view.crossconsultationgradingview.analyse_de_coherence_du_processus"), style = MaterialTheme.typography.subtitle1)
                     processChecks.forEach { (label, ok) ->
                         Text(
                             text = "${if (ok) "✅" else "⚠️"} $label",
@@ -267,7 +268,7 @@ fun CrossConsultationGradingView(
                     modifier = Modifier.fillMaxWidth().padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Import copies JSONBin (CSV Moodle)", style = MaterialTheme.typography.subtitle1)
+                    Text(translate("auto.view.crossconsultationgradingview.import_copies_jsonbin_csv_moodle"), style = MaterialTheme.typography.subtitle1)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -275,11 +276,11 @@ fun CrossConsultationGradingView(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = forceRefreshBins, onCheckedChange = { forceRefreshBins = it })
-                            Text("Forcer refresh")
+                            Text(translate("auto.view.crossconsultationgradingview.forcer_refresh"))
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = offlineOnly, onCheckedChange = { offlineOnly = it })
-                            Text("Hors-ligne")
+                            Text(translate("auto.view.crossconsultationgradingview.hors_ligne"))
                         }
                     }
                     Button(
@@ -299,16 +300,16 @@ fun CrossConsultationGradingView(
                             )
                         },
                         enabled = !isImportingBins
-                    ) { Text("Importer CSV de bins") }
+                    ) { Text(translate("auto.view.crossconsultationgradingview.importer_csv_de_bins")) }
 
                     if (isImportingBins) {
                         LinearProgressIndicator(progress = importProgress.toFloat(), modifier = Modifier.fillMaxWidth())
                     }
                     lastImportSession?.let { session ->
-                        Text("Dernier import: ${session.successCount}/${session.total} OK, ${session.errorCount} erreur(s)")
+                        Text(translate("auto.view.crossconsultationgradingview.last_import_summary", session.successCount.toString(), session.total.toString(), session.errorCount.toString()))
                     }
                     if (importLogs.isNotEmpty()) {
-                        Text("Logs import (${importLogs.size})", style = MaterialTheme.typography.caption)
+                        Text(translate("auto.view.crossconsultationgradingview.logs_import_arg", (importLogs.size).toString()), style = MaterialTheme.typography.caption)
                         Column(modifier = Modifier.fillMaxWidth().heightIn(max = 140.dp).verticalScroll(rememberScrollState())) {
                             importLogs.forEach { line ->
                                 Text(line, style = MaterialTheme.typography.caption)
@@ -316,7 +317,7 @@ fun CrossConsultationGradingView(
                         }
                     }
                     if (importSessionHistory.isNotEmpty()) {
-                        Text("Imports précédents", style = MaterialTheme.typography.caption)
+                        Text(translate("auto.view.crossconsultationgradingview.imports_precedents"), style = MaterialTheme.typography.caption)
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             importSessionHistory.take(6).forEach { session ->
                                 Row(
@@ -329,7 +330,7 @@ fun CrossConsultationGradingView(
                                         style = MaterialTheme.typography.caption
                                     )
                                     OutlinedButton(onClick = { gradingViewModel.selectImportSession(session.sessionId) }) {
-                                        Text("Charger")
+                                        Text(translate("auto.view.crossconsultationgradingview.charger"))
                                     }
                                 }
                             }
@@ -346,7 +347,7 @@ fun CrossConsultationGradingView(
                 if (ruleSnapshotHistory.isNotEmpty()) {
                     Card(modifier = Modifier.fillMaxWidth(), elevation = 1.dp) {
                         Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Grilles précédentes", style = MaterialTheme.typography.subtitle2)
+                            Text(translate("auto.view.crossconsultationgradingview.grilles_precedentes"), style = MaterialTheme.typography.subtitle2)
                             ruleSnapshotHistory.take(6).forEach { snapshot ->
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -358,7 +359,7 @@ fun CrossConsultationGradingView(
                                         style = MaterialTheme.typography.caption
                                     )
                                     OutlinedButton(onClick = { gradingViewModel.selectRuleSnapshot(snapshot.snapshotId) }) {
-                                        Text("Charger")
+                                        Text(translate("auto.view.crossconsultationgradingview.charger"))
                                     }
                                 }
                             }
@@ -371,14 +372,14 @@ fun CrossConsultationGradingView(
                         modifier = Modifier.fillMaxWidth().padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Analyse composition des rations", style = MaterialTheme.typography.subtitle1)
+                        Text(translate("auto.view.crossconsultationgradingview.analyse_composition_des_rations"), style = MaterialTheme.typography.subtitle1)
                         Text(
-                            "Présence dans les rations proposées (ou première ration si aucune proposée).",
+                            translate("auto.view.crossconsultationgradingview.presence_dans_les_rations_proposees_ou_premiere"),
                             style = MaterialTheme.typography.caption
                         )
                         val forbidden = rule!!.ingredientRule.forbidden.map { it.trim().lowercase() }.toSet()
                         if (ingredientPresence.isEmpty()) {
-                            Text("Aucun ingrédient détecté pour ce lot.")
+                            Text(translate("auto.view.crossconsultationgradingview.aucun_ingredient_detecte_pour_ce_lot"))
                         } else {
                             ingredientPresence.take(30).forEach { (ingredient, count) ->
                                 Row(
@@ -398,7 +399,7 @@ fun CrossConsultationGradingView(
                                                 rule!!.copy(ingredientRule = rule!!.ingredientRule.copy(forbidden = updatedForbidden))
                                             )
                                         }) {
-                                            Text("Retirer interdit")
+                                            Text(translate("auto.view.crossconsultationgradingview.retirer_interdit"))
                                         }
                                     } else {
                                         Button(onClick = {
@@ -410,7 +411,7 @@ fun CrossConsultationGradingView(
                                                 )
                                             )
                                         }) {
-                                            Text("Interdire")
+                                            Text(translate("auto.view.crossconsultationgradingview.interdire"))
                                         }
                                     }
                                 }
@@ -425,7 +426,7 @@ fun CrossConsultationGradingView(
                     modifier = Modifier.fillMaxWidth().padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Analyse type RMD (distribution)", style = MaterialTheme.typography.subtitle1)
+                    Text(translate("auto.view.crossconsultationgradingview.analyse_type_rmd_distribution"), style = MaterialTheme.typography.subtitle1)
                     Text(
                         "Base utilisée: ${filteredItems.size} consultation(s) filtrée(s), $distinctAnimalsCount animal(aux) distinct(s), $latestByAnimalCount dernière(s) consultation(s) retenue(s) pour les graphes.",
                         style = MaterialTheme.typography.body2
@@ -437,7 +438,7 @@ fun CrossConsultationGradingView(
                                 gradingViewModel.runRmdLikeAnalysis(filteredItems)
                             }
                         ) {
-                            Text("Actualiser analyse")
+                            Text(translate("auto.view.crossconsultationgradingview.actualiser_analyse"))
                         }
                         OutlinedButton(
                             onClick = {
@@ -449,7 +450,7 @@ fun CrossConsultationGradingView(
                             },
                             enabled = metricDistributions.isNotEmpty()
                         ) {
-                            Text("Appliquer seuil robuste")
+                            Text(translate("auto.view.crossconsultationgradingview.appliquer_seuil_robuste"))
                         }
                     }
 
@@ -482,14 +483,14 @@ fun CrossConsultationGradingView(
                                     OutlinedTextField(
                                         value = lowInputs[key].orEmpty(),
                                         onValueChange = { lowInputs[key] = it },
-                                        label = { Text("Low") },
+                                        label = { Text(translate("auto.view.crossconsultationgradingview.low")) },
                                         modifier = Modifier.width(120.dp),
                                         singleLine = true
                                     )
                                     OutlinedTextField(
                                         value = highInputs[key].orEmpty(),
                                         onValueChange = { highInputs[key] = it },
-                                        label = { Text("High") },
+                                        label = { Text(translate("auto.view.crossconsultationgradingview.high")) },
                                         modifier = Modifier.width(120.dp),
                                         singleLine = true
                                     )
@@ -503,7 +504,7 @@ fun CrossConsultationGradingView(
                                             points = 0.6
                                         )
                                     }) {
-                                        Text("Appliquer critère")
+                                        Text(translate("auto.view.crossconsultationgradingview.appliquer_critere"))
                                     }
                                 }
                             }
@@ -512,7 +513,7 @@ fun CrossConsultationGradingView(
 
                     if (nutrientLabels.isNotEmpty()) {
                         Divider()
-                        Text("Critère numérique sur n'importe quel nutriment", style = MaterialTheme.typography.subtitle2)
+                        Text(translate("auto.view.crossconsultationgradingview.critere_numerique_sur_n_importe_quel_nutriment"), style = MaterialTheme.typography.subtitle2)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -521,7 +522,7 @@ fun CrossConsultationGradingView(
                             OutlinedTextField(
                                 value = selectedNutrientLabel,
                                 onValueChange = { selectedNutrientLabel = it },
-                                label = { Text("Nutriment") },
+                                label = { Text(translate("nutrientComponents.columnNutrient")) },
                                 modifier = Modifier.width(220.dp),
                                 singleLine = true
                             )
@@ -530,19 +531,19 @@ fun CrossConsultationGradingView(
                                 val currentIndex = nutrientLabels.indexOf(selectedNutrientLabel).takeIf { it >= 0 } ?: -1
                                 selectedNutrientLabel = nutrientLabels[(currentIndex + 1) % nutrientLabels.size]
                             }) {
-                                Text("Nutriment suivant")
+                                Text(translate("auto.view.crossconsultationgradingview.nutriment_suivant"))
                             }
                             OutlinedTextField(
                                 value = nutrientLow,
                                 onValueChange = { nutrientLow = it },
-                                label = { Text("Low") },
+                                label = { Text(translate("auto.view.crossconsultationgradingview.low")) },
                                 modifier = Modifier.width(120.dp),
                                 singleLine = true
                             )
                             OutlinedTextField(
                                 value = nutrientHigh,
                                 onValueChange = { nutrientHigh = it },
-                                label = { Text("High") },
+                                label = { Text(translate("auto.view.crossconsultationgradingview.high")) },
                                 modifier = Modifier.width(120.dp),
                                 singleLine = true
                             )
@@ -557,7 +558,7 @@ fun CrossConsultationGradingView(
                                     scope = RationScope.FIRST_PROPOSED
                                 )
                             }) {
-                                Text("Ajouter critère nutriment")
+                                Text(translate("auto.view.crossconsultationgradingview.ajouter_critere_nutriment"))
                             }
                         }
                     }
@@ -565,7 +566,7 @@ fun CrossConsultationGradingView(
             }
 
             if (grades.isNotEmpty()) {
-                Text("Notes", style = MaterialTheme.typography.h6)
+                Text(translate("auto.view.crossconsultationgradingview.notes"), style = MaterialTheme.typography.h6)
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp, max = 400.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -573,11 +574,11 @@ fun CrossConsultationGradingView(
                     items(grades) { grade ->
                         Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
                             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text("${grade.animalName} — Étudiant: ${grade.studentId}")
-                                Text("Auto: ${grade.autoScore} / ${rule?.autoScoreMax ?: 20.0}")
+                                Text(translate("auto.view.crossconsultationgradingview.grade_student", grade.animalName, grade.studentId))
+                                Text(translate("auto.view.crossconsultationgradingview.auto_score", grade.autoScore.toString(), (rule?.autoScoreMax ?: 20.0).toString()))
                                 val customPts = grade.detail.customCriteriaResults.sumOf { it.pointsAwarded }
                                 if (customPts > 0.0 || grade.detail.customCriteriaResults.isNotEmpty()) {
-                                    Text("Critères flexibles: $customPts pt")
+                                    Text(translate("auto.view.crossconsultationgradingview.criteres_flexibles_arg_pt", customPts.toString()))
                                 }
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -589,11 +590,11 @@ fun CrossConsultationGradingView(
                                             val manual = value.toDoubleOrNull()
                                             gradingViewModel.updateManualScore(grade.studentId, manual)
                                         },
-                                        label = { Text("Note manuelle") },
+                                        label = { Text(translate("auto.view.crossconsultationgradingview.note_manuelle")) },
                                         modifier = Modifier.width(160.dp),
                                         singleLine = true
                                     )
-                                    Text("Final: ${grade.finalScore}")
+                                    Text(translate("auto.view.crossconsultationgradingview.final_arg", (grade.finalScore).toString()))
                                 }
                             }
                         }
@@ -601,7 +602,7 @@ fun CrossConsultationGradingView(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { gradingViewModel.saveGrades() }) { Text("Sauver notes") }
+                    Button(onClick = { gradingViewModel.saveGrades() }) { Text(translate("auto.view.crossconsultationgradingview.sauver_notes")) }
                     Button(
                         onClick = {
                             val csv = csvService.exportGradesToCsv(grades)
@@ -610,7 +611,7 @@ fun CrossConsultationGradingView(
                                 gradingViewModel.clearMessage()
                             }
                         }
-                    ) { Text("Exporter CSV") }
+                    ) { Text(translate("auto.view.crossconsultationgradingview.exporter_csv")) }
                 }
             }
 
@@ -628,13 +629,13 @@ private fun RuleEditor(
 ) {
     Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Règles", style = MaterialTheme.typography.h6)
+            Text(translate("auto.view.crossconsultationgradingview.regles"), style = MaterialTheme.typography.h6)
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = rule.label,
                     onValueChange = { value -> onRuleChange(rule.copy(label = value)) },
-                    label = { Text("Libellé exercice") },
+                    label = { Text(translate("auto.view.crossconsultationgradingview.libelle_exercice")) },
                     modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
@@ -642,19 +643,19 @@ private fun RuleEditor(
                     onValueChange = { value ->
                         onRuleChange(rule.copy(autoScoreMax = value.toDoubleOrNull() ?: 20.0))
                     },
-                    label = { Text("Note max auto") },
+                    label = { Text(translate("auto.view.crossconsultationgradingview.note_max_auto")) },
                     modifier = Modifier.width(160.dp)
                 )
             }
 
-            Text("Ingrédients")
+            Text(translate("food_edit.field.ingredients"))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = rule.ingredientRule.required.joinToString(", "),
                     onValueChange = { value ->
                         onRuleChange(rule.copy(ingredientRule = rule.ingredientRule.copy(required = splitCsv(value))))
                     },
-                    label = { Text("Présents (séparés par ,)") },
+                    label = { Text(translate("auto.view.crossconsultationgradingview.presents_separes_par")) },
                     modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
@@ -662,7 +663,7 @@ private fun RuleEditor(
                     onValueChange = { value ->
                         onRuleChange(rule.copy(ingredientRule = rule.ingredientRule.copy(forbidden = splitCsv(value))))
                     },
-                    label = { Text("Absents (séparés par ,)") },
+                    label = { Text(translate("auto.view.crossconsultationgradingview.absents_separes_par")) },
                     modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
@@ -670,22 +671,22 @@ private fun RuleEditor(
                     onValueChange = { value ->
                         onRuleChange(rule.copy(ingredientRule = rule.ingredientRule.copy(points = value.toIntOrNull() ?: 0)))
                     },
-                    label = { Text("Pts") },
+                    label = { Text(translate("auto.view.crossconsultationgradingview.pts")) },
                     modifier = Modifier.width(80.dp)
                 )
             }
 
-            Text("Ration (quantité totale)")
+            Text(translate("auto.view.crossconsultationgradingview.ration_quantite_totale"))
             MinMaxEditor(rule.rationQuantityRule) { updated ->
                 onRuleChange(rule.copy(rationQuantityRule = updated))
             }
 
-            Text("Densité énergétique")
+            Text(translate("chart.energyDensityLabel"))
             MinMaxEditor(rule.energyDensityRule) { updated ->
                 onRuleChange(rule.copy(energyDensityRule = updated))
             }
 
-            Text("Nutriments")
+            Text(translate("new_reference.tab.nutrients"))
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 rule.nutrientRules.forEachIndexed { index, item ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -696,7 +697,7 @@ private fun RuleEditor(
                                 updated[index] = item.copy(nutrientLabel = value)
                                 onRuleChange(rule.copy(nutrientRules = updated))
                             },
-                            label = { Text("Nutriment") },
+                            label = { Text(translate("nutrientComponents.columnNutrient")) },
                             modifier = Modifier.weight(1f)
                         )
                         OutlinedTextField(
@@ -706,7 +707,7 @@ private fun RuleEditor(
                                 updated[index] = item.copy(min = value.toDoubleOrNull())
                                 onRuleChange(rule.copy(nutrientRules = updated))
                             },
-                            label = { Text("Min") },
+                            label = { Text(translate("new_reference.level.min")) },
                             modifier = Modifier.width(90.dp)
                         )
                         OutlinedTextField(
@@ -716,7 +717,7 @@ private fun RuleEditor(
                                 updated[index] = item.copy(max = value.toDoubleOrNull())
                                 onRuleChange(rule.copy(nutrientRules = updated))
                             },
-                            label = { Text("Max") },
+                            label = { Text(translate("new_reference.level.max")) },
                             modifier = Modifier.width(90.dp)
                         )
                         OutlinedTextField(
@@ -726,7 +727,7 @@ private fun RuleEditor(
                                 updated[index] = item.copy(points = value.toIntOrNull() ?: 0)
                                 onRuleChange(rule.copy(nutrientRules = updated))
                             },
-                            label = { Text("Pts") },
+                            label = { Text(translate("auto.view.crossconsultationgradingview.pts")) },
                             modifier = Modifier.width(80.dp)
                         )
                         IconButton(onClick = {
@@ -738,17 +739,17 @@ private fun RuleEditor(
                 }
                 OutlinedButton(onClick = {
                     onRuleChange(rule.copy(nutrientRules = rule.nutrientRules + NutrientRule(nutrientLabel = "")))
-                }) { Text("Ajouter nutriment") }
+                }) { Text(translate("auto.view.crossconsultationgradingview.ajouter_nutriment")) }
             }
 
-            Text("Référence nutritionnelle")
+            Text(translate("auto.view.crossconsultationgradingview.reference_nutritionnelle"))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = rule.referenceRule.allowedReferenceIds.joinToString(", "),
                     onValueChange = { value ->
                         onRuleChange(rule.copy(referenceRule = rule.referenceRule.copy(allowedReferenceIds = splitCsv(value))))
                     },
-                    label = { Text("ID références (séparés par ,)") },
+                    label = { Text(translate("auto.view.crossconsultationgradingview.id_references_separes_par")) },
                     modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
@@ -756,19 +757,19 @@ private fun RuleEditor(
                     onValueChange = { value ->
                         onRuleChange(rule.copy(referenceRule = rule.referenceRule.copy(points = value.toIntOrNull() ?: 0)))
                     },
-                    label = { Text("Pts") },
+                    label = { Text(translate("auto.view.crossconsultationgradingview.pts")) },
                     modifier = Modifier.width(80.dp)
                 )
             }
 
-            Text("Conseils/ordonnance")
+            Text(translate("auto.view.crossconsultationgradingview.conseils_ordonnance"))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = rule.adviceRule.requiredWords.joinToString(", "),
                     onValueChange = { value ->
                         onRuleChange(rule.copy(adviceRule = rule.adviceRule.copy(requiredWords = splitCsv(value))))
                     },
-                    label = { Text("Mots présents") },
+                    label = { Text(translate("auto.view.crossconsultationgradingview.mots_presents")) },
                     modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
@@ -776,7 +777,7 @@ private fun RuleEditor(
                     onValueChange = { value ->
                         onRuleChange(rule.copy(adviceRule = rule.adviceRule.copy(forbiddenWords = splitCsv(value))))
                     },
-                    label = { Text("Mots absents") },
+                    label = { Text(translate("auto.view.crossconsultationgradingview.mots_absents")) },
                     modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
@@ -784,13 +785,13 @@ private fun RuleEditor(
                     onValueChange = { value ->
                         onRuleChange(rule.copy(adviceRule = rule.adviceRule.copy(points = value.toIntOrNull() ?: 0)))
                     },
-                    label = { Text("Pts") },
+                    label = { Text(translate("auto.view.crossconsultationgradingview.pts")) },
                     modifier = Modifier.width(80.dp)
                 )
             }
 
             Divider()
-            Text("Critères personnalisés", style = MaterialTheme.typography.subtitle1)
+            Text(translate("auto.view.crossconsultationgradingview.criteres_personnalises"), style = MaterialTheme.typography.subtitle1)
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 rule.customCriteria.forEachIndexed { index, criterion ->
@@ -816,7 +817,7 @@ private fun RuleEditor(
                                         updated[index] = criterion.copy(label = value)
                                         onRuleChange(rule.copy(customCriteria = updated))
                                     },
-                                    label = { Text("Nom du critère") },
+                                    label = { Text(translate("auto.view.crossconsultationgradingview.nom_du_critere")) },
                                     modifier = Modifier.weight(1f)
                                 )
                                 IconButton(onClick = {
@@ -833,7 +834,7 @@ private fun RuleEditor(
                                         updated[index] = criterion.copy(metric = nextEnum(criterion.metric))
                                         onRuleChange(rule.copy(customCriteria = updated))
                                     }
-                                ) { Text("Métrique: ${criterion.metric.uiLabel()}") }
+                                ) { Text(translate("auto.view.crossconsultationgradingview.metrique_arg", (criterion.metric.uiLabel()).toString())) }
 
                                 OutlinedButton(
                                     onClick = {
@@ -841,7 +842,7 @@ private fun RuleEditor(
                                         updated[index] = criterion.copy(rationScope = nextEnum(criterion.rationScope))
                                         onRuleChange(rule.copy(customCriteria = updated))
                                     }
-                                ) { Text("Portée: ${criterion.rationScope.uiLabel()}") }
+                                ) { Text(translate("auto.view.crossconsultationgradingview.portee_arg", (criterion.rationScope.uiLabel()).toString())) }
 
                                 OutlinedTextField(
                                     value = criterion.points.toString(),
@@ -850,7 +851,7 @@ private fun RuleEditor(
                                         updated[index] = criterion.copy(points = value.toDoubleOrNull() ?: 0.0)
                                         onRuleChange(rule.copy(customCriteria = updated))
                                     },
-                                    label = { Text("Pts") },
+                                    label = { Text(translate("auto.view.crossconsultationgradingview.pts")) },
                                     modifier = Modifier.width(100.dp)
                                 )
                             }
@@ -863,7 +864,7 @@ private fun RuleEditor(
                                         updated[index] = criterion.copy(nutrientLabel = value)
                                         onRuleChange(rule.copy(customCriteria = updated))
                                     },
-                                    label = { Text("Nutriment (label exact)") },
+                                    label = { Text(translate("auto.view.crossconsultationgradingview.nutriment_label_exact")) },
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
@@ -876,7 +877,7 @@ private fun RuleEditor(
                                         updated[index] = criterion.copy(min = value.toDoubleOrNull())
                                         onRuleChange(rule.copy(customCriteria = updated))
                                     },
-                                    label = { Text("Min") },
+                                    label = { Text(translate("new_reference.level.min")) },
                                     modifier = Modifier.width(120.dp)
                                 )
                                 OutlinedTextField(
@@ -886,7 +887,7 @@ private fun RuleEditor(
                                         updated[index] = criterion.copy(max = value.toDoubleOrNull())
                                         onRuleChange(rule.copy(customCriteria = updated))
                                     },
-                                    label = { Text("Max") },
+                                    label = { Text(translate("new_reference.level.max")) },
                                     modifier = Modifier.width(120.dp)
                                 )
                                 if (criterion.metric == FlexibleMetricKind.INGREDIENT_KEYWORDS ||
@@ -902,7 +903,7 @@ private fun RuleEditor(
                                                 onRuleChange(rule.copy(customCriteria = updated))
                                             }
                                         )
-                                        Text("Tous les mots requis")
+                                        Text(translate("auto.view.crossconsultationgradingview.tous_les_mots_requis"))
                                     }
                                 }
                             }
@@ -918,7 +919,7 @@ private fun RuleEditor(
                                         updated[index] = criterion.copy(includes = splitCsv(value))
                                         onRuleChange(rule.copy(customCriteria = updated))
                                     },
-                                    label = { Text("Mots/IDs requis (csv)") },
+                                    label = { Text(translate("auto.view.crossconsultationgradingview.mots_ids_requis_csv")) },
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 OutlinedTextField(
@@ -928,7 +929,7 @@ private fun RuleEditor(
                                         updated[index] = criterion.copy(excludes = splitCsv(value))
                                         onRuleChange(rule.copy(customCriteria = updated))
                                     },
-                                    label = { Text("Mots/IDs interdits (csv)") },
+                                    label = { Text(translate("auto.view.crossconsultationgradingview.mots_ids_interdits_csv")) },
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
@@ -940,14 +941,14 @@ private fun RuleEditor(
                     val nextIndex = rule.customCriteria.size + 1
                     val newCriterion = FlexibleCriterionRule(
                         id = "c$nextIndex",
-                        label = "Critère $nextIndex",
+                        label = translate("auto.view.crossconsultationgradingview.criterion_label", nextIndex.toString()),
                         metric = FlexibleMetricKind.TOTAL_RATION_QUANTITY,
                         rationScope = RationScope.ALL,
                         points = 0.0
                     )
                     onRuleChange(rule.copy(customCriteria = rule.customCriteria + newCriterion))
                 }) {
-                    Text("Ajouter un critère")
+                    Text(translate("auto.view.crossconsultationgradingview.ajouter_un_critere"))
                 }
             }
         }
@@ -963,19 +964,19 @@ private fun MinMaxEditor(
         OutlinedTextField(
             value = rule.min?.toString() ?: "",
             onValueChange = { onChange(rule.copy(min = it.toDoubleOrNull())) },
-            label = { Text("Min") },
+            label = { Text(translate("new_reference.level.min")) },
             modifier = Modifier.width(90.dp)
         )
         OutlinedTextField(
             value = rule.max?.toString() ?: "",
             onValueChange = { onChange(rule.copy(max = it.toDoubleOrNull())) },
-            label = { Text("Max") },
+            label = { Text(translate("new_reference.level.max")) },
             modifier = Modifier.width(90.dp)
         )
         OutlinedTextField(
             value = rule.points.toString(),
             onValueChange = { onChange(rule.copy(points = it.toIntOrNull() ?: 0)) },
-            label = { Text("Pts") },
+            label = { Text(translate("auto.view.crossconsultationgradingview.pts")) },
             modifier = Modifier.width(80.dp)
         )
     }
@@ -1098,7 +1099,7 @@ private fun ReflectiveDistributionInsights(
     distribution: ExamGradingViewModel.MetricDistribution
 ) {
     if (distribution.count < 3) {
-        Text("Analyse réflexive: effectif trop faible pour interprétation robuste.", style = MaterialTheme.typography.caption)
+        Text(translate("auto.view.crossconsultationgradingview.analyse_reflexive_effectif_trop_faible_pour_inte"), style = MaterialTheme.typography.caption)
         return
     }
     val p10 = distribution.p10
@@ -1139,9 +1140,9 @@ private fun ReflectiveDistributionInsights(
     val robustLow = p10
     val robustHigh = p90
 
-    Text("Analyse réflexive: $spreadLabel, $shapeLabel, $outlierLabel.", style = MaterialTheme.typography.caption)
+    Text(translate("auto.view.crossconsultationgradingview.reflective_analysis", spreadLabel, shapeLabel, outlierLabel), style = MaterialTheme.typography.caption)
     Text(
-        "Conseil: seuil robuste initial = [p10; p90] = [${formatMetric(robustLow)}; ${formatMetric(robustHigh)}], puis affiner vers [${formatMetric(suggestedLow)}; ${formatMetric(suggestedHigh)}] selon sévérité attendue.",
+        translate("auto.view.crossconsultationgradingview.threshold_advice", formatMetric(robustLow), formatMetric(robustHigh), formatMetric(suggestedLow), formatMetric(suggestedHigh)),
         style = MaterialTheme.typography.caption
     )
 }

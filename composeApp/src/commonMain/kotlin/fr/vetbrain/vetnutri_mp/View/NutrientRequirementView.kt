@@ -95,7 +95,7 @@ fun NutrientRequirementView(
                     ) {
                         Icon(
                                 imageVector = AppIcons.Add,
-                                contentDescription = "Ajouter une référence",
+                                contentDescription = translate("food_edit.biblio.add_button"),
                                 tint = VetNutriColors.OnPrimary
                         )
                     }
@@ -112,16 +112,16 @@ fun NutrientRequirementView(
                 OutlinedTextField(
                         value = searchQuery.value,
                         onValueChange = { searchQuery.value = it },
-                        label = { Text("Rechercher une référence...") },
+                        label = { Text(translate("auto.view.nutrientrequirementview.rechercher_une_reference")) },
                         leadingIcon = {
-                            Icon(imageVector = AppIcons.Search, contentDescription = "Rechercher")
+                            Icon(imageVector = AppIcons.Search, contentDescription = translate("consultation.edit.ref.search_tooltip"))
                         },
                         trailingIcon = {
                             if (searchQuery.value.isNotEmpty()) {
                                 IconButton(onClick = { searchQuery.value = "" }) {
                                     Icon(
                                             imageVector = AppIcons.Close,
-                                            contentDescription = "Effacer la recherche"
+                                            contentDescription = translate("auto.view.nutrientrequirementview.effacer_la_recherche")
                                     )
                                 }
                             }
@@ -160,7 +160,7 @@ fun NutrientRequirementView(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Filtrer :", style = MaterialTheme.typography.body2, color = Color.Gray)
+                    Text(translate("auto.view.nutrientrequirementview.filtrer"), style = MaterialTheme.typography.body2, color = Color.Gray)
 
                     // Filtre espèce
                     Box {
@@ -182,7 +182,7 @@ fun NutrientRequirementView(
                                         showEspeceDropdown = false
                                     }
                             ) {
-                                Text("Toutes")
+                                Text(translate("crossConsultation.speciesAll"))
                             }
                             Espece.valuesExcept(Espece.CH).forEach { espece ->
                                 DropdownMenuItem(
@@ -217,7 +217,7 @@ fun NutrientRequirementView(
                                         showStadeDropdown = false
                                     }
                             ) {
-                                Text("Tous")
+                                Text(translate("crossConsultation.keywordsAll"))
                             }
                             StadePhysio.values().forEach { stade ->
                                 DropdownMenuItem(
@@ -235,7 +235,7 @@ fun NutrientRequirementView(
                     // Effacer sélection
                     if (selectedIds.isNotEmpty()) {
                         TextButton(onClick = { selectedIds.clear() }) {
-                            Text("Tout désélectionner")
+                            Text(translate("auto.view.nutrientrequirementview.tout_deselectionner"))
                         }
                     }
                 }
@@ -300,7 +300,7 @@ fun NutrientRequirementView(
         refToDelete?.let { reference ->
             AlertDialog(
                     onDismissRequest = { refToDelete = null },
-                    title = { Text("Confirmer la suppression") },
+                    title = { Text(translate("new_reference.confirm_delete_title")) },
                     text = {
                         Text(
                                 "Êtes-vous sûr de vouloir supprimer la référence \"${reference.nom}\" ?"
@@ -318,9 +318,9 @@ fun NutrientRequirementView(
                                         ButtonDefaults.buttonColors(
                                                 backgroundColor = MaterialTheme.colors.error
                                         )
-                        ) { Text("Supprimer", color = Color.White) }
+                        ) { Text(translate("general.delete"), color = Color.White) }
                     },
-                    dismissButton = { Button(onClick = { refToDelete = null }) { Text("Annuler") } }
+                    dismissButton = { Button(onClick = { refToDelete = null }) { Text(translate("general.cancel")) } }
             )
         }
     }
@@ -439,7 +439,7 @@ private fun ReferenceNutrientCard(
                             IconButton(onClick = onEdit) {
                                 Icon(
                                         imageVector = AppIcons.Edit,
-                                        contentDescription = "Éditer la référence",
+                                        contentDescription = translate("auto.view.nutrientrequirementview.editer_la_reference"),
                                         tint = VetNutriColors.Primary
                                 )
                             }
@@ -447,7 +447,7 @@ private fun ReferenceNutrientCard(
                             IconButton(onClick = onDuplicate) {
                                 Icon(
                                         imageVector = AppIcons.ContentCopy,
-                                        contentDescription = "Dupliquer la référence",
+                                        contentDescription = translate("auto.view.nutrientrequirementview.dupliquer_la_reference"),
                                         tint = VetNutriColors.Primary
                                 )
                             }
@@ -455,7 +455,7 @@ private fun ReferenceNutrientCard(
                             IconButton(onClick = onDelete) {
                                 Icon(
                                         imageVector = AppIcons.Delete,
-                                        contentDescription = "Supprimer la référence",
+                                        contentDescription = translate("consultation.edit.ref.delete_tooltip"),
                                         tint = VetNutriColors.Error
                                 )
                             }

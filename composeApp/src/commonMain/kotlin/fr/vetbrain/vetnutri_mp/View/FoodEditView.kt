@@ -599,7 +599,7 @@ private fun BiblioRefTab(
                                                         IconButton(onClick = { onRemove(ref) }) {
                                                                 Icon(
                                                                         Icons.Default.Close,
-                                                                        contentDescription = "Supprimer",
+                                                                        contentDescription = translate("general.delete"),
                                                                         tint = MaterialTheme.colors.error
                                                                 )
                                                         }

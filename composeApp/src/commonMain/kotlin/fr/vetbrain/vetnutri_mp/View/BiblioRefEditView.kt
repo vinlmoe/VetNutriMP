@@ -112,7 +112,7 @@ fun BiblioRefEditView(
                                                                         doiInput = it
                                                                         if (doiError.isNotBlank()) viewModel.clearDoiError()
                                                                 },
-                                                                placeholder = { Text("10.xxxx/xxxx", fontSize = 12.sp) },
+                                                                placeholder = { Text(translate("auto.view.bibliorefeditview.10_xxxx_xxxx"), fontSize = 12.sp) },
                                                                 singleLine = true,
                                                                 modifier = Modifier.weight(1f),
                                                                 colors = TextFieldDefaults.outlinedTextFieldColors(

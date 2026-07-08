@@ -200,7 +200,7 @@ fun ReferencesSummary(
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                        text = "Référence générale:",
+                        text = translate("reference.general_ref_label"),
                         style = MaterialTheme.typography.body2,
                         fontWeight = FontWeight.Medium
                 )

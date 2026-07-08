@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -58,27 +59,27 @@ fun NutrientRefEditView(
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                        "Nutriment",
+                        translate("nutrientComponents.columnNutrient"),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(2f).padding(horizontal = 8.dp)
                 )
                 Text(
-                        "Valeur",
+                        translate("nutrientComponents.columnValue"),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
                 )
                 Text(
-                        "Unité physique",
+                        translate("auto.view.nutrientrefeditview.unite_physique"),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
                 )
                 Text(
-                        "Unité besoin",
+                        translate("auto.view.nutrientrefeditview.unite_besoin"),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
                 )
                 Text(
-                        "Référence",
+                        translate("auto.view.nutrientrefeditview.reference"),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(2f).padding(horizontal = 8.dp)
                 )
@@ -117,14 +118,14 @@ fun NutrientRefEditView(
                 OutlinedButton(
                         onClick = { viewModel.resetNutrientsForType(nutrientType) },
                         modifier = Modifier.padding(end = 8.dp)
-                ) { Text("Réinitialiser") }
+                ) { Text(translate("crossConsultation.reset")) }
 
                 Button(
                         onClick = {
                             viewModel.saveNutrientsForType(nutrientType)
                             onNavigateBack()
                         }
-                ) { Text("Enregistrer") }
+                ) { Text(translate("auto.view.settingsview.enregistrer")) }
             }
         }
     }
@@ -252,7 +253,7 @@ private fun NutrientRefItem(
                             onBiblioRefChange(null)
                             showBiblioDropdown = false
                         }
-                ) { Text("Aucune") }
+                ) { Text(translate("crossConsultation.refNone")) }
 
                 // Liste des références disponibles
                 availableBiblioRefs.forEach { biblioRef ->

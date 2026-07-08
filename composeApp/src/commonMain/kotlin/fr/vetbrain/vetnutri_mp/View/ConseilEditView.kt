@@ -165,7 +165,7 @@ fun ConseilEditView(
                                                     checkedColor = VetNutriColors.Primary
                                             )
                             )
-                            Text("Actif")
+                            Text(translate("auto.view.conseileditview.actif"))
                         }
                     }
                 }
@@ -185,7 +185,7 @@ fun ConseilEditView(
                 Card(elevation = 4.dp, shape = MaterialTheme.shapes.medium) {
                     Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                         Text(
-                                text = "Contenu du conseil",
+                                text = translate("auto.view.conseileditview.contenu_du_conseil"),
                                 style = MaterialTheme.typography.h6,
                                 fontWeight = FontWeight.Bold,
                                 color = VetNutriColors.Primary
@@ -213,7 +213,7 @@ fun ConseilEditView(
                                     ButtonDefaults.outlinedButtonColors(
                                             contentColor = VetNutriColors.Primary
                                     )
-                    ) { Text("Annuler") }
+                    ) { Text(translate("general.cancel")) }
 
                     Button(
                             onClick = {
@@ -279,7 +279,7 @@ fun ConseilEditView(
     if (showErrorDialog) {
         AlertDialog(
                 onDismissRequest = { showErrorDialog = false },
-                title = { Text("Erreur") },
+                title = { Text(translate("general.error")) },
                 text = { Text(errorMessage) },
                 confirmButton = {
                     TextButton(
@@ -288,7 +288,7 @@ fun ConseilEditView(
                                     ButtonDefaults.textButtonColors(
                                             contentColor = VetNutriColors.Primary
                                     )
-                    ) { Text("OK") }
+                    ) { Text(translate("general.ok")) }
                 }
         )
     }
@@ -300,9 +300,9 @@ fun ConseilEditView(
                     showSuccessDialog = false
                     onNavigateBack()
                 },
-                title = { Text("Succès") },
+                title = { Text(translate("general.success")) },
                 text = {
-                    Text("Le conseil a été ${if (isEditMode) "modifié" else "créé"} avec succès.")
+                    Text(translate(if (isEditMode) "auto.view.conseileditview.success_updated" else "auto.view.conseileditview.success_created"))
                 },
                 confirmButton = {
                     TextButton(
@@ -314,7 +314,7 @@ fun ConseilEditView(
                                     ButtonDefaults.textButtonColors(
                                             contentColor = VetNutriColors.Primary
                                     )
-                    ) { Text("OK") }
+                    ) { Text(translate("general.ok")) }
                 }
         )
     }

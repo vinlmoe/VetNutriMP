@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -78,7 +79,7 @@ fun ConseilsPersonnalisesView(
                 ) {
                     Icon(
                             imageVector = AppIcons.Add,
-                            contentDescription = "Ajouter un conseil",
+                            contentDescription = translate("auto.view.conseilspersonnalisesview.ajouter_un_conseil"),
                             tint = VetNutriColors.OnPrimary
                     )
                 }
@@ -94,14 +95,14 @@ fun ConseilsPersonnalisesView(
             OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text("Rechercher un conseil") },
+                    label = { Text(translate("auto.view.conseilspersonnalisesview.rechercher_un_conseil")) },
                     leadingIcon = {
-                        Icon(imageVector = AppIcons.Search, contentDescription = "Rechercher")
+                        Icon(imageVector = AppIcons.Search, contentDescription = translate("consultation.edit.ref.search_tooltip"))
                     },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
-                                Icon(imageVector = AppIcons.Close, contentDescription = "Effacer")
+                                Icon(imageVector = AppIcons.Close, contentDescription = translate("animalList.clearSearch"))
                             }
                         }
                     },
@@ -121,7 +122,7 @@ fun ConseilsPersonnalisesView(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Chip(onClick = { selectedCategory = null }, modifier = Modifier.height(32.dp)) {
-                    Text("Toutes")
+                    Text(translate("crossConsultation.speciesAll"))
                 }
 
                 SectionCategory.values()
@@ -152,7 +153,7 @@ fun ConseilsPersonnalisesView(
                             modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Templates")
+                    Text(translate("auto.view.conseilspersonnalisesview.templates"))
                 }
             }
 
@@ -221,7 +222,7 @@ fun ConseilsPersonnalisesView(
     if (conseilToDelete != null) {
         AlertDialog(
                 onDismissRequest = { conseilToDelete = null },
-                title = { Text("Supprimer le conseil") },
+                title = { Text(translate("auto.view.conseilspersonnalisesview.supprimer_le_conseil")) },
                 text = {
                     Text(
                             "Êtes-vous sûr de vouloir supprimer le conseil \"${conseilToDelete?.title}\" ?"
@@ -250,10 +251,10 @@ fun ConseilsPersonnalisesView(
                                     ButtonDefaults.textButtonColors(
                                             contentColor = VetNutriColors.Primary
                                     )
-                    ) { Text("Supprimer") }
+                    ) { Text(translate("general.delete")) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { conseilToDelete = null }) { Text("Annuler") }
+                    TextButton(onClick = { conseilToDelete = null }) { Text(translate("general.cancel")) }
                 }
         )
     }
@@ -301,14 +302,14 @@ private fun ConseilCard(
                     IconButton(onClick = onEdit) {
                         Icon(
                                 imageVector = AppIcons.Edit,
-                                contentDescription = "Modifier",
+                                contentDescription = translate("ration.editAction"),
                                 tint = VetNutriColors.Primary
                         )
                     }
                     IconButton(onClick = onDelete) {
                         Icon(
                                 imageVector = AppIcons.Delete,
-                                contentDescription = "Supprimer",
+                                contentDescription = translate("general.delete"),
                                 tint = Color.Red
                         )
                     }
@@ -403,14 +404,14 @@ private fun TemplatesDialog(
 
     AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Templates de conseils") },
+            title = { Text(translate("auto.view.conseilspersonnalisesview.templates_de_conseils")) },
             text = {
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 } else if (templates.isEmpty()) {
-                    Text("Aucun template disponible")
+                    Text(translate("auto.view.conseilspersonnalisesview.aucun_template_disponible"))
                 } else {
                     LazyColumn(modifier = Modifier.height(300.dp)) {
                         items(templates) { template ->
@@ -445,7 +446,7 @@ private fun TemplatesDialog(
                                 ButtonDefaults.textButtonColors(
                                         contentColor = VetNutriColors.Primary
                                 )
-                ) { Text("Fermer") }
+                ) { Text(translate("settings.close")) }
             }
     )
 }

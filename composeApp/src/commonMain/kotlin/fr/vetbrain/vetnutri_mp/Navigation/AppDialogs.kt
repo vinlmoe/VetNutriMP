@@ -18,17 +18,17 @@ internal fun AnimalImportResultDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("dialog.resultImportAnimals.title".translate()) },
+        title = { Text(translate("dialog.resultImportAnimals.title")) },
         text = {
             when (importResult) {
                 is AnimalListViewModel.ImportResult.Success ->
-                    Text("${importResult.count} ${"dialog.resultImportAnimals.success".translate()}")
+                    Text(translate("dialog.resultImportAnimals.successFormat", importResult.count.toString()))
                 is AnimalListViewModel.ImportResult.Error ->
-                    Text("${"dialog.resultImportAnimals.error".translate()} ${importResult.message}")
+                    Text(translate("dialog.resultImportAnimals.errorFormat", importResult.message))
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss) { Text("OK") }
+            Button(onClick = onDismiss) { Text(translate("general.ok")) }
         }
     )
 }
@@ -40,40 +40,40 @@ internal fun FoodImportResultDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Résultat de l'importation des aliments") },
+        title = { Text(translate("auto.navigation.appdialogs.resultat_de_l_importation_des_aliments")) },
         text = {
             when (importResult) {
                 is SettingsViewModel.ImportResult.Success -> {
                     Column {
                         Text(
-                            "${importResult.count} aliments ont été importés avec succès.",
+                            translate("auto.navigation.appdialogs.food_import_success_count", importResult.count.toString()),
                             style = MaterialTheme.typography.subtitle1
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Détails de l'importation:", style = MaterialTheme.typography.subtitle2)
-                        Text("• ${importResult.importedCount} nouveaux aliments")
+                        Text(translate("auto.navigation.appdialogs.details_de_l_importation"), style = MaterialTheme.typography.subtitle2)
+                        Text(translate("auto.navigation.appdialogs.arg_nouveaux_aliments", (importResult.importedCount).toString()))
                         if (importResult.updatedCount > 0)
-                            Text("• ${importResult.updatedCount} aliments mis à jour")
+                            Text(translate("auto.navigation.appdialogs.arg_aliments_mis_a_jour", (importResult.updatedCount).toString()))
                         if (importResult.deletedCount > 0)
-                            Text("• ${importResult.deletedCount} aliments supprimés")
+                            Text(translate("auto.navigation.appdialogs.arg_aliments_supprimes", (importResult.deletedCount).toString()))
                         if (importResult.errorCount > 0)
                             Text(
-                                "• ${importResult.errorCount} erreurs rencontrées",
+                                translate("auto.navigation.appdialogs.food_import_errors_count", importResult.errorCount.toString()),
                                 color = MaterialTheme.colors.error
                             )
                         if (importResult.nonResolvedNutrients > 0)
                             Text(
-                                "• ${importResult.nonResolvedNutrients} nutriments non résolus",
+                                translate("auto.navigation.appdialogs.food_import_unresolved_nutrients", importResult.nonResolvedNutrients.toString()),
                                 color = MaterialTheme.colors.error.copy(alpha = 0.7f)
                             )
                     }
                 }
                 is SettingsViewModel.ImportResult.Error ->
-                    Text("Erreur lors de l'importation : ${importResult.message}")
+                    Text(translate("auto.navigation.appdialogs.erreur_lors_de_l_importation_arg", (importResult.message).toString()))
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss) { Text("OK") }
+            Button(onClick = onDismiss) { Text(translate("general.ok")) }
         }
     )
 }

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -48,7 +49,7 @@ fun HtmlSectionManagerView(viewModel: HtmlSectionViewModel, onNavigateBack: () -
     Column(modifier = Modifier.fillMaxSize()) {
         // Barre d'outils supérieure
         TopAppBar(
-                title = { Text("Gestionnaire de sections HTML") },
+                title = { Text(translate("auto.view.htmlsectionmanagerview.gestionnaire_de_sections_html")) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Default.ArrowBack, "Retour") }
                 },
@@ -69,7 +70,7 @@ fun HtmlSectionManagerView(viewModel: HtmlSectionViewModel, onNavigateBack: () -
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Rechercher...") },
+                    placeholder = { Text(translate("auto.view.htmlsectionmanagerview.rechercher")) },
                     leadingIcon = { Icon(Icons.Default.Search, "Rechercher") }
             )
 
@@ -100,7 +101,7 @@ fun HtmlSectionManagerView(viewModel: HtmlSectionViewModel, onNavigateBack: () -
                                 selectedCategory = null
                                 expanded = false
                             }
-                    ) { Text("Toutes les catégories") }
+                    ) { Text(translate("auto.view.htmlsectionmanagerview.toutes_les_categories")) }
                     SectionCategory.entries.forEach { category ->
                         DropdownMenuItem(
                                 onClick = {
@@ -117,7 +118,7 @@ fun HtmlSectionManagerView(viewModel: HtmlSectionViewModel, onNavigateBack: () -
             // Bascule modèles uniquement
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = showTemplatesOnly, onCheckedChange = { showTemplatesOnly = it })
-                Text("Modèles uniquement", fontSize = 14.sp)
+                Text(translate("auto.view.htmlsectionmanagerview.modeles_uniquement"), fontSize = 14.sp)
             }
         }
 
@@ -154,7 +155,7 @@ fun HtmlSectionManagerView(viewModel: HtmlSectionViewModel, onNavigateBack: () -
                                     contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                        "Sélectionnez une section pour l'éditer",
+                                        translate("auto.view.htmlsectionmanagerview.selectionnez_une_section_pour_l_editer"),
                                         color = Color.Gray,
                                         fontSize = 16.sp
                                 )
@@ -206,7 +207,7 @@ private fun SectionList(
 
     if (sections.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Aucune section trouvée", color = Color.Gray, fontSize = 16.sp)
+            Text(translate("auto.view.htmlsectionmanagerview.aucune_section_trouvee"), color = Color.Gray, fontSize = 16.sp)
         }
         return
     }
@@ -269,7 +270,7 @@ private fun SectionListItem(
             }
             if (section.isTemplate) {
                 Text(
-                        text = "MODÈLE",
+                        text = translate("auto.view.htmlsectionmanagerview.modele"),
                         fontSize = 10.sp,
                         color = Color.Blue,
                         fontWeight = FontWeight.Bold
@@ -313,7 +314,7 @@ private fun SectionEditor(section: HtmlSection, onSectionUpdate: (HtmlSection) -
                 ) {
                     Icon(Icons.Default.Save, "Sauvegarder")
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Sauvegarder")
+                    Text(translate("general.save"))
                 }
             }
         }
@@ -338,19 +339,19 @@ private fun CreateSectionDialog(
 
     AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Créer une nouvelle section") },
+            title = { Text(translate("auto.view.htmlsectionmanagerview.creer_une_nouvelle_section")) },
             text = {
                 Column {
                     OutlinedTextField(
                             value = title,
                             onValueChange = { title = it },
-                            label = { Text("Titre de la section") },
+                            label = { Text(translate("auto.view.htmlsectionmanagerview.titre_de_la_section")) },
                             modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text("Catégorie:", fontWeight = FontWeight.Medium)
+                    Text(translate("auto.view.htmlsectionmanagerview.categorie"), fontWeight = FontWeight.Medium)
                     SectionCategory.entries.forEach { category ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(
@@ -370,9 +371,9 @@ private fun CreateSectionDialog(
                             }
                         },
                         enabled = title.isNotBlank()
-                ) { Text("Créer") }
+                ) { Text(translate("general.create")) }
             },
-            dismissButton = { Button(onClick = onDismiss) { Text("Annuler") } }
+            dismissButton = { Button(onClick = onDismiss) { Text(translate("general.cancel")) } }
     )
 }
 
@@ -390,13 +391,13 @@ private fun EditSectionDialog(
 
     AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Propriétés de la section") },
+            title = { Text(translate("auto.view.htmlsectionmanagerview.proprietes_de_la_section")) },
             text = {
                 Column {
                     OutlinedTextField(
                             value = title,
                             onValueChange = { title = it },
-                            label = { Text("Titre") },
+                            label = { Text(translate("auto.view.htmlsectionmanagerview.titre")) },
                             modifier = Modifier.fillMaxWidth()
                     )
 
@@ -405,13 +406,13 @@ private fun EditSectionDialog(
                     OutlinedTextField(
                             value = tags,
                             onValueChange = { tags = it },
-                            label = { Text("Tags (séparés par des virgules)") },
+                            label = { Text(translate("auto.view.htmlsectionmanagerview.tags_separes_par_des_virgules")) },
                             modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text("Catégorie:", fontWeight = FontWeight.Medium)
+                    Text(translate("auto.view.htmlsectionmanagerview.categorie"), fontWeight = FontWeight.Medium)
                     SectionCategory.entries.forEach { category ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(
@@ -426,7 +427,7 @@ private fun EditSectionDialog(
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = isTemplate, onCheckedChange = { isTemplate = it })
-                        Text("Marquer comme modèle")
+                        Text(translate("auto.view.htmlsectionmanagerview.marquer_comme_modele"))
                     }
                 }
             },
@@ -448,9 +449,9 @@ private fun EditSectionDialog(
                             }
                         },
                         enabled = title.isNotBlank()
-                ) { Text("Sauvegarder") }
+                ) { Text(translate("general.save")) }
             },
-            dismissButton = { Button(onClick = onDismiss) { Text("Annuler") } }
+            dismissButton = { Button(onClick = onDismiss) { Text(translate("general.cancel")) } }
     )
 }
 

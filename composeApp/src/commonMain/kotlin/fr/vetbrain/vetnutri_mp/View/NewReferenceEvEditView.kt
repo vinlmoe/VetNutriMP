@@ -1600,7 +1600,7 @@ fun <T : Nutrient> NutrientCard(
                                         contentAlignment = Alignment.Center
                                 ) {
                                         Text(
-                                                "Non défini",
+                                                translate("new_reference.not_defined"),
                                                 style = MaterialTheme.typography.caption,
                                                 color =
                                                         MaterialTheme.colors.onSurface.copy(
@@ -1979,7 +1979,7 @@ fun NutrientEditDialog(
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         // Minimum
                                         NutrientLevelRow(
-                                                label = "Min",
+                                                label = translate("new_reference.level.min"),
                                                 value = minValue,
                                                 onValueChange = { minValue = it },
                                                 selectedUnitEnum = selectedUnitEnumMin,
@@ -1996,7 +1996,7 @@ fun NutrientEditDialog(
 
                                         // Maximum
                                         NutrientLevelRow(
-                                                label = "Max",
+                                                label = translate("new_reference.level.max"),
                                                 value = maxValue,
                                                 onValueChange = { maxValue = it },
                                                 selectedUnitEnum = selectedUnitEnumMax,
@@ -2013,7 +2013,7 @@ fun NutrientEditDialog(
 
                                         // Optimum Min
                                         NutrientLevelRow(
-                                                label = "Opt Min",
+                                                label = translate("auto.view.newreferenceeveditview.opt_min"),
                                                 value = optMinValue,
                                                 onValueChange = { optMinValue = it },
                                                 selectedUnitEnum = selectedUnitEnumOptMin,
@@ -2454,7 +2454,7 @@ fun CoefficientCard(
                         IconButton(onClick = onEdit) {
                                 Icon(
                                         Icons.Default.Edit,
-                                        contentDescription = "Éditer",
+                                        contentDescription = translate("general.edit"),
                                         tint = VetNutriColors.Primary
                                 )
                         }
@@ -2463,7 +2463,7 @@ fun CoefficientCard(
                         IconButton(onClick = onDelete) {
                                 Icon(
                                         Icons.Default.Delete,
-                                        contentDescription = "Supprimer",
+                                        contentDescription = translate("general.delete"),
                                         tint = MaterialTheme.colors.error
                                 )
                         }
@@ -2525,7 +2525,7 @@ fun AddCoefficientDialog(onDismiss: () -> Unit, onConfirm: (String, Double) -> U
                                                 coefText = it
                                                 showError = false
                                         },
-                                        label = { Text("Coefficient") },
+                                        label = { Text(translate("consultation.edit.coef.selector_label")) },
                                         keyboardOptions =
                                                 KeyboardOptions(
                                                         keyboardType = KeyboardType.Decimal
@@ -2543,7 +2543,7 @@ fun AddCoefficientDialog(onDismiss: () -> Unit, onConfirm: (String, Double) -> U
                                 }
                         }
                 },
-                confirmButton = { Button(onClick = { validateAndConfirm() }) { Text("Ajouter") } },
+                confirmButton = { Button(onClick = { validateAndConfirm() }) { Text(translate("general.add")) } },
                 dismissButton = {
                         Button(
                                 onClick = onDismiss,
@@ -2551,7 +2551,7 @@ fun AddCoefficientDialog(onDismiss: () -> Unit, onConfirm: (String, Double) -> U
                                         ButtonDefaults.buttonColors(
                                                 backgroundColor = MaterialTheme.colors.surface
                                         )
-                        ) { Text("Annuler") }
+                        ) { Text(translate("general.cancel")) }
                 }
         )
 }
@@ -2601,8 +2601,8 @@ fun EditCoefficientDialog(
         if (showDeleteConfirmation) {
                 AlertDialog(
                         onDismissRequest = { showDeleteConfirmation = false },
-                        title = { Text("Confirmer la suppression") },
-                        text = { Text("Êtes-vous sûr de vouloir supprimer ce coefficient ?") },
+                        title = { Text(translate("new_reference.confirm_delete_title")) },
+                        text = { Text(translate("new_reference.confirm_delete_text")) },
                         confirmButton = {
                                 Button(
                                         onClick = {
@@ -2613,18 +2613,18 @@ fun EditCoefficientDialog(
                                                 ButtonDefaults.buttonColors(
                                                         backgroundColor = MaterialTheme.colors.error
                                                 )
-                                ) { Text("Supprimer ce coefficient", color = Color.White) }
+                                ) { Text(translate("new_reference.button_delete_coef"), color = Color.White) }
                         },
                         dismissButton = {
                                 Button(onClick = { showDeleteConfirmation = false }) {
-                                        Text("Annuler")
+                                        Text(translate("general.cancel"))
                                 }
                         }
                 )
         } else {
                 AlertDialog(
                         onDismissRequest = onDismiss,
-                        title = { Text(text = "Éditer le coefficient") },
+                        title = { Text(text = translate("new_reference.edit_coef_title")) },
                         text = {
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         OutlinedTextField(
@@ -2644,7 +2644,7 @@ fun EditCoefficientDialog(
                                                         coefText = it
                                                         showError = false
                                                 },
-                                                label = { Text("Coefficient") },
+                                                label = { Text(translate("consultation.edit.coef.selector_label")) },
                                                 keyboardOptions =
                                                         KeyboardOptions(
                                                                 keyboardType = KeyboardType.Decimal
@@ -2674,11 +2674,11 @@ fun EditCoefficientDialog(
                                                                         MaterialTheme.colors.error
                                                         ),
                                                 modifier = Modifier.fillMaxWidth()
-                                        ) { Text("Supprimer ce coefficient", color = Color.White) }
+                                        ) { Text(translate("new_reference.button_delete_coef"), color = Color.White) }
                                 }
                         },
                         confirmButton = {
-                                Button(onClick = { validateAndConfirm() }) { Text("Enregistrer") }
+                                Button(onClick = { validateAndConfirm() }) { Text(translate("auto.view.settingsview.enregistrer")) }
                         },
                         dismissButton = {
                                 Button(
@@ -2688,7 +2688,7 @@ fun EditCoefficientDialog(
                                                         backgroundColor =
                                                                 MaterialTheme.colors.surface
                                                 )
-                                ) { Text("Annuler") }
+                                ) { Text(translate("general.cancel")) }
                         }
                 )
         }

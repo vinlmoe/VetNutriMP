@@ -254,7 +254,7 @@ fun SettingsView(
                                                 ) {
                                                         Icon(
                                                                 imageVector = Icons.Default.Info,
-                                                                contentDescription = "Conseils",
+                                                                contentDescription = translate("database.stat.conseils"),
                                                                 tint = VetNutriColors.Primary
                                                         )
                                                         Spacer(modifier = Modifier.width(8.dp))
@@ -364,7 +364,7 @@ fun SettingsView(
                                                 var animalFilterEspece by remember {
                                                         mutableStateOf(
                                                                 FilterOption<Espece>(
-                                                                        label = "Toutes",
+                                                                        label = translate("crossConsultation.speciesAll"),
                                                                         value = null
                                                                 )
                                                         )
@@ -372,7 +372,7 @@ fun SettingsView(
                                                 var equationFilterEspece by remember {
                                                         mutableStateOf(
                                                                 FilterOption<Espece>(
-                                                                        label = "Toutes",
+                                                                        label = translate("crossConsultation.speciesAll"),
                                                                         value = null
                                                                 )
                                                         )
@@ -380,7 +380,7 @@ fun SettingsView(
                                                 var equationFilterKind by remember {
                                                         mutableStateOf(
                                                                 FilterOption<EquationKind>(
-                                                                        label = "Tous",
+                                                                        label = translate("crossConsultation.keywordsAll"),
                                                                         value = null
                                                                 )
                                                         )
@@ -388,7 +388,7 @@ fun SettingsView(
                                                 var referenceFilterEspece by remember {
                                                         mutableStateOf(
                                                                 FilterOption<Espece>(
-                                                                        label = "Toutes",
+                                                                        label = translate("crossConsultation.speciesAll"),
                                                                         value = null
                                                                 )
                                                         )
@@ -396,7 +396,7 @@ fun SettingsView(
                                                 var conseilFilterCategory by remember {
                                                         mutableStateOf(
                                                                 FilterOption<SectionCategory>(
-                                                                        label = "Toutes",
+                                                                        label = translate("crossConsultation.speciesAll"),
                                                                         value = null
                                                                 )
                                                         )
@@ -412,7 +412,7 @@ fun SettingsView(
                                                 ) {
                                                         Column(modifier = Modifier.padding(12.dp)) {
                                                                 Text(
-                                                                        "Export API",
+                                                                        translate("auto.view.settingsview.export_api"),
                                                                         style = MaterialTheme.typography.subtitle1,
                                                                         fontWeight = FontWeight.Medium
                                                                 )
@@ -522,7 +522,7 @@ fun SettingsView(
                                                                         }
                                                                 }
                                                         }
-                                                ) { Text("Selectionner recettes (${selectedRecipeIds.size})") }
+                                                ) { Text(translate("auto.view.settingsview.selectionner_recettes_arg", (selectedRecipeIds.size).toString())) }
 
                                                 OutlinedButton(
                                                         onClick = {
@@ -548,7 +548,7 @@ fun SettingsView(
                                                                         }
                                                                 }
                                                         }
-                                                ) { Text("Selectionner equations (${selectedEquationIds.size})") }
+                                                ) { Text(translate("auto.view.settingsview.selectionner_equations_arg", (selectedEquationIds.size).toString())) }
 
                                                 OutlinedButton(
                                                         onClick = {
@@ -574,7 +574,7 @@ fun SettingsView(
                                                                         }
                                                                 }
                                                         }
-                                                ) { Text("Selectionner references (${selectedReferenceIds.size})") }
+                                                ) { Text(translate("auto.view.settingsview.selectionner_references_arg", (selectedReferenceIds.size).toString())) }
 
                                                 OutlinedButton(
                                                         onClick = {
@@ -601,7 +601,7 @@ fun SettingsView(
                                                                         }
                                                                 }
                                                         }
-                                                ) { Text("Selectionner conseils (${selectedConseilIds.size})") }
+                                                ) { Text(translate("auto.view.settingsview.selectionner_conseils_arg", (selectedConseilIds.size).toString())) }
 
                                                 // Cases à cocher d’inclusion
 
@@ -643,7 +643,7 @@ fun SettingsView(
                                                                                                                 )
                                                                                                 )
                                                                                                 Text(
-                                                                                                        "Chargement des animaux..."
+                                                                                                        translate("auto.view.settingsview.chargement_des_animaux")
                                                                                                 )
                                                                                         }
                                                                                 }
@@ -684,7 +684,7 @@ fun SettingsView(
                                                                                                                 selectionLoadError =
                                                                                                                         null
                                                                                                         }
-                                                                                                ) { Text("Fermer") }
+                                                                                                ) { Text(translate("settings.close")) }
                                                                                         }
                                                                                 }
                                                                                 availableAnimals.isEmpty() -> {
@@ -700,7 +700,7 @@ fun SettingsView(
                                                                                                         Alignment.CenterHorizontally
                                                                                         ) {
                                                                                                 Text(
-                                                                                                        "Aucun animal disponible."
+                                                                                                        translate("auto.view.settingsview.aucun_animal_disponible")
                                                                                                 )
                                                                                                 Spacer(
                                                                                                         modifier =
@@ -713,7 +713,7 @@ fun SettingsView(
                                                                                                                 showAnimalSelectionDialog =
                                                                                                                         false
                                                                                                         }
-                                                                                                ) { Text("Fermer") }
+                                                                                                ) { Text(translate("settings.close")) }
                                                                                         }
                                                                                 }
                                                                                 else -> {
@@ -731,7 +731,7 @@ fun SettingsView(
                                                                                                         listOf<FilterOption<Espece>>(
                                                                                                                 FilterOption<Espece>(
                                                                                                                         label =
-                                                                                                                                "Toutes",
+                                                                                                                                translate("crossConsultation.speciesAll"),
                                                                                                                         value = null
                                                                                                                 )
                                                                                                         ) +
@@ -748,7 +748,7 @@ fun SettingsView(
                                                                                                 }
                                                                                         SelectionDialog(
                                                                                                 title =
-                                                                                                        "Selection des animaux",
+                                                                                                        translate("auto.view.settingsview.selection_des_animaux"),
                                                                                                 items =
                                                                                                         availableAnimals.map {
                                                                                                                 SelectionItem(
@@ -786,7 +786,7 @@ fun SettingsView(
                                                                                                 filtersContent = {
                                                                                                         DropdownField(
                                                                                                                 label =
-                                                                                                                        "Espece",
+                                                                                                                        translate("auto.view.settingsview.espece"),
                                                                                                                 selectedValue =
                                                                                                                         animalFilterEspece,
                                                                                                                 options =
@@ -834,7 +834,7 @@ fun SettingsView(
                                                                                         imageVector =
                                                                                                 Icons.Default.Close,
                                                                                         contentDescription =
-                                                                                                "Fermer"
+                                                                                                translate("settings.close")
                                                                                 )
                                                                         }
                                                                 }
@@ -879,7 +879,7 @@ fun SettingsView(
                                                                                                                 )
                                                                                                 )
                                                                                                 Text(
-                                                                                                        "Chargement des aliments..."
+                                                                                                        translate("animalDetail.loadingFoods")
                                                                                                 )
                                                                                         }
                                                                                 }
@@ -920,7 +920,7 @@ fun SettingsView(
                                                                                                                 selectionLoadError =
                                                                                                                         null
                                                                                                         }
-                                                                                                ) { Text("Fermer") }
+                                                                                                ) { Text(translate("settings.close")) }
                                                                                         }
                                                                                 }
                                                                                 availableFoods.isEmpty() -> {
@@ -936,7 +936,7 @@ fun SettingsView(
                                                                                                         Alignment.CenterHorizontally
                                                                                         ) {
                                                                                                 Text(
-                                                                                                        "Aucun aliment disponible."
+                                                                                                        translate("auto.view.excelimportexportcomponents.aucun_aliment_disponible")
                                                                                                 )
                                                                                                 Spacer(
                                                                                                         modifier =
@@ -949,7 +949,7 @@ fun SettingsView(
                                                                                                                 showFoodSelectionDialog =
                                                                                                                         false
                                                                                                         }
-                                                                                                ) { Text("Fermer") }
+                                                                                                ) { Text(translate("settings.close")) }
                                                                                         }
                                                                                 }
                                                                                 else -> {
@@ -1017,7 +1017,7 @@ fun SettingsView(
                                                                                         imageVector =
                                                                                                 Icons.Default.Close,
                                                                                         contentDescription =
-                                                                                                "Fermer"
+                                                                                                translate("settings.close")
                                                                                 )
                                                                         }
                                                                 }
@@ -1062,7 +1062,7 @@ fun SettingsView(
                                                                                                                 )
                                                                                                 )
                                                                                                 Text(
-                                                                                                        "Chargement des equations..."
+                                                                                                        translate("auto.view.settingsview.chargement_des_equations")
                                                                                                 )
                                                                                         }
                                                                                 }
@@ -1103,7 +1103,7 @@ fun SettingsView(
                                                                                                                 selectionLoadError =
                                                                                                                         null
                                                                                                         }
-                                                                                                ) { Text("Fermer") }
+                                                                                                ) { Text(translate("settings.close")) }
                                                                                         }
                                                                                 }
                                                                                 availableEquations.isEmpty() -> {
@@ -1119,7 +1119,7 @@ fun SettingsView(
                                                                                                         Alignment.CenterHorizontally
                                                                                         ) {
                                                                                                 Text(
-                                                                                                        "Aucune equation disponible."
+                                                                                                        translate("auto.view.settingsview.aucune_equation_disponible")
                                                                                                 )
                                                                                                 Spacer(
                                                                                                         modifier =
@@ -1132,7 +1132,7 @@ fun SettingsView(
                                                                                                                 showEquationSelectionDialog =
                                                                                                                         false
                                                                                                         }
-                                                                                                ) { Text("Fermer") }
+                                                                                                ) { Text(translate("settings.close")) }
                                                                                         }
                                                                                 }
                                                                                 else -> {
@@ -1150,7 +1150,7 @@ fun SettingsView(
                                                                                                         listOf<FilterOption<Espece>>(
                                                                                                                 FilterOption<Espece>(
                                                                                                                         label =
-                                                                                                                                "Toutes",
+                                                                                                                                translate("crossConsultation.speciesAll"),
                                                                                                                         value = null
                                                                                                                 )
                                                                                                         ) +
@@ -1170,7 +1170,7 @@ fun SettingsView(
                                                                                                         listOf<FilterOption<EquationKind>>(
                                                                                                                 FilterOption<EquationKind>(
                                                                                                                         label =
-                                                                                                                                "Tous",
+                                                                                                                                translate("crossConsultation.keywordsAll"),
                                                                                                                         value = null
                                                                                                                 )
                                                                                                         ) +
@@ -1187,7 +1187,7 @@ fun SettingsView(
                                                                                                 }
                                                                                         SelectionDialog(
                                                                                                 title =
-                                                                                                        "Selection des equations",
+                                                                                                        translate("auto.view.settingsview.selection_des_equations"),
                                                                                                 items =
                                                                                                         availableEquations.map {
                                                                                                                 val specie =
@@ -1234,7 +1234,7 @@ fun SettingsView(
                                                                                                         ) {
                                                                                                                 DropdownField(
                                                                                                                         label =
-                                                                                                                                "Espece",
+                                                                                                                                translate("auto.view.settingsview.espece"),
                                                                                                                         selectedValue =
                                                                                                                                 equationFilterEspece,
                                                                                                                         options =
@@ -1251,7 +1251,7 @@ fun SettingsView(
                                                                                                                 )
                                                                                                                 DropdownField(
                                                                                                                         label =
-                                                                                                                                "Type d'equation",
+                                                                                                                                translate("auto.view.settingsview.type_d_equation"),
                                                                                                                         selectedValue =
                                                                                                                                 equationFilterKind,
                                                                                                                         options =
@@ -1311,7 +1311,7 @@ fun SettingsView(
                                                                                         imageVector =
                                                                                                 Icons.Default.Close,
                                                                                         contentDescription =
-                                                                                                "Fermer"
+                                                                                                translate("settings.close")
                                                                                 )
                                                                         }
                                                                 }
@@ -1356,7 +1356,7 @@ fun SettingsView(
                                                                                                                 )
                                                                                                 )
                                                                                                 Text(
-                                                                                                        "Chargement des references..."
+                                                                                                        translate("auto.view.settingsview.chargement_des_references")
                                                                                                 )
                                                                                         }
                                                                                 }
@@ -1397,7 +1397,7 @@ fun SettingsView(
                                                                                                                 selectionLoadError =
                                                                                                                         null
                                                                                                         }
-                                                                                                ) { Text("Fermer") }
+                                                                                                ) { Text(translate("settings.close")) }
                                                                                         }
                                                                                 }
                                                                                 availableReferences.isEmpty() -> {
@@ -1413,7 +1413,7 @@ fun SettingsView(
                                                                                                         Alignment.CenterHorizontally
                                                                                         ) {
                                                                                                 Text(
-                                                                                                        "Aucune reference disponible."
+                                                                                                        translate("auto.view.settingsview.aucune_reference_disponible")
                                                                                                 )
                                                                                                 Spacer(
                                                                                                         modifier =
@@ -1426,7 +1426,7 @@ fun SettingsView(
                                                                                                                 showReferenceSelectionDialog =
                                                                                                                         false
                                                                                                         }
-                                                                                                ) { Text("Fermer") }
+                                                                                                ) { Text(translate("settings.close")) }
                                                                                         }
                                                                                 }
                                                                                 else -> {
@@ -1444,7 +1444,7 @@ fun SettingsView(
                                                                                                         listOf<FilterOption<Espece>>(
                                                                                                                 FilterOption<Espece>(
                                                                                                                         label =
-                                                                                                                                "Toutes",
+                                                                                                                                translate("crossConsultation.speciesAll"),
                                                                                                                         value = null
                                                                                                                 )
                                                                                                         ) +
@@ -1461,7 +1461,7 @@ fun SettingsView(
                                                                                                 }
                                                                                         SelectionDialog(
                                                                                                 title =
-                                                                                                        "Selection des references",
+                                                                                                        translate("auto.view.settingsview.selection_des_references"),
                                                                                                 items =
                                                                                                         availableReferences.map {
                                                                                                                 SelectionItem(
@@ -1495,7 +1495,7 @@ fun SettingsView(
                                                                                                 filtersContent = {
                                                                                                         DropdownField(
                                                                                                                 label =
-                                                                                                                        "Espece",
+                                                                                                                        translate("auto.view.settingsview.espece"),
                                                                                                                 selectedValue =
                                                                                                                         referenceFilterEspece,
                                                                                                                 options =
@@ -1543,7 +1543,7 @@ fun SettingsView(
                                                                                         imageVector =
                                                                                                 Icons.Default.Close,
                                                                                         contentDescription =
-                                                                                                "Fermer"
+                                                                                                translate("settings.close")
                                                                                 )
                                                                         }
                                                                 }
@@ -1588,7 +1588,7 @@ fun SettingsView(
                                                                                                                 )
                                                                                                 )
                                                                                                 Text(
-                                                                                                        "Chargement des conseils..."
+                                                                                                        translate("auto.view.settingsview.chargement_des_conseils")
                                                                                                 )
                                                                                         }
                                                                                 }
@@ -1629,7 +1629,7 @@ fun SettingsView(
                                                                                                                 selectionLoadError =
                                                                                                                         null
                                                                                                         }
-                                                                                                ) { Text("Fermer") }
+                                                                                                ) { Text(translate("settings.close")) }
                                                                                         }
                                                                                 }
                                                                                 availableConseils.isEmpty() -> {
@@ -1645,7 +1645,7 @@ fun SettingsView(
                                                                                                         Alignment.CenterHorizontally
                                                                                         ) {
                                                                                                 Text(
-                                                                                                        "Aucun conseil disponible."
+                                                                                                        translate("auto.view.settingsview.aucun_conseil_disponible")
                                                                                                 )
                                                                                                 Spacer(
                                                                                                         modifier =
@@ -1658,7 +1658,7 @@ fun SettingsView(
                                                                                                                 showConseilSelectionDialog =
                                                                                                                         false
                                                                                                         }
-                                                                                                ) { Text("Fermer") }
+                                                                                                ) { Text(translate("settings.close")) }
                                                                                         }
                                                                                 }
                                                                                 else -> {
@@ -1676,7 +1676,7 @@ fun SettingsView(
                                                                                                         listOf(
                                                                                                                 FilterOption<SectionCategory>(
                                                                                                                         label =
-                                                                                                                                "Toutes",
+                                                                                                                                translate("crossConsultation.speciesAll"),
                                                                                                                         value = null
                                                                                                                 )
                                                                                                         ) +
@@ -1698,7 +1698,7 @@ fun SettingsView(
                                                                                                 }
                                                                                         SelectionDialog(
                                                                                                 title =
-                                                                                                        "Selection des conseils",
+                                                                                                        translate("auto.view.settingsview.selection_des_conseils"),
                                                                                                 items =
                                                                                                         availableConseils.map {
                                                                                                                 val tags =
@@ -1742,7 +1742,7 @@ fun SettingsView(
                                                                                                 filtersContent = {
                                                                                                         DropdownField(
                                                                                                                 label =
-                                                                                                                        "Categorie",
+                                                                                                                        translate("auto.view.settingsview.categorie"),
                                                                                                                 selectedValue =
                                                                                                                         conseilFilterCategory,
                                                                                                                 options =
@@ -1791,7 +1791,7 @@ fun SettingsView(
                                                                                         imageVector =
                                                                                                 Icons.Default.Close,
                                                                                         contentDescription =
-                                                                                                "Fermer"
+                                                                                                translate("settings.close")
                                                                                 )
                                                                         }
                                                                 }
@@ -1836,7 +1836,7 @@ fun SettingsView(
                                                                                                                 )
                                                                                                 )
                                                                                                 Text(
-                                                                                                        "Chargement des recettes..."
+                                                                                                        translate("auto.view.settingsview.chargement_des_recettes")
                                                                                                 )
                                                                                         }
                                                                                 }
@@ -1877,7 +1877,7 @@ fun SettingsView(
                                                                                                                 selectionLoadError =
                                                                                                                         null
                                                                                                         }
-                                                                                                ) { Text("Fermer") }
+                                                                                                ) { Text(translate("settings.close")) }
                                                                                         }
                                                                                 }
                                                                                 availableRecipes.isEmpty() -> {
@@ -1893,7 +1893,7 @@ fun SettingsView(
                                                                                                         Alignment.CenterHorizontally
                                                                                         ) {
                                                                                                 Text(
-                                                                                                        "Aucune recette disponible."
+                                                                                                        translate("auto.view.settingsview.aucune_recette_disponible")
                                                                                                 )
                                                                                                 Spacer(
                                                                                                         modifier =
@@ -1906,13 +1906,13 @@ fun SettingsView(
                                                                                                                 showRecipeSelectionDialog =
                                                                                                                         false
                                                                                                         }
-                                                                                                ) { Text("Fermer") }
+                                                                                                ) { Text(translate("settings.close")) }
                                                                                         }
                                                                                 }
                                                                                 else -> {
                                                                                         SelectionDialog(
                                                                                                 title =
-                                                                                                        "Selection des recettes",
+                                                                                                        translate("auto.view.settingsview.selection_des_recettes"),
                                                                                                 items =
                                                                                                         availableRecipes.map {
                                                                                                                 SelectionItem(
@@ -1967,7 +1967,7 @@ fun SettingsView(
                                                                                         imageVector =
                                                                                                 Icons.Default.Close,
                                                                                         contentDescription =
-                                                                                                "Fermer"
+                                                                                                translate("settings.close")
                                                                                 )
                                                                         }
                                                                 }
@@ -2055,8 +2055,8 @@ fun SettingsView(
                                                                                                 .resetImportResult()
                                                                                 },
                                                                                 imageVector = Icons.Default.Close,
-                                                                                contentDescription = "Fermer",
-                                                                                tooltip = "Fermer",
+                                                                                contentDescription = translate("settings.close"),
+                                                                                tooltip = translate("settings.close"),
                                                                                 tint = Color.Gray
                                                                         )
                                                                 }
@@ -2316,7 +2316,7 @@ fun SettingsView(
                                                                 },
                                                                 title = {
                                                                         Text(
-                                                                                "Résultat de l'import API"
+                                                                                translate("auto.view.settingsview.resultat_de_l_import_api")
                                                                         )
                                                                 },
                                                                 text = {
@@ -2372,7 +2372,7 @@ fun SettingsView(
                                                                                 }
                                                                                 null ->
                                                                                         Text(
-                                                                                                "Aucun résultat."
+                                                                                                translate("auto.view.settingsview.aucun_resultat")
                                                                                         )
                                                                         }
                                                                 },
@@ -2386,7 +2386,7 @@ fun SettingsView(
                                                                                         // rafraîchit la liste des animaux si l'import a concerné des animaux
                                                                                         onAnimalListRefresh()
                                                                                 }
-                                                                        ) { Text("OK") }
+                                                                        ) { Text(translate("general.ok")) }
                                                                 }
                                                         )
                                                 }
@@ -2423,7 +2423,7 @@ fun SettingsView(
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
                                                         Text(
-                                                                "Importer des aliments",
+                                                                translate("auto.view.settingsview.importer_des_aliments"),
                                                                 color = Color.White
                                                         )
                                                 }
@@ -2436,7 +2436,7 @@ fun SettingsView(
                                                                 },
                                                                 title = {
                                                                         Text(
-                                                                                "Options d'import des aliments"
+                                                                                translate("auto.view.settingsview.options_d_import_des_aliments")
                                                                         )
                                                                 },
                                                                 text = {
@@ -2455,7 +2455,7 @@ fun SettingsView(
                                                                                                 }
                                                                                         )
                                                                                         Text(
-                                                                                                "Fusionner les nutriments (ne pas supprimer ceux absents du fichier)"
+                                                                                                translate("auto.view.excelimportexportcomponents.fusionner_les_nutriments_ne_pas_supprimer_ceux_a")
                                                                                         )
                                                                                 }
                                                                                 Spacer(
@@ -2479,7 +2479,7 @@ fun SettingsView(
                                                                                                 }
                                                                                         )
                                                                                         Text(
-                                                                                                "N'importer que si la date de dernière mise à jour est plus récente"
+                                                                                                translate("auto.view.excelimportexportcomponents.n_importer_que_si_la_date_de_derniere_mise_a_jou")
                                                                                         )
                                                                                 }
                                                                         }
@@ -2502,7 +2502,7 @@ fun SettingsView(
                                                                                                 // Les erreurs sont gérées par le ViewModel
                                                                                         }
                                                                                 }
-                                                                        ) { Text("Continuer") }
+                                                                        ) { Text(translate("startup.continue")) }
                                                                 },
                                                                 dismissButton = {
                                                                         Button(
@@ -2510,7 +2510,7 @@ fun SettingsView(
                                                                                         showFoodImportOptionsDialog =
                                                                                                 false
                                                                                 }
-                                                                        ) { Text("Annuler") }
+                                                                        ) { Text(translate("general.cancel")) }
                                                                 }
                                                         )
                                                 }
@@ -2560,7 +2560,7 @@ fun SettingsView(
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
                                                         Text(
-                                                                "Importer des références nutritionnelles (.vbnr.json)",
+                                                                translate("auto.view.settingsview.importer_des_references_nutritionnelles_vbnr_jso"),
                                                                 color = Color.White
                                                         )
                                                 }
@@ -2585,7 +2585,7 @@ fun SettingsView(
                                                         contentAlignment = Alignment.Center
                                                 ) {
                                                         Text(
-                                                                "Recettes indisponibles en mode examen."
+                                                                translate("auto.view.settingsview.recettes_indisponibles_en_mode_examen")
                                                         )
                                                 }
                                         } else {
@@ -2638,7 +2638,7 @@ fun SettingsView(
                         },
                         title = {
                                 Text(
-                                        "Résultat de l'importation",
+                                        translate("dialog.resultImportAnimals.title"),
                                         style = MaterialTheme.typography.h6,
                                         color =
                                                 if (importDialogMessage.startsWith("✅"))
@@ -2660,7 +2660,7 @@ fun SettingsView(
                                                         backgroundColor = VetNutriColors.Primary,
                                                         contentColor = Color.White
                                                 )
-                                ) { Text("OK") }
+                                ) { Text(translate("general.ok")) }
                         },
                         backgroundColor = MaterialTheme.colors.surface
                 )
@@ -2751,7 +2751,7 @@ private fun PreferencesContentWithPersistence(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 CircularProgressIndicator(color = VetNutriColors.Primary)
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Text("Chargement des préférences...")
+                                Text(translate("analnut.msg.loading_preferences"))
                         }
                 }
         } else if (preferencesLoaded && currentPreferences != null) {
@@ -2774,7 +2774,7 @@ private fun PreferencesContentWithPersistence(
                         var email by remember { mutableStateOf(currentPreferences!!.email) }
                         var isSavingUser by remember { mutableStateOf(false) }
                         Text(
-                                text = "Informations utilisateur",
+                                text = translate("auto.view.settingsview.informations_utilisateur"),
                                 style = MaterialTheme.typography.h6,
                                 color = VetNutriColors.Primary
                         )
@@ -2790,21 +2790,21 @@ private fun PreferencesContentWithPersistence(
                                         OutlinedTextField(
                                                 value = nomUtilisateur,
                                                 onValueChange = { nomUtilisateur = it },
-                                                label = { Text("Nom de l'utilisateur") },
+                                                label = { Text(translate("auto.view.settingsview.nom_de_l_utilisateur")) },
                                                 singleLine = true,
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                         OutlinedTextField(
                                                 value = numeroOrdre,
                                                 onValueChange = { numeroOrdre = it },
-                                                label = { Text("Numéro d'ordre") },
+                                                label = { Text(translate("auto.view.settingsview.numero_d_ordre")) },
                                                 singleLine = true,
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                         OutlinedTextField(
                                                 value = adressePostale,
                                                 onValueChange = { adressePostale = it },
-                                                label = { Text("Adresse postale") },
+                                                label = { Text(translate("auto.view.settingsview.adresse_postale")) },
                                                 singleLine = false,
                                                 modifier = Modifier.fillMaxWidth()
                                         )
@@ -2812,14 +2812,14 @@ private fun PreferencesContentWithPersistence(
                                                 OutlinedTextField(
                                                         value = codePostal,
                                                         onValueChange = { codePostal = it },
-                                                        label = { Text("Code postal") },
+                                                        label = { Text(translate("auto.view.settingsview.code_postal")) },
                                                         singleLine = true,
                                                         modifier = Modifier.weight(1f)
                                                 )
                                                 OutlinedTextField(
                                                         value = ville,
                                                         onValueChange = { ville = it },
-                                                        label = { Text("Ville") },
+                                                        label = { Text(translate("auto.view.settingsview.ville")) },
                                                         singleLine = true,
                                                         modifier = Modifier.weight(2f)
                                                 )
@@ -2827,14 +2827,14 @@ private fun PreferencesContentWithPersistence(
                                         OutlinedTextField(
                                                 value = telephone,
                                                 onValueChange = { telephone = it },
-                                                label = { Text("Téléphone") },
+                                                label = { Text(translate("auto.view.settingsview.telephone")) },
                                                 singleLine = true,
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                         OutlinedTextField(
                                                 value = email,
                                                 onValueChange = { email = it },
-                                                label = { Text("Email") },
+                                                label = { Text(translate("auto.view.settingsview.email")) },
                                                 singleLine = true,
                                                 modifier = Modifier.fillMaxWidth()
                                         )
@@ -2883,7 +2883,7 @@ private fun PreferencesContentWithPersistence(
                                                                                 VetNutriColors
                                                                                         .Primary
                                                                 )
-                                                ) { Text("Enregistrer", color = Color.White) }
+                                                ) { Text(translate("auto.view.settingsview.enregistrer"), color = Color.White) }
                                                 if (isSavingUser) {
                                                         Spacer(modifier = Modifier.width(8.dp))
                                                         CircularProgressIndicator(
@@ -2896,14 +2896,14 @@ private fun PreferencesContentWithPersistence(
                                 }
                         }
                         Text(
-                                text = "Expression des besoins par espèce",
+                                text = translate("auto.view.settingsview.expression_des_besoins_par_espece"),
                                 style = MaterialTheme.typography.h6,
                                 color = VetNutriColors.Primary
                         )
 
                         Text(
                                 text =
-                                        "Définissez pour chaque espèce comment exprimer les besoins nutritionnels (sauvegarde automatique)",
+                                        translate("auto.view.settingsview.definissez_pour_chaque_espece_comment_exprimer_l"),
                                 style = MaterialTheme.typography.body2,
                                 color = Color.Gray
                         )
@@ -2940,12 +2940,12 @@ private fun PreferencesContentWithPersistence(
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Icon(
                                                         imageVector = Icons.Default.CheckCircle,
-                                                        contentDescription = "Persistance active",
+                                                        contentDescription = translate("auto.view.settingsview.persistance_active"),
                                                         tint = VetNutriColors.Primary
                                                 )
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Text(
-                                                        text = "Persistance active",
+                                                        text = translate("auto.view.settingsview.persistance_active"),
                                                         style = MaterialTheme.typography.subtitle2,
                                                         fontWeight = FontWeight.Bold,
                                                         color = VetNutriColors.Primary
@@ -2954,7 +2954,7 @@ private fun PreferencesContentWithPersistence(
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
                                                 text =
-                                                        "Vos préférences sont automatiquement sauvegardées et seront restaurées au prochain démarrage.",
+                                                        translate("auto.view.settingsview.vos_preferences_sont_automatiquement_sauvegardee"),
                                                 style = MaterialTheme.typography.body2,
                                                 color = Color.Gray
                                         )
@@ -3031,7 +3031,7 @@ private fun SpeciesPreferenceCardWithPersistence(
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text(
-                                        text = "Type d'expression des besoins:",
+                                        text = translate("auto.view.settingsview.type_d_expression_des_besoins"),
                                         style = MaterialTheme.typography.subtitle2,
                                         fontWeight = FontWeight.Medium
                                 )
@@ -3150,7 +3150,7 @@ private fun PreferencesContentSimplified(modifier: Modifier = Modifier) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
                 Text(
-                        text = "Informations utilisateur",
+                        text = translate("auto.view.settingsview.informations_utilisateur"),
                         style = MaterialTheme.typography.h6,
                         color = VetNutriColors.Primary
                 )
@@ -3166,55 +3166,55 @@ private fun PreferencesContentSimplified(modifier: Modifier = Modifier) {
                                 OutlinedTextField(
                                         value = nomUtilisateur,
                                         onValueChange = { nomUtilisateur = it },
-                                        label = { Text("Nom de l'utilisateur") },
+                                        label = { Text(translate("auto.view.settingsview.nom_de_l_utilisateur")) },
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth()
                                 )
                                 OutlinedTextField(
                                         value = numeroOrdre,
                                         onValueChange = { numeroOrdre = it },
-                                        label = { Text("Numéro d'ordre") },
+                                        label = { Text(translate("auto.view.settingsview.numero_d_ordre")) },
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth()
                                 )
                                 OutlinedTextField(
                                         value = adressePostale,
                                         onValueChange = { adressePostale = it },
-                                        label = { Text("Adresse postale") },
+                                        label = { Text(translate("auto.view.settingsview.adresse_postale")) },
                                         singleLine = false,
                                         modifier = Modifier.fillMaxWidth()
                                 )
                                 OutlinedTextField(
                                         value = telephone,
                                         onValueChange = { telephone = it },
-                                        label = { Text("Téléphone") },
+                                        label = { Text(translate("auto.view.settingsview.telephone")) },
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth()
                                 )
                                 OutlinedTextField(
                                         value = email,
                                         onValueChange = { email = it },
-                                        label = { Text("Email") },
+                                        label = { Text(translate("auto.view.settingsview.email")) },
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth()
                                 )
                                 Text(
                                         text =
-                                                "Ces informations ne sont pas encore persistées dans ce mode.",
+                                                translate("auto.view.settingsview.ces_informations_ne_sont_pas_encore_persistees_d"),
                                         style = MaterialTheme.typography.caption,
                                         color = Color.Gray
                                 )
                         }
                 }
                 Text(
-                        text = "Expression des besoins par espèce",
+                        text = translate("auto.view.settingsview.expression_des_besoins_par_espece"),
                         style = MaterialTheme.typography.h6,
                         color = VetNutriColors.Primary
                 )
 
                 Text(
                         text =
-                                "Définissez pour chaque espèce comment exprimer les besoins nutritionnels",
+                                translate("auto.view.settingsview.definissez_pour_chaque_espece_comment_exprimer_l_3"),
                         style = MaterialTheme.typography.body2,
                         color = Color.Gray
                 )
@@ -3246,12 +3246,12 @@ private fun PreferencesContentSimplified(modifier: Modifier = Modifier) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
                                                 imageVector = Icons.Default.Info,
-                                                contentDescription = "Information",
+                                                contentDescription = translate("settings.feedback.info"),
                                                 tint = VetNutriColors.Primary
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                                text = "Persistance des données",
+                                                text = translate("auto.view.settingsview.persistance_des_donnees"),
                                                 style = MaterialTheme.typography.subtitle2,
                                                 fontWeight = FontWeight.Bold,
                                                 color = VetNutriColors.Primary
@@ -3260,7 +3260,7 @@ private fun PreferencesContentSimplified(modifier: Modifier = Modifier) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                         text =
-                                                "Les préférences sont actuellement stockées temporairement. Le système de persistance multiplateforme sera intégré dans une prochaine version.",
+                                                translate("auto.view.settingsview.les_preferences_sont_actuellement_stockees_tempo"),
                                         style = MaterialTheme.typography.body2,
                                         color = Color.Gray
                                 )
@@ -3322,7 +3322,7 @@ private fun SpeciesPreferenceCardSimplified(
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text(
-                                        text = "Type d'expression des besoins:",
+                                        text = translate("auto.view.settingsview.type_d_expression_des_besoins"),
                                         style = MaterialTheme.typography.subtitle2,
                                         fontWeight = FontWeight.Medium
                                 )

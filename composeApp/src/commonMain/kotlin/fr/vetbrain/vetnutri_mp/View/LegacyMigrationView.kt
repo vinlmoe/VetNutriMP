@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,7 +37,7 @@ fun LegacyMigrationView(
     Scaffold(
         topBar = {
             TopBarSimple(
-                title = "Importer depuis VetNutri 2",
+                title = translate("admin.import.legacy"),
                 onNavigateBack = {
                     viewModel.reset()
                     onNavigateBack()
@@ -55,7 +56,7 @@ fun LegacyMigrationView(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator()
                             Spacer(Modifier.height(12.dp))
-                            Text("Recherche de VetNutri 2...")
+                            Text(translate("auto.view.legacymigrationview.recherche_de_vetnutri_2"))
                         }
                     }
                 }
@@ -85,7 +86,7 @@ fun LegacyMigrationView(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator()
                             Spacer(Modifier.height(12.dp))
-                            Text("Lecture des données...")
+                            Text(translate("auto.view.legacymigrationview.lecture_des_donnees"))
                         }
                     }
                 }
@@ -136,10 +137,10 @@ private fun NotDetectedPanel(onBrowse: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Warning, null, tint = Color(0xFFF57C00))
                     Spacer(Modifier.width(8.dp))
-                    Text("VetNutri 2 non détecté automatiquement", fontWeight = FontWeight.Bold)
+                    Text(translate("auto.view.legacymigrationview.vetnutri_2_non_detecte_automatiquement"), fontWeight = FontWeight.Bold)
                 }
                 Text(
-                    "Sélectionnez manuellement le dossier 'db' de votre installation VetNutri 2 " +
+                    translate("auto.view.legacymigrationview.selectionnez_manuellement_le_dossier_db_de_votre") +
                     "(contient Data-Anim.db).",
                     style = MaterialTheme.typography.body2
                 )
@@ -151,7 +152,7 @@ private fun NotDetectedPanel(onBrowse: () -> Unit) {
         ) {
             Icon(Icons.Default.FolderOpen, null)
             Spacer(Modifier.width(8.dp))
-            Text("Parcourir...")
+            Text(translate("auto.view.legacymigrationview.parcourir"))
         }
     }
 }
@@ -167,18 +168,18 @@ private fun DetectedPanel(path: String, onContinue: () -> Unit, onBrowse: () -> 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF388E3C))
                     Spacer(Modifier.width(8.dp))
-                    Text("VetNutri 2 trouvé", fontWeight = FontWeight.Bold)
+                    Text(translate("auto.view.legacymigrationview.vetnutri_2_trouve"), fontWeight = FontWeight.Bold)
                 }
                 Text(path, style = MaterialTheme.typography.caption)
             }
         }
         Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
-            Text("Analyser les données")
+            Text(translate("auto.view.legacymigrationview.analyser_les_donnees"))
         }
         OutlinedButton(onClick = onBrowse, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.FolderOpen, null)
             Spacer(Modifier.width(8.dp))
-            Text("Choisir un autre dossier")
+            Text(translate("auto.view.legacymigrationview.choisir_un_autre_dossier"))
         }
     }
 }
@@ -194,7 +195,7 @@ private fun PreviewPanel(
         modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Données à importer", style = MaterialTheme.typography.h6)
+        Text(translate("auto.view.legacymigrationview.donnees_a_importer"), style = MaterialTheme.typography.h6)
         Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 PreviewRow("Animaux", counts.animals)
@@ -213,7 +214,7 @@ private fun PreviewPanel(
             elevation = 0.dp
         ) {
             Text(
-                "Les données existantes (même UUID) ne seront pas écrasées.",
+                translate("auto.view.legacymigrationview.les_donnees_existantes_meme_uuid_ne_seront_pas_e"),
                 modifier = Modifier.padding(12.dp),
                 style = MaterialTheme.typography.body2
             )
@@ -224,10 +225,10 @@ private fun PreviewPanel(
             enabled = counts.animals > 0 || counts.foods > 0 || counts.consultations > 0 ||
                 counts.references > 0 || counts.equations > 0 || counts.biblioRefs > 0
         ) {
-            Text("Importer les données")
+            Text(translate("auto.view.legacymigrationview.importer_les_donnees"))
         }
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-            Text("Retour")
+            Text(translate("graph.back"))
         }
     }
 }
@@ -252,7 +253,7 @@ private fun MigratingPanel(log: List<String>) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(Modifier.size(24.dp))
             Spacer(Modifier.width(12.dp))
-            Text("Migration en cours...", fontWeight = FontWeight.Medium)
+            Text(translate("auto.view.legacymigrationview.migration_en_cours"), fontWeight = FontWeight.Medium)
         }
         Card(modifier = Modifier.fillMaxWidth().weight(1f), elevation = 1.dp) {
             LazyColumn(
@@ -280,12 +281,12 @@ private fun ResultPanel(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF388E3C))
             Spacer(Modifier.width(8.dp))
-            Text("Migration terminée", style = MaterialTheme.typography.h6, fontWeight = FontWeight.Bold)
+            Text(translate("auto.view.legacymigrationview.migration_terminee"), style = MaterialTheme.typography.h6, fontWeight = FontWeight.Bold)
         }
 
         Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Importés", fontWeight = FontWeight.Bold)
+                Text(translate("auto.view.legacymigrationview.importes"), fontWeight = FontWeight.Bold)
                 PreviewRow("Animaux", result.imported.animals)
                 PreviewRow("Consultations", result.imported.consultations)
                 PreviewRow("Rations", result.imported.rations)
@@ -299,7 +300,7 @@ private fun ResultPanel(
                     result.skipped.equations + result.skipped.references
                 if (totalSkipped > 0) {
                     Divider(Modifier.padding(vertical = 4.dp))
-                    Text("Ignorés (déjà présents)", fontWeight = FontWeight.Bold)
+                    Text(translate("auto.view.legacymigrationview.ignores_deja_presents"), fontWeight = FontWeight.Bold)
                     if (result.skipped.animals > 0) PreviewRow("Animaux", result.skipped.animals)
                     if (result.skipped.consultations > 0) PreviewRow("Consultations", result.skipped.consultations)
                     if (result.skipped.foods > 0) PreviewRow("Aliments", result.skipped.foods)
@@ -309,7 +310,7 @@ private fun ResultPanel(
                 }
                 if (result.errors.isNotEmpty()) {
                     Divider(Modifier.padding(vertical = 4.dp))
-                    Text("Erreurs : ${result.errors.size}", color = MaterialTheme.colors.error, fontWeight = FontWeight.Bold)
+                    Text(translate("auto.view.legacymigrationview.erreurs_arg", (result.errors.size).toString()), color = MaterialTheme.colors.error, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -323,7 +324,7 @@ private fun ResultPanel(
         }
 
         Button(onClick = onClose, modifier = Modifier.fillMaxWidth()) {
-            Text("Fermer")
+            Text(translate("settings.close"))
         }
     }
 }
@@ -339,14 +340,14 @@ private fun ErrorPanel(message: String, onRetry: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Warning, null, tint = MaterialTheme.colors.error)
                     Spacer(Modifier.width(8.dp))
-                    Text("Erreur", fontWeight = FontWeight.Bold, color = MaterialTheme.colors.error)
+                    Text(translate("general.error"), fontWeight = FontWeight.Bold, color = MaterialTheme.colors.error)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(message, style = MaterialTheme.typography.body2)
             }
         }
         OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
-            Text("Recommencer")
+            Text(translate("auto.view.legacymigrationview.recommencer"))
         }
     }
 }

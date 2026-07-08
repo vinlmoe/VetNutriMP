@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -635,7 +636,7 @@ private fun NutrimentSelector(
                     style = MaterialTheme.typography.body2
             )
             Spacer(modifier = Modifier.weight(1f))
-            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Déplier")
+            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = translate("general.expand"))
         }
 
         DropdownMenu(
@@ -942,8 +943,8 @@ fun AnalyseGraphiqueAlimentsView(
                 IconButtonWithTooltip(
                         onClick = onClose,
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Retour à la sélection d'aliments",
-                        tooltip = "Retour",
+                        contentDescription = translate("auto.view.analysegraphiquealimentsview.retour_a_la_selection_d_aliments"),
+                        tooltip = translate("graph.back"),
                         tint = VetNutriColors.Primary
                 )
                 Column {
@@ -954,7 +955,7 @@ fun AnalyseGraphiqueAlimentsView(
                             color = VetNutriColors.Primary
                     )
                     Text(
-                            text = "Visualisation des caractéristiques nutritionnelles",
+                            text = translate("auto.view.analysegraphiquealimentsview.visualisation_des_caracteristiques_nutritionnell"),
                             style = MaterialTheme.typography.caption,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                     )
@@ -982,7 +983,7 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "densite_energetique") Color.White
                                             else Color.Black
                             )
-            ) { Text("Densité énergétique") }
+            ) { Text(translate("chart.energyDensityLabel")) }
 
             // Onglet Protéines/Lipides
             Button(
@@ -997,7 +998,7 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "protein_lipid") Color.White
                                             else Color.Black
                             )
-            ) { Text("Protéines/Lipides (%)") }
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.proteines_lipides")) }
 
             // Onglet Phosphore/Protéines
             Button(
@@ -1012,7 +1013,7 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "phosphore_protein") Color.White
                                             else Color.Black
                             )
-            ) { Text("Phosphore/Protéines") }
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.phosphore_proteines")) }
 
             // Onglet Calcium/Phosphore
             Button(
@@ -1027,7 +1028,7 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "calcium_phosphore") Color.White
                                             else Color.Black
                             )
-            ) { Text("Calcium/Phosphore") }
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.calcium_phosphore")) }
 
             // ✨ Nouvel onglet Nutriments personnalisés
             Button(
@@ -1042,7 +1043,7 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "nutriments_perso") Color.White
                                             else Color.Black
                             )
-            ) { Text("Nutriments\npersonnalisés") }
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.nutriments_personnalisas")) }
 
             // ✨ Nouvel onglet Analyse détaillée
             Button(
@@ -1057,7 +1058,7 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "analyse_detaillee") Color.White
                                             else Color.Black
                             )
-            ) { Text("Analyse\ndétaillée") }
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.analyse_dataillae")) }
 
             // ✨ Nouvel onglet HeatMap
             Button(
@@ -1072,7 +1073,7 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "heatmap") Color.White
                                             else Color.Black
                             )
-            ) { Text("HeatMap") }
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.heatmap")) }
         }
 
         // Toggle pour /1000 kcal vs /100g MS (pas pour les ratios énergétiques, l'analyse détaillée et la heatmap)
@@ -1083,7 +1084,7 @@ fun AnalyseGraphiqueAlimentsView(
                 verticalAlignment = Alignment.CenterVertically
         ) {
                 Text(
-                                text = "/1000 kcal",
+                                text = translate("chart.togglePer1000Kcal"),
                         style = MaterialTheme.typography.caption,
                                 color = if (!useDryMatterPer100g) VetNutriColors.Primary else MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
@@ -1092,7 +1093,7 @@ fun AnalyseGraphiqueAlimentsView(
                                 onCheckedChange = { useDryMatterPer100g = it }
                 )
                 Text(
-                                text = "/100g MS",
+                                text = translate("chart.togglePer100gDm"),
                         style = MaterialTheme.typography.caption,
                                 color = if (useDryMatterPer100g) VetNutriColors.Primary else MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
@@ -1114,13 +1115,13 @@ fun AnalyseGraphiqueAlimentsView(
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
                     Text(
-                            text = "Aucune référence sélectionnée",
+                            text = translate("consultation.edit.ref.general_none"),
                             style = MaterialTheme.typography.body1,
                             fontWeight = FontWeight.Bold,
                             color = VetNutriColors.Error
                     )
                     Text(
-                            text = "Veuillez sélectionner une référence dans une consultation pour calculer l'énergie avec les équations du référentiel",
+                            text = translate("graph.selectReferenceHint"),
                             style = MaterialTheme.typography.body2,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                     )
@@ -1134,13 +1135,13 @@ fun AnalyseGraphiqueAlimentsView(
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
                     Text(
-                            text = "Aucune préférence disponible",
+                            text = translate("graph.noPreference"),
                             style = MaterialTheme.typography.body1,
                             fontWeight = FontWeight.Bold,
                             color = VetNutriColors.Error
                     )
                     Text(
-                            text = "Veuillez configurer les préférences pour l'espèce dans les paramètres",
+                            text = translate("graph.configPreferenceHint"),
                             style = MaterialTheme.typography.body2,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                     )
@@ -1154,13 +1155,13 @@ fun AnalyseGraphiqueAlimentsView(
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
                     Text(
-                            text = "Repository d'équations non disponible",
+                            text = translate("auto.view.analysegraphiquealimentsview.repository_d_equations_non_disponible"),
                             style = MaterialTheme.typography.body1,
                             fontWeight = FontWeight.Bold,
                             color = VetNutriColors.Error
                     )
                     Text(
-                            text = "Le repository d'équations est requis pour calculer l'énergie avec les équations du référentiel",
+                            text = translate("auto.view.analysegraphiquealimentsview.le_repository_d_equations_est_requis_pour_calcul"),
                             style = MaterialTheme.typography.body2,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                     )
@@ -1175,7 +1176,7 @@ fun AnalyseGraphiqueAlimentsView(
                 ) {
                     CircularProgressIndicator(color = VetNutriColors.Primary)
                     Text(
-                            text = "Calcul des valeurs nutritionnelles...",
+                            text = translate("auto.view.analysegraphiquealimentsview.calcul_des_valeurs_nutritionnelles"),
                             style = MaterialTheme.typography.body1,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                     )
@@ -1251,14 +1252,14 @@ fun AnalyseGraphiqueAlimentsView(
                                                 Arrangement.spacedBy(AppSizes.paddingMedium)
                                 ) {
                                     NutrimentSelector(
-                                            label = "Axe X",
+                                            label = translate("graph.axisXLabel"),
                                             selectedNutriment = nutrimentX,
                                             onNutrimentSelected = { nutrimentX = it },
                                             modifier = Modifier.weight(1f)
                                     )
 
                                     NutrimentSelector(
-                                            label = "Axe Y",
+                                            label = translate("graph.axisYLabel"),
                                             selectedNutriment = nutrimentY,
                                             onNutrimentSelected = { nutrimentY = it },
                                             modifier = Modifier.weight(1f)
@@ -1380,14 +1381,14 @@ fun AnalyseGraphiqueAlimentsView(
                                                     Arrangement.spacedBy(AppSizes.paddingMedium)
                                     ) {
                                         NutrimentSelector(
-                                                label = "Axe X",
+                                                label = translate("graph.axisXLabel"),
                                                 selectedNutriment = nutrimentX,
                                                 onNutrimentSelected = { nutrimentX = it },
                                                 modifier = Modifier.weight(1f)
                                         )
 
                                         NutrimentSelector(
-                                                label = "Axe Y",
+                                                label = translate("graph.axisYLabel"),
                                                 selectedNutriment = nutrimentY,
                                                 onNutrimentSelected = { nutrimentY = it },
                                                 modifier = Modifier.weight(1f)
@@ -1456,7 +1457,7 @@ fun AnalyseGraphiqueAlimentsView(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "Ajouter à la ration"
+                            contentDescription = translate("auto.view.analysegraphiquealimentsview.ajouter_a_la_ration")
                         )
                     }
                     
@@ -1706,7 +1707,7 @@ private fun GraphiqueNuagePoints(
                     }
                     Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                     Text(
-                            text = "Ratio 1:1",
+                            text = translate("auto.view.analysegraphiquealimentsview.ratio_1_1"),
                             style = MaterialTheme.typography.caption,
                             color = Color.Red.copy(alpha = 0.7f)
                     )
@@ -1728,7 +1729,7 @@ private fun GraphiqueNuagePoints(
                     }
                     Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                     Text(
-                            text = "Ratio 2:1",
+                            text = translate("auto.view.analysegraphiquealimentsview.ratio_2_1"),
                             style = MaterialTheme.typography.caption,
                             color = Color.Blue.copy(alpha = 0.7f)
                     )
@@ -1758,7 +1759,7 @@ private fun GraphiqueNuagePoints(
                     }
                     Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                     Text(
-                            text = "Ratio 35:1",
+                            text = translate("auto.view.analysegraphiquealimentsview.ratio_35_1"),
                             style = MaterialTheme.typography.caption,
                             color = Color.Green.copy(alpha = 0.7f)
                     )
@@ -1780,7 +1781,7 @@ private fun GraphiqueNuagePoints(
                     }
                     Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                     Text(
-                            text = "Ratio 25:1",
+                            text = translate("auto.view.analysegraphiquealimentsview.ratio_25_1"),
                             style = MaterialTheme.typography.caption,
                             color = Color(0xFFFF9800).copy(alpha = 0.7f)
                     )
@@ -1810,7 +1811,7 @@ private fun GraphiqueNuagePoints(
                     }
                     Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                     Text(
-                            text = "20% ENA",
+                            text = translate("auto.view.analysegraphiquealimentsview.20_ena"),
                             style = MaterialTheme.typography.caption,
                             color = Color.Magenta.copy(alpha = 0.7f)
                     )
@@ -1832,7 +1833,7 @@ private fun GraphiqueNuagePoints(
                     }
                     Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                     Text(
-                            text = "60% ENA",
+                            text = translate("auto.view.analysegraphiquealimentsview.60_ena"),
                             style = MaterialTheme.typography.caption,
                             color = Color.Cyan.copy(alpha = 0.7f)
                     )
@@ -1854,7 +1855,7 @@ private fun GraphiqueNuagePoints(
                     }
                     Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                     Text(
-                            text = "40% ENA",
+                            text = translate("auto.view.analysegraphiquealimentsview.40_ena"),
                             style = MaterialTheme.typography.caption,
                             color = Color.Yellow.copy(alpha = 0.7f)
                     )
@@ -1967,8 +1968,8 @@ private fun GraphiqueNuagePoints(
                                     )
                                 },
                                 imageVector = Icons.Default.ZoomOut,
-                                contentDescription = "Zoom arrière",
-                                tooltip = "Zoom arrière"
+                                contentDescription = translate("graph.zoomOutTooltip"),
+                                tooltip = translate("graph.zoomOutTooltip")
                         )
                         IconButtonWithTooltip(
                                 onClick = {
@@ -1983,15 +1984,15 @@ private fun GraphiqueNuagePoints(
                                     )
                                 },
                                 imageVector = Icons.Default.ZoomIn,
-                                contentDescription = "Zoom avant",
-                                tooltip = "Zoom avant"
+                                contentDescription = translate("graph.zoomInTooltip"),
+                                tooltip = translate("graph.zoomInTooltip")
                         )
                         if (zoomPanState.value.scaleX != 1f || zoomPanState.value.scaleY != 1f || 
                             zoomPanState.value.panX != 0f || zoomPanState.value.panY != 0f) {
                             TextButton(
                                     onClick = { zoomPanState.value = ZoomPanState() }
                             ) {
-                                Text("Réinitialiser", fontSize = 12.sp)
+                                Text(translate("crossConsultation.reset"), fontSize = 12.sp)
                             }
                         }
                     }
@@ -2382,7 +2383,7 @@ private fun GraphiqueNuagePoints(
                 } // Fin du bloc else (scatter plots)
             } else {
                 Text(
-                        text = "Aucune donnée disponible pour l'analyse",
+                        text = translate("auto.view.analysegraphiquealimentsview.aucune_donnee_disponible_pour_l_analyse"),
                         style = MaterialTheme.typography.body1,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
@@ -2459,7 +2460,7 @@ private fun ListeAlimentsAnalyse(
     Card(modifier = modifier, elevation = AppSizes.elevationMedium) {
         Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
             Text(
-                    text = "Liste des aliments",
+                    text = translate("animalList.foodList"),
                     style = MaterialTheme.typography.h6,
                     fontWeight = FontWeight.Bold,
                     color = VetNutriColors.Primary
@@ -2474,19 +2475,19 @@ private fun ListeAlimentsAnalyse(
                         horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                            text = "N°",
+                            text = translate("auto.view.analysegraphiquealimentsview.n"),
                             modifier = Modifier.weight(0.1f),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
                     )
                     Text(
-                            text = "Nom",
+                            text = translate("ration.name"),
                             modifier = Modifier.weight(0.6f),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
                     )
                     Text(
-                            text = "Marque",
+                            text = translate("food_edit.field.brand"),
                             modifier = Modifier.weight(0.3f),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
@@ -2530,7 +2531,7 @@ private fun ListeAlimentsAnalyse(
                 }
             } else {
                 Text(
-                        text = "Aucun aliment à analyser",
+                        text = translate("chart.noFoodToAnalyze"),
                         style = MaterialTheme.typography.body1,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
@@ -2562,7 +2563,7 @@ private fun GraphiqueNutrimentsPersonnalise(
     
     if (alimentsAnalyses.isEmpty()) {
         Text(
-                text = "Aucune donnée disponible pour le graphique personnalisé",
+                text = translate("auto.view.analysegraphiquealimentsview.aucune_donnee_disponible_pour_le_graphique_perso"),
                 style = MaterialTheme.typography.body1,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
         )
@@ -2576,7 +2577,7 @@ private fun GraphiqueNutrimentsPersonnalise(
     // Si aucun nutriment X n'est sélectionné
     if (nutrimentX == null) {
         Text(
-                text = "Veuillez sélectionner au moins un nutriment pour l'axe X",
+                text = translate("graph.selectNutrimentsXHint"),
                 style = MaterialTheme.typography.body1,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
         )
@@ -2656,7 +2657,7 @@ private fun GraphiqueNutrimentsPersonnalise(
 
     if (isDataLoading) {
         Text(
-                text = "Chargement des données...",
+                text = translate("auto.view.analysegraphiquealimentsview.chargement_des_donnees"),
                 style = MaterialTheme.typography.body1,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
         )
@@ -2671,7 +2672,7 @@ private fun GraphiqueNutrimentsPersonnalise(
         // Vérifier que nous avons des données valides
         if (points.isEmpty() || points.all { it.x == 0f && it.y == 0f }) {
             Text(
-                    text = "Données insuffisantes pour le graphique scatter plot",
+                    text = translate("graph.insufficientDataScatter"),
                     style = MaterialTheme.typography.body1,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
             )
@@ -2725,8 +2726,8 @@ private fun GraphiqueNutrimentsPersonnalise(
                         )
                     },
                     imageVector = Icons.Default.ZoomOut,
-                    contentDescription = "Zoom arrière",
-                    tooltip = "Zoom arrière"
+                    contentDescription = translate("graph.zoomOutTooltip"),
+                    tooltip = translate("graph.zoomOutTooltip")
             )
             IconButtonWithTooltip(
                     onClick = {
@@ -2741,15 +2742,15 @@ private fun GraphiqueNutrimentsPersonnalise(
                         )
                     },
                     imageVector = Icons.Default.ZoomIn,
-                    contentDescription = "Zoom avant",
-                    tooltip = "Zoom avant"
+                    contentDescription = translate("graph.zoomInTooltip"),
+                    tooltip = translate("graph.zoomInTooltip")
             )
             if (zoomPanState.value.scaleX != 1f || zoomPanState.value.scaleY != 1f || 
                 zoomPanState.value.panX != 0f || zoomPanState.value.panY != 0f) {
                 TextButton(
                         onClick = { zoomPanState.value = ZoomPanState() }
                 ) {
-                    Text("Réinitialiser", fontSize = 12.sp)
+                    Text(translate("crossConsultation.reset"), fontSize = 12.sp)
                 }
             }
         }
@@ -2932,7 +2933,7 @@ private fun GraphiqueNutrimentsPersonnalise(
         // Vérifier que nous avons des données valides
         if (valeurs.isEmpty() || valeurs.all { it == 0f }) {
             Text(
-                    text = "Données insuffisantes pour l'histogramme",
+                    text = translate("graph.insufficientDataHistogram"),
                     style = MaterialTheme.typography.body1,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
             )
@@ -2994,7 +2995,7 @@ private fun HistogrammeEnergieAliments(
 ) {
     if (alimentsAnalyses.isEmpty()) {
         Text(
-                text = "Aucune donnée disponible pour l'histogramme",
+                text = translate("graph.noDataHistogram"),
                 style = MaterialTheme.typography.body1,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
         )
@@ -3011,7 +3012,7 @@ private fun HistogrammeEnergieAliments(
     // Vérifier que nous avons des données valides
     if (densiteEnergetique.isEmpty() || densiteEnergetique.all { it == 0f }) {
         Text(
-                text = "Données insuffisantes pour l'histogramme de densité énergétique",
+                text = translate("auto.view.analysegraphiquealimentsview.donnees_insuffisantes_pour_l_histogramme_de_dens"),
                 style = MaterialTheme.typography.body1,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
         )

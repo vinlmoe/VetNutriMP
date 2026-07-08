@@ -59,6 +59,7 @@ object LocalizationKeys {
         val UNIT_YEAR = "general.unitYear"
         val UNIT_YEARS = "general.unitYears"
         val UNKNOWN_ERROR = "general.unknownError"
+        val COPIED_TO_CLIPBOARD = "general.copiedToClipboard"
     }
 
     object Settings {
@@ -234,6 +235,7 @@ object LocalizationKeys {
         val AUTO_SAVE = "preferences.auto_save"
         val AUTO_SAVE_DESC = "preferences.auto_save_desc"
         val NUTRIENTS_SELECTED_FORMAT = "preferences.nutrients_selected_format"
+        val PERSISTENCE_ACTIVE = "preferences.persistence_active"
     }
 
     object NutrientCategory {
@@ -285,6 +287,13 @@ object LocalizationKeys {
         val ENTITY_FOODS = "admin.entity.foods"
         val ENTITY_REFERENCES_ALL = "admin.entity.referencesAll"
         val IMPORT_LEGACY = "admin.import.legacy"
+    }
+
+    object Backup {
+        const val BACK = "backup.back"
+        const val TITLE = "backup.title"
+        const val NEW_BACKUP_ACTION = "backup.newBackupAction"
+        const val RESTORE_IN_PROGRESS = "backup.restoreInProgress"
     }
 
     object AnalNut {
@@ -408,6 +417,8 @@ object LocalizationKeys {
         val STATUS_ALIVE = "animal.statusAlive"
         val STATUS_DEAD = "animal.statusDead"
         val WEIGHT_VALUE_WITH_DATE = "animal.weightValueWithDate"
+        val INVALID_DATE_FORMAT = "animal.invalidDateFormat"
+        val SAVE_ANIMAL_DESC = "animal.saveAnimalDesc"
     }
 
     object AnimalDetail {
@@ -461,6 +472,43 @@ object LocalizationKeys {
         val DELETE_CONFIRM_MESSAGE = "animalDetail.deleteConfirmMessage"
         val RATIONS_COUNT_FORMAT = "animalDetail.rationsCountFormat"
         val WEIGHT_KG_FORMAT = "animalDetail.weightKgFormat"
+        val CUSTOM_ADVICE_UNAVAILABLE_EXAM_MODE = "animalDetail.customAdviceUnavailableExamMode"
+        val CR_ADDITIONAL_TEXT_SECTION = "animalDetail.cr.additionalTextSection"
+        val CR_ADVICE_SECTION = "animalDetail.cr.adviceSection"
+        val CR_COPY_BUTTON = "animalDetail.cr.copyButton"
+        val CR_COPY_SUCCESS = "animalDetail.cr.copySuccess"
+        val CR_CURRENT_RATIONS = "animalDetail.cr.currentRations"
+        val CR_EXAM_CLINIQUE = "animalDetail.cr.examClinique"
+        val CR_INGREDIENT_LABEL = "animalDetail.cr.ingredientLabel"
+        val CR_KEY_NUTRITIONAL_FACTOR = "animalDetail.cr.keyNutritionalFactor"
+        val CR_LABEL_ADDRESS = "animalDetail.cr.labelAddress"
+        val CR_LABEL_ANIMAL_ID = "animalDetail.cr.labelAnimalId"
+        val CR_LABEL_BIRTHDATE = "animalDetail.cr.labelBirthdate"
+        val CR_LABEL_BREED = "animalDetail.cr.labelBreed"
+        val CR_LABEL_CITY = "animalDetail.cr.labelCity"
+        val CR_LABEL_CONSULT_DATE = "animalDetail.cr.labelConsultDate"
+        val CR_LABEL_CONSULT_OBJECT = "animalDetail.cr.labelConsultObject"
+        val CR_LABEL_CONSULT_WEIGHT = "animalDetail.cr.labelConsultWeight"
+        val CR_LABEL_EMAIL = "animalDetail.cr.labelEmail"
+        val CR_LABEL_NAME = "animalDetail.cr.labelName"
+        val CR_LABEL_OBJECT_SHORT = "animalDetail.cr.labelObjectShort"
+        val CR_LABEL_ORDER_NUMBER = "animalDetail.cr.labelOrderNumber"
+        val CR_LABEL_OWNER = "animalDetail.cr.labelOwner"
+        val CR_LABEL_PHONE = "animalDetail.cr.labelPhone"
+        val CR_LABEL_POSTAL_CODE = "animalDetail.cr.labelPostalCode"
+        val CR_LABEL_SEX = "animalDetail.cr.labelSex"
+        val CR_LABEL_SPECIES = "animalDetail.cr.labelSpecies"
+        val CR_LABEL_UUID = "animalDetail.cr.labelUuid"
+        val CR_NO_INGREDIENT = "animalDetail.cr.noIngredient"
+        val CR_NO_NAME = "animalDetail.cr.noName"
+        val CR_PREVIEW_BUTTON = "animalDetail.cr.previewButton"
+        val CR_PROPOSED_RATIONS = "animalDetail.cr.proposedRations"
+        val CR_QUANTITY_LABEL = "animalDetail.cr.quantityLabel"
+        val CR_SECTION_ANAMNESE = "animalDetail.cr.sectionAnamnese"
+        val CR_SECTION_IDENTIFICATION = "animalDetail.cr.sectionIdentification"
+        val CR_SECTION_VET_CONTACT = "animalDetail.cr.sectionVetContact"
+        val CR_TEXT_ANAMNESE_HEADER = "animalDetail.cr.textAnamneseHeader"
+        val CR_TITLE = "animalDetail.cr.title"
     }
 
     object AnimalList {
@@ -530,6 +578,8 @@ object LocalizationKeys {
 
     object Chart {
         const val ASH = "chart.label.ash"
+        const val CARBOHYDRATES = "chart.label.carbohydrates"
+        const val CRUDE_FIBER = "chart.label.crude_fiber"
         const val DISTRIBUTION_TITLE = "chart.distribution_title"
         const val ENA = "chart.label.ena"
         const val FAT = "chart.label.fat"
@@ -704,6 +754,9 @@ object LocalizationKeys {
         val OBJECTIVE_NONE = "crossConsultation.objectiveNone"
         val ANIMAL_NO_NAME = "crossConsultation.animalNoName"
         val RATION_FALLBACK = "crossConsultation.rationFallback"
+        val ENERGY_PLACEHOLDER_SUFFIX = "crossConsultation.energyPlaceholderSuffix"
+        val INGREDIENT_NO_NAME = "crossConsultation.ingredientNoName"
+        val OPEN_GRADING = "crossConsultation.openGrading"
     }
 
     object Database {
@@ -897,6 +950,7 @@ object LocalizationKeys {
         val QUANTITY_GRAMS_FORMAT = "ration.quantityGramsFormat"
         val DUPLICATED_NAME_FORMAT = "ration.duplicatedNameFormat"
         val PROPOSED_NAME = "ration.proposedName"
+        val COPIED_TO_CLIPBOARD = "ration.copiedToClipboard"
     }
 
     object Recipe {
@@ -925,6 +979,60 @@ object LocalizationKeys {
     }
 
     object Reference {
+        val EQ_ABOUT_INTRO = "reference.eq.aboutIntro"
+        val EQ_ABOUT_TITLE = "reference.eq.aboutTitle"
+        val EQ_ADD_EQUATION_CONTENT_DESC = "reference.eq.addEquationContentDesc"
+        val EQ_ADDITIONAL_EQUATIONS_TITLE = "reference.eq.additionalEquationsTitle"
+        val EQ_ASSOCIATE_ACTION = "reference.eq.associateAction"
+        val EQ_ASSOCIATED_EQUATIONS_TITLE = "reference.eq.associatedEquationsTitle"
+        val EQ_AVAILABLE_EQUATIONS_TITLE = "reference.eq.availableEquationsTitle"
+        val EQ_BULLET_CONVERSION = "reference.eq.bulletConversion"
+        val EQ_BULLET_CORRECTION_FACTORS = "reference.eq.bulletCorrectionFactors"
+        val EQ_BULLET_ENERGY_CALC = "reference.eq.bulletEnergyCalc"
+        val EQ_BULLET_PATHOLOGY_NEEDS = "reference.eq.bulletPathologyNeeds"
+        val EQ_CREATE_EQUATION_BUTTON = "reference.eq.createEquationButton"
+        val EQ_DELETE_CONFIRM_MESSAGE_FORMAT = "reference.eq.deleteConfirmMessageFormat"
+        val EQ_DELETE_CONFIRM_TITLE = "reference.eq.deleteConfirmTitle"
+        val EQ_ENERCOMP_DISEASE_ONLY_HINT = "reference.eq.enercompDiseaseOnlyHint"
+        val EQ_ENERCOMP_HINT = "reference.eq.enercompHint"
+        val EQ_LABEL_BEE = "reference.eq.labelBee"
+        val EQ_LABEL_BW = "reference.eq.labelBw"
+        val EQ_LABEL_DECOM = "reference.eq.labelDecom"
+        val EQ_LABEL_DERAW = "reference.eq.labelDeraw"
+        val EQ_MAIN_EQUATIONS_TITLE = "reference.eq.mainEquationsTitle"
+        val EQ_NEW_EQUATION_BUTTON = "reference.eq.newEquationButton"
+        val EQ_NO_ASSOCIATED_EQUATION = "reference.eq.noAssociatedEquation"
+        val EQ_NO_EQUATION_AVAILABLE = "reference.eq.noEquationAvailable"
+        val EQ_REMOVE_ACTION = "reference.eq.removeAction"
+        val EQ_TYPE_FORMAT = "reference.eq.typeFormat"
+        val EQ_VIEW_TITLE_FORMAT = "reference.eq.viewTitleFormat"
+        val NUTRIENT_DISEASE_FORMAT = "reference.nutrient.diseaseFormat"
+        val NUTRIENT_PHYSIO_STAGE_FORMAT = "reference.nutrient.physioStageFormat"
+        val NUTRIENT_REFERENCE_FORMAT = "reference.nutrient.referenceFormat"
+        val NUTRIENT_SELECT_CATEGORY_HINT = "reference.nutrient.selectCategoryHint"
+        val NUTRIENT_SELECT_CATEGORY_TITLE = "reference.nutrient.selectCategoryTitle"
+        val NUTRIENT_SPECIES_FORMAT = "reference.nutrient.speciesFormat"
+        val NUTRIENT_VIEW_TITLE_FORMAT = "reference.nutrient.viewTitleFormat"
+        val TABS_EQUATIONS = "reference.tabs.equations"
+        val TABS_INFO = "reference.tabs.info"
+        val TABS_LABEL_BASAL_ENERGY = "reference.tabs.labelBasalEnergy"
+        val TABS_LABEL_BODY_WEIGHT = "reference.tabs.labelBodyWeight"
+        val TABS_LABEL_COMMERCIAL_DIGESTIBLE_ENERGY = "reference.tabs.labelCommercialDigestibleEnergy"
+        val TABS_LABEL_METABOLIZABLE_ENERGY = "reference.tabs.labelMetabolizableEnergy"
+        val TABS_LABEL_RAW_DIGESTIBLE_ENERGY = "reference.tabs.labelRawDigestibleEnergy"
+        val TABS_NUTRITIONAL_NEEDS = "reference.tabs.nutritionalNeeds"
+        val TABS_TITLE_FORMAT = "reference.tabs.titleFormat"
+        val VM_GENERIC_ERROR_FORMAT = "reference.vm.genericErrorFormat"
+        val VM_LOAD_ALL_ERROR_FORMAT = "reference.vm.loadAllErrorFormat"
+        val VM_NAME_REQUIRED = "reference.vm.nameRequired"
+        val VM_REFERENCE_NOT_FOUND = "reference.vm.referenceNotFound"
+        val VM_SAVE_ERROR = "reference.vm.saveError"
+        val VM_SAVE_ERROR_FORMAT = "reference.vm.saveErrorFormat"
+        val VM_UPDATE_BEE_ERROR = "reference.vm.updateBeeError"
+        val VM_UPDATE_BW_ERROR = "reference.vm.updateBwError"
+        val VM_UPDATE_COMPLEMENTARY_ERROR = "reference.vm.updateComplementaryError"
+        val VM_UPDATE_DECOM_ERROR = "reference.vm.updateDecomError"
+        val VM_UPDATE_DERAW_ERROR = "reference.vm.updateDerawError"
         val ACTIVE_REFS_TITLE = "reference.active_refs_title"
         val DISEASE_PREFIX = "reference.disease_prefix"
         val DISEASE_REFS_LABEL = "reference.disease_refs_label"

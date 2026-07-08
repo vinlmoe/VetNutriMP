@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -127,20 +128,20 @@ fun ExcelImportExportSection(
                 ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                        "Import/Export Excel Aliments",
+                                        translate("auto.view.excelimportexportcomponents.import_export_excel_aliments"),
                                         style = MaterialTheme.typography.h6,
                                         color = VetNutriColors.Primary
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                        "Cette section vous permet d'importer et exporter des aliments via des fichiers CSV compatibles Excel. Chaque aliment peut avoir jusqu'à 76 nutriments différents avec leurs unités individuelles.",
+                                        translate("auto.view.excelimportexportcomponents.cette_section_vous_permet_d_importer_et_exporter"),
                                         style = MaterialTheme.typography.body2
                                 )
                                 
                                 if (!csvSupported) {
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                                "⚠️ Les opérations de fichiers CSV ne sont pas supportées sur cette plateforme.",
+                                                translate("auto.view.excelimportexportcomponents.les_operations_de_fichiers_csv_ne_sont_pas_suppo"),
                                                 style = MaterialTheme.typography.body2,
                                                 color = Color(0xFFFF6B35)
                                         )
@@ -155,13 +156,13 @@ fun ExcelImportExportSection(
                 ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                        "Export des aliments",
+                                        translate("auto.view.excelimportexportcomponents.export_des_aliments"),
                                         style = MaterialTheme.typography.h6,
                                         modifier = Modifier.padding(bottom = 8.dp)
                                 )
 
                                 Text(
-                                        "Exporter tous les aliments de la base de données vers un fichier CSV compatible Excel.",
+                                        translate("auto.view.excelimportexportcomponents.exporter_tous_les_aliments_de_la_base_de_donnees"),
                                         style = MaterialTheme.typography.body2,
                                         modifier = Modifier.padding(bottom = 16.dp)
                                 )
@@ -215,7 +216,7 @@ fun ExcelImportExportSection(
                                                 Icon(Icons.Default.Download, contentDescription = null)
                                                 Spacer(modifier = Modifier.width(8.dp))
                                         }
-                                        Text("Sélectionner et exporter")
+                                        Text(translate("auto.view.excelimportexportcomponents.selectionner_et_exporter"))
                                 }
                         }
                 }
@@ -240,7 +241,7 @@ fun ExcelImportExportSection(
                                                 modifier = Modifier.weight(1f)
                                         )
                                         IconButton(onClick = { exportResult = null }) {
-                                                Icon(Icons.Default.Close, contentDescription = "Fermer")
+                                                Icon(Icons.Default.Close, contentDescription = translate("settings.close"))
                                         }
                                 }
                         }
@@ -277,7 +278,7 @@ fun ExcelImportExportSection(
                                                                                 )
                                                                 )
                                                                 Text(
-                                                                        "Chargement des aliments..."
+                                                                        translate("animalDetail.loadingFoods")
                                                                 )
                                                         }
                                                 }
@@ -316,7 +317,7 @@ fun ExcelImportExportSection(
                                                                                 showExportSelectionDialog =
                                                                                         false
                                                                         }
-                                                                ) { Text("Fermer") }
+                                                                ) { Text(translate("settings.close")) }
                                                         }
                                                 }
                                                 availableFoods.isEmpty() -> {
@@ -332,7 +333,7 @@ fun ExcelImportExportSection(
                                                                         Alignment.CenterHorizontally
                                                         ) {
                                                                 Text(
-                                                                        "Aucun aliment disponible."
+                                                                        translate("auto.view.excelimportexportcomponents.aucun_aliment_disponible")
                                                                 )
                                                                 Spacer(
                                                                         modifier =
@@ -345,7 +346,7 @@ fun ExcelImportExportSection(
                                                                                 showExportSelectionDialog =
                                                                                         false
                                                                         }
-                                                                ) { Text("Fermer") }
+                                                                ) { Text(translate("settings.close")) }
                                                         }
                                                 }
                                                 else -> {
@@ -399,7 +400,7 @@ fun ExcelImportExportSection(
                                         ) {
                                                 Icon(
                                                         imageVector = Icons.Default.Close,
-                                                        contentDescription = "Fermer"
+                                                        contentDescription = translate("settings.close")
                                                 )
                                         }
                                 }
@@ -413,13 +414,13 @@ fun ExcelImportExportSection(
                 ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                        "Import des aliments",
+                                        translate("auto.view.excelimportexportcomponents.import_des_aliments"),
                                         style = MaterialTheme.typography.h6,
                                         modifier = Modifier.padding(bottom = 8.dp)
                                 )
 
                                 Text(
-                                        "Importer des aliments depuis un fichier CSV. Une prévisualisation vous permettra de vérifier les données avant confirmation.",
+                                        translate("auto.view.excelimportexportcomponents.importer_des_aliments_depuis_un_fichier_csv_une"),
                                         style = MaterialTheme.typography.body2,
                                         modifier = Modifier.padding(bottom = 8.dp)
                                 )
@@ -427,7 +428,7 @@ fun ExcelImportExportSection(
                                 // Sélecteur de base de données
                                 Spacer(modifier = Modifier.height(8.dp))
                                 DropdownField(
-                                        label = "Base de données (prioritaire sur celle du CSV)",
+                                        label = translate("auto.view.excelimportexportcomponents.base_de_donnees_prioritaire_sur_celle_du_csv"),
                                         selectedValue = selectedDataB ?: "",
                                         options = dataBOptions,
                                         onValueChange = { selectedDataB = if (it.isEmpty()) null else it },
@@ -462,7 +463,7 @@ fun ExcelImportExportSection(
                                                 Icon(Icons.Default.Upload, contentDescription = null)
                                                 Spacer(modifier = Modifier.width(8.dp))
                                         }
-                                        Text("Importer depuis CSV")
+                                        Text(translate("auto.view.excelimportexportcomponents.importer_depuis_csv"))
                                 }
                         }
                 }
@@ -502,7 +503,7 @@ fun ExcelImportExportSection(
                                                 }
                                         }
                                         IconButton(onClick = { importResult = null }) {
-                                                Icon(Icons.Default.Close, contentDescription = "Fermer")
+                                                Icon(Icons.Default.Close, contentDescription = translate("settings.close"))
                                         }
                                 }
                         }
@@ -516,22 +517,22 @@ fun ExcelImportExportSection(
                 ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                        "Format CSV requis",
+                                        translate("auto.view.excelimportexportcomponents.format_csv_requis"),
                                         style = MaterialTheme.typography.subtitle1,
                                         modifier = Modifier.padding(bottom = 8.dp)
                                 )
 
-                                Text("• Séparateur: point-virgule (;)", style = MaterialTheme.typography.body2)
-                                Text("• Encodage: UTF-8", style = MaterialTheme.typography.body2)
-                                Text("• Première ligne: en-têtes des colonnes", style = MaterialTheme.typography.body2)
-                                Text("• Listes: séparées par des virgules (,)", style = MaterialTheme.typography.body2)
-                                Text("• Valeurs vides: cellules vides ou absence de valeur", style = MaterialTheme.typography.body2)
-                                Text("• Date dernière mise à jour: idéalement YYYY-MM-DD", style = MaterialTheme.typography.body2)
+                                Text(translate("auto.view.excelimportexportcomponents.separateur_point_virgule"), style = MaterialTheme.typography.body2)
+                                Text(translate("auto.view.excelimportexportcomponents.encodage_utf_8"), style = MaterialTheme.typography.body2)
+                                Text(translate("auto.view.excelimportexportcomponents.premiere_ligne_en_tetes_des_colonnes"), style = MaterialTheme.typography.body2)
+                                Text(translate("auto.view.excelimportexportcomponents.listes_separees_par_des_virgules"), style = MaterialTheme.typography.body2)
+                                Text(translate("auto.view.excelimportexportcomponents.valeurs_vides_cellules_vides_ou_absence_de_valeu"), style = MaterialTheme.typography.body2)
+                                Text(translate("auto.view.excelimportexportcomponents.date_derniere_mise_a_jour_idealement_yyyy_mm_dd"), style = MaterialTheme.typography.body2)
 
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
-                                        "Structure des colonnes:",
+                                        translate("auto.view.excelimportexportcomponents.structure_des_colonnes"),
                                         style = MaterialTheme.typography.subtitle2,
                                         modifier = Modifier.padding(bottom = 4.dp)
                                 )
@@ -550,7 +551,7 @@ fun ExcelImportExportSection(
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
-                                        "Nutriments: 76 nutriments × 1 colonne (valeur avec unité dans l'en-tête) = 76 colonnes",
+                                        translate("auto.view.excelimportexportcomponents.nutriments_76_nutriments_1_colonne_valeur_avec_u"),
                                         style = MaterialTheme.typography.subtitle2
                                 )
                         }
@@ -595,7 +596,7 @@ fun ExcelImportExportSection(
         if (showImportOptionsDialog) {
                 AlertDialog(
                         onDismissRequest = { showImportOptionsDialog = false },
-                        title = { Text("Options d'import CSV") },
+                        title = { Text(translate("auto.view.excelimportexportcomponents.options_d_import_csv")) },
                         text = {
                                 Column {
                                         Row(
@@ -606,7 +607,7 @@ fun ExcelImportExportSection(
                                                         onCheckedChange = { mergeNutrients = it }
                                                 )
                                                 Text(
-                                                        "Fusionner les nutriments (ne pas supprimer ceux absents du fichier)"
+                                                        translate("auto.view.excelimportexportcomponents.fusionner_les_nutriments_ne_pas_supprimer_ceux_a")
                                                 )
                                         }
                                         Spacer(modifier = Modifier.height(8.dp))
@@ -618,7 +619,7 @@ fun ExcelImportExportSection(
                                                         onCheckedChange = { importOnlyIfNewer = it }
                                                 )
                                                 Text(
-                                                        "N'importer que si la date de dernière mise à jour est plus récente"
+                                                        translate("auto.view.excelimportexportcomponents.n_importer_que_si_la_date_de_derniere_mise_a_jou")
                                                 )
                                         }
                                 }
@@ -680,11 +681,11 @@ fun ExcelImportExportSection(
                                                         )
                                                 }
                                         }
-                                ) { Text("Continuer") }
+                                ) { Text(translate("startup.continue")) }
                         },
                         dismissButton = {
                                 Button(onClick = { showImportOptionsDialog = false }) {
-                                        Text("Annuler")
+                                        Text(translate("general.cancel"))
                                 }
                         }
                 )
@@ -749,7 +750,7 @@ fun ExcelImportDialog(
                                 
                                 if (result.errors.isNotEmpty()) {
                                         Text(
-                                                "Détails des erreurs:",
+                                                translate("auto.view.excelimportexportcomponents.details_des_erreurs"),
                                                 style = MaterialTheme.typography.subtitle2,
                                                 modifier = Modifier.padding(top = 8.dp)
                                         )
@@ -785,7 +786,7 @@ fun ExcelImportDialog(
                                                 backgroundColor = VetNutriColors.Primary
                                         )
                                 ) {
-                                        Text("Confirmer l'import", color = Color.White)
+                                        Text(translate("auto.view.excelimportexportcomponents.confirmer_l_import"), color = Color.White)
                                 }
                         } else {
                                 Button(
@@ -794,14 +795,14 @@ fun ExcelImportDialog(
                                                 backgroundColor = VetNutriColors.Primary
                                         )
                                 ) {
-                                        Text("Fermer", color = Color.White)
+                                        Text(translate("settings.close"), color = Color.White)
                                 }
                         }
                 },
                 dismissButton = {
                         if (result.previewMode) {
                                 OutlinedButton(onClick = onCancel) {
-                                        Text("Annuler")
+                                        Text(translate("general.cancel"))
                                 }
                         }
                 }
@@ -837,12 +838,12 @@ fun ExcelImportPreviewDialog(
                                         verticalAlignment = Alignment.CenterVertically
                                 ) {
                                         Text(
-                                                "Prévisualisation de l'import",
+                                                translate("auto.view.excelimportexportcomponents.previsualisation_de_l_import"),
                                                 style = MaterialTheme.typography.h5,
                                                 color = VetNutriColors.Primary
                                         )
                                         IconButton(onClick = onCancel) {
-                                                Icon(Icons.Default.Close, contentDescription = "Fermer")
+                                                Icon(Icons.Default.Close, contentDescription = translate("settings.close"))
                                         }
                                 }
 
@@ -863,7 +864,7 @@ fun ExcelImportPreviewDialog(
                                                                 style = MaterialTheme.typography.h4,
                                                                 color = VetNutriColors.Primary
                                                         )
-                                                        Text("Aliments valides", style = MaterialTheme.typography.caption)
+                                                        Text(translate("auto.view.excelimportexportcomponents.aliments_valides"), style = MaterialTheme.typography.caption)
                                                 }
                                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                                         Text(
@@ -871,7 +872,7 @@ fun ExcelImportPreviewDialog(
                                                                 style = MaterialTheme.typography.h4,
                                                                 color = if (errors.isEmpty()) VetNutriColors.Primary else Color(0xFFFF6B35)
                                                         )
-                                                        Text("Erreurs", style = MaterialTheme.typography.caption)
+                                                        Text(translate("auto.view.excelimportexportcomponents.erreurs"), style = MaterialTheme.typography.caption)
                                                 }
                                         }
                                 }
@@ -992,7 +993,7 @@ fun ExcelImportPreviewDialog(
                                                 onClick = onCancel,
                                                 modifier = Modifier.weight(1f)
                                         ) {
-                                                Text("Annuler")
+                                                Text(translate("general.cancel"))
                                         }
 
                                         Button(
@@ -1002,7 +1003,7 @@ fun ExcelImportPreviewDialog(
                                                         backgroundColor = VetNutriColors.Primary
                                                 )
                                         ) {
-                                                Text("Confirmer l'import")
+                                                Text(translate("auto.view.excelimportexportcomponents.confirmer_l_import"))
                                         }
                                 }
                         }
