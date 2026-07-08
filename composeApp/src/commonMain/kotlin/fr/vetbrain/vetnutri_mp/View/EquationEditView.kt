@@ -22,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.EquationType
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors

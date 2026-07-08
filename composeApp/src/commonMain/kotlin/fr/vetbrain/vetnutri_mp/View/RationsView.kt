@@ -44,6 +44,7 @@ import fr.vetbrain.vetnutri_mp.Data.convertirPreferencesVersLabelsNutriments
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnalNut
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.ConsultationEdit
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
@@ -421,8 +422,8 @@ fun RationsView(
                 if (selectedRation != null && referenceUtilisee != null) {
                         IconButtonWithTooltip(
                                 imageVector = Icons.Filled.Share,
-                                contentDescription = "Exporter l'analyse en PDF",
-                                tooltip = "Exporter l'analyse en PDF",
+                                contentDescription = translate("ration.exportAnalysisPdf"),
+                                tooltip = translate("ration.exportAnalysisPdf"),
                                 tint = VetNutriColors.Primary,
                                 onClick = {
                                         val rationAExporter = selectedRation
@@ -438,7 +439,8 @@ fun RationsView(
                                                                 ration = rationAExporter,
                                                                 reference = referenceUtilisee,
                                                                 title =
-                                                                        "Analyse de ration${rationAExporter.name.let { if (it.isNotBlank()) " - $it" else "" }}",
+                                                                        translate(AnimalDetail.RATION_ANALYSIS_TITLE) +
+                                                                                rationAExporter.name.let { if (it.isNotBlank()) " - $it" else "" },
                                                                 preferences = prefsEspece,
                                                                 poidsAnimal =
                                                                         selectedConsultation
@@ -1978,7 +1980,10 @@ private fun MetabolicValuesDialog(
                                         label = translate(AnalNut.ENERGY_STANDARD),
                                         value =
                                                 besoinEnergetiqueStandard?.let {
-                                                        "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kcal/jour"
+                                                        translate(
+                                                                "ration.energyPerDayFormat",
+                                                                fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)
+                                                        )
                                                 }
                                                         ?: translate(General.NOT_CALCULATED)
                                 )
@@ -1987,7 +1992,10 @@ private fun MetabolicValuesDialog(
                                         label = translate(AnalNut.ENERGY_TOTAL),
                                         value =
                                                 besoinEnergetiqueTotal?.let {
-                                                        "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kcal/jour"
+                                                        translate(
+                                                                "ration.energyPerDayFormat",
+                                                                fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)
+                                                        )
                                                 }
                                                         ?: translate(General.NOT_CALCULATED)
                                 )

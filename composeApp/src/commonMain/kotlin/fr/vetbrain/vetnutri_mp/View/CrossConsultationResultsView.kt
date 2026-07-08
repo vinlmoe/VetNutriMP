@@ -50,6 +50,8 @@ import androidx.compose.ui.zIndex
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.TooltipBubble
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro

@@ -24,6 +24,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientOther
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Composant pour afficher une section de valeurs nutritionnelles avec un fond coloré.
@@ -286,14 +288,14 @@ fun AnalyseNutritionnelleCard(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Analyse nutritionnelle",
+                                        text = translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE),
                                         style = MaterialTheme.typography.h6,
                                         color = VetNutriColors.Primary
                                 )
 
                                 TextButton(onClick = onModeDivisionChange) {
                                         Text(
-                                                text = "Par $typeDiviseur",
+                                                text = translate("nutrientComponents.byDivisorType", typeDiviseur),
                                                 style = MaterialTheme.typography.caption,
                                                 color = VetNutriColors.Primary
                                         )
@@ -313,8 +315,8 @@ fun AnalyseNutritionnelleCard(
                                         Text(
                                                 text =
                                                         if (diviseur <= 0)
-                                                                "Impossible de calculer les apports (diviseur nul)"
-                                                        else "Aucun nutriment à afficher",
+                                                                translate("nutrientComponents.divisorNullError")
+                                                        else translate("nutrientComponents.noNutrientToDisplay"),
                                                 style = MaterialTheme.typography.body2,
                                                 color = Color.Gray
                                         )
@@ -332,7 +334,7 @@ fun AnalyseNutritionnelleCard(
                                                 horizontalArrangement = Arrangement.SpaceBetween
                                         ) {
                                                 Text(
-                                                        text = "Nutriment",
+                                                        text = translate("nutrientComponents.columnNutrient"),
                                                         style =
                                                                 MaterialTheme.typography.subtitle2
                                                                         .copy(
@@ -343,7 +345,7 @@ fun AnalyseNutritionnelleCard(
                                                         modifier = Modifier.weight(2f)
                                                 )
                                                 Text(
-                                                        text = "Valeur",
+                                                        text = translate("nutrientComponents.columnValue"),
                                                         style =
                                                                 MaterialTheme.typography.subtitle2
                                                                         .copy(
@@ -354,7 +356,7 @@ fun AnalyseNutritionnelleCard(
                                                         modifier = Modifier.weight(1f)
                                                 )
                                                 Text(
-                                                        text = "Unité",
+                                                        text = translate("nutrientComponents.columnUnit"),
                                                         style =
                                                                 MaterialTheme.typography.subtitle2
                                                                         .copy(
@@ -488,7 +490,7 @@ fun AnalyseNutritionnelleCompacte(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Analyse nutritionnelle",
+                                        text = translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE),
                                         style = MaterialTheme.typography.subtitle1,
                                         color = VetNutriColors.Primary
                                 )
@@ -499,7 +501,7 @@ fun AnalyseNutritionnelleCompacte(
                                                 PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                                 ) {
                                         Text(
-                                                text = "Par $typeDiviseur",
+                                                text = translate("nutrientComponents.byDivisorType", typeDiviseur),
                                                 style = MaterialTheme.typography.caption,
                                                 color = VetNutriColors.Primary
                                         )

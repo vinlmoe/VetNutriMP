@@ -14,6 +14,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
@@ -71,8 +74,8 @@ fun RationItem(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                                 text =
-                                                        if (ration.actual) "Actuelle"
-                                                        else "Proposée",
+                                                        if (ration.actual) translate(RationKeys.ACTUAL)
+                                                        else translate(RationKeys.PROPOSED),
                                                 style = MaterialTheme.typography.caption,
                                                 color =
                                                         if (ration.actual) VetNutriColors.Primary
@@ -81,7 +84,10 @@ fun RationItem(
                                         Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
                                         Text(
                                                 text =
-                                                        "Coef: ${TextUtils.formatDecimal(ration.coef.toDouble(), 2)}",
+                                                        translate(
+                                                                "ration.coefficientFormat",
+                                                                TextUtils.formatDecimal(ration.coef.toDouble(), 2)
+                                                        ),
                                                 style = MaterialTheme.typography.caption,
                                                 color = Color.Gray,
                                                 modifier =
@@ -100,7 +106,7 @@ fun RationItem(
                                         ) {
                                                 Icon(
                                                         imageVector = Icons.Filled.ContentCopy,
-                                                        contentDescription = "Dupliquer",
+                                                        contentDescription = translate("ration.duplicateAction"),
                                                         tint = VetNutriColors.Secondary
                                                 )
                                         }
@@ -111,7 +117,7 @@ fun RationItem(
                                 ) {
                                         Icon(
                                                 imageVector = Icons.Filled.Edit,
-                                                contentDescription = "Éditer",
+                                                contentDescription = translate(General.EDIT),
                                                 tint = VetNutriColors.Secondary
                                         )
                                 }
@@ -121,7 +127,7 @@ fun RationItem(
                                 ) {
                                         Icon(
                                                 imageVector = Icons.Filled.Delete,
-                                                contentDescription = "Supprimer",
+                                                contentDescription = translate(General.DELETE),
                                                 tint = VetNutriColors.Error
                                         )
                                 }

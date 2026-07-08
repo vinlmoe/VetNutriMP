@@ -401,7 +401,7 @@ class CrossConsultationAnalysisViewModel(
                                 IngredientSummary(
                                         name =
                                                 alimentRation.aliment?.nom
-                                                        ?: "Aliment sans nom",
+                                                        ?: CrossConsultationAnalysis.INGREDIENT_NO_NAME.translate(),
                                         quantity = alimentRation.quantite
                                 )
                             }
@@ -426,7 +426,7 @@ class CrossConsultationAnalysisViewModel(
                             nutrientValues = nutrientValues,
                             ratioValues = ratioValues,
                             ingredients = ingredientSummaries,
-                            animalName = animal.nom.ifBlank { "Animal sans nom" },
+                            animalName = animal.nom.ifBlank { CrossConsultationAnalysis.ANIMAL_NO_NAME.translate() },
                             consultationDate = dateLabel,
                             referenceLabel = refLabel,
                             speciesLabel = animal.getEspece().label

@@ -101,7 +101,7 @@ fun AnimalListView(
                         ) {
                                 Icon(
                                         imageVector = AppIcons.Add,
-                                        contentDescription = "Ajouter un animal",
+                                        contentDescription = translate(AnimalList.ADD_ANIMAL_DESC),
                                         tint = VetNutriColors.OnPrimary
                                 )
                         }
@@ -244,8 +244,8 @@ fun AnimalListView(
                                                                                         viewModel.setSearchQuery("")
                                                                                 },
                                                                                 imageVector = Icons.Default.Clear,
-                                                                                contentDescription = "Effacer",
-                                                                                tooltip = "Effacer"
+                                                                                contentDescription = translate(AnimalList.CLEAR_SEARCH),
+                                                                                tooltip = translate(AnimalList.CLEAR_SEARCH)
                                                                         )
                                                                 }
                                                         },
@@ -275,7 +275,7 @@ fun AnimalListView(
                                                         ) {
                                                                 Icon(
                                                                         Icons.Default.Tune,
-                                                                        contentDescription = "Tri et filtres"
+                                                                        contentDescription = translate(AnimalList.SORT_AND_FILTERS)
                                                                 )
                                                                 if (hasKeywordFilter || hasSortFilter) {
                                                                         Spacer(
@@ -327,8 +327,8 @@ fun AnimalListView(
                                                                                         viewModel.setSearchQuery("")
                                                                                 },
                                                                                 imageVector = Icons.Default.Clear,
-                                                                                contentDescription = "Effacer",
-                                                                                tooltip = "Effacer"
+                                                                                contentDescription = translate(AnimalList.CLEAR_SEARCH),
+                                                                                tooltip = translate(AnimalList.CLEAR_SEARCH)
                                                                         )
                                                                 }
                                                         },
@@ -355,7 +355,7 @@ fun AnimalListView(
                                                 ) {
                                                         Icon(
                                                                 Icons.Default.Tune,
-                                                                contentDescription = "Tri et filtres"
+                                                                contentDescription = translate(AnimalList.SORT_AND_FILTERS)
                                                         )
                                                         if (hasKeywordFilter || hasSortFilter) {
                                                                 Spacer(modifier = Modifier.width(6.dp))
@@ -459,7 +459,7 @@ fun AnimalListView(
                     }
                 },
                 confirmButton = {
-                    Button(onClick = { showExportResultDialog = false }) { Text("OK") }
+                    Button(onClick = { showExportResultDialog = false }) { Text(translate(General.OK)) }
                 },
                 dismissButton = {
                     if (exportLink != null && exportError == null) {
@@ -610,27 +610,27 @@ fun AnimalListView(
                     showApiImportDialog = false
                     viewModel.resetImportResult()
                 },
-                title = { Text("Résultat de l'import") },
+                title = { Text(translate(AnimalList.IMPORT_RESULT_TITLE)) },
                 text = {
                     when (val r = apiImportResult) {
                         is AnimalListViewModel.ImportResult.Success -> {
                             Column {
-                                Text("Total pris en compte: ${r.count}")
-                                Text("Importés: ${r.importedCount}")
-                                if (r.updatedCount > 0) Text("Mises à jour: ${r.updatedCount}")
-                                if (r.deletedCount > 0) Text("Supprimés: ${r.deletedCount}")
+                                Text(translate(AnimalList.IMPORT_TOTAL_COUNT, r.count.toString()))
+                                Text(translate(AnimalList.IMPORT_IMPORTED_COUNT, r.importedCount.toString()))
+                                if (r.updatedCount > 0) Text(translate(AnimalList.IMPORT_UPDATED_COUNT, r.updatedCount.toString()))
+                                if (r.deletedCount > 0) Text(translate(AnimalList.IMPORT_DELETED_COUNT, r.deletedCount.toString()))
                                 if (r.errorCount > 0) {
                                     Text(
-                                        "Erreurs: ${r.errorCount}",
+                                        translate(AnimalList.IMPORT_ERROR_COUNT, r.errorCount.toString()),
                                         color = MaterialTheme.colors.error
                                     )
                                 }
-                                if (r.conseils > 0) Text("Conseils: ${r.conseils}")
+                                if (r.conseils > 0) Text(translate(AnimalList.IMPORT_CONSEILS_COUNT, r.conseils.toString()))
                             }
                         }
                         is AnimalListViewModel.ImportResult.Error -> {
                             Text(
-                                "Erreur: ${r.message}",
+                                translate(AnimalList.IMPORT_ERROR_MESSAGE, r.message),
                                 color = MaterialTheme.colors.error
                             )
                         }
@@ -653,7 +653,7 @@ fun AnimalListView(
                                 }
                             }
                         }
-                    ) { Text("OK") }
+                    ) { Text(translate(General.OK)) }
                 }
             )
         }
@@ -763,7 +763,7 @@ private fun AnimalCard(
                                         Text(text = animal.nom, style = MaterialTheme.typography.h6)
                                         if (!animal.id.isNullOrBlank()) {
                                                 Text(
-                                                        text = "ID: ${animal.id}",
+                                                        text = translate(AnimalList.ID_VALUE, animal.id ?: ""),
                                                         style = MaterialTheme.typography.body2
                                                 )
                                         }
@@ -796,7 +796,7 @@ private fun AnimalCard(
                                         }
                                         if (showExamDossiers && !animal.examStudentId.isNullOrBlank()) {
                                                 Text(
-                                                        text = "ID étudiant: ${animal.examStudentId}",
+                                                        text = translate(AnimalList.STUDENT_ID_VALUE, animal.examStudentId ?: ""),
                                                         style = MaterialTheme.typography.body2,
                                                         color = VetNutriColors.Secondary
                                                 )
@@ -806,14 +806,14 @@ private fun AnimalCard(
                                         IconButtonWithTooltip(
                                                 onClick = onClick,
                                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                                contentDescription = "Détails",
-                                                tooltip = "Voir les détails"
+                                                contentDescription = translate(AnimalList.DETAILS_DESC),
+                                                tooltip = translate(AnimalList.VIEW_DETAILS_TOOLTIP)
                                         )
                                         IconButtonWithTooltip(
                                                 onClick = { showDeleteConfirmation = true },
                                                 imageVector = Icons.Default.Delete,
-                                                contentDescription = "Supprimer",
-                                                tooltip = "Supprimer",
+                                                contentDescription = translate(General.DELETE),
+                                                tooltip = translate(General.DELETE),
                                                 tint = Color.Red
                                         )
                                 }
@@ -857,17 +857,17 @@ private fun FilterSortDialog(
 
         AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("Tri et filtres") },
+                title = { Text(translate(AnimalList.SORT_AND_FILTERS)) },
                 text = {
                         Column(modifier = Modifier.width(520.dp).height(520.dp)) {
-                                Text("Tri", style = MaterialTheme.typography.subtitle1)
+                                Text(translate(AnimalList.SORT_SECTION_TITLE), style = MaterialTheme.typography.subtitle1)
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
                                         SortChoice(
-                                                label = "Dernière consultation",
+                                                label = translate(AnimalList.SORT_LAST_CONSULTATION),
                                                 selected =
                                                         selectedSortOrder ==
                                                                 AnimalListViewModel.AnimalSortOrder
@@ -880,7 +880,7 @@ private fun FilterSortDialog(
                                                 }
                                         )
                                         SortChoice(
-                                                label = "Nom (A-Z)",
+                                                label = translate(AnimalList.SORT_NAME_ASC),
                                                 selected =
                                                         selectedSortOrder ==
                                                                 AnimalListViewModel.AnimalSortOrder.NAME_ASC,
@@ -892,7 +892,7 @@ private fun FilterSortDialog(
                                                 }
                                         )
                                         SortChoice(
-                                                label = "Âge",
+                                                label = translate(AnimalList.SORT_AGE),
                                                 selected =
                                                         selectedSortOrder ==
                                                                 AnimalListViewModel.AnimalSortOrder.AGE,
@@ -908,7 +908,7 @@ private fun FilterSortDialog(
                                         Spacer(modifier = Modifier.height(12.dp))
                                         Divider()
                                         Spacer(modifier = Modifier.height(12.dp))
-                                        Text("Examens", style = MaterialTheme.typography.subtitle1)
+                                        Text(translate(AnimalList.EXAMS_SECTION_TITLE), style = MaterialTheme.typography.subtitle1)
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Row(
                                                 modifier = Modifier.fillMaxWidth(),

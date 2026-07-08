@@ -374,7 +374,7 @@ fun StartupScreen(
                                                 journaliserMiseAJour("Version actuelle ($currentAppVersion) est à jour")
                                         }
                                 } catch (e: Exception) {
-                                        appUpdateError = "Erreur lors de la vérification de mise à jour: ${e.message}"
+                                        appUpdateError = translate("startup.update_check_error", e.message ?: "")
                                         showAppUpdateErrorDialog = true
                                         journaliserMiseAJour("❌ EXCEPTION CAPTURÉE LORS DE LA VÉRIFICATION:")
                                         journaliserMiseAJour("Type d'exception: ${e::class.simpleName}")
@@ -1135,7 +1135,7 @@ fun StartupScreen(
                                                                                         )
                                                                         )
                                                                         Text(
-                                                                                "Restaurer une sauvegarde"
+                                                                                translate(LocalizationKeys.Startup.RESTORE_BACKUP)
                                                                         )
                                                                 }
 
@@ -1216,7 +1216,7 @@ fun StartupScreen(
 
                                                                         Text(
                                                                                 text =
-                                                                                        "Acceptation des conditions requise",
+                                                                                        translate("terms.acceptance_required"),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -1235,7 +1235,7 @@ fun StartupScreen(
 
                                                                         Text(
                                                                                 text =
-                                                                                        "Vous devez accepter les conditions générales d'utilisation pour continuer",
+                                                                                        translate("terms.required_message"),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -1280,7 +1280,7 @@ fun StartupScreen(
                                                                                                 )
                                                                         ) {
                                                                                 Text(
-                                                                                        "Lire et accepter les conditions"
+                                                                                        translate("terms.read_accept")
                                                                                 )
                                                                         }
                                                                 }
@@ -1330,7 +1330,7 @@ fun StartupScreen(
 
                                                                         Text(
                                                                                 text =
-                                                                                        "Conditions générales acceptées",
+                                                                                        translate("terms.accepted"),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -1357,7 +1357,7 @@ fun StartupScreen(
                                         modifier = Modifier.fillMaxWidth()
                                 ) {
                                         Text(
-                                                text = "Conditions générales d'utilisation",
+                                                text = translate(LocalizationKeys.Terms.FULL_TITLE),
                                                 style = MaterialTheme.typography.caption,
                                                 color = VetNutriColors.Secondary
                                         )
@@ -1457,7 +1457,7 @@ fun StartupScreen(
                                                                                 databaseStatus
                                                                                         ?.copy(
                                                                                                 error =
-                                                                                                        "Erreur lors de la mise à jour JSON : ${result.message}"
+                                                                                                        translate("startup.json_update_error", result.message ?: "")
                                                                                         )
                                                                         isUpdatingDatabase = false
                                                                 }
@@ -1561,7 +1561,7 @@ fun StartupScreen(
                                                                                 databaseStatus
                                                                                         ?.copy(
                                                                                                 error =
-                                                                                                        "Erreur lors de la mise à jour : ${result.message}"
+                                                                                                        translate("startup.update_error", result.message ?: "")
                                                                                         )
                                                                         isUpdatingDatabase = false
                                                                 }
@@ -1582,16 +1582,12 @@ fun StartupScreen(
                 }
 
                 if (showRecoveryDialog) {
-                        val databaseError = databaseStatus?.error ?: "Erreur inconnue"
+                        val databaseError = databaseStatus?.error ?: translate("error.unknown")
                         ConfirmationDialog(
-                                title = "Base de donnees illisible",
-                                message =
-                                        "La base de donnees n'a pas pu etre lue correctement.\n\n" +
-                                                "Erreur: $databaseError\n\n" +
-                                                "Voulez-vous reinitialiser la base locale puis la recreer depuis les donnees integrees ? " +
-                                                "Les donnees locales non exportees pourront etre perdues.",
-                                confirmText = "Reinitialiser",
-                                dismissText = "Annuler",
+                                title = translate("startup.db_unreadable_title"),
+                                message = translate("startup.db_unreadable_message", databaseError),
+                                confirmText = translate(LocalizationKeys.General.RESET),
+                                dismissText = translate(LocalizationKeys.General.CANCEL),
                                 isDestructive = true,
                                 onConfirm = {
                                         showRecoveryDialog = false
@@ -1605,7 +1601,7 @@ fun StartupScreen(
                                                                         referenceCount = 0,
                                                                         needsUpdate = true,
                                                                         error =
-                                                                                "Erreur lors du factory reset: $resetError"
+                                                                                translate("startup.factory_reset_error", resetError ?: "")
                                                                 )
                                                         isUpdatingDatabase = false
                                                         showRecoveryDialog = true
@@ -1961,10 +1957,10 @@ private fun JsonUpdateDialog(
                                         modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Installer la mise à jour")
+                                Text(translate(LocalizationKeys.Update.UPDATE_BUTTON))
                         }
                 },
-                dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Plus tard") } }
+                dismissButton = { OutlinedButton(onClick = onDismiss) { Text(translate(LocalizationKeys.Update.LATER_BUTTON)) } }
         )
 }
 

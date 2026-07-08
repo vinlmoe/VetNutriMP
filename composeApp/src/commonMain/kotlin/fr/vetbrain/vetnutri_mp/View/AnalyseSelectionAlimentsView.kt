@@ -57,6 +57,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Utils.DataB
 
@@ -70,7 +72,7 @@ fun AnalyseSelectionAlimentsView(
     onClose: () -> Unit,
     onAlimentSelected: ((AlimentEv) -> Unit)? = null,
     onPrimaryAction: ((List<AlimentEv>) -> Unit)? = null,
-    primaryActionLabel: String = "Voir l'analyse graphique",
+    primaryActionLabel: String = translate(LocalizationKeys.Chart.VIEW_GRAPHIC_ANALYSIS_ACTION),
     alimentsInitialementSelectionnes: List<AlimentEv> = emptyList(),
     onSelectionChanged: ((List<AlimentEv>) -> Unit)? = null, // ✨ Callback pour synchroniser les changements
     onLoadNutrients: (suspend (List<String>, List<fr.vetbrain.vetnutri_mp.Enumer.Nutrient>) -> Map<String, Map<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>>)? = null,
@@ -353,15 +355,15 @@ fun AnalyseSelectionAlimentsView(
                         verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Filtres de recherche",
+                        text = translate(LocalizationKeys.Chart.SEARCH_FILTERS_TITLE),
                         style = MaterialTheme.typography.subtitle2,
                         fontWeight = FontWeight.Bold
                     )
-                        
+
                         IconButtonWithTooltip(
                             imageVector = Icons.AutoMirrored.Default.Sort,
-                            contentDescription = "Tri avancé",
-                            tooltip = "Ouvrir le tri avancé",
+                            contentDescription = translate(LocalizationKeys.Chart.ADVANCED_SORT_CONTENT_DESC),
+                            tooltip = translate(LocalizationKeys.Chart.ADVANCED_SORT_TOOLTIP),
                             onClick = { showAdvancedSortDialog = true },
                             tint = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface,
                             iconModifier = Modifier.size(18.dp)
@@ -380,7 +382,7 @@ fun AnalyseSelectionAlimentsView(
                     BasicAppTextField(
                         value = filters.searchQuery,
                         onValueChange = { filters = filters.copy(searchQuery = it) },
-                        placeholder = "Nom, marque, ingrédients...",
+                        placeholder = translate(LocalizationKeys.Chart.SEARCH_PLACEHOLDER),
                         leadingIcon = Icons.Default.Search,
                         trailingIcon = if (filters.searchQuery.isNotEmpty()) Icons.Default.Clear else null,
                         onTrailingIconClick = { filters = filters.copy(searchQuery = "") },
@@ -395,7 +397,7 @@ fun AnalyseSelectionAlimentsView(
                         // Type d'aliment
                         Box(modifier = Modifier.weight(1f)) {
                             DropdownField(
-                                label = "Type",
+                                label = translate(LocalizationKeys.Chart.FILTER_TYPE_LABEL),
                                 selectedValue = filters.selectedFoodType,
                                 options = FoodKind.entries,
                                 onValueChange = { filters = filters.copy(selectedFoodType = it) },
@@ -411,7 +413,7 @@ fun AnalyseSelectionAlimentsView(
                         // Espèce
                         Box(modifier = Modifier.weight(1f)) {
                             DropdownField(
-                                label = "Espèce",
+                                label = translate(LocalizationKeys.Animal.SPECIES),
                                 selectedValue = filters.selectedEspece,
                                 options = Espece.entries,
                                 onValueChange = { filters = filters.copy(selectedEspece = it) },
@@ -441,7 +443,7 @@ fun AnalyseSelectionAlimentsView(
                             val selectedDataB = filters.dataB ?: ""
 
                             DropdownField(
-                                label = "Base",
+                                label = translate(LocalizationKeys.Chart.FILTER_DATABASE_LABEL),
                                 selectedValue = selectedDataB,
                                 options = dataBOptions,
                                 onValueChange = {
@@ -449,7 +451,7 @@ fun AnalyseSelectionAlimentsView(
                                     filters = filters.copy(dataB = newDataB)
                                 },
                                 valueToString = {
-                                    if (it.isEmpty()) "Toutes"
+                                    if (it.isEmpty()) translate(LocalizationKeys.CrossConsultationAnalysis.SPECIES_ALL)
                                     else {
                                         val dataBEnum = DataB.fromCode(it)
                                         dataBEnum?.displayName ?: it
@@ -466,7 +468,7 @@ fun AnalyseSelectionAlimentsView(
                         // Indications (multi-sélection)
                         Box(modifier = Modifier.weight(1f)) {
                             MultiSelectDropdownField(
-                                label = "Indications",
+                                label = translate(LocalizationKeys.FoodEdit.FIELD_INDICATIONS),
                                 selectedValues = filters.selectedIndications,
                                 options = AlimIndic.entries,
                                 onValuesChange = { filters = filters.copy(selectedIndications = it) },
@@ -540,7 +542,7 @@ fun AnalyseSelectionAlimentsView(
                         modifier = Modifier.padding(AppSizes.paddingSmall)
                     ) {
                         Text(
-                            text = "Aliments disponibles (${alimentsFiltres.size})",
+                            text = translate(LocalizationKeys.Chart.AVAILABLE_FOODS_COUNT, alimentsFiltres.size.toString()),
                             style = MaterialTheme.typography.subtitle2,
                             fontWeight = FontWeight.Bold
                         )
@@ -578,7 +580,7 @@ fun AnalyseSelectionAlimentsView(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Tout ajouter", style = MaterialTheme.typography.caption)
+                        Text(translate(LocalizationKeys.Chart.ADD_ALL), style = MaterialTheme.typography.caption)
                     }
                     
                     Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
@@ -592,7 +594,7 @@ fun AnalyseSelectionAlimentsView(
                     ) {
                         Icon(Icons.Default.Remove, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Tout retirer", style = MaterialTheme.typography.caption)
+                        Text(translate(LocalizationKeys.Chart.REMOVE_ALL), style = MaterialTheme.typography.caption)
                     }
                 }
 
@@ -605,7 +607,7 @@ fun AnalyseSelectionAlimentsView(
                         modifier = Modifier.padding(AppSizes.paddingSmall)
                     ) {
                         Text(
-                            text = "Aliments sélectionnés (${alimentsSelectionnes.size})",
+                            text = translate(LocalizationKeys.Chart.SELECTED_FOODS_COUNT, alimentsSelectionnes.size.toString()),
                             style = MaterialTheme.typography.subtitle2,
                             fontWeight = FontWeight.Bold
                         )
@@ -729,7 +731,7 @@ private fun AlimentsDisponiblesCompactSection(
             modifier = Modifier.padding(AppSizes.paddingSmall)
         ) {
             Text(
-                text = "Aliments disponibles (${alimentsFiltres.size})",
+                text = translate(LocalizationKeys.Chart.AVAILABLE_FOODS_COUNT, alimentsFiltres.size.toString()),
                 style = MaterialTheme.typography.subtitle2,
                 fontWeight = FontWeight.Bold
             )
@@ -784,7 +786,7 @@ private fun ActionsRapidesSection(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Tout ajouter", style = MaterialTheme.typography.caption)
+                Text(translate(LocalizationKeys.Chart.ADD_ALL), style = MaterialTheme.typography.caption)
             }
             
             Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
@@ -800,7 +802,7 @@ private fun ActionsRapidesSection(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Tout retirer", style = MaterialTheme.typography.caption)
+                Text(translate(LocalizationKeys.Chart.REMOVE_ALL), style = MaterialTheme.typography.caption)
             }
         }
     }
@@ -822,7 +824,7 @@ private fun AlimentsSelectionnesCompactSection(
             modifier = Modifier.padding(AppSizes.paddingSmall)
         ) {
             Text(
-                text = "Aliments sélectionnés (${alimentsSelectionnes.size})",
+                text = translate(LocalizationKeys.Chart.SELECTED_FOODS_COUNT, alimentsSelectionnes.size.toString()),
                 style = MaterialTheme.typography.subtitle2,
                 fontWeight = FontWeight.Bold
             )

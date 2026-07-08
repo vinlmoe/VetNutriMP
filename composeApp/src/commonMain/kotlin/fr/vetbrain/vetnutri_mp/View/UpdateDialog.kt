@@ -22,6 +22,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.PlatformUrlOpener
 import fr.vetbrain.vetnutri_mp.Utils.UpdateChecker
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.launch
 
 /**
@@ -48,7 +50,7 @@ fun UpdateDialog(
                     tint = VetNutriColors.Primary
                 )
                 Text(
-                    text = "Mise à jour disponible",
+                    text = translate("update.app_available_title"),
                     style = MaterialTheme.typography.h6,
                     fontWeight = FontWeight.Bold,
                     color = VetNutriColors.Primary
@@ -73,7 +75,7 @@ fun UpdateDialog(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "Versions disponibles",
+                            text = translate("update.app_versions_available"),
                             style = MaterialTheme.typography.subtitle2,
                             fontWeight = FontWeight.Bold,
                             color = VetNutriColors.Secondary
@@ -85,7 +87,7 @@ fun UpdateDialog(
                         ) {
                             Column {
                                 Text(
-                                    text = "Version actuelle",
+                                    text = translate("update.app_current_version_label"),
                                     style = MaterialTheme.typography.caption,
                                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -98,12 +100,12 @@ fun UpdateDialog(
                             
                             Column {
                                 Text(
-                                    text = "Nouvelle version",
+                                    text = translate("update.app_new_version_label"),
                                     style = MaterialTheme.typography.caption,
                                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
                                 Text(
-                                    text = updateResult.newVersion ?: "N/A",
+                                    text = updateResult.newVersion ?: translate("update.app_version_na"),
                                     style = MaterialTheme.typography.body1,
                                     fontWeight = FontWeight.Bold,
                                     color = VetNutriColors.Primary
@@ -131,8 +133,7 @@ fun UpdateDialog(
                             modifier = Modifier.size(24.dp)
                         )
                         Text(
-                            text = "Une nouvelle version de VetNutri MP est disponible. " +
-                                    "Nous vous recommandons de mettre à jour pour bénéficier des dernières améliorations et corrections.",
+                            text = translate("update.app_info_message"),
                             style = MaterialTheme.typography.body2,
                             color = MaterialTheme.colors.onSurface
                         )
@@ -150,14 +151,14 @@ fun UpdateDialog(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "Téléchargement",
+                            text = translate("update.app_download_title"),
                             style = MaterialTheme.typography.subtitle2,
                             fontWeight = FontWeight.Bold,
                             color = VetNutriColors.Primary
                         )
                         
                         Text(
-                            text = "Cliquez sur le bouton ci-dessous pour accéder à la page de téléchargement :",
+                            text = translate("update.app_download_instructions"),
                             style = MaterialTheme.typography.body2,
                             color = MaterialTheme.colors.onSurface
                         )
@@ -173,7 +174,7 @@ fun UpdateDialog(
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
-                                    text = "URL de téléchargement :",
+                                    text = translate("update.app_download_url_label"),
                                     style = MaterialTheme.typography.caption,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
@@ -218,7 +219,7 @@ fun UpdateDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Ouvrir la page de téléchargement",
+                                text = translate("update.app_open_download_page"),
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -233,7 +234,7 @@ fun UpdateDialog(
                     backgroundColor = VetNutriColors.Secondary
                 )
             ) {
-                Text("Fermer")
+                Text(translate(LocalizationKeys.General.CLOSE))
             }
         },
         modifier = modifier
@@ -253,7 +254,7 @@ fun UpdateErrorDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Erreur de vérification",
+                text = translate("update.app_check_error_title"),
                 style = MaterialTheme.typography.h6,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colors.error
@@ -272,7 +273,7 @@ fun UpdateErrorDialog(
                     backgroundColor = MaterialTheme.colors.error
                 )
             ) {
-                Text("Fermer")
+                Text(translate(LocalizationKeys.General.CLOSE))
             }
         },
         modifier = modifier

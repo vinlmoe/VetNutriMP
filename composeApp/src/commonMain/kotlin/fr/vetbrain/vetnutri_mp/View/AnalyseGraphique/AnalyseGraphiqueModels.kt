@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 
@@ -81,6 +82,7 @@ data class RationNutrimentData(
 )
 
 // Liste des nutriments disponibles pour les graphiques personnalisés (spécifique à cette vue)
+// displayName contient une clé LocalizationKeys : utiliser translate(option.displayName) à l'affichage.
 data class ViewNutrimentOption(
         val key: String,
         val displayName: String,
@@ -89,14 +91,14 @@ data class ViewNutrimentOption(
 
 val VIEW_NUTRIMENT_OPTIONS =
         listOf(
-                ViewNutrimentOption("", "Aucun"), // Option "aucun" pour l'axe Y
+                ViewNutrimentOption("", "graph.nutrimentNone"), // Option "aucun" pour l'axe Y
                 // Nutriments principaux
-                ViewNutrimentOption("proteine", "Protéines", "g"),
-                ViewNutrimentOption("lipide", "Lipides", "g"),
-                ViewNutrimentOption("energie", "Énergie", "kcal"),
+                ViewNutrimentOption("proteine", LocalizationKeys.Chart.PROTEIN, "g"),
+                ViewNutrimentOption("lipide", LocalizationKeys.Chart.FAT, "g"),
+                ViewNutrimentOption("energie", LocalizationKeys.NutrientCategory.ENERGIE_NAME, "kcal"),
                 // Minéraux
-                ViewNutrimentOption("calcium", "Calcium", "g"),
-                ViewNutrimentOption("phosphore", "Phosphore", "g")
+                ViewNutrimentOption("calcium", LocalizationKeys.Minerals.CALCIUM, "g"),
+                ViewNutrimentOption("phosphore", LocalizationKeys.Minerals.PHOSPHORUS, "g")
         )
 
 // Marges calibrées pour le layout interne de KoalaPlot (en dp)
@@ -106,11 +108,12 @@ internal const val KOALAPLOT_BOTTOM_DP = 38f
 internal const val KOALAPLOT_TOP_DP = 6f
 internal const val KOALAPLOT_RIGHT_DP = 14f
 
+// displayName contient une clé LocalizationKeys : utiliser translate(chartType.displayName) à l'affichage.
 enum class ChartType(val displayName: String) {
-        EVOLUTION_POIDS("Évolution du poids"),
-        RATIONS_ENERGIE("Rations énergétiques"),
-        DENSITE_RATIONS("Densité énergétique des rations"),
-        NUTRIMENTS_RATIONS("Nutriments des rations")
+        EVOLUTION_POIDS("graph.chartTypeEvolutionPoids"),
+        RATIONS_ENERGIE("graph.chartTypeRationsEnergie"),
+        DENSITE_RATIONS(LocalizationKeys.Graph.DENSITY_TITLE),
+        NUTRIMENTS_RATIONS("graph.chartTypeNutrimentsRations")
 }
 
 // Data class pour gérer l'état du zoom et du pan

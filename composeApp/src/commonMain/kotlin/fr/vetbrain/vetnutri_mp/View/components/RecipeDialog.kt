@@ -84,12 +84,12 @@ fun RecipeDialog(
                         ) {
                             Icon(
                                     imageVector = Icons.Default.Add,
-                                    contentDescription = translate(LocalizationKeys.Recipe.CREATE_NEW),
+                                    contentDescription = translate("recipe.createNew"),
                                     tint = VetNutriColors.Primary,
                                     modifier = Modifier.size(24.dp)
                             )
                             Text(
-                                    text = translate(LocalizationKeys.Recipe.CREATE_NEW),
+                                    text = translate("recipe.createNew"),
                                     color = VetNutriColors.Primary,
                                     style = MaterialTheme.typography.button
                             )
@@ -174,7 +174,7 @@ fun RecipeDialog(
                                                                     .toString()
                                                     Text(
                                                             translate(
-                                                                    LocalizationKeys.Recipe.FOOD_LINE,
+                                                                    "recipe.foodLine",
                                                                     nom.toString(),
                                                                     qStr
                                                             ),
@@ -203,7 +203,7 @@ fun RecipeDialog(
     if (showCreateDialog) {
         AlertDialog(
                 onDismissRequest = { showCreateDialog = false },
-                title = { Text(translate(LocalizationKeys.Recipe.CREATE_NEW)) },
+                title = { Text(translate("recipe.createNew")) },
                 text = {
                     OutlinedTextField(
                             value = newName,

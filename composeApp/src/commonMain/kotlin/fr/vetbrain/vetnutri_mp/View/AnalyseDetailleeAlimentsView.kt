@@ -193,14 +193,14 @@ private fun AlimentDetailCard(
                     )
                     if (data.aliment.brand != null) {
                         Text(
-                                text = translate(LocalizationKeys.Chart.BRAND_PREFIX, data.aliment.brand ?: ""),
+                                text = translate(LocalizationKeys.Chart.BRAND_PREFIX, data.aliment.brand!!),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
                     }
                     if (data.aliment.gamme != null) {
                         Text(
-                                text = translate(LocalizationKeys.Chart.GAMME_PREFIX, data.aliment.gamme ?: ""),
+                                text = translate(LocalizationKeys.Chart.GAMME_PREFIX, data.aliment.gamme!!),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
@@ -392,49 +392,52 @@ private fun AlimentNutrientsDetails(
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
         ) {
             Text(
-                    text = "Composition nutritionnelle (${if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"})",
+                    text = translate(
+                            LocalizationKeys.Chart.NUTRITIONAL_COMPOSITION_PREFIX,
+                            if (useDryMatterPer100g) translate(LocalizationKeys.Chart.TOGGLE_PER_100G_DM) else translate(LocalizationKeys.Chart.TOGGLE_PER_1000_KCAL)
+                    ),
                     style = MaterialTheme.typography.subtitle1,
                     fontWeight = FontWeight.Bold,
                     color = VetNutriColors.Primary
             )
-            
+
             // Nutriments principaux
             Text(
-                    text = "Macronutriments",
+                    text = translate(LocalizationKeys.FoodEdit.SECTION_MACRONUTRIENTS),
                     style = MaterialTheme.typography.caption,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
             )
-            
+
             nutrientsData.filter { it.key in listOf("Protéines", "Lipides", "Glucides", "Cellulose brute", "Cendres") }
                     .forEach { (nom, valeur) ->
-                        NutrientRow(nom = nom, valeur = valeur, unit = "g")
+                        NutrientRow(nom = translate(nutrientLabelKey(nom)), valeur = valeur, unit = "g")
                     }
-            
+
             if (!useDryMatterPer100g && nutrientsData["Humidité"] != null) {
-                NutrientRow(nom = "Humidité", valeur = nutrientsData["Humidité"]!!, unit = "g")
+                NutrientRow(nom = translate(LocalizationKeys.Chart.MOISTURE), valeur = nutrientsData["Humidité"]!!, unit = "g")
             }
-            
+
             Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-            
+
             // Minéraux
             Text(
-                    text = "Minéraux",
+                    text = translate(LocalizationKeys.FoodEdit.SECTION_MINERALS),
                     style = MaterialTheme.typography.caption,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
             )
-            
+
             nutrientsData.filter { it.key in listOf("Calcium", "Phosphore", "Magnésium", "Sodium", "Potassium") }
                     .forEach { (nom, valeur) ->
-                        NutrientRow(nom = nom, valeur = valeur, unit = "g")
+                        NutrientRow(nom = translate(nutrientLabelKey(nom)), valeur = valeur, unit = "g")
                     }
 
             // Nutriments personnalisés
             if (customNutrientsData.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                 Text(
-                    text = "Nutriments personnalisés",
+                    text = translate(LocalizationKeys.Chart.PERSONALIZED_NUTRIENTS),
                     style = MaterialTheme.typography.caption,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
@@ -447,24 +450,42 @@ private fun AlimentNutrientsDetails(
             // Ratios importants
             Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
             Text(
-                    text = "Ratios",
+                    text = translate(LocalizationKeys.Chart.RATIOS_SECTION),
                     style = MaterialTheme.typography.caption,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
             )
-            
+
             val calcium = nutrientsData["Calcium"] ?: 0.0
             val phosphore = nutrientsData["Phosphore"] ?: 0.0
             val proteine = nutrientsData["Protéines"] ?: 0.0
-            
+
             if (phosphore > 0) {
-                NutrientRow(nom = "Ratio Ca:P", valeur = calcium / phosphore, unit = "")
+                NutrientRow(nom = translate(LocalizationKeys.Chart.RATIO_CA_P), valeur = calcium / phosphore, unit = "")
             }
             if (phosphore > 0) {
-                NutrientRow(nom = "Ratio Protéines:Phosphore", valeur = proteine / phosphore, unit = "")
+                NutrientRow(nom = translate(LocalizationKeys.Chart.RATIO_PROTEIN_PHOSPHORUS), valeur = proteine / phosphore, unit = "")
             }
         }
     }
+}
+
+/**
+ * Associe le libellé interne (français) d'un nutriment à sa clé de localisation.
+ */
+private fun nutrientLabelKey(nom: String): String = when (nom) {
+    "Humidité" -> LocalizationKeys.Chart.MOISTURE
+    "Protéines" -> LocalizationKeys.Chart.PROTEIN
+    "Lipides" -> LocalizationKeys.Chart.FAT
+    "Glucides" -> LocalizationKeys.Chart.CARBOHYDRATES
+    "Cellulose brute" -> LocalizationKeys.Chart.CRUDE_FIBER
+    "Cendres" -> LocalizationKeys.Chart.ASH
+    "Calcium" -> LocalizationKeys.Minerals.CALCIUM
+    "Phosphore" -> LocalizationKeys.Minerals.PHOSPHORUS
+    "Magnésium" -> LocalizationKeys.Minerals.MAGNESIUM
+    "Sodium" -> LocalizationKeys.Minerals.SODIUM
+    "Potassium" -> LocalizationKeys.Minerals.POTASSIUM
+    else -> nom
 }
 
 /**

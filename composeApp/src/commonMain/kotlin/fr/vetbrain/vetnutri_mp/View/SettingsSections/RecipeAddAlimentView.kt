@@ -57,7 +57,7 @@ fun RecipeAddAlimentView(
                 title = { Text(translate(LocalizationKeys.Recipe.ADD_FOOD_TITLE)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = translate(LocalizationKeys.AnimalDetail.BACK))
                     }
                 },
                 backgroundColor = VetNutriColors.Primary,
@@ -192,26 +192,26 @@ private fun AlimentDetailsPanel(
         // Informations générales
         item {
             Text(
-                text = aliment.nom ?: "Sans nom",
+                text = aliment.nom ?: translate(LocalizationKeys.Food.NO_NAME),
                 style = MaterialTheme.typography.h6,
                 fontWeight = FontWeight.Bold
             )
         }
-        
+
         if (!aliment.brand.isNullOrEmpty()) {
-            item { DetailRow("Marque", aliment.brand!!) }
+            item { DetailRow(translate(LocalizationKeys.FoodEdit.FIELD_BRAND), aliment.brand!!) }
         }
-        
+
         if (!aliment.gamme.isNullOrEmpty()) {
-            item { DetailRow("Gamme", aliment.gamme!!) }
+            item { DetailRow(translate(LocalizationKeys.FoodEdit.FIELD_GAMME), aliment.gamme!!) }
         }
-        
+
         aliment.typeAliment?.let { type ->
-            item { DetailRow("Type", type.translateEnum()) }
+            item { DetailRow(translate(LocalizationKeys.Recipe.TYPE), type.translateEnum()) }
         }
-        
+
         aliment.group?.let { group ->
-            item { DetailRow("Groupe", group.translateEnum()) }
+            item { DetailRow(translate(LocalizationKeys.Recipe.GROUP), group.translateEnum()) }
         }
         
         // Espèces ciblées

@@ -225,9 +225,9 @@ fun NutrimentsRationsChart(
                         // Titre dynamique selon le type de graphique
                         val titre =
                                 if (nutrimentY.isNullOrEmpty()) {
-                                        "${translate(LocalizationKeys.Graph.DISTRIBUTION_OF)} ${xOption?.displayName ?: "Nutriment"}"
+                                        "${translate(LocalizationKeys.Graph.DISTRIBUTION_OF)} ${xOption?.let { translate(it.displayName) } ?: translate("graph.nutrimentFallback")}"
                                 } else {
-                                        "${xOption?.displayName ?: "X"} vs ${yOption?.displayName ?: "Y"}"
+                                        "${xOption?.let { translate(it.displayName) } ?: "X"} ${translate("graph.vsSeparator")} ${yOption?.let { translate(it.displayName) } ?: "Y"}"
                                 }
 
                         Text(
@@ -287,7 +287,7 @@ fun NutrimentsRationsChart(
                                                 XYGraph(
                                                         xAxisModel = remember(categories) { CategoryAxisModel(categories) },
                                                         yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartYAxisModel(yRange) },
-                                                        yAxisTitle = "${xOption?.displayName} (${xOption?.unit})",
+                                                        yAxisTitle = "${xOption?.let { translate(it.displayName) }} (${xOption?.unit})",
                                                         modifier = Modifier.fillMaxSize()
                                                 ) {
                                                         VerticalBarPlot(
@@ -487,8 +487,8 @@ fun NutrimentsRationsChart(
                                                 XYGraph(
                                                         xAxisModel = KoalaPlotExtensions.createSmartXAxisModel(xRange),
                                                         yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(yRange),
-                                                        xAxisTitle = "${xOption?.displayName} (${xOption?.unit})",
-                                                        yAxisTitle = "${yOption?.displayName} (${yOption?.unit})",
+                                                        xAxisTitle = "${xOption?.let { translate(it.displayName) }} (${xOption?.unit})",
+                                                        yAxisTitle = "${yOption?.let { translate(it.displayName) }} (${yOption?.unit})",
                                                         modifier = Modifier.fillMaxSize().clipToBounds()
                                                                 .pointerInput(Unit) {
                                                                         detectTransformGestures { _, pan, zoom, _ ->
@@ -705,7 +705,7 @@ fun NutrimentsRationsChart(
                                                         )
                                                         Text(
                                                                 text =
-                                                                        "Protéines: ${GraphFormattingUtils.formatDecimal(data.proteines, 1)}g | Lipides: ${GraphFormattingUtils.formatDecimal(data.lipides, 1)}g",
+                                                                        "${translate(LocalizationKeys.Chart.PROTEIN)}: ${GraphFormattingUtils.formatDecimal(data.proteines, 1)}g | ${translate(LocalizationKeys.Chart.FAT)}: ${GraphFormattingUtils.formatDecimal(data.lipides, 1)}g",
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,
@@ -720,7 +720,7 @@ fun NutrimentsRationsChart(
                                         }
                                         Text(
                                                 text =
-                                                        "${data.consultationDate?.toString() ?: "Date inconnue"}",
+                                                        "${data.consultationDate?.toString() ?: translate(LocalizationKeys.Graph.DATE_UNKNOWN)}",
                                                 style = MaterialTheme.typography.caption,
                                                 color =
                                                         MaterialTheme.colors.onSurface.copy(

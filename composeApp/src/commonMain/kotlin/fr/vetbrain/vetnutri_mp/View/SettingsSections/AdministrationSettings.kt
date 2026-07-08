@@ -152,7 +152,7 @@ fun AdministrationSettings(
                                     modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Importer depuis VetNutri 2")
+                            Text(translate(LocalizationKeys.Administration.IMPORT_LEGACY))
                         }
 
                         // Affichage du résultat de l'import automatique
@@ -301,17 +301,17 @@ fun AdministrationSettings(
     // Dialogues de confirmation
     if (showFoodDeleteDialog) {
         DatabaseClearConfirmationDialog(
-                entityName = "aliments",
+                entityName = translate(LocalizationKeys.Administration.ENTITY_FOODS),
                 onConfirm = {
                     showFoodDeleteDialog = false
                     isProcessing = true
                     coroutineScope.launch {
                         try {
                             val count = viewModel.clearAllFoods()
-                            resultMessage = "$count aliments ont été supprimés avec succès."
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_FOODS_SUCCESS, count.toString())
                             onFoodListRefresh()
                         } catch (e: Exception) {
-                            resultMessage = "Erreur lors de la suppression : ${e.message}"
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
                         }
@@ -323,17 +323,17 @@ fun AdministrationSettings(
 
     if (showAnimalDeleteDialog) {
         DatabaseClearConfirmationDialog(
-                entityName = "animaux",
+                entityName = translate(LocalizationKeys.Administration.ENTITY_ANIMALS),
                 onConfirm = {
                     showAnimalDeleteDialog = false
                     isProcessing = true
                     coroutineScope.launch {
                         try {
                             val count = viewModel.clearAllAnimals()
-                            resultMessage = "$count animaux ont été supprimés avec succès."
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_ANIMALS_SUCCESS, count.toString())
                             onAnimalListRefresh()
                         } catch (e: Exception) {
-                            resultMessage = "Erreur lors de la suppression : ${e.message}"
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
                         }
@@ -345,7 +345,7 @@ fun AdministrationSettings(
 
     if (showReferenceDeleteDialog) {
         DatabaseClearConfirmationDialog(
-                entityName = "références nutritionnelles, équations et bibliographies",
+                entityName = translate(LocalizationKeys.Administration.ENTITY_REFERENCES_ALL),
                 onConfirm = {
                     showReferenceDeleteDialog = false
                     isProcessing = true
@@ -366,9 +366,14 @@ fun AdministrationSettings(
                             } catch (e: Exception) {}
 
                             resultMessage =
-                                    "$refCount références nutritionnelles, $eqCount équations et $bibCount bibliographies ont été supprimées avec succès."
+                                    translate(
+                                            LocalizationKeys.Administration.DELETE_REFERENCES_SUCCESS,
+                                            refCount.toString(),
+                                            eqCount.toString(),
+                                            bibCount.toString()
+                                    )
                         } catch (e: Exception) {
-                            resultMessage = "Erreur lors de la suppression : ${e.message}"
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
                         }
@@ -380,16 +385,16 @@ fun AdministrationSettings(
 
     if (showEquationDeleteDialog) {
         DatabaseClearConfirmationDialog(
-                entityName = "équations",
+                entityName = translate(LocalizationKeys.Administration.ENTITY_EQUATIONS),
                 onConfirm = {
                     showEquationDeleteDialog = false
                     isProcessing = true
                     coroutineScope.launch {
                         try {
                             val count = viewModel.clearAllEquations()
-                            resultMessage = "$count équations ont été supprimées avec succès."
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_EQUATIONS_SUCCESS, count.toString())
                         } catch (e: Exception) {
-                            resultMessage = "Erreur lors de la suppression : ${e.message}"
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
                         }
@@ -401,7 +406,7 @@ fun AdministrationSettings(
 
     if (showBiblioDeleteDialog) {
         DatabaseClearConfirmationDialog(
-                entityName = "références bibliographiques",
+                entityName = translate(LocalizationKeys.Administration.ENTITY_BIBLIO),
                 onConfirm = {
                     showBiblioDeleteDialog = false
                     isProcessing = true
@@ -409,9 +414,9 @@ fun AdministrationSettings(
                         try {
                             val count = viewModel.clearAllBiblioRefs()
                             resultMessage =
-                                    "$count références bibliographiques ont été supprimées avec succès."
+                                    translate(LocalizationKeys.Administration.DELETE_BIBLIO_SUCCESS, count.toString())
                         } catch (e: Exception) {
-                            resultMessage = "Erreur lors de la suppression : ${e.message}"
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
                         }
@@ -428,7 +433,7 @@ fun AdministrationSettings(
     if (resultMessage.isNotEmpty()) {
         Snackbar(
                 modifier = Modifier.padding(16.dp),
-                action = { TextButton(onClick = { resultMessage = "" }) { Text("OK") } }
+                action = { TextButton(onClick = { resultMessage = "" }) { Text(translate(LocalizationKeys.General.OK)) } }
         ) { Text(resultMessage) }
     }
 }

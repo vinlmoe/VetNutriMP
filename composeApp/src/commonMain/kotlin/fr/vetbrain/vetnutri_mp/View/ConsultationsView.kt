@@ -86,7 +86,7 @@ fun ConsultationsView(
                         )
                     },
                     confirmButton = {
-                        TextButton(onClick = { showNoReferenceDialog = false }) { Text("OK") }
+                        TextButton(onClick = { showNoReferenceDialog = false }) { Text(translate(General.OK)) }
                     }
             )
         }
