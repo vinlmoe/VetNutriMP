@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -65,16 +66,16 @@ fun StartupBackupDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Sauvegardes disponibles", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
+                        Text(translate("auto.view.startupbackupdialog.sauvegardes_disponibles"), style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
                         Text(
-                            text = "Sélectionnez une sauvegarde à restaurer ou continuez sans restaurer",
+                            text = translate("auto.view.startupbackupdialog.selectionnez_une_sauvegarde_a_restaurer_ou_conti"),
                             style = MaterialTheme.typography.body2,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
                     }
                     
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Fermer")
+                        Icon(Icons.Default.Close, contentDescription = translate("settings.close"))
                     }
                 }
                 
@@ -119,7 +120,7 @@ fun StartupBackupDialog(
                             CircularProgressIndicator()
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "Restauration en cours...",
+                                text = translate("auto.view.startupbackupdialog.restauration_en_cours"),
                                 style = MaterialTheme.typography.h6
                             )
                             Spacer(modifier = Modifier.height(8.dp))
@@ -145,9 +146,9 @@ fun StartupBackupDialog(
                         ) {
                             Icon(Icons.Default.Backup, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colors.onSurface.copy(alpha = 0.6f))
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("Aucune sauvegarde disponible", style = MaterialTheme.typography.subtitle1, color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f))
+                            Text(translate("auto.view.backuprestoreview.aucune_sauvegarde_disponible"), style = MaterialTheme.typography.subtitle1, color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f))
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Continuez sans restaurer de sauvegarde", style = MaterialTheme.typography.body2, color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f), textAlign = TextAlign.Center)
+                            Text(translate("auto.view.startupbackupdialog.continuez_sans_restaurer_de_sauvegarde"), style = MaterialTheme.typography.body2, color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f), textAlign = TextAlign.Center)
                         }
                     }
                 } else {
@@ -175,7 +176,7 @@ fun StartupBackupDialog(
                         onClick = onDismiss,
                         enabled = !isRestoring
                     ) {
-                        Text("Continuer sans restaurer")
+                        Text(translate("auto.view.startupbackupdialog.continuer_sans_restaurer"))
                     }
                 }
             }
@@ -187,7 +188,7 @@ fun StartupBackupDialog(
                 onDismissRequest = { viewModel.dismissRestoreResultDialog() },
                 title = {
                     Text(
-                        text = "Restauration terminée",
+                        text = translate("auto.view.backuprestoreview.restauration_terminee"),
                         style = MaterialTheme.typography.h6,
                         fontWeight = FontWeight.Bold
                     )
@@ -201,7 +202,7 @@ fun StartupBackupDialog(
                             modifier = Modifier.padding(16.dp)
                         ) {
                             Text(
-                                text = "Données restaurées avec succès :",
+                                text = translate("auto.view.startupbackupdialog.donnees_restaurees_avec_succes"),
                                 style = MaterialTheme.typography.subtitle1,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(bottom = 8.dp)
@@ -219,7 +220,7 @@ fun StartupBackupDialog(
                                         color = MaterialTheme.colors.primary
                                     )
                                     Text(
-                                        text = "Animaux",
+                                        text = translate("auto.view.backuprestoreview.animaux"),
                                         style = MaterialTheme.typography.caption
                                     )
                                 }
@@ -232,7 +233,7 @@ fun StartupBackupDialog(
                                         color = MaterialTheme.colors.primary
                                     )
                                     Text(
-                                        text = "Aliments",
+                                        text = translate("database.stat.foods"),
                                         style = MaterialTheme.typography.caption
                                     )
                                 }
@@ -245,7 +246,7 @@ fun StartupBackupDialog(
                                         color = MaterialTheme.colors.primary
                                     )
                                     Text(
-                                        text = "Équations",
+                                        text = translate("new_reference.tab.equations"),
                                         style = MaterialTheme.typography.caption
                                     )
                                 }
@@ -258,7 +259,7 @@ fun StartupBackupDialog(
                                         color = MaterialTheme.colors.primary
                                     )
                                     Text(
-                                        text = "Conseils",
+                                        text = translate("database.stat.conseils"),
                                         style = MaterialTheme.typography.caption
                                     )
                                 }
@@ -273,7 +274,7 @@ fun StartupBackupDialog(
                             backgroundColor = MaterialTheme.colors.primary
                         )
                     ) {
-                        Text("OK")
+                        Text(translate("general.ok"))
                     }
                 }
             )
@@ -319,7 +320,7 @@ private fun StartupBackupItem(
                 ) {
                     Icon(
                         Icons.Default.Restore, 
-                        contentDescription = "Restaurer", 
+                        contentDescription = translate("auto.view.backuprestoreview.restaurer"), 
                         tint = if (isRestoring) 
                             MaterialTheme.colors.onSurface.copy(alpha = 0.3f) 
                         else 
@@ -344,7 +345,7 @@ private fun StartupBackupItem(
             Spacer(modifier = Modifier.height(8.dp))
             
             // Taille du fichier
-            Text("Taille: ${viewModel.formatFileSize(backup.fileSize)}", style = MaterialTheme.typography.body2, color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f))
+            Text(translate("auto.view.backuprestoreview.taille_arg", (viewModel.formatFileSize(backup.fileSize)).toString()), style = MaterialTheme.typography.body2, color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f))
         }
     }
 }

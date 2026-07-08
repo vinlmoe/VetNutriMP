@@ -610,7 +610,7 @@ private fun FiltersSection(
                         // Type d'aliment
                         Box(modifier = Modifier.weight(1f)) {
                                 DropdownField(
-                                        label = "Type",
+                                        label = translate("recipe.type"),
                                         selectedValue = filters.selectedFoodType,
                                         options = FoodKind.entries,
                                         onValueChange = {
@@ -628,7 +628,7 @@ private fun FiltersSection(
                         // Indications
                         Box(modifier = Modifier.weight(1f)) {
                                 MultiSelectDropdownField(
-                                        label = "Indications",
+                                        label = translate("food_edit.field.indications"),
                                         selectedValues = filters.selectedIndications,
                                         options = AlimIndic.entries,
                                         onValuesChange = {
@@ -654,7 +654,7 @@ private fun FiltersSection(
                         // Espèce
                         Box(modifier = Modifier.weight(1f)) {
                                 DropdownField(
-                                        label = "Espèce",
+                                        label = translate("new_reference.field.species"),
                                         selectedValue = filters.selectedEspece,
                                         options = Espece.entries,
                                         onValueChange = {
@@ -687,7 +687,7 @@ private fun FiltersSection(
                                 val selectedDataB = filters.dataB ?: ""
 
                                 DropdownField(
-                                        label = "Base de données",
+                                        label = translate("food_edit.field.database"),
                                         selectedValue = selectedDataB,
                                         options = dataBOptions,
                                         onValueChange = {
@@ -748,16 +748,16 @@ private fun FiltersCard(
                                         )
                                         IconButtonWithTooltip(
                                                 imageVector = Icons.Default.BubbleChart,
-                                                contentDescription = "Filtrer acides aminés",
-                                                tooltip = "Basculer le filtre acides aminés",
+                                                contentDescription = translate("auto.view.components.foodsearchcomponent.filtrer_acides_amines"),
+                                                tooltip = translate("auto.view.components.foodsearchcomponent.basculer_le_filtre_acides_amines"),
                                                 onClick = { onFiltersChange(filters.copy(aminoOnly = !filters.aminoOnly)) },
                                                 tint = if (filters.aminoOnly) VetNutriColors.Primary else MaterialTheme.colors.onSurface,
                                                 iconModifier = Modifier.size(18.dp)
                                         )
                                         IconButtonWithTooltip(
                                                 imageVector = Icons.AutoMirrored.Default.Sort,
-                                                contentDescription = "Tri avancé",
-                                                tooltip = "Ouvrir le tri avancé",
+                                                contentDescription = translate("chart.advancedSortContentDesc"),
+                                                tooltip = translate("chart.advancedSortTooltip"),
                                                 onClick = { showAdvancedSortDialog = true },
                                                 tint = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null || filters.includeDeprecated) VetNutriColors.Primary else MaterialTheme.colors.onSurface,
                                                 iconModifier = Modifier.size(18.dp)
@@ -789,7 +789,7 @@ private fun FiltersCard(
                                         filters.includeDeprecated
                         ) {
                                 Text(
-                                        text = "Filtres actifs",
+                                        text = translate("auto.view.components.foodsearchcomponent.filtres_actifs"),
                                         style = MaterialTheme.typography.caption,
                                         color = VetNutriColors.Primary
                                 )
@@ -814,7 +814,7 @@ private fun CompactFilters(
         ) {
                 // Type d'aliment
                 DropdownField(
-                        label = "Type",
+                        label = translate("recipe.type"),
                         selectedValue = filters.selectedFoodType,
                         options = FoodKind.entries,
                         onValueChange = { onFiltersChange(filters.copy(selectedFoodType = it)) },
@@ -828,7 +828,7 @@ private fun CompactFilters(
 
                 // Espèce
                 DropdownField(
-                        label = "Espèce",
+                        label = translate("new_reference.field.species"),
                         selectedValue = filters.selectedEspece,
                         options = Espece.entries,
                         onValueChange = { onFiltersChange(filters.copy(selectedEspece = it)) },
@@ -855,7 +855,7 @@ private fun CompactFilters(
                 val selectedDataB = filters.dataB ?: ""
 
                 DropdownField(
-                        label = "Base",
+                        label = translate("chart.filterDatabaseLabel"),
                         selectedValue = selectedDataB,
                         options = dataBOptions,
                         onValueChange = {
@@ -908,7 +908,7 @@ private fun FoodSearchResults(
                 }
         } else if (foods.isEmpty()) {
                 Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Aucun aliment trouvé avec ces critères")
+                        Text(translate("auto.view.components.foodsearchcomponent.aucun_aliment_trouve_avec_ces_criteres"))
                 }
         } else {
                 LazyColumn(
@@ -1132,7 +1132,7 @@ private fun FoodDetailsPanel(
                                 contentAlignment = Alignment.Center
                         ) {
                                 Text(
-                                        text = "Sélectionnez un aliment\npour voir ses détails",
+                                        text = translate("auto.view.components.foodsearchcomponent.salectionnez_un_aliment_pour_voir_ses_datails"),
                                         style = MaterialTheme.typography.body1,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                                 )
@@ -1209,7 +1209,7 @@ private fun AlimentDetailsContent(aliment: AlimentEv, referenceEv: ReferenceEv? 
                 if (aliment.valMap.isNotEmpty()) {
                         item {
                                 Text(
-                                        text = "Composition nutritionnelle (pour 100g)",
+                                        text = translate("recipe.add_food.nutritional_composition"),
                                         style = MaterialTheme.typography.subtitle1,
                                         fontWeight = FontWeight.Bold
                                 )
@@ -1282,7 +1282,7 @@ fun AdvancedSortDialog(
         }
         AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("Tri et filtres avancés", fontWeight = FontWeight.Bold) },
+                title = { Text(translate("auto.view.components.foodsearchcomponent.tri_et_filtres_avances"), fontWeight = FontWeight.Bold) },
                 text = {
                         Column(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1290,7 +1290,7 @@ fun AdvancedSortDialog(
                         ) {
                                 // Section filtres par nutriments
                                 Text(
-                                        text = "Filtres par nutriments",
+                                        text = translate("auto.view.components.foodsearchcomponent.filtres_par_nutriments"),
                                         style = MaterialTheme.typography.subtitle2,
                                         fontWeight = FontWeight.Bold
                                 )
@@ -1330,19 +1330,19 @@ fun AdvancedSortDialog(
                                                 ) {
                                                         Icon(Icons.Default.Add, contentDescription = null)
                                                         Spacer(modifier = Modifier.width(4.dp))
-                                                        Text("Ajouter un filtre")
+                                                        Text(translate("auto.view.components.foodsearchcomponent.ajouter_un_filtre"))
                                                 }
                                         }
                                 }
                                 Divider()
                                 // Section tri
                                 Text(
-                                        text = "Tri",
+                                        text = translate("animalList.sortSectionTitle"),
                                         style = MaterialTheme.typography.subtitle2,
                                         fontWeight = FontWeight.Bold
                                 )
                                 DropdownField(
-                                        label = "Critère de tri",
+                                        label = translate("auto.view.components.foodsearchcomponent.critere_de_tri"),
                                         selectedValue = localSortCriteria,
                                         options = listOf(null) + SortCriteria.entries,
                                         onValueChange = { localSortCriteria = it },
@@ -1355,7 +1355,7 @@ fun AdvancedSortDialog(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 DropdownField(
-                                        label = "Ordre",
+                                        label = translate("auto.view.components.foodsearchcomponent.ordre"),
                                         selectedValue = localSortOrder,
                                         options = SortOrder.entries,
                                         onValueChange = { localSortOrder = it },
@@ -1373,7 +1373,7 @@ fun AdvancedSortDialog(
                                         horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                         Text(
-                                                text = "Inclure les aliments obsolètes",
+                                                text = translate("auto.view.components.foodsearchcomponent.inclure_les_aliments_obsoletes"),
                                                 style = MaterialTheme.typography.body2
                                         )
                                         Switch(
@@ -1399,12 +1399,12 @@ fun AdvancedSortDialog(
                                         onDismiss()
                                 }
                         ) {
-                                Text("Appliquer")
+                                Text(translate("recipe.action.apply"))
                         }
                 },
                 dismissButton = {
                         TextButton(onClick = onDismiss) {
-                                Text("Annuler")
+                                Text(translate("general.cancel"))
                         }
                 }
         )
@@ -1457,7 +1457,7 @@ private fun NutrientFilterRow(
                 Box(modifier = Modifier.weight(2f)) {
                         val nutrientOptions = listOf(null) + availableNutrients
                         DropdownField(
-                                label = "Nutriment",
+                                label = translate("nutrientComponents.columnNutrient"),
                                 selectedValue = filter.nutrient,
                                 options = nutrientOptions,
                                 onValueChange = { 
@@ -1474,7 +1474,7 @@ private fun NutrientFilterRow(
                 // Opérateur
                 Box(modifier = Modifier.weight(1f)) {
                         DropdownField(
-                                label = "Opérateur",
+                                label = translate("auto.view.components.foodsearchcomponent.operateur"),
                                 selectedValue = filter.operator,
                                 options = NutrientOperator.entries,
                                 onValueChange = { 
@@ -1497,7 +1497,7 @@ private fun NutrientFilterRow(
                                         val doubleValue = newText.replace(',', '.').toDoubleOrNull()
                                         onFilterChange(filter.copy(value = doubleValue))
                                 },
-                                placeholder = "Valeur",
+                                placeholder = translate("nutrientComponents.columnValue"),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.fillMaxWidth().height(40.dp)
                         )
@@ -1506,8 +1506,8 @@ private fun NutrientFilterRow(
                 IconButtonWithTooltip(
                         onClick = onRemove,
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Supprimer",
-                        tooltip = "Supprimer le filtre"
+                        contentDescription = translate("general.delete"),
+                        tooltip = translate("auto.view.components.foodsearchcomponent.supprimer_le_filtre")
                 )
         }
 }

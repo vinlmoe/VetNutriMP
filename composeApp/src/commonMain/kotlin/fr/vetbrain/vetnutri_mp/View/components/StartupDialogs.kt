@@ -44,7 +44,7 @@ fun UpdateDialog(
                 
                 databaseStatus?.let { status ->
                     Text(
-                        text = "État actuel :",
+                        text = translate("auto.view.components.startupdialogs.etat_actuel"),
                         style = MaterialTheme.typography.body2,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(bottom = 4.dp)

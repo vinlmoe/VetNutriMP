@@ -435,7 +435,7 @@ fun ReferenceEvEquationView(
                                                                                                         if (isEnercomp) {
                                                                                                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                                                                                                                 Text(
-                                                                                                                        text = "ENERCOMP",
+                                                                                                                        text = translate("auto.view.referenceevequationview.enercomp"),
                                                                                                                         style = MaterialTheme.typography.caption,
                                                                                                                         color = VetNutriColors.Secondary
                                                                                                                 )

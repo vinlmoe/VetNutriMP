@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.*
@@ -226,7 +227,7 @@ class ExamGradingViewModel(
         val criterionId = "analysis_nutrient_${label.lowercase().replace(Regex("[^a-z0-9]+"), "_")}"
         val criterion = FlexibleCriterionRule(
             id = criterionId,
-            label = "Nutriment $label",
+            label = translate("auto.viewmodel.examgradingviewmodel.nutrient_label", label),
             enabled = true,
             metric = FlexibleMetricKind.NUTRIENT_TOTAL,
             rationScope = scope,
@@ -640,27 +641,27 @@ class ExamGradingViewModel(
     private fun mapAnalysisMetric(metricId: ExamAnalysisMetricId): MetricMapping? {
         return when (metricId) {
             ExamAnalysisMetricId.WEIGHT_KG -> MetricMapping(
-                label = "Poids utilisé (kg)",
+                label = translate("auto.viewmodel.examgradingviewmodel.poids_utilise_kg"),
                 metricKind = FlexibleMetricKind.ANIMAL_WEIGHT_KG,
                 scope = RationScope.FIRST_PROPOSED
             )
             ExamAnalysisMetricId.BEC_KCAL -> MetricMapping(
-                label = "BEC (kcal/j)",
+                label = translate("auto.viewmodel.examgradingviewmodel.bec_kcal_j"),
                 metricKind = FlexibleMetricKind.BEE_KCAL,
                 scope = RationScope.FIRST_PROPOSED
             )
             ExamAnalysisMetricId.ENERGY_INTAKE_KCAL -> MetricMapping(
-                label = "Apport énergie ration (kcal)",
+                label = translate("auto.viewmodel.examgradingviewmodel.apport_energie_ration_kcal"),
                 metricKind = FlexibleMetricKind.ENERGY_INTAKE_KCAL,
                 scope = RationScope.FIRST_PROPOSED
             )
             ExamAnalysisMetricId.ENERGY_DENSITY_KCAL_100 -> MetricMapping(
-                label = "Densité énergie (kcal/100g)",
+                label = translate("auto.viewmodel.examgradingviewmodel.densite_energie_kcal_100g"),
                 metricKind = FlexibleMetricKind.ENERGY_DENSITY,
                 scope = RationScope.FIRST_PROPOSED
             )
             ExamAnalysisMetricId.PROTEIN_G -> MetricMapping(
-                label = "Protéines ration (g)",
+                label = translate("auto.viewmodel.examgradingviewmodel.proteines_ration_g"),
                 metricKind = FlexibleMetricKind.PROTEIN_INTAKE_G,
                 scope = RationScope.FIRST_PROPOSED
             )

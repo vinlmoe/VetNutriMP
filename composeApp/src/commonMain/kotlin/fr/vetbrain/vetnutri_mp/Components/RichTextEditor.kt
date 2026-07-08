@@ -437,7 +437,7 @@ private fun FontSizeSelector(currentSize: Int?, onSizeSelected: (Int?) -> Unit) 
                             onSizeSelected(size)
                             expanded = false
                         }
-                ) { Text("${size}pt", fontSize = size.sp) }
+                ) { Text(translate("auto.components.richtexteditor.arg_pt", (size).toString()), fontSize = size.sp) }
             }
         }
     }
@@ -543,7 +543,7 @@ private fun HeadingBlockEditor(block: TextBlock.Heading, onBlockChange: (TextBlo
     var text by remember(block.text) { mutableStateOf(block.text) }
 
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("H${block.level}", fontWeight = FontWeight.Bold)
+        Text(translate("auto.components.richtexteditor.h_arg", (block.level).toString()), fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.width(8.dp))
         BasicTextField(
                 value = text,

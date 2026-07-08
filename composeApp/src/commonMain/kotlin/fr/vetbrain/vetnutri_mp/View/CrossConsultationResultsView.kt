@@ -208,13 +208,13 @@ fun CrossConsultationResultsView(
 
     Column(modifier = modifier.fillMaxSize()) {
         TopBarSimple(
-                title = "Analyse des consultations",
+                title = translate("auto.view.crossconsultationresultsview.analyse_des_consultations"),
                 onNavigateBack = onNavigateBack
         ) {
             OutlinedButton(onClick = onNavigateBack) {
                 Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = null)
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Retour sélection")
+                Text(translate("auto.view.crossconsultationresultsview.retour_selection"))
             }
         }
         Divider()
@@ -225,7 +225,7 @@ fun CrossConsultationResultsView(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
             ) {
-                Text("Aucune sélection active. Revenez sur l'écran précédent.")
+                Text(translate("auto.view.crossconsultationresultsview.aucune_selection_active_revenez_sur_l_ecran_prec"))
             }
             return
         }
@@ -242,12 +242,12 @@ fun CrossConsultationResultsView(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
-                    Text("Rations", style = androidx.compose.material.MaterialTheme.typography.h6)
+                    Text(translate("crossConsultation.rationsLabel"), style = androidx.compose.material.MaterialTheme.typography.h6)
                     OutlinedButton(onClick = { showActual = true }, enabled = !showActual) {
-                        Text("Actuelles")
+                        Text(translate("auto.view.crossconsultationresultsview.actuelles"))
                     }
                     OutlinedButton(onClick = { showActual = false }, enabled = showActual) {
-                        Text("Proposées")
+                        Text(translate("auto.view.crossconsultationresultsview.proposees"))
                     }
                 }
                 Divider()
@@ -272,9 +272,9 @@ fun CrossConsultationResultsView(
                         contentColor = VetNutriColors.Primary
                 ) {
                     Tab(selected = rightTabIndex == 0, onClick = { rightTabIndex = 0 },
-                            text = { Text("Graphique") })
+                            text = { Text(translate("animalDetail.graph")) })
                     Tab(selected = rightTabIndex == 1, onClick = { rightTabIndex = 1 },
-                            text = { Text("Statistiques") })
+                            text = { Text(translate("auto.view.crossconsultationresultsview.statistiques")) })
                 }
 
                 if (rightTabIndex == 0) {
@@ -283,7 +283,7 @@ fun CrossConsultationResultsView(
                             horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
                             verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Nutriment / rapport :")
+                        Text(translate("auto.view.crossconsultationresultsview.nutriment_rapport"))
                         Box {
                             OutlinedButton(onClick = { metricMenuExpanded = true }) {
                                 Text("${selectedMetric.label} (${selectedMetric.unit})")
@@ -305,7 +305,7 @@ fun CrossConsultationResultsView(
                         }
                     }
                     DropdownField(
-                            label = "Expression des apports",
+                            label = translate("auto.view.crossconsultationresultsview.expression_des_apports"),
                             selectedValue = selectedExpression,
                             options = ApportExpression.entries,
                             onValueChange = { selectedExpression = it },
@@ -314,10 +314,10 @@ fun CrossConsultationResultsView(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
                         OutlinedButton(onClick = { showBoxplot = false }, enabled = showBoxplot) {
-                            Text("Barres")
+                            Text(translate("auto.view.crossconsultationresultsview.barres"))
                         }
                         OutlinedButton(onClick = { showBoxplot = true }, enabled = !showBoxplot) {
-                            Text("Boxplots")
+                            Text(translate("auto.view.crossconsultationresultsview.boxplots"))
                         }
                         if (showBoxplot) {
                             OutlinedButton(onClick = { showPoints = !showPoints }) {
@@ -391,7 +391,7 @@ private fun ConsultationBarChart(
 ) {
     if (items.isEmpty()) {
         Text(
-                "Aucune donnée à tracer. Sélectionnez des rations.",
+                translate("auto.view.crossconsultationresultsview.aucune_donnee_a_tracer_selectionnez_des_rations"),
                 style = androidx.compose.material.MaterialTheme.typography.body2,
                 modifier = Modifier.padding(horizontal = AppSizes.paddingMedium)
         )
@@ -555,7 +555,7 @@ private fun BoxPlotChart(
 ) {
     if (actualItems.isEmpty() && proposedItems.isEmpty()) {
         Text(
-                "Aucune donnée à tracer. Sélectionnez des rations.",
+                translate("auto.view.crossconsultationresultsview.aucune_donnee_a_tracer_selectionnez_des_rations"),
                 style = androidx.compose.material.MaterialTheme.typography.body2,
                 modifier = Modifier.padding(horizontal = AppSizes.paddingMedium)
         )
@@ -572,7 +572,7 @@ private fun BoxPlotChart(
                     .filter { it.isFinite() }
     if (actualValues.isEmpty() && proposedValues.isEmpty()) {
         Text(
-                "Aucune donnée à tracer. Sélectionnez des rations.",
+                translate("auto.view.crossconsultationresultsview.aucune_donnee_a_tracer_selectionnez_des_rations"),
                 style = androidx.compose.material.MaterialTheme.typography.body2,
                 modifier = Modifier.padding(horizontal = AppSizes.paddingMedium)
         )
@@ -581,7 +581,7 @@ private fun BoxPlotChart(
 
     val groups = listOf(
             BoxPlotGroup(
-                    label = "Actuelles",
+                    label = translate("auto.view.crossconsultationresultsview.actuelles"),
                     color = VetNutriColors.Primary,
                     stats = actualValues.takeIf { it.isNotEmpty() }?.let { computeBoxPlot(it) },
                     points = actualItems.map { item ->
@@ -593,7 +593,7 @@ private fun BoxPlotChart(
                     }
             ),
             BoxPlotGroup(
-                    label = "Proposées",
+                    label = translate("auto.view.crossconsultationresultsview.proposees"),
                     color = VetNutriColors.Secondary,
                     stats = proposedValues.takeIf { it.isNotEmpty() }?.let { computeBoxPlot(it) },
                     points = proposedItems.map { item ->
@@ -906,7 +906,7 @@ private fun NutrientStatsPanel(
                         },
                         enabled = stats.isNotEmpty()
                 ) {
-                    Text("Exporter statistiques CSV", fontSize = 12.sp)
+                    Text(translate("auto.view.crossconsultationresultsview.exporter_statistiques_csv"), fontSize = 12.sp)
                 }
             }
         }
@@ -914,7 +914,7 @@ private fun NutrientStatsPanel(
         if (stats.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                        "Aucune donnée disponible. Sélectionnez des rations.",
+                        translate("auto.view.crossconsultationresultsview.aucune_donnee_disponible_selectionnez_des_ration"),
                         color = Color.Gray,
                         style = MaterialTheme.typography.body2
                 )
@@ -928,15 +928,15 @@ private fun NutrientStatsPanel(
                         .background(MaterialTheme.colors.surface)
                         .padding(vertical = 4.dp, horizontal = 8.dp)
         ) {
-            Text("Nutriment", fontWeight = FontWeight.Bold, fontSize = 12.sp,
+            Text(translate("nutrientComponents.columnNutrient"), fontWeight = FontWeight.Bold, fontSize = 12.sp,
                     modifier = Modifier.weight(2.5f))
-            Text("Moy ± ET", fontWeight = FontWeight.Bold, fontSize = 12.sp,
+            Text(translate("auto.view.crossconsultationresultsview.moy_et"), fontWeight = FontWeight.Bold, fontSize = 12.sp,
                     modifier = Modifier.weight(2f))
-            Text("Médiane", fontWeight = FontWeight.Bold, fontSize = 12.sp,
+            Text(translate("auto.view.crossconsultationresultsview.mediane"), fontWeight = FontWeight.Bold, fontSize = 12.sp,
                     modifier = Modifier.weight(1.5f))
-            Text("Min", fontWeight = FontWeight.Bold, fontSize = 12.sp,
+            Text(translate("new_reference.level.min"), fontWeight = FontWeight.Bold, fontSize = 12.sp,
                     modifier = Modifier.weight(1f))
-            Text("Max", fontWeight = FontWeight.Bold, fontSize = 12.sp,
+            Text(translate("new_reference.level.max"), fontWeight = FontWeight.Bold, fontSize = 12.sp,
                     modifier = Modifier.weight(1f))
         }
         Divider()

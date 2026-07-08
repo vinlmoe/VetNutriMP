@@ -17,7 +17,7 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
-import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.datetime.*
@@ -71,7 +71,7 @@ fun ConsultationEditDialog(
 
                 if (showDateError) {
                     Text(
-                            text = "Format de date invalide (YYYY-MM-DD)",
+                            text = translate("auto.view.consultationeditdialog.format_de_date_invalide_yyyy_mm_dd"),
                             color = MaterialTheme.colors.error,
                             style = MaterialTheme.typography.caption
                     )
@@ -88,7 +88,7 @@ fun ConsultationEditDialog(
                             editedConsultation = editedConsultation.copy(date = today)
                             showDateError = false
                         }
-                ) { Text("Aujourd'hui") }
+                ) { Text(translate("general.today")) }
 
                 // Objectif
                 OutlinedTextField(
@@ -111,7 +111,7 @@ fun ConsultationEditDialog(
                 )
 
                 // Liste des rations
-                Text(text = "Rations", style = MaterialTheme.typography.subtitle1)
+                Text(text = translate("crossConsultation.rationsLabel"), style = MaterialTheme.typography.subtitle1)
 
                 LazyColumn(
                         modifier = Modifier.weight(1f),

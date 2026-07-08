@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -126,7 +127,7 @@ fun BulkReferenceEditorView(
                         ) {
                             Icon(
                                     imageVector = AppIcons.Close,
-                                    contentDescription = "Fermer",
+                                    contentDescription = translate("settings.close"),
                                     tint = VetNutriColors.Error,
                                     modifier = Modifier.size(14.dp)
                             )
@@ -172,14 +173,14 @@ fun BulkReferenceEditorView(
             OutlinedTextField(
                     value = nutrientFilter,
                     onValueChange = { nutrientFilter = it },
-                    placeholder = { Text("Filtrer les nutriments…", fontSize = 12.sp) },
+                    placeholder = { Text(translate("auto.view.bulkreferenceeditorview.filtrer_les_nutriments"), fontSize = 12.sp) },
                     leadingIcon = {
                         Icon(imageVector = AppIcons.Search, contentDescription = null, modifier = Modifier.size(16.dp))
                     },
                     trailingIcon = {
                         if (nutrientFilter.isNotEmpty()) {
                             IconButton(onClick = { nutrientFilter = "" }, modifier = Modifier.size(20.dp)) {
-                                Icon(imageVector = AppIcons.Close, contentDescription = "Effacer", modifier = Modifier.size(14.dp))
+                                Icon(imageVector = AppIcons.Close, contentDescription = translate("animalList.clearSearch"), modifier = Modifier.size(14.dp))
                             }
                         }
                     },
@@ -199,7 +200,7 @@ fun BulkReferenceEditorView(
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                        text = "Nutriment",
+                        text = translate("nutrientComponents.columnNutrient"),
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
                         modifier = Modifier.width(NUTRIENT_COL_WIDTH).padding(start = 8.dp)
@@ -232,7 +233,7 @@ fun BulkReferenceEditorView(
                                         ) {
                                             Icon(
                                                     imageVector = AppIcons.ContentCopy,
-                                                    contentDescription = "Copier colonne",
+                                                    contentDescription = translate("auto.view.bulkreferenceeditorview.copier_colonne"),
                                                     tint = VetNutriColors.Primary,
                                                     modifier = Modifier.size(14.dp)
                                             )
@@ -378,7 +379,7 @@ fun BulkReferenceEditorView(
                             contentDescription = null,
                             modifier = Modifier.size(16.dp).padding(end = 4.dp)
                     )
-                    Text("Valider", fontSize = 12.sp)
+                    Text(translate("general.validate"), fontSize = 12.sp)
                 }
 
                 // F4 — Export CSV
@@ -389,13 +390,13 @@ fun BulkReferenceEditorView(
                                 saveCsvFileForExport(csv, "references_export.csv")
                             }
                     ) {
-                        Text("Exporter CSV", fontSize = 12.sp)
+                        Text(translate("auto.view.crossconsultationgradingview.exporter_csv"), fontSize = 12.sp)
                     }
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                OutlinedButton(onClick = onNavigateBack) { Text("Annuler") }
+                OutlinedButton(onClick = onNavigateBack) { Text(translate("general.cancel")) }
 
                 Button(
                         onClick = {
@@ -411,7 +412,7 @@ fun BulkReferenceEditorView(
                                 contentColor = VetNutriColors.OnPrimary
                         )
                 ) {
-                    Text("Enregistrer tout")
+                    Text(translate("auto.view.bulkreferenceeditorview.enregistrer_tout"))
                 }
             }
         }
@@ -420,7 +421,7 @@ fun BulkReferenceEditorView(
         if (showSaveWithErrorsDialog) {
             AlertDialog(
                     onDismissRequest = { showSaveWithErrorsDialog = false },
-                    title = { Text("Incohérences détectées") },
+                    title = { Text(translate("auto.view.bulkreferenceeditorview.incoherences_detectees")) },
                     text = {
                         Text(
                                 "${consistencyErrors.size} incohérence${if (consistencyErrors.size > 1) "s" else ""} ont été détectée${if (consistencyErrors.size > 1) "s" else ""}. " +
@@ -437,11 +438,11 @@ fun BulkReferenceEditorView(
                                 colors = ButtonDefaults.buttonColors(
                                         backgroundColor = VetNutriColors.Primary
                                 )
-                        ) { Text("Enregistrer quand même", color = VetNutriColors.OnPrimary) }
+                        ) { Text(translate("auto.view.bulkreferenceeditorview.enregistrer_quand_meme"), color = VetNutriColors.OnPrimary) }
                     },
                     dismissButton = {
                         OutlinedButton(onClick = { showSaveWithErrorsDialog = false }) {
-                            Text("Annuler")
+                            Text(translate("general.cancel"))
                         }
                     }
             )

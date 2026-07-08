@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Components
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -67,7 +68,7 @@ fun DismissableBadge(
             IconButton(onClick = onDismiss, modifier = Modifier.size(16.dp)) {
                 Icon(
                         Icons.Default.Close,
-                        contentDescription = "Supprimer",
+                        contentDescription = translate("general.delete"),
                         tint = Color.Gray,
                         modifier = Modifier.size(12.dp)
                 )

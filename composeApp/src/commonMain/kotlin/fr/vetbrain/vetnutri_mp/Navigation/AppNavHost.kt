@@ -325,7 +325,7 @@ internal fun AppNavHost(
             Scaffold(
                 topBar = {
                     TopBarSimple(
-                        title = "Paramètres",
+                        title = translate("settings.title"),
                         onNavigateBack = { nav.navigate(Screen.List) }
                     )
                 }
@@ -426,7 +426,7 @@ internal fun AppNavHost(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        "TEST BOÎTE JAUNE\nCeci est un test de visibilité",
+                        translate("auto.navigation.appnavhost.test_boate_jaune_ceci_est_un_test_de_visibilita"),
                         style = MaterialTheme.typography.h4,
                         color = Color.Red,
                         textAlign = TextAlign.Center,
@@ -436,7 +436,7 @@ internal fun AppNavHost(
                     Button(
                         onClick = { nav.navigate(Screen.List) },
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color.Blue)
-                    ) { Text("Retour à la liste", color = Color.White) }
+                    ) { Text(translate("auto.navigation.appnavhost.retour_a_la_liste"), color = Color.White) }
                 }
             }
         }

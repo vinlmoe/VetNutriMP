@@ -1093,7 +1093,7 @@ fun ConeZoomView(
                     ) {
                         Text(date.toString(), style = MaterialTheme.typography.body2)
                         Text("${translate(LocalizationKeys.Graph.WEEK_LABEL)} ${GraphFormattingUtils.formatDecimal(week.toDouble(), 1)}", style = MaterialTheme.typography.body2)
-                        Text("${GraphFormattingUtils.formatDecimal(weight, 2)} kg", style = MaterialTheme.typography.body2, fontWeight = FontWeight.Bold)
+                        Text(translate("animalDetail.weightKgFormat", (GraphFormattingUtils.formatDecimal(weight, 2)).toString()), style = MaterialTheme.typography.body2, fontWeight = FontWeight.Bold)
                     }
                     Divider(color = Color.LightGray.copy(alpha = 0.5f))
                 }

@@ -66,7 +66,7 @@ fun NutrientPieChart(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Chargement des données...",
+                    text = translate("auto.view.analysegraphiquealimentsview.chargement_des_donnees"),
                     style = MaterialTheme.typography.body2,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                 )

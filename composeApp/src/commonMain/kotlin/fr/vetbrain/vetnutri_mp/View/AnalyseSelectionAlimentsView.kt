@@ -697,8 +697,8 @@ private fun AlimentItem(
                 IconButtonWithTooltip(
                     onClick = onAdd,
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Ajouter",
-                    tooltip = "Ajouter"
+                    contentDescription = translate("general.add"),
+                    tooltip = translate("general.add")
                 )
             }
             
@@ -706,8 +706,8 @@ private fun AlimentItem(
                 IconButtonWithTooltip(
                     onClick = onRemove,
                     imageVector = Icons.Default.Remove,
-                    contentDescription = "Retirer",
-                    tooltip = "Retirer"
+                    contentDescription = translate("new_reference.remove_association"),
+                    tooltip = translate("new_reference.remove_association")
                 )
             }
         }
@@ -832,7 +832,7 @@ private fun AlimentsSelectionnesCompactSection(
             
             if (alimentsSelectionnes.isEmpty()) {
                 Text(
-                    text = "Aucun aliment sélectionné",
+                    text = translate("auto.view.analyseselectionalimentsview.aucun_aliment_selectionne"),
                     style = MaterialTheme.typography.caption,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
                     modifier = Modifier.padding(AppSizes.paddingSmall)

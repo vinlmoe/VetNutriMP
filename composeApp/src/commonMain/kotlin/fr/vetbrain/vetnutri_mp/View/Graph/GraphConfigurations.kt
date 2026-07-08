@@ -19,16 +19,16 @@ object GraphConfigurations {
         preferencesEspece: PreferencesEspece
     ): GraphConfig {
         return GraphConfig(
-            title = "Répartition énergétique - Protéines vs Lipides",
+            title = translate("auto.view.graph.graphconfigurations.repartition_energetique_proteines_vs_lipides"),
             type = GraphType.SCATTER_PLOT,
             xAxis = AxisConfig(
-                label = "% énergie protéines",
+                label = translate("auto.view.graph.graphconfigurations.energie_proteines"),
                 unit = "%",
                 minValue = 0f,
                 maxValue = 100f
             ),
             yAxis = AxisConfig(
-                label = "% énergie lipides", 
+                label = translate("auto.view.graph.graphconfigurations.energie_lipides"), 
                 unit = "%",
                 minValue = 0f,
                 maxValue = 100f
@@ -56,14 +56,14 @@ object GraphConfigurations {
         preferencesEspece: PreferencesEspece
     ): GraphConfig {
         return GraphConfig(
-            title = "Phosphore vs Protéines pour 1000 kcal",
+            title = translate("auto.view.graph.graphconfigurations.phosphore_vs_proteines_pour_1000_kcal"),
             type = GraphType.SCATTER_PLOT,
             xAxis = AxisConfig(
-                label = "Phosphore",
+                label = translate("enum.NutrientMacro.PHOS"),
                 unit = "mg/1000kcal"
             ),
             yAxis = AxisConfig(
-                label = "Protéines",
+                label = translate("chart.label.protein"),
                 unit = "g/1000kcal"
             ),
             calculateX = { aliment ->
@@ -91,12 +91,12 @@ object GraphConfigurations {
         return listOf(
             GraphTab(
                 id = "protein_lipid_energy",
-                title = "Protéines/Lipides",
+                title = translate("auto.view.graph.graphconfigurations.proteines_lipides"),
                 config = createProteinLipidEnergyGraph(referenceEv, preferencesEspece)
             ),
             GraphTab(
                 id = "phosphore_protein_1000kcal",
-                title = "Phosphore/Protéines",
+                title = translate("auto.view.analysegraphiquealimentsview.phosphore_proteines"),
                 config = createPhosphoreProteinPer1000KcalGraph(referenceEv, preferencesEspece)
             )
         )

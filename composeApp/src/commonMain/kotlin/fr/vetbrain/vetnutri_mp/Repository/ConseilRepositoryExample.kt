@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Export.*
 
@@ -46,7 +47,7 @@ class ConseilRepositoryExample(private val database: AppDatabase) {
         val conseil =
                 HtmlSection(
                         id = "conseil_nutrition_chien_001",
-                        title = "Conseils nutritionnels pour chiens",
+                        title = translate("auto.repository.conseilrepositoryexample.conseils_nutritionnels_pour_chiens"),
                         content = contenu,
                         category = SectionCategory.CONSEIL_NUTRITIONNEL,
                         tags = listOf("nutrition", "chien", "alimentation", "santé"),
@@ -92,7 +93,7 @@ class ConseilRepositoryExample(private val database: AppDatabase) {
         val template =
                 HtmlSection(
                         id = "template_hygiene_generique",
-                        title = "Template conseils d'hygiène",
+                        title = translate("auto.repository.conseilrepositoryexample.template_conseils_d_hygiene"),
                         content = contenu,
                         category = SectionCategory.CONSEIL_HYGIENE,
                         tags = listOf("hygiène", "template", "soins"),

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -118,7 +119,7 @@ fun SelectionDialog(
                                         IconButton(onClick = onDismiss) {
                                                 Icon(
                                                         imageVector = Icons.Default.Close,
-                                                        contentDescription = "Fermer"
+                                                        contentDescription = translate("settings.close")
                                                 )
                                         }
                                 }
@@ -126,7 +127,7 @@ fun SelectionDialog(
                                 OutlinedTextField(
                                         value = searchQuery,
                                         onValueChange = { searchQuery = it },
-                                        label = { Text("Rechercher") },
+                                        label = { Text(translate("consultation.edit.ref.search_tooltip")) },
                                         leadingIcon = {
                                                 Icon(
                                                         imageVector = Icons.Default.Search,
@@ -143,7 +144,7 @@ fun SelectionDialog(
                                                                 Icon(
                                                                         imageVector =
                                                                                 Icons.Default.Clear,
-                                                                        contentDescription = "Effacer"
+                                                                        contentDescription = translate("animalList.clearSearch")
                                                                 )
                                                         }
                                                 }
@@ -289,7 +290,7 @@ fun SelectionDialog(
                                         horizontalArrangement = Arrangement.End
                                 ) {
                                         OutlinedButton(onClick = onDismiss) {
-                                                Text("Annuler")
+                                                Text(translate("general.cancel"))
                                         }
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Button(onClick = { onConfirm(selectedIds) }) {
@@ -373,16 +374,16 @@ private fun SelectionItemRow(
                                 IconButtonWithTooltip(
                                         onClick = { onAdd(item) },
                                         imageVector = Icons.Default.Add,
-                                        contentDescription = "Ajouter",
-                                        tooltip = "Ajouter"
+                                        contentDescription = translate("general.add"),
+                                        tooltip = translate("general.add")
                                 )
                         }
                         if (showRemove && onRemove != null) {
                                 IconButtonWithTooltip(
                                         onClick = { onRemove(item) },
                                         imageVector = Icons.Default.Remove,
-                                        contentDescription = "Retirer",
-                                        tooltip = "Retirer"
+                                        contentDescription = translate("new_reference.remove_association"),
+                                        tooltip = translate("new_reference.remove_association")
                                 )
                         }
                 }
@@ -404,13 +405,13 @@ private fun SelectionActionButtons(
                 Button(onClick = onAddAll, enabled = enableAddAll) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Tout ajouter", style = MaterialTheme.typography.caption)
+                        Text(translate("chart.addAll"), style = MaterialTheme.typography.caption)
                 }
                 Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                 Button(onClick = onRemoveAll, enabled = enableRemoveAll) {
                         Icon(Icons.Default.Remove, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Tout retirer", style = MaterialTheme.typography.caption)
+                        Text(translate("chart.removeAll"), style = MaterialTheme.typography.caption)
                 }
         }
 }

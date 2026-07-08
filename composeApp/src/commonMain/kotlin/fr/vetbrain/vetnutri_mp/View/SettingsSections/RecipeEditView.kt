@@ -333,7 +333,7 @@ private fun RecipeIngredientItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Quantité (g):",
+                    text = translate("auto.view.settingssections.recipeeditview.quantite_g"),
                     style = MaterialTheme.typography.caption,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier.width(70.dp)
@@ -358,7 +358,7 @@ private fun RecipeIngredientItem(
                 ) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "Supprimer",
+                        contentDescription = translate("general.delete"),
                         tint = MaterialTheme.colors.error,
                         modifier = Modifier.size(16.dp)
                     )
@@ -390,7 +390,7 @@ private fun RecipeListSection(
         BasicAppTextField(
             value = searchQuery,
             onValueChange = { viewModel.updateSearchQuery(it) },
-            placeholder = "Rechercher une recette...",
+            placeholder = translate("auto.view.settingssections.recipeeditview.rechercher_une_recette"),
             leadingIcon = Icons.Default.Search,
             modifier = Modifier.fillMaxWidth()
         )
@@ -409,7 +409,7 @@ private fun RecipeListSection(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Aucune recette trouvée",
+                    text = translate("auto.view.settingssections.recipeeditview.aucune_recette_trouvee"),
                     style = MaterialTheme.typography.body1,
                     color = Color.Gray
                 )
@@ -470,7 +470,7 @@ private fun RecipeListItem(
                     ) {
                         Icon(
                             Icons.Default.ContentCopy,
-                            contentDescription = "Dupliquer",
+                            contentDescription = translate("ration.duplicateAction"),
                             tint = VetNutriColors.Secondary,
                             modifier = Modifier.size(16.dp)
                         )
@@ -482,7 +482,7 @@ private fun RecipeListItem(
                     ) {
                         Icon(
                             Icons.Default.Edit,
-                            contentDescription = "Éditer",
+                            contentDescription = translate("general.edit"),
                             tint = VetNutriColors.Primary,
                             modifier = Modifier.size(16.dp)
                         )
@@ -494,7 +494,7 @@ private fun RecipeListItem(
                     ) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "Supprimer",
+                            contentDescription = translate("general.delete"),
                             tint = MaterialTheme.colors.error,
                             modifier = Modifier.size(16.dp)
                         )
@@ -574,7 +574,7 @@ private fun MessageCard(
             IconButton(onClick = onDismiss) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "Fermer",
+                    contentDescription = translate("settings.close"),
                     tint = Color.Gray
                 )
             }
@@ -593,9 +593,9 @@ private fun DeleteRecipeDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Confirmer la suppression") },
+        title = { Text(translate("new_reference.confirm_delete_title")) },
         text = { 
-            Text("Êtes-vous sûr de vouloir supprimer la recette \"${recipe.name}\" ? Cette action est irréversible.")
+            Text(translate("auto.view.settingssections.recipeeditview.etes_vous_sur_de_vouloir_supprimer_la_recette_arg", (recipe.name).toString()))
         },
         confirmButton = {
             Button(
@@ -604,12 +604,12 @@ private fun DeleteRecipeDialog(
                     backgroundColor = MaterialTheme.colors.error
                 )
             ) {
-                Text("Supprimer")
+                Text(translate("general.delete"))
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Annuler")
+                Text(translate("general.cancel"))
             }
         }
     )
@@ -625,9 +625,9 @@ private fun SaveRecipeDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Confirmer la sauvegarde") },
+        title = { Text(translate("auto.view.settingssections.recipeeditview.confirmer_la_sauvegarde")) },
         text = { 
-            Text("Voulez-vous sauvegarder cette recette ?")
+            Text(translate("auto.view.settingssections.recipeeditview.voulez_vous_sauvegarder_cette_recette"))
         },
         confirmButton = {
             Button(
@@ -636,12 +636,12 @@ private fun SaveRecipeDialog(
                     backgroundColor = VetNutriColors.Primary
                 )
             ) {
-                Text("Sauvegarder")
+                Text(translate("general.save"))
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Annuler")
+                Text(translate("general.cancel"))
             }
         }
     )
