@@ -624,13 +624,13 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "3rd Party Mac Developer Application";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = Aussie;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = N8M75AVX29;
-				"DEVELOPMENT_TEAM[sdk=macosx*]" = N8M75AVX29;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -651,10 +651,10 @@
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=*]" = fr.vetbrain.vetnutri;
 				PRODUCT_NAME = "${APP_NAME}";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "vetnutri ios2";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = Appstore2;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = 0726prof;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "";
 				REGISTER_APP_GROUPS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -670,13 +670,13 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "3rd Party Mac Developer Application";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = Aussie;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
 				DEVELOPMENT_TEAM = N8M75AVX29;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = N8M75AVX29;
-				"DEVELOPMENT_TEAM[sdk=macosx*]" = N8M75AVX29;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -700,10 +700,10 @@
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = fr.vetbrain.vetnutri;
 				PRODUCT_NAME = "${APP_NAME}";
 				PROVISIONING_PROFILE_SPECIFIER = "VetNutri ios";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "vetnutri ios2";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = Appstore2;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = 0726prof;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "";
 				REGISTER_APP_GROUPS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
