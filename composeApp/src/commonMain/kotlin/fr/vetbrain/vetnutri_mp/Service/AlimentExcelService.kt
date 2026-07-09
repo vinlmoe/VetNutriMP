@@ -540,7 +540,7 @@ class AlimentExcelService {
      * Échappe les valeurs CSV qui contiennent des caractères spéciaux
      */
     private fun escapeCsvValue(value: String): String {
-        return if (value.contains(";") || value.contains("\"") || value.contains("\n")) {
+        return if (value.contains(";") || value.contains("\"") || value.contains("\n") || value.contains("\r")) {
             "\"${value.replace("\"", "\"\"")}\""
         } else {
             value
