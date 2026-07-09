@@ -32,6 +32,7 @@ import fr.vetbrain.vetnutri_mp.Data.calculerBesoinAbsolu
 import fr.vetbrain.vetnutri_mp.Data.convertirVersUnitePreferences
 import fr.vetbrain.vetnutri_mp.Data.hasDefaultEnergyReferenceLevels
 import fr.vetbrain.vetnutri_mp.Data.defaultEnergyReferenceLevel
+import fr.vetbrain.vetnutri_mp.Data.calculerContributionsIngredients
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -405,32 +406,20 @@ fun ReferenceBulletGraph(
 
         LaunchedEffect(ration, nutriment, reference, equationRepository, valeurApport) {
                 contributionSegments =
-                        if (ration == null ||
-                                        valeurApport <= 0.0 ||
-                                        nutriment is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
-                        ) {
+                        if (ration == null || valeurApport <= 0.0) {
                                 emptyList()
                         } else {
-                                ration.alimentMutableList.mapIndexedNotNull { index, alimentRation ->
-                                        val contribution =
-                                                calculateContributionForGraph(
-                                                        alimentRation = alimentRation,
-                                                        nutriment = nutriment,
-                                                        reference = reference,
-                                                        equationRepository = equationRepository
-                                                )
-                                        if (contribution > 0.0) {
-                                                ContributionSegment(
-                                                        index = index,
-                                                        contribution = contribution,
-                                                        color =
-                                                                fr.vetbrain.vetnutri_mp.Theme
-                                                                        .VetNutriColors
-                                                                        .getFeedColor(index)
-                                                )
-                                        } else {
-                                                null
-                                        }
+                                calculerContributionsIngredients(
+                                        ration, nutriment, reference, equationRepository
+                                ).map { (index, contribution) ->
+                                        ContributionSegment(
+                                                index = index,
+                                                contribution = contribution,
+                                                color =
+                                                        fr.vetbrain.vetnutri_mp.Theme
+                                                                .VetNutriColors
+                                                                .getFeedColor(index)
+                                        )
                                 }
                         }
         }
@@ -730,40 +719,8 @@ private data class ContributionData(
         val alimentIndex: Int
 )
 
-private suspend fun calculateContributionForGraph(
-        alimentRation: fr.vetbrain.vetnutri_mp.Data.AlimentRation,
-        nutriment: Nutrient,
-        reference: ReferenceEv?,
-        equationRepository: EquationRepository?
-): Double {
-        val quantiteIngredient = alimentRation.quantite
-        if (quantiteIngredient <= 0.0) return 0.0
-
-        if (nutriment == fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE) {
-                return alimentRation.getEnergie(reference, equationRepository)
-        }
-
-        val valeurPour100g =
-                alimentRation.getNutrientWithComplementary(
-                        nutrient = nutriment,
-                        preferences = null,
-                        equationRepository = equationRepository,
-                        referenceEv = reference
-                ) ?: 0.0
-
-        val valeurConvertie =
-                if (nutriment is fr.vetbrain.vetnutri_mp.Enumer.AAEnum) {
-                        val teneurProteines =
-                                alimentRation.aliment?.getNutrient(
-                                        fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE
-                                ) ?: 0.0
-                        (valeurPour100g * teneurProteines) / 100.0
-                } else {
-                        valeurPour100g
-                }
-
-        return (valeurConvertie * quantiteIngredient) / 100.0
-}
+// calculateContributionForGraph vit maintenant dans Data/NutrientDisplayCalculations.kt
+// (calculerContributionIngredient/calculerContributionsIngredients), partagé avec l'export PDF.
 
 @Composable
 private fun ContributionsList(
