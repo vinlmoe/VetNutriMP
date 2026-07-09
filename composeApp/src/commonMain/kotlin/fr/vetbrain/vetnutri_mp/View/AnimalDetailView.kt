@@ -86,9 +86,8 @@ private data class PractitionerContact(
 )
 
 internal fun formatAlimentDisplayName(aliment: AlimentEv?): String {
-        if (aliment == null) return translate(AnimalDetail.CR_INGREDIENT_LABEL)
-        fun debugChars(input: String): String =
-                input.map { c -> "${c.code.toString(16).padStart(4, '0')}(${c})" }.joinToString(" ")
+        val fallback = "Ingredient"
+        if (aliment == null) return fallback
         fun clean(value: String?): String? {
                 if (value == null) return null
                 var normalized = value.trim()
@@ -121,7 +120,7 @@ internal fun formatAlimentDisplayName(aliment: AlimentEv?): String {
                                         semantic != "none" &&
                                         semantic != "na"
                         }
-        val result = if (parts.isEmpty()) translate(AnimalDetail.CR_INGREDIENT_LABEL) else parts.joinToString(", ")
+        val result = if (parts.isEmpty()) fallback else parts.joinToString(", ")
         return result
 }
 
