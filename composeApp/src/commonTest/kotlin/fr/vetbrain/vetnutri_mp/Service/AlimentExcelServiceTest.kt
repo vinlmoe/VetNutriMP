@@ -102,4 +102,68 @@ class AlimentExcelServiceTest {
         assertTrue(csv.contains("Énergie par Espèce"))
         assertTrue(csv.contains("CHIEN:340.0;CHAT:330.0"))
     }
+
+    // ── Sauts de ligne dans les champs texte ────────────────────────────────
+
+    @Test
+    fun exportToCsv_ingredientsWithEmbeddedNewline_isQuoted() {
+        val aliment = AlimentEv(nom = "Test", ingredients = "Poulet\nRiz\nMaïs")
+        val csv = service.exportToCsv(listOf(aliment))
+        assertTrue(csv.contains("\"Poulet\nRiz\nMaïs\""))
+    }
+
+    @Test
+    fun exportThenImport_ingredientsWithEmbeddedNewline_roundTrips() {
+        val original = AlimentEv(nom = "Test", ingredients = "Poulet\nRiz\nMaïs")
+        val csv = service.exportToCsv(listOf(original))
+
+        val result = service.importFromCsv(csv)
+
+        assertEquals(emptyList(), result.errors)
+        assertEquals(1, result.aliments.size)
+        assertEquals("Poulet\nRiz\nMaïs", result.aliments.first().ingredients)
+    }
+
+    @Test
+    fun exportThenImport_ingredientsWithWindowsLineEnding_roundTrips() {
+        val original = AlimentEv(nom = "Test", ingredients = "Poulet\r\nRiz\r\nMaïs")
+        val csv = service.exportToCsv(listOf(original))
+
+        val result = service.importFromCsv(csv)
+
+        assertEquals(1, result.aliments.size)
+        assertEquals("Poulet\r\nRiz\r\nMaïs", result.aliments.first().ingredients)
+    }
+
+    @Test
+    fun exportThenImport_ingredientsWithLoneCarriageReturn_roundTrips() {
+        // Retour chariot isolé (sans saut de ligne) : ancien format Mac / saisie non normalisée.
+        // Doit être protégé par des guillemets à l'export, sinon il casserait le découpage des
+        // lignes CSV à la réimportation.
+        val original = AlimentEv(nom = "Test", ingredients = "Poulet\rRiz\rMaïs")
+        val csv = service.exportToCsv(listOf(original))
+
+        assertTrue(csv.contains("\"Poulet\rRiz\rMaïs\""))
+
+        val result = service.importFromCsv(csv)
+
+        assertEquals(emptyList(), result.errors)
+        assertEquals(1, result.aliments.size)
+        assertEquals("Poulet\rRiz\rMaïs", result.aliments.first().ingredients)
+    }
+
+    @Test
+    fun exportThenImport_multilineFieldDoesNotCorruptOtherAliments() {
+        val avecSautDeLigne = AlimentEv(nom = "Aliment Multiligne", ingredients = "Poulet\nRiz")
+        val suivant = AlimentEv(nom = "Aliment Suivant", ingredients = "Simple")
+        val csv = service.exportToCsv(listOf(avecSautDeLigne, suivant))
+
+        val result = service.importFromCsv(csv)
+
+        assertEquals(emptyList(), result.errors)
+        assertEquals(2, result.aliments.size)
+        val parNom = result.aliments.associateBy { it.nom }
+        assertEquals("Poulet\nRiz", parNom["Aliment Multiligne"]?.ingredients)
+        assertEquals("Simple", parNom["Aliment Suivant"]?.ingredients)
+    }
 }
