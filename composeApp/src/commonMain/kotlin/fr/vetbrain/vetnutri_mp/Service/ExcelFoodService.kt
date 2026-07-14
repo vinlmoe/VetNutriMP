@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Service
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AlimentExcelRow
+import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodImportResult
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
@@ -14,7 +15,8 @@ import kotlinx.coroutines.withContext
  * Utilise le FoodRepository pour la persistance des données
  */
 class ExcelFoodService(
-    private val foodRepository: FoodRepository
+    private val foodRepository: FoodRepository,
+    private val biblioRefRepository: BiblioRefRepository? = null
 ) {
     private val csvService = AlimentExcelService()
 
@@ -60,7 +62,19 @@ class ExcelFoodService(
         }
 
         try {
-            
+            // Les BiblioRef portées par les lignes CSV doivent exister dans la bibliothèque
+            // avant que importFoodsDomain n'écrive les jonctions aliment<->biblio (contrainte FK)
+            if (biblioRefRepository != null) {
+                val distinctBiblioRefs = parseResult.aliments
+                    .flatMap { it.biblioRefs }
+                    .distinctBy { it.uuid }
+                distinctBiblioRefs.forEach { ref ->
+                    try {
+                        biblioRefRepository.insertBiblioRef(ref)
+                    } catch (_: Exception) {}
+                }
+            }
+
             // Utiliser le repository pour l'import avec persistance complète des nutriments
             val importResult = if (foodRepository is fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository) {
                 // Utiliser importFoodsDomain pour la persistance complète (aliments + nutriments)
