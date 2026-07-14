@@ -137,7 +137,8 @@ class AlimentExcelService {
             "Espèces",
             "Énergie par Espèce",
             "Indications",
-            "UUID Ration"
+            "UUID Ration",
+            "Bibliographie"
         )
 
         // Ajouter les colonnes de nutriments avec unité dans l'en-tête
@@ -211,7 +212,8 @@ class AlimentExcelService {
             escapeCsvValue(row.especes ?: ""),
             escapeCsvValue(AlimentExcelRow.encodeEnergieParEspece(row.energieParEspece)),
             escapeCsvValue(row.indications ?: ""),
-            escapeCsvValue(row.rationUUID ?: "")
+            escapeCsvValue(row.rationUUID ?: ""),
+            escapeCsvValue(row.biblioRefsJson ?: "")
         )
 
         // Ajouter les valeurs des nutriments
@@ -350,8 +352,11 @@ class AlimentExcelService {
 
         // Ration
         val rationUUID = headerValueMap["UUID Ration"]?.takeIf { it.isNotBlank() }
-        
+
         logInfo("Ration UUID: '$rationUUID'")
+
+        // Bibliographie (JSON encodé dans une seule cellule)
+        val biblioRefsJson = headerValueMap["Bibliographie"]?.takeIf { it.isNotBlank() }
 
         // Nutriments - correspondance robuste par résolution de label
         val nutrimentsMap = mutableMapOf<String, Double?>()
@@ -374,7 +379,8 @@ class AlimentExcelService {
                 "Espèces",
                 "Énergie par Espèce",
                 "Indications",
-                "UUID Ration"
+                "UUID Ration",
+                "Bibliographie"
         )
 
         logInfo("Traitement des nutriments...")
@@ -448,7 +454,8 @@ class AlimentExcelService {
             indications = indications,
             rationUUID = rationUUID,
             nutriments = nutrimentsMap,
-            energieParEspece = energieParEspece
+            energieParEspece = energieParEspece,
+            biblioRefsJson = biblioRefsJson
         )
     }
 

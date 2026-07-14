@@ -345,9 +345,18 @@ internal fun AppNavHost(
                     },
                     onBackupClick = { nav.navigate(Screen.BackupRestore) },
                     onLegacyMigrationClick = { nav.navigate(Screen.LegacyMigration) },
+                    onBulkBiblioClick = { nav.navigate(Screen.BulkAddBiblioToFoods) },
                     isExamMode = examSession != null
                 )
             }
+        }
+
+        Screen.BulkAddBiblioToFoods -> {
+            BulkAddBiblioToFoodsView(
+                viewModel = models.bulkAddBiblioToFoodsViewModel,
+                onNavigateBack = { nav.navigate(Screen.Settings) },
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
         Screen.SpeciesPreferences -> {

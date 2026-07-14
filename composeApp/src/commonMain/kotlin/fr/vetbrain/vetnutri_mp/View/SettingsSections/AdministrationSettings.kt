@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LibraryAdd
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
@@ -37,6 +38,7 @@ fun AdministrationSettings(
         onFoodListRefresh: () -> Unit,
         onBackupClick: () -> Unit = {},
         onLegacyMigrationClick: () -> Unit = {},
+        onBulkBiblioClick: () -> Unit = {},
         modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -153,6 +155,20 @@ fun AdministrationSettings(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(translate(LocalizationKeys.Administration.IMPORT_LEGACY))
+                        }
+
+                        // Bouton d'ajout en masse de bibliographie aux aliments
+                        OutlinedButton(
+                                onClick = onBulkBiblioClick,
+                                modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                    imageVector = Icons.Default.LibraryAdd,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Ajouter une bibliographie en masse")
                         }
 
                         // Affichage du résultat de l'import automatique

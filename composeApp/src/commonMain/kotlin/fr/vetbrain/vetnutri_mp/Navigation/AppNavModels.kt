@@ -11,6 +11,7 @@ import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.BackupRestoreViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.BiblioRefViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.BulkAddBiblioToFoodsViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.BulkReferenceEditorViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.CrossConsultationAnalysisViewModel
@@ -40,7 +41,8 @@ internal data class AppNavModels(
     val crossAnalysisViewModel: CrossConsultationAnalysisViewModel,
     val bulkReferenceEditorViewModel: BulkReferenceEditorViewModel,
     val backupRestoreViewModel: BackupRestoreViewModel?,
-    val legacyMigrationViewModel: LegacyMigrationViewModel
+    val legacyMigrationViewModel: LegacyMigrationViewModel,
+    val bulkAddBiblioToFoodsViewModel: BulkAddBiblioToFoodsViewModel
 )
 
 internal data class AppNavRepositories(
