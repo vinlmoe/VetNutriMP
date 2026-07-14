@@ -63,7 +63,7 @@ class RationConstraintAdjusterTest {
             poidsAnimal = 10.0,
             poidsMetabolique = 5.6,
             equationRepository = null,
-            selectedNutrients = listConstrainableNutrients(ref).toSet()
+            selectedNutrients = listConstrainableNutrients(ref, ration).toSet()
         )
 
         assertTrue(result.success, "Expected success but got: ${result.message}")
@@ -103,7 +103,7 @@ class RationConstraintAdjusterTest {
             poidsAnimal = 10.0,
             poidsMetabolique = 5.6,
             equationRepository = null,
-            selectedNutrients = listConstrainableNutrients(ref).toSet()
+            selectedNutrients = listConstrainableNutrients(ref, ration).toSet()
         )
 
         assertTrue(result.success, "Expected success but got: ${result.message}")
@@ -137,7 +137,7 @@ class RationConstraintAdjusterTest {
             poidsAnimal = 10.0,
             poidsMetabolique = 5.6,
             equationRepository = null,
-            selectedNutrients = listConstrainableNutrients(ref).toSet()
+            selectedNutrients = listConstrainableNutrients(ref, ration).toSet()
         )
 
         assertTrue(result.success, "Expected success but got: ${result.message}")
@@ -174,7 +174,7 @@ class RationConstraintAdjusterTest {
             poidsAnimal = 10.0,
             poidsMetabolique = 5.6,
             equationRepository = null,
-            selectedNutrients = listConstrainableNutrients(ref).toSet()
+            selectedNutrients = listConstrainableNutrients(ref, ration).toSet()
         )
 
         assertTrue(!result.success)
@@ -206,7 +206,7 @@ class RationConstraintAdjusterTest {
             poidsAnimal = 10.0,
             poidsMetabolique = 5.6,
             equationRepository = null,
-            selectedNutrients = listConstrainableNutrients(ref).toSet()
+            selectedNutrients = listConstrainableNutrients(ref, ration).toSet()
         )
 
         assertTrue(result.success, "Ratio-type nutrients must be excluded from automatic constraints: ${result.message}")
@@ -231,7 +231,7 @@ class RationConstraintAdjusterTest {
             poidsAnimal = 10.0,
             poidsMetabolique = 5.6,
             equationRepository = null,
-            selectedNutrients = listConstrainableNutrients(ref).toSet()
+            selectedNutrients = listConstrainableNutrients(ref, ration).toSet()
         )
 
         assertTrue(!result.success)
@@ -239,15 +239,34 @@ class RationConstraintAdjusterTest {
 
     @Test
     fun listConstrainableNutrients_includesMinMaxNutrientsAndEnergyButExcludesRatios() {
+        val foodA = food("A", proteinPer100g = 20.0, energyPer100g = 400.0)
+        val ration = Ration(alimentMutableList = mutableListOf(AlimentRation(quantite = 100.0, aliment = foodA)))
+
         val ref = makeReference()
         defineAbsolute(ref, NutrientMain.PROTEINE, Reflevel.MIN, 45.0)
         defineAbsolute(ref, NutrientAnalysis.PCa, Reflevel.MIN, 1.0)
 
-        val constrainable = listConstrainableNutrients(ref)
+        val constrainable = listConstrainableNutrients(ref, ration)
 
         assertTrue(constrainable.contains(NutrientMain.PROTEINE))
         assertTrue(constrainable.contains(NutrientMain.ENERGIE))
         assertTrue(constrainable.none { it is NutrientAnalysis })
+    }
+
+    @Test
+    fun listConstrainableNutrients_excludesNutrientAbsentFromEveryAliment() {
+        val foodA = food("A", proteinPer100g = 20.0, energyPer100g = 400.0)
+        val ration = Ration(alimentMutableList = mutableListOf(AlimentRation(quantite = 100.0, aliment = foodA)))
+
+        val ref = makeReference()
+        defineAbsolute(ref, NutrientMain.PROTEINE, Reflevel.MIN, 45.0)
+        // No food carries a Calcium value, even though the reference defines a bound for it.
+        defineAbsolute(ref, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL, Reflevel.MIN, 2.0)
+
+        val constrainable = listConstrainableNutrients(ref, ration)
+
+        assertTrue(constrainable.contains(NutrientMain.PROTEINE))
+        assertTrue(!constrainable.contains(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL))
     }
 
     @Test

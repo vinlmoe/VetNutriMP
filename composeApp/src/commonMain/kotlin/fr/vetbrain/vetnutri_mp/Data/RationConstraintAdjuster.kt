@@ -38,13 +38,25 @@ fun computeAbsoluteGramNeed(
 }
 
 /**
- * Liste les nutriments "contraignables" pour une référence donnée : ceux ayant une borne
- * MIN/OPTIMIN et/ou MAX/OPTIMAX définie (hors nutriments de type ratio, cf. [adjustRationByConstraints]),
- * plus l'énergie (toujours contraignable puisque son besoin absolu est connu indépendamment de la
- * référence). Sert à peupler la sélection de nutriments proposée à l'utilisateur avant de lancer
- * l'ajustement par contraintes.
+ * Liste les nutriments "contraignables" pour une référence et une ration données : ceux ayant une
+ * borne MIN/OPTIMIN et/ou MAX/OPTIMAX définie dans [referenceUtilisee] (hors nutriments de type
+ * ratio, cf. [adjustRationByConstraints]) ET présents avec une valeur non nulle dans au moins un
+ * aliment de [ration] — une contrainte sur un nutriment absent de tous les aliments n'aurait que
+ * des coefficients nuls et ne pourrait jamais être satisfaite si c'est une borne inférieure.
+ * L'énergie est toujours contraignable, indépendamment de sa présence dans `valMap` (son besoin
+ * absolu est connu par ailleurs et peut être dérivé d'équations, cf. [AlimentRation.getEnergie]).
+ * Sert à peupler la sélection de nutriments proposée à l'utilisateur avant de lancer l'ajustement
+ * par contraintes.
  */
-fun listConstrainableNutrients(referenceUtilisee: ReferenceEv): List<Nutrient> {
+fun listConstrainableNutrients(referenceUtilisee: ReferenceEv, ration: Ration): List<Nutrient> {
+        val presentInAtLeastOneAliment =
+                ration.alimentMutableList
+                        .mapNotNull { it.aliment }
+                        .flatMap { it.valMap.entries }
+                        .filter { it.value.value > 0.0 }
+                        .map { it.key }
+                        .toSet()
+
         return linkedSetOf<Nutrient>()
                 .apply {
                         addAll(referenceUtilisee.getRefMapMin().keys)
@@ -52,6 +64,7 @@ fun listConstrainableNutrients(referenceUtilisee: ReferenceEv): List<Nutrient> {
                         addAll(referenceUtilisee.getRefMapMax().keys)
                         addAll(referenceUtilisee.getRefMapOMax().keys)
                         removeAll { it is NutrientAnalysis }
+                        retainAll { it in presentInAtLeastOneAliment }
                         add(NutrientMain.ENERGIE)
                 }
                 .toList()
@@ -159,7 +172,7 @@ suspend fun adjustRationByConstraints(
                 // l'heuristique séquentielle existante, qui elle ne permet pas de choisir un
                 // sous-ensemble explicite de nutriments à satisfaire simultanément.
                 val candidateNutrients =
-                        listConstrainableNutrients(referenceUtilisee).filter { it in selectedNutrients }
+                        listConstrainableNutrients(referenceUtilisee, ration).filter { it in selectedNutrients }
 
                 if (candidateNutrients.isEmpty()) {
                         return ConstraintAdjustmentResult(

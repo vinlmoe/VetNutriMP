@@ -179,9 +179,11 @@ fun MultiNutrientAdjustmentView(
         // Nutriments proposés pour l'ajustement par contraintes (LP), et sous-ensemble
         // sélectionné par l'utilisateur — tous sélectionnés par défaut.
         val constrainableNutrients =
-                remember(referenceUtilisee) { groupNutrientsByCategory(listConstrainableNutrients(referenceUtilisee)) }
+                remember(referenceUtilisee, ration) {
+                        groupNutrientsByCategory(listConstrainableNutrients(referenceUtilisee, ration))
+                }
         var selectedConstraintNutrients by
-                remember(referenceUtilisee) { mutableStateOf(constrainableNutrients.toSet()) }
+                remember(referenceUtilisee, ration) { mutableStateOf(constrainableNutrients.toSet()) }
         var constraintNutrientSelectorExpanded by remember { mutableStateOf(false) }
 
         val scope = rememberCoroutineScope()
