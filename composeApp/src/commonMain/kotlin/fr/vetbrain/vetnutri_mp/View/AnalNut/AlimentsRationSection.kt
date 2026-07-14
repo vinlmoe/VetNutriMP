@@ -327,6 +327,7 @@ fun SectionAlimentsRation(
                                                                 AlimentItem(
                                                                         aliment = aliment,
                                                                         feedColor = VetNutriColors.getFeedColor(index),
+                                                                        referenceEv = referenceUtilisee,
                                                                         isEditing =
                                                                                 editingAlimentId ==
                                                                                         aliment.uuid,
@@ -376,6 +377,7 @@ fun SectionAlimentsRation(
                                                         AlimentItem(
                                                                 aliment = aliment,
                                                                 feedColor = VetNutriColors.getFeedColor(index),
+                                                                referenceEv = referenceUtilisee,
                                                                 isEditing =
                                                                         editingAlimentId ==
                                                                                 aliment.uuid,
