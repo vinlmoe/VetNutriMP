@@ -156,6 +156,16 @@ Trois caches utilisent le pattern `LinkedHashMap` LRU (eviction automatique de l
 
 ---
 
+## Identité des commits Git
+
+Tous les commits (création ou amend) doivent être attribués à l'utilisateur, jamais à Claude :
+- Auteur et committeur : `vinlmoe <sebastien.lefebvre@vetbrain.fr>`
+- Ne pas ajouter de trailer `Co-Authored-By: Claude ...` ni `Claude-Session: ...` dans le message de commit.
+
+Pour un commit créé dans une session : `git -c user.name="vinlmoe" -c user.email="sebastien.lefebvre@vetbrain.fr" commit -m "..."` (ou équivalent via `GIT_AUTHOR_*`/`GIT_COMMITTER_*`), sans jamais modifier la config Git globale/persistante.
+
+---
+
 ## Fichiers JSON de données initiales
 
 | Fichier | Taille | Usage |
