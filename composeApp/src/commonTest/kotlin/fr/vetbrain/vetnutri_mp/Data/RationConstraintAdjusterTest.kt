@@ -62,7 +62,8 @@ class RationConstraintAdjusterTest {
             besoinEnergetiqueStandard = 100.0,
             poidsAnimal = 10.0,
             poidsMetabolique = 5.6,
-            equationRepository = null
+            equationRepository = null,
+            selectedNutrients = listConstrainableNutrients(ref).toSet()
         )
 
         assertTrue(result.success, "Expected success but got: ${result.message}")
@@ -101,7 +102,8 @@ class RationConstraintAdjusterTest {
             besoinEnergetiqueStandard = 100.0,
             poidsAnimal = 10.0,
             poidsMetabolique = 5.6,
-            equationRepository = null
+            equationRepository = null,
+            selectedNutrients = listConstrainableNutrients(ref).toSet()
         )
 
         assertTrue(result.success, "Expected success but got: ${result.message}")
@@ -134,7 +136,8 @@ class RationConstraintAdjusterTest {
             besoinEnergetiqueStandard = 100.0,
             poidsAnimal = 10.0,
             poidsMetabolique = 5.6,
-            equationRepository = null
+            equationRepository = null,
+            selectedNutrients = listConstrainableNutrients(ref).toSet()
         )
 
         assertTrue(result.success, "Expected success but got: ${result.message}")
@@ -170,7 +173,8 @@ class RationConstraintAdjusterTest {
             besoinEnergetiqueStandard = 100.0,
             poidsAnimal = 10.0,
             poidsMetabolique = 5.6,
-            equationRepository = null
+            equationRepository = null,
+            selectedNutrients = listConstrainableNutrients(ref).toSet()
         )
 
         assertTrue(!result.success)
@@ -201,7 +205,8 @@ class RationConstraintAdjusterTest {
             besoinEnergetiqueStandard = 100.0,
             poidsAnimal = 10.0,
             poidsMetabolique = 5.6,
-            equationRepository = null
+            equationRepository = null,
+            selectedNutrients = listConstrainableNutrients(ref).toSet()
         )
 
         assertTrue(result.success, "Ratio-type nutrients must be excluded from automatic constraints: ${result.message}")
@@ -225,7 +230,74 @@ class RationConstraintAdjusterTest {
             besoinEnergetiqueStandard = 100.0,
             poidsAnimal = 10.0,
             poidsMetabolique = 5.6,
-            equationRepository = null
+            equationRepository = null,
+            selectedNutrients = listConstrainableNutrients(ref).toSet()
+        )
+
+        assertTrue(!result.success)
+    }
+
+    @Test
+    fun listConstrainableNutrients_includesMinMaxNutrientsAndEnergyButExcludesRatios() {
+        val ref = makeReference()
+        defineAbsolute(ref, NutrientMain.PROTEINE, Reflevel.MIN, 45.0)
+        defineAbsolute(ref, NutrientAnalysis.PCa, Reflevel.MIN, 1.0)
+
+        val constrainable = listConstrainableNutrients(ref)
+
+        assertTrue(constrainable.contains(NutrientMain.PROTEINE))
+        assertTrue(constrainable.contains(NutrientMain.ENERGIE))
+        assertTrue(constrainable.none { it is NutrientAnalysis })
+    }
+
+    @Test
+    fun adjustRationByConstraints_deselectedNutrient_isNotEnforced() = runTest {
+        val foodA = food("A", proteinPer100g = 20.0, energyPer100g = 400.0)
+        val arA = AlimentRation(quantite = 100.0, aliment = foodA, weight = 1.0)
+        val ration = Ration(alimentMutableList = mutableListOf(arA))
+
+        val ref = makeReference()
+        // An unreachable protein requirement that would make the model infeasible if enforced.
+        defineAbsolute(ref, NutrientMain.PROTEINE, Reflevel.MIN, 1_000_000.0)
+
+        val adjustmentData = listOf(AlimentAdjustmentData(alimentRation = arA))
+
+        val result = adjustRationByConstraints(
+            ration = ration,
+            adjustmentData = adjustmentData,
+            referenceUtilisee = ref,
+            besoinEnergetiqueTotal = 100.0,
+            besoinEnergetiqueStandard = 100.0,
+            poidsAnimal = 10.0,
+            poidsMetabolique = 5.6,
+            equationRepository = null,
+            // PROTEINE is deliberately left out of the selection; only ENERGIE is constrained.
+            selectedNutrients = setOf(NutrientMain.ENERGIE)
+        )
+
+        assertTrue(result.success, "Deselected nutrients must not be enforced: ${result.message}")
+    }
+
+    @Test
+    fun adjustRationByConstraints_emptySelection_returnsFailureWithoutCrashing() = runTest {
+        val foodA = food("A", proteinPer100g = 20.0, energyPer100g = 400.0)
+        val arA = AlimentRation(quantite = 100.0, aliment = foodA, weight = 1.0)
+        val ration = Ration(alimentMutableList = mutableListOf(arA))
+        val ref = makeReference()
+        defineAbsolute(ref, NutrientMain.PROTEINE, Reflevel.MIN, 15.0)
+
+        val adjustmentData = listOf(AlimentAdjustmentData(alimentRation = arA))
+
+        val result = adjustRationByConstraints(
+            ration = ration,
+            adjustmentData = adjustmentData,
+            referenceUtilisee = ref,
+            besoinEnergetiqueTotal = 100.0,
+            besoinEnergetiqueStandard = 100.0,
+            poidsAnimal = 10.0,
+            poidsMetabolique = 5.6,
+            equationRepository = null,
+            selectedNutrients = emptySet()
         )
 
         assertTrue(!result.success)

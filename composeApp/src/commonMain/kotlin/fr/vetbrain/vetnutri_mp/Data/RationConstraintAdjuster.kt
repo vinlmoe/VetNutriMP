@@ -37,6 +37,26 @@ fun computeAbsoluteGramNeed(
         }
 }
 
+/**
+ * Liste les nutriments "contraignables" pour une référence donnée : ceux ayant une borne
+ * MIN/OPTIMIN et/ou MAX/OPTIMAX définie (hors nutriments de type ratio, cf. [adjustRationByConstraints]),
+ * plus l'énergie (toujours contraignable puisque son besoin absolu est connu indépendamment de la
+ * référence). Sert à peupler la sélection de nutriments proposée à l'utilisateur avant de lancer
+ * l'ajustement par contraintes.
+ */
+fun listConstrainableNutrients(referenceUtilisee: ReferenceEv): List<Nutrient> {
+        return linkedSetOf<Nutrient>()
+                .apply {
+                        addAll(referenceUtilisee.getRefMapMin().keys)
+                        addAll(referenceUtilisee.getRefMapOMin().keys)
+                        addAll(referenceUtilisee.getRefMapMax().keys)
+                        addAll(referenceUtilisee.getRefMapOMax().keys)
+                        removeAll { it is NutrientAnalysis }
+                        add(NutrientMain.ENERGIE)
+                }
+                .toList()
+}
+
 /** Une contrainte MIN/MAX construite pour un nutriment donné, conservée pour le diagnostic UI. */
 data class NutrientConstraintInfo(
         val nutrient: Nutrient,
@@ -77,6 +97,10 @@ data class ConstraintAdjustmentResult(
  * décision. Les champs [AlimentAdjustmentData.minQuantity]/[AlimentAdjustmentData.maxQuantity]
  * (jusqu'ici jamais appliqués par l'heuristique existante) deviennent les bornes réelles des
  * variables de décision.
+ *
+ * [selectedNutrients] restreint l'ensemble des nutriments effectivement contraints (voir
+ * [listConstrainableNutrients] pour l'ensemble complet proposé à l'utilisateur) : seule
+ * l'intersection avec les nutriments ayant une borne dans [referenceUtilisee] est utilisée.
  */
 suspend fun adjustRationByConstraints(
         ration: Ration,
@@ -86,7 +110,8 @@ suspend fun adjustRationByConstraints(
         besoinEnergetiqueStandard: Double,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
-        equationRepository: EquationRepository?
+        equationRepository: EquationRepository?,
+        selectedNutrients: Set<Nutrient>
 ): ConstraintAdjustmentResult {
         try {
                 val lockedUuids =
@@ -127,21 +152,21 @@ suspend fun adjustRationByConstraints(
                         return referenceUtilisee.obtenirNutrimentRef(nutrient, Reflevel.MAX)
                 }
 
-                // Tous les nutriments ayant une borne MIN/OPTIMIN et/ou MAX/OPTIMAX dans la
-                // référence sont contraints automatiquement (pas seulement ceux sélectionnés
-                // manuellement par aliment dans le dialogue) — c'est l'intérêt de cette approche
-                // par rapport à l'heuristique séquentielle existante. L'énergie est toujours
-                // contrainte, indépendamment de la référence, puisque le besoin énergétique
-                // absolu est déjà connu ([besoinEnergetiqueTotal]).
+                // Parmi tous les nutriments ayant une borne MIN/OPTIMIN et/ou MAX/OPTIMAX dans la
+                // référence (pas seulement ceux sélectionnés manuellement par aliment dans le
+                // dialogue), seuls ceux choisis par l'utilisateur via [selectedNutrients] sont
+                // effectivement contraints — c'est l'intérêt de cette approche par rapport à
+                // l'heuristique séquentielle existante, qui elle ne permet pas de choisir un
+                // sous-ensemble explicite de nutriments à satisfaire simultanément.
                 val candidateNutrients =
-                        linkedSetOf<Nutrient>().apply {
-                                addAll(referenceUtilisee.getRefMapMin().keys)
-                                addAll(referenceUtilisee.getRefMapOMin().keys)
-                                addAll(referenceUtilisee.getRefMapMax().keys)
-                                addAll(referenceUtilisee.getRefMapOMax().keys)
-                                removeAll { it is NutrientAnalysis }
-                                add(NutrientMain.ENERGIE)
-                        }
+                        listConstrainableNutrients(referenceUtilisee).filter { it in selectedNutrients }
+
+                if (candidateNutrients.isEmpty()) {
+                        return ConstraintAdjustmentResult(
+                                success = false,
+                                message = "Aucun nutriment sélectionné pour l'ajustement par contraintes."
+                        )
+                }
 
                 val constraints = mutableListOf<LpConstraint>()
                 val constraintInfos = mutableMapOf<String, NutrientConstraintInfo>()

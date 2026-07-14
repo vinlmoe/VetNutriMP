@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -34,6 +35,9 @@ import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 import fr.vetbrain.vetnutri_mp.Data.ConstraintAdjustmentResult
 import fr.vetbrain.vetnutri_mp.Data.adjustRationByConstraints
+import fr.vetbrain.vetnutri_mp.Data.listConstrainableNutrients
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 
 /** Données d'ajustement pour un aliment spécifique */
 data class AlimentAdjustmentData(
@@ -97,6 +101,24 @@ private fun ConstraintAdjustmentResult.toRationAdjustmentResult(): RationAdjustm
 }
 
 /**
+ * Ordonne des nutriments par catégorie (Main hors énergie, Macro, Min, Vitam, Lipid, AA, Other),
+ * triés par label au sein de chaque catégorie, énergie toujours en dernier — pour l'affichage de
+ * la sélection de nutriments à contraindre dans l'ajustement par contraintes.
+ */
+private fun groupNutrientsByCategory(nutrients: Collection<Nutrient>): List<Nutrient> {
+        val ordered = mutableListOf<Nutrient>()
+        ordered += nutrients.filter { it is NutrientMain && it != NutrientMain.ENERGIE }.sortedBy { it.label }
+        ordered += nutrients.filter { it is NutrientMacro }.sortedBy { it.label }
+        ordered += nutrients.filter { it is NutrientMin }.sortedBy { it.label }
+        ordered += nutrients.filter { it is NutrientVitam }.sortedBy { it.label }
+        ordered += nutrients.filter { it is NutrientLipid }.sortedBy { it.label }
+        ordered += nutrients.filter { it is AAEnum }.sortedBy { it.label }
+        ordered += nutrients.filter { it is NutrientOther }.sortedBy { it.label }
+        if (nutrients.contains(NutrientMain.ENERGIE)) ordered += NutrientMain.ENERGIE
+        return ordered.distinct()
+}
+
+/**
  * Récupère la valeur CAP minimale depuis la référence nutritionnelle
  * @param referenceUtilisee La référence nutritionnelle
  * @return La valeur CAP OPTIMIN si disponible, sinon CAP MIN, sinon 1.0 par défaut
@@ -153,6 +175,14 @@ fun MultiNutrientAdjustmentView(
         var preview by remember { mutableStateOf<RationAdjustmentResult?>(null) }
         var isProcessing by remember { mutableStateOf(false) }
         var processingMessage by remember { mutableStateOf("") }
+
+        // Nutriments proposés pour l'ajustement par contraintes (LP), et sous-ensemble
+        // sélectionné par l'utilisateur — tous sélectionnés par défaut.
+        val constrainableNutrients =
+                remember(referenceUtilisee) { groupNutrientsByCategory(listConstrainableNutrients(referenceUtilisee)) }
+        var selectedConstraintNutrients by
+                remember(referenceUtilisee) { mutableStateOf(constrainableNutrients.toSet()) }
+        var constraintNutrientSelectorExpanded by remember { mutableStateOf(false) }
 
         val scope = rememberCoroutineScope()
 
@@ -513,6 +543,106 @@ fun MultiNutrientAdjustmentView(
                                 }
                         }
 
+                        // Sélection des nutriments à contraindre pour l'ajustement par contraintes (LP)
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                backgroundColor = MaterialTheme.colors.surface,
+                                elevation = 4.dp
+                        ) {
+                                Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
+                                        Row(
+                                                modifier =
+                                                        Modifier.fillMaxWidth().clickable {
+                                                                constraintNutrientSelectorExpanded =
+                                                                        !constraintNutrientSelectorExpanded
+                                                        },
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Column {
+                                                        Text(
+                                                                text = translate(LocalizationKeys.AnalNut.CONSTRAINT_NUTRIENTS_TITLE),
+                                                                style = MaterialTheme.typography.subtitle1,
+                                                                fontWeight = FontWeight.Bold
+                                                        )
+                                                        Text(
+                                                                text =
+                                                                        translate(
+                                                                                LocalizationKeys.AnalNut.CONSTRAINT_NUTRIENTS_SUMMARY,
+                                                                                selectedConstraintNutrients.size.toString(),
+                                                                                constrainableNutrients.size.toString()
+                                                                        ),
+                                                                style = MaterialTheme.typography.body2,
+                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                                        )
+                                                }
+                                                Icon(
+                                                        imageVector =
+                                                                if (constraintNutrientSelectorExpanded) Icons.Filled.ExpandLess
+                                                                else Icons.Filled.ExpandMore,
+                                                        contentDescription = null
+                                                )
+                                        }
+
+                                        if (constraintNutrientSelectorExpanded) {
+                                                Row(
+                                                        modifier =
+                                                                Modifier.fillMaxWidth()
+                                                                        .padding(top = AppSizes.paddingSmall),
+                                                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                                                ) {
+                                                        TextButton(
+                                                                onClick = {
+                                                                        selectedConstraintNutrients =
+                                                                                constrainableNutrients.toSet()
+                                                                }
+                                                        ) { Text(translate(LocalizationKeys.AnalNut.CONSTRAINT_NUTRIENTS_SELECT_ALL)) }
+                                                        TextButton(
+                                                                onClick = { selectedConstraintNutrients = emptySet() }
+                                                        ) { Text(translate(LocalizationKeys.AnalNut.CONSTRAINT_NUTRIENTS_SELECT_NONE)) }
+                                                }
+
+                                                Column(modifier = Modifier.padding(top = AppSizes.paddingSmall)) {
+                                                        constrainableNutrients.forEach { nutrient ->
+                                                                val checked =
+                                                                        selectedConstraintNutrients.contains(nutrient)
+                                                                Row(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth().clickable {
+                                                                                        selectedConstraintNutrients =
+                                                                                                if (checked)
+                                                                                                        selectedConstraintNutrients -
+                                                                                                                nutrient
+                                                                                                else
+                                                                                                        selectedConstraintNutrients +
+                                                                                                                nutrient
+                                                                                },
+                                                                        verticalAlignment = Alignment.CenterVertically
+                                                                ) {
+                                                                        Checkbox(
+                                                                                checked = checked,
+                                                                                onCheckedChange = { isChecked ->
+                                                                                        selectedConstraintNutrients =
+                                                                                                if (isChecked)
+                                                                                                        selectedConstraintNutrients +
+                                                                                                                nutrient
+                                                                                                else
+                                                                                                        selectedConstraintNutrients -
+                                                                                                                nutrient
+                                                                                },
+                                                                                colors =
+                                                                                        CheckboxDefaults.colors(
+                                                                                                checkedColor = VetNutriColors.Primary
+                                                                                        )
+                                                                        )
+                                                                        Text(nutrient.translateEnum())
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+
                         // Actions dans une Card
                         Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -689,7 +819,8 @@ fun MultiNutrientAdjustmentView(
                                                                                         besoinEnergetiqueStandard = besoinEnergetiqueStandard,
                                                                                         poidsAnimal = poidsAnimal,
                                                                                         poidsMetabolique = poidsMetabolique,
-                                                                                        equationRepository = equationRepository
+                                                                                        equationRepository = equationRepository,
+                                                                                        selectedNutrients = selectedConstraintNutrients
                                                                                 )
                                                                         val result = constraintResult.toRationAdjustmentResult()
                                                                         isProcessing = false
@@ -700,7 +831,7 @@ fun MultiNutrientAdjustmentView(
                                                                         }
                                                                 }
                                                         },
-                                                        enabled = !isProcessing,
+                                                        enabled = !isProcessing && selectedConstraintNutrients.isNotEmpty(),
                                                         modifier = Modifier.weight(1f)
                                                 ) { Text(translate(LocalizationKeys.AnalNut.ADJUST_CONSTRAINTS)) }
                                         }
