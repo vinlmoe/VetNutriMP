@@ -514,8 +514,8 @@ class AlimentExcelService {
             when {
                 char == '"' -> {
                     if (inQuotes && i + 1 < csvContent.length && csvContent[i + 1] == '"') {
-                        // Guillemet échappé
-                        currentRow.append('"')
+                        // Préserver le guillemet CSV échappé: parseCsvValues le déséchappera.
+                        currentRow.append("\"\"")
                         i++
                     } else {
                         inQuotes = !inQuotes
