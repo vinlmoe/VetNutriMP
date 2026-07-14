@@ -16,11 +16,13 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.ContEnum
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
@@ -95,12 +97,16 @@ fun AlimentItem(
         onFinishEditing: () -> Unit,
         onDelete: () -> Unit,
         feedColor: Color? = null,
+        referenceEv: ReferenceEv? = null,
         modifier: Modifier = Modifier
 ) {
         // État local pour la quantité en cours d'édition
         var quantityText by
                 remember(aliment.uuid, aliment.quantite) { mutableStateOf(aliment.quantite.toString()) }
-        
+
+        // État local pour l'affichage du dialogue de composition
+        var showCompositionDialog by remember { mutableStateOf(false) }
+
         // FocusRequester pour gérer le focus automatique
         val focusRequester = remember { FocusRequester() }
         
@@ -212,6 +218,22 @@ fun AlimentItem(
                                 }
 
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        IconButton(
+                                                onClick = { showCompositionDialog = true },
+                                                enabled = aliment.aliment != null,
+                                                modifier = Modifier.size(16.dp) // icône plus petite
+                                        ) {
+                                                Icon(
+                                                        imageVector = AppIcons.Search,
+                                                        contentDescription = translate("alimentItem.viewComposition"),
+                                                        tint = VetNutriColors.Primary,
+                                                        modifier =
+                                                                Modifier.size(
+                                                                        16.dp
+                                                                ) // icône plus petite
+                                                )
+                                        }
+
                                         IconButton(
                                                 onClick = onStartEditing,
                                                 modifier = Modifier.size(16.dp) // icône plus petite
@@ -368,6 +390,16 @@ fun AlimentItem(
                                         )
                                 }
                         }
+                }
+        }
+
+        if (showCompositionDialog) {
+                aliment.aliment?.let { alim ->
+                        IngredientCompositionDialog(
+                                aliment = alim,
+                                referenceEv = referenceEv,
+                                onDismiss = { showCompositionDialog = false }
+                        )
                 }
         }
 }
