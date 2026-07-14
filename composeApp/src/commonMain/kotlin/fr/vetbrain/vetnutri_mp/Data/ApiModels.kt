@@ -121,7 +121,8 @@ data class FoodApi(
         val species: List<String> = emptyList(),
         val indications: List<String> = emptyList(),
         val nutrients: Map<String, Double> = emptyMap(),
-        val energyPerSpecies: Map<String, Double> = emptyMap()
+        val energyPerSpecies: Map<String, Double> = emptyMap(),
+        val biblioRefIds: List<String> = emptyList()
 )
 
 @Serializable
@@ -266,7 +267,9 @@ fun FoodApi.toDomain(): AlimentEv {
                         dataB = dataB,
                         especes = normalizedSpecies,
                         indicat = normalizedIndics,
-                        rationUUID = rationId
+                        rationUUID = rationId,
+                        // Placeholders uuid-only ; résolus en BiblioRef complets par ExportImportRepository via biblioCache
+                        biblioRefs = biblioRefIds.map { BiblioRef(it) }
                 )
         nutrients.forEach { (label, value) ->
                 // Essayer d'abord la résolution directe
@@ -457,7 +460,8 @@ fun AlimentEv.toApi(): FoodApi {
                 species = especes,
                 indications = indicat.map { it.name },
                 nutrients = valMap.mapKeys { it.key.label }.mapValues { it.value.value },
-                energyPerSpecies = energieParEspece
+                energyPerSpecies = energieParEspece,
+                biblioRefIds = biblioRefs.map { it.uuid }
         )
 }
 

@@ -2,6 +2,8 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 
 /**
  * Représentation d'un aliment pour l'import/export Excel Structure optimisée pour une feuille Excel
@@ -47,7 +49,12 @@ data class AlimentExcelRow(
         val nutriments: Map<String, Double?> = emptyMap(),
 
         // Énergie par espèce - encodée dans une seule colonne au format "CHIEN:340;CHAT:330"
-        val energieParEspece: Map<String, Double> = emptyMap()
+        val energieParEspece: Map<String, Double> = emptyMap(),
+
+        // Bibliographie liée à l'aliment, encodée en JSON dans une seule cellule
+        // (auto-suffisant : évite un format à délimiteurs qui casserait sur des champs
+        // texte libre comme firstAuthor/comments/bibtex)
+        val biblioRefsJson: String? = null
 ) {
 
     companion object {
@@ -195,7 +202,8 @@ data class AlimentExcelRow(
                     indications = alimentEv.indicat.joinToString(", ") { it.nameToString() },
                     rationUUID = alimentEv.rationUUID,
                     nutriments = nutrimentsMap,
-                    energieParEspece = alimentEv.energieParEspece
+                    energieParEspece = alimentEv.energieParEspece,
+                    biblioRefsJson = encodeBiblioRefs(alimentEv.biblioRefs)
             )
         }
 
@@ -244,7 +252,8 @@ data class AlimentExcelRow(
                             especes = especes,
                             indicat = indicat,
                             rationUUID = row.rationUUID,
-                            energieParEspece = row.energieParEspece
+                            energieParEspece = row.energieParEspece,
+                            biblioRefs = decodeBiblioRefs(row.biblioRefsJson)
                     )
         .apply {
             // Ajouter les nutriments avec logs
@@ -298,6 +307,25 @@ data class AlimentExcelRow(
                         if (espece.isEmpty() || valeur == null) null else espece to valeur
                     }
                     .toMap()
+        }
+
+        /** Encode une liste de BiblioRef en JSON pour une seule cellule CSV, ou null si vide. */
+        fun encodeBiblioRefs(biblioRefs: List<BiblioRef>): String? {
+            if (biblioRefs.isEmpty()) return null
+            return Json.encodeToString(ListSerializer(BiblioRef.serializer()), biblioRefs)
+        }
+
+        /**
+         * Décode une cellule CSV JSON vers une liste de BiblioRef.
+         * Retourne une liste vide si la valeur est absente ou mal formée.
+         */
+        fun decodeBiblioRefs(value: String?): List<BiblioRef> {
+            if (value.isNullOrBlank()) return emptyList()
+            return try {
+                Json.decodeFromString(ListSerializer(BiblioRef.serializer()), value)
+            } catch (e: Exception) {
+                emptyList()
+            }
         }
     }
 }

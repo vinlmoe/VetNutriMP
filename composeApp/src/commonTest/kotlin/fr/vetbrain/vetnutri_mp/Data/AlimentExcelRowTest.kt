@@ -119,4 +119,101 @@ class AlimentExcelRowTest {
         val row = AlimentExcelRow.fromAlimentEv(aliment)
         assertTrue(row.energieParEspece.isEmpty())
     }
+
+    // ── encodeBiblioRefs / decodeBiblioRefs ──────────────────────────────────
+
+    @Test
+    fun encodeBiblioRefs_empty_returnsNull() {
+        assertEquals(null, AlimentExcelRow.encodeBiblioRefs(emptyList()))
+    }
+
+    @Test
+    fun decodeBiblioRefs_null_returnsEmptyList() {
+        assertEquals(emptyList(), AlimentExcelRow.decodeBiblioRefs(null))
+    }
+
+    @Test
+    fun decodeBiblioRefs_blank_returnsEmptyList() {
+        assertEquals(emptyList(), AlimentExcelRow.decodeBiblioRefs("   "))
+    }
+
+    @Test
+    fun decodeBiblioRefs_malformedJson_returnsEmptyListWithoutThrowing() {
+        assertEquals(emptyList(), AlimentExcelRow.decodeBiblioRefs("not valid json"))
+    }
+
+    @Test
+    fun encodeThenDecodeBiblioRefs_roundTripsSingleRef() {
+        val original = listOf(
+            BiblioRef(
+                uuid = "biblio-1",
+                firstAuthor = "Dupont",
+                year = 2020,
+                completeRef = "Dupont et al., 2020",
+                comments = "Etude importante",
+                bibtex = "@article{dupont2020}",
+                consistent = 1
+            )
+        )
+        val decoded = AlimentExcelRow.decodeBiblioRefs(AlimentExcelRow.encodeBiblioRefs(original))
+        assertEquals(original, decoded)
+    }
+
+    @Test
+    fun encodeThenDecodeBiblioRefs_roundTripsMultipleRefsWithSpecialCharacters() {
+        // Champs texte libre contenant des caractères qui casseraient un format à délimiteurs
+        // (guillemets, points-virgules, retours à la ligne) : le JSON encodé doit les préserver.
+        val original = listOf(
+            BiblioRef(
+                uuid = "biblio-1",
+                firstAuthor = "Dupont; Martin",
+                year = 2020,
+                completeRef = "Dupont et al., \"Etude complète\", 2020",
+                comments = "Commentaire avec\nretour à la ligne et \"guillemets\"",
+                bibtex = "@article{dupont2020, note=\"a;b\"}",
+                consistent = 1
+            ),
+            BiblioRef(
+                uuid = "biblio-2",
+                firstAuthor = "Martin",
+                year = 2021,
+                completeRef = "Martin J., Nutrition canine, 2021"
+            )
+        )
+        val decoded = AlimentExcelRow.decodeBiblioRefs(AlimentExcelRow.encodeBiblioRefs(original))
+        assertEquals(original, decoded)
+    }
+
+    // ── fromAlimentEv / toAlimentEv (biblioRefs) ─────────────────────────────
+
+    @Test
+    fun fromAlimentEv_noBiblioRefs_producesNullBiblioRefsJson() {
+        val aliment = AlimentEv(nom = "Sans biblio")
+        val row = AlimentExcelRow.fromAlimentEv(aliment)
+        assertEquals(null, row.biblioRefsJson)
+    }
+
+    @Test
+    fun fromAlimentEv_thenToAlimentEv_roundTripsBiblioRefs() {
+        val refs = listOf(
+            BiblioRef(
+                uuid = "biblio-1",
+                firstAuthor = "Dupont",
+                year = 2020,
+                completeRef = "Dupont et al., 2020",
+                comments = "",
+                bibtex = "",
+                consistent = 1
+            ),
+            BiblioRef(
+                uuid = "biblio-2",
+                firstAuthor = "Martin",
+                year = 2021,
+                completeRef = "Martin J., Nutrition canine, 2021"
+            )
+        )
+        val original = AlimentEv(nom = "Croquettes", biblioRefs = refs)
+        val restored = AlimentExcelRow.toAlimentEv(AlimentExcelRow.fromAlimentEv(original))
+        assertEquals(original.biblioRefs, restored.biblioRefs)
+    }
 }

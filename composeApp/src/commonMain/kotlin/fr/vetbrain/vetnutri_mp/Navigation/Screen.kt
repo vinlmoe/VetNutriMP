@@ -25,4 +25,5 @@ internal sealed class Screen {
     object CrossAnalysisGrading : Screen()
     object TestYellowBox : Screen()
     object LegacyMigration : Screen()
+    object BulkAddBiblioToFoods : Screen()
 }

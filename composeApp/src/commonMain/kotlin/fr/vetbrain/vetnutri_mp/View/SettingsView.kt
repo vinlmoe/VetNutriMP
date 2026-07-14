@@ -138,6 +138,7 @@ fun SettingsView(
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {},
         onBackupClick: () -> Unit = {},
         onLegacyMigrationClick: () -> Unit = {},
+        onBulkBiblioClick: () -> Unit = {},
         isExamMode: Boolean = false
 ) {
 
@@ -2569,7 +2570,7 @@ fun SettingsView(
                                 3 -> { // Excel Import/Export
                                         val excelFoodService = remember {
                                                 viewModel.foodRepository?.let { foodRepo ->
-                                                        ExcelFoodService(foodRepo)
+                                                        ExcelFoodService(foodRepo, viewModel.biblioRefRepository)
                                                 }
                                         }
                                         ExcelImportExportSection(
@@ -2622,6 +2623,7 @@ fun SettingsView(
                                                 onFoodListRefresh = onFoodListRefresh,
                                                 onBackupClick = { onBackupClick() },
                                                 onLegacyMigrationClick = { onLegacyMigrationClick() },
+                                                onBulkBiblioClick = { onBulkBiblioClick() },
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                 }

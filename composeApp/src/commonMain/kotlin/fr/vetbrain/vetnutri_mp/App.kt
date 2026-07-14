@@ -226,6 +226,13 @@ fun App(appDatabase: AppDatabase) {
     val legacyMigrationViewModel = remember(legacyMigrationScope) {
         LegacyMigrationViewModel(scope = legacyMigrationScope)
     }
+    val bulkAddBiblioToFoodsViewModel = remember {
+        BulkAddBiblioToFoodsViewModel(
+            foodRepository = foodRepository,
+            biblioRefRepository = biblioRefRepository,
+            platformDispatcher = platformDispatcher
+        )
+    }
     val crossAnalysisViewModel = remember {
         CrossConsultationAnalysisViewModel(
             animalRepository = animalRepository,
@@ -303,7 +310,8 @@ fun App(appDatabase: AppDatabase) {
         crossAnalysisViewModel = crossAnalysisViewModel,
         bulkReferenceEditorViewModel = bulkReferenceEditorViewModel,
         backupRestoreViewModel = backupRestoreViewModel,
-        legacyMigrationViewModel = legacyMigrationViewModel
+        legacyMigrationViewModel = legacyMigrationViewModel,
+        bulkAddBiblioToFoodsViewModel = bulkAddBiblioToFoodsViewModel
     )
     val repos = AppNavRepositories(
         equationRepository = equationRepository,
