@@ -287,6 +287,7 @@ class DatabaseFoodRepository(
                     val updateIds: MutableList<String> = mutableListOf()
                     val batchNutrientValues: MutableList<NutrientValueEntity> = mutableListOf()
                     val batchEnergyPerSpecies: MutableList<EnergyPerSpeciesEntity> = mutableListOf()
+                    val batchBiblioJunctions: MutableList<AlimentBiblioRefEntity> = mutableListOf()
 
                     // Pré-traiter insert vs update (batch)
                     batch.forEach { aliment ->
@@ -305,6 +306,9 @@ class DatabaseFoodRepository(
                                 batchNutrientValues.addAll(nutrientValues)
                                 aliment.energieParEspece.forEach { (especeNom, v) ->
                                     if (v > 0.0) batchEnergyPerSpecies.add(EnergyPerSpeciesEntity(aliment.uuid, especeNom, v))
+                                }
+                                aliment.biblioRefs.forEach { ref ->
+                                    batchBiblioJunctions.add(AlimentBiblioRefEntity(alimentUuid = aliment.uuid, biblioRefUuid = ref.uuid))
                                 }
                             } else {
                                 updateIds.add(aliment.uuid)
@@ -343,6 +347,9 @@ class DatabaseFoodRepository(
                                     )
                                     aliment.energieParEspece.forEach { (especeNom, v) ->
                                         if (v > 0.0) batchEnergyPerSpecies.add(EnergyPerSpeciesEntity(aliment.uuid, especeNom, v))
+                                    }
+                                    aliment.biblioRefs.forEach { ref ->
+                                        batchBiblioJunctions.add(AlimentBiblioRefEntity(alimentUuid = aliment.uuid, biblioRefUuid = ref.uuid))
                                     }
                                 } catch (_: Exception) {
                                     errorCount++
@@ -429,6 +436,21 @@ class DatabaseFoodRepository(
                                 energyPerSpeciesDao.insert(chunk)
                             }
                         } catch (_: Exception) {}
+                    }
+                    // Bibliographie liée aux aliments (batch)
+                    if (alimentBiblioRefDao != null) {
+                        val allIds: List<String> = buildList {
+                            addAll(newEntities.map { it.uuid })
+                            addAll(updateEntities.map { it.uuid })
+                        }
+                        if (!mergeNutrients && allIds.isNotEmpty()) {
+                            try { allIds.forEach { alimentBiblioRefDao.deleteForAliment(it) } } catch (_: Exception) {}
+                        }
+                        if (batchBiblioJunctions.isNotEmpty()) {
+                            try {
+                                alimentBiblioRefDao.insertAll(batchBiblioJunctions)
+                            } catch (_: Exception) {}
+                        }
                     }
                 }
             } finally {

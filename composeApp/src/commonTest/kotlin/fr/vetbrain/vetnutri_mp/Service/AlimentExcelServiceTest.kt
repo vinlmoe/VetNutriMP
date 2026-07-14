@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Service
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -165,5 +166,91 @@ class AlimentExcelServiceTest {
         val parNom = result.aliments.associateBy { it.nom }
         assertEquals("Poulet\nRiz", parNom["Aliment Multiligne"]?.ingredients)
         assertEquals("Simple", parNom["Aliment Suivant"]?.ingredients)
+    }
+
+    // ── Bibliographie ────────────────────────────────────────────────────────
+
+    @Test
+    fun exportToCsv_containsBibliographieHeader() {
+        val aliment = AlimentEv(
+            nom = "Test",
+            biblioRefs = listOf(BiblioRef(uuid = "b1", firstAuthor = "Dupont", year = 2020, completeRef = "Ref"))
+        )
+        val csv = service.exportToCsv(listOf(aliment))
+        val header = csv.lineSequence().first()
+        assertTrue(header.contains("Bibliographie"))
+    }
+
+    @Test
+    fun exportThenImport_roundTripsBiblioRefs() {
+        val refs = listOf(
+            BiblioRef(
+                uuid = "b1",
+                firstAuthor = "Dupont",
+                year = 2020,
+                completeRef = "Dupont et al., 2020",
+                comments = "Étude importante",
+                bibtex = "@article{dupont2020}",
+                consistent = 1
+            ),
+            BiblioRef(uuid = "b2", firstAuthor = "Martin", year = 2021, completeRef = "Martin J., 2021")
+        )
+        val original = AlimentEv(nom = "Croquettes", biblioRefs = refs)
+        val csv = service.exportToCsv(listOf(original))
+
+        val result = service.importFromCsv(csv)
+
+        assertEquals(emptyList(), result.errors)
+        assertEquals(1, result.aliments.size)
+        assertEquals(refs, result.aliments.first().biblioRefs)
+    }
+
+    @Test
+    fun exportThenImport_biblioRefWithSpecialCharacters_roundTrips() {
+        // Champs contenant guillemets, points-virgules et retours à la ligne : le JSON encodé
+        // dans la cellule doit survivre à l'échappement CSV existant.
+        val refs = listOf(
+            BiblioRef(
+                uuid = "b1",
+                firstAuthor = "Dupont; Martin",
+                year = 2020,
+                completeRef = "Dupont et al., \"Etude complète\", 2020",
+                comments = "Commentaire avec\nretour à la ligne",
+                bibtex = "@article{dupont2020, note=\"a;b\"}"
+            )
+        )
+        val original = AlimentEv(nom = "Test", biblioRefs = refs)
+        val csv = service.exportToCsv(listOf(original))
+
+        val result = service.importFromCsv(csv)
+
+        assertEquals(emptyList(), result.errors)
+        assertEquals(refs, result.aliments.first().biblioRefs)
+    }
+
+    @Test
+    fun exportThenImport_noBiblioRefs_roundTripsToEmptyList() {
+        val original = AlimentEv(nom = "Sans biblio")
+        val csv = service.exportToCsv(listOf(original))
+
+        val result = service.importFromCsv(csv)
+
+        assertTrue(result.aliments.first().biblioRefs.isEmpty())
+    }
+
+    @Test
+    fun exportThenImport_multipleAliments_eachKeepsOwnBiblioRefs() {
+        val refA = BiblioRef(uuid = "a", firstAuthor = "Auteur A", year = 2019, completeRef = "Ref A")
+        val refB = BiblioRef(uuid = "b", firstAuthor = "Auteur B", year = 2022, completeRef = "Ref B")
+        val alimentA = AlimentEv(nom = "Aliment A", biblioRefs = listOf(refA))
+        val alimentB = AlimentEv(nom = "Aliment B", biblioRefs = listOf(refB))
+        val csv = service.exportToCsv(listOf(alimentA, alimentB))
+
+        val result = service.importFromCsv(csv)
+
+        assertEquals(2, result.aliments.size)
+        val parNom = result.aliments.associateBy { it.nom }
+        assertEquals(listOf(refA), parNom["Aliment A"]?.biblioRefs)
+        assertEquals(listOf(refB), parNom["Aliment B"]?.biblioRefs)
     }
 }

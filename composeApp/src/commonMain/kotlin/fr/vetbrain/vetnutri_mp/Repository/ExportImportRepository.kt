@@ -672,9 +672,24 @@ class ExportImportRepository(
                 // 4) Aliments (aucune dépendance)
                 if (envelope.foods.isNotEmpty() && foodRepository != null) {
                         listener?.onLog?.invoke("Import des aliments (${envelope.foods.size})…")
+                        // Cache des biblioRefs (déjà importées à l'étape 1) pour résoudre les
+                        // placeholders uuid-only posés par FoodApi.toDomain()
+                        val foodBiblioCache: Map<String, BiblioRef> =
+                                if (biblioRepository != null) {
+                                        try {
+                                                biblioRepository.getAllBiblioRefs().first()
+                                                        .associateBy { it.uuid }
+                                        } catch (_: Exception) {
+                                                emptyMap()
+                                        }
+                                } else emptyMap()
+                        fun resolveBiblioRefs(api: FoodApi, aliment: AlimentEv): AlimentEv =
+                                aliment.copy(
+                                        biblioRefs = api.biblioRefIds.mapNotNull { foodBiblioCache[it] }
+                                )
                         if (foodRepository is DatabaseFoodRepository) {
                                 try {
-                                        val aliments = envelope.foods.map { it.toDomain() }
+                                        val aliments = envelope.foods.map { resolveBiblioRefs(it, it.toDomain()) }
                                         val res = foodRepository.importFoodsDomain(aliments)
                                         foodsImported += res.importedCount + res.updatedCount
                                         advance(envelope.foods.size)
@@ -690,7 +705,7 @@ class ExportImportRepository(
                                 // Fallback: insertion/MAJ unitaire si repo non-DB
                                 for (api in envelope.foods) {
                                         try {
-                                                val aliment = api.toDomain()
+                                                val aliment = resolveBiblioRefs(api, api.toDomain())
                                                 foodRepository.insertFood(aliment)
                                                 foodsImported++
                                                 advance()
