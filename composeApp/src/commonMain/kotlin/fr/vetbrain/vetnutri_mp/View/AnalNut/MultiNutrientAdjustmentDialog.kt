@@ -32,6 +32,8 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
+import fr.vetbrain.vetnutri_mp.Data.ConstraintAdjustmentResult
+import fr.vetbrain.vetnutri_mp.Data.adjustRationByConstraints
 
 /** Données d'ajustement pour un aliment spécifique */
 data class AlimentAdjustmentData(
@@ -74,6 +76,25 @@ data class RationAdjustmentResult(
         val message: String,
         val adjustedAliments: List<AlimentRation>? = null
 )
+
+/** Adapte le résultat du solveur par contraintes vers le type affiché par la prévisualisation existante. */
+private fun ConstraintAdjustmentResult.toRationAdjustmentResult(): RationAdjustmentResult {
+        val detailedMessage =
+                if (!success && violatedConstraints.isNotEmpty()) {
+                        val bullets =
+                                violatedConstraints.joinToString("\n") {
+                                        "• ${it.refLevel.label} ${it.nutrient.label}"
+                                }
+                        "$message\n$bullets"
+                } else {
+                        message
+                }
+        return RationAdjustmentResult(
+                success = success,
+                message = detailedMessage,
+                adjustedAliments = adjustedAliments
+        )
+}
 
 /**
  * Récupère la valeur CAP minimale depuis la référence nutritionnelle
@@ -648,7 +669,48 @@ fun MultiNutrientAdjustmentView(
                                                         enabled = !isProcessing,
                                                         modifier = Modifier.weight(1f)
                                                 ) { Text(translate(LocalizationKeys.AnalNut.ADJUST_ENERGY_EQUAL)) }
+
+                                                // Ajustement par programmation sous contrainte (LP) : cherche une
+                                                // solution qui satisfait simultanément toutes les bornes MIN/OPTIMIN
+                                                // et MAX/OPTIMAX de la référence, contrairement à "Ajuster" qui ne
+                                                // traite qu'un nutriment sélectionné à la fois.
+                                                Button(
+                                                        onClick = {
+                                                                scope.launch {
+                                                                        isProcessing = true
+                                                                        processingMessage =
+                                                                                translate(LocalizationKeys.AnalNut.CALCULATING_CONSTRAINTS)
+                                                                        val constraintResult =
+                                                                                adjustRationByConstraints(
+                                                                                        ration = ration,
+                                                                                        adjustmentData = adjustmentData,
+                                                                                        referenceUtilisee = referenceUtilisee,
+                                                                                        besoinEnergetiqueTotal = besoinEnergetiqueTotal,
+                                                                                        besoinEnergetiqueStandard = besoinEnergetiqueStandard,
+                                                                                        poidsAnimal = poidsAnimal,
+                                                                                        poidsMetabolique = poidsMetabolique,
+                                                                                        equationRepository = equationRepository
+                                                                                )
+                                                                        val result = constraintResult.toRationAdjustmentResult()
+                                                                        isProcessing = false
+                                                                        processingMessage = ""
+                                                                        preview = result
+                                                                        if (result.success) {
+                                                                                onConfirm(result)
+                                                                        }
+                                                                }
+                                                        },
+                                                        enabled = !isProcessing,
+                                                        modifier = Modifier.weight(1f)
+                                                ) { Text(translate(LocalizationKeys.AnalNut.ADJUST_CONSTRAINTS)) }
                                         }
+
+                                        Text(
+                                                text = translate(LocalizationKeys.AnalNut.ADJUST_CONSTRAINTS_HINT),
+                                                style = MaterialTheme.typography.caption,
+                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                                                modifier = Modifier.padding(top = AppSizes.paddingSmall)
+                                        )
 
                                         // Affichage du message de traitement
                                         if (isProcessing) {
@@ -1429,28 +1491,23 @@ suspend fun calculerAjustement(
         }
 }
 
-/** Calcule le besoin absolu en grammes pour un nutriment donné */
+/**
+ * Calcule le besoin absolu en grammes pour un nutriment donné.
+ * Délègue vers [fr.vetbrain.vetnutri_mp.Data.computeAbsoluteGramNeed], extrait pour être partagé
+ * avec le solveur d'ajustement par contraintes.
+ */
 private fun calculerBesoinAbsoluGrammes(
         nutrimentRef: ReferenceEv.Nut4Ref,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
         besoinEnergetiqueReference: Double
-): Double {
-        val quantite = nutrimentRef.quantite.toDouble()
-        val uniteBase = nutrimentRef.unite
-        val uniteRequis = nutrimentRef.uniteReq
-
-        // Conversion initiale en grammes
-        val quantiteEnGrammes: Double = quantite * uniteBase.conv.toDouble()
-
-        // Calcul du besoin absolu en fonction de l'unité requise
-        return when (uniteRequis) {
-                UnitReqEnum.PERKG -> quantiteEnGrammes * (poidsAnimal ?: 0.0)
-                UnitReqEnum.PERMS -> quantiteEnGrammes * (poidsMetabolique ?: 0.0)
-                UnitReqEnum.PERKCAL -> (quantiteEnGrammes / 1000.0) * besoinEnergetiqueReference
-                else -> quantiteEnGrammes // Si c'est déjà en besoin journalier
-        }
-}
+): Double =
+        fr.vetbrain.vetnutri_mp.Data.computeAbsoluteGramNeed(
+                nutrimentRef,
+                poidsAnimal,
+                poidsMetabolique,
+                besoinEnergetiqueReference
+        )
 
 /** Obtient l'ordre de traitement des nutriments */
 private fun buildProcessingOrderFromSelections(
@@ -2073,7 +2130,8 @@ private suspend fun adjustRationForMultipleNutrients(
  * @param quantite La quantité à arrondir
  * @return La quantité arrondie
  */
-private fun arrondirQuantiteSelonRegles(alimentRation: AlimentRation, quantite: Double): Double {
+/** Non privée : réutilisée par le solveur d'ajustement par contraintes (RationConstraintAdjuster.kt). */
+fun arrondirQuantiteSelonRegles(alimentRation: AlimentRation, quantite: Double): Double {
         val aliment = alimentRation.aliment
         if (aliment != null) {
                 val cont = aliment.cont
