@@ -7,6 +7,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -100,7 +101,9 @@ fun AlimentItem(
         // État local pour la quantité en cours d'édition
         var quantityText by
                 remember(aliment.uuid, aliment.quantite) { mutableStateOf(aliment.quantite.toString()) }
-        
+
+        var showDetailDialog by remember { mutableStateOf(false) }
+
         // FocusRequester pour gérer le focus automatique
         val focusRequester = remember { FocusRequester() }
         
@@ -212,6 +215,20 @@ fun AlimentItem(
                                 }
 
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        if (aliment.aliment != null) {
+                                                IconButton(
+                                                        onClick = { showDetailDialog = true },
+                                                        modifier = Modifier.size(16.dp) // icône plus petite
+                                                ) {
+                                                        Icon(
+                                                                imageVector = Icons.Filled.Search,
+                                                                contentDescription = translate("alimentItem.viewDetails"),
+                                                                tint = VetNutriColors.Primary,
+                                                                modifier = Modifier.size(16.dp)
+                                                        )
+                                                }
+                                        }
+
                                         IconButton(
                                                 onClick = onStartEditing,
                                                 modifier = Modifier.size(16.dp) // icône plus petite
@@ -368,6 +385,12 @@ fun AlimentItem(
                                         )
                                 }
                         }
+                }
+        }
+
+        if (showDetailDialog) {
+                aliment.aliment?.let { alim ->
+                        AlimentDetailDialog(aliment = alim, onDismiss = { showDetailDialog = false })
                 }
         }
 }
