@@ -605,3 +605,40 @@ suspend fun calculerContributionsIngredients(
         if (contribution > 0.0) ContributionIngredient(index, contribution) else null
     }
 }
+
+/**
+ * Composition d'un aliment seul (hors ration), pour le dialogue "voir la composition" déclenché
+ * depuis la liste des ingrédients. `valMap` est déjà exprimé pour 100g de l'aliment tel que fourni
+ * (as-fed) — même convention que `calculerQuantiteTotaleNutriment` dans RationNutrientAnalyzer.kt.
+ */
+fun analyserCompositionAliment(aliment: AlimentEv): Map<String, ValeurNutritionnelle> {
+    val resultat = mutableMapOf<String, ValeurNutritionnelle>()
+
+    aliment.valMap.keys.forEach { nutrient ->
+        val valeur = aliment.getNutrient(nutrient) ?: return@forEach
+        val isRatio = nutrient is NutrientAnalysis
+        if (!isRatio && valeur <= 0.0) return@forEach
+        resultat[nutrient.label] = ValeurNutritionnelle(
+            nutriment = nutrient,
+            unite = nutrient.ue,
+            valeur = valeur,
+            description = "",
+            complete = true
+        )
+    }
+
+    // L'énergie peut être calculée via une équation de référence (energieParEspece) plutôt que
+    // stockée directement dans valMap : on s'assure qu'elle apparaît quand même si disponible.
+    val energie = aliment.getNutrient(NutrientMain.ENERGIE)
+    if (energie != null && energie > 0.0) {
+        resultat[NutrientMain.ENERGIE.label] = ValeurNutritionnelle(
+            nutriment = NutrientMain.ENERGIE,
+            unite = NutrientMain.ENERGIE.ue,
+            valeur = energie,
+            description = "",
+            complete = true
+        )
+    }
+
+    return resultat
+}
