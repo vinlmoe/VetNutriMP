@@ -32,6 +32,15 @@ import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
 object HtmlDocumentBuilder {
+    private fun escapeXml(text: String?): String {
+        if (text == null) return ""
+        return text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;")
+    }
+
     private fun formatAlimentDisplayName(aliment: fr.vetbrain.vetnutri_mp.Data.AlimentEv?): String {
         if (aliment == null) return "?"
         fun debugChars(input: String): String =
@@ -189,6 +198,11 @@ object HtmlDocumentBuilder {
                 .nutrient-table col.col-nom { width: 28%; }
                 .nutrient-table col.col-valeur { width: 27%; }
                 .nutrient-table col.col-repere { width: 45%; }
+                .nutrient-table tr { break-inside: avoid; page-break-inside: avoid; }
+                .bullet-graph { width: 100%; border-collapse: collapse; table-layout: fixed; page-break-inside: avoid; break-inside: avoid; }
+                .bullet-graph td { border: 0; padding: 0; line-height: 0; font-size: 0; }
+                .bullet-graph-zone td { height: 8px; }
+                .bullet-graph-apport td { height: 4px; }
                 
                 /* Styles pour les bullet graphs */
                 .bullet-graphs-container { margin-top: 12px; }
@@ -201,27 +215,28 @@ object HtmlDocumentBuilder {
                         else ""
                 }
             </style>
-            <title>${title}</title>
+            <title>${escapeXml(title)}</title>
         </head>
         <body>
-            <h1>${title}</h1>
+            <h1>${escapeXml(title)}</h1>
     """.trimIndent()
     private fun buildPractitionerHeader(info: PractitionerInfo?): String {
         if (info == null) return ""
         val adresse = listOf(info.adressePostale, "${info.codePostal} ${info.ville}".trim())
                 .filter { it.isNotBlank() }
+                .map { escapeXml(it) }
                 .joinToString("<br/>")
         return """
             <div class='header-card'>
                 <div class='two-col'>
                     <div>
-                        <div><b>${info.nom}</b></div>
-                        <div>N° ordre: ${info.numeroOrdre}</div>
+                        <div><b>${escapeXml(info.nom)}</b></div>
+                        <div>N° ordre: ${escapeXml(info.numeroOrdre)}</div>
                         <div>${adresse}</div>
                     </div>
                     <div class='right'>
-                        <div>Téléphone: ${info.telephone}</div>
-                        <div>Email: ${info.email}</div>
+                        <div>Téléphone: ${escapeXml(info.telephone)}</div>
+                        <div>Email: ${escapeXml(info.email)}</div>
                     </div>
                 </div>
             </div>
@@ -240,10 +255,10 @@ object HtmlDocumentBuilder {
         return """
             <div class='section'>
                 <h2>Animal</h2>
-                <div><b>ID:</b> ${animal.id}</div>
-                <div><b>Nom:</b> ${animal.nom}</div>
-                <div><b>Espèce:</b> ${espece}</div>
-                <div class='small muted'><b>UUID:</b> ${animal.uuid}</div>
+                <div><b>ID:</b> ${escapeXml(animal.id)}</div>
+                <div><b>Nom:</b> ${escapeXml(animal.nom)}</div>
+                <div><b>Espèce:</b> ${escapeXml(espece)}</div>
+                <div class='small muted'><b>UUID:</b> ${escapeXml(animal.uuid)}</div>
             </div>
         """.trimIndent()
     }
@@ -268,14 +283,14 @@ object HtmlDocumentBuilder {
 
                     val quantiteCell =
                             if (quantiteUnites != null) {
-                                "${qte} g<br/><small style='color: #666;'>${quantiteUnites}</small>"
+                                "${qte} g<br/><small style='color: #666;'>${escapeXml(quantiteUnites)}</small>"
                             } else {
                                 "${qte} g"
                             }
                     val couleurCell =
                             "<div style='width:14px;height:14px;border-radius:2px;background:${feedColorHex(index)};'></div>"
 
-                    "<tr><td>${couleurCell}</td><td>${nom}</td><td style='text-align:right'>${quantiteCell}</td></tr>"
+                    "<tr><td>${couleurCell}</td><td>${escapeXml(nom)}</td><td style='text-align:right'>${quantiteCell}</td></tr>"
                 }.joinToString("\n")
         return """
             <div class='section'>
@@ -294,7 +309,7 @@ object HtmlDocumentBuilder {
         if (rations.isEmpty()) return ""
         return buildString {
             rations.forEach { ration ->
-                val header = if (ration.name.isNotBlank()) "<h2>Ration: ${ration.name}</h2>" else ""
+                val header = if (ration.name.isNotBlank()) "<h2>Ration: ${escapeXml(ration.name)}</h2>" else ""
                 val block = buildRationBlock(ration)
                 append("<div class='section'>${header}${block}</div>")
             }
@@ -306,15 +321,15 @@ object HtmlDocumentBuilder {
         return """
             <div class='section'>
                 <h2>Référence utilisée</h2>
-                <div><b>Nom:</b> ${reference.nom}</div>
-                <div class='small muted'><b>UUID:</b> ${reference.uuid}</div>
+                <div><b>Nom:</b> ${escapeXml(reference.nom)}</div>
+                <div class='small muted'><b>UUID:</b> ${escapeXml(reference.uuid)}</div>
             </div>
         """.trimIndent()
     }
 
     private fun buildConseilsBlock(conseils: List<String>): String {
         if (conseils.isEmpty()) return ""
-        val items = conseils.joinToString("\n") { "<li>${it}</li>" }
+        val items = conseils.joinToString("\n") { "<li>${escapeXml(it)}</li>" }
         return """
             <div class='section'>
                 <h2>Conseils</h2>
@@ -504,7 +519,7 @@ object HtmlDocumentBuilder {
                     buildBulletGraphHtml(bgData, contributions)
                 } ?: "—"
                 val valeurCell = if (uniteAffichee.isNotBlank()) "$valeurAffichee $uniteAffichee" else valeurAffichee
-                "<tr><td>${nomTraduit}</td><td class='right'>${valeurCell}</td><td>${repereHtml}</td></tr>"
+                "<tr><td>${escapeXml(nomTraduit)}</td><td class='right'>${escapeXml(valeurCell)}</td><td>${repereHtml}</td></tr>"
             }.joinToString("\n")
 
             """
@@ -545,6 +560,10 @@ object HtmlDocumentBuilder {
         val axisMax = data.maxAxis
         fun fmt(v: Double): String = TextUtils.formatDecimal(v, 2)
         fun pct(v: Double): Double = (v / axisMax).coerceIn(0.0, 1.0) * 100.0
+        fun graphCell(widthPct: Double, color: String): String {
+            if (widthPct <= 0.0) return ""
+            return "<td style='width:${fmt(widthPct)}%;background:$color;'></td>"
+        }
 
         val bornes = buildList {
             add(0.0)
@@ -580,9 +599,7 @@ object HtmlDocumentBuilder {
             val widthPct = if (isLast) (100.0 - cumulPct).coerceAtLeast(0.0) else (pct(end) - pct(start))
             cumulPct += widthPct
             if (widthPct <= 0.0) continue
-            zoneSegments.append(
-                "<div style='display:inline-block;height:8px;width:${fmt(widthPct)}%;background:$color;'></div>"
-            )
+            zoneSegments.append(graphCell(widthPct, color))
         }
 
         val apportPct = pct(data.apport)
@@ -591,9 +608,7 @@ object HtmlDocumentBuilder {
         val apportRow = StringBuilder()
         if (contributions.isEmpty() || totalContribution <= 0.0) {
             // Pas de détail par ingrédient disponible (ex: nutriment-ratio) : barre unie, comme avant.
-            apportRow.append(
-                "<div style='display:inline-block;height:4px;width:${fmt(apportPct)}%;background:#222222;'></div>"
-            )
+            apportRow.append(graphCell(apportPct, "#222222"))
         } else {
             var cumulApportPct = 0.0
             contributions.forEachIndexed { i, contrib ->
@@ -605,22 +620,26 @@ object HtmlDocumentBuilder {
                 }
                 cumulApportPct += segPct
                 if (segPct <= 0.0) return@forEachIndexed
-                apportRow.append(
-                    "<div style='display:inline-block;height:4px;width:${fmt(segPct)}%;background:${feedColorHex(contrib.index)};'></div>"
-                )
+                apportRow.append(graphCell(segPct, feedColorHex(contrib.index)))
             }
         }
-        apportRow.append(
-            "<div style='display:inline-block;height:4px;width:${fmt(100.0 - apportPct)}%;background:transparent;'></div>"
-        )
+        apportRow.append(graphCell(100.0 - apportPct, "transparent"))
 
-        // white-space:nowrap est indispensable : les segments inline-block peuvent déborder de
-        // quelques fractions de pixel à cause des arrondis (conversion % -> px par le moteur PDF),
-        // et sans ça, des éléments inline qui dépassent la largeur du conteneur retombent à la
-        // ligne suivante (comme des mots trop longs). nowrap force le dépassement à rester
-        // silencieux plutôt que de casser la barre sur deux lignes.
-        return "<div style='width:100%;font-size:0;line-height:0;white-space:nowrap;overflow:hidden;'>$zoneSegments</div>" +
-            "<div style='width:100%;font-size:0;line-height:0;white-space:nowrap;overflow:hidden;margin-top:1px;'>$apportRow</div>"
+        // Les segments sont rendus en tableau plutôt qu'en inline-block : certains moteurs PDF
+        // font passer les inline-block à la ligne quand les arrondis de pourcentage dépassent de
+        // quelques fractions de pixel. Une ligne de tableau reste indivisible.
+        return """
+            <table class='bullet-graph'>
+                <tbody>
+                    <tr class='bullet-graph-zone'>$zoneSegments</tr>
+                </tbody>
+            </table>
+            <table class='bullet-graph' style='margin-top:1px;'>
+                <tbody>
+                    <tr class='bullet-graph-apport'>$apportRow</tr>
+                </tbody>
+            </table>
+        """.trimIndent()
     }
 
     /** Composition (matière sèche) et origine énergétique, mêmes calculs que cardNutrient.kt. */
@@ -632,10 +651,10 @@ object HtmlDocumentBuilder {
         fun table(titre: String, data: List<Pair<String, Double>>): String {
             if (data.isEmpty()) return ""
             val rows = data.joinToString("\n") { (nom, pct) ->
-                "<tr><td>${nom}</td><td class='right'>${TextUtils.formatDecimal(pct, 1)}%</td></tr>"
+                "<tr><td>${escapeXml(nom)}</td><td class='right'>${TextUtils.formatDecimal(pct, 1)}%</td></tr>"
             }
             return """
-                <h3>${titre}</h3>
+                <h3>${escapeXml(titre)}</h3>
                 <table><tbody>$rows</tbody></table>
             """.trimIndent()
         }
@@ -671,10 +690,10 @@ object HtmlDocumentBuilder {
                         val isRatio = valeur.nutriment is NutrientAnalysis
                         val valeurAffichee = if (isRatio) valeur.valeur else valeur.valeur * factor
                         val nomTraduit = obtenirNomTraduitNutriment(nom, valeur.nutriment)
-                        "<tr><td>${nomTraduit}</td><td class='right'>${TextUtils.formatDecimal(valeurAffichee, 2)} ${valeur.unite.displayName}</td></tr>"
+                        "<tr><td>${escapeXml(nomTraduit)}</td><td class='right'>${TextUtils.formatDecimal(valeurAffichee, 2)} ${escapeXml(valeur.unite.displayName)}</td></tr>"
                     }
             """
-                <h3>${mode.titre}</h3>
+                <h3>${escapeXml(mode.titre)}</h3>
                 <table><tbody>$rows</tbody></table>
             """.trimIndent()
         }.joinToString("\n")
@@ -717,11 +736,7 @@ object HtmlDocumentBuilder {
 
     private fun buildAdditionalTextBlock(text: String): String {
         if (text.isBlank()) return ""
-        val escaped =
-                text.replace("&", "&amp;")
-                        .replace("<", "&lt;")
-                        .replace(">", "&gt;")
-                        .replace("\n", "<br/>")
+        val escaped = escapeXml(text).replace("\n", "<br/>")
         return """
             <div class='section'>
                 <h2>Notes</h2>
