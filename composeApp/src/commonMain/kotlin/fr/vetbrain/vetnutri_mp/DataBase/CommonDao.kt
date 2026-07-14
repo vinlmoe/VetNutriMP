@@ -386,6 +386,9 @@ interface BiblioRefDao {
         @Query("SELECT * FROM BIBLIO_REFS WHERE uuid = :uuid")
         suspend fun getBiblioRefById(uuid: String): BiblioRefEntity?
 
+        @Query("SELECT * FROM BIBLIO_REFS WHERE uuid IN (:uuids)")
+        suspend fun getBiblioRefsByIds(uuids: List<String>): List<BiblioRefEntity>
+
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertBiblioRef(biblioRef: BiblioRefEntity)
 
@@ -587,6 +590,9 @@ interface AlimentBiblioRefDao {
 
     @Query("SELECT biblioRefUuid FROM ALIMENT_BIBLIO_REFS WHERE alimentUuid = :alimentUuid")
     suspend fun getBiblioRefUuids(alimentUuid: String): List<String>
+
+    @Query("SELECT * FROM ALIMENT_BIBLIO_REFS WHERE alimentUuid IN (:alimentUuids)")
+    suspend fun getBiblioRefsForAliments(alimentUuids: List<String>): List<AlimentBiblioRefEntity>
 }
 
 /** DAO pour accéder aux sections HTML réutilisables */
