@@ -668,9 +668,16 @@ class DatabaseFoodRepository(
                     } else {
                         emptyList()
                     }
+            val biblioRefs = if (alimentBiblioRefDao != null && biblioRefDao != null) {
+                try {
+                    alimentBiblioRefDao.getBiblioRefUuids(food.uuid)
+                        .mapNotNull { refUuid -> biblioRefDao.getBiblioRefById(refUuid)?.toDomain() }
+                } catch (_: Exception) { emptyList() }
+            } else emptyList()
             val energyPerSpecies = energyPerSpeciesDao?.getForAliment(food.uuid) ?: emptyList()
             return@withContext food.toAlimentEv(
                 nutrientValues = nutrientValues,
+                biblioRefs = biblioRefs,
                 energyPerSpecies = energyPerSpecies
             )
         }
@@ -1445,10 +1452,26 @@ class DatabaseFoodRepository(
                 ids.chunked(500).flatMap { chunk -> dao.getForAliments(chunk) }
                     .groupBy { it.refAliment }
             } ?: emptyMap()
+            val biblioRefsByFood: Map<String, List<fr.vetbrain.vetnutri_mp.Data.BiblioRef>> =
+                try {
+                    val junctions = alimentBiblioRefDao?.let { dao ->
+                        ids.chunked(500).flatMap { chunk -> dao.getBiblioRefsForAliments(chunk) }
+                    } ?: emptyList()
+                    val biblioRefEntitiesByUuid = biblioRefDao?.let { dao ->
+                        junctions.map { it.biblioRefUuid }.distinct()
+                            .chunked(500).flatMap { chunk -> dao.getBiblioRefsByIds(chunk) }
+                            .associateBy { it.uuid }
+                    } ?: emptyMap()
+                    junctions.groupBy(
+                        { it.alimentUuid },
+                        { biblioRefEntitiesByUuid[it.biblioRefUuid]?.toDomain() }
+                    ).mapValues { (_, refs) -> refs.filterNotNull() }
+                } catch (_: Exception) { emptyMap() }
 
             foodEntities.associate { entity ->
                 entity.uuid to entity.toAlimentEv(
                     nutrientValues = nutrientsByFood[entity.uuid] ?: emptyList(),
+                    biblioRefs = biblioRefsByFood[entity.uuid] ?: emptyList(),
                     energyPerSpecies = energyByFood[entity.uuid] ?: emptyList()
                 )
             }
