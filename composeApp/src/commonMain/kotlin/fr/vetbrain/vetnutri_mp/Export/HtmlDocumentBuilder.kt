@@ -614,8 +614,13 @@ object HtmlDocumentBuilder {
             "<div style='display:inline-block;height:4px;width:${fmt(100.0 - apportPct)}%;background:transparent;'></div>"
         )
 
-        return "<div style='width:100%;font-size:0;line-height:0;'>$zoneSegments</div>" +
-            "<div style='width:100%;font-size:0;line-height:0;margin-top:1px;'>$apportRow</div>"
+        // white-space:nowrap est indispensable : les segments inline-block peuvent déborder de
+        // quelques fractions de pixel à cause des arrondis (conversion % -> px par le moteur PDF),
+        // et sans ça, des éléments inline qui dépassent la largeur du conteneur retombent à la
+        // ligne suivante (comme des mots trop longs). nowrap force le dépassement à rester
+        // silencieux plutôt que de casser la barre sur deux lignes.
+        return "<div style='width:100%;font-size:0;line-height:0;white-space:nowrap;overflow:hidden;'>$zoneSegments</div>" +
+            "<div style='width:100%;font-size:0;line-height:0;white-space:nowrap;overflow:hidden;margin-top:1px;'>$apportRow</div>"
     }
 
     /** Composition (matière sèche) et origine énergétique, mêmes calculs que cardNutrient.kt. */
