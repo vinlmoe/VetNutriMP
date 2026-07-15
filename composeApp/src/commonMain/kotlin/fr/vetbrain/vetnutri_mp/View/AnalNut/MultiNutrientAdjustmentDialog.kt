@@ -114,6 +114,7 @@ private fun groupNutrientsByCategory(nutrients: Collection<Nutrient>): List<Nutr
         ordered += nutrients.filter { it is NutrientLipid }.sortedBy { it.label }
         ordered += nutrients.filter { it is AAEnum }.sortedBy { it.label }
         ordered += nutrients.filter { it is NutrientOther }.sortedBy { it.label }
+        ordered += nutrients.filter { it is NutrientAnalysis }.sortedBy { it.label }
         if (nutrients.contains(NutrientMain.ENERGIE)) ordered += NutrientMain.ENERGIE
         return ordered.distinct()
 }
