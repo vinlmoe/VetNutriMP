@@ -744,6 +744,38 @@ class ExportImportRepository(
                                                 emptyMap()
                                         }
                                 } else emptyMap()
+                        // Dédoublonnage : une référence important sous un nouvel uuid
+                        // (ex: réattribution d'uuid lors d'une régénération du JSON source)
+                        // ne doit pas laisser une ancienne ligne orpheline en base sous le
+                        // même nom/espèce/stade physiologique, sans quoi les deux
+                        // coexistent et l'app peut charger l'ancienne (incomplète).
+                        fun dedupKey(nom: String, espece: String, stadePhysio: String) =
+                                "${nom.trim().lowercase()}|${espece.trim().uppercase()}|${stadePhysio.trim().uppercase()}"
+                        val staleReferencesByKey: Map<String, List<ReferenceEv>> =
+                                try {
+                                        referenceRepository.getAllReferenceEv().groupBy {
+                                                dedupKey(it.nom, it.espece.name, it.stadePhysio.name)
+                                        }
+                                } catch (_: Exception) {
+                                        emptyMap()
+                                }
+                        for (refApi in envelope.references) {
+                                val key = dedupKey(refApi.nom, refApi.espece, refApi.stadePhysio)
+                                staleReferencesByKey[key]
+                                        ?.filter { it.uuid != refApi.uuid }
+                                        ?.forEach { stale ->
+                                                try {
+                                                        referenceRepository.deleteReferenceEv(stale.uuid)
+                                                        listener?.onLog?.invoke(
+                                                                "🧹 Référence dupliquée supprimée: '${stale.nom}' (uuid obsolète ${stale.uuid})"
+                                                        )
+                                                } catch (e: Exception) {
+                                                        listener?.onLog?.invoke(
+                                                                "Erreur suppression doublon référence ${stale.uuid}: ${e.message}"
+                                                        )
+                                                }
+                                        }
+                        }
                         for (refApi in envelope.references) {
                                 try {
                                         val ref =

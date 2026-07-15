@@ -7,8 +7,11 @@ package fr.vetbrain.vetnutri_mp.Enumer
 /** Classe utilitaire permettant de résoudre les nutriments à partir de leur label. */
 object NutrientResolver {
 
-    // Lookup map O(1) construit une seule fois depuis toutes les énumérations
-    private val labelToNutrient: Map<String, Nutrient> by lazy {
+    // Lookup map des seuls labels standards (enums), sans les nutriments personnalisés.
+    // Sert de source de vérité prioritaire : un nutriment personnalisé ne doit jamais
+    // masquer un label standard (ex: un nutriment personnalisé nommé "CAP" ne doit pas
+    // masquer NutrientAnalysis.PCa).
+    private val builtInLabelToNutrient: Map<String, Nutrient> by lazy {
         buildMap {
             NutrientMain.entries.forEach { put(it.label.uppercase(), it) }
             NutrientMacro.entries.forEach { put(it.label.uppercase(), it) }
@@ -16,7 +19,7 @@ object NutrientResolver {
             NutrientLipid.entries.forEach { put(it.label.uppercase(), it) }
             NutrientVitam.entries.forEach { n ->
                 put(n.label.uppercase(), n)
-                n.altLabels.forEach { alt -> 
+                n.altLabels.forEach { alt ->
                     val key = alt.uppercase()
                     if (!containsKey(key)) {
                         put(key, n)
@@ -27,7 +30,21 @@ object NutrientResolver {
             AAEnum.entries.forEach { put(it.label.uppercase(), it) }
             NutrientEnergy.entries.forEach { put(it.label.uppercase(), it) }
             NutrientAnalysis.entries.forEach { put(it.label.uppercase(), it) }
-            CustomNutrientRegistry.all().forEach { put(it.label.uppercase(), it) }
+        }
+    }
+
+    // Lookup map O(1) construit une seule fois depuis toutes les énumérations, complétée
+    // par le registre (au moment de la construction) des nutriments personnalisés.
+    private val labelToNutrient: Map<String, Nutrient> by lazy {
+        buildMap {
+            putAll(builtInLabelToNutrient)
+            // Un nutriment personnalisé ne doit jamais masquer un label standard déjà connu.
+            CustomNutrientRegistry.all().forEach { n ->
+                val key = n.label.uppercase()
+                if (!containsKey(key)) {
+                    put(key, n)
+                }
+            }
         }
     }
 
@@ -64,16 +81,15 @@ object NutrientResolver {
         val raw = label.trim().replace("[", "").replace("]", "").replace("\"", "")
         val normalized = normalizeLabel(raw)
 
-        // 0) prioriser le registre live des nutriments personnalisés
-        // pour éviter d'utiliser une entrée obsolète du cache interne.
+        // 1) match exact sur un label standard connu (prioritaire et jamais périmé : un
+        // nutriment personnalisé ne doit jamais masquer un nutriment standard, ex: "CAP")
+        builtInLabelToNutrient[raw.uppercase()]?.let { return it }
+        builtInLabelToNutrient[normalized.uppercase()]?.let { return it }
+
+        // 2) registre live des nutriments personnalisés, pour éviter d'utiliser une
+        // entrée obsolète du cache interne (labelToNutrient est calculé une seule fois)
         CustomNutrientRegistry.getByLabel(raw)?.let { return it }
         CustomNutrientRegistry.getByLabel(normalized)?.let { return it }
-
-        // 1) match exact sur le label stocké (insensible casse)
-        labelToNutrient[raw.uppercase()]?.let { return it }
-
-        // 2) match exact sur la forme normalisée
-        labelToNutrient[normalized.uppercase()]?.let { return it }
 
         // 3) fallback custom exact
         val custom = CustomNutrientRegistry.getByLabel(raw) ?: CustomNutrient.fromLabel(raw)

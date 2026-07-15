@@ -158,6 +158,30 @@ class NutrientResolverTest {
         assertEquals(NutrientMain.PROTEINE, result)
     }
 
+    // ── Non-régression : un nutriment personnalisé ne doit jamais masquer un
+    // label standard (ex: un utilisateur créant un nutriment "CAP" ne doit pas
+    // faire disparaître NutrientAnalysis.PCa des références qui l'utilisent) ──
+
+    @Test
+    fun resolveStoredLabel_customNutrientNamedLikeBuiltinRatio_stillResolvesToBuiltin() {
+        CustomNutrientRegistry.registerFromRaw("CAP", "g")
+        try {
+            assertEquals(NutrientAnalysis.PCa, NutrientResolver.resolveStoredLabel("CAP"))
+        } finally {
+            CustomNutrientRegistry.removeByLabel("CAP")
+        }
+    }
+
+    @Test
+    fun allNutrientResolver_customNutrientNamedLikeBuiltinRatio_stillResolvesToBuiltin() {
+        CustomNutrientRegistry.registerFromRaw("CAP", "g")
+        try {
+            assertEquals(NutrientAnalysis.PCa, NutrientResolver.AllNutrientResolver("CAP"))
+        } finally {
+            CustomNutrientRegistry.removeByLabel("CAP")
+        }
+    }
+
     // ── getAllNutrientLabels ───────────────────────────────────────────────────
 
     @Test
