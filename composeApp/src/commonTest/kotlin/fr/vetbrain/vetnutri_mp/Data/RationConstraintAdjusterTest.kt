@@ -32,6 +32,19 @@ class RationConstraintAdjusterTest {
         return aliment
     }
 
+    private fun foodWithMinerals(
+        name: String,
+        calciumPer100g: Double,
+        phosphorusPer100g: Double,
+        energyPer100g: Double = 400.0
+    ): AlimentEv {
+        val aliment = AlimentEv(nom = name)
+        aliment.setNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL, calciumPer100g)
+        aliment.setNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS, phosphorusPer100g)
+        aliment.setNutrient(NutrientMain.ENERGIE, energyPer100g)
+        return aliment
+    }
+
     private fun makeReference(): ReferenceEv = ReferenceEv(nom = "Ref test", espece = Espece.CHIEN)
 
     private fun defineAbsolute(ref: ReferenceEv, nutrient: fr.vetbrain.vetnutri_mp.Enumer.Nutrient, level: Reflevel, grams: Double) {
@@ -320,5 +333,117 @@ class RationConstraintAdjusterTest {
         )
 
         assertTrue(!result.success)
+    }
+
+    @Test
+    fun adjustRationByConstraints_ratioMinBound_isEnforced() = runTest {
+        // Food A is calcium-rich (low phosphorus), food B is phosphorus-rich (low calcium).
+        val foodA = foodWithMinerals("A", calciumPer100g = 2.0, phosphorusPer100g = 0.5)
+        val foodB = foodWithMinerals("B", calciumPer100g = 0.2, phosphorusPer100g = 1.0)
+        val arA = AlimentRation(quantite = 100.0, aliment = foodA, weight = 1.0)
+        val arB = AlimentRation(quantite = 100.0, aliment = foodB, weight = 1.0)
+        val ration = Ration(alimentMutableList = mutableListOf(arA, arB))
+
+        val ref = makeReference()
+        // Current ratio at (100,100) is 2.2/1.5 ~= 1.47, below this 2.0 requirement.
+        defineAbsolute(ref, NutrientAnalysis.PCa, Reflevel.MIN, 2.0)
+
+        val adjustmentData = listOf(
+            AlimentAdjustmentData(alimentRation = arA),
+            AlimentAdjustmentData(alimentRation = arB)
+        )
+
+        val result = adjustRationByConstraints(
+            ration = ration,
+            adjustmentData = adjustmentData,
+            referenceUtilisee = ref,
+            besoinEnergetiqueTotal = 100.0,
+            besoinEnergetiqueStandard = 100.0,
+            poidsAnimal = 10.0,
+            poidsMetabolique = 5.6,
+            equationRepository = null,
+            selectedNutrients = listConstrainableNutrients(ref, ration).toSet()
+        )
+
+        assertTrue(result.success, "Expected success but got: ${result.message}")
+        val adjusted = result.adjustedAliments!!
+        val recomputed = Ration(alimentMutableList = adjusted.toMutableList())
+        val calcium = recomputed.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL, ref) ?: 0.0
+        val phosphorus = recomputed.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS, ref) ?: 0.0
+        assertTrue(
+            calcium / phosphorus >= 2.0 - 0.05,
+            "Expected Ca/P close to >= 2.0 but was ${calcium / phosphorus}"
+        )
+    }
+
+    @Test
+    fun adjustRationByConstraints_conflictingRatioMinMax_returnsInfeasible() = runTest {
+        // MIN(3.0) > MAX(1.0) is self-contradictory for any (x_A, x_B) with both foods at zero
+        // being the only point where the linearized ratio constraints hold trivially (0 >= 0,
+        // 0 <= 0) — but a nonzero MIN(ENERGIE) requirement rules out the all-zero ration, so the
+        // combined system has no feasible point at all.
+        val foodA = foodWithMinerals("A", calciumPer100g = 2.0, phosphorusPer100g = 0.5)
+        val foodB = foodWithMinerals("B", calciumPer100g = 0.2, phosphorusPer100g = 1.0)
+        val arA = AlimentRation(quantite = 100.0, aliment = foodA, weight = 1.0)
+        val arB = AlimentRation(quantite = 100.0, aliment = foodB, weight = 1.0)
+        val ration = Ration(alimentMutableList = mutableListOf(arA, arB))
+
+        val ref = makeReference()
+        defineAbsolute(ref, NutrientAnalysis.PCa, Reflevel.MIN, 3.0)
+        defineAbsolute(ref, NutrientAnalysis.PCa, Reflevel.MAX, 1.0)
+
+        val adjustmentData = listOf(
+            AlimentAdjustmentData(alimentRation = arA),
+            AlimentAdjustmentData(alimentRation = arB)
+        )
+
+        val result = adjustRationByConstraints(
+            ration = ration,
+            adjustmentData = adjustmentData,
+            referenceUtilisee = ref,
+            besoinEnergetiqueTotal = 100.0,
+            besoinEnergetiqueStandard = 100.0,
+            poidsAnimal = 10.0,
+            poidsMetabolique = 5.6,
+            equationRepository = null,
+            selectedNutrients = listConstrainableNutrients(ref, ration).toSet()
+        )
+
+        assertTrue(!result.success)
+        assertTrue(result.violatedConstraints.isNotEmpty())
+    }
+
+    @Test
+    fun listConstrainableNutrients_ratioExcludedWhenDenominatorAbsentFromEveryAliment() = runTest {
+        // Food only has calcium, no phosphorus anywhere in the ration.
+        val foodA = AlimentEv(nom = "A").apply {
+            setNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL, 2.0)
+            setNutrient(NutrientMain.ENERGIE, 400.0)
+        }
+        val ration = Ration(alimentMutableList = mutableListOf(AlimentRation(quantite = 100.0, aliment = foodA)))
+
+        val ref = makeReference()
+        defineAbsolute(ref, NutrientAnalysis.PCa, Reflevel.MIN, 2.0)
+
+        val constrainable = listConstrainableNutrients(ref, ration)
+
+        assertTrue(!constrainable.contains(NutrientAnalysis.PCa))
+    }
+
+    @Test
+    fun listConstrainableNutrients_excludesNonBoneRatiosEvenWhenReferenced() = runTest {
+        val foodA = food("A", proteinPer100g = 20.0, energyPer100g = 400.0)
+        val ration = Ration(alimentMutableList = mutableListOf(AlimentRation(quantite = 100.0, aliment = foodA)))
+
+        val ref = makeReference()
+        defineAbsolute(ref, NutrientAnalysis.nonOsPhos, Reflevel.MIN, 1.0)
+        defineAbsolute(ref, NutrientAnalysis.nonOsProt, Reflevel.MIN, 1.0)
+        defineAbsolute(ref, NutrientAnalysis.nonOsPP, Reflevel.MIN, 1.0)
+
+        val constrainable = listConstrainableNutrients(ref, ration)
+
+        assertTrue(!constrainable.contains(NutrientAnalysis.nonOsPhos))
+        assertTrue(!constrainable.contains(NutrientAnalysis.nonOsProt))
+        assertTrue(!constrainable.contains(NutrientAnalysis.nonOsPP))
     }
 }

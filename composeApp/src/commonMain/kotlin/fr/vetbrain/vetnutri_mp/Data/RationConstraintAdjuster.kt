@@ -2,7 +2,10 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -38,9 +41,39 @@ fun computeAbsoluteGramNeed(
 }
 
 /**
+ * Correspondance numérateur/dénominateur pour les nutriments-ratios ([NutrientAnalysis]) qui sont
+ * de vrais ratios de deux autres nutriments (vérifié contre `RationNutrientAnalyzer.kt` :
+ * `calculerRatioGlobalRation` et la correction Ca:P codée en dur dans
+ * `MultiNutrientAdjustmentDialog.kt`). Une borne `ratio >= r` (resp. `<= r`) se linéarise en
+ * `numérateur - r·dénominateur >= 0` (resp. `<= 0`), car le dénominateur est une somme pondérée
+ * positive de quantités d'aliments (jamais négative).
+ *
+ * `MethCys`/`PhenTyr` ne figurent pas ici : malgré leur regroupement dans le même enum, ce sont en
+ * réalité des sommes (Méthionine+Cystéine, Phénylalanine+Tyrosine), pas des ratios — elles restent
+ * gérées par le chemin générique (somme pondérée classique), sans traitement spécial.
+ *
+ * `nonOsPhos`/`nonOsProt`/`nonOsPP` (phosphore/protéine "non osseux") sont exclus de toute
+ * génération automatique de contrainte : aucune formule de calcul n'existe dans le code (pas de
+ * soustraction basée sur les cendres/le contenu osseux) — les inclure produirait des coefficients
+ * silencieusement nuls plutôt qu'une valeur nutritionnellement correcte.
+ */
+private val RATIO_NUTRIENT_PAIRS: Map<NutrientAnalysis, Pair<Nutrient, Nutrient>> =
+        mapOf(
+                NutrientAnalysis.NaK to (NutrientMacro.K to NutrientMacro.NA),
+                NutrientAnalysis.PCa to (NutrientMacro.CAL to NutrientMacro.PHOS),
+                NutrientAnalysis.o6o3 to (NutrientLipid.O6 to NutrientLipid.O3),
+                NutrientAnalysis.ZnCu to (NutrientMin.ZN to NutrientMin.CU),
+                NutrientAnalysis.PhosphProt to (NutrientMain.PROTEINE to NutrientMacro.PHOS)
+        )
+
+private val EXCLUDED_NUTRIENT_ANALYSIS: Set<NutrientAnalysis> =
+        setOf(NutrientAnalysis.nonOsPhos, NutrientAnalysis.nonOsProt, NutrientAnalysis.nonOsPP)
+
+/**
  * Liste les nutriments "contraignables" pour une référence et une ration données : ceux ayant une
- * borne MIN/OPTIMIN et/ou MAX/OPTIMAX définie dans [referenceUtilisee] (hors nutriments de type
- * ratio, cf. [adjustRationByConstraints]) ET dont la valeur effective — via
+ * borne MIN/OPTIMIN et/ou MAX/OPTIMAX définie dans [referenceUtilisee] (les ratios non
+ * linéarisables listés dans [EXCLUDED_NUTRIENT_ANALYSIS] étant exclus) ET dont la valeur
+ * effective — via
  * [AlimentRation.getNutrientWithComplementary], qui retombe sur les équations complémentaires de
  * [referenceUtilisee] (`equationsNut`) si la valeur directe est absente, exactement comme
  * l'énergie retombe sur `equationDEcom`/`equationDEraw` — est non nulle pour au moins un aliment
@@ -62,12 +95,10 @@ suspend fun listConstrainableNutrients(
                         addAll(referenceUtilisee.getRefMapOMin().keys)
                         addAll(referenceUtilisee.getRefMapMax().keys)
                         addAll(referenceUtilisee.getRefMapOMax().keys)
-                        removeAll { it is NutrientAnalysis }
+                        removeAll { it in EXCLUDED_NUTRIENT_ANALYSIS }
                 }
 
-        val result = linkedSetOf<Nutrient>()
-        for (nutrient in candidates) {
-                var presentSomewhere = false
+        suspend fun hasNonzeroValueSomewhere(nutrient: Nutrient): Boolean {
                 for (alimentRation in ration.alimentMutableList) {
                         val value =
                                 alimentRation.getNutrientWithComplementary(
@@ -76,11 +107,24 @@ suspend fun listConstrainableNutrients(
                                         referenceEv = referenceUtilisee
                                 )
                                         ?: 0.0
-                        if (value > 0.0) {
-                                presentSomewhere = true
-                                break
-                        }
+                        if (value > 0.0) return true
                 }
+                return false
+        }
+
+        val result = linkedSetOf<Nutrient>()
+        for (nutrient in candidates) {
+                val ratioPair = RATIO_NUTRIENT_PAIRS[nutrient]
+                val presentSomewhere =
+                        if (ratioPair != null) {
+                                // Un ratio n'est exploitable que si numérateur ET dénominateur ont
+                                // chacun une source quelque part dans la ration (pas forcément le
+                                // même aliment).
+                                hasNonzeroValueSomewhere(ratioPair.first) &&
+                                        hasNonzeroValueSomewhere(ratioPair.second)
+                        } else {
+                                hasNonzeroValueSomewhere(nutrient)
+                        }
                 if (presentSomewhere) result.add(nutrient)
         }
         result.add(NutrientMain.ENERGIE)
@@ -117,10 +161,10 @@ data class ConstraintAdjustmentResult(
  * d'un problème de coût au sens classique (l'application ne connaît pas de prix par aliment) :
  * l'objectif minimise le changement par rapport à la ration actuelle, pas un coût réel.
  *
- * Les nutriments de type ratio ([NutrientAnalysis] : Ca:P, K:Na, Ω6:Ω3, Zn:Cu...) sont hors
- * périmètre de cette première version : bien que linéarisables (ex. Ca - r·P >= 0), leur
- * correspondance numérateur/dénominateur est gérée ailleurs (RationNutrientAnalyzer) et mérite
- * une intégration dédiée plutôt qu'une génération automatique de contrainte.
+ * Les nutriments-ratios ([NutrientAnalysis] : Ca:P, K:Na, Ω6:Ω3, Zn:Cu, Prot:Phos — voir
+ * [RATIO_NUTRIENT_PAIRS]) sont linéarisés en `numérateur - r·dénominateur >= 0` (borne
+ * inférieure) ou `<= 0` (borne supérieure). `nonOsPhos`/`nonOsProt`/`nonOsPP` restent exclus
+ * (aucune formule de calcul définie dans le code, voir [EXCLUDED_NUTRIENT_ANALYSIS]).
  *
  * Les aliments verrouillés ([AlimentAdjustmentData.isLocked]) gardent leur quantité actuelle
  * (constante soustraite du second membre de chaque contrainte) et ne sont pas des variables de
@@ -208,6 +252,66 @@ suspend fun adjustRationByConstraints(
                 val constraintInfos = mutableMapOf<String, NutrientConstraintInfo>()
 
                 for (nutrient in candidateNutrients) {
+                        val ratioPair = RATIO_NUTRIENT_PAIRS[nutrient]
+                        if (ratioPair != null) {
+                                // Linéarisation d'une borne de ratio : numérateur/dénominateur >= r
+                                // (resp. <=) devient numérateur - r·dénominateur >= 0 (resp. <= 0),
+                                // valide car le dénominateur (somme pondérée de quantités
+                                // d'aliments) est toujours >= 0.
+                                val (numerator, denominator) = ratioPair
+                                val numeratorCoeffs = DoubleArray(totalVarCount)
+                                val denominatorCoeffs = DoubleArray(totalVarCount)
+                                for (i in 0 until numFoods) {
+                                        numeratorCoeffs[i] = gramCoefficient(freeAliments[i], numerator)
+                                        denominatorCoeffs[i] = gramCoefficient(freeAliments[i], denominator)
+                                }
+                                var lockedNumerator = 0.0
+                                var lockedDenominator = 0.0
+                                for (locked in lockedAliments) {
+                                        lockedNumerator += gramCoefficient(locked, numerator) * locked.quantite
+                                        lockedDenominator += gramCoefficient(locked, denominator) * locked.quantite
+                                }
+
+                                val lowerRatioRef = bestLowerBound(nutrient)
+                                if (lowerRatioRef != null && lowerRatioRef.quantite > 0.0) {
+                                        val ratioBound = lowerRatioRef.quantite
+                                        val coeffs = DoubleArray(totalVarCount)
+                                        for (i in 0 until numFoods) {
+                                                coeffs[i] = numeratorCoeffs[i] - ratioBound * denominatorCoeffs[i]
+                                        }
+                                        val rhs = ratioBound * lockedDenominator - lockedNumerator
+                                        val name = "MIN(${nutrient.label})"
+                                        constraints.add(LpConstraint(name, coeffs, LpConstraintSense.GE, rhs))
+                                        constraintInfos[name] =
+                                                NutrientConstraintInfo(
+                                                        nutrient,
+                                                        lowerRatioRef.niveauRelatif,
+                                                        ratioBound,
+                                                        LpConstraintSense.GE
+                                                )
+                                }
+
+                                val upperRatioRef = bestUpperBound(nutrient)
+                                if (upperRatioRef != null && upperRatioRef.quantite > 0.0) {
+                                        val ratioBound = upperRatioRef.quantite
+                                        val coeffs = DoubleArray(totalVarCount)
+                                        for (i in 0 until numFoods) {
+                                                coeffs[i] = numeratorCoeffs[i] - ratioBound * denominatorCoeffs[i]
+                                        }
+                                        val rhs = ratioBound * lockedDenominator - lockedNumerator
+                                        val name = "MAX(${nutrient.label})"
+                                        constraints.add(LpConstraint(name, coeffs, LpConstraintSense.LE, rhs))
+                                        constraintInfos[name] =
+                                                NutrientConstraintInfo(
+                                                        nutrient,
+                                                        upperRatioRef.niveauRelatif,
+                                                        ratioBound,
+                                                        LpConstraintSense.LE
+                                                )
+                                }
+                                continue
+                        }
+
                         val coefficients = DoubleArray(totalVarCount)
                         for (i in 0 until numFoods) {
                                 coefficients[i] = gramCoefficient(freeAliments[i], nutrient)
