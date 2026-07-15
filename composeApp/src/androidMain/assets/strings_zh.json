@@ -351,6 +351,7 @@
         "analnut.success.adjust_energy": "应用能量调整（等量）。系数：%1$s",
         "analnut.msg.calculating": "计算中...",
         "analnut.msg.calculating_constraints": "正在求解约束模型...",
+        "analnut.constraints.max_food_share_label": "警告阈值：单一食材占日粮的最大比例 (%)",
         "analnut.msg.adjusting": "调整中...",
         "analnut.success.adjust": "✅ 调整成功",
         "analnut.error.adjust_fail": "❌ 调整失败",

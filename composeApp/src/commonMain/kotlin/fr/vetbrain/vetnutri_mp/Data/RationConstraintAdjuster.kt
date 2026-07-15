@@ -9,6 +9,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
+import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.LinearProgrammingSolver
 import fr.vetbrain.vetnutri_mp.Utils.LpConstraint
 import fr.vetbrain.vetnutri_mp.Utils.LpConstraintSense
@@ -166,7 +167,15 @@ data class ConstraintAdjustmentResult(
         val success: Boolean,
         val message: String,
         val adjustedAliments: List<AlimentRation>? = null,
-        val violatedConstraints: List<NutrientConstraintInfo> = emptyList()
+        val violatedConstraints: List<NutrientConstraintInfo> = emptyList(),
+        /**
+         * Avertissements non bloquants (ex: un aliment dépasse le seuil de part de ration
+         * configuré) : le solveur ne connaît ni les rôles ni les catégories d'aliments (base vs
+         * complément), donc un aliment qui doit légitimement devenir majoritaire pour satisfaire
+         * un nutriment dont il est la seule source (ex: 69% de la ration) ne doit jamais être
+         * bloqué — seulement signalé, en laissant l'utilisateur juger.
+         */
+        val warnings: List<String> = emptyList()
 )
 
 /**
@@ -207,7 +216,13 @@ suspend fun adjustRationByConstraints(
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
         equationRepository: EquationRepository?,
-        selectedNutrients: Set<Nutrient>
+        selectedNutrients: Set<Nutrient>,
+        /**
+         * Seuil (en %, ex: 50.0) au-delà duquel un aliment de la ration ajustée déclenche un
+         * avertissement (pas un blocage — voir [ConstraintAdjustmentResult.warnings]) s'il en
+         * représente plus que ce pourcentage en masse. `null` désactive la vérification.
+         */
+        maxFoodSharePercent: Double? = 50.0
 ): ConstraintAdjustmentResult {
         try {
                 val lockedUuids =
@@ -482,11 +497,35 @@ suspend fun adjustRationByConstraints(
                                                         ar.copy(quantite = arrondirQuantiteSelonRegles(ar, rawQuantite))
                                                 }
                                         }
+                                // Avertissement non bloquant : le solveur ignore tout ce qui n'est
+                                // pas une contrainte nutritionnelle explicite (rôle de l'aliment,
+                                // réalisme culinaire...), donc un aliment peut légitimement finir
+                                // par dominer la ration en masse. On ne bloque jamais pour ça —
+                                // seule la personne qui connaît l'aliment (base vs complément)
+                                // peut juger si c'est un vrai problème ou un besoin nutritionnel
+                                // réel (ex: seule source d'un nutriment donné).
+                                val warnings = mutableListOf<String>()
+                                if (maxFoodSharePercent != null && maxFoodSharePercent > 0.0) {
+                                        val totalMass = adjusted.sumOf { it.quantite }
+                                        if (totalMass > 1e-9) {
+                                                for (ar in adjusted) {
+                                                        val sharePercent = ar.quantite / totalMass * 100.0
+                                                        if (sharePercent > maxFoodSharePercent) {
+                                                                warnings.add(
+                                                                        "⚠️ '${ar.aliment?.nom ?: ar.uuid}' représente ${
+                                                                                TextUtils.formatDecimal(sharePercent, 0)
+                                                                        }% de la ration (seuil: ${TextUtils.formatDecimal(maxFoodSharePercent, 0)}%)."
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
                                 ConstraintAdjustmentResult(
                                         success = true,
                                         message =
                                                 "Ration ajustée par programmation sous contrainte : ${constraintInfos.size} contrainte(s) MIN/MAX satisfaite(s) simultanément.",
-                                        adjustedAliments = adjusted
+                                        adjustedAliments = adjusted,
+                                        warnings = warnings
                                 )
                         }
                         is LpSolution.Infeasible -> {

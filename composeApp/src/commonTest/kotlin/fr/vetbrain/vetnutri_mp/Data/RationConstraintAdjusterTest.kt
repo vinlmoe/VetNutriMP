@@ -91,6 +91,76 @@ class RationConstraintAdjusterTest {
     }
 
     @Test
+    fun adjustRationByConstraints_foodBecomesMajority_addsNonBlockingWarning() = runTest {
+        val foodA = food("A", proteinPer100g = 20.0, energyPer100g = 400.0)
+        val foodB = food("B", proteinPer100g = 0.0, energyPer100g = 300.0)
+        val arA = AlimentRation(quantite = 100.0, aliment = foodA, weight = 1.0)
+        val arB = AlimentRation(quantite = 100.0, aliment = foodB, weight = 1.0)
+        val ration = Ration(alimentMutableList = mutableListOf(arA, arB))
+
+        val ref = makeReference()
+        // Only A carries protein, so it must grow to 225g (69% of the final 325g ration) to
+        // reach 45g of protein. This is a legitimate nutritional outcome, not an aberration --
+        // it must never block the solve, only be surfaced as a warning.
+        defineAbsolute(ref, NutrientMain.PROTEINE, Reflevel.MIN, 45.0)
+
+        val adjustmentData = listOf(
+            AlimentAdjustmentData(alimentRation = arA),
+            AlimentAdjustmentData(alimentRation = arB)
+        )
+
+        val result = adjustRationByConstraints(
+            ration = ration,
+            adjustmentData = adjustmentData,
+            referenceUtilisee = ref,
+            besoinEnergetiqueTotal = 100.0,
+            besoinEnergetiqueStandard = 100.0,
+            poidsAnimal = 10.0,
+            poidsMetabolique = 5.6,
+            equationRepository = null,
+            selectedNutrients = listConstrainableNutrients(ref, ration).toSet(),
+            maxFoodSharePercent = 50.0
+        )
+
+        assertTrue(result.success, "Expected success but got: ${result.message}")
+        assertTrue(result.warnings.isNotEmpty(), "Expected a share warning since A ends up > 50% of the ration")
+        assertTrue(result.warnings.any { it.contains("'A'") })
+    }
+
+    @Test
+    fun adjustRationByConstraints_maxFoodShareDisabled_producesNoWarning() = runTest {
+        val foodA = food("A", proteinPer100g = 20.0, energyPer100g = 400.0)
+        val foodB = food("B", proteinPer100g = 0.0, energyPer100g = 300.0)
+        val arA = AlimentRation(quantite = 100.0, aliment = foodA, weight = 1.0)
+        val arB = AlimentRation(quantite = 100.0, aliment = foodB, weight = 1.0)
+        val ration = Ration(alimentMutableList = mutableListOf(arA, arB))
+
+        val ref = makeReference()
+        defineAbsolute(ref, NutrientMain.PROTEINE, Reflevel.MIN, 45.0)
+
+        val adjustmentData = listOf(
+            AlimentAdjustmentData(alimentRation = arA),
+            AlimentAdjustmentData(alimentRation = arB)
+        )
+
+        val result = adjustRationByConstraints(
+            ration = ration,
+            adjustmentData = adjustmentData,
+            referenceUtilisee = ref,
+            besoinEnergetiqueTotal = 100.0,
+            besoinEnergetiqueStandard = 100.0,
+            poidsAnimal = 10.0,
+            poidsMetabolique = 5.6,
+            equationRepository = null,
+            selectedNutrients = listConstrainableNutrients(ref, ration).toSet(),
+            maxFoodSharePercent = null
+        )
+
+        assertTrue(result.success)
+        assertTrue(result.warnings.isEmpty(), "Warning check must be disabled when threshold is null")
+    }
+
+    @Test
     fun adjustRationByConstraints_lockedFood_keepsItsQuantityAndReducesRequirement() = runTest {
         val foodA = food("A", proteinPer100g = 20.0, energyPer100g = 400.0)
         val foodB = food("B", proteinPer100g = 10.0, energyPer100g = 300.0)

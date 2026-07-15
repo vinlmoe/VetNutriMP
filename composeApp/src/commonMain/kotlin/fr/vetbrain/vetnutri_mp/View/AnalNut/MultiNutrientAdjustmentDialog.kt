@@ -90,6 +90,8 @@ private fun ConstraintAdjustmentResult.toRationAdjustmentResult(): RationAdjustm
                                         "• ${it.refLevel.label} ${it.nutrient.label}"
                                 }
                         "$message\n$bullets"
+                } else if (warnings.isNotEmpty()) {
+                        "$message\n${warnings.joinToString("\n")}"
                 } else {
                         message
                 }
@@ -184,6 +186,11 @@ fun MultiNutrientAdjustmentView(
         var constrainableNutrients by remember(referenceUtilisee, ration) { mutableStateOf<List<Nutrient>>(emptyList()) }
         var selectedConstraintNutrients by remember(referenceUtilisee, ration) { mutableStateOf<Set<Nutrient>>(emptySet()) }
         var constraintNutrientSelectorExpanded by remember { mutableStateOf(false) }
+        // Seuil (en %) au-delà duquel un aliment déclenche un avertissement (non bloquant) dans
+        // l'ajustement par contraintes — éditable, car le solveur ne connaît ni le rôle ni la
+        // catégorie des aliments : un aliment devenant majoritaire peut être un problème (une
+        // garniture qui explose) ou tout à fait normal (seule source d'un nutriment donné).
+        var maxFoodSharePercentText by remember { mutableStateOf("50") }
 
         LaunchedEffect(referenceUtilisee, ration) {
                 println(
@@ -655,6 +662,14 @@ fun MultiNutrientAdjustmentView(
                                                         }
                                                 }
                                         }
+
+                                        OutlinedTextField(
+                                                value = maxFoodSharePercentText,
+                                                onValueChange = { maxFoodSharePercentText = it },
+                                                label = { Text(translate(LocalizationKeys.AnalNut.MAX_FOOD_SHARE_LABEL)) },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth().padding(top = AppSizes.paddingSmall)
+                                        )
                                 }
                         }
 
@@ -835,7 +850,8 @@ fun MultiNutrientAdjustmentView(
                                                                                         poidsAnimal = poidsAnimal,
                                                                                         poidsMetabolique = poidsMetabolique,
                                                                                         equationRepository = equationRepository,
-                                                                                        selectedNutrients = selectedConstraintNutrients
+                                                                                        selectedNutrients = selectedConstraintNutrients,
+                                                                                        maxFoodSharePercent = maxFoodSharePercentText.toDoubleOrNull()
                                                                                 )
                                                                         val result = constraintResult.toRationAdjustmentResult()
                                                                         isProcessing = false

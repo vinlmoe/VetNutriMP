@@ -324,6 +324,7 @@ object LocalizationKeys {
         const val BULLET_VIEW = "analnut.view.bullet"
         const val CALCULATING = "analnut.msg.calculating"
         const val CALCULATING_CONSTRAINTS = "analnut.msg.calculating_constraints"
+        const val MAX_FOOD_SHARE_LABEL = "analnut.constraints.max_food_share_label"
         const val CARDS_VIEW = "analnut.view.cards"
         const val CLICK_DETAILS = "analnut.click.details"
         const val CLOSE = "analnut.close"

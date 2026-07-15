@@ -401,6 +401,7 @@
         "analnut.success.adjust_energy": "Ajustement énergie (quantités égales) appliqué. Facteur: %1$s",
         "analnut.msg.calculating": "Calcul en cours...",
         "analnut.msg.calculating_constraints": "Résolution du modèle sous contraintes en cours...",
+        "analnut.constraints.max_food_share_label": "Seuil d'alerte : part max d'un aliment dans la ration (%)",
         "analnut.msg.adjusting": "Ajustement en cours...",
         "analnut.success.adjust": "✅ Ajustement réussi",
         "analnut.error.adjust_fail": "❌ Échec de l'ajustement",

@@ -376,6 +376,7 @@
         "analnut.success.adjust_energy": "Energy adjustment (equal quantities) applied. Factor: %1$s",
         "analnut.msg.calculating": "Calculation in progress...",
         "analnut.msg.calculating_constraints": "Solving the constraint-based model...",
+        "analnut.constraints.max_food_share_label": "Warning threshold: max share of one food in the ration (%)",
         "analnut.msg.adjusting": "Adjustment in progress...",
         "analnut.success.adjust": "✅ Adjustment successful",
         "analnut.error.adjust_fail": "❌ Adjustment failed",
