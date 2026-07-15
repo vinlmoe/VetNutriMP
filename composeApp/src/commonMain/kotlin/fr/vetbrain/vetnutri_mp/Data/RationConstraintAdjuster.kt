@@ -508,13 +508,53 @@ suspend fun adjustRationByConstraints(
                                 if (maxFoodSharePercent != null && maxFoodSharePercent > 0.0) {
                                         val totalMass = adjusted.sumOf { it.quantite }
                                         if (totalMass > 1e-9) {
+                                                // Contraintes "tendues" (satisfaites à l'égalité, sans marge) dans
+                                                // la solution : ce sont elles qui ont réellement forcé les
+                                                // quantités, par opposition aux contraintes satisfaites avec de la
+                                                // marge (qui n'expliquent rien du résultat obtenu).
+                                                val bindingNutrients = linkedMapOf<String, NutrientConstraintInfo>()
+                                                for (c in constraints) {
+                                                        val info = constraintInfos[c.name] ?: continue
+                                                        var lhs = 0.0
+                                                        for (k in c.coefficients.indices) {
+                                                                lhs += c.coefficients[k] * solution.values[k]
+                                                        }
+                                                        val tolerance = maxOf(1e-6, kotlin.math.abs(c.rhs) * 1e-4)
+                                                        val binding =
+                                                                when (c.sense) {
+                                                                        LpConstraintSense.GE -> (lhs - c.rhs) <= tolerance
+                                                                        LpConstraintSense.LE -> (c.rhs - lhs) <= tolerance
+                                                                        LpConstraintSense.EQ -> true
+                                                                }
+                                                        if (binding) bindingNutrients[c.name] = info
+                                                }
+
+                                                suspend fun contributesToNutrient(ar: AlimentRation, nutrient: Nutrient): Boolean {
+                                                        val ratioPair = RATIO_NUTRIENT_PAIRS[nutrient]
+                                                        return if (ratioPair != null) {
+                                                                gramCoefficient(ar, ratioPair.first) > 1e-9 ||
+                                                                        gramCoefficient(ar, ratioPair.second) > 1e-9
+                                                        } else {
+                                                                gramCoefficient(ar, nutrient) > 1e-9
+                                                        }
+                                                }
+
                                                 for (ar in adjusted) {
                                                         val sharePercent = ar.quantite / totalMass * 100.0
                                                         if (sharePercent > maxFoodSharePercent) {
+                                                                val causes = linkedSetOf<String>()
+                                                                for (info in bindingNutrients.values) {
+                                                                        if (contributesToNutrient(ar, info.nutrient)) {
+                                                                                causes.add("${info.refLevel.label} ${info.nutrient.label}")
+                                                                        }
+                                                                }
+                                                                val causeSuffix =
+                                                                        if (causes.isNotEmpty()) " — dû à : ${causes.joinToString(", ")}"
+                                                                        else ""
                                                                 warnings.add(
                                                                         "⚠️ '${ar.aliment?.nom ?: ar.uuid}' représente ${
                                                                                 TextUtils.formatDecimal(sharePercent, 0)
-                                                                        }% de la ration (seuil: ${TextUtils.formatDecimal(maxFoodSharePercent, 0)}%)."
+                                                                        }% de la ration (seuil: ${TextUtils.formatDecimal(maxFoodSharePercent, 0)}%)$causeSuffix."
                                                                 )
                                                         }
                                                 }

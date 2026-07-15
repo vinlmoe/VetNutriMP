@@ -125,6 +125,10 @@ class RationConstraintAdjusterTest {
         assertTrue(result.success, "Expected success but got: ${result.message}")
         assertTrue(result.warnings.isNotEmpty(), "Expected a share warning since A ends up > 50% of the ration")
         assertTrue(result.warnings.any { it.contains("'A'") })
+        assertTrue(
+            result.warnings.any { it.contains("PROTEINE") },
+            "Expected the warning to name the binding nutrient (protein) responsible for A's growth: ${result.warnings}"
+        )
     }
 
     @Test
