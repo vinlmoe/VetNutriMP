@@ -186,10 +186,15 @@ fun MultiNutrientAdjustmentView(
         var constraintNutrientSelectorExpanded by remember { mutableStateOf(false) }
 
         LaunchedEffect(referenceUtilisee, ration) {
-                val nutrients =
-                        groupNutrientsByCategory(
-                                listConstrainableNutrients(referenceUtilisee, ration, equationRepository)
-                        )
+                println(
+                        "[RCA-UI] LaunchedEffect triggered: reference='${referenceUtilisee.nom}' " +
+                                "(uuid=${referenceUtilisee.uuid}), ration uuid=${ration.uuid}, " +
+                                "aliments=${ration.alimentMutableList.size}, equationRepository=${equationRepository != null}"
+                )
+                val raw = listConstrainableNutrients(referenceUtilisee, ration, equationRepository)
+                println("[RCA-UI] raw listConstrainableNutrients (${raw.size}): " + raw.joinToString(", ") { it.label })
+                val nutrients = groupNutrientsByCategory(raw)
+                println("[RCA-UI] grouped constrainableNutrients (${nutrients.size}): " + nutrients.joinToString(", ") { it.label })
                 constrainableNutrients = nutrients
                 selectedConstraintNutrients = nutrients.toSet()
         }

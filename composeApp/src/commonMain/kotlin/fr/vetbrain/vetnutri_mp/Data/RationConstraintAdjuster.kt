@@ -98,6 +98,18 @@ suspend fun listConstrainableNutrients(
                         removeAll { it in EXCLUDED_NUTRIENT_ANALYSIS }
                 }
 
+        println(
+                "[RCA] listConstrainableNutrients: reference='${referenceUtilisee.nom}' (${referenceUtilisee.espece}/${referenceUtilisee.stadePhysio}), " +
+                        "candidates before presence-filter (${candidates.size}): " +
+                        candidates.joinToString(", ") { "${it.label}[${it::class.simpleName}]" }
+        )
+        println(
+                "[RCA] RATIO_NUTRIENT_PAIRS keys: " +
+                        RATIO_NUTRIENT_PAIRS.keys.joinToString(", ") { "${it.label}[${it::class.simpleName}]" } +
+                        " — intersection with candidates: " +
+                        candidates.filter { it in RATIO_NUTRIENT_PAIRS }.joinToString(", ") { it.label }
+        )
+
         suspend fun hasNonzeroValueSomewhere(nutrient: Nutrient): Boolean {
                 for (alimentRation in ration.alimentMutableList) {
                         val value =
@@ -107,6 +119,10 @@ suspend fun listConstrainableNutrients(
                                         referenceEv = referenceUtilisee
                                 )
                                         ?: 0.0
+                        println(
+                                "[RCA]     ${nutrient.label} on aliment '${alimentRation.aliment?.nom}' " +
+                                        "(uuid=${alimentRation.uuid}) = $value"
+                        )
                         if (value > 0.0) return true
                 }
                 return false
@@ -120,14 +136,20 @@ suspend fun listConstrainableNutrients(
                                 // Un ratio n'est exploitable que si numérateur ET dénominateur ont
                                 // chacun une source quelque part dans la ration (pas forcément le
                                 // même aliment).
-                                hasNonzeroValueSomewhere(ratioPair.first) &&
-                                        hasNonzeroValueSomewhere(ratioPair.second)
+                                val numeratorPresent = hasNonzeroValueSomewhere(ratioPair.first)
+                                val denominatorPresent = hasNonzeroValueSomewhere(ratioPair.second)
+                                println(
+                                        "[RCA]   ratio ${nutrient.label}: numerator=${ratioPair.first.label} present=$numeratorPresent, " +
+                                                "denominator=${ratioPair.second.label} present=$denominatorPresent"
+                                )
+                                numeratorPresent && denominatorPresent
                         } else {
                                 hasNonzeroValueSomewhere(nutrient)
                         }
                 if (presentSomewhere) result.add(nutrient)
         }
         result.add(NutrientMain.ENERGIE)
+        println("[RCA] listConstrainableNutrients result (${result.size}): " + result.joinToString(", ") { it.label })
         return result.toList()
 }
 
