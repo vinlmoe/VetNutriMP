@@ -177,14 +177,21 @@ fun MultiNutrientAdjustmentView(
         var processingMessage by remember { mutableStateOf("") }
 
         // Nutriments proposés pour l'ajustement par contraintes (LP), et sous-ensemble
-        // sélectionné par l'utilisateur — tous sélectionnés par défaut.
-        val constrainableNutrients =
-                remember(referenceUtilisee, ration) {
-                        groupNutrientsByCategory(listConstrainableNutrients(referenceUtilisee, ration))
-                }
-        var selectedConstraintNutrients by
-                remember(referenceUtilisee, ration) { mutableStateOf(constrainableNutrients.toSet()) }
+        // sélectionné par l'utilisateur — tous sélectionnés par défaut. Calculé de façon
+        // asynchrone car listConstrainableNutrients() retombe sur les équations complémentaires
+        // (getNutrientWithComplementary), tout comme l'énergie retombe sur equationDEcom/DEraw.
+        var constrainableNutrients by remember(referenceUtilisee, ration) { mutableStateOf<List<Nutrient>>(emptyList()) }
+        var selectedConstraintNutrients by remember(referenceUtilisee, ration) { mutableStateOf<Set<Nutrient>>(emptySet()) }
         var constraintNutrientSelectorExpanded by remember { mutableStateOf(false) }
+
+        LaunchedEffect(referenceUtilisee, ration) {
+                val nutrients =
+                        groupNutrientsByCategory(
+                                listConstrainableNutrients(referenceUtilisee, ration, equationRepository)
+                        )
+                constrainableNutrients = nutrients
+                selectedConstraintNutrients = nutrients.toSet()
+        }
 
         val scope = rememberCoroutineScope()
 

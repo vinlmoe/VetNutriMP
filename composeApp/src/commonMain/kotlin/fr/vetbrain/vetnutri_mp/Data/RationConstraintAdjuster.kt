@@ -40,34 +40,51 @@ fun computeAbsoluteGramNeed(
 /**
  * Liste les nutriments "contraignables" pour une référence et une ration données : ceux ayant une
  * borne MIN/OPTIMIN et/ou MAX/OPTIMAX définie dans [referenceUtilisee] (hors nutriments de type
- * ratio, cf. [adjustRationByConstraints]) ET présents avec une valeur non nulle dans au moins un
- * aliment de [ration] — une contrainte sur un nutriment absent de tous les aliments n'aurait que
- * des coefficients nuls et ne pourrait jamais être satisfaite si c'est une borne inférieure.
- * L'énergie est toujours contraignable, indépendamment de sa présence dans `valMap` (son besoin
- * absolu est connu par ailleurs et peut être dérivé d'équations, cf. [AlimentRation.getEnergie]).
+ * ratio, cf. [adjustRationByConstraints]) ET dont la valeur effective — via
+ * [AlimentRation.getNutrientWithComplementary], qui retombe sur les équations complémentaires de
+ * [referenceUtilisee] (`equationsNut`) si la valeur directe est absente, exactement comme
+ * l'énergie retombe sur `equationDEcom`/`equationDEraw` — est non nulle pour au moins un aliment
+ * de [ration]. Une contrainte sur un nutriment dont aucun aliment (ni directement, ni par
+ * équation) ne fournit de valeur n'aurait que des coefficients nuls et ne pourrait jamais être
+ * satisfaite si c'est une borne inférieure. L'énergie est toujours contraignable, indépendamment
+ * de ce calcul (son besoin absolu est connu par ailleurs, cf. [AlimentRation.getEnergie]).
  * Sert à peupler la sélection de nutriments proposée à l'utilisateur avant de lancer l'ajustement
  * par contraintes.
  */
-fun listConstrainableNutrients(referenceUtilisee: ReferenceEv, ration: Ration): List<Nutrient> {
-        val presentInAtLeastOneAliment =
-                ration.alimentMutableList
-                        .mapNotNull { it.aliment }
-                        .flatMap { it.valMap.entries }
-                        .filter { it.value.value > 0.0 }
-                        .map { it.key }
-                        .toSet()
-
-        return linkedSetOf<Nutrient>()
-                .apply {
+suspend fun listConstrainableNutrients(
+        referenceUtilisee: ReferenceEv,
+        ration: Ration,
+        equationRepository: EquationRepository? = null
+): List<Nutrient> {
+        val candidates =
+                linkedSetOf<Nutrient>().apply {
                         addAll(referenceUtilisee.getRefMapMin().keys)
                         addAll(referenceUtilisee.getRefMapOMin().keys)
                         addAll(referenceUtilisee.getRefMapMax().keys)
                         addAll(referenceUtilisee.getRefMapOMax().keys)
                         removeAll { it is NutrientAnalysis }
-                        retainAll { it in presentInAtLeastOneAliment }
-                        add(NutrientMain.ENERGIE)
                 }
-                .toList()
+
+        val result = linkedSetOf<Nutrient>()
+        for (nutrient in candidates) {
+                var presentSomewhere = false
+                for (alimentRation in ration.alimentMutableList) {
+                        val value =
+                                alimentRation.getNutrientWithComplementary(
+                                        nutrient,
+                                        equationRepository = equationRepository,
+                                        referenceEv = referenceUtilisee
+                                )
+                                        ?: 0.0
+                        if (value > 0.0) {
+                                presentSomewhere = true
+                                break
+                        }
+                }
+                if (presentSomewhere) result.add(nutrient)
+        }
+        result.add(NutrientMain.ENERGIE)
+        return result.toList()
 }
 
 /** Une contrainte MIN/MAX construite pour un nutriment donné, conservée pour le diagnostic UI. */
@@ -149,7 +166,12 @@ suspend fun adjustRationByConstraints(
                                 val probe = AlimentRation(aliment = aliment, quantite = 100.0, weight = 1.0)
                                 probe.getEnergie(referenceUtilisee, equationRepository) / 100.0
                         } else {
-                                (aliment.valMap[nutrient]?.value ?: 0.0) / 100.0
+                                (alimentRation.getNutrientWithComplementary(
+                                        nutrient,
+                                        equationRepository = equationRepository,
+                                        referenceEv = referenceUtilisee
+                                )
+                                        ?: 0.0) / 100.0
                         }
                 }
 
@@ -172,7 +194,8 @@ suspend fun adjustRationByConstraints(
                 // l'heuristique séquentielle existante, qui elle ne permet pas de choisir un
                 // sous-ensemble explicite de nutriments à satisfaire simultanément.
                 val candidateNutrients =
-                        listConstrainableNutrients(referenceUtilisee, ration).filter { it in selectedNutrients }
+                        listConstrainableNutrients(referenceUtilisee, ration, equationRepository)
+                                .filter { it in selectedNutrients }
 
                 if (candidateNutrients.isEmpty()) {
                         return ConstraintAdjustmentResult(

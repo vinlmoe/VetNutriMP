@@ -238,7 +238,7 @@ class RationConstraintAdjusterTest {
     }
 
     @Test
-    fun listConstrainableNutrients_includesMinMaxNutrientsAndEnergyButExcludesRatios() {
+    fun listConstrainableNutrients_includesMinMaxNutrientsAndEnergyButExcludesRatios() = runTest {
         val foodA = food("A", proteinPer100g = 20.0, energyPer100g = 400.0)
         val ration = Ration(alimentMutableList = mutableListOf(AlimentRation(quantite = 100.0, aliment = foodA)))
 
@@ -254,7 +254,7 @@ class RationConstraintAdjusterTest {
     }
 
     @Test
-    fun listConstrainableNutrients_excludesNutrientAbsentFromEveryAliment() {
+    fun listConstrainableNutrients_excludesNutrientAbsentFromEveryAliment() = runTest {
         val foodA = food("A", proteinPer100g = 20.0, energyPer100g = 400.0)
         val ration = Ration(alimentMutableList = mutableListOf(AlimentRation(quantite = 100.0, aliment = foodA)))
 
