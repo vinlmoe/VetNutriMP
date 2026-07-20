@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# Retire le canal alpha des icônes App Store iOS (aplatissement sur fond opaque).
-# L'App Store Connect rejette toute icône marketing (1024x1024) contenant un canal alpha.
+# Retire le canal alpha des icônes iOS (aplatissement sur fond opaque).
+# Apple interdit le canal alpha sur TOUTES les icônes de l'appiconset (pas seulement la
+# marketing 1024x1024) : Xcode peut faire échouer l'archive/la validation App Store Connect
+# si une seule icône, quelle que soit sa taille, contient de la transparence. Ce script
+# traite donc l'ensemble des PNG du dossier AppIcon.appiconset.
 #
 # Prérequis :
 #   - git-lfs installé et `git lfs pull` déjà exécuté (les PNG de l'appiconset sont versionnés
