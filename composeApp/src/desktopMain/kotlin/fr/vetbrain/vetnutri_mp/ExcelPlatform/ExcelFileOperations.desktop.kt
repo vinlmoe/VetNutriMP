@@ -4,8 +4,12 @@ import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
-/** Implémentation Desktop des opérations de fichiers Excel/CSV */
-actual fun openCsvFileForImport(): String? {
+/**
+ * Implémentation Desktop des opérations de fichiers Excel/CSV.
+ * Reste synchrone/bloquant en interne (JFileChooser est modal) : `suspend` ici sert uniquement
+ * à unifier la signature commune avec Android/iOS, pas à changer le comportement.
+ */
+actual suspend fun openCsvFileForImport(): String? {
     // Approche synchrone simple pour éviter les problèmes de coroutines
     val fileChooser =
             JFileChooser().apply {
@@ -27,7 +31,7 @@ actual fun openCsvFileForImport(): String? {
     }
 }
 
-actual fun saveCsvFileForExport(csvContent: String, defaultFileName: String): Boolean {
+actual suspend fun saveCsvFileForExport(csvContent: String, defaultFileName: String): Boolean {
     val fileChooser =
             JFileChooser().apply {
                 dialogTitle = "Exporter vers CSV"
@@ -38,9 +42,7 @@ actual fun saveCsvFileForExport(csvContent: String, defaultFileName: String): Bo
     return if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
         try {
             val file = fileChooser.selectedFile
-            // S'assurer que l'extension .csv est présente
-            val fileName = if (file.name.endsWith(".csv")) file.name else "${file.name}.csv"
-            val csvFile = File(file.parent, fileName)
+            val csvFile = File(file.parent, ensureCsvExtension(file.name))
             csvFile.writeText(csvContent)
             true
         } catch (e: Exception) {
@@ -52,7 +54,7 @@ actual fun saveCsvFileForExport(csvContent: String, defaultFileName: String): Bo
     }
 }
 
-actual fun openCsvFileWithPreview(): String? {
+actual suspend fun openCsvFileWithPreview(): String? {
     // Pour Desktop, on utilise la même fonction que l'import normal
     return openCsvFileForImport()
 }
@@ -60,3 +62,7 @@ actual fun openCsvFileWithPreview(): String? {
 actual fun isCsvFileOperationsSupported(): Boolean {
     return true
 }
+
+/** S'assure que le nom de fichier se termine par ".csv" (ajoute l'extension si absente). */
+internal fun ensureCsvExtension(fileName: String): String =
+    if (fileName.endsWith(".csv")) fileName else "$fileName.csv"

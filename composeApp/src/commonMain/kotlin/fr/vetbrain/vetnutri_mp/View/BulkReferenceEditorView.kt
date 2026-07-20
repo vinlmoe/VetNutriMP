@@ -26,6 +26,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 import fr.vetbrain.vetnutri_mp.ViewModel.BULK_EDITABLE_CATEGORIES
 import fr.vetbrain.vetnutri_mp.ViewModel.BulkReferenceEditorViewModel
+import kotlinx.coroutines.launch
 
 private val NUTRIENT_COL_WIDTH = 170.dp
 private val REF_COL_WIDTH = 130.dp
@@ -42,6 +43,7 @@ fun BulkReferenceEditorView(
         onNavigateBack: () -> Unit,
         modifier: Modifier = Modifier
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val references by viewModel.references.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val selectedLevel by viewModel.selectedLevel.collectAsState()
@@ -386,8 +388,10 @@ fun BulkReferenceEditorView(
                 if (isCsvFileOperationsSupported()) {
                     OutlinedButton(
                             onClick = {
-                                val csv = viewModel.generateCsv()
-                                saveCsvFileForExport(csv, "references_export.csv")
+                                coroutineScope.launch {
+                                    val csv = viewModel.generateCsv()
+                                    saveCsvFileForExport(csv, "references_export.csv")
+                                }
                             }
                     ) {
                         Text(translate("auto.view.crossconsultationgradingview.exporter_csv"), fontSize = 12.sp)

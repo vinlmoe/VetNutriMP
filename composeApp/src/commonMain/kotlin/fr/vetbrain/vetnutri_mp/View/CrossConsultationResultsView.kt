@@ -67,6 +67,7 @@ import fr.vetbrain.vetnutri_mp.ViewModel.CrossConsultationAnalysisViewModel
 import kotlin.math.roundToInt
 import kotlin.math.floor
 import kotlin.math.ceil
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.heightIn
 import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
@@ -892,6 +893,7 @@ private fun NutrientStatsPanel(
     val stats = remember(viewModel.selectedIds.collectAsState().value, showActual) {
         viewModel.computeNutrientStats(actualOnly = showActual)
     }
+    val coroutineScope = rememberCoroutineScope()
 
     Column(modifier = modifier) {
         if (isCsvFileOperationsSupported()) {
@@ -901,8 +903,10 @@ private fun NutrientStatsPanel(
             ) {
                 OutlinedButton(
                         onClick = {
-                            val csv = buildStatsCsv(stats)
-                            saveCsvFileForExport(csv, "statistiques_nutriments.csv")
+                            coroutineScope.launch {
+                                val csv = buildStatsCsv(stats)
+                                saveCsvFileForExport(csv, "statistiques_nutriments.csv")
+                            }
                         },
                         enabled = stats.isNotEmpty()
                 ) {

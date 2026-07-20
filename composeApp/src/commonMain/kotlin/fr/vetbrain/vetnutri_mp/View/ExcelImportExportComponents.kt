@@ -628,10 +628,9 @@ fun ExcelImportExportSection(
                                 Button(
                                         onClick = {
                                                 showImportOptionsDialog = false
-                                                // Ouvrir le fichier CSV en dehors du contexte coroutine (comme les autres file browsers)
+                                                coroutineScope.launch {
                                                 val csv = openCsvFileForImport()
                                                 if (csv != null) {
-                                                        coroutineScope.launch {
                                                                 isImporting = true
                                                                 try {
                                                                         if (excelFoodService != null && csvSupported) {
@@ -672,13 +671,13 @@ fun ExcelImportExportSection(
                                                                 } finally {
                                                                         isImporting = false
                                                                 }
-                                                        }
                                                 } else {
                                                         // Aucun fichier sélectionné
                                                         importResult = ExcelFoodService.ExcelImportResult(
                                                                 success = false,
                                                                 message = "Aucun fichier sélectionné"
                                                         )
+                                                }
                                                 }
                                         }
                                 ) { Text(translate("startup.continue")) }
