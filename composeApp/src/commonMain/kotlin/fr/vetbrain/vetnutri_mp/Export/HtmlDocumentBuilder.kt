@@ -762,5 +762,10 @@ object HtmlDocumentBuilder {
 
     // buildNutrientAnalysisBulletGraphs (capture PNG de bullet graphs) a été retiré : remplacé par
     // buildNutrientTableBlock (tableau HTML/CSS, fiable sur toutes les plateformes y compris iOS).
+    //
+    // 3.3.2 : le module Export/BulletGraphImageCapture.kt (et ses actuals iOS/Android/Desktop) qui
+    // permettait de générer ces images a été supprimé. Il n'était plus appelé nulle part depuis ce
+    // remplacement HTML/CSS — conservé en dead code jusqu'ici. Ne pas le réintroduire sans revoir
+    // le rendu iOS (UIMarkupTextPrintFormatter ne sait pas rendre les images SVG/PNG).
 
 }

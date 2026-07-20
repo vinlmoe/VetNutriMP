@@ -44,17 +44,28 @@ composeApp/src/androidMain/res/
 ```
 iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/
 ├── Contents.json
-└── app-icon-1024.png
+└── 35 fichiers PNG (16.png … 1024.png), un par taille/idiome déclaré dans Contents.json
 ```
+Tous les PNG de ce dossier sont versionnés en **Git LFS** (`*.png filter=lfs` dans `.gitattributes`) :
+exécutez `git lfs pull` après un clone/checkout pour récupérer les vraies images (sinon ce sont des
+pointeurs texte de ~130 octets, pas des PNG utilisables).
+
+⚠️ Un second dossier `iosApp/VetNutri/Assets.xcassets/AppIcon.appiconset/` existe dans le repo mais
+n'est **pas référencé** par le projet Xcode actif (`iosApp.xcodeproj/project.pbxproj` ne pointe que
+vers `iosApp/iosApp/Assets.xcassets`) — ne pas le modifier, il est orphelin.
 
 ### Configuration
-- **Format** : PNG 1024x1024 pixels
-- **Fichier** : `app-icon-1024.png`
+- **Format** : PNG, tailles multiples déclarées dans `Contents.json`
+- **Icône App Store (marketing)** : `1024.png`, idiome `ios-marketing`, 1024x1024
+- **⚠️ Canal alpha** : l'icône marketing (`1024.png`) **ne doit pas avoir de canal alpha** —
+  App Store Connect rejette tout upload avec un fond transparent. Vérifier avec
+  `identify -format '%A' 1024.png` (ImageMagick) ; si `True`, aplatir sur fond opaque avant l'export
+  avec `./scripts/flatten_ios_icons.sh` (voir plus bas).
 
 ### Pour modifier l'icône iOS
-1. Remplacez `app-icon-1024.png` par votre nouvelle icône
-2. Assurez-vous qu'elle fait exactement 1024x1024 pixels
-3. Utilisez Xcode pour prévisualiser l'icône
+1. Remplacez les PNG concernés dans `iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/` (respecter les noms de `Contents.json`)
+2. Assurez-vous que `1024.png` fait exactement 1024x1024 pixels et n'a pas de canal alpha
+3. Utilisez Xcode pour prévisualiser l'icône (l'inspecteur d'assets signale un canal alpha sur l'icône marketing)
 
 ## 3. Desktop ❌ (À configurer)
 
@@ -105,6 +116,13 @@ chmod +x scripts/generate_icons.sh
 ./scripts/generate_icons.sh assets/logo_vetnutri.png
 ```
 
+### Retirer le canal alpha de l'icône App Store iOS
+```bash
+git lfs pull   # récupère les vraies images (les PNG de l'appiconset sont en Git LFS)
+./scripts/flatten_ios_icons.sh          # aplatit sur fond blanc
+./scripts/flatten_ios_icons.sh "#0B5FFF" # ou sur une couleur de fond spécifique
+```
+
 ## Formats d'icônes par plateforme
 
 | Plateforme | Format | Taille recommandée | Outils |
@@ -142,8 +160,14 @@ chmod +x scripts/generate_icons.sh
 - Assurez-vous que le manifest pointe vers les bons fichiers
 
 #### Icône iOS non visible
-- Vérifiez que `app-icon-1024.png` fait exactement 1024x1024 pixels
+- Vérifiez que `1024.png` fait exactement 1024x1024 pixels
+- Vérifiez que `git lfs pull` a bien été exécuté (sinon les PNG sont des pointeurs LFS, pas de vraies images)
 - Nettoyez et reconstruisez le projet dans Xcode
+
+#### Icône iOS rejetée par App Store Connect ("alpha channel")
+- Le fichier `1024.png` contient un canal alpha — exécuter `./scripts/flatten_ios_icons.sh` pour
+  l'aplatir sur fond opaque (blanc par défaut, ou `./scripts/flatten_ios_icons.sh "#RRGGBB"`)
+- Nécessite `git lfs pull` (pour avoir les vraies images) et ImageMagick installés localement
 
 #### Icône Desktop non visible
 - Vérifiez que les fichiers d'icônes existent dans `desktopMain/resources/`

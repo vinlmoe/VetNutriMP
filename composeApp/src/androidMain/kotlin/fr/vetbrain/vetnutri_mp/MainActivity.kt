@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabaseBuilder
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabasePath
 import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
+import fr.vetbrain.vetnutri_mp.ExcelPlatform.ExcelFileOperationsBridge
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Utils.FullscreenManager
@@ -20,6 +21,10 @@ class MainActivity : ComponentActivity() {
         // Initialisation du contexte Android
         AndroidContext.appContext = applicationContext
         AndroidContext.setCurrentActivity(this)
+
+        // Enregistrement des ActivityResultLauncher pour l'import/export CSV
+        // (doit se faire avant STARTED, donc ici plutôt que depuis un composable)
+        ExcelFileOperationsBridge.register(this)
 
         // Initialisation de la localisation avec détection de la langue du système
         val systemLocale = resources.configuration.locales[0].language

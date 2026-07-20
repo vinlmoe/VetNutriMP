@@ -11,7 +11,7 @@ package fr.vetbrain.vetnutri_mp.ExcelPlatform
  * Ouvre un dialogue de sélection de fichier CSV pour l'import
  * @return Le contenu du fichier CSV sélectionné ou null si aucun fichier n'est sélectionné
  */
-expect fun openCsvFileForImport(): String?
+expect suspend fun openCsvFileForImport(): String?
 
 /**
  * Ouvre un dialogue de sauvegarde de fichier CSV pour l'export
@@ -19,13 +19,13 @@ expect fun openCsvFileForImport(): String?
  * @param defaultFileName Nom de fichier par défaut
  * @return true si la sauvegarde a réussi, false sinon
  */
-expect fun saveCsvFileForExport(csvContent: String, defaultFileName: String): Boolean
+expect suspend fun saveCsvFileForExport(csvContent: String, defaultFileName: String): Boolean
 
 /**
  * Ouvre un dialogue de sélection de fichier CSV avec prévisualisation
  * @return Le contenu du fichier CSV sélectionné ou null si aucun fichier n'est sélectionné
  */
-expect fun openCsvFileWithPreview(): String?
+expect suspend fun openCsvFileWithPreview(): String?
 
 /**
  * Vérifie si les opérations de fichiers CSV sont disponibles sur cette plateforme

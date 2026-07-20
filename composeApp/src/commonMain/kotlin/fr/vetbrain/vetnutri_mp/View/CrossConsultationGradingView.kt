@@ -30,6 +30,7 @@ import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.Point
 import io.github.koalaplot.core.xygraph.XYGraph
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Color
@@ -57,6 +58,7 @@ fun CrossConsultationGradingView(
     val importSessionHistory by gradingViewModel.importSessionHistory.collectAsState()
     val ruleSnapshotHistory by gradingViewModel.ruleSnapshotHistory.collectAsState()
     val metricDistributions by gradingViewModel.metricDistributions.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
     var examId by remember { mutableStateOf("") }
     var exerciseId by remember { mutableStateOf("") }
     var forceRefreshBins by remember { mutableStateOf(false) }
@@ -286,18 +288,20 @@ fun CrossConsultationGradingView(
                     Button(
                         onClick = {
                             if (examId.isBlank() || exerciseId.isBlank()) return@Button
-                            val csvContent = openCsvFileForImport() ?: return@Button
-                            gradingViewModel.importFromMoodleCsv(
-                                csvContent = csvContent,
-                                examId = examId.trim(),
-                                exerciseId = exerciseId.trim(),
-                                forceRefresh = forceRefreshBins,
-                                offlineOnly = offlineOnly,
-                                onCompleted = {
-                                    analysisViewModel.loadConsultations()
-                                    gradingViewModel.loadGrades(examId.trim(), exerciseId.trim())
-                                }
-                            )
+                            coroutineScope.launch {
+                                val csvContent = openCsvFileForImport() ?: return@launch
+                                gradingViewModel.importFromMoodleCsv(
+                                    csvContent = csvContent,
+                                    examId = examId.trim(),
+                                    exerciseId = exerciseId.trim(),
+                                    forceRefresh = forceRefreshBins,
+                                    offlineOnly = offlineOnly,
+                                    onCompleted = {
+                                        analysisViewModel.loadConsultations()
+                                        gradingViewModel.loadGrades(examId.trim(), exerciseId.trim())
+                                    }
+                                )
+                            }
                         },
                         enabled = !isImportingBins
                     ) { Text(translate("auto.view.crossconsultationgradingview.importer_csv_de_bins")) }
@@ -605,10 +609,12 @@ fun CrossConsultationGradingView(
                     Button(onClick = { gradingViewModel.saveGrades() }) { Text(translate("auto.view.crossconsultationgradingview.sauver_notes")) }
                     Button(
                         onClick = {
-                            val csv = csvService.exportGradesToCsv(grades)
-                            val success = saveCsvFileForExport(csv, "notes_exam.csv")
-                            if (!success) {
-                                gradingViewModel.clearMessage()
+                            coroutineScope.launch {
+                                val csv = csvService.exportGradesToCsv(grades)
+                                val success = saveCsvFileForExport(csv, "notes_exam.csv")
+                                if (!success) {
+                                    gradingViewModel.clearMessage()
+                                }
                             }
                         }
                     ) { Text(translate("auto.view.crossconsultationgradingview.exporter_csv")) }
