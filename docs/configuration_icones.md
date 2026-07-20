@@ -57,14 +57,16 @@ vers `iosApp/iosApp/Assets.xcassets`) — ne pas le modifier, il est orphelin.
 ### Configuration
 - **Format** : PNG, tailles multiples déclarées dans `Contents.json`
 - **Icône App Store (marketing)** : `1024.png`, idiome `ios-marketing`, 1024x1024
-- **⚠️ Canal alpha** : l'icône marketing (`1024.png`) **ne doit pas avoir de canal alpha** —
-  App Store Connect rejette tout upload avec un fond transparent. Vérifier avec
-  `identify -format '%A' 1024.png` (ImageMagick) ; si `True`, aplatir sur fond opaque avant l'export
-  avec `./scripts/flatten_ios_icons.sh` (voir plus bas).
+- **⚠️ Canal alpha** : **aucune** icône de l'appiconset ne doit avoir de canal alpha — pas
+  seulement la marketing `1024.png`, mais les 35 fichiers (16.png à 1024.png). Xcode peut faire
+  échouer l'archive/la validation App Store Connect si une seule icône, quelle que soit sa taille,
+  contient de la transparence. Vérifier avec `identify -format '%A' <fichier>.png` (ImageMagick) ;
+  si `True`, aplatir sur fond opaque avec `./scripts/flatten_ios_icons.sh` (voir plus bas), qui
+  traite automatiquement tout le dossier.
 
 ### Pour modifier l'icône iOS
 1. Remplacez les PNG concernés dans `iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/` (respecter les noms de `Contents.json`)
-2. Assurez-vous que `1024.png` fait exactement 1024x1024 pixels et n'a pas de canal alpha
+2. Assurez-vous que chaque PNG fait la bonne taille et n'a pas de canal alpha (voir `./scripts/flatten_ios_icons.sh`)
 3. Utilisez Xcode pour prévisualiser l'icône (l'inspecteur d'assets signale un canal alpha sur l'icône marketing)
 
 ## 3. Desktop ❌ (À configurer)
@@ -117,10 +119,17 @@ chmod +x scripts/generate_icons.sh
 ```
 
 ### Retirer le canal alpha de l'icône App Store iOS
+Deux implémentations équivalentes (ImageMagick ou Python/Pillow), au choix selon les outils disponibles :
 ```bash
 git lfs pull   # récupère les vraies images (les PNG de l'appiconset sont en Git LFS)
+
+# Option 1 : ImageMagick
 ./scripts/flatten_ios_icons.sh          # aplatit sur fond blanc
 ./scripts/flatten_ios_icons.sh "#0B5FFF" # ou sur une couleur de fond spécifique
+
+# Option 2 : Python (pip install pillow)
+python3 scripts/flatten_ios_icons.py
+python3 scripts/flatten_ios_icons.py "#0B5FFF"
 ```
 
 ## Formats d'icônes par plateforme
@@ -164,9 +173,10 @@ git lfs pull   # récupère les vraies images (les PNG de l'appiconset sont en G
 - Vérifiez que `git lfs pull` a bien été exécuté (sinon les PNG sont des pointeurs LFS, pas de vraies images)
 - Nettoyez et reconstruisez le projet dans Xcode
 
-#### Icône iOS rejetée par App Store Connect ("alpha channel")
-- Le fichier `1024.png` contient un canal alpha — exécuter `./scripts/flatten_ios_icons.sh` pour
-  l'aplatir sur fond opaque (blanc par défaut, ou `./scripts/flatten_ios_icons.sh "#RRGGBB"`)
+#### Icône iOS rejetée par App Store Connect / Xcode ("alpha channel")
+- Une ou plusieurs icônes de l'appiconset contiennent un canal alpha (pas seulement `1024.png` —
+  toute taille peut faire échouer la validation) — exécuter `./scripts/flatten_ios_icons.sh` pour
+  aplatir l'ensemble du dossier sur fond opaque (blanc par défaut, ou `./scripts/flatten_ios_icons.sh "#RRGGBB"`)
 - Nécessite `git lfs pull` (pour avoir les vraies images) et ImageMagick installés localement
 
 #### Icône Desktop non visible

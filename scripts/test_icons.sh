@@ -43,33 +43,52 @@ check_structure() {
     fi
     
     # iOS
-    local ios_marketing_icon="iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/1024.png"
-    if [[ -d "iosApp/iosApp/Assets.xcassets/AppIcon.appiconset" ]]; then
+    local ios_appiconset="iosApp/iosApp/Assets.xcassets/AppIcon.appiconset"
+    local ios_marketing_icon="$ios_appiconset/1024.png"
+    if [[ -d "$ios_appiconset" ]]; then
         echo -e "${GREEN}✓ Dossier iOS trouvé${NC}"
 
         if [[ -f "$ios_marketing_icon" ]]; then
             echo -e "${GREEN}  ✓ Icône iOS marketing (1024x1024) trouvée${NC}"
-
-            # L'App Store rejette toute icône marketing contenant un canal alpha.
-            # Ce fichier peut être un pointeur Git LFS non résolu (`git lfs pull` requis) ;
-            # dans ce cas la vérification est ignorée plutôt que faussement positive.
-            if head -c 7 "$ios_marketing_icon" 2>/dev/null | grep -q "version"; then
-                echo -e "${YELLOW}  ⚠ 1024.png semble être un pointeur Git LFS non résolu — exécutez 'git lfs pull' avant de vérifier le canal alpha${NC}"
-            elif command -v identify &> /dev/null; then
-                local alpha_info
-                alpha_info=$(identify -format '%A' "$ios_marketing_icon" 2>/dev/null)
-                if [[ "$alpha_info" == "True" ]]; then
-                    echo -e "${RED}  ✗ 1024.png contient un canal alpha — l'App Store le rejettera. Aplatir sur fond opaque avant l'export.${NC}"
-                    ((errors++))
-                else
-                    echo -e "${GREEN}  ✓ 1024.png n'a pas de canal alpha${NC}"
-                fi
-            else
-                echo -e "${YELLOW}  ⚠ ImageMagick (identify) non disponible : impossible de vérifier le canal alpha de 1024.png${NC}"
-            fi
         else
             echo -e "${RED}  ✗ Icône iOS marketing (1024.png) manquante${NC}"
             ((errors++))
+        fi
+
+        # Apple interdit le canal alpha sur TOUTES les icônes de l'appiconset (pas seulement
+        # la marketing 1024) — Xcode peut faire échouer l'archive/la validation App Store si
+        # une icône a de la transparence, quelle que soit sa taille.
+        local lfs_pending=0
+        local alpha_found=0
+        local checked=0
+        if command -v identify &> /dev/null; then
+            for png in "$ios_appiconset"/*.png; do
+                [[ -f "$png" ]] || continue
+                if head -c 7 "$png" 2>/dev/null | grep -q "version"; then
+                    lfs_pending=$((lfs_pending + 1))
+                    continue
+                fi
+                checked=$((checked + 1))
+                local alpha_info
+                alpha_info=$(identify -format '%A' "$png" 2>/dev/null)
+                if [[ "$alpha_info" == "True" ]]; then
+                    echo -e "${RED}  ✗ $(basename "$png") contient un canal alpha — l'App Store/Xcode le rejettera${NC}"
+                    alpha_found=$((alpha_found + 1))
+                fi
+            done
+            if [[ $lfs_pending -gt 0 ]]; then
+                echo -e "${YELLOW}  ⚠ $lfs_pending icône(s) semblent être des pointeurs Git LFS non résolus — exécutez 'git lfs pull' avant de vérifier le canal alpha${NC}"
+            fi
+            if [[ $checked -gt 0 ]]; then
+                if [[ $alpha_found -gt 0 ]]; then
+                    echo -e "${RED}  ✗ $alpha_found/$checked icônes iOS contiennent un canal alpha. Exécutez ./scripts/flatten_ios_icons.sh${NC}"
+                    ((errors++))
+                else
+                    echo -e "${GREEN}  ✓ Aucune des $checked icônes vérifiées n'a de canal alpha${NC}"
+                fi
+            fi
+        else
+            echo -e "${YELLOW}  ⚠ ImageMagick (identify) non disponible : impossible de vérifier le canal alpha des icônes iOS${NC}"
         fi
     else
         echo -e "${RED}✗ Dossier iOS manquant${NC}"
