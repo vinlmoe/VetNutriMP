@@ -126,6 +126,34 @@ class ImportUtilsJsonTest {
     }
 
     @Test
+    fun importFoodsFromJson_preservesCalnutMinMaxRange() {
+        val foods = ImportUtils.importFoodsFromJson(
+            foodJson(
+                valMap = """{"PROTEINE":{"value":25.0,"nut":"PROTEINE","valueMin":22.0,"valueMax":28.0}}"""
+            )
+        )
+
+        val proteine = foods.single().valMap.getValue("PROTEINE")
+        assertEquals(25.0, proteine.value)
+        assertEquals(22.0, proteine.valueMin)
+        assertEquals(28.0, proteine.valueMax)
+        assertEquals(22.0, proteine.min)
+        assertEquals(28.0, proteine.max)
+        assertTrue(proteine.hasRange)
+    }
+
+    @Test
+    fun importFoodsFromJson_singleValueFallsBackToMeanForMinMax() {
+        val foods = ImportUtils.importFoodsFromJson(foodJson())
+
+        val proteine = foods.single().valMap.getValue("PROTEINE")
+        assertFalse(proteine.hasRange)
+        // Sans plage CALNUT, min et max retombent sur la moyenne
+        assertEquals(proteine.value, proteine.min)
+        assertEquals(proteine.value, proteine.max)
+    }
+
+    @Test
     fun importFoodsFromJson_rejectsAnimalPayload() {
         assertTrue(ImportUtils.importFoodsFromJson(animalJson()).isEmpty())
     }

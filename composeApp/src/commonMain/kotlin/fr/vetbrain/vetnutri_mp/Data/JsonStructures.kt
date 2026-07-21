@@ -170,7 +170,12 @@ data class TargetDefinitionEvJson(
 @Serializable data class SupplementalvariablePJson(val variable: String, val value: Double)
 
 @Serializable
-data class NutrientQuantity(val value: Double, val nut: String) {
+data class NutrientQuantity(
+        val value: Double,
+        val nut: String,
+        val valueMin: Double? = null,
+        val valueMax: Double? = null
+) {
         /**
          * Obtient l'unité du nutriment
          *
@@ -184,13 +189,29 @@ data class NutrientQuantity(val value: Double, val nut: String) {
                 get() = value
 
         /**
+         * Borne basse (CALNUT LB). Retombe sur la valeur moyenne si aucune plage n'est connue.
+         */
+        val min: Double
+                get() = valueMin ?: value
+
+        /**
+         * Borne haute (CALNUT UB). Retombe sur la valeur moyenne si aucune plage n'est connue.
+         */
+        val max: Double
+                get() = valueMax ?: value
+
+        /** Indique qu'une vraie plage min/max (issue de CALNUT) est disponible. */
+        val hasRange: Boolean
+                get() = valueMin != null || valueMax != null
+
+        /**
          * Multiplie cette quantité par un facteur
          *
          * @param factor Le facteur de multiplication
          * @return La nouvelle quantité résultante
          */
         fun times(factor: Double): NutrientQuantity {
-                return NutrientQuantity(value * factor, nut)
+                return NutrientQuantity(value * factor, nut, valueMin?.times(factor), valueMax?.times(factor))
         }
 
         /**
@@ -203,6 +224,8 @@ data class NutrientQuantity(val value: Double, val nut: String) {
                 if (this.nut != other.nut) {
                         return null
                 }
-                return NutrientQuantity(value + other.value, nut)
+                val newMin = if (this.hasRange || other.hasRange) this.min + other.min else null
+                val newMax = if (this.hasRange || other.hasRange) this.max + other.max else null
+                return NutrientQuantity(value + other.value, nut, newMin, newMax)
         }
 }

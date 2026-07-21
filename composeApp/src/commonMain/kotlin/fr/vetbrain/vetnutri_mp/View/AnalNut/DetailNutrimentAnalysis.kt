@@ -52,6 +52,7 @@ import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import io.github.koalaplot.core.bar.BulletGraphs
 import io.github.koalaplot.core.bar.FixedFraction
 import io.github.koalaplot.core.bar.HorizontalBarIndicator
+import io.github.koalaplot.core.bar.LineIndicator
 import kotlin.math.abs
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
@@ -292,7 +293,10 @@ fun ReferenceBulletGraph(
         referencesMaladies: List<ReferenceEv> = emptyList(),
         onClick: (() -> Unit)? = null,
         ration: Ration? = null,
-        equationRepository: EquationRepository? = null
+        equationRepository: EquationRepository? = null,
+        // Bornes CALNUT 2020 de l'apport (min/max). Null si aucun aliment ne porte de plage.
+        valeurApportMin: Double? = null,
+        valeurApportMax: Double? = null
 ) {
         // Récupération des valeurs de référence avec leurs unités
         val minRef = reference.obtenirNutriment(nutriment, Reflevel.MIN)
@@ -386,9 +390,15 @@ fun ReferenceBulletGraph(
                                 poidsMetabolique = poidsMetabolique
                         )
 
+        // Une vraie plage CALNUT n'est affichée que si les bornes diffèrent de la moyenne.
+        val afficherPlage =
+                (valeurApportMin != null && valeurApportMin < valeurApport) ||
+                        (valeurApportMax != null && valeurApportMax > valeurApport)
+
         val valeurs =
                 listOfNotNull(
                         valeurApport,
+                        if (afficherPlage) valeurApportMax else null,
                         minRefConverti,
                         optiminRefConverti,
                         optimaxRefConverti,
@@ -585,6 +595,26 @@ fun ReferenceBulletGraph(
                                         comparativeMeasure(optimax.toFloat())
                                 }
                                 maxRefConverti?.let { max -> comparativeMeasure(max.toFloat()) }
+
+                                // Plage CALNUT de l'apport (min/max) : traits encadrant la moyenne
+                                if (afficherPlage) {
+                                        valeurApportMin?.let { vMin ->
+                                                comparativeMeasure(vMin.toFloat()) {
+                                                        LineIndicator(
+                                                                color = VetNutriColors.Primary,
+                                                                width = 1.dp
+                                                        )
+                                                }
+                                        }
+                                        valeurApportMax?.let { vMax ->
+                                                comparativeMeasure(vMax.toFloat()) {
+                                                        LineIndicator(
+                                                                color = VetNutriColors.Primary,
+                                                                width = 1.dp
+                                                        )
+                                                }
+                                        }
+                                }
 
                                 // Lignes verticales pour les valeurs des références maladies
                                 referencesMaladies.forEach { refMaladie ->
@@ -926,6 +956,19 @@ private fun RecapitulatifCard(
                                         color = VetNutriColors.Primary.copy(alpha = 0.8f)
                                 )
                         }
+                        // Plage CALNUT 2020 (min / moyenne / max) si des bornes sont disponibles
+                        if (valeurNutritionnelle.hasRange) {
+                                val u = valeurNutritionnelle.unite.displayName
+                                Text(
+                                        text =
+                                                "CALNUT — min " +
+                                                        "${TextUtils.formatDecimal(valeurNutritionnelle.valeurMin ?: valeurNutritionnelle.valeur, 2)} $u" +
+                                                        " · moy ${TextUtils.formatDecimal(valeurNutritionnelle.valeur, 2)} $u" +
+                                                        " · max ${TextUtils.formatDecimal(valeurNutritionnelle.valeurMax ?: valeurNutritionnelle.valeur, 2)} $u",
+                                        style = MaterialTheme.typography.caption,
+                                        color = VetNutriColors.Primary.copy(alpha = 0.7f)
+                                )
+                        }
                         val isComplete: Boolean = valeurNutritionnelle.complete
                         Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
@@ -1166,6 +1209,28 @@ private fun ReferenceCard(
                         )
                                 ?: valeurNutritionnelle.valeur
                 }
+        // Convertit une valeur d'apport (moyenne ou borne CALNUT) dans l'unité d'affichage,
+        // avec le même traitement que la moyenne (cas ratio sans unité et cas énergie).
+        val convertirApport: (Double) -> Double = { v ->
+                if (nutrient == fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE &&
+                                besoinEnergetiqueEntretien != null &&
+                                besoinEnergetiqueEntretien > 0.0
+                ) {
+                        (v / besoinEnergetiqueEntretien) * 100.0
+                } else if (isAnalysisNoUnit) {
+                        v
+                } else {
+                        convertirVersUnitePreferences(
+                                v,
+                                UnitReqEnum.ABSOLUTE,
+                                typeExpressionBesoin.unitReqEnum,
+                                besoinEnergetiqueEntretien,
+                                poidsAnimal,
+                                poidsMetabolique
+                        )
+                                ?: v
+                }
+        }
         val apportBulletGraph: Double =
                 if (nutrient == fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE &&
                                 besoinEnergetiqueEntretien != null &&
@@ -1175,6 +1240,8 @@ private fun ReferenceCard(
                 } else {
                         apportConverti
                 }
+        val apportBulletGraphMin: Double? = valeurNutritionnelle.valeurMin?.let { convertirApport(it) }
+        val apportBulletGraphMax: Double? = valeurNutritionnelle.valeurMax?.let { convertirApport(it) }
         Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = AppSizes.elevationSmall,
@@ -1202,7 +1269,9 @@ private fun ReferenceCard(
                                 referencesMaladies = referencesMaladies,
                                 onClick = null,
                                 ration = ration,
-                                equationRepository = equationRepository
+                                equationRepository = equationRepository,
+                                valeurApportMin = apportBulletGraphMin,
+                                valeurApportMax = apportBulletGraphMax
                         )
                         ReferenceLevelsList(
                                 reference = reference,

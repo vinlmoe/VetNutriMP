@@ -141,12 +141,15 @@ class AlimentExcelService {
             "Bibliographie"
         )
 
-        // Ajouter les colonnes de nutriments avec unité dans l'en-tête
+        // Ajouter les colonnes de nutriments avec unité dans l'en-tête.
+        // Chaque nutriment porte 3 colonnes : moyenne, min et max (bornes CALNUT 2020).
         AlimentExcelRow.ALL_NUTRIENTS.forEach { nutrient ->
             // Trouver le nutriment correspondant pour obtenir son unité
             val nutrientEnum = findNutrientByLabel(nutrient)
             val unitName = nutrientEnum?.ue?.displayName ?: ""
             headers.add("$nutrient ($unitName)")
+            headers.add("$nutrient min ($unitName)")
+            headers.add("$nutrient max ($unitName)")
         }
 
         return headers
@@ -216,10 +219,11 @@ class AlimentExcelService {
             escapeCsvValue(row.biblioRefsJson ?: "")
         )
 
-        // Ajouter les valeurs des nutriments
+        // Ajouter les valeurs des nutriments : moyenne, puis min/max (vides si pas de plage CALNUT)
         AlimentExcelRow.ALL_NUTRIENTS.forEach { nutrient ->
-            val valeur = row.nutriments[nutrient]
-            values.add(valeur?.toString() ?: "")
+            values.add(row.nutriments[nutrient]?.toString() ?: "")
+            values.add(row.nutrimentsMin[nutrient]?.toString() ?: "")
+            values.add(row.nutrimentsMax[nutrient]?.toString() ?: "")
         }
 
         return values.joinToString(";")
@@ -360,6 +364,8 @@ class AlimentExcelService {
 
         // Nutriments - correspondance robuste par résolution de label
         val nutrimentsMap = mutableMapOf<String, Double?>()
+        val nutrimentsMinMap = mutableMapOf<String, Double?>()
+        val nutrimentsMaxMap = mutableMapOf<String, Double?>()
         val fixedHeaders = setOf(
                 "UUID",
                 "Nom",
@@ -389,39 +395,50 @@ class AlimentExcelService {
 
         headers.forEach { header ->
             if (header !in fixedHeaders) {
-                val rawName = header.substringBefore("(").trim().removeSuffix("")
+                val rawNameFull = header.substringBefore("(").trim()
+                // Détecter le suffixe de borne CALNUT (" min" / " max") pour router la valeur.
+                val borne = when {
+                    rawNameFull.endsWith(" min", ignoreCase = true) -> "min"
+                    rawNameFull.endsWith(" max", ignoreCase = true) -> "max"
+                    else -> null
+                }
+                val rawName = when (borne) {
+                    "min" -> rawNameFull.dropLast(4).trim()
+                    "max" -> rawNameFull.dropLast(4).trim()
+                    else -> rawNameFull
+                }
                 val valueStr = headerValueMap[header]
-                
+
                 // Extraire l'unité depuis l'en-tête (entre parenthèses)
                 val unitInHeader = extractUnitFromHeader(header)
-                
+
                 // Vérifier si c'est vraiment une colonne de nutriment
                 if (isNutrientColumn(rawName)) {
                     val rawValue = valueStr?.toDoubleOrNullWithComma()
-                    
+
                     if (rawValue != null) {
                         // Convertir la valeur selon l'unité détectée
                         val convertedValue = convertNutrientValue(rawValue, unitInHeader, rawName)
-                        
-                        logInfo("Traitement nutriment: '$rawName' = $rawValue (unité: '$unitInHeader' -> converti: $convertedValue)")
-                        
+
+                        logInfo("Traitement nutriment: '$rawName'${borne?.let { " [$it]" } ?: ""} = $rawValue (unité: '$unitInHeader' -> converti: $convertedValue)")
+
                         val resolved = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(rawName)
+                            ?: fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
+                                    rawName.replace("_", " ").replace("-", " ").trim()
+                            )
                         if (resolved != null) {
-                            nutrimentsMap[resolved.label] = convertedValue
-                            nutrimentCount++
-                            logInfo("✅ Nutriment résolu: '$rawName' -> '${resolved.label}' (valeur: $convertedValue)")
-                        } else {
-                            // Fallback: essayer aussi sans espaces/avec normalisation simple
-                            val alt = rawName.replace("_", " ").replace("-", " ").trim()
-                            val resolvedAlt = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(alt)
-                            if (resolvedAlt != null) {
-                                nutrimentsMap[resolvedAlt.label] = convertedValue
-                                nutrimentCount++
-                                logInfo("✅ Nutriment résolu (fallback): '$rawName' -> '$alt' -> '${resolvedAlt.label}' (valeur: $convertedValue)")
-                            } else {
-                                nutrimentErrorCount++
-                                logError("❌ Nutriment non résolu: '$rawName' (valeur: $rawValue)")
+                            when (borne) {
+                                "min" -> nutrimentsMinMap[resolved.label] = convertedValue
+                                "max" -> nutrimentsMaxMap[resolved.label] = convertedValue
+                                else -> {
+                                    nutrimentsMap[resolved.label] = convertedValue
+                                    nutrimentCount++
+                                }
                             }
+                            logInfo("✅ Nutriment résolu: '$rawName'${borne?.let { " [$it]" } ?: ""} -> '${resolved.label}' (valeur: $convertedValue)")
+                        } else {
+                            nutrimentErrorCount++
+                            logError("❌ Nutriment non résolu: '$rawName' (valeur: $rawValue)")
                         }
                     } else if (valueStr?.isNotBlank() == true) {
                         logError("❌ Valeur nutriment non numérique: '$rawName' = '$valueStr'")
@@ -454,6 +471,8 @@ class AlimentExcelService {
             indications = indications,
             rationUUID = rationUUID,
             nutriments = nutrimentsMap,
+            nutrimentsMin = nutrimentsMinMap,
+            nutrimentsMax = nutrimentsMaxMap,
             energieParEspece = energieParEspece,
             biblioRefsJson = biblioRefsJson
         )

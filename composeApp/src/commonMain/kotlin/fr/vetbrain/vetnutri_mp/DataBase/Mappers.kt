@@ -694,12 +694,19 @@ object Mappers {
 alimentUuid: String
         ): List<NutrientValueEntity> {
                 return mapNotNull { (nutrient, nutrientQuantity) ->
-                        // Ne créer des entités que pour les valeurs strictement positives
-                        if (nutrientQuantity.value > 0) {
+                        // Ne créer des entités que si au moins une des trois valeurs est positive
+                        // (moyenne, ou borne min/max issue de CALNUT).
+                        val aUneValeur =
+                                nutrientQuantity.value > 0 ||
+                                        (nutrientQuantity.valueMin ?: 0.0) > 0 ||
+                                        (nutrientQuantity.valueMax ?: 0.0) > 0
+                        if (aUneValeur) {
                                 NutrientValueEntity(
                                         refAliment = alimentUuid,
                                         nutrientLabel = nutrient.label,
-                                        value = nutrientQuantity.value
+                                        value = nutrientQuantity.value,
+                                        valueMin = nutrientQuantity.valueMin,
+                                        valueMax = nutrientQuantity.valueMax
                                 )
                         } else {
                                 null
@@ -724,7 +731,9 @@ alimentUuid: String
                         result[nutrient] =
                                 fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
                                         entity.value,
-                                        entity.nutrientLabel
+                                        entity.nutrientLabel,
+                                        entity.valueMin,
+                                        entity.valueMax
                                 )
                 }
                 return result

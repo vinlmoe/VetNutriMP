@@ -47,7 +47,7 @@ import kotlinx.coroutines.withContext
                         HtmlSectionLibraryEntity::class,
                         CustomNutrientEntity::class,
                         EnergyPerSpeciesEntity::class],
-        version = 36,
+        version = 37,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -129,7 +129,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
                         // Migration 34→35 : Table CUSTOM_NUTRIENTS pour persister les métadonnées des nutriments personnalisés
                         createMigration34to35(),
                         // Migration 35→36 : Table ENERGY_PER_SPECIES pour l'énergie par espèce
-                        createMigration35to36()
+                        createMigration35to36(),
+                        // Migration 36→37 : Colonnes valueMin/valueMax sur NUTRIENT_VALUES (base CALNUT 2020)
+                        createMigration36to37()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -728,6 +730,25 @@ fun createMigration35to36(): Migration {
                 WHERE nv.nutrientLabel = 'Énergie'
                   AND nv.value > 0
             """.trimIndent()).use { it.step() }
+        }
+    }
+}
+
+fun createMigration36to37(): Migration {
+    return object : Migration(36, 37) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            // Base CALNUT 2020 : 3 valeurs par nutriment (LB/MB/UB).
+            // La colonne existante `value` porte la moyenne (MB) ; on ajoute les bornes
+            // basse (min = LB) et haute (max = UB). Nullable : les aliments existants
+            // (non-CALNUT) gardent NULL et retombent sur la moyenne côté domaine.
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE NUTRIENT_VALUES ADD COLUMN valueMin REAL"
+            )
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE NUTRIENT_VALUES ADD COLUMN valueMax REAL"
+            )
         }
     }
 }

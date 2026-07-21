@@ -45,8 +45,13 @@ data class AlimentExcelRow(
         val lastUpdateDate: String? = null,
 
         // Nutriments - colonnes dynamiques pour chaque nutriment
-        // Le format sera : Map<nutrientLabel, valeur>
+        // Le format sera : Map<nutrientLabel, valeur>  (valeur moyenne / MB CALNUT)
         val nutriments: Map<String, Double?> = emptyMap(),
+
+        // Bornes CALNUT 2020 (LB/UB) par nutriment. Ne contiennent que les nutriments ayant
+        // une vraie plage ; vides pour les aliments à valeur unique.
+        val nutrimentsMin: Map<String, Double?> = emptyMap(),
+        val nutrimentsMax: Map<String, Double?> = emptyMap(),
 
         // Énergie par espèce - encodée dans une seule colonne au format "CHIEN:340;CHAT:330"
         val energieParEspece: Map<String, Double> = emptyMap(),
@@ -176,10 +181,17 @@ data class AlimentExcelRow(
         /** Convertit un AlimentEv en AlimentExcelRow */
         fun fromAlimentEv(alimentEv: AlimentEv): AlimentExcelRow {
             val nutrimentsMap = mutableMapOf<String, Double?>()
+            val nutrimentsMinMap = mutableMapOf<String, Double?>()
+            val nutrimentsMaxMap = mutableMapOf<String, Double?>()
 
             // Ajouter tous les nutriments
             alimentEv.valMap.forEach { (nutrient, quantity) ->
                 nutrimentsMap[nutrient.label] = quantity.value
+                // N'exporter les bornes que si une vraie plage CALNUT existe
+                if (quantity.hasRange) {
+                    nutrimentsMinMap[nutrient.label] = quantity.min
+                    nutrimentsMaxMap[nutrient.label] = quantity.max
+                }
             }
 
             return AlimentExcelRow(
@@ -202,6 +214,8 @@ data class AlimentExcelRow(
                     indications = alimentEv.indicat.joinToString(", ") { it.nameToString() },
                     rationUUID = alimentEv.rationUUID,
                     nutriments = nutrimentsMap,
+                    nutrimentsMin = nutrimentsMinMap,
+                    nutrimentsMax = nutrimentsMaxMap,
                     energieParEspece = alimentEv.energieParEspece,
                     biblioRefsJson = encodeBiblioRefs(alimentEv.biblioRefs)
             )
@@ -262,11 +276,18 @@ data class AlimentExcelRow(
             
             row.nutriments.forEach { (nutrientLabel, valeur) ->
                 if (valeur != null) {
-                    
+
                     // Trouver le nutriment correspondant
                     val nutrient = getNutrientFromLabel(nutrientLabel)
                     if (nutrient != null) {
-                        setNutrient(nutrient, valeur)
+                        // Bornes CALNUT si présentes, sinon min=max=moyenne (setNutrient simple)
+                        val min = row.nutrimentsMin[nutrientLabel]
+                        val max = row.nutrimentsMax[nutrientLabel]
+                        if (min != null || max != null) {
+                            setNutrient(nutrient, valeur, min, max)
+                        } else {
+                            setNutrient(nutrient, valeur)
+                        }
                         nutrimentSuccessCount++
                     } else {
                         nutrimentErrorCount++

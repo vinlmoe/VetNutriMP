@@ -514,50 +514,37 @@ fun AnalyseNutritionnelleCard(
                                     val typeExpr =
                                             finalTypeExpressionBesoin
                                                     ?: TypeExpressionBesoin.DEFAULT
-                                    
-                                    // Convertir la valeur selon l'unité des préférences pour le graphique bullet
-                                    // Mais pas pour les ratios (CAP, KNA, O6O3, etc.) qui sont des valeurs pures
+
+                                    // Convertit une valeur d'apport (moyenne ou borne CALNUT) pour le bullet graph.
+                                    // Mais pas pour les ratios (CAP, KNA, O6O3, etc.) qui sont des valeurs pures.
                                     val isRatio = valeur.nutriment is NutrientAnalysis && valeur.unite.displayName.isBlank()
-                                    val apportConverti = if (isRatio) {
-                                        // Pour les ratios, utiliser la valeur brute sans conversion
-                                        apport
-                                    } else {
-                                        when (typeExpr) {
-                                            TypeExpressionBesoin.PAR_KG -> {
-                                                poidsAnimal?.let { poids ->
-                                                    if (poids > 0) apport / poids else apport
-                                                } ?: apport
-                                            }
-                                            TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
-                                                poidsMetabolique?.let { poidsMetab ->
-                                                    if (poidsMetab > 0) apport / poidsMetab else apport
-                                                } ?: apport
-                                            }
-                                            TypeExpressionBesoin.PAR_KCAL -> {
-                                                besoinEnergetiqueEntretien?.let { bee ->
-                                                    if (bee > 0) (apport / bee) * 1000 else apport
-                                                } ?: apport
-                                            }
-                                            TypeExpressionBesoin.PAR_KJ -> {
-                                                besoinEnergetiqueEntretien?.let { bee ->
-                                                    if (bee > 0) {
-                                                        val beeEnKj = bee * 4.184
-                                                        (apport / beeEnKj) * 1000
-                                                    } else apport
-                                                } ?: apport
+                                    val convertirApportBullet: (Double) -> Double = { v ->
+                                        if (valeur.nutriment == NutrientMain.ENERGIE &&
+                                                        besoinEnergetiqueEntretien != null &&
+                                                        besoinEnergetiqueEntretien > 0.0
+                                        ) {
+                                            (v / besoinEnergetiqueEntretien) * 100.0
+                                        } else if (isRatio) {
+                                            v
+                                        } else {
+                                            when (typeExpr) {
+                                                TypeExpressionBesoin.PAR_KG ->
+                                                        poidsAnimal?.let { poids -> if (poids > 0) v / poids else v } ?: v
+                                                TypeExpressionBesoin.PAR_KG_METABOLIQUE ->
+                                                        poidsMetabolique?.let { poidsMetab -> if (poidsMetab > 0) v / poidsMetab else v } ?: v
+                                                TypeExpressionBesoin.PAR_KCAL ->
+                                                        besoinEnergetiqueEntretien?.let { bee -> if (bee > 0) (v / bee) * 1000 else v } ?: v
+                                                TypeExpressionBesoin.PAR_KJ ->
+                                                        besoinEnergetiqueEntretien?.let { bee ->
+                                                            if (bee > 0) (v / (bee * 4.184)) * 1000 else v
+                                                        } ?: v
                                             }
                                         }
                                     }
-                                    val apportBulletGraph =
-                                            if (valeur.nutriment == NutrientMain.ENERGIE &&
-                                                            besoinEnergetiqueEntretien != null &&
-                                                            besoinEnergetiqueEntretien > 0.0
-                                            ) {
-                                                (apport / besoinEnergetiqueEntretien) * 100.0
-                                            } else {
-                                                apportConverti
-                                            }
-                                    
+                                    val apportBulletGraph = convertirApportBullet(apport)
+                                    val apportBulletGraphMin = valeur.valeurMin?.let { convertirApportBullet(it) }
+                                    val apportBulletGraphMax = valeur.valeurMax?.let { convertirApportBullet(it) }
+
                                     if (referenceUtilisee != null) {
                                         // Obtenir l'icône de conformité pour déterminer la couleur
                                         val iconeConformiteBullet = obtenirIconeConformite(
@@ -654,7 +641,9 @@ fun AnalyseNutritionnelleCard(
                                                         referencesMaladies = referencesMaladies,
                                                         onClick = { onNutrimentClick(nom, valeur) },
                                                         ration = ration,
-                                                        equationRepository = equationRepository
+                                                        equationRepository = equationRepository,
+                                                        valeurApportMin = apportBulletGraphMin,
+                                                        valeurApportMax = apportBulletGraphMax
                                                 )
                                             }
                                         }

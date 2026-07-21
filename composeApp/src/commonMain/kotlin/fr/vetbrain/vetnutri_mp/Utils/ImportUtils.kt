@@ -530,6 +530,30 @@ object ImportUtils {
     }
 
     /** Prétraite les valeurs nutritionnelles et les espèces dans le JSON */
+    /**
+     * Construit un objet nutriment `{value, nut}` en préservant, si présentes dans la source,
+     * les bornes `valueMin`/`valueMax` (base CALNUT 2020). Sans elles, l'objet reste au format
+     * historique (rétrocompatible).
+     */
+    private fun buildNutrientValueObject(
+            valueElement: JsonElement,
+            nutLabel: String,
+            source: JsonObject?
+    ): JsonObject {
+        val map =
+                mutableMapOf<String, JsonElement>(
+                        "value" to valueElement,
+                        "nut" to JsonPrimitive(nutLabel)
+                )
+        listOf("valueMin", "valueMax").forEach { borne ->
+            val element = source?.get(borne)
+            if (element is JsonPrimitive && element.content.toDoubleOrNull() != null) {
+                map[borne] = element
+            }
+        }
+        return JsonObject(map)
+    }
+
     private fun preprocessEspecesAndNutrientValues(jsonElement: JsonElement): JsonElement {
         when (jsonElement) {
             is JsonObject -> {
@@ -575,18 +599,13 @@ object ImportUtils {
                                                     normalizeNutrientLabel(nutrientKey)
                                             if (normalizedNutrientKey != nutrientKey) {
                                                 // Si la clé a été normalisée, créer un nouvel objet
-                                                // avec la clé normalisée
-                                                val nutritionValue =
-                                                        JsonObject(
-                                                                mapOf(
-                                                                        "value" to value["value"]!!,
-                                                                        "nut" to
-                                                                                JsonPrimitive(
-                                                                                        normalizedNutrientKey
-                                                                                )
-                                                                )
+                                                // avec la clé normalisée (min/max préservés)
+                                                newValMap[normalizedKey] =
+                                                        buildNutrientValueObject(
+                                                                value["value"]!!,
+                                                                normalizedNutrientKey,
+                                                                value
                                                         )
-                                                newValMap[normalizedKey] = nutritionValue
                                             } else {
                                                 // Sinon, conserver l'objet tel quel avec la clé
                                                 // normalisée
@@ -594,34 +613,26 @@ object ImportUtils {
                                             }
                                         } else {
                                             // Si pas de clé de nutriment, utiliser la clé
-                                            // normalisée
-                                            val nutritionValue =
-                                                    JsonObject(
-                                                            mapOf(
-                                                                    "value" to value["value"]!!,
-                                                                    "nut" to
-                                                                            JsonPrimitive(
-                                                                                    normalizedKey
-                                                                            )
-                                                            )
+                                            // normalisée (min/max préservés)
+                                            newValMap[normalizedKey] =
+                                                    buildNutrientValueObject(
+                                                            value["value"]!!,
+                                                            normalizedKey,
+                                                            value
                                                     )
-                                            newValMap[normalizedKey] = nutritionValue
                                         }
                                     }
 
                                     // Format 2: Objet avec seulement "value"
                                     value is JsonObject && value.contains("value") -> {
                                         // Créer un nouvel objet avec "nut" qui reprend la clé
-                                        // normalisée
-                                        val nutritionValue =
-                                                JsonObject(
-                                                        mapOf(
-                                                                "value" to value["value"]!!,
-                                                                "nut" to
-                                                                        JsonPrimitive(normalizedKey)
-                                                        )
+                                        // normalisée (min/max préservés si présents)
+                                        newValMap[normalizedKey] =
+                                                buildNutrientValueObject(
+                                                        value["value"]!!,
+                                                        normalizedKey,
+                                                        value
                                                 )
-                                        newValMap[normalizedKey] = nutritionValue
                                     }
 
                                     // Format 3: Valeur numérique directe (chaîne qui peut être

@@ -254,6 +254,12 @@ suspend fun analyserValeursNutritionnellesRationAvecEquations(
 
     tousLesNutriments.forEach { nutriment ->
         var valeurTotale = 0.0
+        // Agrégation des bornes CALNUT : somme des min / max des ingrédients. Un ingrédient
+        // sans plage contribue son point (min = max = moyenne). La plage n'est renseignée que
+        // si au moins un ingrédient porte une vraie plage.
+        var valeurMinTotale = 0.0
+        var valeurMaxTotale = 0.0
+        var auMoinsUnePlage = false
         val contributrionsIngredients = mutableListOf<String>()
         var tousLesIngredientsOntUneValeur = true
         var auMoinsUnIngredientAUneValeur = false
@@ -327,15 +333,34 @@ suspend fun analyserValeursNutritionnellesRationAvecEquations(
                 }
 
                 if (valeurPour100g != null) {
+                    // Bornes CALNUT de l'ingrédient (si présentes) exprimées pour 100 g.
+                    // Sinon, min = max = moyenne (point). Non applicable à l'énergie (calculée).
+                    val plageIngredient =
+                            if (nutriment != NutrientMain.ENERGIE) {
+                                alimentRation.aliment?.valMap?.get(nutriment)
+                            } else {
+                                null
+                            }
+                    val minPour100g =
+                            if (plageIngredient?.hasRange == true) plageIngredient.min else valeurPour100g
+                    val maxPour100g =
+                            if (plageIngredient?.hasRange == true) plageIngredient.max else valeurPour100g
+                    if (plageIngredient?.hasRange == true) auMoinsUnePlage = true
+
                     // Alignement avec la logique hors-équations: les AA sont exprimés en % de protéines
-                    val contributionIngredient = if (nutriment is AAEnum) {
-                        val teneurProteines = alimentRation.aliment?.getNutrient(NutrientMain.PROTEINE) ?: 0.0
-                        val valeurAminoAcideEnPourcentAliment = (valeurPour100g * teneurProteines) / 100.0
-                        (valeurAminoAcideEnPourcentAliment * quantiteIngredient) / 100.0
-                    } else {
-                        (valeurPour100g * quantiteIngredient) / 100.0
+                    val ponderer: (Double) -> Double = { valeur100g ->
+                        if (nutriment is AAEnum) {
+                            val teneurProteines = alimentRation.aliment?.getNutrient(NutrientMain.PROTEINE) ?: 0.0
+                            val valeurAminoAcideEnPourcentAliment = (valeur100g * teneurProteines) / 100.0
+                            (valeurAminoAcideEnPourcentAliment * quantiteIngredient) / 100.0
+                        } else {
+                            (valeur100g * quantiteIngredient) / 100.0
+                        }
                     }
+                    val contributionIngredient = ponderer(valeurPour100g)
                     valeurTotale += contributionIngredient
+                    valeurMinTotale += ponderer(minPour100g)
+                    valeurMaxTotale += ponderer(maxPour100g)
                     auMoinsUnIngredientAUneValeur = true
                     contributrionsIngredients.add("$nomIngredient:$contributionIngredient")
                 } else {
@@ -377,7 +402,9 @@ suspend fun analyserValeursNutritionnellesRationAvecEquations(
                         unite = nutriment.ue,
                         valeur = valeurTotale,
                         description = description,
-                        complete = tousLesIngredientsOntUneValeur && auMoinsUnIngredientAUneValeur
+                        complete = tousLesIngredientsOntUneValeur && auMoinsUnIngredientAUneValeur,
+                        valeurMin = if (auMoinsUnePlage) valeurMinTotale else null,
+                        valeurMax = if (auMoinsUnePlage) valeurMaxTotale else null
                 )
     }
 
@@ -397,11 +424,14 @@ private fun calculerValeurNutrimentDansRation(
 ): ValeurNutritionnelle {
     // Pas de dérivation automatique: les analyses (CAP, KNA, ...) ne sont pas calculées ici.
     var valeurTotale = 0.0
+    var valeurMinTotale = 0.0
+    var valeurMaxTotale = 0.0
+    var auMoinsUnePlage = false
     val contributrionsIngredients = mutableListOf<String>()
     var tousLesIngredientsOntUneValeur = true
     var auMoinsUnIngredientAUneValeur = false
 
-    
+
 
     if (estNutrimentRatio(nutriment)) {
         // Pour les ratios, on ne peut pas les calculer ici car on n'a pas accès aux équations
@@ -419,19 +449,36 @@ private fun calculerValeurNutrimentDansRation(
             val valeurNutrimentPour100g = alimentRation.aliment?.getNutrient(nutriment)
 
             if (valeurNutrimentPour100g != null) {
+                // Bornes CALNUT de l'ingrédient (si présentes), sinon point (min = max = moyenne).
+                val plageIngredient =
+                        if (nutriment != NutrientMain.ENERGIE) {
+                            alimentRation.aliment?.valMap?.get(nutriment)
+                        } else {
+                            null
+                        }
+                val minPour100g =
+                        if (plageIngredient?.hasRange == true) plageIngredient.min else valeurNutrimentPour100g
+                val maxPour100g =
+                        if (plageIngredient?.hasRange == true) plageIngredient.max else valeurNutrimentPour100g
+                if (plageIngredient?.hasRange == true) auMoinsUnePlage = true
+
                 // Calculer la contribution pondérée par la quantité
-                val contributionIngredient = if (nutriment is AAEnum) {
-                    // Pour les acides aminés, les valeurs sont en % de protéines
-                    // Il faut multiplier par la teneur en protéines de l'aliment
-                    val teneurProteines = alimentRation.aliment?.getNutrient(NutrientMain.PROTEINE) ?: 0.0
-                    val valeurAminoAcideEnPourcentAliment = (valeurNutrimentPour100g * teneurProteines) / 100.0
-                    val contribution = (valeurAminoAcideEnPourcentAliment * quantiteIngredient) / 100.0
-                    contribution
-                } else {
-                    // Pour les autres nutriments, calcul normal
-                    (valeurNutrimentPour100g * quantiteIngredient) / 100.0
+                val ponderer: (Double) -> Double = { valeur100g ->
+                    if (nutriment is AAEnum) {
+                        // Pour les acides aminés, les valeurs sont en % de protéines
+                        // Il faut multiplier par la teneur en protéines de l'aliment
+                        val teneurProteines = alimentRation.aliment?.getNutrient(NutrientMain.PROTEINE) ?: 0.0
+                        val valeurAminoAcideEnPourcentAliment = (valeur100g * teneurProteines) / 100.0
+                        (valeurAminoAcideEnPourcentAliment * quantiteIngredient) / 100.0
+                    } else {
+                        // Pour les autres nutriments, calcul normal
+                        (valeur100g * quantiteIngredient) / 100.0
+                    }
                 }
+                val contributionIngredient = ponderer(valeurNutrimentPour100g)
                 valeurTotale += contributionIngredient
+                valeurMinTotale += ponderer(minPour100g)
+                valeurMaxTotale += ponderer(maxPour100g)
 
                 // Calculer le pourcentage d'apport de cet ingrédient
                 auMoinsUnIngredientAUneValeur = true
@@ -481,7 +528,9 @@ private fun calculerValeurNutrimentDansRation(
             unite = nutriment.ue,
             valeur = valeurTotale,
             description = description,
-            complete = tousLesIngredientsOntUneValeur && auMoinsUnIngredientAUneValeur
+            complete = tousLesIngredientsOntUneValeur && auMoinsUnIngredientAUneValeur,
+            valeurMin = if (auMoinsUnePlage) valeurMinTotale else null,
+            valeurMax = if (auMoinsUnePlage) valeurMaxTotale else null
     )
 }
 

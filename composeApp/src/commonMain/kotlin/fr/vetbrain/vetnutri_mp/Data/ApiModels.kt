@@ -121,6 +121,10 @@ data class FoodApi(
         val species: List<String> = emptyList(),
         val indications: List<String> = emptyList(),
         val nutrients: Map<String, Double> = emptyMap(),
+        // Bornes CALNUT 2020 (LB/UB). N'incluent que les nutriments ayant une vraie plage ;
+        // vides pour les aliments à valeur unique (min = max = moyenne).
+        val nutrientsMin: Map<String, Double> = emptyMap(),
+        val nutrientsMax: Map<String, Double> = emptyMap(),
         val energyPerSpecies: Map<String, Double> = emptyMap(),
         val biblioRefIds: List<String> = emptyList()
 )
@@ -274,16 +278,16 @@ fun FoodApi.toDomain(): AlimentEv {
         nutrients.forEach { (label, value) ->
                 // Essayer d'abord la résolution directe
                 var nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(label)
-                
+
                 // Si la résolution échoue, essayer de nettoyer la clé
                 if (nutrient == null) {
                         val cleanedKey = label.trim().replace("_", " ")
                         nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(cleanedKey)
                 }
-                
-                // Si la résolution réussit, ajouter le nutriment
+
+                // Si la résolution réussit, ajouter le nutriment (avec ses bornes CALNUT si présentes)
                 if (nutrient != null) {
-                        aliment.setNutrient(nutrient, value)
+                        aliment.setNutrient(nutrient, value, nutrientsMin[label], nutrientsMax[label])
                 } else {
                         // Log pour débogage - nutriment non résolu
                 }
@@ -460,6 +464,14 @@ fun AlimentEv.toApi(): FoodApi {
                 species = especes,
                 indications = indicat.map { it.name },
                 nutrients = valMap.mapKeys { it.key.label }.mapValues { it.value.value },
+                nutrientsMin =
+                        valMap.filterValues { it.hasRange }
+                                .mapKeys { it.key.label }
+                                .mapValues { it.value.min },
+                nutrientsMax =
+                        valMap.filterValues { it.hasRange }
+                                .mapKeys { it.key.label }
+                                .mapValues { it.value.max },
                 energyPerSpecies = energieParEspece,
                 biblioRefIds = biblioRefs.map { it.uuid }
         )

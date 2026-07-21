@@ -120,6 +120,18 @@ data class AlimentEv(
         }
 
         /**
+         * Définit la valeur d'un nutriment avec sa plage min/max (base CALNUT 2020).
+         *
+         * @param nutrient Le nutriment à définir
+         * @param value La valeur moyenne (borne centrale MB)
+         * @param min La borne basse (LB), ou null si aucune plage n'est connue
+         * @param max La borne haute (UB), ou null si aucune plage n'est connue
+         */
+        fun setNutrient(nutrient: Nutrient, value: Double, min: Double?, max: Double?) {
+                valMap[nutrient] = NutrientQuantity(value, nutrient.ue.label, min, max)
+        }
+
+        /**
          * Vérifie si cet aliment contient un nutriment donné
          *
          * @param nutrient Le nutriment à vérifier

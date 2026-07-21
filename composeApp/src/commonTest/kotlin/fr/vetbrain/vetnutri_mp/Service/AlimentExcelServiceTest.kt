@@ -168,6 +168,52 @@ class AlimentExcelServiceTest {
         assertEquals("Simple", parNom["Aliment Suivant"]?.ingredients)
     }
 
+    // ── Plage CALNUT (min / moyenne / max) ─────────────────────────────────
+
+    @Test
+    fun exportToCsv_containsMinMaxNutrientHeaders() {
+        val csv = service.exportToCsv(listOf(AlimentEv(nom = "Test")))
+        val header = csv.lineSequence().first()
+        assertTrue(header.contains("PROTEINE min"))
+        assertTrue(header.contains("PROTEINE max"))
+    }
+
+    @Test
+    fun exportThenImport_roundTripsCalnutMinMaxRange() {
+        val original = AlimentEv(nom = "Aliment CALNUT").apply {
+            setNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE, 25.0, 22.0, 28.0)
+        }
+        val csv = service.exportToCsv(listOf(original))
+
+        val result = service.importFromCsv(csv)
+
+        assertEquals(emptyList(), result.errors)
+        val q = result.aliments.first().valMap.getValue(
+            fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE
+        )
+        assertTrue(q.hasRange)
+        // Toute conversion d'unité éventuelle est linéaire : les proportions sont conservées.
+        assertTrue(kotlin.math.abs((q.valueMin!! / q.value) - (22.0 / 25.0)) < 1e-6)
+        assertTrue(kotlin.math.abs((q.valueMax!! / q.value) - (28.0 / 25.0)) < 1e-6)
+    }
+
+    @Test
+    fun exportThenImport_noRange_hasNoCalnutRange() {
+        val original = AlimentEv(nom = "Aliment simple").apply {
+            setNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE, 25.0)
+        }
+        val csv = service.exportToCsv(listOf(original))
+
+        val result = service.importFromCsv(csv)
+
+        val q = result.aliments.first().valMap.getValue(
+            fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE
+        )
+        assertTrue(!q.hasRange)
+        assertEquals(q.value, q.min)
+        assertEquals(q.value, q.max)
+    }
+
     // ── Bibliographie ────────────────────────────────────────────────────────
 
     @Test

@@ -534,7 +534,11 @@ data class AlimentReferenceEntity(
 data class NutrientValueEntity(
         val refAliment: String,
         val nutrientLabel: String,
-        val value: Double
+        val value: Double,
+        /** Borne basse (CALNUT LB) ; null si aucune plage n'est connue (min = moyenne). */
+        val valueMin: Double? = null,
+        /** Borne haute (CALNUT UB) ; null si aucune plage n'est connue (max = moyenne). */
+        val valueMax: Double? = null
 )
 
 /** Énergie (kcal/100g) définie par espèce pour un aliment donné */

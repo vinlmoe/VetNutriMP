@@ -11,7 +11,8 @@ enum class DataB(val code: String, val displayName: String) {
     GENERIQUE("4", "Générique"),
     ALIMENT_BARF("5", "Aliment Barf"),
     VETFOOD_2024("VF24", "VetFood 2024"),
-    CHEVAL("CHEVAL", "Cheval");
+    CHEVAL("CHEVAL", "Cheval"),
+    CALNUT_2020("CALNUT", "CALNUT 2020 (ANSES)");
 
     companion object {
         private const val DEFAULT_DISPLAY_NAME = "Base de données inconnue"
