@@ -37,11 +37,16 @@ jobs:
       - name: Build Debian package
         run: ./gradlew --no-daemon :composeApp:packageReleaseDeb
 
+      # Bloque la publication d'un .deb dont le runtime embarqué requiert
+      # AVX2 (crash "invalid opcode" sur les CPU d'avant 2013).
+      - name: Check embedded runtime targets generic x86-64
+        run: bash scripts/check_deb_runtime.sh
+
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
         with:
           name: VetNutriMP-deb
-          path: composeApp/build/compose/binaries/main/deb/*.deb
+          path: composeApp/build/compose/binaries/main*/deb/*.deb
           if-no-files-found: error
 
 
