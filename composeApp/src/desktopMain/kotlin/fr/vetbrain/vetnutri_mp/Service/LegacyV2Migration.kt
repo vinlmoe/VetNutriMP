@@ -1325,6 +1325,9 @@ private suspend fun importLegacyRefDb(
                 speRows.forEach { row ->
                     val refId = row.str("refRef") ?: return@forEach
                     val eqId  = row.str("refEq")  ?: return@forEach
+                    // Ne pas modifier les liens des références déjà présentes dans VetNutriMP —
+                    // uniquement compléter les références nouvellement importées.
+                    if (refId !in newRefIds) return@forEach
                     runCatching {
                         referenceEvDao.insertEquationRelation(
                             fr.vetbrain.vetnutri_mp.DataBase.ReferenceEvEquationEntity(
@@ -1353,6 +1356,9 @@ private suspend fun importLegacyRefDb(
                         coefToRefMap[origUuid.normalizedUuidCandidate()] =
                             refId.translateLegacyReferenceUuid()
                     }
+                    // insertCoefficient utilise REPLACE : sans ce garde-fou, un coef V2 portant
+                    // le même UUID écraserait un coefficient d'une référence MP existante.
+                    if (refId !in newRefIds) return@forEach
                     try {
                         val groupUUID = row.num("groupUUID", "group_uuid")?.toInt() ?: 0
                         val coefName = row.str("coefName", "description") ?: "Normal"
