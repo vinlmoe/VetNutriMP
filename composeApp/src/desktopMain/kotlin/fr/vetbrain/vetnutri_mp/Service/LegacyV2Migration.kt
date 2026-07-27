@@ -1256,7 +1256,11 @@ private suspend fun importLegacyRefDb(
                 log("${rows.size} références nutritionnelles trouvées")
                 rows.forEach { row ->
                     try {
-                        val uuid = row.str("UUID", "uuid") ?: return@forEach
+                        // Traduire l'UUID V2 → MP avant le contrôle d'existence : une référence
+                        // V2 dont l'UUID diffère de son équivalent MP serait sinon réimportée
+                        // en doublon, alors que les consultations pointent vers l'UUID traduit.
+                        val uuid = row.str("UUID", "uuid")
+                            ?.translateLegacyReferenceUuid() ?: return@forEach
                         if (referenceEvDao.getReferenceEvById(uuid) != null) {
                             stats.skipReferences++; return@forEach
                         }
@@ -1323,7 +1327,7 @@ private suspend fun importLegacyRefDb(
                 val speRows = conn.queryAll("SELECT * FROM speReqEq")
                 var impSpeRel = 0
                 speRows.forEach { row ->
-                    val refId = row.str("refRef") ?: return@forEach
+                    val refId = row.str("refRef")?.translateLegacyReferenceUuid() ?: return@forEach
                     val eqId  = row.str("refEq")  ?: return@forEach
                     // Ne pas modifier les liens des références déjà présentes dans VetNutriMP —
                     // uniquement compléter les références nouvellement importées.
@@ -1347,14 +1351,14 @@ private suspend fun importLegacyRefDb(
                 val coefRows = conn.queryAll("SELECT * FROM $coefTable")
                 var impCoef = 0
                 coefRows.forEach { row ->
-                    val refId = row.str("refRef", "referenceEvId") ?: return@forEach
+                    val refId = row.str("refRef", "referenceEvId")
+                        ?.translateLegacyReferenceUuid() ?: return@forEach
                     val origUuid = row.str("UUID", "uuid")
                     // Always populate the map before attempting insert so re-migration works:
                     // if the coef already exists the insert throws and coefToRefMap would otherwise
                     // stay empty, breaking the consultation-reference linkage pass.
                     if (!origUuid.isNullOrBlank()) {
-                        coefToRefMap[origUuid.normalizedUuidCandidate()] =
-                            refId.translateLegacyReferenceUuid()
+                        coefToRefMap[origUuid.normalizedUuidCandidate()] = refId
                     }
                     // insertCoefficient utilise REPLACE : sans ce garde-fou, un coef V2 portant
                     // le même UUID écraserait un coefficient d'une référence MP existante.
@@ -1428,7 +1432,8 @@ private suspend fun importLegacyRefDb(
                 if (conn.tableExists(table)) runCatching {
                     conn.queryAll("SELECT * FROM $table").forEach { row ->
                         try {
-                            val refId   = row.str("refRef") ?: return@forEach
+                            val refId   = row.str("refRef")
+                                ?.translateLegacyReferenceUuid() ?: return@forEach
                             // Ne pas écraser les besoins nutritionnels des références déjà présentes
                             // dans VetNutriMP — uniquement importer pour les références nouvellement créées.
                             if (refId !in newRefIds) return@forEach
