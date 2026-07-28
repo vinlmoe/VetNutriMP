@@ -146,10 +146,13 @@ private suspend fun calculerDensiteEnergetiqueAsync(
             )
                     ?: 0.0
 
-    val _glucides =
+    // ENA (et non GLUCIDE) : même définition du 3e macronutriment énergétique que le
+    // camembert "Origine Énergie". Si une ReferenceEv est fournie, seules ses équations
+    // complémentaires s'appliquent à l'ENA (même règle que RationNutrientAnalyzer).
+    val _ena =
             alimentRation.getNutrientWithComplementary(
-                    nutrient = NutrientMain.GLUCIDE,
-                    preferences = preferencesEspece,
+                    nutrient = NutrientMain.ENA,
+                    preferences = if (referenceEv != null) null else preferencesEspece,
                     equationRepository = equationRepository,
                     referenceEv = referenceEv
             )
@@ -158,9 +161,9 @@ private suspend fun calculerDensiteEnergetiqueAsync(
     // Coefficients énergétiques (kcal/g)
     val kcalProteines = _proteines * 3.5
     val kcalLipides = _lipides * 8.5
-    val kcalGlucides = _glucides * 3.5
+    val kcalEna = _ena * 3.5
 
-    val energieTotale = kcalProteines + kcalLipides + kcalGlucides
+    val energieTotale = kcalProteines + kcalLipides + kcalEna
     
     // Si on veut la densité par matière sèche, on doit diviser par le pourcentage de matière sèche
     return if (useDryMatterPer100g) {

@@ -344,10 +344,14 @@ suspend fun calculerPourcentagesEnergieRation(
                                         referenceEv
                                 )
                                         ?: 0.0) * quantite / 100.0
-                        val glucides =
+                        // ENA (et non GLUCIDE) : même définition que le camembert "Origine
+                        // Énergie" et que les iso-lignes ENA de RationsEnergieChart.
+                        // Règle métier identique à RationNutrientAnalyzer : si une ReferenceEv
+                        // est fournie, seules ses équations complémentaires s'appliquent à l'ENA.
+                        val ena =
                                 (alimentRationTemp.getNutrientWithComplementary(
-                                        NutrientMain.GLUCIDE,
-                                        preferencesEspece,
+                                        NutrientMain.ENA,
+                                        if (referenceEv != null) null else preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -364,7 +368,7 @@ suspend fun calculerPourcentagesEnergieRation(
                         // Coefficients utilisés ailleurs dans l'application pour ces graphes.
                         val energieProteinesAliment = proteines * 3.5
                         val energieLipidesAliment = lipides * 8.5
-                        val energieGlucidesAliment = glucides * 3.5
+                        val energieEnaAliment = ena * 3.5
 
                         // Calculer le poids et l'humidité
                         poidsTotal += quantite
@@ -376,7 +380,7 @@ suspend fun calculerPourcentagesEnergieRation(
                         energieTotaleMacro +=
                                 (energieProteinesAliment +
                                         energieLipidesAliment +
-                                        energieGlucidesAliment)
+                                        energieEnaAliment)
                 }
 
                 if (energieTotaleMacro <= 0) {
