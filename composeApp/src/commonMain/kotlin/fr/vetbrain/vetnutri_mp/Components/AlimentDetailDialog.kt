@@ -35,6 +35,7 @@ import androidx.compose.ui.window.DialogProperties
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.analyserCompositionAliment
+import fr.vetbrain.vetnutri_mp.Data.estNutrimentAnalysisRatio
 import fr.vetbrain.vetnutri_mp.Data.grouperNutrimentsParCategorie
 import fr.vetbrain.vetnutri_mp.Data.obtenirTitreCategorie
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
@@ -156,7 +157,7 @@ fun AlimentDetailDialog(aliment: AlimentEv, onDismiss: () -> Unit) {
                                     )
                                 }
                                 items(nutriments, key = { (nom, _) -> "$categorie-$nom" }) { (_, valeur) ->
-                                    val isRatio = valeur.nutriment is NutrientAnalysis
+                                    val isRatio = estNutrimentAnalysisRatio(valeur.nutriment)
                                     val valeurAffichee =
                                         if (mode == CompositionMode.PER_1000_KCAL && !isRatio && facteur1000Kcal != null) {
                                             valeur.valeur * facteur1000Kcal

@@ -22,14 +22,10 @@ import fr.vetbrain.vetnutri_mp.Utils.TextUtils
  * Vérifie si un nutriment est un ratio (ne doit pas être multiplié par la quantité)
  */
 private fun estNutrimentRatio(nutriment: Nutrient): Boolean {
-    return when (nutriment) {
-        is NutrientAnalysis -> {
-            // Tous les nutriments d'analyse sont des ratios, qu'ils aient une unité vide ou non
-            // car ils représentent des rapports entre nutriments
-            true
-        }
-        else -> false
-    }
+    // Seuls les vrais ratios (unite vide : KNA, CAP, O6O3, ZNCU, PROTP, nonOsPP) doivent passer
+    // par le calcul de ratio global. Les NutrientAnalysis à valeur absolue (nonOsPhos/nonOsProt en
+    // %, MethCys/PhenTyr en g) doivent être sommés comme un nutriment normal.
+    return estNutrimentAnalysisRatio(nutriment)
 }
 
 /**
@@ -83,11 +79,13 @@ private suspend fun estNutrimentRatio(
     equationRepository: EquationRepository,
     referenceEv: ReferenceEv?
 ): Boolean {
-    // PRIORITÉ 1: Vérifier si c'est un NutrientAnalysis (tous sont des ratios)
-    if (nutriment is NutrientAnalysis) {
+    // PRIORITÉ 1: Vérifier si c'est un vrai ratio de NutrientAnalysis (unite vide). Les
+    // NutrientAnalysis à valeur absolue (nonOsPhos/nonOsProt en %, MethCys/PhenTyr en g) ne sont
+    // PAS des ratios : ils doivent être sommés comme un nutriment normal.
+    if (estNutrimentAnalysisRatio(nutriment)) {
         return true
     }
-    
+
     // PRIORITÉ 2: Vérifier dans les équations de la ReferenceEv
     referenceEv?.equationsNut?.forEach { eq ->
         if (eq.nutrient == nutriment && eq.ratio == true) {
@@ -597,22 +595,35 @@ suspend fun analyserValeursNutritionnellesRationSelective(
                 val nomIngredient = alimentRation.aliment?.nom ?: "Ingrédient inconnu"
                 val quantiteIngredient = alimentRation.quantite
 
-                // Cas particulier ENA : si une ReferenceEv est fournie, ne PAS utiliser les
-                // équations complémentaires des préférences d'espèce pour ENA. Seules les
-                // équations de ReferenceEv doivent alors s'appliquer.
-                val preferencesPourCalcul =
-                        if (nutriment == NutrientMain.ENA && referenceEv != null) {
-                            null
-                        } else {
-                            preferencesEspece
-                        }
-                val valeurPour100g: Double? =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = nutriment,
-                                preferences = preferencesPourCalcul,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
+                // Pour l'énergie, utiliser getEnergie() qui sélectionne correctement equationDEcom ou equationDEraw
+                // selon le type d'aliment (COMPLET/COMPLEMENTAIRE vs autres)
+                val valeurPour100g: Double? = if (nutriment == NutrientMain.ENERGIE) {
+                    // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                    // pour sélectionner correctement l'équation énergétique du référentiel
+                    val energieTotale = alimentRation.getEnergie(referenceEv, equationRepository)
+                    // Convertir en valeur pour 100g
+                    if (quantiteIngredient > 0.0) {
+                        (energieTotale / quantiteIngredient) * 100.0
+                    } else {
+                        null
+                    }
+                } else {
+                    // Cas particulier ENA : si une ReferenceEv est fournie, ne PAS utiliser les
+                    // équations complémentaires des préférences d'espèce pour ENA. Seules les
+                    // équations de ReferenceEv doivent alors s'appliquer.
+                    val preferencesPourCalcul =
+                            if (nutriment == NutrientMain.ENA && referenceEv != null) {
+                                null
+                            } else {
+                                preferencesEspece
+                            }
+                    alimentRation.getNutrientWithComplementary(
+                            nutrient = nutriment,
+                            preferences = preferencesPourCalcul,
+                            equationRepository = equationRepository,
+                            referenceEv = referenceEv
+                    )
+                }
 
                 if (valeurPour100g != null) {
                     val contributionIngredient =

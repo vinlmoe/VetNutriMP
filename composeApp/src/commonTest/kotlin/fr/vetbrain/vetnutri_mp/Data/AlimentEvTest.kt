@@ -163,4 +163,61 @@ class AlimentEvTest {
     fun hasIndication_absentIndication_returnsFalse() {
         assertFalse(AlimentEv().hasIndication(AlimIndic.OBES))
     }
+
+    // ── getNutrient(ENERGIE, referenceEv) : sélection DEcom/DEraw ─────────────
+
+    private fun referenceAvecEquationsEnergie(): ReferenceEv {
+        val reference = ReferenceEv(espece = Espece.CHIEN)
+        reference.equationDEcom = fr.vetbrain.vetnutri_mp.Data.Equation(equationScript = "PROTEINE*2")
+        reference.equationDEraw = fr.vetbrain.vetnutri_mp.Data.Equation(equationScript = "PROTEINE*3")
+        return reference
+    }
+
+    @Test
+    fun getNutrient_energie_typeAlimentComplet_usesEquationDEcom() {
+        val aliment = AlimentEv(typeAliment = fr.vetbrain.vetnutri_mp.Enumer.FoodKind.COMPLET)
+        aliment.setNutrient(NutrientMain.PROTEINE, 10.0)
+        assertEquals(20.0, aliment.getNutrient(NutrientMain.ENERGIE, referenceAvecEquationsEnergie()))
+    }
+
+    @Test
+    fun getNutrient_energie_typeAlimentComplementaire_usesEquationDEcom() {
+        val aliment = AlimentEv(typeAliment = fr.vetbrain.vetnutri_mp.Enumer.FoodKind.COMPLEMENTAIRE)
+        aliment.setNutrient(NutrientMain.PROTEINE, 10.0)
+        assertEquals(20.0, aliment.getNutrient(NutrientMain.ENERGIE, referenceAvecEquationsEnergie()))
+    }
+
+    @Test
+    fun getNutrient_energie_typeAlimentNull_usesEquationDEraw() {
+        val aliment = AlimentEv(typeAliment = null)
+        aliment.setNutrient(NutrientMain.PROTEINE, 10.0)
+        assertEquals(30.0, aliment.getNutrient(NutrientMain.ENERGIE, referenceAvecEquationsEnergie()))
+    }
+
+    @Test
+    fun getNutrient_energie_typeAlimentBarf_usesEquationDEraw() {
+        val aliment = AlimentEv(typeAliment = fr.vetbrain.vetnutri_mp.Enumer.FoodKind.BARF)
+        aliment.setNutrient(NutrientMain.PROTEINE, 10.0)
+        assertEquals(30.0, aliment.getNutrient(NutrientMain.ENERGIE, referenceAvecEquationsEnergie()))
+    }
+
+    @Test
+    fun getNutrient_energie_energieParEspeceDefiniePourEspece_prevautSurEquation() {
+        val aliment = AlimentEv(
+                typeAliment = fr.vetbrain.vetnutri_mp.Enumer.FoodKind.COMPLET,
+                energieParEspece = mapOf("CHIEN" to 42.0)
+        )
+        aliment.setNutrient(NutrientMain.PROTEINE, 10.0)
+        assertEquals(42.0, aliment.getNutrient(NutrientMain.ENERGIE, referenceAvecEquationsEnergie()))
+    }
+
+    @Test
+    fun getNutrient_energie_energieParEspeceSansEntreePourEspece_repasseParEquation() {
+        val aliment = AlimentEv(
+                typeAliment = fr.vetbrain.vetnutri_mp.Enumer.FoodKind.COMPLET,
+                energieParEspece = mapOf("CHAT" to 99.0)
+        )
+        aliment.setNutrient(NutrientMain.PROTEINE, 10.0)
+        assertEquals(20.0, aliment.getNutrient(NutrientMain.ENERGIE, referenceAvecEquationsEnergie()))
+    }
 }

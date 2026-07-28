@@ -11,6 +11,7 @@ import fr.vetbrain.vetnutri_mp.Data.calculerAffichageNutriment
 import fr.vetbrain.vetnutri_mp.Data.calculerCompositionPourcentages
 import fr.vetbrain.vetnutri_mp.Data.calculerOrigineEnergetiquePourcentages
 import fr.vetbrain.vetnutri_mp.Data.calculerBulletGraphData
+import fr.vetbrain.vetnutri_mp.Data.estNutrimentAnalysisRatio
 import fr.vetbrain.vetnutri_mp.Data.BulletGraphData
 import fr.vetbrain.vetnutri_mp.Data.calculerContributionsIngredients
 import fr.vetbrain.vetnutri_mp.Data.ContributionIngredient
@@ -494,8 +495,7 @@ object HtmlDocumentBuilder {
 
         val sectionsHtml = ordreCategories.mapNotNull { categorie ->
             val nutrimentsAvecDonnees = groupes[categorie]?.filter { (_, valeur) ->
-                val isRatio = valeur.nutriment is NutrientAnalysis
-                isRatio || valeur.valeur > 0.0
+                estNutrimentAnalysisRatio(valeur.nutriment) || valeur.valeur > 0.0
             }
             if (nutrimentsAvecDonnees.isNullOrEmpty()) return@mapNotNull null
 
@@ -514,7 +514,7 @@ object HtmlDocumentBuilder {
                 )
                 val repereHtml = bulletGraphData?.let { bgData ->
                     val contributions = calculerContributionsIngredients(
-                            ration, valeur.nutriment, reference, equationRepository
+                            ration, valeur.nutriment, reference, equationRepository, preferences
                     )
                     buildBulletGraphHtml(bgData, contributions)
                 } ?: "—"
@@ -685,9 +685,9 @@ object HtmlDocumentBuilder {
         val tables = modes.mapNotNull { mode ->
             val factor = mode.factor ?: return@mapNotNull null
             val rows = valeurs.entries
-                    .filter { (_, valeur) -> valeur.nutriment is NutrientAnalysis || valeur.valeur > 0.0 }
+                    .filter { (_, valeur) -> estNutrimentAnalysisRatio(valeur.nutriment) || valeur.valeur > 0.0 }
                     .joinToString("\n") { (nom, valeur) ->
-                        val isRatio = valeur.nutriment is NutrientAnalysis
+                        val isRatio = estNutrimentAnalysisRatio(valeur.nutriment)
                         val valeurAffichee = if (isRatio) valeur.valeur else valeur.valeur * factor
                         val nomTraduit = obtenirNomTraduitNutriment(nom, valeur.nutriment)
                         "<tr><td>${escapeXml(nomTraduit)}</td><td class='right'>${TextUtils.formatDecimal(valeurAffichee, 2)} ${escapeXml(valeur.unite.displayName)}</td></tr>"

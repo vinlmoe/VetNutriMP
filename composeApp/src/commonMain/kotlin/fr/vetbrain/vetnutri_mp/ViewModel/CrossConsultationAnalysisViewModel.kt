@@ -33,6 +33,16 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 /**
+ * Énergie totale (kcal) d'une ration à partir de sa densité énergétique. `Ration.getDensiteEnergetiqueMoyenne()`
+ * renvoie déjà des kcal par gramme de ration (l'énergie de chaque ingrédient est mise à l'échelle
+ * par sa quantité avant d'être divisée par la quantité totale) : pas de `/100` supplémentaire ici,
+ * contrairement à une densité "pour 100g" classique. Extrait en fonction pure pour rester testable
+ * indépendamment du ViewModel (qui dépend de `DatabaseReferenceEvRepository`, non substituable).
+ */
+internal fun energyTotalKcalFromDensity(densiteKcalParGramme: Double, quantiteTotaleGrammes: Double): Double =
+        densiteKcalParGramme * quantiteTotaleGrammes
+
+/**
  * Sélection/filtrage de consultations multi-animaux pour analyse croisée (phase 1).
  * - Charge les consultations via AnimalRepository.
  * - Recherche texte, filtre espèce, sélection multiple.
@@ -381,7 +391,7 @@ class CrossConsultationAnalysisViewModel(
                             ration.getDensiteEnergetiqueMoyenne(referenceEv, equationRepository)
 
                     val qty = ration.getQuantiteTotale()
-                    val energyTotalKcal = energyDensity * qty / 100.0
+                    val energyTotalKcal = energyTotalKcalFromDensity(energyDensity, qty)
                     val weightKg =
                             consultation.effectiveWeight?.toDouble()
                                     ?: consultation.weight?.toDouble()
