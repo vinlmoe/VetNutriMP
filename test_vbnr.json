@@ -1,0 +1,53 @@
+{
+    "reference": {
+        "uuid": "test-ref-001",
+        "name": "Besoins nutritionnels du chien adulte - Test",
+        "species": "CHIEN",
+        "physiologicalStage": "ADULTE",
+        "isDisease": false,
+        "diseaseName": "",
+        "description": "Référence test pour validation du système d'importation",
+        "notes": "Fichier de test créé pour valider l'importation des références nutritionnelles"
+    },
+    "allEquations": [
+        {
+            "uuid": "test-eq-001",
+            "name": "BEE Chien Test",
+            "description": "Besoin énergétique d'entretien pour chien - Test",
+            "script": "130 * BW^0.75",
+            "kind": "ENERGYNEED",
+            "specie": "CHIEN",
+            "bibliographicReference": "test-biblio-001"
+        }
+    ],
+    "allBibliographicReferences": [
+        {
+            "uuid": "test-biblio-001",
+            "firstAuthor": "Test Author",
+            "year": 2024,
+            "title": "Test nutritional requirements study",
+            "journal": "Test Journal",
+            "volume": 1,
+            "pages": "1-10",
+            "doi": "10.test/test.001"
+        }
+    ],
+    "nutrientRequirements": [
+        {
+            "nutrient": "EM",
+            "referenceLevel": "RECOMMENDED",
+            "quantity": 2000.0,
+            "unit": "KCAL",
+            "unitRequirement": "PER_DAY",
+            "bibliographicReference": "test-biblio-001"
+        },
+        {
+            "nutrient": "PB",
+            "referenceLevel": "MINIMUM",
+            "quantity": 25.0,
+            "unit": "PERCENT",
+            "unitRequirement": "PER_DAY",
+            "bibliographicReference": "test-biblio-001"
+        }
+    ]
+}
