@@ -564,8 +564,7 @@ suspend fun calculerContributionIngredient(
     alimentRation: AlimentRation,
     nutriment: Nutrient,
     reference: ReferenceEv?,
-    equationRepository: EquationRepository?,
-    preferencesEspece: PreferencesEspece? = null
+    equationRepository: EquationRepository?
 ): Double {
     val quantiteIngredient = alimentRation.quantite
     if (quantiteIngredient <= 0.0) return 0.0
@@ -574,16 +573,8 @@ suspend fun calculerContributionIngredient(
         return alimentRation.getEnergie(reference, equationRepository)
     }
 
-    // Cas particulier ENA : si une ReferenceEv est fournie, ne PAS utiliser les
-    // équations complémentaires des préférences d'espèce pour ENA. Seules les
-    // équations de ReferenceEv doivent alors s'appliquer. Même règle que
-    // RationNutrientAnalyzer.kt, pour que la contribution par ingrédient reste
-    // cohérente avec l'apport total du même nutriment.
-    val preferencesPourCalcul =
-        if (nutriment == NutrientMain.ENA && reference != null) null else preferencesEspece
     val valeurPour100g = alimentRation.getNutrientWithComplementary(
         nutrient = nutriment,
-        preferences = preferencesPourCalcul,
         equationRepository = equationRepository,
         referenceEv = reference
     ) ?: 0.0
@@ -610,12 +601,11 @@ suspend fun calculerContributionsIngredients(
     ration: Ration,
     nutriment: Nutrient,
     reference: ReferenceEv?,
-    equationRepository: EquationRepository?,
-    preferencesEspece: PreferencesEspece? = null
+    equationRepository: EquationRepository?
 ): List<ContributionIngredient> {
     if (estNutrimentAnalysisRatio(nutriment)) return emptyList()
     return ration.alimentMutableList.mapIndexedNotNull { index, alimentRation ->
-        val contribution = calculerContributionIngredient(alimentRation, nutriment, reference, equationRepository, preferencesEspece)
+        val contribution = calculerContributionIngredient(alimentRation, nutriment, reference, equationRepository)
         if (contribution > 0.0) ContributionIngredient(index, contribution) else null
     }
 }

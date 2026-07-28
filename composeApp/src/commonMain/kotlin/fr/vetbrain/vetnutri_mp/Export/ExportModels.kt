@@ -3,7 +3,7 @@ package fr.vetbrain.vetnutri_mp.Export
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
-import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
+import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 
 enum class DocumentType {
@@ -31,7 +31,9 @@ data class ExportData(
         val htmlSections: List<HtmlSection> = emptyList(),
         val rations: List<Ration> = emptyList(),
         val practitioner: PractitionerInfo? = null,
-        val preferences: PreferencesEspece? = null,
+        // Mode d'expression des besoins (PAR_KG/PAR_KCAL/...) pour le formatage d'affichage —
+        // n'intervient dans aucun calcul, seule ReferenceEv pilote les équations complémentaires.
+        val typeExpressionBesoin: TypeExpressionBesoin? = null,
         val poidsAnimal: Double? = null,
         val poidsMetabolique: Double? = null,
         val besoinEnergetiqueEntretien: Double? = null,

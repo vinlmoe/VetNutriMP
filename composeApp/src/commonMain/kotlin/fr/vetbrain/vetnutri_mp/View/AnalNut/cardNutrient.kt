@@ -18,7 +18,6 @@ import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
-import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
@@ -161,11 +160,6 @@ fun AnalyseNutritionnelleCard(
         mutableStateOf<Map<String, ValeurNutritionnelle>>(emptyMap())
     }
 
-    // Préférences d'espèce utilisées pour les équations complémentaires : calculées dans le
-    // LaunchedEffect ci-dessous mais promues en état pour être accessibles au niveau des appels
-    // à ReferenceBulletGraph (contributions par ingrédient, fix cohérence apport/contributions).
-    var preferencesEspeceState by remember { mutableStateOf<PreferencesEspece?>(null) }
-
     var valeursNutritionnellesLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(
@@ -173,9 +167,7 @@ fun AnalyseNutritionnelleCard(
         nutrimentsSelectionnes,
         ration,
         referenceUtilisee,
-        equationRepository,
-        animal,
-        preferencesRepository
+        equationRepository
     ) {
         valeursNutritionnellesLoading = true
 
@@ -202,41 +194,26 @@ fun AnalyseNutritionnelleCard(
 
         val shouldUseEquations = referenceUtilisee != null && equationRepository != null
 
-        val preferencesEspece = if (shouldUseEquations) {
-            if (animal != null && preferencesRepository != null) {
-                withContext(AppDispatchers.IO) {
-                    preferencesRepository.getPreferencesForSpecies(animal.getEspece())
-                }
-            } else {
-                PreferencesEspece()
-            }
-        } else {
-            null
-        }
-        preferencesEspeceState = preferencesEspece
-
         val resultat = withContext(Dispatchers.Default) {
             if (
                 afficherTousLesNutriments ||
                 effectiveSelectedNutrients == null ||
                 effectiveSelectedNutrients.isEmpty()
             ) {
-                if (shouldUseEquations && preferencesEspece != null) {
+                if (shouldUseEquations) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations(
                         ration = ration,
-                        preferencesEspece = preferencesEspece,
-                        equationRepository = equationRepository,
+                        equationRepository = equationRepository!!,
                         referenceEv = referenceUtilisee
                     )
                 } else {
                     analyserValeursNutritionnellesRation(ration)
                 }
             } else {
-                if (shouldUseEquations && preferencesEspece != null) {
+                if (shouldUseEquations) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
                         ration = ration,
                         nutrimentsSelectionnes = effectiveSelectedNutrients,
-                        preferencesEspece = preferencesEspece,
                         equationRepository = equationRepository,
                         referenceEv = referenceUtilisee
                     )
@@ -261,11 +238,10 @@ fun AnalyseNutritionnelleCard(
             resultat
         } else {
             val complement = withContext(Dispatchers.Default) {
-                if (shouldUseEquations && preferencesEspece != null) {
+                if (shouldUseEquations) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
                         ration = ration,
                         nutrimentsSelectionnes = labelsManquants,
-                        preferencesEspece = preferencesEspece,
                         equationRepository = equationRepository,
                         referenceEv = referenceUtilisee
                     )
@@ -699,8 +675,7 @@ fun AnalyseNutritionnelleCard(
                                                         referencesMaladies = referencesMaladies,
                                                         onClick = { onNutrimentClick(nom, valeur) },
                                                         ration = ration,
-                                                        equationRepository = equationRepository,
-                                                        preferencesEspece = preferencesEspeceState
+                                                        equationRepository = equationRepository
                                                 )
                                             }
                                         }

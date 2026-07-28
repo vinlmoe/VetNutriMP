@@ -39,7 +39,6 @@ fun HeatMapAlimentsView(
         alimentsAnalyses: List<AlimentAnalyseData>,
         referenceEv: ReferenceEv?,
         equationRepository: EquationRepository?,
-        preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?,
         besoinEnergetiqueEntretien: Double?,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
@@ -47,12 +46,11 @@ fun HeatMapAlimentsView(
 ) {
     // État pour le toggle MIN uniquement
     var utiliserSeulementMin by remember { mutableStateOf(false) }
-    
+
     var heatMapData by remember(
             alimentsAnalyses,
             referenceEv,
             equationRepository,
-            preferencesEspece,
             besoinEnergetiqueEntretien,
             poidsAnimal,
             poidsMetabolique,
@@ -64,7 +62,6 @@ fun HeatMapAlimentsView(
             alimentsAnalyses,
             referenceEv,
             equationRepository,
-            preferencesEspece,
             besoinEnergetiqueEntretien,
             poidsAnimal,
             poidsMetabolique,
@@ -77,7 +74,6 @@ fun HeatMapAlimentsView(
             alimentsAnalyses,
             referenceEv,
             equationRepository,
-            preferencesEspece,
             besoinEnergetiqueEntretien,
             poidsAnimal,
             poidsMetabolique,
@@ -89,7 +85,6 @@ fun HeatMapAlimentsView(
                         alimentsAnalyses = alimentsAnalyses,
                         referenceEv = referenceEv,
                         equationRepository = equationRepository,
-                        preferencesEspece = preferencesEspece,
                         besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
                         poidsAnimal = poidsAnimal,
                         poidsMetabolique = poidsMetabolique,
@@ -461,7 +456,6 @@ private suspend fun calculerHeatMapData(
         alimentsAnalyses: List<AlimentAnalyseData>,
         referenceEv: ReferenceEv?,
         equationRepository: EquationRepository?,
-        preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?,
         besoinEnergetiqueEntretien: Double?,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
@@ -690,7 +684,6 @@ private suspend fun calculerHeatMapData(
                     niveau = nutrimentData.niveau,
                     referenceEv = referenceEv,
                     equationRepository = equationRepository,
-                    preferencesEspece = preferencesEspece,
                     besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
                     poidsAnimal = poidsAnimal,
                     poidsMetabolique = poidsMetabolique,
@@ -730,7 +723,6 @@ private suspend fun calculerRatioHeatMap(
         niveau: Reflevel,
         referenceEv: ReferenceEv,
         equationRepository: EquationRepository?,
-        preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?,
         besoinEnergetiqueEntretien: Double,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
@@ -746,32 +738,32 @@ private suspend fun calculerRatioHeatMap(
     // Obtenir la valeur brute du nutriment (en % de protéines pour les acides aminés)
     val valeurBruteNutriment = when (nutriment) {
         is NutrientMain -> alimentRation.getNutrientWithComplementary(
-                nutriment, preferencesEspece, equationRepository, referenceEv
+                nutriment, equationRepository, referenceEv
         ) ?: 0.0
         is NutrientMacro -> alimentRation.getNutrientWithComplementary(
-                nutriment, preferencesEspece, equationRepository, referenceEv
+                nutriment, equationRepository, referenceEv
         ) ?: 0.0
         is NutrientMin -> alimentRation.getNutrientWithComplementary(
-                nutriment, preferencesEspece, equationRepository, referenceEv
+                nutriment, equationRepository, referenceEv
         ) ?: 0.0
         is NutrientVitam -> alimentRation.getNutrientWithComplementary(
-                nutriment, preferencesEspece, equationRepository, referenceEv
+                nutriment, equationRepository, referenceEv
         ) ?: 0.0
         is NutrientLipid -> alimentRation.getNutrientWithComplementary(
-                nutriment, preferencesEspece, equationRepository, referenceEv
+                nutriment, equationRepository, referenceEv
         ) ?: 0.0
         is AAEnum -> {
             // Pour les acides aminés, la valeur est en % de protéines, il faut convertir en valeur absolue
             // (même logique que dans RationNutrientAnalyzer.kt ligne 313-316)
             val valeurPourcentProteines = alimentRation.getNutrientWithComplementary(
-                    nutriment, preferencesEspece, equationRepository, referenceEv
+                    nutriment, equationRepository, referenceEv
             ) ?: 0.0
             val teneurProteines = alimentRation.aliment?.getNutrient(NutrientMain.PROTEINE) ?: 0.0
             // Convertir de % de protéines vers g/100g d'aliment
             (valeurPourcentProteines * teneurProteines) / 100.0
         }
         is NutrientOther -> alimentRation.getNutrientWithComplementary(
-                nutriment, preferencesEspece, equationRepository, referenceEv
+                nutriment, equationRepository, referenceEv
         ) ?: 0.0
         else -> 0.0
     }

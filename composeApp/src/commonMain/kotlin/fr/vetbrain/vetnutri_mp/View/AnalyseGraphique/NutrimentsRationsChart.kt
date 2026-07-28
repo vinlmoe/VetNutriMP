@@ -47,7 +47,6 @@ fun NutrimentsRationsChart(
 ) {
         val animal by viewModel.animal.collectAsState()
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
-        val speciesPreferences by viewModel.speciesPreferences.collectAsState()
 
         // États pour les données des rations
         var rationsNutrimentData by remember {
@@ -61,7 +60,7 @@ fun NutrimentsRationsChart(
         } // "" = histogramme, autre = scatter plot
 
         // Calculer les données des rations de manière asynchrone
-        LaunchedEffect(animal?.consultations?.size, referenceUtilisee, speciesPreferences) {
+        LaunchedEffect(animal?.consultations?.size, referenceUtilisee) {
                 isLoading = true
                 val resultat = mutableListOf<RationNutrimentData>()
 
@@ -81,7 +80,6 @@ fun NutrimentsRationsChart(
                                                 calculerNutrimentsRation(
                                                         ration = ration,
                                                         referenceEv = referenceUtilisee,
-                                                        preferencesEspece = speciesPreferences,
                                                         equationRepository = equationRepository,
                                                         isRationActuelle =
                                                                 ration.uuid in rationsActuellesIds
@@ -112,7 +110,6 @@ fun NutrimentsRationsChart(
         // Vérifier si une consultation et une référence sont disponibles
         val hasConsultations = animal?.consultations?.isNotEmpty() == true
         val hasReference = referenceUtilisee != null
-        val hasPreferences = speciesPreferences != null
 
         if (!hasConsultations) {
                 // Aucune consultation disponible
@@ -155,29 +152,6 @@ fun NutrimentsRationsChart(
                                 )
                                 Text(
                                         text = translate(LocalizationKeys.Graph.SELECT_REFERENCE_HINT),
-                                        style = MaterialTheme.typography.body2,
-                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                                )
-                        }
-                }
-        } else if (!hasPreferences) {
-                // Aucune préférence disponible
-                Box(
-                        modifier = Modifier.height(250.dp).fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                ) {
-                        Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                        ) {
-                                Text(
-                                        text = translate(LocalizationKeys.Graph.NO_PREFERENCE),
-                                        style = MaterialTheme.typography.body1,
-                                        fontWeight = FontWeight.Bold,
-                                        color = VetNutriColors.Error
-                                )
-                                Text(
-                                        text = translate(LocalizationKeys.Graph.CONFIG_PREFERENCE_HINT),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )

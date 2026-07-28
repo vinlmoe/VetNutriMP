@@ -117,10 +117,9 @@ fun NutrientDetailDialog(
         referencesMaladies: List<ReferenceEv> = emptyList(),
         onDismiss: () -> Unit
 ) {
-        // Récupération des préférences de l'espèce
+        // Récupération des préférences de l'espèce (mode d'affichage uniquement)
         val preferencesRepo = remember { PreferencesRepository(preferencesStorage) }
         var typeExpressionBesoin by remember { mutableStateOf(TypeExpressionBesoin.DEFAULT) }
-        var preferencesEspece by remember { mutableStateOf<PreferencesEspece?>(null) }
 
         LaunchedEffect(espece) {
                 try {
@@ -129,10 +128,8 @@ fun NutrientDetailDialog(
                         preferencesRepo.loadPreferences()
                         val preferences = preferencesRepo.getPreferencesForSpecies(espece)
                         typeExpressionBesoin = preferences.getTypeExpressionBesoinEnum()
-                        preferencesEspece = preferences
                 } catch (e: Exception) {
                         typeExpressionBesoin = TypeExpressionBesoin.DEFAULT
-                        preferencesEspece = null
                 }
         }
 
@@ -211,9 +208,7 @@ fun NutrientDetailDialog(
                                                                                 referencesMaladies,
                                                                         ration = ration,
                                                                         equationRepository =
-                                                                                equationRepository,
-                                                                        preferencesEspece =
-                                                                                preferencesEspece
+                                                                                equationRepository
                                                                 )
                                                         }
                                                 }
@@ -258,9 +253,7 @@ fun NutrientDetailDialog(
                                                                                         besoinEnergetiqueEntretien,
                                                                                 ration = ration,
                                                                                 equationRepository =
-                                                                                        equationRepository,
-                                                                                preferencesEspece =
-                                                                                        preferencesEspece
+                                                                                        equationRepository
                                                                         )
                                                                 }
                                                         }
@@ -275,8 +268,7 @@ fun NutrientDetailDialog(
                                                         referenceUtilisee = referenceUtilisee,
                                                         espece = espece,
                                                         preferencesRepo = preferencesRepo,
-                                                        equationRepository = equationRepository,
-                                                        preferencesEspece = preferencesEspece
+                                                        equationRepository = equationRepository
                                                 )
                                         }
                                 }
@@ -300,8 +292,7 @@ fun ReferenceBulletGraph(
         referencesMaladies: List<ReferenceEv> = emptyList(),
         onClick: (() -> Unit)? = null,
         ration: Ration? = null,
-        equationRepository: EquationRepository? = null,
-        preferencesEspece: PreferencesEspece? = null
+        equationRepository: EquationRepository? = null
 ) {
         // Récupération des valeurs de référence avec leurs unités
         val minRef = reference.obtenirNutriment(nutriment, Reflevel.MIN)
@@ -407,17 +398,17 @@ fun ReferenceBulletGraph(
         // Vérifier que maxAxis est strictement supérieur à 0 pour éviter une plage invalide (0.0..0.0)
         if (maxAxis <= 0.0) return // Ne pas afficher le graphique si toutes les valeurs sont 0
 
-        var contributionSegments by remember(ration, nutriment, reference, equationRepository, valeurApport, preferencesEspece) {
+        var contributionSegments by remember(ration, nutriment, reference, equationRepository, valeurApport) {
                 mutableStateOf<List<ContributionSegment>>(emptyList())
         }
 
-        LaunchedEffect(ration, nutriment, reference, equationRepository, valeurApport, preferencesEspece) {
+        LaunchedEffect(ration, nutriment, reference, equationRepository, valeurApport) {
                 contributionSegments =
                         if (ration == null || valeurApport <= 0.0) {
                                 emptyList()
                         } else {
                                 calculerContributionsIngredients(
-                                        ration, nutriment, reference, equationRepository, preferencesEspece
+                                        ration, nutriment, reference, equationRepository
                                 ).map { (index, contribution) ->
                                         ContributionSegment(
                                                 index = index,
@@ -736,8 +727,7 @@ private fun ContributionsList(
         referenceUtilisee: ReferenceEv?,
         espece: Espece,
         preferencesRepo: PreferencesRepository,
-        equationRepository: EquationRepository?,
-        preferencesEspece: PreferencesEspece? = null
+        equationRepository: EquationRepository?
 ) {
         Text(
                 text = translate("analnut.contribution.title"),
@@ -746,17 +736,17 @@ private fun ContributionsList(
                 color = VetNutriColors.Primary
         )
 
-        var contributionsTriees by remember(ration, valeurNutritionnelle, referenceUtilisee, equationRepository, preferencesEspece) {
+        var contributionsTriees by remember(ration, valeurNutritionnelle, referenceUtilisee, equationRepository) {
                 mutableStateOf<List<ContributionData>>(emptyList())
         }
 
-        var isLoading by remember(ration, valeurNutritionnelle, referenceUtilisee, equationRepository, preferencesEspece) {
+        var isLoading by remember(ration, valeurNutritionnelle, referenceUtilisee, equationRepository) {
                 mutableStateOf(true)
         }
 
         val isRatioNutrient: Boolean = estNutrimentAnalysisRatio(valeurNutritionnelle.nutriment)
 
-        LaunchedEffect(ration, valeurNutritionnelle, referenceUtilisee, equationRepository, preferencesEspece) {
+        LaunchedEffect(ration, valeurNutritionnelle, referenceUtilisee, equationRepository) {
                 isLoading = true
                 try {
                         val list =
@@ -783,23 +773,8 @@ private fun ContributionsList(
                                                                 null
                                                         }
                                                 } else {
-                                                        // Cas particulier ENA : si une ReferenceEv est fournie, ne PAS
-                                                        // utiliser les équations complémentaires des préférences
-                                                        // d'espèce pour ENA. Seules les équations de ReferenceEv
-                                                        // doivent alors s'appliquer.
-                                                        val preferencesPourCalcul =
-                                                                if (nutrient ==
-                                                                                fr.vetbrain.vetnutri_mp.Enumer
-                                                                                        .NutrientMain.ENA &&
-                                                                                referenceUtilisee != null
-                                                                ) {
-                                                                        null
-                                                                } else {
-                                                                        preferencesEspece
-                                                                }
                                                         alimentRation.getNutrientWithComplementary(
                                                                 nutrient = nutrient,
-                                                                preferences = preferencesPourCalcul,
                                                                 equationRepository = equationRepository,
                                                                 referenceEv = referenceUtilisee
                                                         )
@@ -1157,8 +1132,7 @@ private fun ReferenceCard(
         besoinEnergetiqueEntretien: Double?,
         referencesMaladies: List<ReferenceEv> = emptyList(),
         ration: Ration? = null,
-        equationRepository: EquationRepository? = null,
-        preferencesEspece: PreferencesEspece? = null
+        equationRepository: EquationRepository? = null
 ) {
         val nutrient: Nutrient = valeurNutritionnelle.nutriment
         val isAnalysisNoUnit: Boolean = estNutrimentAnalysisRatio(nutrient)
@@ -1212,8 +1186,7 @@ private fun ReferenceCard(
                                 referencesMaladies = referencesMaladies,
                                 onClick = null,
                                 ration = ration,
-                                equationRepository = equationRepository,
-                                preferencesEspece = preferencesEspece
+                                equationRepository = equationRepository
                         )
                         ReferenceLevelsList(
                                 reference = reference,

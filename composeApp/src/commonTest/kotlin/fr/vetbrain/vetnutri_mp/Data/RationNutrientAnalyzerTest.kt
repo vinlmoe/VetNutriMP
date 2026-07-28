@@ -39,19 +39,16 @@ class RationNutrientAnalyzerTest {
     fun energie_selectiveEtAvecEquations_memeSelectionDEquation() = runTest {
         val ration = rationAvecUnAliment(FoodKind.COMPLET, proteine = 10.0)
         val reference = referenceAvecEquationsEnergie()
-        val preferences = PreferencesEspece(espece = Espece.CHIEN.name)
         val equationRepository = InMemoryEquationRepository()
 
         val avecEquations = analyserValeursNutritionnellesRationAvecEquations(
                 ration = ration,
-                preferencesEspece = preferences,
                 equationRepository = equationRepository,
                 referenceEv = reference
         )
         val selective = analyserValeursNutritionnellesRationSelective(
                 ration = ration,
                 nutrimentsSelectionnes = listOf(NutrientMain.ENERGIE.label),
-                preferencesEspece = preferences,
                 equationRepository = equationRepository,
                 referenceEv = reference
         )
@@ -68,13 +65,11 @@ class RationNutrientAnalyzerTest {
     fun energie_selective_alimentBrut_utiliseDEraw() = runTest {
         val ration = rationAvecUnAliment(null, proteine = 10.0)
         val reference = referenceAvecEquationsEnergie()
-        val preferences = PreferencesEspece(espece = Espece.CHIEN.name)
         val equationRepository = InMemoryEquationRepository()
 
         val selective = analyserValeursNutritionnellesRationSelective(
                 ration = ration,
                 nutrimentsSelectionnes = listOf(NutrientMain.ENERGIE.label),
-                preferencesEspece = preferences,
                 equationRepository = equationRepository,
                 referenceEv = reference
         )
@@ -125,12 +120,10 @@ class RationNutrientAnalyzerTest {
         val alimentRation = AlimentRation(aliment = aliment, quantite = 200.0, weight = 1.0)
         val ration = Ration(alimentMutableList = mutableListOf(alimentRation))
 
-        val preferences = PreferencesEspece(espece = Espece.CHIEN.name)
         val equationRepository = InMemoryEquationRepository()
 
         val resultat = analyserValeursNutritionnellesRationAvecEquations(
                 ration = ration,
-                preferencesEspece = preferences,
                 equationRepository = equationRepository,
                 referenceEv = null
         )
@@ -149,12 +142,10 @@ class RationNutrientAnalyzerTest {
         val alimentRation = AlimentRation(aliment = aliment, quantite = 100.0, weight = 1.0)
         val ration = Ration(alimentMutableList = mutableListOf(alimentRation))
 
-        val preferences = PreferencesEspece(espece = Espece.CHIEN.name)
         val equationRepository = InMemoryEquationRepository()
 
         val resultat = analyserValeursNutritionnellesRationAvecEquations(
                 ration = ration,
-                preferencesEspece = preferences,
                 equationRepository = equationRepository,
                 referenceEv = null
         )
