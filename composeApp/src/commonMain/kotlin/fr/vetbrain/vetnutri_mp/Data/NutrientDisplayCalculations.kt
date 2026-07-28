@@ -33,6 +33,16 @@ data class ConformiteResult(
     val description: String
 )
 
+/**
+ * true seulement pour les vrais ratios de NutrientAnalysis (NaK/KNA, PCa/CAP, o6o3/O6O3,
+ * ZnCu/ZNCU, PhosphProt/PROTP, nonOsPP — `unite` vide) — pas pour ses valeurs absolues calculées
+ * (nonOsPhos/nonOsProt en %, MethCys/PhenTyr en g), qui doivent être sommées comme un nutriment
+ * normal. Point d'entrée unique pour cette classification : ne pas tester `is NutrientAnalysis`
+ * seul, ni `ValeurNutritionnelle.unite.displayName` (toujours vide pour les 10 entrées).
+ */
+fun estNutrimentAnalysisRatio(nutriment: Nutrient): Boolean =
+    nutriment is NutrientAnalysis && nutriment.unite.isBlank()
+
 /** Convertit une valeur de référence + son unité en besoin absolu (même unité que l'apport). */
 fun calculerBesoinAbsolu(
     valeurRef: Double,
@@ -148,7 +158,7 @@ fun calculerBulletGraphData(
     if (reference == null) return null
     val nutrient = valeurNutritionnelle.nutriment
     val typeExpr = typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
-    val isAnalysisNoUnit = nutrient is NutrientAnalysis && nutrient.unite.isBlank()
+    val isAnalysisNoUnit = estNutrimentAnalysisRatio(nutrient)
 
     fun convertirRef(valeurRef: Double, uniteRef: UnitReqEnum): Double? =
         if (isAnalysisNoUnit) valeurRef
@@ -228,10 +238,7 @@ fun calculerConformite(
 ): ConformiteResult? {
     val nutrient = valeurNutritionnelle.nutriment
     val apportAbsolu = valeurNutritionnelle.valeur
-    val isNutrimentRatio = when (nutrient) {
-        is NutrientAnalysis -> nutrient.unite.isEmpty()
-        else -> false
-    }
+    val isNutrimentRatio = estNutrimentAnalysisRatio(nutrient)
 
     // Références de maladies (prioritaire)
     referencesMaladies.forEach { refMaladie ->
@@ -334,9 +341,7 @@ fun calculerAffichageNutriment(
     val valeurAbsolue = valeurNutritionnelle.valeur
     val uniteOriginale = valeurNutritionnelle.unite.displayName
 
-    val isUnitEmpty = uniteOriginale.isBlank()
-    val isAnalysis = valeurNutritionnelle.nutriment is NutrientAnalysis
-    if (isAnalysis && isUnitEmpty) {
+    if (estNutrimentAnalysisRatio(valeurNutritionnelle.nutriment)) {
         return Pair(GraphFormattingUtils.formatDecimal(valeurAbsolue, 2), "")
     }
 
@@ -559,7 +564,8 @@ suspend fun calculerContributionIngredient(
     alimentRation: AlimentRation,
     nutriment: Nutrient,
     reference: ReferenceEv?,
-    equationRepository: EquationRepository?
+    equationRepository: EquationRepository?,
+    preferencesEspece: PreferencesEspece? = null
 ): Double {
     val quantiteIngredient = alimentRation.quantite
     if (quantiteIngredient <= 0.0) return 0.0
@@ -568,9 +574,16 @@ suspend fun calculerContributionIngredient(
         return alimentRation.getEnergie(reference, equationRepository)
     }
 
+    // Cas particulier ENA : si une ReferenceEv est fournie, ne PAS utiliser les
+    // équations complémentaires des préférences d'espèce pour ENA. Seules les
+    // équations de ReferenceEv doivent alors s'appliquer. Même règle que
+    // RationNutrientAnalyzer.kt, pour que la contribution par ingrédient reste
+    // cohérente avec l'apport total du même nutriment.
+    val preferencesPourCalcul =
+        if (nutriment == NutrientMain.ENA && reference != null) null else preferencesEspece
     val valeurPour100g = alimentRation.getNutrientWithComplementary(
         nutrient = nutriment,
-        preferences = null,
+        preferences = preferencesPourCalcul,
         equationRepository = equationRepository,
         referenceEv = reference
     ) ?: 0.0
@@ -597,11 +610,12 @@ suspend fun calculerContributionsIngredients(
     ration: Ration,
     nutriment: Nutrient,
     reference: ReferenceEv?,
-    equationRepository: EquationRepository?
+    equationRepository: EquationRepository?,
+    preferencesEspece: PreferencesEspece? = null
 ): List<ContributionIngredient> {
-    if (nutriment is NutrientAnalysis) return emptyList()
+    if (estNutrimentAnalysisRatio(nutriment)) return emptyList()
     return ration.alimentMutableList.mapIndexedNotNull { index, alimentRation ->
-        val contribution = calculerContributionIngredient(alimentRation, nutriment, reference, equationRepository)
+        val contribution = calculerContributionIngredient(alimentRation, nutriment, reference, equationRepository, preferencesEspece)
         if (contribution > 0.0) ContributionIngredient(index, contribution) else null
     }
 }
@@ -616,7 +630,7 @@ fun analyserCompositionAliment(aliment: AlimentEv): Map<String, ValeurNutritionn
 
     aliment.valMap.keys.forEach { nutrient ->
         val valeur = aliment.getNutrient(nutrient) ?: return@forEach
-        val isRatio = nutrient is NutrientAnalysis
+        val isRatio = estNutrimentAnalysisRatio(nutrient)
         if (!isRatio && valeur <= 0.0) return@forEach
         resultat[nutrient.label] = ValeurNutritionnelle(
             nutriment = nutrient,

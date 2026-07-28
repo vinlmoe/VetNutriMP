@@ -37,6 +37,7 @@ import fr.vetbrain.vetnutri_mp.Data.calculerAffichageNutriment
 import fr.vetbrain.vetnutri_mp.Data.calculerConformite
 import fr.vetbrain.vetnutri_mp.Data.ConformiteStatus
 import fr.vetbrain.vetnutri_mp.Data.grouperNutrimentsParCategorie
+import fr.vetbrain.vetnutri_mp.Data.estNutrimentAnalysisRatio
 import fr.vetbrain.vetnutri_mp.Data.obtenirTitreCategorie
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -160,6 +161,11 @@ fun AnalyseNutritionnelleCard(
         mutableStateOf<Map<String, ValeurNutritionnelle>>(emptyMap())
     }
 
+    // Préférences d'espèce utilisées pour les équations complémentaires : calculées dans le
+    // LaunchedEffect ci-dessous mais promues en état pour être accessibles au niveau des appels
+    // à ReferenceBulletGraph (contributions par ingrédient, fix cohérence apport/contributions).
+    var preferencesEspeceState by remember { mutableStateOf<PreferencesEspece?>(null) }
+
     var valeursNutritionnellesLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(
@@ -207,6 +213,7 @@ fun AnalyseNutritionnelleCard(
         } else {
             null
         }
+        preferencesEspeceState = preferencesEspece
 
         val resultat = withContext(Dispatchers.Default) {
             if (
@@ -486,7 +493,7 @@ fun AnalyseNutritionnelleCard(
                                     nutriments
                                 } else {
                                     nutriments.filter {
-                                        val isNutrientRatio = it.second.nutriment is NutrientAnalysis
+                                        val isNutrientRatio = estNutrimentAnalysisRatio(it.second.nutriment)
                                         isNutrientRatio || it.second.valeur > 0.0
                                     }
                                 }
@@ -554,7 +561,8 @@ fun AnalyseNutritionnelleCard(
                                     
                                     // Convertir la valeur selon l'unité des préférences pour le graphique bullet
                                     // Mais pas pour les ratios (CAP, KNA, O6O3, etc.) qui sont des valeurs pures
-                                    val isRatio = valeur.nutriment is NutrientAnalysis && valeur.unite.displayName.isBlank()
+                                    // (même critère que ReferenceBulletGraph pour les bornes : unite.isBlank())
+                                    val isRatio = estNutrimentAnalysisRatio(valeur.nutriment)
                                     val apportConverti = if (isRatio) {
                                         // Pour les ratios, utiliser la valeur brute sans conversion
                                         apport
@@ -691,7 +699,8 @@ fun AnalyseNutritionnelleCard(
                                                         referencesMaladies = referencesMaladies,
                                                         onClick = { onNutrimentClick(nom, valeur) },
                                                         ration = ration,
-                                                        equationRepository = equationRepository
+                                                        equationRepository = equationRepository,
+                                                        preferencesEspece = preferencesEspeceState
                                                 )
                                             }
                                         }
