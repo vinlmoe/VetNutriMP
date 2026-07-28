@@ -152,6 +152,14 @@ fun AnalyseNutritionnelleCard(
         mutableStateOf<Map<String, ValeurNutritionnelle>>(emptyMap())
     }
 
+    // Valeurs pour les camemberts Composition / Origine Énergie : en mode "nutriments
+    // sélectionnés", les 6 nutriments de base peuvent être absents de la sélection ; ils sont
+    // alors complétés ici pour que les pourcentages des camemberts restent exacts, sans les
+    // faire apparaître dans la liste affichée.
+    var valeursNutritionnellesPies by remember {
+        mutableStateOf<Map<String, ValeurNutritionnelle>>(emptyMap())
+    }
+
     var valeursNutritionnellesLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(
@@ -232,6 +240,35 @@ fun AnalyseNutritionnelleCard(
         }
 
         valeursNutritionnellesBase = resultat
+
+        val labelsPies = listOf(
+            NutrientMain.HUMIDITE,
+            NutrientMain.PROTEINE,
+            NutrientMain.LIPIDE,
+            NutrientMain.ENA,
+            NutrientMain.CENDRE,
+            NutrientMain.CELLULOSE
+        ).map { it.label }
+        val labelsManquants = labelsPies.filter { it !in resultat.keys }
+        valeursNutritionnellesPies = if (labelsManquants.isEmpty()) {
+            resultat
+        } else {
+            val complement = withContext(Dispatchers.Default) {
+                if (shouldUseEquations && preferencesEspece != null) {
+                    fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
+                        ration = ration,
+                        nutrimentsSelectionnes = labelsManquants,
+                        preferencesEspece = preferencesEspece,
+                        equationRepository = equationRepository,
+                        referenceEv = referenceUtilisee
+                    )
+                } else {
+                    analyserValeursNutritionnellesRationSelective(ration, labelsManquants)
+                }
+            }
+            resultat + complement
+        }
+
         valeursNutritionnellesLoading = false
     }
 
@@ -245,12 +282,12 @@ fun AnalyseNutritionnelleCard(
                 grouperNutrimentsParCategorie(valeursNutritionnelles)
             }
             
-    // Préparer les données pour les pie charts
-    val compositionData = remember(valeursNutritionnelles) {
-        generateCompositionData(valeursNutritionnelles)
+    // Préparer les données pour les pie charts (map complétée des 6 nutriments de base)
+    val compositionData = remember(valeursNutritionnellesPies) {
+        generateCompositionData(valeursNutritionnellesPies)
     }
-    val energyData = remember(valeursNutritionnelles) {
-        generateEnergyData(valeursNutritionnelles)
+    val energyData = remember(valeursNutritionnellesPies) {
+        generateEnergyData(valeursNutritionnellesPies)
     }
 
     Card(modifier = modifier, elevation = AppSizes.elevationSmall) {
