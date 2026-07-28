@@ -1,0 +1,122 @@
+---
+title: "Tableau récapitulatif des notes — Examen S4"
+author: "Dr Sébastien Lefebvre"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: false
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(readxl)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(openxlsx)
+```
+
+```{r chargement}
+FICHIER <- "Note globale.xlsx"
+
+# --- NAC /20 → /10 -----------------------------------------------------------
+nac <- read_excel(FICHIER, sheet = "NAC") |>
+  select(
+    Nom     = `Nom de famille`,
+    Prénom  = Prénom,
+    email   = `Adresse de courriel`,
+    note_nac_20 = `Note/20,00`
+  ) |>
+  mutate(
+    note_nac_20 = suppressWarnings(as.numeric(note_nac_20)),
+    `NAC /10`   = round(note_nac_20 / 2, 2)
+  ) |>
+  select(Nom, Prénom, email, `NAC /10`)
+
+# --- Nutrition théorique /4 --------------------------------------------------
+nt <- read_excel(FICHIER, sheet = "Nutrition théorique") |>
+  select(
+    email         = `Adresse de courriel`,
+    `Nutri. théo. /4` = `Note/4,00`
+  ) |>
+  mutate(`Nutri. théo. /4` = suppressWarnings(as.numeric(`Nutri. théo. /4`)))
+
+# --- Nutrition pratique /6 ---------------------------------------------------
+np <- read_excel(FICHIER, sheet = "Nutrition pratique") |>
+  select(
+    email            = email,
+    `Nutri. prat. /6` = note_sur_6
+  ) |>
+  mutate(`Nutri. prat. /6` = suppressWarnings(as.numeric(`Nutri. prat. /6`)))
+
+# --- Fusion ------------------------------------------------------------------
+recap <- nac |>
+  left_join(nt, by = "email") |>
+  left_join(np, by = "email") |>
+  mutate(
+    Total = round(
+      rowSums(cbind(`NAC /10`, `Nutri. théo. /4`, `Nutri. prat. /6`),
+              na.rm = FALSE),
+      2
+    )
+  ) |>
+  select(-email) |>
+  arrange(Nom, Prénom)
+```
+
+## Notes par étudiant
+
+```{r tableau}
+recap |>
+  kable(
+    digits  = 2,
+    align   = c("l", "l", "r", "r", "r", "r"),
+    col.names = c("Nom", "Prénom", "NAC /10", "Nutri. théo. /4", "Nutri. prat. /6", "Total /20")
+  ) |>
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width        = FALSE,
+    position          = "left"
+  ) |>
+  column_spec(6, bold = TRUE)
+```
+
+```{r export_xlsx}
+wb <- createWorkbook()
+addWorksheet(wb, "Notes récap")
+
+# En-têtes
+header_style <- createStyle(
+  fontName = "Arial", fontSize = 11, textDecoration = "bold",
+  fgFill = "#4472C4", fontColour = "white",
+  halign = "center", border = "Bottom"
+)
+data_style  <- createStyle(fontName = "Arial", fontSize = 10, numFmt = "0.00")
+total_style <- createStyle(fontName = "Arial", fontSize = 10, numFmt = "0.00",
+                           textDecoration = "bold", fgFill = "#D9E1F2")
+
+writeData(wb, "Notes récap", recap, startRow = 1, headerStyle = header_style)
+addStyle(wb, "Notes récap", data_style,
+         rows = 2:(nrow(recap) + 1), cols = 3:6, gridExpand = TRUE)
+addStyle(wb, "Notes récap", total_style,
+         rows = 2:(nrow(recap) + 1), cols = 6)
+
+setColWidths(wb, "Notes récap", cols = 1:2, widths = 22)
+setColWidths(wb, "Notes récap", cols = 3:6, widths = 16)
+
+# Renommer les colonnes dans le fichier
+colnames(recap) <- c("Nom", "Prénom", "NAC /10", "Nutri. théo. /4", "Nutri. prat. /6", "Total /20")
+writeData(wb, "Notes récap", recap, startRow = 1, headerStyle = header_style)
+
+saveWorkbook(wb, "notes_recap_examen_S4.xlsx", overwrite = TRUE)
+cat("Export xlsx : notes_recap_examen_S4.xlsx\n")
+```
+
+```{r stats, results='asis'}
+cat(sprintf(
+  "\n**%d étudiants** — Moyenne totale : **%.2f / 20**\n",
+  nrow(recap),
+  mean(recap$Total, na.rm = TRUE)
+))
+```

@@ -1,0 +1,664 @@
+package fr.vetbrain.vetnutri_mp.Repository
+
+import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
+import fr.vetbrain.vetnutri_mp.Data.AlimentRation
+import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
+import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
+import fr.vetbrain.vetnutri_mp.Data.WeightDate
+import fr.vetbrain.vetnutri_mp.DataBase.AlimentRationEntity
+import fr.vetbrain.vetnutri_mp.DataBase.AnimalDao
+import fr.vetbrain.vetnutri_mp.DataBase.ConsultationEntity
+import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
+import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toData
+import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueDao
+import fr.vetbrain.vetnutri_mp.DataBase.RationEntity
+import fr.vetbrain.vetnutri_mp.DataBase.SupplementalVariableEntity
+import fr.vetbrain.vetnutri_mp.DataBase.WeightEntity
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.datetime.LocalDate
+
+class DatabaseAnimalRepository(
+        private val animalDao: AnimalDao,
+        private val foodDao: FoodDao,
+        private val nutrientValueDao: NutrientValueDao? = null
+) : AnimalRepository {
+        override suspend fun saveAnimal(animal: AnimalEv) {
+                withContext(AppDispatchers.IO) {
+                        val consultationEntities = animal.consultations.map { consultation ->
+                                consultation.idAnim = animal.uuid
+                                consultation.toEntity(includeRelations = false)
+                        }
+                        val weightEntities = animal.weightHistory.map { weight ->
+                                weight.refAnimal = animal.uuid
+                                weight.toEntity()
+                        }
+                        animalDao.saveAnimalWithRelations(
+                                animal.toEntity(),
+                                consultationEntities,
+                                weightEntities
+                        )
+                }
+        }
+
+        override suspend fun getAllAnimals(): List<AnimalEv> {
+                return withContext(AppDispatchers.IO) {
+                        val entities = animalDao.getAllAnimals()
+
+                        entities.map { entity ->
+                                // Charger les poids pour chaque animal
+                                val weightEntities = animalDao.getWeightsForAnimal(entity.uuid)
+                                entity.toData(
+                                        consultations = emptyList(),
+                                        weights = weightEntities
+                                )
+                        }
+                }
+        }
+
+        override suspend fun deleteAnimal(animal: AnimalEv) {
+                withContext(AppDispatchers.IO) {
+                        animalDao.delete(animal.toEntity(includeRelations = false))
+                }
+        }
+
+        override suspend fun updateAnimal(animal: AnimalEv) {
+                withContext(AppDispatchers.IO) {
+                        animalDao.update(animal.toEntity(includeRelations = false))
+
+                        val weightEntities = animal.weightHistory.map { weight ->
+                                weight.refAnimal = animal.uuid
+                                weight.toEntity()
+                        }
+                        // DELETE + INSERT atomiques : sans transaction, un échec entre les deux
+                        // supprimerait définitivement les poids existants
+                        animalDao.updateWeightsTransactional(animal.uuid, weightEntities)
+                }
+        }
+
+        override suspend fun getAnimalById(id: String): AnimalEv? {
+                return withContext(AppDispatchers.IO) {
+                        val entity = animalDao.getAnimalById(id) ?: return@withContext null
+
+                        // Charger les consultations et poids associés
+                        val consultationEntities = animalDao.getConsultationsForAnimal(id)
+                        val weightEntities = animalDao.getWeightsForAnimal(id)
+
+                        // Utiliser le mapper pour convertir l'entité en objet de domaine (inclut jsonbinId)
+                        val animalEv = entity.toData(
+                                consultations = consultationEntities,
+                                weights = weightEntities
+                        )
+
+                        // Le mapper toData() a déjà chargé les consultations et poids, donc on retourne directement
+                        animalEv
+                }
+        }
+
+        /**
+         * Convertit un identifiant d'espèce en nom d'énumération.
+         *
+         * @param especeId L'identifiant d'espèce à convertir (peut être une chaîne ou un nombre)
+         * @return Le nom de l'énumération Espece correspondante ou l'identifiant original si non
+         * reconnu
+         */
+        private fun convertSpecieId(especeId: String): String {
+                // Journal détaillé pour l'import JSON
+
+                // Si l'entrée est vide ou null, conserver la valeur vide
+                if (especeId.isBlank()) {
+                        return ""
+                }
+
+                // Vérifier directement si l'especeId correspond à l'id d'une des espèces de
+                // l'énumération
+                val especeDirectMatch = Espece.entries.find { it.id == especeId }
+                if (especeDirectMatch != null) {
+                        return especeDirectMatch.label
+                }
+
+                // Essayer de convertir en entier si c'est un nombre
+                val especeNumId = especeId.toIntOrNull()
+
+                return if (especeNumId != null) {
+                        // Vérifier si l'ID numérique correspond à l'ID d'une espèce
+                        val especeByNumId = Espece.entries.find { it.id == especeNumId.toString() }
+                        if (especeByNumId != null) {
+                                especeByNumId.label
+                        } else {
+                                // Si c'est un nombre, utiliser getEnumFromInt qui utilise le champ
+                                // catégorie
+                                try {
+                                        val espece = Espece.getEnumFromInt(especeNumId)
+                                        espece.label
+                                } catch (e: Exception) {
+                                        // Essayer les autres stratégies
+                                        try {
+                                                val especeByName =
+                                                        Espece.valueOf(especeId.uppercase())
+                                                especeByName.label
+                                        } catch (e2: Exception) {
+                                                // Essayer par label
+                                                val especeByLabel = Espece.getByLabel(especeId)
+                                                if (especeByLabel != null) {
+                                                        especeByLabel.label
+                                                } else {
+                                                        // En cas d'échec, conserver l'ID original
+                                                        especeId
+                                                }
+                                        }
+                                }
+                        }
+                } else {
+                        // Si c'est une chaîne, essayer d'abord par label
+                        val especeByLabel = Espece.getByLabel(especeId)
+                        if (especeByLabel != null) {
+                                return especeByLabel.label
+                        }
+
+                        // Essayer par nom d'énumération
+                        try {
+                                val especeEnum = Espece.valueOf(especeId.uppercase())
+                                especeEnum.label
+                        } catch (e: Exception) {
+                                // En cas d'échec, conserver la valeur originale
+                                especeId
+                        }
+                }
+        }
+
+        override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): AnimalImportResult {
+                return withContext(AppDispatchers.IO) {
+                        val availableFoodUUIDs = mutableSetOf<String>()
+                        // Map pour stocker les noms des aliments par UUID
+                        val foodNamesMap = mutableMapOf<String, String>()
+
+                        // Récupérer les aliments existants dans la base de données
+                        foodDao.getAllFoods().forEach { food ->
+                                availableFoodUUIDs.add(food.uuid)
+                                // Stocker les noms des aliments déjà présents dans la base
+                                food.name?.let { name -> foodNamesMap[food.uuid] = name }
+                        }
+
+                        // Première passe : extraire tous les aliments uniques des rations
+                        // et stocker leurs noms dans la map
+                        val alimToImport = mutableMapOf<String, AlimentEvJson>()
+
+                        // Parcourir tous les animaux pour collecter les noms des aliments
+                        // même s'ils ne sont pas importés directement
+                        animalsJson.forEach { animalJson ->
+                                // Format 1: consultations directement dans l'objet animal
+                                val consultations =
+                                        animalJson.consultations ?: // Format 2: consultations dans
+                                                // list.consultations
+                                                animalJson.list?.consultations
+                                                        ?: // Aucune consultation
+                                                emptyList()
+
+                                consultations.forEach { consultJson ->
+                                        consultJson.rationList.values.forEach { rationJson ->
+                                                rationJson.alimentList.forEach { alimentJson ->
+                                                        // Stocker tous les noms d'aliments dans la
+                                                        // map, même si l'aliment
+                                                        // existe déjà dans la base de données
+                                                        run {
+                                                                val nomAliment = alimentJson.alime.nom
+                                                                foodNamesMap[alimentJson.UUIDunif] =
+                                                                        nomAliment
+
+                                                                // Si l'aliment n'existe pas dans la
+                                                                // base, l'ajouter à la liste à
+                                                                // importer
+                                                                if (!availableFoodUUIDs.contains(
+                                                                                alimentJson.UUIDunif
+                                                                        )
+                                                                ) {
+                                                                        alimToImport[
+                                                                                alimentJson
+                                                                                        .UUIDunif] =
+                                                                                alimentJson.alime
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+
+                        // Deuxième passe : importer les aliments extraits
+                        var importedFoodsCount = 0
+
+                        for ((uuid, aliment) in alimToImport) {
+                                try {
+                                        // Créer un FoodEntity à partir de l'AlimentEvJson
+                                        val foodEntity =
+                                                FoodEntity(
+                                                        uuid = uuid,
+                                                        groupAlim = 0, // Par défaut
+                                                        typeAlim = 0, // Par défaut
+                                                        ingredients = aliment.ingredients ?: "",
+                                                        price = aliment.prix ?: 0.0,
+                                                        categPrice = aliment.categoriePrix ?: "",
+                                                        brand = aliment.marque ?: "",
+                                                        gamme = aliment.gamme ?: "",
+                                                        unitPres = 0, // Par défaut
+                                                        quantityPres = aliment.quantInt ?: 0.0,
+                                                        version = 1, // Par défaut
+                                                        date = "", // Par défaut
+                                                        nameDef = aliment.nom ?: "",
+                                                        consistent = 1, // Par défaut
+                                                        deprecated =
+                                                                if (aliment.deprecated == true) 1
+                                                                else 0,
+                                                        DataB = aliment.DataB ?: "",
+                                                        RefRation = "",
+                                                        RefAlimUnif = "",
+                                                        cont = "NO", // Valeur par défaut
+                                                        name = aliment.nom ?: "",
+                                                        quantite = 0.0,
+                                                        lastUpdateDate = aliment.dateMaj,
+                                                        imageRef = aliment.imageRef,
+                                                        especesJson = "[]",
+                                                        indicationsJson = "[]"
+                                                )
+
+                                        // Insérer l'aliment dans la base de données
+                                        foodDao.insertFood(foodEntity)
+                                        availableFoodUUIDs.add(uuid)
+                                        importedFoodsCount++
+                                } catch (e: Exception) {
+                                        e.printStackTrace()
+                                }
+                        }
+
+                        var importedCount = 0
+                        var updatedCount = 0
+                        var errorCount = 0
+                        var rationsWithAliments = 0
+                        var totalAlimentsInRations = 0
+
+                        // Troisième passe : importer les animaux avec leurs relations
+                        for (animalJson in animalsJson) {
+                                try {
+                                        // Créer un nouvel animal à partir des données JSON
+                                        val animal =
+                                                AnimalEv(
+                                                        uuid = animalJson.UUID,
+                                                        nom = animalJson.nom,
+                                                        dead = animalJson.dead,
+                                                        id = animalJson.id,
+                                                        sexId = animalJson.sex,
+                                                        specieId =
+                                                                convertSpecieId(animalJson.espece),
+                                                        ownerName = animalJson.nomProprio,
+                                                        birthdate = animalJson.dateNaiss,
+                                                        race = animalJson.race,
+                                                        summary = animalJson.resume
+                                                )
+
+                                        // Ajouter les poids à l'historique
+                                        animal.weightHistory =
+                                                animalJson
+                                                        .listWeight
+                                                        .map { weightJson ->
+                                                                WeightDate(
+                                                                        uuid = weightJson.UUID,
+                                                                        refAnimal = animalJson.UUID,
+                                                                        date = weightJson.date,
+                                                                        value = weightJson.value
+                                                                )
+                                                        }
+                                                        .toMutableList()
+
+                                        // Ajouter les consultations - gérer les deux formats
+                                        // possibles
+                                        val consultations =
+                                                when {
+                                                        // Format 1: consultations directement dans
+                                                        // l'objet animal
+                                                        animalJson.consultations != null ->
+                                                                animalJson.consultations
+                                                        // Format 2: consultations dans
+                                                        // list.consultations
+                                                        animalJson.list != null ->
+                                                                animalJson.list.consultations
+                                                        // Aucune consultation
+                                                        else -> emptyList()
+                                                }
+
+                                        animal.consultations =
+                                                consultations
+                                                        .map { consultJson ->
+                                                                val consultation =
+                                                                        ConsultationEv(
+                                                                                uuid =
+                                                                                        consultJson
+                                                                                                .UUID,
+                                                                                idAnim =
+                                                                                        animalJson
+                                                                                                .UUID,
+                                                                                date =
+                                                                                        consultJson
+                                                                                                .date,
+                                                                                objectConsult =
+                                                                                        consultJson
+                                                                                                .objet
+                                                                                                ?: "",
+                                                                                observation =
+                                                                                        consultJson
+                                                                                                .observation
+                                                                                                ?: "",
+                                                                                cRendu =
+                                                                                        consultJson
+                                                                                                .CRendu
+                                                                                                ?: "",
+                                                                                weight =
+                                                                                        consultJson
+                                                                                                .Poids,
+                                                                                idealWeight =
+                                                                                        consultJson
+                                                                                                .PoidsIdeal,
+                                                                                water =
+                                                                                        consultJson
+                                                                                                .Boisson,
+                                                                                bodyFat =
+                                                                                        consultJson
+                                                                                                .TauxMG,
+                                                                                BCS =
+                                                                                        consultJson
+                                                                                                .bcs
+                                                                                                ?.toIntOrNull(),
+                                                                                MCS =
+                                                                                        consultJson
+                                                                                                .MCS,
+                                                                                k1Value =
+                                                                                        consultJson
+                                                                                                .k1value,
+                                                                                k2Value =
+                                                                                        consultJson
+                                                                                                .k2value,
+                                                                                k3Value =
+                                                                                        consultJson
+                                                                                                .k3value,
+                                                                                k4Value =
+                                                                                        consultJson
+                                                                                                .k4value,
+                                                                                k5Value =
+                                                                                        consultJson
+                                                                                                .k5value
+                                                                        )
+
+                                                                // Ajouter les rations à la
+                                                                // consultation
+                                                                consultation.rations =
+                                                                        consultJson
+                                                                                .rationList
+                                                                                .values
+                                                                                .map { rationJson ->
+                                                                                        val ration =
+                                                                                                Ration(
+                                                                                                        uuid =
+                                                                                                                rationJson
+                                                                                                                        .UUID,
+                                                                                                        idConsult =
+                                                                                                                consultJson
+                                                                                                                        .UUID,
+                                                                                                        name =
+                                                                                                                rationJson
+                                                                                                                        .Nom,
+                                                                                                        actual =
+                                                                                                                rationJson
+                                                                                                                        .actual
+                                                                                                )
+
+                                                                                        // Ajouter
+                                                                                        // les
+                                                                                        // aliments
+                                                                                        // à la
+                                                                                        // ration
+                                                                                        ration.alimentMutableList =
+                                                                                                rationJson
+                                                                                                        .alimentList
+                                                                                                        .map {
+                                                                                                                alimentJson
+                                                                                                                ->
+                                                                                                                // Créer l'AlimentRation avec les données du JSON
+                                                                                                                AlimentRation(
+                                                                                                                        uuid =
+                                                                                                                                alimentJson
+                                                                                                                                        .UUID,
+                                                                                                                        uuidUnif =
+                                                                                                                                alimentJson
+                                                                                                                                        .UUIDunif,
+                                                                                                                        refRation =
+                                                                                                                                rationJson
+                                                                                                                                        .UUID,
+                                                                                                                        quantite =
+                                                                                                                                alimentJson
+                                                                                                                                        .quantite,
+                                                                                                                        proportion =
+                                                                                                                                alimentJson
+                                                                                                                                        .prop,
+                                                                                                                        weight =
+                                                                                                                                alimentJson
+                                                                                                                                        .weight,
+                                                                                                                        category =
+                                                                                                                                alimentJson
+                                                                                                                                        .categ,
+                                                                                                                        densiteEnergetique =
+                                                                                                                                alimentJson
+                                                                                                                                        .density,
+                                                                                                                        refAlimUnif =
+                                                                                                                                alimentJson
+                                                                                                                                        .UUIDunif
+                                                                                                                )
+                                                                                                        }
+                                                                                                        .toMutableList()
+
+                                                                                        ration
+                                                                                }
+                                                                                .toMutableList()
+
+                                                                // Ajouter les variables
+                                                                // supplémentaires à la consultation
+                                                                consultation.suppVarp =
+                                                                        consultJson
+                                                                                .svp
+                                                                                .map { svpJson ->
+                                                                                        SupplementalvariableP(
+                                                                                                variable =
+                                                                                                        try {
+                                                                                                                VariableKind
+                                                                                                                        .valueOf(
+                                                                                                                                svpJson.variable
+                                                                                                                        )
+                                                                                                        } catch (
+                                                                                                                e:
+                                                                                                                        Exception) {
+                                                                                                                null
+                                                                                                        },
+                                                                                                varue =
+                                                                                                        svpJson.value
+                                                                                        )
+                                                                                }
+                                                                                .toMutableList()
+
+                                                                consultation
+                                                        }
+                                                        .toMutableList()
+
+                                        // Pré-construire toutes les entités avant la transaction
+                                        // (food validation + création hors transaction)
+                                        val weightEntities: List<WeightEntity> =
+                                                animal.weightHistory.map { weight ->
+                                                        weight.refAnimal = animal.uuid
+                                                        weight.toEntity()
+                                                }
+                                        val consultationEntities = mutableListOf<ConsultationEntity>()
+                                        val suppVarEntities = mutableListOf<SupplementalVariableEntity>()
+                                        val rationEntities = mutableListOf<RationEntity>()
+                                        val alimentEntities = mutableListOf<AlimentRationEntity>()
+
+                                        animal.consultations.forEach { consultation ->
+                                                consultation.idAnim = animal.uuid
+                                                consultationEntities.add(
+                                                        consultation.toEntity(includeRelations = false)
+                                                )
+
+                                                consultation.suppVarp.forEach { suppVar ->
+                                                        suppVar.variable?.let { variable ->
+                                                                suppVarEntities.add(
+                                                                        SupplementalVariableEntity(
+                                                                                idConsult = consultation.uuid,
+                                                                                variableKind = variable.uuid,
+                                                                                value = suppVar.varue ?: 0.0
+                                                                        )
+                                                                )
+                                                        }
+                                                }
+
+                                                consultation.rations.forEach { ration ->
+                                                        ration.idConsult = consultation.uuid
+                                                        rationEntities.add(
+                                                                ration.toEntity(includeRelations = false)
+                                                        )
+
+                                                        ration.alimentMutableList.forEach { aliment ->
+                                                                val refAlimUnif = aliment.refAlimUnif
+                                                                        ?: return@forEach
+                                                                val foodKnown = availableFoodUUIDs.contains(refAlimUnif)
+                                                                        || foodDao.getFoodById(refAlimUnif) != null
+                                                                if (!foodKnown) {
+                                                                        try {
+                                                                                val nom = foodNamesMap[refAlimUnif]
+                                                                                        ?: "Aliment importé $refAlimUnif"
+                                                                                foodDao.insertFood(
+                                                                                        FoodEntity(
+                                                                                                uuid = refAlimUnif,
+                                                                                                groupAlim = 0, typeAlim = 0,
+                                                                                                ingredients = "", price = 0.0,
+                                                                                                categPrice = "", brand = "",
+                                                                                                gamme = "", unitPres = 0,
+                                                                                                quantityPres = 0.0, version = 1,
+                                                                                                date = "", nameDef = nom,
+                                                                                                consistent = 1, deprecated = 0,
+                                                                                                DataB = "", RefRation = "",
+                                                                                                RefAlimUnif = "", cont = "NO",
+                                                                                                name = nom, quantite = 0.0,
+                                                                                                especesJson = "[]",
+                                                                                                indicationsJson = "[]"
+                                                                                        )
+                                                                                )
+                                                                                availableFoodUUIDs.add(refAlimUnif)
+                                                                        } catch (_: Exception) {
+                                                                                return@forEach
+                                                                        }
+                                                                }
+                                                                aliment.refRation = ration.uuid
+                                                                alimentEntities.add(aliment.toEntity())
+                                                        }
+                                                }
+                                        }
+
+                                        // Appel transactionnel atomique : un seul animal = une seule transaction
+                                        val existingAnimal = animalDao.getAnimalById(animal.uuid)
+                                        if (existingAnimal != null) {
+                                                animalDao.replaceAnimalRelationsForImport(
+                                                        animal.toEntity(includeRelations = false),
+                                                        weightEntities,
+                                                        consultationEntities,
+                                                        suppVarEntities,
+                                                        rationEntities,
+                                                        alimentEntities
+                                                )
+                                        } else {
+                                                animalDao.insertAnimalWithAllRelations(
+                                                        animal.toEntity(includeRelations = false),
+                                                        weightEntities,
+                                                        consultationEntities,
+                                                        suppVarEntities,
+                                                        rationEntities,
+                                                        alimentEntities
+                                                )
+                                        }
+
+                                        // Charger les AlimentEv en mémoire (affichage uniquement, hors transaction)
+                                        animal.consultations.forEach { consultation ->
+                                                consultation.rations.forEach { ration ->
+                                                        ration.alimentMutableList.forEach { alimentRation ->
+                                                                val fe = foodDao.getFoodById(
+                                                                        alimentRation.refAlimUnif ?: ""
+                                                                ) ?: return@forEach
+                                                                alimentRation.aliment = AlimentEv(
+                                                                        uuid = fe.uuid,
+                                                                        nom = fe.nameDef,
+                                                                        group = null,
+                                                                        typeAliment = null,
+                                                                        ingredients = fe.ingredients,
+                                                                        price = fe.price,
+                                                                        categPrice = fe.categPrice,
+                                                                        brand = fe.brand,
+                                                                        gamme = fe.gamme,
+                                                                        consistent = fe.consistent != 0,
+                                                                        cont = fr.vetbrain.vetnutri_mp.Enumer.ContEnum.byId(fe.consistent),
+                                                                        quantInt = fe.quantityPres,
+                                                                        deprecated = fe.deprecated > 0,
+                                                                        dataB = fe.DataB,
+                                                                        lastUpdateDate = fe.lastUpdateDate,
+                                                                        imageRef = fe.imageRef,
+                                                                        rationUUID = alimentRation.uuid
+                                                                )
+                                                        }
+                                                }
+                                        }
+
+                                        importedCount++
+                                } catch (e: Exception) {
+                                        // Ignorer les erreurs d'importation pour un animal
+                                        // spécifique
+                                        e.printStackTrace() // Ajouter la trace de la pile pour le
+                                        // débogage
+                                }
+                        }
+
+                        val totalCount = getAllAnimals().size
+
+                        return@withContext AnimalImportResult(
+                                importedCount = importedCount,
+                                updatedCount =
+                                        0, // Nous ne suivons pas actuellement les mises à jour
+                                errorCount = animalsJson.size - importedCount,
+                                totalCount = totalCount,
+                                foodsImportedCount = importedFoodsCount
+                        )
+                }
+        }
+
+        override suspend fun getRacesBySpecies(specieId: String): List<String> {
+                return withContext(AppDispatchers.IO) {
+                        val allAnimals = animalDao.getAllAnimals()
+                        allAnimals
+                                .filter { it.specieId == specieId && !it.race.isNullOrBlank() }
+                                .mapNotNull { it.race }
+                                .distinct()
+                                .sorted()
+                }
+        }
+
+        /**
+         * Récupère le repository des aliments
+         *
+         * @return Le repository des aliments ou null s'il n'est pas disponible
+         */
+        override fun getFoodRepository(): FoodRepository? {
+                // Créer une instance de DatabaseFoodRepository avec le FoodDao et NutrientValueDao
+                return DatabaseFoodRepository(foodDao, nutrientValueDao)
+        }
+}
