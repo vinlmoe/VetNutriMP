@@ -2,7 +2,6 @@ package fr.vetbrain.vetnutri_mp.Utils
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Equation
-import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
@@ -320,7 +319,6 @@ object EquationEvaluator {
             poidsMetabolique: Double,
             variablesSupp: List<SupplementalvariableP> = emptyList(),
             ration: Ration,
-            preferences: PreferencesEspece,
             equationRepository: EquationRepository,
             referenceEv: ReferenceEv? = null
     ): Double? {
@@ -343,7 +341,6 @@ object EquationEvaluator {
                 val valeur: Double? =
                         aliment.getNutrientWithComplementary(
                                 nutrient = nutriment,
-                                preferences = preferences,
                                 equationRepository = equationRepository,
                                 referenceEv = referenceEv
                         )
@@ -381,33 +378,6 @@ object EquationEvaluator {
         }
         aliment.aliment?.let { addCustomNutrientVarsFromAliment(it, variables) }
 
-        return ExpressionMathematique.evaluer(expression, variables)
-    }
-
-    /**
-     * Variante suspendue: calcule la densité énergétique en utilisant aussi les nutriments
-     * complémentaires si nécessaires.
-     */
-    suspend fun evaluerDensiteEnergetiqueAvecComplementaires(
-            expression: String,
-            aliment: AlimentRation,
-            preferences: PreferencesEspece,
-            equationRepository: EquationRepository,
-            referenceEv: ReferenceEv? = null
-    ): Double? {
-        val variables: MutableMap<String, Double> = mutableMapOf()
-        suspend fun valueOf(n: Nutrient): Double {
-            return aliment.getNutrientWithComplementary(
-                            nutrient = n,
-                            preferences = preferences,
-                            equationRepository = equationRepository,
-                            referenceEv = referenceEv
-                    )
-                    ?.toDouble()
-                    ?: 0.0
-        }
-        for (n in NutrientMain.entries) variables[n.label] = valueOf(n)
-        aliment.aliment?.let { addCustomNutrientVarsFromAliment(it, variables) }
         return ExpressionMathematique.evaluer(expression, variables)
     }
 
@@ -477,15 +447,13 @@ object EquationEvaluator {
             }
         }
 
-        // Harmoniser ENA avec le système d'analyse de ration :
-        // si une ReferenceEv est fournie, calculer ENA via getNutrientWithComplementary
-        // en n'utilisant PAS les préférences d'espèce (uniquement ReferenceEv).
+        // Harmoniser ENA avec le système d'analyse de ration : si une ReferenceEv est fournie,
+        // calculer ENA via getNutrientWithComplementary (uniquement piloté par ReferenceEv).
         if (referenceEv != null) {
             try {
                 val enaFromRefEv =
                         aliment.getNutrientWithComplementary(
                                 nutrient = NutrientMain.ENA,
-                                preferences = null,
                                 equationRepository = equationRepository,
                                 referenceEv = referenceEv
                         )
@@ -561,7 +529,7 @@ object EquationEvaluator {
             poidsMetabolique: Double,
             variablesSupp: List<SupplementalvariableP> = emptyList(),
             ration: Ration,
-            preferences: PreferencesEspece? = null,
+            referenceEv: ReferenceEv? = null,
             equationRepository: EquationRepository? = null
     ): Double {
         if (referencesMaladies.isEmpty()) return 0.0
@@ -593,9 +561,8 @@ object EquationEvaluator {
                 val v =
                         aliment.getNutrientWithComplementary(
                                         nutrient = n,
-                                        preferences = preferences,
                                         equationRepository = equationRepository,
-                                        referenceEv = null
+                                        referenceEv = referenceEv
                                 )
                                 ?.toDouble()
                                 ?: 0.0
@@ -676,7 +643,6 @@ object EquationEvaluator {
             poidsMetabolique: Double = 0.0,
             variablesSupp: List<SupplementalvariableP> = emptyList(),
             aliment: AlimentRation,
-            preferences: PreferencesEspece? = null,
             equationRepository: EquationRepository? = null,
             referenceEv: ReferenceEv? = null
     ): Double? {
@@ -723,48 +689,6 @@ object EquationEvaluator {
 
         val r = ExpressionMathematique.evaluer(expression, variables)
         return if (r == null || r.isNaN() || r.isInfinite()) null else r
-    }
-
-    /** Variante suspendue utilisant les nutriments complémentaires pour un aliment unique. */
-    suspend fun evaluerBesoinNutritionnelPourAlimentAvecComplementaires(
-            expression: String,
-            poidsCorps: Double = 0.0,
-            besoinEnergetique: Double = 0.0,
-            poidsMetabolique: Double = 0.0,
-            variablesSupp: List<SupplementalvariableP> = emptyList(),
-            aliment: AlimentRation,
-            preferences: PreferencesEspece,
-            equationRepository: EquationRepository,
-            referenceEv: ReferenceEv? = null
-    ): Double? {
-        val variables = mutableMapOf<String, Double>()
-        variables["BW"] = poidsCorps
-        variables["BEE"] = besoinEnergetique
-        variables["MW"] = poidsMetabolique
-        for (variable in variablesSupp) {
-            variable.variable?.let { varKind ->
-                variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
-            }
-        }
-        suspend fun valueOf(n: Nutrient): Double {
-            val v =
-                    aliment.getNutrientWithComplementary(
-                                    nutrient = n,
-                                    preferences = preferences,
-                                    equationRepository = equationRepository,
-                                    referenceEv = referenceEv
-                            )
-                            ?.toDouble()
-                            ?: 0.0
-            return (v * aliment.quantite.toDouble()) / 100.0
-        }
-        for (n in NutrientMain.entries) variables[n.label] = valueOf(n)
-        for (n in NutrientLipid.entries) variables[n.label] = valueOf(n)
-        for (n in NutrientVitam.entries) variables[n.label] = valueOf(n)
-        for (n in NutrientMacro.entries) variables[n.label] = valueOf(n)
-        for (n in NutrientMin.entries) variables[n.label] = valueOf(n)
-        aliment.aliment?.let { addCustomNutrientVarsFromAliment(it, variables) }
-        return ExpressionMathematique.evaluer(expression, variables)
     }
 
     /**
