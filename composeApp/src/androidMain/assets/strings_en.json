@@ -1635,7 +1635,7 @@
         "general.copiedToClipboard": "Copié dans le presse-papiers",
         "preferences.persistence_active": "Persistance active",
         "chart.label.carbohydrates": "Glucides",
-        "chart.label.crude_fiber": "Cellulose brute",
+        "chart.label.crude_fiber": "Crude fiber",
         "ration.copiedToClipboard": "Ration copiée dans le presse-papiers",
         "animal.invalidDateFormat": "Format de date invalide",
         "animal.saveAnimalDesc": "Enregistrer l'animal",
@@ -1860,6 +1860,14 @@
         "shareDialog.copyQrJson": "Copy data",
         "shareDialog.share": "Share",
         "topBar.back": "Back",
-        "topBar.settings": "Settings"
+        "topBar.settings": "Settings",
+        "enum.NutrientMain.ENA": "NFE",
+        "enum.NutrientMain.CELLULOSE": "Crude fiber",
+        "enum.NutrientMain.SUCRE": "Sugars",
+        "enum.NutrientMain.AMIDON": "Starch",
+        "enum.NutrientMain.FIBRESOL": "Soluble fiber",
+        "enum.NutrientMain.FIBRETOT": "Total fiber",
+        "enum.NutrientMain.NDF": "NDF",
+        "enum.NutrientMain.ADF": "ADF"
     }
 }

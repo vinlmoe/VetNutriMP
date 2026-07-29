@@ -1860,6 +1860,14 @@
         "shareDialog.copyQrJson": "Copier les données",
         "shareDialog.share": "Partager",
         "topBar.back": "Retour",
-        "topBar.settings": "Paramètres"
+        "topBar.settings": "Paramètres",
+        "enum.NutrientMain.ENA": "ENA",
+        "enum.NutrientMain.CELLULOSE": "Cellulose brute",
+        "enum.NutrientMain.SUCRE": "Sucres",
+        "enum.NutrientMain.AMIDON": "Amidon",
+        "enum.NutrientMain.FIBRESOL": "Fibre soluble",
+        "enum.NutrientMain.FIBRETOT": "Fibre totale",
+        "enum.NutrientMain.NDF": "NDF",
+        "enum.NutrientMain.ADF": "ADFe"
     }
 }

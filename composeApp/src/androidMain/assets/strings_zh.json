@@ -1635,7 +1635,7 @@
         "general.copiedToClipboard": "Copié dans le presse-papiers",
         "preferences.persistence_active": "Persistance active",
         "chart.label.carbohydrates": "Glucides",
-        "chart.label.crude_fiber": "Cellulose brute",
+        "chart.label.crude_fiber": "粗纤维",
         "ration.copiedToClipboard": "Ration copiée dans le presse-papiers",
         "animal.invalidDateFormat": "Format de date invalide",
         "animal.saveAnimalDesc": "Enregistrer l'animal",
@@ -1860,6 +1860,14 @@
         "shareDialog.copyQrJson": "复制数据",
         "shareDialog.share": "分享",
         "topBar.back": "返回",
-        "topBar.settings": "设置"
+        "topBar.settings": "设置",
+        "enum.NutrientMain.ENA": "ENA",
+        "enum.NutrientMain.CELLULOSE": "粗纤维",
+        "enum.NutrientMain.SUCRE": "糖",
+        "enum.NutrientMain.AMIDON": "淀粉",
+        "enum.NutrientMain.FIBRESOL": "可溶性纤维",
+        "enum.NutrientMain.FIBRETOT": "总纤维",
+        "enum.NutrientMain.NDF": "NDF",
+        "enum.NutrientMain.ADF": "ADF"
     }
 }
