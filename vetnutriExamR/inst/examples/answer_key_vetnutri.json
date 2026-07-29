@@ -1,0 +1,14 @@
+[
+  {
+    "question": "EM::RECOMMENDED::PER_DAY",
+    "answer": 2000,
+    "points": 10,
+    "tolerance": 50
+  },
+  {
+    "question": "PB::MINIMUM::PER_DAY",
+    "answer": 25,
+    "points": 10,
+    "tolerance": 0.5
+  }
+]

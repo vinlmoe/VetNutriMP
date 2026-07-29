@@ -1,0 +1,937 @@
+package fr.vetbrain.vetnutri_mp.View
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
+import fr.vetbrain.vetnutri_mp.Components.AppTextField
+import fr.vetbrain.vetnutri_mp.Components.NumberTextField
+import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnalNut
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.ConsultationEdit
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Reference
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Theme.AppIcons
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
+import kotlin.uuid.ExperimentalUuidApi
+import kotlinx.datetime.LocalDate
+
+@OptIn(ExperimentalUuidApi::class)
+@Composable
+fun AppConsultationDetailView(
+        consultation: ConsultationEv?,
+        availableReferences: List<ReferenceEv> = emptyList(),
+        onDismiss: () -> Unit,
+        onSave: (ConsultationEv) -> Unit,
+        viewModel: fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel? = null
+) {
+        // Déterminer si c'est une nouvelle consultation (UUID vide ou null)
+        val isNewConsultation = consultation == null || consultation.uuid.isEmpty()
+
+        var editedConsultation by
+                remember(consultation) { mutableStateOf(consultation ?: ConsultationEv()) }
+        var weightText by
+                remember(consultation) { mutableStateOf(consultation?.weight?.toString() ?: "") }
+        var showDateError by remember(consultation) { mutableStateOf(false) }
+        var showWeightError by remember(consultation) { mutableStateOf(false) }
+        var dateErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
+        var weightErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
+
+        // Collecter les valeurs métaboliques calculées depuis le ViewModel
+        val poidsMetabolique by
+                viewModel?.poidsMetabolique?.collectAsState() ?: remember { mutableStateOf(null) }
+        val besoinEnergetiqueStandard by
+                viewModel?.besoinEnergetiqueStandard?.collectAsState()
+                        ?: remember { mutableStateOf(null) }
+        val besoinEnergetiqueTotal by
+                viewModel?.besoinEnergetiqueTotal?.collectAsState()
+                        ?: remember { mutableStateOf(null) }
+
+        // Déclencher les calculs métaboliques quand une consultation est sélectionnée
+        LaunchedEffect(consultation) {
+                consultation?.let { viewModel?.calculerValeursMetaboliques(it) }
+        }
+
+        Scaffold(
+                floatingActionButton = {
+                        if (isNewConsultation) {
+                                FloatingActionButton(
+                                        onClick = {
+                                                if (!showDateError &&
+                                                                !showWeightError &&
+                                                                editedConsultation.date != null
+                                                ) {
+                                                        if (editedConsultation.uuid.isEmpty()) {
+                                                                // Générer un UUID unique avec
+                                                                // timestamp pour éviter les
+                                                                // conflits
+                                                                editedConsultation =
+                                                                        editedConsultation.copy(
+                                                                                uuid =
+                                                                                        fr.vetbrain
+                                                                                                .vetnutri_mp
+                                                                                                .Utils
+                                                                                                .genUniqueUUID()
+                                                                        )
+                                                        }
+                                                        onSave(editedConsultation)
+                                                } else if (editedConsultation.date == null) {
+                                                        showDateError = true
+                                                        dateErrorMessage = ConsultationEdit.DATE_REQUIRED.translate()
+                                                }
+                                        },
+                                        backgroundColor = VetNutriColors.Primary
+                                ) {
+                                        Icon(
+                                                imageVector = AppIcons.Check,
+                                                contentDescription = ConsultationEdit.CONFIRM_VALIDE.translate(),
+                                                tint = VetNutriColors.OnPrimary
+                                        )
+                                }
+                        }
+                }
+        ) { paddingValues ->
+                Column(
+                        modifier =
+                                Modifier.padding(paddingValues)
+                                        .padding(AppSizes.paddingMedium)
+                                        .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                ) {
+                        // Titre
+                        Text(
+                                text =
+                                        if (isNewConsultation) General.ADD.translate()
+                                        else translate("consultationDetail.title"),
+                                style = MaterialTheme.typography.h6
+                        )
+
+                        Divider(
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                                thickness = AppSizes.dividerHeight
+                        )
+
+                        if (isNewConsultation) {
+                                // Mode édition pour nouvelle consultation
+                                // Date
+                                AppDatePicker(
+                                        selectedDate = editedConsultation.date,
+                                        onDateSelected = { date: LocalDate ->
+                                                editedConsultation =
+                                                        editedConsultation.copy(date = date)
+                                                showDateError = false
+                                                dateErrorMessage = null
+                                        },
+                                        label = Consultation.DATE.translate(),
+                                        isError = showDateError,
+                                        errorMessage = dateErrorMessage,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Poids
+                                NumberTextField(
+                                        value = weightText,
+                                        onValueChange = { newValue: String ->
+                                                weightText = newValue
+                                                try {
+                                                        if (newValue.isNotEmpty()) {
+                                                                val weight = newValue.toDouble()
+                                                                editedConsultation =
+                                                                        editedConsultation.copy(
+                                                                                weight = weight
+                                                                        )
+                                                                showWeightError = false
+                                                                weightErrorMessage = null
+                                                        } else {
+                                                                editedConsultation =
+                                                                        editedConsultation.copy(
+                                                                                weight = null
+                                                                        )
+                                                                showWeightError = false
+                                                                weightErrorMessage = null
+                                                        }
+                                                } catch (e: Exception) {
+                                                        showWeightError = true
+                                                        weightErrorMessage =
+                                                                ConsultationEdit.FORMAT_WEIGHT_ERROR.translate()
+                                                }
+                                        },
+                                        label = Animal.WEIGHT.translate(),
+                                        leadingIcon = AppIcons.Weight,
+                                        isError = showWeightError,
+                                        errorMessage = weightErrorMessage,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Objectif
+                                AppTextField(
+                                        value = editedConsultation.objectConsult,
+                                        onValueChange = { newValue: String ->
+                                                editedConsultation =
+                                                        editedConsultation.copy(
+                                                                objectConsult = newValue
+                                                        )
+                                        },
+                                        label = Consultation.OBJECTIVE.translate(),
+                                        leadingIcon = AppIcons.Info,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Observations
+                                AppTextField(
+                                        value = editedConsultation.observation,
+                                        onValueChange = { newValue: String ->
+                                                editedConsultation =
+                                                        editedConsultation.copy(
+                                                                observation = newValue
+                                                        )
+                                        },
+                                        label = Consultation.OBSERVATION.translate(),
+                                        leadingIcon = AppIcons.Info,
+                                        modifier = Modifier.fillMaxWidth().weight(1f),
+                                        maxLines = 5,
+                                        singleLine = false
+                                )
+                        } else {
+                                // Mode affichage pour consultation existante
+                                InfoRow(
+                                        label = Consultation.DATE.translate(),
+                                        value = consultation?.date?.toString() ?: translate("consultationDetail.dateNotSpecified")
+                                )
+
+                                InfoRow(
+                                        label = Animal.WEIGHT.translate(),
+                                        value =
+                                                if (consultation?.weight != null)
+                                                        "${consultation.weight} kg"
+                                                else General.NOT_SPECIFIED.translate()
+                                )
+
+                                InfoRow(
+                                        label = Consultation.OBJECTIVE.translate(),
+                                        value =
+                                                consultation?.objectConsult?.ifBlank {
+                                                        General.NOT_SPECIFIED.translate()
+                                                }
+                                                        ?: General.NOT_SPECIFIED.translate()
+                                )
+
+                                // Observations avec plus d'espace
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                        Text(
+                                                text = "${Consultation.OBSERVATION.translate()} :",
+                                                style = MaterialTheme.typography.subtitle1,
+                                                modifier =
+                                                        Modifier.padding(
+                                                                vertical = AppSizes.paddingXSmall
+                                                        )
+                                        )
+                                        Card(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                elevation = 2.dp,
+                                                backgroundColor = MaterialTheme.colors.surface
+                                        ) {
+                                                Text(
+                                                        text =
+                                                                consultation?.observation?.ifBlank {
+                                                                        translate("consultationDetail.noObservation")
+                                                                }
+                                                                        ?: translate("consultationDetail.noObservation"),
+                                                        style = MaterialTheme.typography.body1,
+                                                        modifier =
+                                                                Modifier.padding(
+                                                                        AppSizes.paddingMedium
+                                                                )
+                                                )
+                                        }
+                                }
+                        }
+
+                        // Section Note d'État Corporel (BCS)
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = AppSizes.elevationSmall,
+                                backgroundColor = VetNutriColors.Surface
+                        ) {
+                                Column(
+                                        modifier = Modifier.padding(AppSizes.paddingMedium),
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingSmall)
+                                ) {
+                                        Text(
+                                                text = ConsultationEdit.BCS_SECTION_TITLE.translate(),
+                                                style = MaterialTheme.typography.h6,
+                                                color = VetNutriColors.Primary
+                                        )
+
+                                        Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
+
+                                        val bcsValue =
+                                                if (isNewConsultation) editedConsultation.BCS
+                                                else consultation?.BCS
+                                        val bcsDescription = getBCSDescription(bcsValue)
+
+                                        InfoRow(
+                                                label = translate("consultationDetail.bcsScoreLabel"),
+                                                value =
+                                                        if (bcsValue != null) "$bcsValue/9"
+                                                        else General.NOT_SPECIFIED.translate()
+                                        )
+
+                                        if (bcsValue != null) {
+                                                Text(
+                                                        text = bcsDescription,
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = Color.Gray,
+                                                        modifier =
+                                                                Modifier.padding(
+                                                                        start =
+                                                                                AppSizes.paddingSmall
+                                                                )
+                                                )
+                                        }
+                                }
+                        }
+
+                        // Section Valeurs Métaboliques et Énergétiques
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = AppSizes.elevationSmall,
+                                backgroundColor = VetNutriColors.Surface
+                        ) {
+                                Column(
+                                        modifier = Modifier.padding(AppSizes.paddingMedium),
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingSmall)
+                                ) {
+                                        Text(
+                                                text = translate("consultationDetail.metabolicEnergyTitle"),
+                                                style = MaterialTheme.typography.h6,
+                                                color = VetNutriColors.Primary
+                                        )
+
+                                        Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
+
+                                        if (isNewConsultation) {
+                                                // Mode édition - champs éditables pour nouvelle
+                                                // consultation
+                                                InfoRow(
+                                                        label = AnalNut.WEIGHT_METABOLIC.translate(),
+                                                        value = General.NOT_CALCULATED.translate()
+                                                )
+                                                InfoRow(
+                                                        label = translate("consultationDetail.energyMaintenanceLabel"),
+                                                        value = General.NOT_CALCULATED.translate()
+                                                )
+                                                InfoRow(
+                                                        label = translate("consultationDetail.energyLabel"),
+                                                        value = General.NOT_CALCULATED.translate()
+                                                )
+
+                                                // Section Coefficients
+                                                Text(
+                                                        text = AnalNut.COEFFICIENTS_TITLE.translate(),
+                                                        style = MaterialTheme.typography.subtitle2,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier =
+                                                                Modifier.padding(
+                                                                        top = AppSizes.paddingSmall
+                                                                )
+                                                )
+
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement =
+                                                                Arrangement.SpaceBetween
+                                                ) {
+                                                        Column(modifier = Modifier.weight(1f)) {
+                                                                InfoRow(
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "1"),
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k1Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: Reference.NOT_DEFINED.translate()
+                                                                )
+                                                                InfoRow(
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "2"),
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k2Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: Reference.NOT_DEFINED.translate()
+                                                                )
+                                                                InfoRow(
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "3"),
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k3Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: Reference.NOT_DEFINED.translate()
+                                                                )
+                                                        }
+                                                        Spacer(
+                                                                modifier =
+                                                                        Modifier.width(
+                                                                                AppSizes.paddingMedium
+                                                                        )
+                                                        )
+                                                        Column(modifier = Modifier.weight(1f)) {
+                                                                InfoRow(
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "4"),
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k4Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: Reference.NOT_DEFINED.translate()
+                                                                )
+                                                                InfoRow(
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "5"),
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k5Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: Reference.NOT_DEFINED.translate()
+                                                                )
+                                                        }
+                                                }
+                                        } else {
+                                                // Mode affichage - valeurs en lecture seule
+                                                InfoRow(
+                                                        label = AnalNut.WEIGHT_METABOLIC.translate(),
+                                                        value =
+                                                                poidsMetabolique?.let {
+                                                                        NumberUtils.format(it, 2) + " kg"
+                                                                }
+                                                                        ?: General.NOT_CALCULATED.translate()
+                                                )
+                                                InfoRow(
+                                                        label = translate("consultationDetail.energyMaintenanceLabel"),
+                                                        value =
+                                                                besoinEnergetiqueStandard?.let {
+                                                                        NumberUtils.format(it, 0) + " kcal/j"
+                                                                }
+                                                                        ?: General.NOT_CALCULATED.translate()
+                                                )
+                                                InfoRow(
+                                                        label = AnalNut.ENERGY_TOTAL.translate(),
+                                                        value =
+                                                                besoinEnergetiqueTotal?.let {
+                                                                        NumberUtils.format(it, 0) + " kcal/j"
+                                                                }
+                                                                        ?: General.NOT_CALCULATED.translate()
+                                                )
+
+                                                // Section Coefficients
+                                                Text(
+                                                        text = AnalNut.COEFFICIENTS_TITLE.translate(),
+                                                        style = MaterialTheme.typography.subtitle2,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier =
+                                                                Modifier.padding(
+                                                                        top = AppSizes.paddingSmall
+                                                                )
+                                                )
+
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement =
+                                                                Arrangement.SpaceBetween
+                                                ) {
+                                                        Column(modifier = Modifier.weight(1f)) {
+                                                                InfoRow(
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "1"),
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k1Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: Reference.NOT_DEFINED.translate()
+                                                                )
+                                                                InfoRow(
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "2"),
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k2Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: Reference.NOT_DEFINED.translate()
+                                                                )
+                                                                InfoRow(
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "3"),
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k3Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: Reference.NOT_DEFINED.translate()
+                                                                )
+                                                        }
+                                                        Spacer(
+                                                                modifier =
+                                                                        Modifier.width(
+                                                                                AppSizes.paddingMedium
+                                                                        )
+                                                        )
+                                                        Column(modifier = Modifier.weight(1f)) {
+                                                                InfoRow(
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "4"),
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k4Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: Reference.NOT_DEFINED.translate()
+                                                                )
+                                                                InfoRow(
+                                                                        label = translate("consultationDetail.coefficientLabelFormat", "5"),
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k5Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: Reference.NOT_DEFINED.translate()
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+
+                        // Liste des rations
+                        Text(text = AnimalDetail.RATIONS.translate(), style = MaterialTheme.typography.subtitle1)
+
+                        if (isNewConsultation) {
+                                // Mode édition - affichage simple du nombre de rations
+                                val rationCount = editedConsultation.rations.size
+                                val rationCountActuelle =
+                                        editedConsultation.rations.count { !it.actual }
+                                val rationCountProposee =
+                                        editedConsultation.rations.count { it.actual }
+
+                                Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        elevation = 2.dp,
+                                        backgroundColor = MaterialTheme.colors.surface
+                                ) {
+                                        Column(
+                                                modifier = Modifier.padding(AppSizes.paddingMedium)
+                                        ) {
+                                                InfoRow(
+                                                        label = translate("consultationDetail.totalLabel"),
+                                                        value = translate("consultationDetail.rationCountFormat", rationCount.toString())
+                                                )
+                                                InfoRow(
+                                                        label = translate("consultationDetail.currentRationsLabel"),
+                                                        value = translate("consultationDetail.rationCountFormat", rationCountActuelle.toString())
+                                                )
+                                                InfoRow(
+                                                        label = translate("consultationDetail.proposedRationsLabel"),
+                                                        value = translate("consultationDetail.rationCountFormat", rationCountProposee.toString())
+                                                )
+                                        }
+                                }
+                        } else {
+                                // Mode affichage - nombre de rations en lecture seule
+                                val rationCount = consultation?.rations?.size ?: 0
+                                val rationCountActuelle =
+                                        consultation?.rations?.count { !it.actual } ?: 0
+                                val rationCountProposee =
+                                        consultation?.rations?.count { it.actual } ?: 0
+
+                                Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        elevation = 2.dp,
+                                        backgroundColor = MaterialTheme.colors.surface
+                                ) {
+                                        Column(
+                                                modifier = Modifier.padding(AppSizes.paddingMedium)
+                                        ) {
+                                                InfoRow(
+                                                        label = translate("consultationDetail.totalLabel"),
+                                                        value = translate("consultationDetail.rationCountFormat", rationCount.toString())
+                                                )
+                                                InfoRow(
+                                                        label = translate("consultationDetail.currentRationsLabel"),
+                                                        value = translate("consultationDetail.rationCountFormat", rationCountActuelle.toString())
+                                                )
+                                                InfoRow(
+                                                        label = translate("consultationDetail.proposedRationsLabel"),
+                                                        value = translate("consultationDetail.rationCountFormat", rationCountProposee.toString())
+                                                )
+                                        }
+                                }
+                        }
+
+                        Divider(
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                                thickness = AppSizes.dividerHeight
+                        )
+
+                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+
+                        // Section Références Nutritionnelles
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = AppSizes.elevationSmall,
+                                backgroundColor = VetNutriColors.Surface
+                        ) {
+                                Column(
+                                        modifier = Modifier.padding(AppSizes.paddingMedium),
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingSmall)
+                                ) {
+                                        Text(
+                                                text = ConsultationEdit.REF_SECTION_TITLE.translate(),
+                                                style = MaterialTheme.typography.h6,
+                                                color = VetNutriColors.Primary
+                                        )
+
+                                        Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
+
+                                        if (isNewConsultation) {
+                                                // Mode édition des références pour nouvelle
+                                                // consultation
+                                                // Référence générale
+                                                Text(
+                                                        text = ConsultationEdit.REF_GENERAL_SUBTITLE.translate(),
+                                                        style = MaterialTheme.typography.subtitle2,
+                                                        fontWeight = FontWeight.Bold
+                                                )
+
+                                                OutlinedTextField(
+                                                        value =
+                                                                editedConsultation
+                                                                        .referenceGeneraleId
+                                                                        ?: ConsultationEdit.REF_GENERAL_NONE.translate(),
+                                                        onValueChange = {},
+                                                        label = { Text(ConsultationEdit.REF_GENERAL_SUBTITLE.translate()) },
+                                                        readOnly = true,
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        trailingIcon = {
+                                                                IconButton(
+                                                                        onClick = {
+                                                                                // TODO: Ouvrir le
+                                                                                // sélecteur
+                                                                                // de
+                                                                                // références
+                                                                        }
+                                                                ) {
+                                                                        Icon(
+                                                                                AppIcons.ArrowDropDown,
+                                                                                contentDescription =
+                                                                                        ConsultationEdit.REF_SELECT_TOOLTIP.translate()
+                                                                        )
+                                                                }
+                                                        }
+                                                )
+
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.height(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                )
+
+                                                // Références de maladies
+                                                Text(
+                                                        text = translate("consultationDetail.diseaseReferencesTitle"),
+                                                        style = MaterialTheme.typography.subtitle2,
+                                                        fontWeight = FontWeight.Bold
+                                                )
+
+                                                if (editedConsultation.referencesMaladies.isEmpty()
+                                                ) {
+                                                        Text(
+                                                                text =
+                                                                        translate("consultationDetail.noComplementaryReference"),
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body2,
+                                                                color = Color.Gray,
+                                                                modifier =
+                                                                        Modifier.padding(
+                                                                                AppSizes.paddingSmall
+                                                                        )
+                                                        )
+                                                } else {
+                                                        editedConsultation.referencesMaladies
+                                                                .forEach { referenceId ->
+                                                                        Card(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(),
+                                                                                elevation = 2.dp,
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Secondary
+                                                                                                .copy(
+                                                                                                        alpha =
+                                                                                                                0.1f
+                                                                                                )
+                                                                        ) {
+                                                                                Row(
+                                                                                        modifier =
+                                                                                                Modifier.padding(
+                                                                                                        AppSizes.paddingSmall
+                                                                                                ),
+                                                                                        horizontalArrangement =
+                                                                                                Arrangement
+                                                                                                        .SpaceBetween,
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
+                                                                                ) {
+                                                                                        Text(
+                                                                                                text =
+                                                                                                        translate("consultationDetail.referenceIdFormat", referenceId),
+                                                                                                style =
+                                                                                                        MaterialTheme
+                                                                                                                .typography
+                                                                                                                .body2,
+                                                                                                modifier =
+                                                                                                        Modifier.weight(
+                                                                                                                1f
+                                                                                                        )
+                                                                                        )
+                                                                                        IconButton(
+                                                                                                onClick = {
+                                                                                                        editedConsultation
+                                                                                                                .supprimerReferenceMaladie(
+                                                                                                                        referenceId
+                                                                                                                )
+                                                                                                }
+                                                                                        ) {
+                                                                                                Icon(
+                                                                                                        AppIcons.Delete,
+                                                                                                        contentDescription =
+                                                                                                                ConsultationEdit.REF_DELETE_TOOLTIP.translate(),
+                                                                                                        tint =
+                                                                                                                Color.Red
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                }
+
+                                                // Bouton pour ajouter une référence complémentaire
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                // TODO: Ouvrir le sélecteur de
+                                                                // références
+                                                                // de
+                                                                // maladies
+                                                        },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        colors =
+                                                                ButtonDefaults.outlinedButtonColors(
+                                                                        contentColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                )
+                                                ) {
+                                                        Icon(
+                                                                AppIcons.Add,
+                                                                contentDescription =
+                                                                        ConsultationEdit.REF_ADD_DISEASE.translate(),
+                                                                modifier =
+                                                                        Modifier.size(
+                                                                                AppSizes.iconSizeSmall
+                                                                        )
+                                                        )
+                                                        Spacer(
+                                                                modifier =
+                                                                        Modifier.width(
+                                                                                AppSizes.paddingSmall
+                                                                        )
+                                                        )
+                                                        Text(ConsultationEdit.REF_ADD_DISEASE.translate())
+                                                }
+                                        } else {
+                                                // Mode affichage des références pour consultation
+                                                // existante
+                                                InfoRow(
+                                                        label = ConsultationEdit.REF_GENERAL_SUBTITLE.translate(),
+                                                        value =
+                                                                consultation?.referenceGeneraleId
+                                                                        ?.let { id ->
+                                                                                if (id.isBlank())
+                                                                                        General.NONE.translate()
+                                                                                else
+                                                                                        getReferenceNameById(
+                                                                                                id,
+                                                                                                availableReferences
+                                                                                        )
+                                                                        }
+                                                                        ?: General.NONE.translate()
+                                                )
+
+                                                Column(modifier = Modifier.fillMaxWidth()) {
+                                                        Text(
+                                                                text = translate("consultationDetail.diseaseReferencesTitleColon"),
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .subtitle2,
+                                                                fontWeight = FontWeight.Bold,
+                                                                modifier =
+                                                                        Modifier.padding(
+                                                                                vertical =
+                                                                                        AppSizes.paddingXSmall
+                                                                        )
+                                                        )
+
+                                                        if (consultation?.referencesMaladies
+                                                                        ?.isEmpty() == true
+                                                        ) {
+                                                                Text(
+                                                                        text =
+                                                                                translate("consultationDetail.noComplementaryReference"),
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .body2,
+                                                                        color = Color.Gray,
+                                                                        modifier =
+                                                                                Modifier.padding(
+                                                                                        AppSizes.paddingSmall
+                                                                                )
+                                                                )
+                                                        } else {
+                                                                consultation?.referencesMaladies
+                                                                        ?.forEach { referenceId ->
+                                                                                Card(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth()
+                                                                                                        .padding(
+                                                                                                                vertical =
+                                                                                                                        2.dp
+                                                                                                        ),
+                                                                                        elevation =
+                                                                                                1.dp,
+                                                                                        backgroundColor =
+                                                                                                VetNutriColors
+                                                                                                        .Secondary
+                                                                                                        .copy(
+                                                                                                                alpha =
+                                                                                                                        0.1f
+                                                                                                        )
+                                                                                ) {
+                                                                                        Text(
+                                                                                                text =
+                                                                                                        getReferenceNameById(
+                                                                                                                referenceId,
+                                                                                                                availableReferences
+                                                                                                        ),
+                                                                                                style =
+                                                                                                        MaterialTheme
+                                                                                                                .typography
+                                                                                                                .body2,
+                                                                                                modifier =
+                                                                                                        Modifier.padding(
+                                                                                                                AppSizes.paddingSmall
+                                                                                                        )
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+
+                        Spacer(modifier = Modifier.height(AppSizes.paddingLarge))
+
+                        // Boutons d'action
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                        ) {
+                                Button(
+                                        onClick = onDismiss,
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Secondary,
+                                                        contentColor = VetNutriColors.OnSecondary
+                                                ),
+                                        modifier = Modifier.weight(1f)
+                                ) {
+                                        Row(
+                                                horizontalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingSmall),
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Icon(
+                                                        if (isNewConsultation) AppIcons.Cancel
+                                                        else AppIcons.ArrowBack,
+                                                        contentDescription = null,
+                                                        modifier =
+                                                                Modifier.size(
+                                                                        AppSizes.iconSizeSmall
+                                                                )
+                                                )
+                                                Text(
+                                                        if (isNewConsultation)
+                                                                General.CANCEL.translate()
+                                                        else General.CLOSE.translate()
+                                                )
+                                        }
+                                }
+                                // Le FAB gère la validation/sauvegarde
+                                Spacer(modifier = Modifier.weight(1f))
+                        }
+                }
+        }
+}
+
+/** Fonction helper pour obtenir la description du BCS */
+private fun getBCSDescription(bcs: Int?): String {
+        return when (bcs) {
+                1 -> ConsultationEdit.BCS_DESC_1.translate()
+                2 -> translate("consultationDetail.bcsDesc2")
+                3 -> translate("consultationDetail.bcsDesc3")
+                4 -> translate("consultationDetail.bcsDesc4")
+                5 -> translate("consultationDetail.bcsDesc5")
+                6 -> translate("consultationDetail.bcsDesc6")
+                7 -> translate("consultationDetail.bcsDesc7")
+                8 -> translate("consultationDetail.bcsDesc8")
+                9 -> translate("consultationDetail.bcsDesc9")
+                else -> General.NOT_SPECIFIED.translate()
+        }
+}
+
+/** Fonction helper pour obtenir le nom d'une référence par son UUID */
+private fun getReferenceNameById(
+        referenceId: String,
+        availableReferences: List<ReferenceEv>
+): String {
+        return availableReferences.find { it.uuid == referenceId }?.nom ?: ConsultationEdit.REF_UNKNOWN.translate()
+}

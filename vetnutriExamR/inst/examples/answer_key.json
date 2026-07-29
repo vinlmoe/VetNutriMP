@@ -1,0 +1,5 @@
+[
+  {"question": "Q1", "answer": "A", "points": 4},
+  {"question": "Q2", "answer": 12.5, "points": 10, "tolerance": 0.2},
+  {"question": "Q3", "answer": "CHIEN", "points": 6}
+]
