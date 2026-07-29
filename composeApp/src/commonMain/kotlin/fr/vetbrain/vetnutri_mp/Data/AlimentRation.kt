@@ -74,17 +74,18 @@ data class AlimentRation(
 
         /**
          * Obtient la valeur d'un nutriment dans cet aliment, en utilisant une équation
-         * complémentaire si nécessaire
+         * complémentaire du référentiel si nécessaire
          *
          * @param nutrient Le nutriment à rechercher
-         * @param preferences Les préférences de l'espèce (pour les équations complémentaires)
          * @param equationRepository Le repository des équations (pour les équations
          * complémentaires)
+         * @param referenceEv Le référentiel dont les équations complémentaires (equationsNut)
+         * pilotent seules le calcul — sans référentiel, aucune équation complémentaire n'est
+         * appliquée
          * @return La valeur du nutriment ou null si non trouvé et pas d'équation complémentaire
          */
         suspend fun getNutrientWithComplementary(
                 nutrient: Nutrient,
-                preferences: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece? = null,
                 equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
                 referenceEv: ReferenceEv? = null
         ): Double? {
@@ -96,52 +97,13 @@ data class AlimentRation(
                 }
 
                 // Si pas de valeur directe et qu'on a les dépendances pour les équations
-                // complémentaires
-                if ((preferences != null || referenceEv != null) && equationRepository != null) {
-                        // 1) Essayer via mapping direct nutriment -> uuid (anciens prefs)
-                        val eqUuidDirect = preferences?.getEquationComplementaire(nutrient.label)
-                        if (eqUuidDirect != null) {
-                                val eq = equationRepository.getEquationById(eqUuidDirect)
-                                if (eq != null) {
-                                        val res =
-                                                fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
-                                                        .evaluerBesoinNutritionnelPourAliment(
-                                                                expression = eq.equationScript,
-                                                                aliment = this,
-                                                                preferences = preferences,
-                                                                equationRepository =
-                                                                        equationRepository,
-                                                                referenceEv = referenceEv
-                                                        )
-                                        if (res != null) return res
-                                }
-                        }
-
-                        // 2) Sinon, utiliser la sélection actuelle (liste d'UUID) et filtrer par
-                        // nutriment/espèce. On combine ReferenceEv (si fournie) et Préférences.
-                        val selectedUuids =
-                                buildList {
-                                                referenceEv?.equationsNut?.let { list ->
-                                                        addAll(list.map { it.uuid })
-                                                }
-                                                preferences?.getSelectedEquationUuids()?.let {
-                                                        addAll(it)
-                                                }
-                                        }
-                                        .distinct()
+                // complémentaires du référentiel
+                if (referenceEv != null && equationRepository != null) {
+                        val selectedUuids = referenceEv.equationsNut.map { it.uuid }.distinct()
 
                         if (selectedUuids.isNotEmpty()) {
                                 var accum: Double? = null
-                                val especePref =
-                                        try {
-                                                referenceEv?.espece
-                                                        ?: preferences?.let {
-                                                                fr.vetbrain.vetnutri_mp.Enumer
-                                                                        .Espece.valueOf(it.espece)
-                                                        }
-                                        } catch (e: Exception) {
-                                                null
-                                        }
+                                val especePref = referenceEv.espece
                                 selectedUuids.forEach { uuid ->
                                         val eq = equationRepository.getEquationById(uuid)
                                         if (eq != null) {
@@ -154,14 +116,10 @@ data class AlimentRation(
                                                         eq.nutrient == nutrient ||
                                                                 eq.nutrient?.label == nutrient.label
                                                 val specieOk =
-                                                        especePref == null ||
                                                                 eq.specie == especePref ||
                                                                 eq.specie ==
                                                                         fr.vetbrain.vetnutri_mp
                                                                                 .Enumer.Espece.CH
-                                                if (!kindOk || !nutrientOk || !specieOk) {
-                                                        
-                                                }
                                                 if (kindOk && nutrientOk && specieOk) {
                                                         val res =
                                                                 fr.vetbrain.vetnutri_mp.Utils
@@ -170,15 +128,13 @@ data class AlimentRation(
                                                                                 expression =
                                                                                         eq.equationScript,
                                                                                 aliment = this,
-                                                                                preferences =
-                                                                                        preferences,
                                                                                 equationRepository =
                                                                                         equationRepository,
                                                                                 referenceEv =
                                                                                         referenceEv
                                                                         )
                                                                         ?: 0.0
-                                                        
+
                                                         accum =
                                                                 if (eq.ratio) res
                                                                 else (accum ?: 0.0) + res
@@ -190,17 +146,6 @@ data class AlimentRation(
                                 // Si somme: accum contient la somme des contributions par 100g
                                 if (accum != null) return if (accum < 0.0) 0.0 else accum
                         }
-
-                        // 3) Fallback: calculateur existant (micro-ration)
-                        return if (preferences != null) {
-                                fr.vetbrain.vetnutri_mp.Utils.ComplementaryNutrientCalculator
-                                        .calculerNutrimentComplementaire(
-                                                nutrient,
-                                                this,
-                                                preferences,
-                                                equationRepository
-                                        )?.let { if (it < 0.0) 0.0 else it }
-                        } else null
                 }
 
                 return null
