@@ -4,7 +4,6 @@ import kotlin.math.pow
 import kotlin.math.round
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
-import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
@@ -30,7 +29,6 @@ fun expPow(base: Double, exponent: Double): Double {
 suspend fun calculerNutrimentsRation(
         ration: Ration,
         referenceEv: ReferenceEv?,
-        preferencesEspece: PreferencesEspece?,
         equationRepository: EquationRepository?,
         isRationActuelle: Boolean = false
 ): RationNutrimentData? {
@@ -74,7 +72,6 @@ suspend fun calculerNutrimentsRation(
                         proteines +=
                                 (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.PROTEINE,
-                                        preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -83,7 +80,6 @@ suspend fun calculerNutrimentsRation(
                         lipides +=
                                 (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.LIPIDE,
-                                        preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -92,7 +88,6 @@ suspend fun calculerNutrimentsRation(
                         glucides +=
                                 (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.GLUCIDE,
-                                        preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -108,7 +103,6 @@ suspend fun calculerNutrimentsRation(
                         calcium +=
                                 (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMacro.CAL,
-                                        preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -117,7 +111,6 @@ suspend fun calculerNutrimentsRation(
                         phosphore +=
                                 (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMacro.PHOS,
-                                        preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -126,7 +119,6 @@ suspend fun calculerNutrimentsRation(
                         magnesium +=
                                 (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMacro.MG,
-                                        preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -135,7 +127,6 @@ suspend fun calculerNutrimentsRation(
                         sodium +=
                                 (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMacro.NA,
-                                        preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -144,7 +135,6 @@ suspend fun calculerNutrimentsRation(
                         potassium +=
                                 (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMacro.K,
-                                        preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -154,7 +144,6 @@ suspend fun calculerNutrimentsRation(
                         val humidite =
                                 alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.HUMIDITE,
-                                        preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -294,7 +283,6 @@ fun calculateZoomedRangeView(
 suspend fun calculerPourcentagesEnergieRation(
         ration: Ration,
         referenceEv: ReferenceEv?,
-        preferencesEspece: PreferencesEspece?,
         equationRepository: EquationRepository?
 ): RationEnergyData? {
         try {
@@ -331,7 +319,6 @@ suspend fun calculerPourcentagesEnergieRation(
                         val proteines =
                                 (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.PROTEINE,
-                                        preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -339,15 +326,15 @@ suspend fun calculerPourcentagesEnergieRation(
                         val lipides =
                                 (alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.LIPIDE,
-                                        preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
                                         ?: 0.0) * quantite / 100.0
-                        val glucides =
+                        // ENA (et non GLUCIDE) : même définition que le camembert "Origine
+                        // Énergie" et que les iso-lignes ENA de RationsEnergieChart.
+                        val ena =
                                 (alimentRationTemp.getNutrientWithComplementary(
-                                        NutrientMain.GLUCIDE,
-                                        preferencesEspece,
+                                        NutrientMain.ENA,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -355,7 +342,6 @@ suspend fun calculerPourcentagesEnergieRation(
                         val humidite =
                                 alimentRationTemp.getNutrientWithComplementary(
                                         NutrientMain.HUMIDITE,
-                                        preferencesEspece,
                                         equationRepository,
                                         referenceEv
                                 )
@@ -364,7 +350,7 @@ suspend fun calculerPourcentagesEnergieRation(
                         // Coefficients utilisés ailleurs dans l'application pour ces graphes.
                         val energieProteinesAliment = proteines * 3.5
                         val energieLipidesAliment = lipides * 8.5
-                        val energieGlucidesAliment = glucides * 3.5
+                        val energieEnaAliment = ena * 3.5
 
                         // Calculer le poids et l'humidité
                         poidsTotal += quantite
@@ -376,7 +362,7 @@ suspend fun calculerPourcentagesEnergieRation(
                         energieTotaleMacro +=
                                 (energieProteinesAliment +
                                         energieLipidesAliment +
-                                        energieGlucidesAliment)
+                                        energieEnaAliment)
                 }
 
                 if (energieTotaleMacro <= 0) {

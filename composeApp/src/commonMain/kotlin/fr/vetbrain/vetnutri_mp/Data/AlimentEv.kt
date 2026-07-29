@@ -77,11 +77,10 @@ data class AlimentEv(
 
         /** Calcule l'énergie via les équations de ReferenceEv */
         private fun calculerEnergieViaReference(referenceEv: ReferenceEv): Double? {
-                // Déterminer si l'aliment est commercial (complet/complémentaire) ou brut
+                // Déterminer si l'aliment est commercial (complet/complémentaire) ou brut,
+                // selon FoodKind (même règle que EquationEvaluator.calculerEnergiePour100g)
                 val estCommercial =
-                        indicat.any { indication ->
-                                indication.name == "COMP" || indication.name == "COMPL"
-                        }
+                        typeAliment == FoodKind.COMPLET || typeAliment == FoodKind.COMPLEMENTAIRE
 
                 // Choisir l'équation appropriée
                 val equation =
