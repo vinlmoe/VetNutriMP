@@ -174,19 +174,17 @@ fun RationsView(
         LaunchedEffect(
                 selectedConsultation,
                 referencesMaladiesResolues,
-                preferencesApplication,
+                referenceUtilisee,
                 selectedRation
         ) {
                 val consultation = selectedConsultation
                 val ration = selectedRation
-                val prefsApp = preferencesApplication
-                if (consultation != null && ration != null && prefsApp != null) {
-                        val prefsEspece = animal?.getEspece()?.let { prefsApp.getPreferencesEspece(it) }
+                if (consultation != null && ration != null) {
                         viewModel.updateEnergieAdditionnelle(
                                 referencesMaladies = referencesMaladiesResolues,
                                 consultation = consultation,
                                 ration = ration,
-                                speciesPreferences = prefsEspece
+                                referenceEv = referenceUtilisee
                         )
                 }
         }
@@ -429,10 +427,6 @@ fun RationsView(
                                         val rationAExporter = selectedRation
                                         val animalActuel = animal
                                         if (rationAExporter != null && animalActuel != null) {
-                                                val prefsEspece =
-                                                        preferencesApplication?.getPreferencesEspece(
-                                                                animalActuel.getEspece()
-                                                        )
                                                 val exportData =
                                                         fr.vetbrain.vetnutri_mp.Export.ExportData(
                                                                 animal = animalActuel,
@@ -441,7 +435,8 @@ fun RationsView(
                                                                 title =
                                                                         translate(AnimalDetail.RATION_ANALYSIS_TITLE) +
                                                                                 rationAExporter.name.let { if (it.isNotBlank()) " - $it" else "" },
-                                                                preferences = prefsEspece,
+                                                                typeExpressionBesoin =
+                                                                        effectiveTypeExpressionBesoin,
                                                                 poidsAnimal =
                                                                         selectedConsultation
                                                                                 ?.weight
@@ -996,8 +991,6 @@ fun RationsView(
                                                                         ration = selectedRation!!,
                                                                         referenceUtilisee = referenceUtilisee,
                                                                         equationRepository = equationRepository,
-                                                                        preferencesApplication = preferencesApplication,
-                                                                        animal = animal,
                                                                         nutrimentsSelectionnes =
                                                                                 nutrimentsSelectionnesPreferences,
                                                                         energieTotaleKcal = energieApportee,
@@ -1414,8 +1407,6 @@ fun RationsView(
                                                                         ration = selectedRation!!,
                                                                         referenceUtilisee = referenceUtilisee,
                                                                         equationRepository = equationRepository,
-                                                                        preferencesApplication = preferencesApplication,
-                                                                        animal = animal,
                                                                         nutrimentsSelectionnes =
                                                                                 nutrimentsSelectionnesPreferences,
                                                                         energieTotaleKcal = energieApportee,

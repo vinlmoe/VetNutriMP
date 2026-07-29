@@ -1548,7 +1548,7 @@ class AnimalDetailViewModel(
             referencesMaladies: List<ReferenceEv>,
             consultation: ConsultationEv,
             ration: Ration,
-            speciesPreferences: PreferencesEspece?
+            referenceEv: ReferenceEv? = null
     ) {
         viewModelScope.launch(AppDispatchers.IO) {
             val bee = _valeursMetaboliques.value.besoinEnergetiqueStandard ?: return@launch
@@ -1563,7 +1563,7 @@ class AnimalDetailViewModel(
                     poidsMetabolique = mw,
                     variablesSupp = consultation.suppVarp,
                     ration = ration,
-                    preferences = speciesPreferences,
+                    referenceEv = referenceEv,
                     equationRepository = equationRepository
             )
             _energieAdditionnelle.value = add

@@ -431,11 +431,12 @@ private fun calculerDensiteEnergetique(
         try {
                 val aliment = alimentRation.aliment ?: return 0.0
 
-                // Déterminer si l'aliment est commercial (complet/complémentaire) ou brut
+                // Déterminer si l'aliment est commercial (complet/complémentaire) ou brut,
+                // selon FoodKind (même règle que EquationEvaluator.calculerEnergiePour100g)
                 val estCommercial =
-                        aliment.indicat.any { indication ->
-                                indication.name == "COMP" || indication.name == "COMPL"
-                        }
+                        aliment.typeAliment == fr.vetbrain.vetnutri_mp.Enumer.FoodKind.COMPLET ||
+                                aliment.typeAliment ==
+                                        fr.vetbrain.vetnutri_mp.Enumer.FoodKind.COMPLEMENTAIRE
 
                 // Choisir l'équation appropriée
                 val equation =
