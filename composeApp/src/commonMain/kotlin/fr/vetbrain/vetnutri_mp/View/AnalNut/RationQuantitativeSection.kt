@@ -43,13 +43,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.CenteredMessage
 import fr.vetbrain.vetnutri_mp.Components.TooltipArea
-import fr.vetbrain.vetnutri_mp.Data.AnimalEv
-import fr.vetbrain.vetnutri_mp.Data.PreferencesApplication
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRation
 import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations
+import fr.vetbrain.vetnutri_mp.Data.estNutrimentAnalysisRatio
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
@@ -84,8 +83,6 @@ fun AnalyseQuantitativeRationSection(
     ration: Ration,
     referenceUtilisee: ReferenceEv?,
     equationRepository: EquationRepository,
-    preferencesApplication: PreferencesApplication?,
-    animal: AnimalEv?,
     nutrimentsSelectionnes: List<String>,
     energieTotaleKcal: Double,
     isLargeView: Boolean,
@@ -101,20 +98,12 @@ fun AnalyseQuantitativeRationSection(
 
     val rationChangeKey = remember(ration) { ration.alimentMutableList.map { "${it.uuid}:${it.quantite}" } }
 
-    LaunchedEffect(ration.uuid, rationChangeKey, referenceUtilisee, preferencesApplication, animal, equationRepository) {
+    LaunchedEffect(ration.uuid, rationChangeKey, referenceUtilisee, equationRepository) {
         loading = true
         valeursNutritionnelles = withContext(Dispatchers.Default) {
-            val preferencesEspece =
-                if (animal != null && preferencesApplication != null) {
-                    preferencesApplication.getPreferencesEspece(animal.getEspece())
-                } else {
-                    null
-                }
-
-            if (referenceUtilisee != null && preferencesEspece != null) {
+            if (referenceUtilisee != null) {
                 analyserValeursNutritionnellesRationAvecEquations(
                     ration = ration,
-                    preferencesEspece = preferencesEspece,
                     equationRepository = equationRepository,
                     referenceEv = referenceUtilisee
                 )
@@ -140,7 +129,7 @@ fun AnalyseQuantitativeRationSection(
                     !hideHumidityInDryMatter
                 }
                 .filter { (_, valeur) ->
-                    val isNutrientRatio = valeur.nutriment is NutrientAnalysis
+                    val isNutrientRatio = estNutrimentAnalysisRatio(valeur.nutriment)
                     if (isNutrientRatio) true else valeur.valeur > 0.0
                 }
                 .filter { (nom, _) ->
@@ -349,7 +338,7 @@ private fun QuantitativeNutrimentCard(
     energieTotaleKcal: Double,
     modifier: Modifier = Modifier
 ) {
-    val isNutrientRatio = valeurNutritionnelle.nutriment is NutrientAnalysis
+    val isNutrientRatio = estNutrimentAnalysisRatio(valeurNutritionnelle.nutriment)
     val factor =
         facteurConversionQuantite(
             mode = mode,

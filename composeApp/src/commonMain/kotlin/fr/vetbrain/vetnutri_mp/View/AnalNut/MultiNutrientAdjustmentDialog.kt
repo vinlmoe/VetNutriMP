@@ -20,7 +20,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
-import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.*
@@ -1204,7 +1203,6 @@ suspend fun calculerAjustement(
                                                 alimentsVerrouilles = alimentsVerrouilles,
                                                 constraints = constraintByUuid,
                                                 referenceUtilisee = referenceUtilisee,
-                                                preferences = null,
                                                 equationRepository = equationRepository
                                         )
 
@@ -1315,7 +1313,6 @@ suspend fun calculerAjustement(
                                                 alimentsVerrouilles = alimentsVerrouilles,
                                                 constraints = constraintByUuid,
                                                 referenceUtilisee = referenceUtilisee,
-                                                preferences = null,
                                                 equationRepository = equationRepository
                                         )
 
@@ -1379,7 +1376,6 @@ suspend fun calculerAjustement(
                                         // Calcium - utiliser getNutrientWithComplementary pour être cohérent
                                         val calPar100g = alimentRation.getNutrientWithComplementary(
                                                 nutrient = NutrientMacro.CAL,
-                                                preferences = null,
                                                 equationRepository = equationRepository,
                                                 referenceEv = referenceUtilisee
                                         )
@@ -1390,7 +1386,6 @@ suspend fun calculerAjustement(
                                         // Phosphore - utiliser getNutrientWithComplementary pour être cohérent
                                         val pPar100g = alimentRation.getNutrientWithComplementary(
                                                 nutrient = NutrientMacro.PHOS,
-                                                preferences = null,
                                                 equationRepository = equationRepository,
                                                 referenceEv = referenceUtilisee
                                         )
@@ -1422,25 +1417,21 @@ suspend fun calculerAjustement(
                                                                 // Utiliser getNutrientWithComplementary pour être cohérent
                                                                 val PhosAct: Double = alimentRation.getNutrientWithComplementary(
                                                                         nutrient = NutrientMacro.PHOS,
-                                                                        preferences = null,
                                                                         equationRepository = equationRepository,
                                                                         referenceEv = referenceUtilisee
                                                                 )?.let { (it * quantiteActuelle) / 100.0 } ?: 0.0
                                                                 val CalAct: Double = alimentRation.getNutrientWithComplementary(
                                                                         nutrient = NutrientMacro.CAL,
-                                                                        preferences = null,
                                                                         equationRepository = equationRepository,
                                                                         referenceEv = referenceUtilisee
                                                                 )?.let { (it * quantiteActuelle) / 100.0 } ?: 0.0
                                                                 val calPar100g = alimentRation.getNutrientWithComplementary(
                                                                         nutrient = NutrientMacro.CAL,
-                                                                        preferences = null,
                                                                         equationRepository = equationRepository,
                                                                         referenceEv = referenceUtilisee
                                                                 ) ?: 0.0
                                                                 val pPar100g = alimentRation.getNutrientWithComplementary(
                                                                         nutrient = NutrientMacro.PHOS,
-                                                                        preferences = null,
                                                                         equationRepository = equationRepository,
                                                                         referenceEv = referenceUtilisee
                                                                 ) ?: 0.0
@@ -1682,7 +1673,6 @@ private suspend fun ajusterAlimentsPourNutriment(
         alimentsVerrouilles: Set<String>,
         constraints: Map<String, AlimentConstraint> = emptyMap(),
         referenceUtilisee: ReferenceEv? = null,
-        preferences: PreferencesEspece? = null,
         equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
 ): RationAdjustmentResult {
         try {
@@ -1981,7 +1971,6 @@ private suspend fun adjustRationForMultipleNutrients(
                                                 alimentsVerrouilles = alimentsVerrouilles,
                                                 constraints = emptyMap(),
                                                 referenceUtilisee = referenceUtilisee,
-                                                preferences = null,
                                                 equationRepository = null
                                         )
 
@@ -2019,7 +2008,6 @@ private suspend fun adjustRationForMultipleNutrients(
                                         // Calcium - utiliser getNutrientWithComplementary pour être cohérent
                                         val calPar100g = alimentRation.getNutrientWithComplementary(
                                                 nutrient = NutrientMacro.CAL,
-                                                preferences = null,
                                                 equationRepository = equationRepository,
                                                 referenceEv = referenceUtilisee
                                         )
@@ -2030,7 +2018,6 @@ private suspend fun adjustRationForMultipleNutrients(
                                         // Phosphore - utiliser getNutrientWithComplementary pour être cohérent
                                         val pPar100g = alimentRation.getNutrientWithComplementary(
                                                 nutrient = NutrientMacro.PHOS,
-                                                preferences = null,
                                                 equationRepository = equationRepository,
                                                 referenceEv = referenceUtilisee
                                         )
@@ -2062,25 +2049,21 @@ private suspend fun adjustRationForMultipleNutrients(
                                                                 // Utiliser getNutrientWithComplementary pour être cohérent
                                                                 val PhosAct: Double = alimentRation.getNutrientWithComplementary(
                                                                         nutrient = NutrientMacro.PHOS,
-                                                                        preferences = null,
                                                                         equationRepository = equationRepository,
                                                                         referenceEv = referenceUtilisee
                                                                 )?.let { (it * quantiteActuelle) / 100.0 } ?: 0.0
                                                                 val CalAct: Double = alimentRation.getNutrientWithComplementary(
                                                                         nutrient = NutrientMacro.CAL,
-                                                                        preferences = null,
                                                                         equationRepository = equationRepository,
                                                                         referenceEv = referenceUtilisee
                                                                 )?.let { (it * quantiteActuelle) / 100.0 } ?: 0.0
                                                                 val calPar100g = alimentRation.getNutrientWithComplementary(
                                                                         nutrient = NutrientMacro.CAL,
-                                                                        preferences = null,
                                                                         equationRepository = equationRepository,
                                                                         referenceEv = referenceUtilisee
                                                                 ) ?: 0.0
                                                                 val pPar100g = alimentRation.getNutrientWithComplementary(
                                                                         nutrient = NutrientMacro.PHOS,
-                                                                        preferences = null,
                                                                         equationRepository = equationRepository,
                                                                         referenceEv = referenceUtilisee
                                                                 ) ?: 0.0
