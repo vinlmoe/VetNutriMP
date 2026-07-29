@@ -117,7 +117,7 @@ fun NutrientDetailDialog(
         referencesMaladies: List<ReferenceEv> = emptyList(),
         onDismiss: () -> Unit
 ) {
-        // Récupération des préférences de l'espèce
+        // Récupération des préférences de l'espèce (mode d'affichage uniquement)
         val preferencesRepo = remember { PreferencesRepository(preferencesStorage) }
         var typeExpressionBesoin by remember { mutableStateOf(TypeExpressionBesoin.DEFAULT) }
 
@@ -307,9 +307,7 @@ fun ReferenceBulletGraph(
         val maxUnit = reference.obtenirUniteNutriment(nutriment, Reflevel.MAX)
 
         // Conversion des valeurs de référence dans l'unité des préférences
-        val isAnalysisNoUnit =
-                nutriment is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
-                        nutriment.unite.isBlank()
+        val isAnalysisNoUnit = estNutrimentAnalysisRatio(nutriment)
         val minRefConverti =
                 if (minRef > 0.0) {
                         if (isAnalysisNoUnit) minRef
@@ -746,9 +744,7 @@ private fun ContributionsList(
                 mutableStateOf(true)
         }
 
-        val isRatioNutrient: Boolean =
-                valeurNutritionnelle.unite == fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.NO ||
-                        valeurNutritionnelle.unite.label == "RATIO"
+        val isRatioNutrient: Boolean = estNutrimentAnalysisRatio(valeurNutritionnelle.nutriment)
 
         LaunchedEffect(ration, valeurNutritionnelle, referenceUtilisee, equationRepository) {
                 isLoading = true
@@ -779,7 +775,6 @@ private fun ContributionsList(
                                                 } else {
                                                         alimentRation.getNutrientWithComplementary(
                                                                 nutrient = nutrient,
-                                                                preferences = null,
                                                                 equationRepository = equationRepository,
                                                                 referenceEv = referenceUtilisee
                                                         )
@@ -883,10 +878,7 @@ private fun RecapitulatifCard(
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
                         val (valeurFormatee: String, uniteAffichage: String) =
-                                if (valeurNutritionnelle.nutriment is
-                                                fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
-                                                valeurNutritionnelle.unite.displayName.isBlank()
-                                ) {
+                                if (estNutrimentAnalysisRatio(valeurNutritionnelle.nutriment)) {
                                         Pair(
                                                 TextUtils.formatDecimal(
                                                         valeurNutritionnelle.valeur,
@@ -910,10 +902,7 @@ private fun RecapitulatifCard(
                                 fontWeight = FontWeight.Bold,
                                 color = VetNutriColors.Primary
                         )
-                        if (!(valeurNutritionnelle.nutriment is
-                                        fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
-                                        valeurNutritionnelle.unite.displayName.isBlank())
-                        ) {
+                        if (!estNutrimentAnalysisRatio(valeurNutritionnelle.nutriment)) {
                                 Text(
                                         text =
                                                 translate(
@@ -1045,10 +1034,7 @@ private fun ContributionItem(
                                                 fontWeight = FontWeight.Medium,
                                                 color = VetNutriColors.Primary
                                         )
-                                        val isAnalysisNoUnit: Boolean =
-                                                nutrient is
-                                                        fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
-                                                        nutrient.unite.isBlank()
+                                        val isAnalysisNoUnit: Boolean = estNutrimentAnalysisRatio(nutrient)
                                         Text(
                                                 text =
                                                         if (isAnalysisNoUnit) {
@@ -1149,9 +1135,7 @@ private fun ReferenceCard(
         equationRepository: EquationRepository? = null
 ) {
         val nutrient: Nutrient = valeurNutritionnelle.nutriment
-        val isAnalysisNoUnit: Boolean =
-                (nutrient is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
-                        nutrient.unite.isBlank())
+        val isAnalysisNoUnit: Boolean = estNutrimentAnalysisRatio(nutrient)
         val apportConverti: Double =
                 if (isAnalysisNoUnit) {
                         valeurNutritionnelle.valeur

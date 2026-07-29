@@ -18,7 +18,6 @@ import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
-import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
@@ -37,6 +36,7 @@ import fr.vetbrain.vetnutri_mp.Data.calculerAffichageNutriment
 import fr.vetbrain.vetnutri_mp.Data.calculerConformite
 import fr.vetbrain.vetnutri_mp.Data.ConformiteStatus
 import fr.vetbrain.vetnutri_mp.Data.grouperNutrimentsParCategorie
+import fr.vetbrain.vetnutri_mp.Data.estNutrimentAnalysisRatio
 import fr.vetbrain.vetnutri_mp.Data.obtenirTitreCategorie
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -167,9 +167,7 @@ fun AnalyseNutritionnelleCard(
         nutrimentsSelectionnes,
         ration,
         referenceUtilisee,
-        equationRepository,
-        animal,
-        preferencesRepository
+        equationRepository
     ) {
         valeursNutritionnellesLoading = true
 
@@ -196,40 +194,26 @@ fun AnalyseNutritionnelleCard(
 
         val shouldUseEquations = referenceUtilisee != null && equationRepository != null
 
-        val preferencesEspece = if (shouldUseEquations) {
-            if (animal != null && preferencesRepository != null) {
-                withContext(AppDispatchers.IO) {
-                    preferencesRepository.getPreferencesForSpecies(animal.getEspece())
-                }
-            } else {
-                PreferencesEspece()
-            }
-        } else {
-            null
-        }
-
         val resultat = withContext(Dispatchers.Default) {
             if (
                 afficherTousLesNutriments ||
                 effectiveSelectedNutrients == null ||
                 effectiveSelectedNutrients.isEmpty()
             ) {
-                if (shouldUseEquations && preferencesEspece != null) {
+                if (shouldUseEquations) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations(
                         ration = ration,
-                        preferencesEspece = preferencesEspece,
-                        equationRepository = equationRepository,
+                        equationRepository = equationRepository!!,
                         referenceEv = referenceUtilisee
                     )
                 } else {
                     analyserValeursNutritionnellesRation(ration)
                 }
             } else {
-                if (shouldUseEquations && preferencesEspece != null) {
+                if (shouldUseEquations) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
                         ration = ration,
                         nutrimentsSelectionnes = effectiveSelectedNutrients,
-                        preferencesEspece = preferencesEspece,
                         equationRepository = equationRepository,
                         referenceEv = referenceUtilisee
                     )
@@ -254,11 +238,10 @@ fun AnalyseNutritionnelleCard(
             resultat
         } else {
             val complement = withContext(Dispatchers.Default) {
-                if (shouldUseEquations && preferencesEspece != null) {
+                if (shouldUseEquations) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
                         ration = ration,
                         nutrimentsSelectionnes = labelsManquants,
-                        preferencesEspece = preferencesEspece,
                         equationRepository = equationRepository,
                         referenceEv = referenceUtilisee
                     )
@@ -486,7 +469,7 @@ fun AnalyseNutritionnelleCard(
                                     nutriments
                                 } else {
                                     nutriments.filter {
-                                        val isNutrientRatio = it.second.nutriment is NutrientAnalysis
+                                        val isNutrientRatio = estNutrimentAnalysisRatio(it.second.nutriment)
                                         isNutrientRatio || it.second.valeur > 0.0
                                     }
                                 }
@@ -554,7 +537,8 @@ fun AnalyseNutritionnelleCard(
                                     
                                     // Convertir la valeur selon l'unité des préférences pour le graphique bullet
                                     // Mais pas pour les ratios (CAP, KNA, O6O3, etc.) qui sont des valeurs pures
-                                    val isRatio = valeur.nutriment is NutrientAnalysis && valeur.unite.displayName.isBlank()
+                                    // (même critère que ReferenceBulletGraph pour les bornes : unite.isBlank())
+                                    val isRatio = estNutrimentAnalysisRatio(valeur.nutriment)
                                     val apportConverti = if (isRatio) {
                                         // Pour les ratios, utiliser la valeur brute sans conversion
                                         apport

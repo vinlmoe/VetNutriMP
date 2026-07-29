@@ -779,7 +779,6 @@ private fun handlePdfExport(
                         htmlSections = getSelectedConseils(),
                         rations = rationsForPrescription,
                         practitioner = practitioner,
-                        preferences = null,
                         poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                         poidsMetabolique = null,
                         besoinEnergetiqueEntretien = null
@@ -799,7 +798,6 @@ private fun handlePdfExport(
                         htmlSections = getSelectedConseils(),
                         rations = rationsForPrescription,
                         practitioner = null,
-                        preferences = null,
                         poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                         poidsMetabolique = null,
                         besoinEnergetiqueEntretien = null
@@ -1676,16 +1674,6 @@ private fun WideScreenLayout(
                                                                                         .value,
                                                                         equationRepository =
                                                                                 equationRepository,
-                                                                        preferencesEspece =
-                                                                                animalDetails
-                                                                                        ?.let {
-                                                                                                animal
-                                                                                                ->
-                                                                                                preferencesApplicationLocal
-                                                                                                        ?.getPreferencesEspece(
-                                                                                                                animal.getEspece()
-                                                                                                        )
-                                                                                        },
                                                                         viewModel = viewModel,
                                                                         onClose = {
                                                                                 viewModel
@@ -2454,7 +2442,6 @@ private fun WideScreenLayout(
                                                                                                                                         getSelectedConseils(),
                                                                                                                                 rations = selectedRationsForPrescription,
                                                                                                                                 practitioner = practitioner,
-                                                                                                                                preferences = null,
                                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                                                                                                                 poidsMetabolique = null,
                                                                                                                                 besoinEnergetiqueEntretien = null
@@ -2486,7 +2473,6 @@ private fun WideScreenLayout(
                                                                                                                 htmlSections = getSelectedConseils(),
                                                                                                                 rations = selectedRationsForPrescription,
                                                                                                                 practitioner = null,
-                                                                                                                preferences = null,
                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                                                                                                 poidsMetabolique = null,
                                                                                                                 besoinEnergetiqueEntretien = null
@@ -3412,16 +3398,6 @@ private fun NarrowScreenLayout(
                                                                                                         .value,
                                                                                         equationRepository =
                                                                                                 equationRepository,
-                                                                                        preferencesEspece =
-                                                                                                animalDetails
-                                                                                                        ?.let {
-                                                                                                                animal
-                                                                                                                ->
-                                                                                                                preferencesApplicationLocal
-                                                                                                                        ?.getPreferencesEspece(
-                                                                                                                                animal.getEspece()
-                                                                                                                        )
-                                                                                                        },
                                                                                         viewModel = viewModel,
                                                                                         onClose = {
                                                                                                 viewModel
@@ -4296,7 +4272,6 @@ private fun NarrowScreenLayout(
                                                                                                                                                 htmlSections = getSelectedConseils(),
                                                                                                                                                 rations = selectedRationsForPrescription,
                                                                                                                                                 practitioner = practitioner,
-                                                                                                                                                preferences = null,
                                                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                                                                                                                                 poidsMetabolique = null,
                                                                                                                                                 besoinEnergetiqueEntretien = null
@@ -4328,7 +4303,6 @@ private fun NarrowScreenLayout(
                                                                                                                                 htmlSections = getSelectedConseils(),
                                                                                                                                 rations = selectedRationsForPrescription,
                                                                                                                                 practitioner = null,
-                                                                                                                                preferences = null,
                                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                                                                                                                 poidsMetabolique = null,
                                                                                                                                 besoinEnergetiqueEntretien = null
