@@ -41,7 +41,6 @@ fun AnalyseDetailleeAlimentsView(
         alimentsAnalyses: List<AlimentAnalyseData>,
         referenceEv: ReferenceEv?,
         equationRepository: EquationRepository?,
-        preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?,
         viewModel: fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel?,
         useDryMatterPer100g: Boolean,
         alimentSelectionne: String?,
@@ -138,7 +137,6 @@ fun AnalyseDetailleeAlimentsView(
                             useDryMatterPer100g = localUseDryMatterPer100g,
                             referenceEv = referenceEv,
                             equationRepository = equationRepository,
-                            preferencesEspece = preferencesEspece,
                             onExpandedChange = { uuid ->
                                 alimentExpanded = if (alimentExpanded == uuid) null else uuid
                             },
@@ -161,7 +159,6 @@ private fun AlimentDetailCard(
         useDryMatterPer100g: Boolean,
         referenceEv: ReferenceEv?,
         equationRepository: EquationRepository?,
-        preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?,
         onExpandedChange: (String) -> Unit,
         onSelected: (String?) -> Unit,
         modifier: Modifier = Modifier
@@ -269,8 +266,7 @@ private fun AlimentDetailCard(
                         data = data,
                         useDryMatterPer100g = useDryMatterPer100g,
                         referenceEv = referenceEv,
-                        equationRepository = equationRepository,
-                        preferencesEspece = preferencesEspece
+                        equationRepository = equationRepository
                 )
             }
         }
@@ -286,8 +282,7 @@ private fun AlimentNutrientsDetails(
         data: AlimentAnalyseData,
         useDryMatterPer100g: Boolean,
         referenceEv: ReferenceEv?,
-        equationRepository: EquationRepository?,
-        preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?
+        equationRepository: EquationRepository?
 ) {
     val coroutineScope = rememberCoroutineScope()
     var nutrientsData by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
@@ -306,39 +301,39 @@ private fun AlimentNutrientsDetails(
         
         // Nutriments principaux
         val humidite = alimentRation.getNutrientWithComplementary(
-                NutrientMain.HUMIDITE, preferencesEspece, equationRepository, referenceEv
+                NutrientMain.HUMIDITE, equationRepository, referenceEv
         ) ?: 0.0
         val proteine = alimentRation.getNutrientWithComplementary(
-                NutrientMain.PROTEINE, preferencesEspece, equationRepository, referenceEv
+                NutrientMain.PROTEINE, equationRepository, referenceEv
         ) ?: 0.0
         val lipide = alimentRation.getNutrientWithComplementary(
-                NutrientMain.LIPIDE, preferencesEspece, equationRepository, referenceEv
+                NutrientMain.LIPIDE, equationRepository, referenceEv
         ) ?: 0.0
         val glucide = alimentRation.getNutrientWithComplementary(
-                NutrientMain.GLUCIDE, preferencesEspece, equationRepository, referenceEv
+                NutrientMain.GLUCIDE, equationRepository, referenceEv
         ) ?: 0.0
         val cellulose = alimentRation.getNutrientWithComplementary(
-                NutrientMain.CELLULOSE, preferencesEspece, equationRepository, referenceEv
+                NutrientMain.CELLULOSE, equationRepository, referenceEv
         ) ?: 0.0
         val cendre = alimentRation.getNutrientWithComplementary(
-                NutrientMain.CENDRE, preferencesEspece, equationRepository, referenceEv
+                NutrientMain.CENDRE, equationRepository, referenceEv
         ) ?: 0.0
         
         // Minéraux
         val calcium = alimentRation.getNutrientWithComplementary(
-                NutrientMacro.CAL, preferencesEspece, equationRepository, referenceEv
+                NutrientMacro.CAL, equationRepository, referenceEv
         ) ?: 0.0
         val phosphore = alimentRation.getNutrientWithComplementary(
-                NutrientMacro.PHOS, preferencesEspece, equationRepository, referenceEv
+                NutrientMacro.PHOS, equationRepository, referenceEv
         ) ?: 0.0
         val magnesium = alimentRation.getNutrientWithComplementary(
-                NutrientMacro.MG, preferencesEspece, equationRepository, referenceEv
+                NutrientMacro.MG, equationRepository, referenceEv
         ) ?: 0.0
         val sodium = alimentRation.getNutrientWithComplementary(
-                NutrientMacro.NA, preferencesEspece, equationRepository, referenceEv
+                NutrientMacro.NA, equationRepository, referenceEv
         ) ?: 0.0
         val potassium = alimentRation.getNutrientWithComplementary(
-                NutrientMacro.K, preferencesEspece, equationRepository, referenceEv
+                NutrientMacro.K, equationRepository, referenceEv
         ) ?: 0.0
         
         // Conversion selon le mode

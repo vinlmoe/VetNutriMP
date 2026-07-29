@@ -3,7 +3,6 @@ package fr.vetbrain.vetnutri_mp.Export
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
-import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRation
 import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations
@@ -11,6 +10,7 @@ import fr.vetbrain.vetnutri_mp.Data.calculerAffichageNutriment
 import fr.vetbrain.vetnutri_mp.Data.calculerCompositionPourcentages
 import fr.vetbrain.vetnutri_mp.Data.calculerOrigineEnergetiquePourcentages
 import fr.vetbrain.vetnutri_mp.Data.calculerBulletGraphData
+import fr.vetbrain.vetnutri_mp.Data.estNutrimentAnalysisRatio
 import fr.vetbrain.vetnutri_mp.Data.BulletGraphData
 import fr.vetbrain.vetnutri_mp.Data.calculerContributionsIngredients
 import fr.vetbrain.vetnutri_mp.Data.ContributionIngredient
@@ -139,7 +139,6 @@ object HtmlDocumentBuilder {
                             additionalText = data.additionalText,
                             htmlSections = data.htmlSections,
                             isLandscape = data.isLandscape,
-                            preferences = data.preferences,
                             poidsAnimal = data.poidsAnimal,
                             poidsMetabolique = data.poidsMetabolique,
                             besoinEnergetiqueStandard = data.besoinEnergetiqueStandard,
@@ -150,7 +149,8 @@ object HtmlDocumentBuilder {
                             kObserve = data.kObserve,
                             pourcentageCouverture = data.pourcentageCouverture,
                             equationRepository = data.equationRepository,
-                            referencesMaladies = data.referencesMaladies
+                            referencesMaladies = data.referencesMaladies,
+                            typeExpressionBesoin = data.typeExpressionBesoin
                     )
             DocumentType.PRESCRIPTION ->
                     buildPrescriptionHtml(
@@ -162,7 +162,6 @@ object HtmlDocumentBuilder {
                             data.rations,
                             data.practitioner,
                             data.reference,
-                            data.preferences,
                             data.poidsAnimal,
                             data.poidsMetabolique,
                             data.besoinEnergetiqueEntretien,
@@ -346,7 +345,6 @@ object HtmlDocumentBuilder {
             additionalText: String,
             htmlSections: List<HtmlSection> = emptyList(),
             isLandscape: Boolean = false,
-            preferences: PreferencesEspece? = null,
             poidsAnimal: Double? = null,
             poidsMetabolique: Double? = null,
             besoinEnergetiqueStandard: Double? = null,
@@ -357,7 +355,8 @@ object HtmlDocumentBuilder {
             kObserve: Double? = null,
             pourcentageCouverture: Double? = null,
             equationRepository: EquationRepository? = null,
-            referencesMaladies: List<ReferenceEv> = emptyList()
+            referencesMaladies: List<ReferenceEv> = emptyList(),
+            typeExpressionBesoin: TypeExpressionBesoin? = null
     ): String {
         return buildHeader(
                         if (title.isNotBlank()) title else "Analyse de ration",
@@ -381,7 +380,6 @@ object HtmlDocumentBuilder {
                             buildNutrientTableBlock(
                                     ration,
                                     reference,
-                                    preferences,
                                     equationRepository,
                                     poidsAnimal,
                                     poidsMetabolique,
@@ -389,7 +387,8 @@ object HtmlDocumentBuilder {
                                     // d'entretien" utilisé pour l'affichage PAR_KCAL/PAR_KJ est en réalité
                                     // le BE total, pas le BEE brut.
                                     besoinEnergetiqueTotal,
-                                    referencesMaladies
+                                    referencesMaladies,
+                                    typeExpressionBesoin
                             )
                         } else ""
                 ) +
@@ -463,19 +462,18 @@ object HtmlDocumentBuilder {
     private suspend fun buildNutrientTableBlock(
             ration: Ration,
             reference: ReferenceEv?,
-            preferences: PreferencesEspece?,
             equationRepository: EquationRepository?,
             poidsAnimal: Double?,
             poidsMetabolique: Double?,
             besoinEnergetiqueEntretien: Double?,
-            referencesMaladies: List<ReferenceEv>
+            referencesMaladies: List<ReferenceEv>,
+            typeExpressionBesoinPreference: TypeExpressionBesoin? = null
     ): String {
         val valeurs: Map<String, ValeurNutritionnelle> =
-                if (reference != null && preferences != null && equationRepository != null) {
+                if (reference != null && equationRepository != null) {
                     try {
                         analyserValeursNutritionnellesRationAvecEquations(
                                 ration = ration,
-                                preferencesEspece = preferences,
                                 equationRepository = equationRepository,
                                 referenceEv = reference
                         )
@@ -488,14 +486,13 @@ object HtmlDocumentBuilder {
 
         if (valeurs.isEmpty()) return ""
 
-        val typeExpressionBesoin = preferences?.getTypeExpressionBesoinEnum() ?: TypeExpressionBesoin.DEFAULT
+        val typeExpressionBesoin = typeExpressionBesoinPreference ?: TypeExpressionBesoin.DEFAULT
         val groupes = grouperNutrimentsParCategorie(valeurs)
         val ordreCategories = listOf("BASE", "MACRO", "MIN", "VITAM", "LIPID", "AMA", "ANA", "OTHER", "ENERGY")
 
         val sectionsHtml = ordreCategories.mapNotNull { categorie ->
             val nutrimentsAvecDonnees = groupes[categorie]?.filter { (_, valeur) ->
-                val isRatio = valeur.nutriment is NutrientAnalysis
-                isRatio || valeur.valeur > 0.0
+                estNutrimentAnalysisRatio(valeur.nutriment) || valeur.valeur > 0.0
             }
             if (nutrimentsAvecDonnees.isNullOrEmpty()) return@mapNotNull null
 
@@ -685,9 +682,9 @@ object HtmlDocumentBuilder {
         val tables = modes.mapNotNull { mode ->
             val factor = mode.factor ?: return@mapNotNull null
             val rows = valeurs.entries
-                    .filter { (_, valeur) -> valeur.nutriment is NutrientAnalysis || valeur.valeur > 0.0 }
+                    .filter { (_, valeur) -> estNutrimentAnalysisRatio(valeur.nutriment) || valeur.valeur > 0.0 }
                     .joinToString("\n") { (nom, valeur) ->
-                        val isRatio = valeur.nutriment is NutrientAnalysis
+                        val isRatio = estNutrimentAnalysisRatio(valeur.nutriment)
                         val valeurAffichee = if (isRatio) valeur.valeur else valeur.valeur * factor
                         val nomTraduit = obtenirNomTraduitNutriment(nom, valeur.nutriment)
                         "<tr><td>${escapeXml(nomTraduit)}</td><td class='right'>${TextUtils.formatDecimal(valeurAffichee, 2)} ${escapeXml(valeur.unite.displayName)}</td></tr>"
@@ -715,7 +712,6 @@ object HtmlDocumentBuilder {
             rations: List<Ration> = emptyList(),
             practitioner: PractitionerInfo? = null,
             reference: ReferenceEv? = null,
-            preferences: PreferencesEspece? = null,
             poidsAnimal: Double? = null,
             poidsMetabolique: Double? = null,
             besoinEnergetiqueEntretien: Double? = null,

@@ -234,7 +234,6 @@ private suspend fun extractNutrientDataWithComplementary(
         // Utiliser getNutrientWithComplementary qui gère automatiquement les équations complémentaires
         val nutrientValue = alimentRation.getNutrientWithComplementary(
             nutrient = nutrient,
-            preferences = null, // Pas de préférences spécifiques pour l'instant
             equationRepository = equationRepository, // Utiliser le repository d'équations
             referenceEv = referenceEv
         )
