@@ -1,0 +1,500 @@
+[
+  {
+    "list": {
+      "consultList": {
+        "0f1d4e55-e944-4f0f-ae17-2f104935d2e4": {
+          "date": "2021-10-07",
+          "objet": "",
+          "UUID": "0f1d4e55-e944-4f0f-ae17-2f104935d2e4",
+          "observation": "null",
+          "CRendu": "",
+          "Poids": 7.9,
+          "PoidsIdeal": 7.0,
+          "PoidsIdealex": false,
+          "Boisson": 0.0,
+          "TauxMG": 20.0,
+          "suivi": false,
+          "bcs": "",
+          "MCS": 1,
+          "k2value": 0.8,
+          "k1value": 1.0,
+          "RefString": "1f7cdc6e-d4e3-4169-a3a8-d0a4bedc9908",
+          "k3value": 1.0,
+          "version": "0.1.30",
+          "k4value": 0.8,
+          "k1d": "",
+          "k2d": "",
+          "k3d": "",
+          "k4d": "",
+          "k5d": "",
+          "k6d": 0,
+          "k5value": 1.1,
+          "previousBE": 0.0,
+          "previousRation": {
+            "UUID": "bf0429a8-fe98-428f-ad0d-0f888ff13beb",
+            "number": 0,
+            "Nom": "",
+            "coef": 0.0,
+            "fibrep": 4.0,
+            "transCoef": 0.0,
+            "rpcp": 60.0,
+            "huilep": 5.0,
+            "indus": 100.0,
+            "protAnim": 80.0,
+            "objectComp": 0.0,
+            "version": "0.1.30",
+            "objectType": 0,
+            "actual": false,
+            "alimentList": [],
+            "EnerTot": 0.0
+          },
+          "ky": 1.0,
+          "newBE": 0.0,
+          "newRation": [],
+          "rationList": {
+            "47028293-7eb2-4eea-bb6c-3d2678bc584d": {
+              "UUID": "47028293-7eb2-4eea-bb6c-3d2678bc584d",
+              "number": 0,
+              "Nom": "Proposed 1",
+              "coef": 1.0,
+              "fibrep": 4.0,
+              "transCoef": 0.0,
+              "rpcp": 60.0,
+              "huilep": 5.0,
+              "indus": 100.0,
+              "protAnim": 80.0,
+              "objectComp": 0.0,
+              "version": "0.1.30",
+              "objectType": 0,
+              "actual": true,
+              "alimentList": [
+                {
+                  "quantite": 105.0,
+                  "prop": 0.0,
+                  "alime": {
+                    "consistent": 1,
+                    "UUID": "M278",
+                    "nom": " i/d Canine au Poulet",
+                    "group": "Aides culinaires",
+                    "foodKind": "COMPLET",
+                    "ingredients": "Au Poulet : Maïs, riz de brasserie, œuf entier séché, protéines déshydratées de poulet (16 %) et de dinde, hydrolysat, minéraux, farine de gluten de maïs, pulpe de betterave séchée, graisses animales, huile de soja, graines de lin, psyllium, vitamines, oligo-éléments et bêta-carotène. Avec un antioxydant naturel (mélange de tocophérols).",
+                    "prix": 0.0,
+                    "categoriePrix": "v",
+                    "marque": "Hill\u0027s",
+                    "indication": [],
+                    "espece": 0,
+                    "Especes": [],
+                    "gamme": "Prescription Diet",
+                    "presentation": "",
+                    "quantInt": 0.0,
+                    "cont": "NO",
+                    "deprecated": false,
+                    "DataB": "6",
+                    "valMap": {
+                      "THREONINE": {
+                        "nut": "THREONINE",
+                        "value": 4.1101694
+                      },
+                      "CARNITINE": {
+                        "nut": "CARNITINE",
+                        "value": 9.7
+                      },
+                      "TRYPTOPHANE": {
+                        "nut": "TRYPTOPHANE",
+                        "value": 1.3135593
+                      },
+                      "TYROSINE": {
+                        "nut": "TYROSINE",
+                        "value": 3.6016948
+                      },
+                      "CELLULOSE": {
+                        "nut": "CELLULOSE",
+                        "value": 1.3
+                      },
+                      "O6": {
+                        "nut": "O6",
+                        "value": 3.04
+                      },
+                      "FIBRESOL": {
+                        "nut": "FIBRESOL",
+                        "value": 0.9
+                      },
+                      "VITB3": {
+                        "nut": "VITB3",
+                        "value": 3.6000001
+                      },
+                      "HUMIDITE": {
+                        "nut": "HUMIDITE",
+                        "value": 8.5
+                      },
+                      "PROTEINE": {
+                        "nut": "PROTEINE",
+                        "value": 23.6
+                      },
+                      "CU": {
+                        "nut": "CU",
+                        "value": 1.0
+                      },
+                      "ZN": {
+                        "nut": "ZN",
+                        "value": 17.0
+                      },
+                      "CENDRE": {
+                        "nut": "CENDRE",
+                        "value": 6.2
+                      },
+                      "K": {
+                        "nut": "K",
+                        "value": 0.86
+                      },
+                      "VITB1": {
+                        "nut": "VITB1",
+                        "value": 0.3
+                      },
+                      "AMIDON": {
+                        "nut": "AMIDON",
+                        "value": 41.1
+                      },
+                      "AG226": {
+                        "nut": "AG226",
+                        "value": 0.046
+                      },
+                      "VITE": {
+                        "nut": "VITE",
+                        "value": 35.600002
+                      },
+                      "VITB9": {
+                        "nut": "VITB9",
+                        "value": 137.0
+                      },
+                      "VALINE": {
+                        "nut": "VALINE",
+                        "value": 5.4661016
+                      },
+                      "SE": {
+                        "nut": "SE",
+                        "value": 50.0
+                      },
+                      "VITD": {
+                        "nut": "VITD",
+                        "value": 63.100002
+                      },
+                      "VITB5": {
+                        "nut": "VITB5",
+                        "value": 2.78
+                      },
+                      "CYSTEINE": {
+                        "nut": "CYSTEINE",
+                        "value": 1.9491526
+                      },
+                      "TAURINE": {
+                        "nut": "TAURINE",
+                        "value": 0.14
+                      },
+                      "VITB8": {
+                        "nut": "VITB8",
+                        "value": 0.032
+                      },
+                      "VITC": {
+                        "nut": "VITC",
+                        "value": 10.400001
+                      },
+                      "METHIONINE": {
+                        "nut": "METHIONINE",
+                        "value": 2.6271186
+                      },
+                      "O3": {
+                        "nut": "O3",
+                        "value": 0.35
+                      },
+                      "CHL": {
+                        "nut": "CHL",
+                        "value": 0.86
+                      },
+                      "AG183": {
+                        "nut": "AG183",
+                        "value": 0.27
+                      },
+                      "PHOS": {
+                        "nut": "PHOS",
+                        "value": 0.74
+                      },
+                      "AG204": {
+                        "nut": "AG204",
+                        "value": 0.152
+                      },
+                      "FE": {
+                        "nut": "FE",
+                        "value": 14.400001
+                      },
+                      "MN": {
+                        "nut": "MN",
+                        "value": 1.6200001
+                      },
+                      "EPADHA": {
+                        "nut": "EPADHA",
+                        "value": 0.048
+                      },
+                      "I": {
+                        "nut": "I",
+                        "value": 165.0
+                      },
+                      "VITA": {
+                        "nut": "VITA",
+                        "value": 852.4
+                      },
+                      "VITB12": {
+                        "nut": "VITB12",
+                        "value": 9.0
+                      },
+                      "HISTIDINE": {
+                        "nut": "HISTIDINE",
+                        "value": 2.5847456
+                      },
+                      "MG": {
+                        "nut": "MG",
+                        "value": 0.082
+                      },
+                      "ISOLEUCINE": {
+                        "nut": "ISOLEUCINE",
+                        "value": 4.1949153
+                      },
+                      "LYSINE": {
+                        "nut": "LYSINE",
+                        "value": 5.338983
+                      },
+                      "PHENYLALANINE": {
+                        "nut": "PHENYLALANINE",
+                        "value": 4.8728814
+                      },
+                      "FIBRETOT": {
+                        "nut": "FIBRETOT",
+                        "value": 6.2
+                      },
+                      "AG205": {
+                        "nut": "AG205",
+                        "value": 0.002
+                      },
+                      "VITB6": {
+                        "nut": "VITB6",
+                        "value": 0.3
+                      },
+                      "GLUTAMATE": {
+                        "nut": "GLUTAMATE",
+                        "value": 14.364407
+                      },
+                      "LEUCINE": {
+                        "nut": "LEUCINE",
+                        "value": 9.194915
+                      },
+                      "NA": {
+                        "nut": "NA",
+                        "value": 0.37
+                      },
+                      "ARGININE": {
+                        "nut": "ARGININE",
+                        "value": 5.8474574
+                      },
+                      "VITB2": {
+                        "nut": "VITB2",
+                        "value": 0.69
+                      },
+                      "CHOLINE": {
+                        "nut": "CHOLINE",
+                        "value": 372.6
+                      },
+                      "AG182": {
+                        "nut": "AG182",
+                        "value": 2.8
+                      },
+                      "ENA": {
+                        "nut": "ENA",
+                        "value": 47.0
+                      },
+                      "LIPIDE": {
+                        "nut": "LIPIDE",
+                        "value": 13.3
+                      },
+                      "BETACAR": {
+                        "nut": "BETACAR",
+                        "value": 2.77
+                      },
+                      "CAL": {
+                        "nut": "CAL",
+                        "value": 1.01
+                      }
+                    }
+                  },
+                  "UUID": "63a859a3-d1d6-4cde-9d48-ba98881498cb",
+                  "UUIDunif": "M278",
+                  "targ": "COMP",
+                  "weight": 1.0,
+                  "categ": 1,
+                  "density": 0.0,
+                  "twoDForm": "#0.#"
+                }
+              ],
+              "EnerTot": 0.0
+            },
+            "80eb074c-33da-47da-aa08-cf742d27e0f5": {
+              "UUID": "80eb074c-33da-47da-aa08-cf742d27e0f5",
+              "number": 0,
+              "Nom": "Proposed 2",
+              "coef": 2.0,
+              "fibrep": 4.0,
+              "transCoef": 0.0,
+              "rpcp": 60.0,
+              "huilep": 5.0,
+              "indus": 100.0,
+              "protAnim": 80.0,
+              "objectComp": 0.0,
+              "version": "0.1.30",
+              "objectType": 0,
+              "actual": true,
+              "alimentList": [
+                {
+                  "quantite": 95.0,
+                  "prop": 0.0,
+                  "alime": {
+                    "consistent": 1,
+                    "UUID": "M438",
+                    "nom": "Gastrointestinal canine sec",
+                    "group": "Aides culinaires",
+                    "foodKind": "COMPLET",
+                    "ingredients": "Riz, protéines de volailles déshydratées, graisses animales, maïs, hydrolysat de protéines animales, levures, poudre d’oeufs, pulpe de betterave, huile de soja, sels minéraux, fibres végétales, huile de poisson, Fructo-Oligo-Saccharides (FOS), téguments et graines de psyllium, hydrolysat de levures (source de Mannan-Oligo-Saccharides), extrait de rose d’Inde (source de lutéine).",
+                    "prix": 0.0,
+                    "categoriePrix": "v",
+                    "marque": "Royal Canin",
+                    "indication": [],
+                    "espece": 0,
+                    "Especes": [],
+                    "gamme": "Therapeutic diet",
+                    "presentation": "",
+                    "quantInt": 0.0,
+                    "cont": "NO",
+                    "deprecated": false,
+                    "DataB": "6",
+                    "valMap": {
+                      "O3": {
+                        "nut": "O3",
+                        "value": 0.7
+                      },
+                      "CHL": {
+                        "nut": "CHL",
+                        "value": 0.54
+                      },
+                      "CELLULOSE": {
+                        "nut": "CELLULOSE",
+                        "value": 1.6
+                      },
+                      "O6": {
+                        "nut": "O6",
+                        "value": 3.52
+                      },
+                      "FIBRESOL": {
+                        "nut": "FIBRESOL",
+                        "value": 4.6
+                      },
+                      "VITB3": {
+                        "nut": "VITB3",
+                        "value": 1.5
+                      },
+                      "PHOS": {
+                        "nut": "PHOS",
+                        "value": 0.99
+                      },
+                      "HUMIDITE": {
+                        "nut": "HUMIDITE",
+                        "value": 9.5
+                      },
+                      "PROTEINE": {
+                        "nut": "PROTEINE",
+                        "value": 25.0
+                      },
+                      "CU": {
+                        "nut": "CU",
+                        "value": 1.5
+                      },
+                      "ZN": {
+                        "nut": "ZN",
+                        "value": 22.4
+                      },
+                      "CENDRE": {
+                        "nut": "CENDRE",
+                        "value": 6.9
+                      },
+                      "K": {
+                        "nut": "K",
+                        "value": 0.7
+                      },
+                      "FE": {
+                        "nut": "FE",
+                        "value": 18.5
+                      },
+                      "EPADHA": {
+                        "nut": "EPADHA",
+                        "value": 0.3
+                      },
+                      "VITA": {
+                        "nut": "VITA",
+                        "value": 1900.0
+                      },
+                      "VITB12": {
+                        "nut": "VITB12",
+                        "value": 7.0
+                      },
+                      "VITB1": {
+                        "nut": "VITB1",
+                        "value": 0.42
+                      },
+                      "MG": {
+                        "nut": "MG",
+                        "value": 0.09
+                      },
+                      "FIBRETOT": {
+                        "nut": "FIBRETOT",
+                        "value": 6.2
+                      },
+                      "VITB6": {
+                        "nut": "VITB6",
+                        "value": 0.82
+                      },
+                      "AMIDON": {
+                        "nut": "AMIDON",
+                        "value": 32.4
+                      },
+                      "NA": {
+                        "nut": "NA",
+                        "value": 0.4
+                      },
+                      "VITE": {
+                        "nut": "VITE",
+                        "value": 60.0
+                      },
+                      "VITB2": {
+                        "nut": "VITB2",
+                        "value": 0.38
+                      },
+                      "CHOLINE": {
+                        "nut": "CHOLINE",
+                        "value": 150.0
+                      },
+                      "VITB9": {
+                        "nut": "VITB9",
+                        "value": 80.0
+                      },
+                      "SE": {
+                        "nut": "SE",
+                        "value": 33.0
+                      },
+                      "VITD": {
+                        "nut": "VITD",
+                        "value": 100.0
+                      },
+                      "VITB5": {
+                        "nut": "VITB5",
+                        "value": 2.53
+                      },
+                      "ENA": {
+                        "nut": "ENA",
+                        "value": 37.0

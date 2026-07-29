@@ -1,0 +1,1014 @@
+package fr.vetbrain.vetnutri_mp.View
+
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.Service.ExcelFoodService
+import fr.vetbrain.vetnutri_mp.ExcelPlatform.*
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
+import fr.vetbrain.vetnutri_mp.Components.DropdownField
+import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
+import kotlinx.coroutines.launch
+
+/**
+ * Section Import/Export Excel pour les aliments
+ */
+@Composable
+fun ExcelImportExportSection(
+        modifier: Modifier = Modifier,
+        excelFoodService: ExcelFoodService? = null,
+        foodRepository: FoodRepository? = null
+) {
+        // États pour la gestion des dialogues
+        var showPreviewDialog by remember { mutableStateOf(false) }
+        var csvContent by remember { mutableStateOf<String?>(null) }
+        var previewAliments by remember { mutableStateOf<List<AlimentEv>>(emptyList()) }
+        var previewErrors by remember { mutableStateOf<List<String>>(emptyList()) }
+
+        // États pour l'import/export
+        var isExporting by remember { mutableStateOf(false) }
+        var isImporting by remember { mutableStateOf(false) }
+        var exportResult by remember { mutableStateOf<String?>(null) }
+        var importResult by remember { mutableStateOf<ExcelFoodService.ExcelImportResult?>(null) }
+        var showImportDialog by remember { mutableStateOf(false) }
+        var showImportOptionsDialog by remember { mutableStateOf(false) }
+        var mergeNutrients by remember { mutableStateOf(false) }
+        var importOnlyIfNewer by remember { mutableStateOf(false) }
+
+        // États pour la sélection d'aliments à exporter
+        var showExportSelectionDialog by remember { mutableStateOf(false) }
+        var availableFoods by remember { mutableStateOf<List<AlimentEv>>(emptyList()) }
+        var selectedFoods by remember { mutableStateOf<List<AlimentEv>>(emptyList()) }
+        var selectionFilters by remember { mutableStateOf(FoodSearchFilters()) }
+        var isLoadingFoods by remember { mutableStateOf(false) }
+        var selectionLoadError by remember { mutableStateOf<String?>(null) }
+        
+        // État pour la base de données sélectionnée (prioritaire sur celle du CSV)
+        var selectedDataB by remember { mutableStateOf<String?>(null) }
+        
+        // Options de bases de données
+        val dataBOptions = remember {
+            buildList {
+                add("") // Option vide pour "Utiliser celle du CSV"
+                addAll(DataBMapping.getAllMappings().keys.sorted())
+            }
+        }
+
+        val coroutineScope = rememberCoroutineScope()
+        
+        // Vérifier si les opérations CSV sont supportées
+        val csvSupported = isCsvFileOperationsSupported()
+
+        val exportFoods: (Set<String>) -> Unit = { foodIds ->
+                coroutineScope.launch {
+                        isExporting = true
+                        try {
+                                if (excelFoodService != null) {
+                                        val csv =
+                                                if (foodIds.isEmpty())
+                                                        excelFoodService.exportAllFoodsToCsv()
+                                                else
+                                                        excelFoodService.exportSelectedFoodsToCsv(
+                                                                foodIds
+                                                        )
+                                        val success =
+                                                saveCsvFileForExport(
+                                                        csv,
+                                                        "aliments_export.csv"
+                                                )
+                                        exportResult =
+                                                if (success)
+                                                        "✅ Export réussi: fichier sauvegardé"
+                                                else
+                                                        "❌ Erreur lors de la sauvegarde du fichier"
+                                } else {
+                                        val csv =
+                                                excelFoodService?.generateExampleCsv()
+                                                        ?: "Exemple CSV"
+                                        exportResult =
+                                                "✅ Export d'exemple généré (service non disponible)"
+                                }
+                        } catch (e: Exception) {
+                                exportResult = "❌ Erreur d'export: ${e.message}"
+                        } finally {
+                                isExporting = false
+                        }
+                }
+        }
+
+        Column(
+                modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+                // Informations générales
+                Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f),
+                        elevation = 2.dp
+                ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                        translate("auto.view.excelimportexportcomponents.import_export_excel_aliments"),
+                                        style = MaterialTheme.typography.h6,
+                                        color = VetNutriColors.Primary
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                        translate("auto.view.excelimportexportcomponents.cette_section_vous_permet_d_importer_et_exporter"),
+                                        style = MaterialTheme.typography.body2
+                                )
+                                
+                                if (!csvSupported) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                                translate("auto.view.excelimportexportcomponents.les_operations_de_fichiers_csv_ne_sont_pas_suppo"),
+                                                style = MaterialTheme.typography.body2,
+                                                color = Color(0xFFFF6B35)
+                                        )
+                                }
+                        }
+                }
+
+                // Section Export
+                Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = 4.dp
+                ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                        translate("auto.view.excelimportexportcomponents.export_des_aliments"),
+                                        style = MaterialTheme.typography.h6,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                )
+
+                                Text(
+                                        translate("auto.view.excelimportexportcomponents.exporter_tous_les_aliments_de_la_base_de_donnees"),
+                                        style = MaterialTheme.typography.body2,
+                                        modifier = Modifier.padding(bottom = 16.dp)
+                                )
+
+                                if (selectedFoods.isNotEmpty()) {
+                                        Text(
+                                                "Sélection actuelle: ${selectedFoods.size} aliments",
+                                                style = MaterialTheme.typography.caption,
+                                                color = Color.Gray,
+                                                modifier = Modifier.padding(bottom = 8.dp)
+                                        )
+                                }
+
+                                Button(
+                                        onClick = {
+                                                if (foodRepository == null) {
+                                                        exportFoods(emptySet())
+                                                } else {
+                                                        showExportSelectionDialog = true
+                                                        if (availableFoods.isEmpty() &&
+                                                                        !isLoadingFoods
+                                                        ) {
+                                                                coroutineScope.launch {
+                                                                        isLoadingFoods = true
+                                                                        selectionLoadError = null
+                                                                        try {
+                                                                                availableFoods =
+                                                                                        foodRepository
+                                                                                                .getAllFoods()
+                                                                        } catch (e: Exception) {
+                                                                                selectionLoadError =
+                                                                                        "Erreur de chargement: ${e.message}"
+                                                                        } finally {
+                                                                                isLoadingFoods = false
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        },
+                                        enabled = !isExporting && !isImporting && csvSupported,
+                                        modifier = Modifier.fillMaxWidth()
+                                ) {
+                                        if (isExporting) {
+                                                CircularProgressIndicator(
+                                                        modifier = Modifier.size(16.dp),
+                                                        color = Color.White,
+                                                        strokeWidth = 2.dp
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                        } else {
+                                                Icon(Icons.Default.Download, contentDescription = null)
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                        }
+                                        Text(translate("auto.view.excelimportexportcomponents.selectionner_et_exporter"))
+                                }
+                        }
+                }
+
+                // Résultat d'export
+                exportResult?.let { result ->
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                backgroundColor = if (result.startsWith("✅"))
+                                        Color(0xFFE8F5E8) else Color(0xFFFFEBEE),
+                                elevation = 2.dp
+                        ) {
+                                Row(
+                                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        Text(
+                                                result,
+                                                style = MaterialTheme.typography.body2,
+                                                color = if (result.startsWith("✅")) Color(0xFF2E7D32) else Color(0xFFC62828),
+                                                modifier = Modifier.weight(1f)
+                                        )
+                                        IconButton(onClick = { exportResult = null }) {
+                                                Icon(Icons.Default.Close, contentDescription = translate("settings.close"))
+                                        }
+                                }
+                        }
+                }
+
+                if (showExportSelectionDialog) {
+                        Dialog(
+                                onDismissRequest = { showExportSelectionDialog = false },
+                                properties = DialogProperties(usePlatformDefaultWidth = false)
+                        ) {
+                                Box(
+                                        modifier =
+                                                Modifier.fillMaxSize()
+                                                        .background(
+                                                                MaterialTheme.colors
+                                                                        .background
+                                                        )
+                                ) {
+                                        when {
+                                                isLoadingFoods -> {
+                                                        Column(
+                                                                modifier =
+                                                                        Modifier.fillMaxSize(),
+                                                                verticalArrangement =
+                                                                        Arrangement.Center,
+                                                                horizontalAlignment =
+                                                                        Alignment.CenterHorizontally
+                                                        ) {
+                                                                CircularProgressIndicator()
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        12.dp
+                                                                                )
+                                                                )
+                                                                Text(
+                                                                        translate("animalDetail.loadingFoods")
+                                                                )
+                                                        }
+                                                }
+                                                selectionLoadError != null -> {
+                                                        Column(
+                                                                modifier =
+                                                                        Modifier.fillMaxSize()
+                                                                                .padding(
+                                                                                        24.dp
+                                                                                ),
+                                                                verticalArrangement =
+                                                                        Arrangement.Center,
+                                                                horizontalAlignment =
+                                                                        Alignment.CenterHorizontally
+                                                        ) {
+                                                                Text(
+                                                                        selectionLoadError
+                                                                                ?: "Erreur inconnue",
+                                                                        color =
+                                                                                MaterialTheme
+                                                                                        .colors
+                                                                                        .error,
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .body1
+                                                                )
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        16.dp
+                                                                                )
+                                                                )
+                                                                Button(
+                                                                        onClick = {
+                                                                                showExportSelectionDialog =
+                                                                                        false
+                                                                        }
+                                                                ) { Text(translate("settings.close")) }
+                                                        }
+                                                }
+                                                availableFoods.isEmpty() -> {
+                                                        Column(
+                                                                modifier =
+                                                                        Modifier.fillMaxSize()
+                                                                                .padding(
+                                                                                        24.dp
+                                                                                ),
+                                                                verticalArrangement =
+                                                                        Arrangement.Center,
+                                                                horizontalAlignment =
+                                                                        Alignment.CenterHorizontally
+                                                        ) {
+                                                                Text(
+                                                                        translate("auto.view.excelimportexportcomponents.aucun_aliment_disponible")
+                                                                )
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        16.dp
+                                                                                )
+                                                                )
+                                                                Button(
+                                                                        onClick = {
+                                                                                showExportSelectionDialog =
+                                                                                        false
+                                                                        }
+                                                                ) { Text(translate("settings.close")) }
+                                                        }
+                                                }
+                                                else -> {
+                                                        AnalyseSelectionAlimentsView(
+                                                                aliments = availableFoods,
+                                                                onClose = {
+                                                                        showExportSelectionDialog =
+                                                                                false
+                                                                },
+                                                                onPrimaryAction = {
+                                                                        aliments ->
+                                                                        selectedFoods = aliments
+                                                                        showExportSelectionDialog =
+                                                                                false
+                                                                        exportFoods(
+                                                                                aliments
+                                                                                        .map {
+                                                                                                it.uuid
+                                                                                        }
+                                                                                        .toSet()
+                                                                        )
+                                                                },
+                                                                primaryActionLabel =
+                                                                        "Exporter la sélection",
+                                                                alimentsInitialementSelectionnes =
+                                                                        selectedFoods,
+                                                                onSelectionChanged = {
+                                                                        selectedFoods = it
+                                                                },
+                                                                filtersInitial =
+                                                                        selectionFilters,
+                                                                onFiltersChange = {
+                                                                        selectionFilters = it
+                                                                },
+                                                                modifier =
+                                                                        Modifier.fillMaxSize()
+                                                                                .padding(
+                                                                                        16.dp
+                                                                                )
+                                                        )
+                                                }
+                                        }
+
+                                        IconButton(
+                                                onClick = {
+                                                        showExportSelectionDialog = false
+                                                },
+                                                modifier =
+                                                        Modifier.align(Alignment.TopEnd)
+                                                                .padding(16.dp)
+                                        ) {
+                                                Icon(
+                                                        imageVector = Icons.Default.Close,
+                                                        contentDescription = translate("settings.close")
+                                                )
+                                        }
+                                }
+                        }
+                }
+
+                // Section Import
+                Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = 4.dp
+                ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                        translate("auto.view.excelimportexportcomponents.import_des_aliments"),
+                                        style = MaterialTheme.typography.h6,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                )
+
+                                Text(
+                                        translate("auto.view.excelimportexportcomponents.importer_des_aliments_depuis_un_fichier_csv_une"),
+                                        style = MaterialTheme.typography.body2,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                
+                                // Sélecteur de base de données
+                                Spacer(modifier = Modifier.height(8.dp))
+                                DropdownField(
+                                        label = translate("auto.view.excelimportexportcomponents.base_de_donnees_prioritaire_sur_celle_du_csv"),
+                                        selectedValue = selectedDataB ?: "",
+                                        options = dataBOptions,
+                                        onValueChange = { selectedDataB = if (it.isEmpty()) null else it },
+                                        valueToString = { code ->
+                                                if (code.isEmpty()) {
+                                                        "Utiliser celle du CSV"
+                                                } else {
+                                                        "${DataBMapping.getDisplayName(code)} ($code)"
+                                                }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Button(
+                                        onClick = { showImportOptionsDialog = true },
+                                        enabled = !isExporting && !isImporting,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Secondary
+                                        )
+                                ) {
+                                        if (isImporting) {
+                                                CircularProgressIndicator(
+                                                        modifier = Modifier.size(16.dp),
+                                                        color = Color.White,
+                                                        strokeWidth = 2.dp
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                        } else {
+                                                Icon(Icons.Default.Upload, contentDescription = null)
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                        }
+                                        Text(translate("auto.view.excelimportexportcomponents.importer_depuis_csv"))
+                                }
+                        }
+                }
+
+                // Résultat d'import
+                importResult?.let { result ->
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                backgroundColor = if (result.success)
+                                        Color(0xFFE8F5E8) else Color(0xFFFFEBEE),
+                                elevation = 2.dp
+                        ) {
+                                Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                                        result.message,
+                                                style = MaterialTheme.typography.body2,
+                                                        color = if (result.success) Color(0xFF2E7D32) else Color(0xFFC62828)
+                                                )
+                                                if (result.importedCount > 0 || result.updatedCount > 0) {
+                                                        Text(
+                                                                "Importés: ${result.importedCount}, Mis à jour: ${result.updatedCount}",
+                                                                style = MaterialTheme.typography.caption,
+                                                                color = Color.Gray
+                                                        )
+                                                }
+                                                if (result.errorCount > 0) {
+                                                        Text(
+                                                                "Erreurs: ${result.errorCount}",
+                                                                style = MaterialTheme.typography.caption,
+                                                                color = Color(0xFFFF6B35)
+                                                        )
+                                                }
+                                        }
+                                        IconButton(onClick = { importResult = null }) {
+                                                Icon(Icons.Default.Close, contentDescription = translate("settings.close"))
+                                        }
+                                }
+                        }
+                }
+
+                // Informations sur le format
+                Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        backgroundColor = MaterialTheme.colors.surface,
+                        elevation = 2.dp
+                ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                        translate("auto.view.excelimportexportcomponents.format_csv_requis"),
+                                        style = MaterialTheme.typography.subtitle1,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                )
+
+                                Text(translate("auto.view.excelimportexportcomponents.separateur_point_virgule"), style = MaterialTheme.typography.body2)
+                                Text(translate("auto.view.excelimportexportcomponents.encodage_utf_8"), style = MaterialTheme.typography.body2)
+                                Text(translate("auto.view.excelimportexportcomponents.premiere_ligne_en_tetes_des_colonnes"), style = MaterialTheme.typography.body2)
+                                Text(translate("auto.view.excelimportexportcomponents.listes_separees_par_des_virgules"), style = MaterialTheme.typography.body2)
+                                Text(translate("auto.view.excelimportexportcomponents.valeurs_vides_cellules_vides_ou_absence_de_valeu"), style = MaterialTheme.typography.body2)
+                                Text(translate("auto.view.excelimportexportcomponents.date_derniere_mise_a_jour_idealement_yyyy_mm_dd"), style = MaterialTheme.typography.body2)
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                        translate("auto.view.excelimportexportcomponents.structure_des_colonnes"),
+                                        style = MaterialTheme.typography.subtitle2,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                )
+
+                                val mainColumns = listOf(
+                                        "UUID", "Nom", "Marque", "Gamme", "Ingrédients",
+                                        "Groupe Alimentaire", "Type Aliment", "Conditionnement",
+                                        "Prix", "Catégorie Prix", "Quantité Interne",
+                                        "Consistant", "Obsolète", "Date dernière mise à jour", "Espèces", "Indications"
+                                )
+
+                                mainColumns.forEach { column ->
+                                        Text("• $column", style = MaterialTheme.typography.caption)
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                        translate("auto.view.excelimportexportcomponents.nutriments_76_nutriments_1_colonne_valeur_avec_u"),
+                                        style = MaterialTheme.typography.subtitle2
+                                )
+                        }
+                }
+        }
+
+        // Dialogue d'import amélioré
+        if (showImportDialog && importResult != null) {
+                ExcelImportDialog(
+                        result = importResult!!,
+                        onConfirm = {
+                                if (csvContent != null && excelFoodService != null) {
+                                        coroutineScope.launch {
+                                                try {
+                                                        val finalResult =
+                                                                excelFoodService.importFoodsFromCsv(
+                                                                        csvContent!!,
+                                                                        selectedDataB,
+                                                                        mergeNutrients = mergeNutrients,
+                                                                        importOnlyIfNewer = importOnlyIfNewer
+                                                                )
+                                                        importResult = finalResult
+                                                        showImportDialog = false
+                                                } catch (e: Exception) {
+                                                        importResult = ExcelFoodService.ExcelImportResult(
+                                                                success = false,
+                                                                message = "Erreur lors de l'import final: ${e.message}"
+                                                        )
+                                                }
+                                        }
+                                } else {
+                                        showImportDialog = false
+                                }
+                        },
+                        onCancel = {
+                                showImportDialog = false
+                                importResult = null
+                        }
+                )
+        }
+
+        if (showImportOptionsDialog) {
+                AlertDialog(
+                        onDismissRequest = { showImportOptionsDialog = false },
+                        title = { Text(translate("auto.view.excelimportexportcomponents.options_d_import_csv")) },
+                        text = {
+                                Column {
+                                        Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Checkbox(
+                                                        checked = mergeNutrients,
+                                                        onCheckedChange = { mergeNutrients = it }
+                                                )
+                                                Text(
+                                                        translate("auto.view.excelimportexportcomponents.fusionner_les_nutriments_ne_pas_supprimer_ceux_a")
+                                                )
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Checkbox(
+                                                        checked = importOnlyIfNewer,
+                                                        onCheckedChange = { importOnlyIfNewer = it }
+                                                )
+                                                Text(
+                                                        translate("auto.view.excelimportexportcomponents.n_importer_que_si_la_date_de_derniere_mise_a_jou")
+                                                )
+                                        }
+                                }
+                        },
+                        confirmButton = {
+                                Button(
+                                        onClick = {
+                                                showImportOptionsDialog = false
+                                                coroutineScope.launch {
+                                                val csv = openCsvFileForImport()
+                                                if (csv != null) {
+                                                                isImporting = true
+                                                                try {
+                                                                        if (excelFoodService != null && csvSupported) {
+                                                                                // Import réel avec le contenu du fichier
+                                                                                csvContent = csv
+                                                                                val result =
+                                                                                        excelFoodService.importFoodsFromCsv(
+                                                                                                csv,
+                                                                                                selectedDataB,
+                                                                                                mergeNutrients = mergeNutrients,
+                                                                                                importOnlyIfNewer = importOnlyIfNewer
+                                                                                        )
+                                                                                importResult = result
+                                                                                showImportDialog = true
+                                                                        } else {
+                                                                                // Fallback: utiliser l'exemple
+                                                                                val csvExample =
+                                                                                        excelFoodService?.generateExampleCsv()
+                                                                                                ?: "Exemple CSV"
+                                                                                csvContent = csvExample
+                                                                                val result =
+                                                                                        excelFoodService?.previewCsvImport(
+                                                                                                csvExample,
+                                                                                                selectedDataB
+                                                                                        )
+                                                                                                ?: ExcelFoodService.ExcelImportResult(
+                                                                                                        success = false,
+                                                                                                        message = "Service non disponible"
+                                                                                                )
+                                                                                importResult = result
+                                                                                showImportDialog = true
+                                                                        }
+                                                                } catch (e: Exception) {
+                                                                        importResult = ExcelFoodService.ExcelImportResult(
+                                                                                success = false,
+                                                                                message = "Erreur lors de la préparation: ${e.message}"
+                                                                        )
+                                                                } finally {
+                                                                        isImporting = false
+                                                                }
+                                                } else {
+                                                        // Aucun fichier sélectionné
+                                                        importResult = ExcelFoodService.ExcelImportResult(
+                                                                success = false,
+                                                                message = "Aucun fichier sélectionné"
+                                                        )
+                                                }
+                                                }
+                                        }
+                                ) { Text(translate("startup.continue")) }
+                        },
+                        dismissButton = {
+                                Button(onClick = { showImportOptionsDialog = false }) {
+                                        Text(translate("general.cancel"))
+                                }
+                        }
+                )
+        }
+}
+
+/**
+ * Dialogue d'import Excel amélioré
+ */
+@Composable
+fun ExcelImportDialog(
+        result: ExcelFoodService.ExcelImportResult,
+        onConfirm: () -> Unit,
+        onCancel: () -> Unit
+) {
+        AlertDialog(
+                onDismissRequest = onCancel,
+                title = {
+                        Text(
+                                if (result.previewMode) "Prévisualisation de l'import" else "Résultat de l'import",
+                                style = MaterialTheme.typography.h6,
+                                color = if (result.success) VetNutriColors.Primary else Color(0xFFFF6B35)
+                        )
+                },
+                text = {
+                        Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                Text(
+                                        result.message,
+                                        style = MaterialTheme.typography.body1
+                                )
+                                
+                                if (result.importedCount > 0 || result.updatedCount > 0) {
+                                        Row(
+                                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                                if (result.importedCount > 0) {
+                                                        Text(
+                                                                "Importés: ${result.importedCount}",
+                                                                style = MaterialTheme.typography.body2,
+                                                                color = VetNutriColors.Primary
+                                                        )
+                                                }
+                                                if (result.updatedCount > 0) {
+                                                        Text(
+                                                                "Mis à jour: ${result.updatedCount}",
+                                                                style = MaterialTheme.typography.body2,
+                                                                color = VetNutriColors.Secondary
+                                                        )
+                                                }
+                                        }
+                                }
+                                
+                                if (result.errorCount > 0) {
+                                        Text(
+                                                "Erreurs: ${result.errorCount}",
+                                                style = MaterialTheme.typography.body2,
+                                                color = Color(0xFFFF6B35)
+                                        )
+                                }
+                                
+                                if (result.errors.isNotEmpty()) {
+                                        Text(
+                                                translate("auto.view.excelimportexportcomponents.details_des_erreurs"),
+                                                style = MaterialTheme.typography.subtitle2,
+                                                modifier = Modifier.padding(top = 8.dp)
+                                        )
+                                        LazyColumn(
+                                                modifier = Modifier.height(120.dp),
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                                items(result.errors.take(5)) { error ->
+                                                        Text(
+                                                                "• $error",
+                                                                style = MaterialTheme.typography.caption,
+                                                                color = Color(0xFFFF6B35)
+                                                        )
+                                                }
+                                                if (result.errors.size > 5) {
+                                                        item {
+                                                                Text(
+                                                                        "... et ${result.errors.size - 5} autres erreurs",
+                                                                        style = MaterialTheme.typography.caption,
+                                                                        color = Color.Gray
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                },
+                confirmButton = {
+                        if (result.previewMode) {
+                                Button(
+                                        onClick = onConfirm,
+                                        colors = ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Primary
+                                        )
+                                ) {
+                                        Text(translate("auto.view.excelimportexportcomponents.confirmer_l_import"), color = Color.White)
+                                }
+                        } else {
+                                Button(
+                                        onClick = onCancel,
+                                        colors = ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Primary
+                                        )
+                                ) {
+                                        Text(translate("settings.close"), color = Color.White)
+                                }
+                        }
+                },
+                dismissButton = {
+                        if (result.previewMode) {
+                                OutlinedButton(onClick = onCancel) {
+                                        Text(translate("general.cancel"))
+                                }
+                        }
+                }
+        )
+}
+
+/**
+ * Dialogue de prévisualisation plein écran pour l'import Excel (legacy)
+ */
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun ExcelImportPreviewDialog(
+        aliments: List<AlimentEv>,
+        errors: List<String>,
+        onConfirm: () -> Unit,
+        onCancel: () -> Unit
+) {
+        val bottomSheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Expanded)
+
+        ModalBottomSheetLayout(
+                sheetState = bottomSheetState,
+                sheetContent = {
+                        Column(
+                                modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(16.dp),
+                                verticalArrangement = Arrangement.Top
+                        ) {
+                                // En-tête
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        Text(
+                                                translate("auto.view.excelimportexportcomponents.previsualisation_de_l_import"),
+                                                style = MaterialTheme.typography.h5,
+                                                color = VetNutriColors.Primary
+                                        )
+                                        IconButton(onClick = onCancel) {
+                                                Icon(Icons.Default.Close, contentDescription = translate("settings.close"))
+                                        }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Statistiques
+                                Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f)
+                                ) {
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                                horizontalArrangement = Arrangement.SpaceEvenly
+                                        ) {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                        Text(
+                                                                aliments.size.toString(),
+                                                                style = MaterialTheme.typography.h4,
+                                                                color = VetNutriColors.Primary
+                                                        )
+                                                        Text(translate("auto.view.excelimportexportcomponents.aliments_valides"), style = MaterialTheme.typography.caption)
+                                                }
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                        Text(
+                                                                errors.size.toString(),
+                                                                style = MaterialTheme.typography.h4,
+                                                                color = if (errors.isEmpty()) VetNutriColors.Primary else Color(0xFFFF6B35)
+                                                        )
+                                                        Text(translate("auto.view.excelimportexportcomponents.erreurs"), style = MaterialTheme.typography.caption)
+                                                }
+                                        }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Liste des aliments
+                                if (aliments.isNotEmpty()) {
+                                        Text(
+                                                "Aperçu des aliments (${aliments.size})",
+                                                style = MaterialTheme.typography.h6,
+                                                modifier = Modifier.padding(bottom = 8.dp)
+                                        )
+
+                                        LazyColumn(
+                                                modifier = Modifier
+                                                        .weight(1f)
+                                                        .fillMaxWidth(),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                                items(aliments.take(10)) { aliment ->
+                                                        Card(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                elevation = 2.dp
+                                                        ) {
+                                                                Column(modifier = Modifier.padding(12.dp)) {
+                                                                        Text(
+                                                                                aliment.nom ?: "Nom non défini",
+                                                                                style = MaterialTheme.typography.subtitle1,
+                                                                                fontWeight = FontWeight.Bold
+                                                                        )
+                                                                        Row(
+                                                                                modifier = Modifier.fillMaxWidth(),
+                                                                                horizontalArrangement = Arrangement.SpaceBetween
+                                                                        ) {
+                                                                                Text(
+                                                                                        "Marque: ${aliment.brand ?: "N/A"}",
+                                                                                        style = MaterialTheme.typography.caption
+                                                                                )
+                                                                                Text(
+                                                                                        "Prix: ${aliment.price ?: "N/A"}",
+                                                                                        style = MaterialTheme.typography.caption
+                                                                                )
+                                                                        }
+                                                                        Text(
+                                                                                "Nutriments: ${aliment.valMap.size}",
+                                                                                style = MaterialTheme.typography.caption,
+                                                                                color = VetNutriColors.Primary
+                                                                        )
+                                                                }
+                                                        }
+                                                }
+
+                                                if (aliments.size > 10) {
+                                                        item {
+                                                                Text(
+                                                                        "... et ${aliments.size - 10} autres aliments",
+                                                                        style = MaterialTheme.typography.caption,
+                                                                        color = Color.Gray,
+                                                                        modifier = Modifier.padding(8.dp)
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+
+                                // Erreurs
+                                if (errors.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                        Text(
+                                                "Erreurs détectées (${errors.size})",
+                                                style = MaterialTheme.typography.h6,
+                                                color = Color(0xFFFF6B35),
+                                                modifier = Modifier.padding(bottom = 8.dp)
+                                        )
+
+                                        LazyColumn(
+                                                modifier = Modifier
+                                                        .height(120.dp)
+                                                        .fillMaxWidth(),
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                                items(errors.take(5)) { error ->
+                                                        Card(
+                                                                backgroundColor = Color(0xFFFFEBEE),
+                                                                elevation = 1.dp
+                                                        ) {
+                                                                Text(
+                                                                        error,
+                                                                        style = MaterialTheme.typography.caption,
+                                                                        color = Color(0xFFC62828),
+                                                                        modifier = Modifier.padding(8.dp)
+                                                                )
+                                                        }
+                                                }
+
+                                                if (errors.size > 5) {
+                                                        item {
+                                                                Text(
+                                                                        "... et ${errors.size - 5} autres erreurs",
+                                                                        style = MaterialTheme.typography.caption,
+                                                                        color = Color.Gray
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Boutons d'action
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                        OutlinedButton(
+                                                onClick = onCancel,
+                                                modifier = Modifier.weight(1f)
+                                        ) {
+                                                Text(translate("general.cancel"))
+                                        }
+
+                                        Button(
+                                                onClick = onConfirm,
+                                                modifier = Modifier.weight(1f),
+                                                colors = ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Primary
+                                                )
+                                        ) {
+                                                Text(translate("auto.view.excelimportexportcomponents.confirmer_l_import"))
+                                        }
+                                }
+                        }
+                }
+        ) {
+                // Contenu principal vide pour le ModalBottomSheetLayout
+                Box(modifier = Modifier.fillMaxSize())
+        }
+}
