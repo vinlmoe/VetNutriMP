@@ -1,0 +1,332 @@
+package fr.vetbrain.vetnutri_mp.View
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
+import fr.vetbrain.vetnutri_mp.Data.BiblioRef
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Theme.AppIcons
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.ViewModel.BiblioRefViewModel
+import kotlinx.coroutines.launch
+
+/**
+ * Vue d'édition d'une référence bibliographique. Permet de créer une nouvelle référence ou de
+ * modifier une référence existante.
+ */
+@Composable
+fun BiblioRefEditView(
+        viewModel: BiblioRefViewModel,
+        biblioRefId: String?,
+        onNavigateBack: () -> Unit,
+        modifier: Modifier = Modifier
+) {
+        val currentBiblioRef by viewModel.currentBiblioRef.collectAsState()
+        val firstAuthor by viewModel.firstAuthor
+        val year by viewModel.year
+        val completeRef by viewModel.completeRef
+        val comments by viewModel.comments
+        val isValid by viewModel.isValid
+        val operationMessage by viewModel.operationMessage.collectAsState()
+        val actionInProgress by viewModel.actionInProgress.collectAsState()
+        val doiLoading by viewModel.doiLoading.collectAsState()
+        val doiError by viewModel.doiError.collectAsState()
+        val coroutineScope = rememberCoroutineScope()
+
+        var doiInput by remember { mutableStateOf("") }
+
+        val scrollState = rememberScrollState()
+
+        // Si un ID est fourni, charger la référence
+        LaunchedEffect(biblioRefId) {
+                viewModel.initForEdit()
+
+                if (biblioRefId != null && biblioRefId.isNotBlank()) {
+                        viewModel.loadBiblioRefById(biblioRefId)
+                } else {}
+        }
+
+        // Mode d'édition ou de création
+        val isEditMode =
+                remember(currentBiblioRef) {
+                        currentBiblioRef.uuid.isNotBlank() && currentBiblioRef != BiblioRef.EMPTY
+                }
+
+        Scaffold(
+                topBar = {
+                        TopBarSimple(
+                                title =
+                                        if (isEditMode) translate("biblioRef.edit.titleEdit")
+                                        else translate("biblioRef.edit.titleCreate"),
+                                onNavigateBack = onNavigateBack
+                        )
+                }
+        ) { paddingValues ->
+                Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+                        Column(
+                                modifier =
+                                        Modifier.fillMaxSize()
+                                                .padding(AppSizes.paddingMedium)
+                                                .verticalScroll(scrollState)
+                        ) {
+                                Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        elevation = AppSizes.cardElevationNormal
+                                ) {
+                                        Column(
+                                                modifier = Modifier.padding(AppSizes.paddingMedium),
+                                                verticalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingSmall)
+                                        ) {
+                                                Text(
+                                                        text = translate("biblioRef.edit.sectionInfoTitle"),
+                                                        style = MaterialTheme.typography.h6
+                                                )
+
+                                                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+
+                                                // Section import DOI
+                                                Text(
+                                                        translate("biblioRef.edit.importDoiTitle"),
+                                                        style = MaterialTheme.typography.subtitle2
+                                                )
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                        OutlinedTextField(
+                                                                value = doiInput,
+                                                                onValueChange = {
+                                                                        doiInput = it
+                                                                        if (doiError.isNotBlank()) viewModel.clearDoiError()
+                                                                },
+                                                                placeholder = { Text(translate("auto.view.bibliorefeditview.10_xxxx_xxxx"), fontSize = 12.sp) },
+                                                                singleLine = true,
+                                                                modifier = Modifier.weight(1f),
+                                                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                                                        focusedBorderColor = VetNutriColors.Primary,
+                                                                        unfocusedBorderColor = Color.Gray
+                                                                )
+                                                        )
+                                                        Button(
+                                                                onClick = { viewModel.importFromDoi(doiInput) },
+                                                                enabled = doiInput.isNotBlank() && !doiLoading,
+                                                                colors = ButtonDefaults.buttonColors(
+                                                                        backgroundColor = VetNutriColors.Primary
+                                                                )
+                                                        ) {
+                                                                if (doiLoading) {
+                                                                        CircularProgressIndicator(
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                color = VetNutriColors.OnPrimary,
+                                                                                strokeWidth = 2.dp
+                                                                        )
+                                                                } else {
+                                                                        Icon(
+                                                                                imageVector = AppIcons.Search,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = VetNutriColors.OnPrimary
+                                                                        )
+                                                                        Spacer(Modifier.width(4.dp))
+                                                                        Text(translate("biblioRef.edit.fillFromDoi"), color = VetNutriColors.OnPrimary)
+                                                                }
+                                                        }
+                                                }
+                                                if (doiError.isNotBlank()) {
+                                                        Text(
+                                                                doiError,
+                                                                color = MaterialTheme.colors.error,
+                                                                style = MaterialTheme.typography.caption
+                                                        )
+                                                }
+
+                                                Divider()
+
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.height(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                )
+
+                                                // Champ pour le premier auteur
+                                                OutlinedTextField(
+                                                        value = firstAuthor,
+                                                        onValueChange = {
+                                                                viewModel.updateFirstAuthor(it)
+                                                        },
+                                                        label = { Text(translate("biblioRef.edit.firstAuthorLabel")) },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        singleLine = true,
+                                                        colors =
+                                                                TextFieldDefaults
+                                                                        .outlinedTextFieldColors(
+                                                                                focusedBorderColor =
+                                                                                        VetNutriColors
+                                                                                                .Primary,
+                                                                                unfocusedBorderColor =
+                                                                                        Color.Gray
+                                                                        )
+                                                )
+
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.height(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                )
+
+                                                // Champ pour l'année
+                                                OutlinedTextField(
+                                                        value = year,
+                                                        onValueChange = {
+                                                                viewModel.updateYear(it)
+                                                        },
+                                                        label = { Text(translate("biblioRef.edit.yearLabel")) },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        keyboardOptions =
+                                                                KeyboardOptions(
+                                                                        keyboardType =
+                                                                                KeyboardType.Number
+                                                                ),
+                                                        singleLine = true,
+                                                        colors =
+                                                                TextFieldDefaults
+                                                                        .outlinedTextFieldColors(
+                                                                                focusedBorderColor =
+                                                                                        VetNutriColors
+                                                                                                .Primary,
+                                                                                unfocusedBorderColor =
+                                                                                        Color.Gray
+                                                                        )
+                                                )
+
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.height(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                )
+
+                                                // Champ pour la référence complète
+                                                OutlinedTextField(
+                                                        value = completeRef,
+                                                        onValueChange = {
+                                                                viewModel.updateCompleteRef(it)
+                                                        },
+                                                        label = { Text(translate("biblioRef.edit.completeRefLabel")) },
+                                                        modifier =
+                                                                Modifier.fillMaxWidth()
+                                                                        .height(120.dp),
+                                                        maxLines = 5,
+                                                        colors =
+                                                                TextFieldDefaults
+                                                                        .outlinedTextFieldColors(
+                                                                                focusedBorderColor =
+                                                                                        VetNutriColors
+                                                                                                .Primary,
+                                                                                unfocusedBorderColor =
+                                                                                        Color.Gray
+                                                                        )
+                                                )
+
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.height(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                )
+
+                                                // Champ pour les commentaires
+                                                OutlinedTextField(
+                                                        value = comments,
+                                                        onValueChange = {
+                                                                viewModel.updateComments(it)
+                                                        },
+                                                        label = { Text(translate("biblioRef.edit.commentsLabel")) },
+                                                        modifier =
+                                                                Modifier.fillMaxWidth()
+                                                                        .height(120.dp),
+                                                        maxLines = 5,
+                                                        colors =
+                                                                TextFieldDefaults
+                                                                        .outlinedTextFieldColors(
+                                                                                focusedBorderColor =
+                                                                                        VetNutriColors
+                                                                                                .Primary,
+                                                                                unfocusedBorderColor =
+                                                                                        Color.Gray
+                                                                        )
+                                                )
+                                        }
+                                }
+
+                                Spacer(modifier = Modifier.height(AppSizes.paddingLarge))
+
+                                // Boutons d'action
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End
+                                ) {
+                                        OutlinedButton(
+                                                onClick = { viewModel.initForEdit() },
+                                                modifier =
+                                                        Modifier.padding(
+                                                                end = AppSizes.paddingMedium
+                                                        )
+                                        ) { Text(translate("general.reset")) }
+
+                                        Button(
+                                                onClick = {
+                                                        coroutineScope.launch {
+                                                                viewModel.saveBiblioRef()
+                                                                // Attendre un peu avant de naviguer
+                                                                // en arrière
+                                                                kotlinx.coroutines.delay(500)
+                                                                onNavigateBack()
+                                                        }
+                                                },
+                                                enabled = isValid && !actionInProgress
+                                        ) { Text(if (isEditMode) translate("biblioRef.edit.updateButton") else translate("general.add")) }
+                                }
+                        }
+
+                        // Indicateur de chargement
+                        if (actionInProgress) {
+                                CircularProgressIndicator(
+                                        modifier = Modifier.size(50.dp).align(Alignment.Center),
+                                        color = VetNutriColors.Primary
+                                )
+                        }
+
+                        // Message d'opération
+                        operationMessage?.let { message ->
+                                AlertDialog(
+                                        onDismissRequest = { viewModel.clearOperationMessage() },
+                                        title = { Text(translate("biblioRef.edit.infoDialogTitle")) },
+                                        text = { Text(message) },
+                                        confirmButton = {
+                                                Button(
+                                                        onClick = {
+                                                                viewModel.clearOperationMessage()
+                                                        }
+                                                ) { Text(translate("general.ok")) }
+                                        }
+                                )
+                        }
+                }
+        }
+}

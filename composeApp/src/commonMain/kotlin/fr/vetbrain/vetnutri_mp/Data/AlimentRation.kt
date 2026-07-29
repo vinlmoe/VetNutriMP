@@ -1,0 +1,229 @@
+package fr.vetbrain.vetnutri_mp.Data
+
+import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Utils.genUUID
+import kotlin.uuid.ExperimentalUuidApi
+
+@OptIn(ExperimentalUuidApi::class)
+data class AlimentRation(
+        val uuid: String = genUUID(),
+        val uuidUnif: String = "",
+        val quantite: Double = 0.0,
+        val proportion: Double = 0.0,
+        var aliment: AlimentEv? = null,
+        val weight: Double = 1.0,
+        val category: Int = 0,
+        val densiteEnergetique: Double = 0.0,
+        val refAlimUnif: String? = null,
+        var refRation: String? = null,
+        val refTarget: Int? = null
+) {
+        /**
+         * Propriété pour la compatibilité avec les références à quantity Cette propriété est un
+         * alias pour quantite
+         */
+        val quantity: Double
+                get() = quantite
+
+        /**
+         * Obtient la valeur d'un nutriment dans cet aliment
+         *
+         * @param nutrient Le nutriment à rechercher
+         * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
+         * @return La valeur du nutriment ou null si non trouvé
+         */
+        fun getNutrient(nutrient: Nutrient, referenceEv: ReferenceEv? = null): Double? {
+                // Déléguer à l'aliment sous-jacent s'il existe
+                return aliment?.getNutrient(nutrient, referenceEv)
+        }
+
+        /**
+         * Version optimisée pour éviter les calculs répétés de l'énergie
+         * Cache le résultat du calcul d'énergie pour éviter la redondance
+         */
+        private var cachedEnergie: Double? = null
+        private var cachedEnergieParams: Pair<ReferenceEv?, fr.vetbrain.vetnutri_mp.Repository.EquationRepository?>? = null
+
+        /**
+         * Calcule la quantité d'énergie fournie par cet aliment avec cache
+         *
+         * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
+         * @param equationRepository Repository des équations pour les équations énergétiques
+         * @return La quantité d'énergie
+         */
+        suspend fun getEnergieWithCache(
+                referenceEv: ReferenceEv? = null,
+                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+        ): Double {
+                val currentParams = Pair(referenceEv, equationRepository)
+
+                // Retourner la valeur cachée si les paramètres sont identiques
+                if (cachedEnergie != null && cachedEnergieParams == currentParams) {
+                        return cachedEnergie!!
+                }
+
+                val result = getEnergie(referenceEv, equationRepository)
+
+                // Mettre en cache le résultat
+                cachedEnergie = result
+                cachedEnergieParams = currentParams
+
+                return result
+        }
+
+        /**
+         * Obtient la valeur d'un nutriment dans cet aliment, en utilisant une équation
+         * complémentaire du référentiel si nécessaire
+         *
+         * @param nutrient Le nutriment à rechercher
+         * @param equationRepository Le repository des équations (pour les équations
+         * complémentaires)
+         * @param referenceEv Le référentiel dont les équations complémentaires (equationsNut)
+         * pilotent seules le calcul — sans référentiel, aucune équation complémentaire n'est
+         * appliquée
+         * @return La valeur du nutriment ou null si non trouvé et pas d'équation complémentaire
+         */
+        suspend fun getNutrientWithComplementary(
+                nutrient: Nutrient,
+                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
+                referenceEv: ReferenceEv? = null
+        ): Double? {
+                // D'abord, essayer d'obtenir la valeur directement (avec calcul d'énergie si
+                // nécessaire)
+                val valeurDirecte = getNutrient(nutrient, referenceEv)
+                if (valeurDirecte != null && valeurDirecte > 0.0) {
+                        return valeurDirecte
+                }
+
+                // Si pas de valeur directe et qu'on a les dépendances pour les équations
+                // complémentaires du référentiel
+                if (referenceEv != null && equationRepository != null) {
+                        val selectedUuids = referenceEv.equationsNut.map { it.uuid }.distinct()
+
+                        if (selectedUuids.isNotEmpty()) {
+                                var accum: Double? = null
+                                val especePref = referenceEv.espece
+                                selectedUuids.forEach { uuid ->
+                                        val eq = equationRepository.getEquationById(uuid)
+                                        if (eq != null) {
+                                                val kindOk =
+                                                        eq.kind ==
+                                                                fr.vetbrain.vetnutri_mp.Enumer
+                                                                        .EquationKind
+                                                                        .COMPLEMENTARY_NUTRIENT
+                                                val nutrientOk =
+                                                        eq.nutrient == nutrient ||
+                                                                eq.nutrient?.label == nutrient.label
+                                                val specieOk =
+                                                                eq.specie == especePref ||
+                                                                eq.specie ==
+                                                                        fr.vetbrain.vetnutri_mp
+                                                                                .Enumer.Espece.CH
+                                                if (kindOk && nutrientOk && specieOk) {
+                                                        val res =
+                                                                fr.vetbrain.vetnutri_mp.Utils
+                                                                        .EquationEvaluator
+                                                                        .evaluerBesoinNutritionnelPourAliment(
+                                                                                expression =
+                                                                                        eq.equationScript,
+                                                                                aliment = this,
+                                                                                equationRepository =
+                                                                                        equationRepository,
+                                                                                referenceEv =
+                                                                                        referenceEv
+                                                                        )
+                                                                        ?: 0.0
+
+                                                        accum =
+                                                                if (eq.ratio) res
+                                                                else (accum ?: 0.0) + res
+                                                }
+                                        }
+                                }
+
+                                // Si ratio: la dernière valeur res est la valeur par 100g
+                                // Si somme: accum contient la somme des contributions par 100g
+                                if (accum != null) return if (accum < 0.0) 0.0 else accum
+                        }
+                }
+
+                return null
+        }
+
+        /**
+         * Calcule la quantité d'énergie fournie par cet aliment
+         *
+         * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
+         * @param equationRepository Repository des équations pour les équations énergétiques
+         * @return La quantité d'énergie
+         */
+        suspend fun getEnergie(
+                referenceEv: ReferenceEv? = null,
+                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+        ): Double {
+                // Si on a le référentiel et le repository, utiliser
+                // EquationEvaluator.calculerEnergiePour100g() qui utilise correctement
+                // l'équation énergétique du référentiel (equationDEcom ou equationDEraw)
+                // avec les valeurs directes de l'aliment (sans équations complémentaires des préférences)
+                if (referenceEv != null && equationRepository != null) {
+                        val energiePour100g =
+                                fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
+                                        .calculerEnergiePour100g(
+                                                aliment = this,
+                                        equationRepository = equationRepository,
+                                        referenceEv = referenceEv
+                                )
+                        return (energiePour100g * quantite) / 100.0
+                }
+
+                // Sinon, utiliser getNutrient pour l'énergie (sans équations complémentaires)
+                if (referenceEv != null) {
+                        val energiePour100g =
+                                aliment?.getNutrient(NutrientMain.ENERGIE, referenceEv)
+                                        ?: 0.0
+                        return (energiePour100g * quantite) / 100.0
+                }
+
+                // Sinon, utiliser la densité énergétique stockée
+                return densiteEnergetique * quantite
+        }
+
+        /**
+         * Vérifie si cet aliment a une densité énergétique définie pour une équation donnée
+         *
+         * @param equationScript Le script de l'équation à vérifier
+         * @return true si la densité est définie, false sinon
+         */
+        fun isDE(equationScript: String): Boolean {
+                // Cette méthode devrait vérifier si la densité énergétique a déjà été calculée
+                // avec l'équation spécifiée
+                return densiteEnergetique > 0.0
+        }
+
+        /**
+         * Obtient la densité énergétique calculée avec une équation donnée
+         *
+         * @param equationScript Le script de l'équation utilisée
+         * @return La densité énergétique
+         */
+        fun getDE(equationScript: String): Double {
+                // Cette méthode devrait retourner la densité énergétique calculée
+                // avec l'équation spécifiée
+                return densiteEnergetique
+        }
+
+        /**
+         * Définit la densité énergétique calculée avec une équation donnée
+         *
+         * @param densite La densité énergétique
+         * @param equationScript Le script de l'équation utilisée
+         */
+        fun setDE(densite: Double, equationScript: String) {
+                // Cette méthode devrait stocker la densité énergétique calculée
+                // avec l'équation spécifiée
+                // Comme densiteEnergetique est un val, on ne peut pas le modifier directement
+                // Dans une implémentation réelle, il faudrait utiliser une map pour stocker
+                // les densités par équation
+        }
+}
