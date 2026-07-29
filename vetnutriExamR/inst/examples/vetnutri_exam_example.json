@@ -1,0 +1,83 @@
+{
+  "version": "1.0.0",
+  "generatedAtEpochMs": 1774250589868,
+  "animals": [
+    {
+      "uuid": "animal-1",
+      "name": "Foeb",
+      "consultations": [
+        {
+          "uuid": "consult-1",
+          "date": "2026-03-23",
+          "weightKg": 23,
+          "k1Value": 0.8,
+          "k2Value": 0.8,
+          "k3Value": 0.8,
+          "coefficientAjustement": 1,
+          "referenceGeneraleId": "ref-1",
+          "rations": [
+            {
+              "uuid": "ration-1",
+              "name": "Ration actuelle",
+              "items": [
+                {
+                  "uuid": "item-1",
+                  "foodId": "H20-20",
+                  "quantity": 170
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "foods": [
+    {
+      "uuid": "H20-20",
+      "name": "k/d + Mobility Canine",
+      "nutrients": {
+        "HUMIDITE": 8,
+        "PROTEINE": 14.2,
+        "LIPIDE": 19.2,
+        "ENA": 52.2,
+        "CELLULOSE": 2.3,
+        "CENDRE": 4.1,
+        "ENERGIE": 380,
+        "CAL": 0.59,
+        "PHOS": 0.27
+      }
+    }
+  ],
+  "equations": [
+    {
+      "uuid": "eq-bee-1",
+      "name": "Maintenance Energy requirement Dog (ME)",
+      "kind": "ENERGYNEED",
+      "script": "130*BW^0.75"
+    },
+    {
+      "uuid": "eq-de-1",
+      "name": "Atwater DE (ME)",
+      "kind": "ENERGYDENSITY",
+      "script": "4*ENA+4*PROTEINE+9*LIPIDE"
+    }
+  ],
+  "references": [
+    {
+      "uuid": "ref-1",
+      "equationBEE": "eq-bee-1",
+      "equationDEcom": "eq-de-1",
+      "nutrients": [
+        {"nutrientLabel": "PROTEINE", "reflevel": "MIN", "quantity": 20},
+        {"nutrientLabel": "CAL", "reflevel": "MIN", "quantity": 0.5},
+        {"nutrientLabel": "PHOS", "reflevel": "MIN", "quantity": 0.22}
+      ]
+    }
+  ],
+  "rations": [],
+  "recipes": [],
+  "biblioRefs": [],
+  "conseils": [],
+  "consultationKeywords": []
+}

@@ -1,0 +1,146 @@
+package fr.vetbrain.vetnutri_mp.Components
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+
+@Composable
+fun TopBar(
+        title: String,
+        onSettingsClick: () -> Unit,
+        modifier: Modifier = Modifier,
+        actions: @Composable RowScope.() -> Unit = {}
+) {
+        Row(
+                modifier = modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                Text(
+                        text = title,
+                        style = MaterialTheme.typography.h5.copy(fontSize = AppSizes.fontSizeH5)
+                )
+
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        actions()
+                        IconButton(
+                                onClick = onSettingsClick,
+                                modifier = Modifier.size(AppSizes.iconSizeLarge)
+                        ) {
+                                Icon(
+                                        Icons.Default.Settings,
+                                        contentDescription = translate("topBar.settings"),
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                )
+                        }
+                }
+        }
+}
+
+@Composable
+fun TopBar(
+        title: String,
+        onBackClick: () -> Unit,
+        onSettingsClick: () -> Unit,
+        modifier: Modifier = Modifier,
+        actions: @Composable RowScope.() -> Unit = {}
+) {
+        Row(
+                modifier = modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        IconButton(
+                                onClick = onBackClick,
+                                modifier = Modifier.size(AppSizes.iconSizeLarge)
+                        ) {
+                                Icon(
+                                        Icons.AutoMirrored.Default.ArrowBack,
+                                        contentDescription = translate("topBar.back"),
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                )
+                        }
+                        Text(
+                                text = title,
+                                style =
+                                        MaterialTheme.typography.h5.copy(
+                                                fontSize = AppSizes.fontSizeH5
+                                        )
+                        )
+                }
+
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        actions()
+                        IconButton(
+                                onClick = onSettingsClick,
+                                modifier = Modifier.size(AppSizes.iconSizeLarge)
+                        ) {
+                                Icon(
+                                        Icons.Default.Settings,
+                                        contentDescription = translate("topBar.settings"),
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                )
+                        }
+                }
+        }
+}
+
+/** TopBar avec seulement un titre et un bouton de retour, sans bouton de paramètres */
+@Composable
+fun TopBarSimple(
+        title: String,
+        onNavigateBack: () -> Unit,
+        modifier: Modifier = Modifier,
+        actions: @Composable RowScope.() -> Unit = {}
+) {
+        Row(
+                modifier = modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        IconButton(
+                                onClick = onNavigateBack,
+                                modifier = Modifier.size(AppSizes.iconSizeLarge)
+                        ) {
+                                Icon(
+                                        Icons.AutoMirrored.Default.ArrowBack,
+                                        contentDescription = translate("topBar.back"),
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                )
+                        }
+                        Text(
+                                text = title,
+                                style =
+                                        MaterialTheme.typography.h5.copy(
+                                                fontSize = AppSizes.fontSizeH5
+                                        )
+                        )
+                }
+
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalAlignment = Alignment.CenterVertically
+                ) { actions() }
+        }
+}
