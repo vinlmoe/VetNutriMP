@@ -37,3 +37,10 @@ composeApp/release/
 *.aar
 .notarization_config
 .Rproj.user
+
+# Base de données JSON embarquée : seul le .enc (chiffré) est versionné.
+# Le JSON en clair est régénéré au build par la tâche Gradle decryptDatabaseJson
+# (voir composeApp/build.gradle.kts) à partir de FOOD_DB_ENCRYPTION_KEY.
+composeApp/src/commonMain/resources/data/vetnutri_export_init.json
+composeApp/src/androidMain/assets/data/vetnutri_export_init.json
+iosApp/iosApp/vetnutri_export_init.json

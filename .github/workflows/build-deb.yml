@@ -35,6 +35,8 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debian package
+        env:
+          FOOD_DB_ENCRYPTION_KEY: ${{ secrets.FOOD_DB_ENCRYPTION_KEY }}
         run: ./gradlew --no-daemon :composeApp:packageReleaseDeb
 
       # Bloque la publication d'un .deb dont le runtime embarqué requiert

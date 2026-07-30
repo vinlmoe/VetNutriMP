@@ -165,3 +165,17 @@ Trois caches utilisent le pattern `LinkedHashMap` LRU (eviction automatique de l
 | `androidMain/assets/data/vetfood.json` | ~1.7 MB | Aliments Android spécifiques |
 
 Ces fichiers sont chargés via `StartupService` au premier lancement, pas à chaque démarrage.
+
+### Chiffrement de la base embarquée
+
+`vetnutri_export_init.json` (Desktop/commonMain, Android/androidMain, iOS) n'est **pas**
+versionné en clair. Seul son équivalent chiffré (`.json.enc`, AES-256-CBC, IV aléatoire de 16
+octets préfixé au fichier) est committé. La tâche Gradle `decryptDatabaseJson`
+(`composeApp/build.gradle.kts`) le déchiffre au moment du build à partir de la clé
+`FOOD_DB_ENCRYPTION_KEY` — fournie via `local.properties` (`fooddb.encryption.key`, ignoré par
+git) en local, ou via le secret GitHub Actions `FOOD_DB_ENCRYPTION_KEY` en CI. Sans cette clé et
+sans JSON en clair déjà présent localement, le build échoue explicitement.
+
+Pour régénérer le `.enc` après une mise à jour des données : chiffrer le JSON en clair en
+AES-256-CBC avec la même clé et un IV frais, puis stocker `iv (16 octets) + ciphertext` tel quel
+dans le fichier `.enc` correspondant.

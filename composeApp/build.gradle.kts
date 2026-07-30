@@ -14,6 +14,12 @@ val jsonbinCreateKey: String = localProps.getProperty("jsonbin.create.key")
 val jsonbinReadKey: String = localProps.getProperty("jsonbin.read.key")
     ?: System.getenv("JSONBIN_READ_KEY")
     ?: ""
+// Clé AES-256 (base64, 32 octets) servant à déchiffrer la base de données JSON embarquée
+// (vetnutri_export_init.json.enc) au moment du build. Jamais committée : local.properties
+// (dev local, ignoré par git) ou variable d'environnement FOOD_DB_ENCRYPTION_KEY (CI/release).
+val foodDbEncryptionKey: String = localProps.getProperty("fooddb.encryption.key")
+    ?: System.getenv("FOOD_DB_ENCRYPTION_KEY")
+    ?: ""
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -188,6 +194,91 @@ val generateSecrets by tasks.registering {
 }
 kotlin.sourceSets["commonMain"].kotlin
     .srcDir(generateSecrets.map { it.outputs.files })
+
+// Déchiffre la base de données JSON embarquée (vetnutri_export_init.json.enc, chiffré en
+// AES-256-CBC avec IV aléatoire de 16 octets préfixé au fichier) pour chaque plateforme.
+// Le dépôt Git ne contient que les .enc — les .json en clair ne sont jamais committés
+// (voir .gitignore). Sans FOOD_DB_ENCRYPTION_KEY, le JSON en clair déjà présent localement
+// (le cas échéant) est conservé tel quel pour ne pas casser le développement courant.
+val commonDbEnc: File = project.file("src/commonMain/resources/data/vetnutri_export_init.json.enc")
+val commonDbPlain: File = project.file("src/commonMain/resources/data/vetnutri_export_init.json")
+val androidDbEnc: File = project.file("src/androidMain/assets/data/vetnutri_export_init.json.enc")
+val androidDbPlain: File = project.file("src/androidMain/assets/data/vetnutri_export_init.json")
+val iosDbPlain: File = project.file("../iosApp/iosApp/vetnutri_export_init.json")
+
+val decryptDatabaseJson by tasks.registering {
+    group = "vetnutri"
+    description = "Déchiffre vetnutri_export_init.json.enc pour Desktop, Android et iOS à partir de FOOD_DB_ENCRYPTION_KEY."
+
+    inputs.files(commonDbEnc, androidDbEnc)
+    inputs.property("keyPresent", foodDbEncryptionKey.isNotBlank())
+    outputs.files(commonDbPlain, androidDbPlain, iosDbPlain)
+
+    doLast {
+        fun decryptAesCbc(encFile: File, keyBase64: String): ByteArray {
+            val all = encFile.readBytes()
+            val iv = all.copyOfRange(0, 16)
+            val cipherBytes = all.copyOfRange(16, all.size)
+            val keyBytes = java.util.Base64.getDecoder().decode(keyBase64)
+            val cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding")
+            cipher.init(
+                javax.crypto.Cipher.DECRYPT_MODE,
+                javax.crypto.spec.SecretKeySpec(keyBytes, "AES"),
+                javax.crypto.spec.IvParameterSpec(iv)
+            )
+            return cipher.doFinal(cipherBytes)
+        }
+
+        if (foodDbEncryptionKey.isBlank()) {
+            val plainFilesPresent = commonDbPlain.exists() &&
+                androidDbPlain.exists() &&
+                iosDbPlain.exists()
+            if (plainFilesPresent) {
+                logger.lifecycle(
+                    "FOOD_DB_ENCRYPTION_KEY absente : JSON en clair déjà présents localement, conservés tels quels."
+                )
+            } else {
+                throw GradleException(
+                    "FOOD_DB_ENCRYPTION_KEY manquante (local.properties: fooddb.encryption.key, " +
+                        "ou variable d'environnement) et le JSON en clair de la base de données " +
+                        "est absent. Impossible de construire l'application sans l'un des deux."
+                )
+            }
+        } else {
+            val commonPlainBytes = decryptAesCbc(commonDbEnc, foodDbEncryptionKey)
+            commonDbPlain.apply { parentFile.mkdirs() }.writeBytes(commonPlainBytes)
+            // iOS embarque exactement le même contenu que Desktop/commonMain (fichier partagé
+            // dans le groupe Xcode) : pas besoin d'un second .enc, on réutilise le déchiffré.
+            iosDbPlain.apply { parentFile.mkdirs() }.writeBytes(commonPlainBytes)
+
+            val androidPlainBytes = decryptAesCbc(androidDbEnc, foodDbEncryptionKey)
+            androidDbPlain.apply { parentFile.mkdirs() }.writeBytes(androidPlainBytes)
+
+            logger.lifecycle("Base de données JSON déchiffrée pour Desktop, Android et iOS.")
+        }
+    }
+}
+
+// Desktop/commonMain : dépendance automatique de toute tâche consommant les ressources
+// commonMain (même mécanisme que generateSecrets ci-dessus, appliqué aux ressources).
+// `.builtBy()` déclare explicitement que ce dossier est produit par decryptDatabaseJson,
+// ce qui force son exécution avant toute tâche qui lit ces ressources (packaging desktop
+// notamment), même si son résultat (le dossier existe déjà en dur dans le dépôt) ne change pas.
+kotlin.sourceSets["commonMain"].resources
+    .srcDir(files("src/commonMain/resources").builtBy(decryptDatabaseJson))
+
+// Android : les assets sont fusionnés par des tâches AGP (mergeDebugAssets, mergeReleaseAssets,
+// etc.) qui ne dépendent pas du graphe de tâches Kotlin ci-dessus — accroche explicite.
+tasks.matching { it.name.contains("Assets") }.configureEach {
+    dependsOn(decryptDatabaseJson)
+}
+
+// iOS : le script Xcode (voir iosApp.xcodeproj) invoque déjà
+// `./gradlew :composeApp:embedAndSignAppleFrameworkForXcode` avant sa phase Resources —
+// on y accroche le déchiffrement pour que le JSON en clair soit prêt avant la copie dans le bundle.
+tasks.matching { it.name == "embedAndSignAppleFrameworkForXcode" }.configureEach {
+    dependsOn(decryptDatabaseJson)
+}
 
 android {
     namespace = "fr.vetbrain.vetnutri_mp"
