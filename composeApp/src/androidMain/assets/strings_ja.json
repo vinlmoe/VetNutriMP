@@ -1,5 +1,9 @@
 {
     "translations": {
+        "graph.chartTypeEvolutionPoids": "体重の推移",
+        "graph.chartTypeRationsEnergie": "エネルギー分布",
+        "graph.chartTypeNutrimentsRations": "食餌の栄養素",
+        "graph.nutrimentNone": "なし",
         "name": "名前",
         "description": "説明",
         "id": "ID",

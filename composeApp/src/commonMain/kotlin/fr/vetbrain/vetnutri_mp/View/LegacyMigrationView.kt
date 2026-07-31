@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.browseLegacyV2DbFolder
 import fr.vetbrain.vetnutri_mp.ViewModel.LegacyMigrationViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun LegacyMigrationView(
@@ -29,6 +30,7 @@ fun LegacyMigrationView(
 ) {
     val step by viewModel.step.collectAsState()
     val log by viewModel.log.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         if (step is LegacyMigrationViewModel.Step.Idle) viewModel.detect()
@@ -64,8 +66,10 @@ fun LegacyMigrationView(
                 is LegacyMigrationViewModel.Step.NotDetected -> {
                     NotDetectedPanel(
                         onBrowse = {
-                            val path = browseLegacyV2DbFolder()
-                            if (path != null) viewModel.useCustomPath(path)
+                            coroutineScope.launch {
+                                val path = browseLegacyV2DbFolder()
+                                if (path != null) viewModel.useCustomPath(path)
+                            }
                         }
                     )
                 }
@@ -75,8 +79,10 @@ fun LegacyMigrationView(
                         path = s.path,
                         onContinue = { viewModel.loadPreview(s.path) },
                         onBrowse = {
-                            val path = browseLegacyV2DbFolder()
-                            if (path != null) viewModel.useCustomPath(path)
+                            coroutineScope.launch {
+                                val path = browseLegacyV2DbFolder()
+                                if (path != null) viewModel.useCustomPath(path)
+                            }
                         }
                     )
                 }

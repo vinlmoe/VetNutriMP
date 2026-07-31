@@ -1,5 +1,10 @@
 package fr.vetbrain.vetnutri_mp.ExcelPlatform
 
+import javax.swing.SwingUtilities
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.swing.Swing
+import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -26,5 +31,18 @@ class ExcelFileOperationsDesktopTest {
     @Test
     fun isCsvFileOperationsSupported_true() {
         assertTrue(isCsvFileOperationsSupported())
+    }
+
+    @Test
+    fun runSwingDialog_calledFromSwingCoroutine_executesOnEdtWithoutDeadlock() = runBlocking {
+        val result =
+                withContext(Dispatchers.Swing) {
+                    runSwingDialog {
+                        assertTrue(SwingUtilities.isEventDispatchThread())
+                        "dialog-result"
+                    }
+                }
+
+        assertEquals("dialog-result", result)
     }
 }

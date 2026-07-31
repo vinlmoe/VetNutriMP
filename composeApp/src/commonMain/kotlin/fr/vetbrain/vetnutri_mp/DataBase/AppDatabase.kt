@@ -90,6 +90,16 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
 fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String): AppDatabase {
     backupDatabaseFiles(dbPath)
 
+    // Room ouvre la connexion de façon paresseuse : valider explicitement le fichier ici afin que
+    // la récupération ait lieu avant que la première requête DAO ne sorte de cette fonction.
+    if (!isDatabaseReadable(dbPath)) {
+        rotateCorruptDatabaseFiles(dbPath)
+        DatabaseChangeNotifier.notifyChange(
+                DatabaseChangeNotifier.ChangeType.DATABASE_CORRUPTION_DETECTED,
+                "Le fichier SQLite est illisible et a été préservé sous .corrupt"
+        )
+    }
+
     return try {
         // ✅ Configuration sécurisée avec migrations explicites
         builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)

@@ -2570,7 +2570,9 @@ fun SettingsView(
                                 3 -> { // Excel Import/Export
                                         val excelFoodService = remember {
                                                 viewModel.foodRepository?.let { foodRepo ->
-                                                        ExcelFoodService(foodRepo, viewModel.biblioRefRepository)
+                                                        viewModel.biblioRefRepository?.let { biblioRepo ->
+                                                                ExcelFoodService(foodRepo, biblioRepo)
+                                                        }
                                                 }
                                         }
                                         ExcelImportExportSection(

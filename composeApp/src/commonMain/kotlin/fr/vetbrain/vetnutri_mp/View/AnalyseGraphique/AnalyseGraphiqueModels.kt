@@ -91,7 +91,7 @@ data class ViewNutrimentOption(
 
 val VIEW_NUTRIMENT_OPTIONS =
         listOf(
-                ViewNutrimentOption("", "graph.nutrimentNone"), // Option "aucun" pour l'axe Y
+                ViewNutrimentOption("", LocalizationKeys.Graph.NUTRIMENT_NONE), // Option "aucun" pour l'axe Y
                 // Nutriments principaux
                 ViewNutrimentOption("proteine", LocalizationKeys.Chart.PROTEIN, "g"),
                 ViewNutrimentOption("lipide", LocalizationKeys.Chart.FAT, "g"),
@@ -110,10 +110,10 @@ internal const val KOALAPLOT_RIGHT_DP = 14f
 
 // displayName contient une clé LocalizationKeys : utiliser translate(chartType.displayName) à l'affichage.
 enum class ChartType(val displayName: String) {
-        EVOLUTION_POIDS("graph.chartTypeEvolutionPoids"),
-        RATIONS_ENERGIE("graph.chartTypeRationsEnergie"),
+        EVOLUTION_POIDS(LocalizationKeys.Graph.CHART_TYPE_EVOLUTION_POIDS),
+        RATIONS_ENERGIE(LocalizationKeys.Graph.CHART_TYPE_RATIONS_ENERGIE),
         DENSITE_RATIONS(LocalizationKeys.Graph.DENSITY_TITLE),
-        NUTRIMENTS_RATIONS("graph.chartTypeNutrimentsRations")
+        NUTRIMENTS_RATIONS(LocalizationKeys.Graph.CHART_TYPE_NUTRIMENTS_RATIONS)
 }
 
 // Data class pour gérer l'état du zoom et du pan

@@ -143,6 +143,20 @@ class AlimentExcelRowTest {
     }
 
     @Test
+    fun decodeBiblioRefs_legacyTextWithoutYear_returnsEmptyList() {
+        assertEquals(emptyList(), AlimentExcelRow.decodeBiblioRefs("Référence sans année"))
+    }
+
+    @Test
+    fun decodeBiblioRefs_legacyTextWithYear_isAccepted() {
+        val decoded = AlimentExcelRow.decodeBiblioRefs("Product Book scientifique (2026)")
+
+        assertEquals(1, decoded.size)
+        assertEquals("Product Book scientifique", decoded.single().firstAuthor)
+        assertEquals(2026, decoded.single().year)
+    }
+
+    @Test
     fun encodeThenDecodeBiblioRefs_roundTripsSingleRef() {
         val original = listOf(
             BiblioRef(

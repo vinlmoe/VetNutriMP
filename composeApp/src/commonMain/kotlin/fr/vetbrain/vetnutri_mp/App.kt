@@ -13,13 +13,8 @@ import fr.vetbrain.vetnutri_mp.Navigation.*
 import fr.vetbrain.vetnutri_mp.Repository.*
 import fr.vetbrain.vetnutri_mp.Service.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
-import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
-import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
-import fr.vetbrain.vetnutri_mp.Utils.isAndroidPlatform
-import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.View.StartupScreen
-import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.ViewModel.*
 import fr.vetbrain.vetnutri_mp.Export.DocumentType
 import fr.vetbrain.vetnutri_mp.Export.ExportData
@@ -105,26 +100,6 @@ fun App(appDatabase: AppDatabase) {
     var backupService by remember { mutableStateOf<BackupService?>(null) }
     var showStartupBackupDialog by remember { mutableStateOf(false) }
     var showStartupScreen by remember { mutableStateOf(true) }
-    val isMobile = isIosPlatform || isAndroidPlatform
-    var startupCheckDone by remember { mutableStateOf(!isMobile) }
-
-    // Sur mobile, vérifie si le démarrage a déjà été complété pour passer directement à AppNavHost
-    LaunchedEffect(Unit) {
-        if (!isMobile) return@LaunchedEffect
-        try {
-            val storage = createPreferencesStorage()
-            if (storage.getString("startup_complete", "false") == "true") {
-                val foodCount = withContext(AppDispatchers.IO) { foodRepository.getFoodsCount() }
-                if (foodCount > 0) {
-                    showStartupScreen = false
-                } else {
-                    // DB vide malgré le flag (reset / corruption) — forcer le démarrage complet
-                    storage.saveString("startup_complete", "false")
-                }
-            }
-        } catch (_: Exception) { /* fallback sûr : showStartupScreen reste true */ }
-        startupCheckDone = true
-    }
     var showAnimalImportResult by remember { mutableStateOf(false) }
     var showFoodImportResult by remember { mutableStateOf(false) }
 
@@ -326,7 +301,6 @@ fun App(appDatabase: AppDatabase) {
     VetNutriTheme {
         Box(modifier = Modifier.fillMaxSize().imePadding()) {
             when {
-                !startupCheckDone -> Box(Modifier.fillMaxSize())
                 showStartupScreen -> StartupScreen(
                     referenceRepository = databaseReferenceEvRepository,
                     settingsViewModel = settingsViewModel,
