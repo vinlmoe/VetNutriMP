@@ -539,9 +539,33 @@ class DatabaseFoodRepository(
                     } catch (_: Exception) { emptyMap() }
                 } else emptyMap()
 
+            val biblioRefsByFood: Map<String, List<fr.vetbrain.vetnutri_mp.Data.BiblioRef>> =
+                if (alimentBiblioRefDao != null && biblioRefDao != null) {
+                    try {
+                        val uuids = foodEntities.map { it.uuid }
+                        val junctions = uuids.chunked(500)
+                            .flatMap { chunk ->
+                                alimentBiblioRefDao.getBiblioRefsForAliments(chunk)
+                            }
+                        val refsByUuid = junctions
+                            .map { it.biblioRefUuid }
+                            .distinct()
+                            .chunked(500)
+                            .flatMap { chunk -> biblioRefDao.getBiblioRefsByIds(chunk) }
+                            .associateBy { it.uuid }
+                        junctions.groupBy(
+                            keySelector = { it.alimentUuid },
+                            valueTransform = { refsByUuid[it.biblioRefUuid]?.toDomain() }
+                        ).mapValues { (_, refs) -> refs.filterNotNull() }
+                    } catch (_: Exception) {
+                        emptyMap()
+                    }
+                } else emptyMap()
+
             val result = foodEntities.map { foodEntity ->
                 foodEntity.toAlimentEv(
                     nutrientValues = nutrientsByFood[foodEntity.uuid] ?: emptyList(),
+                    biblioRefs = biblioRefsByFood[foodEntity.uuid] ?: emptyList(),
                     energyPerSpecies = energyByFood[foodEntity.uuid] ?: emptyList()
                 )
             }

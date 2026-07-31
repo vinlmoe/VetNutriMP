@@ -788,6 +788,10 @@ object LocalizationKeys {
     object Graph {
         const val ADD_WEIGHT_ACTION = "graph.addWeightAction"
         const val ADD_WEIGHT_TITLE = "graph.addWeightTitle"
+        const val CHART_TYPE_EVOLUTION_POIDS = "graph.chartTypeEvolutionPoids"
+        const val CHART_TYPE_RATIONS_ENERGIE = "graph.chartTypeRationsEnergie"
+        const val CHART_TYPE_NUTRIMENTS_RATIONS = "graph.chartTypeNutrimentsRations"
+        const val NUTRIMENT_NONE = "graph.nutrimentNone"
         const val AXIS_AGE_MONTHS = "graph.axisAgeMonths"
         const val AXIS_AGE_YEARS = "graph.axisAgeYears"
         const val AXIS_WEEKS = "graph.axisWeeks"

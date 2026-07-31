@@ -10,6 +10,7 @@ import androidx.compose.ui.window.rememberWindowState
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabaseBuilder
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabasePath
 import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
+import fr.vetbrain.vetnutri_mp.ExcelPlatform.runSwingDialog
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseAnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
@@ -264,13 +265,13 @@ actual fun importAnimalsFromFile(
         viewModel: AnimalListViewModel,
         clearFoodsBeforeImport: Boolean
 ) {
+    (appScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)).launch {
     val selectedFile =
             chooseFileOnEdt(
                     dialogTitle = "Sélectionner un fichier JSON d'animaux",
                     fileFilter = FileNameExtensionFilter("Fichiers JSON", "json")
-            ) ?: return
+            ) ?: return@launch
 
-    (appScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)).launch {
         if (clearFoodsBeforeImport) {
             val clearError = runCatching { viewModel.getFoodRepository()?.clearAllFoods() }.exceptionOrNull()
             if (clearError != null) {
@@ -296,13 +297,13 @@ actual fun importAnimalsFromFile(
  * desktop.
  */
 actual fun importFoodsFromFile(viewModel: SettingsViewModel) {
+    (appScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)).launch {
     val selectedFile =
             chooseFileOnEdt(
                     dialogTitle = "Sélectionner un fichier JSON",
                     fileFilter = createExtensionFilter("Fichiers JSON (*.json)", "json")
-            ) ?: return
+            ) ?: return@launch
 
-    (appScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)).launch {
         runCatching { selectedFile.readText() }
                 .mapCatching { jsonContent -> ImportUtils.importFoodsFromJson(jsonContent) }
                 .onSuccess { foodsJson ->
@@ -325,6 +326,7 @@ actual fun importFoodsFromFile(viewModel: SettingsViewModel) {
  * spécifique à la plateforme desktop.
  */
 actual fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel) {
+    (appScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)).launch {
     val selectedFile =
             chooseFileOnEdt(
                     dialogTitle = "Sélectionner un fichier de références nutritionnelles (.vbnr.json)",
@@ -337,11 +339,10 @@ actual fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel) {
 
     if (selectedFile == null) {
         viewModel.setNutritionalRequirementImportError("Importation annulée par l'utilisateur")
-        return
+        return@launch
     }
 
     // Lecture sur IO puis délégation au ViewModel pour centraliser l'état d'import.
-    (appScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)).launch {
         try {
             val jsonContent = withContext(Dispatchers.IO) { selectedFile.readText() }
             withContext(Dispatchers.Main) {
@@ -357,6 +358,7 @@ actual fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel) {
 
 /** Importe des données au nouveau format API (enveloppe) depuis un fichier – Desktop. */
 actual fun importApiFromFile(viewModel: SettingsViewModel) {
+    (appScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)).launch {
     val selectedFile =
             chooseFileOnEdt(
                     dialogTitle = "Sélectionner un fichier d'export API (.json)",
@@ -365,11 +367,10 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
 
     if (selectedFile == null) {
         viewModel.setImportResult(SettingsViewModel.ImportResult.Error("❌ Import API annulé"))
-        return
+        return@launch
     }
 
     viewModel.startApiImport()
-    (appScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)).launch {
         try {
             val content = withContext(Dispatchers.IO) { selectedFile.readText() }
             val exportRepo =
@@ -540,16 +541,15 @@ actual suspend fun exportPdfDocument(
 
 actual fun detectLegacyV2DbFolder(): String? = LegacyV2Detector.findDbFolder()
 
-actual fun browseLegacyV2DbFolder(): String? {
-    var path: String? = null
-    val open = {
+actual suspend fun browseLegacyV2DbFolder(): String? =
+    runSwingDialog {
         val chooser = javax.swing.JFileChooser().apply {
             dialogTitle = "Sélectionner le dossier 'db' de VetNutri 2"
             fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
         }
         if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
             val selected = chooser.selectedFile
-            path = if (fr.vetbrain.vetnutri_mp.Service.LegacyV2Detector.isV2DbFolder(selected)) {
+            if (fr.vetbrain.vetnutri_mp.Service.LegacyV2Detector.isV2DbFolder(selected)) {
                 selected.absolutePath
             } else {
                 // Essayer d'y chercher un sous-dossier db/
@@ -559,12 +559,10 @@ actual fun browseLegacyV2DbFolder(): String? {
                 else
                     selected.absolutePath // laisser l'utilisateur valider lui-même
             }
+        } else {
+            null
         }
     }
-    if (javax.swing.SwingUtilities.isEventDispatchThread()) open()
-    else javax.swing.SwingUtilities.invokeAndWait { open() }
-    return path
-}
 
 actual suspend fun previewLegacyV2Migration(
     dbFolderPath: String

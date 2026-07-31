@@ -1,27 +1,49 @@
 package fr.vetbrain.vetnutri_mp.ExcelPlatform
 
 import java.io.File
+import java.util.concurrent.FutureTask
 import javax.swing.JFileChooser
+import javax.swing.SwingUtilities
 import javax.swing.filechooser.FileNameExtensionFilter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Implémentation Desktop des opérations de fichiers Excel/CSV.
- * Reste synchrone/bloquant en interne (JFileChooser est modal) : `suspend` ici sert uniquement
- * à unifier la signature commune avec Android/iOS, pas à changer le comportement.
+ *
+ * Le dialogue Swing est modal. Il ne doit pas être ouvert directement depuis une coroutine
+ * Compose : sa boucle AWT imbriquée peut alors reprendre la continuation Compose de façon
+ * réentrante et corrompre son état. On quitte d'abord le dispatcher Compose, puis on demande à
+ * l'EDT d'afficher le dialogue.
  */
 actual suspend fun openCsvFileForImport(): String? {
-    // Approche synchrone simple pour éviter les problèmes de coroutines
-    val fileChooser =
-            JFileChooser().apply {
-                dialogTitle = "Importer un fichier CSV"
-                fileFilter = FileNameExtensionFilter("Fichiers CSV (*.csv)", "csv")
-                fileFilter =
-                        FileNameExtensionFilter("Fichiers Excel (*.xlsx, *.xls)", "xlsx", "xls")
+    val selectedPath =
+            runSwingDialog {
+                val fileChooser =
+                        JFileChooser().apply {
+                            dialogTitle = "Importer un fichier CSV"
+                            addChoosableFileFilter(
+                                    FileNameExtensionFilter("Fichiers CSV (*.csv)", "csv")
+                            )
+                            addChoosableFileFilter(
+                                    FileNameExtensionFilter(
+                                            "Fichiers Excel (*.xlsx, *.xls)",
+                                            "xlsx",
+                                            "xls"
+                                    )
+                            )
+                        }
+
+                if (fileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                    fileChooser.selectedFile.absolutePath
+                } else {
+                    null
+                }
             }
 
-    return if (fileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+    return if (selectedPath != null) {
         try {
-            File(fileChooser.selectedFile.absolutePath).readText()
+            withContext(Dispatchers.IO) { File(selectedPath).readText() }
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -32,18 +54,29 @@ actual suspend fun openCsvFileForImport(): String? {
 }
 
 actual suspend fun saveCsvFileForExport(csvContent: String, defaultFileName: String): Boolean {
-    val fileChooser =
-            JFileChooser().apply {
-                dialogTitle = "Exporter vers CSV"
-                selectedFile = File(defaultFileName)
-                fileFilter = FileNameExtensionFilter("Fichiers CSV (*.csv)", "csv")
+    val selectedPath =
+            runSwingDialog {
+                val fileChooser =
+                        JFileChooser().apply {
+                            dialogTitle = "Exporter vers CSV"
+                            selectedFile = File(defaultFileName)
+                            fileFilter = FileNameExtensionFilter("Fichiers CSV (*.csv)", "csv")
+                        }
+
+                if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+                    fileChooser.selectedFile.absolutePath
+                } else {
+                    null
+                }
             }
 
-    return if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+    return if (selectedPath != null) {
         try {
-            val file = fileChooser.selectedFile
-            val csvFile = File(file.parent, ensureCsvExtension(file.name))
-            csvFile.writeText(csvContent)
+            withContext(Dispatchers.IO) {
+                val file = File(selectedPath)
+                val csvFile = File(file.parent, ensureCsvExtension(file.name))
+                csvFile.writeText(csvContent)
+            }
             true
         } catch (e: Exception) {
             e.printStackTrace()
@@ -66,3 +99,14 @@ actual fun isCsvFileOperationsSupported(): Boolean {
 /** S'assure que le nom de fichier se termine par ".csv" (ajoute l'extension si absente). */
 internal fun ensureCsvExtension(fileName: String): String =
     if (fileName.endsWith(".csv")) fileName else "$fileName.csv"
+
+/**
+ * Exécute une opération Swing sur l'EDT sans conserver la continuation appelante dans la boucle
+ * modale AWT.
+ */
+internal suspend fun <T> runSwingDialog(block: () -> T): T =
+        withContext(Dispatchers.IO) {
+            val task = FutureTask(block)
+            SwingUtilities.invokeAndWait(task)
+            task.get()
+        }
