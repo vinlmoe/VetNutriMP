@@ -1,5 +1,9 @@
 {
     "translations": {
+        "graph.chartTypeEvolutionPoids": "Evolución del peso",
+        "graph.chartTypeRationsEnergie": "Distribución energética",
+        "graph.chartTypeNutrimentsRations": "Nutrientes de las raciones",
+        "graph.nutrimentNone": "Ninguno",
         "name": "Nombre",
         "description": "Descripción",
         "id": "ID",

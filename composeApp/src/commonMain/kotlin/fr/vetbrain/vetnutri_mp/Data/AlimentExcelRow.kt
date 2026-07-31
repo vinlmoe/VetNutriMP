@@ -317,15 +317,48 @@ data class AlimentExcelRow(
 
         /**
          * Décode une cellule CSV JSON vers une liste de BiblioRef.
-         * Retourne une liste vide si la valeur est absente ou mal formée.
+         * Accepte également l'ancien format lisible :
+         * "Titre de la référence (2026); Autre référence (2024)".
          */
         fun decodeBiblioRefs(value: String?): List<BiblioRef> {
             if (value.isNullOrBlank()) return emptyList()
             return try {
                 Json.decodeFromString(ListSerializer(BiblioRef.serializer()), value)
-            } catch (e: Exception) {
-                emptyList()
+            } catch (_: Exception) {
+                value.split(';')
+                    .mapNotNull(::decodeLegacyBiblioRef)
+                    .distinctBy { it.uuid }
             }
+        }
+
+        private fun decodeLegacyBiblioRef(rawValue: String): BiblioRef? {
+            val completeRef = rawValue.trim().takeIf { it.isNotEmpty() } ?: return null
+            // L'ancien format est explicitement « titre (AAAA) ». Exiger l'année évite
+            // d'accepter comme bibliographie n'importe quel JSON corrompu ou texte arbitraire.
+            val match = Regex("^(.*?)\\s*\\((\\d{4})\\)$").matchEntire(completeRef)
+                ?: return null
+            val title = match.groupValues[1].trim().takeIf { it.isNotEmpty() } ?: return null
+            val year = match.groupValues[2].toIntOrNull() ?: return null
+            val normalizedIdentity = "$title|$year"
+                .lowercase()
+                .replace(Regex("\\s+"), " ")
+
+            return BiblioRef(
+                uuid = "csv-biblio-${stableHashHex(normalizedIdentity)}",
+                firstAuthor = title,
+                year = year,
+                completeRef = completeRef,
+                consistent = 1
+            )
+        }
+
+        /** Hash FNV-1a déterministe et multiplateforme utilisé pour dédupliquer les imports texte. */
+        private fun stableHashHex(value: String): String {
+            var hash = 0x811c9dc5u
+            value.encodeToByteArray().forEach { byte ->
+                hash = (hash xor byte.toUByte().toUInt()) * 0x01000193u
+            }
+            return hash.toString(16).padStart(8, '0')
         }
     }
 }

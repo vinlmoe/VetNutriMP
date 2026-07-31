@@ -400,7 +400,11 @@ fun AnimalListView(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                        items(animals) { animal ->
+                                        items(
+                                                items = animals,
+                                                key = { animal -> animal.uuid },
+                                                contentType = { "animal" }
+                                        ) { animal ->
                                                 AnimalCard(
                                                         animal = animal,
                                                         onClick = { onSelectAnimal(animal) },
@@ -961,7 +965,11 @@ private fun FilterSortDialog(
                                         LazyColumn(
                                                 modifier = Modifier.fillMaxWidth().weight(1f)
                                         ) {
-                                                items(sortedKeywords) { keyword ->
+                                                items(
+                                                        items = sortedKeywords,
+                                                        key = { keyword -> keyword.uuid },
+                                                        contentType = { "keyword-filter" }
+                                                ) { keyword ->
                                                         val isIncluded = includeIds.contains(keyword.uuid)
                                                         val isExcluded = excludeIds.contains(keyword.uuid)
 

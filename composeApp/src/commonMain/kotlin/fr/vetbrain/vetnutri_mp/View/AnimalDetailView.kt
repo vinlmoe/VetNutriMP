@@ -523,8 +523,9 @@ private suspend fun exporterAnimalComplet(
                 // Générer le nom de fichier
                 val fileName = "${animal.id ?: animal.uuid}_${animal.nom}_export.json"
                 
-                // Sauvegarder le fichier avec sélecteur (sur Main pour l'UI)
-                val success = withContext(AppDispatchers.Main) {
+                // Le sélecteur Desktop doit être demandé hors du dispatcher Compose.
+                // L'implémentation de plateforme transfère ensuite le dialogue sur l'EDT.
+                val success = withContext(AppDispatchers.IO) {
                         exportApiEnvelopeToFile(envelope, fileName)
                 }
                 

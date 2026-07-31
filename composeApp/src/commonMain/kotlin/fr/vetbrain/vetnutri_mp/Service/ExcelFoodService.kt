@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
  */
 class ExcelFoodService(
     private val foodRepository: FoodRepository,
-    private val biblioRefRepository: BiblioRefRepository? = null
+    private val biblioRefRepository: BiblioRefRepository
 ) {
     private val csvService = AlimentExcelService()
 
@@ -62,18 +62,18 @@ class ExcelFoodService(
         }
 
         try {
-            // Les BiblioRef portées par les lignes CSV doivent exister dans la bibliothèque
-            // avant que importFoodsDomain n'écrive les jonctions aliment<->biblio (contrainte FK)
-            if (biblioRefRepository != null) {
-                val distinctBiblioRefs = parseResult.aliments
-                    .flatMap { it.biblioRefs }
-                    .distinctBy { it.uuid }
-                distinctBiblioRefs.forEach { ref ->
-                    try {
+            // Les références portées par le CSV/Excel doivent exister avant l'écriture des
+            // jonctions aliment <-> bibliographie (contrainte de clé étrangère). Une référence
+            // déjà connue reste inchangée ; seule une référence absente est ajoutée.
+            parseResult.aliments
+                .flatMap { it.biblioRefs }
+                .filter { it.uuid.isNotBlank() }
+                .distinctBy { it.uuid }
+                .forEach { ref ->
+                    if (biblioRefRepository.getBiblioRefById(ref.uuid) == null) {
                         biblioRefRepository.insertBiblioRef(ref)
-                    } catch (_: Exception) {}
+                    }
                 }
-            }
 
             // Utiliser le repository pour l'import avec persistance complète des nutriments
             val importResult = if (foodRepository is fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository) {

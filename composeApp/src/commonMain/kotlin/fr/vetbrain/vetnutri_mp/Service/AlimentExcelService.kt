@@ -260,10 +260,18 @@ class AlimentExcelService {
         val uuid = uuidRaw?.takeIf { it.isNotBlank() } ?: genUUID().also {
             logWarning("Ligne $lineNumber: UUID manquant, UUID généré automatiquement: $it")
         }
-        val nom = headerValueMap["Nom"]?.takeIf { it.isNotBlank() }
-        val brand = headerValueMap["Marque"]?.takeIf { it.isNotBlank() }
-        val gamme = headerValueMap["Gamme"]?.takeIf { it.isNotBlank() }
-        val ingredients = headerValueMap["Ingrédients"]?.takeIf { it.isNotBlank() }
+        val nom = headerValueMap.trouverValeurColonne(listOf("Nom", "Name"))
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+        val brand = headerValueMap.trouverValeurColonne(
+            listOf("Marque", "Brand", "Fabricant")
+        )?.trim()?.takeIf { it.isNotBlank() }
+        val gamme = headerValueMap.trouverValeurColonne(listOf("Gamme", "Range"))
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+        val ingredients = headerValueMap.trouverValeurColonne(
+            listOf("Ingrédients", "Ingredients")
+        )?.takeIf { it.isNotBlank() }
         
         logInfo("DEBUG - Première colonne: '${headers.first()}' = '${values.first()}'")
         logInfo("DEBUG - Mapping UUID: headerValueMap['UUID'] = '${headerValueMap["UUID"]}'")
@@ -691,11 +699,14 @@ class AlimentExcelService {
         return sansAccents
             .replace(" ", "")
             .replace("_", "")
+            .replace("\uFEFF", "")
+            .replace("-", "")
+            .trim()
     }
 
     /**
      * Normalise la valeur DataB importée:
-     * - conserve les codes connus (0, 1, 2, 4, 5, VF24, CHEVAL)
+     * - conserve les codes connus (0, 1, 2, 4, 5, VF24, VF2026, CHEVAL)
      * - convertit un libellé lisible (ex: "CIQUAL") vers son code
      * - sinon retourne la valeur d'origine trimmée
      */

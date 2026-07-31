@@ -976,9 +976,10 @@ private suspend fun importLegacyFoodDb(
     errors: MutableList<String>,
     log: suspend (String) -> Unit,
     logError: (String, Exception) -> Unit
-) {
+): List<Pair<String, String>> {
     val foodDao = appDatabase.foodDao()
     val nutrientValueDao = appDatabase.nutrientValueDao()
+    val pendingBiblioLinks = mutableListOf<Pair<String, String>>()
     // --- Aliments (base alimentaire) ---
     if (foodDb.exists()) {
         log("Lecture de Data-Food.db...")
@@ -1082,21 +1083,32 @@ private suspend fun importLegacyFoodDb(
                             categPrice = row["categPrice"] as? String ?: "",
                             brand = row["brand"] as? String ?: "",
                             gamme = row["gamme"] as? String ?: "",
-                            cont = "",
+                            cont = row.str("cont", "presentation") ?: "",
                             unitPres = (row["unitPres"] as? Number)?.toInt() ?: 0,
                             quantityPres = (row["quantityPres"] as? Number)?.toDouble() ?: 0.0,
-                            version = 1,
-                            date = "2021-12-20",
+                            version = row.num("version")?.toInt() ?: 1,
+                            date = row.str("date") ?: "",
                             nameDef = row["nameDef"] as? String ?: "",
                             consistent = (row["consistent"] as? Number)?.toInt() ?: 1,
                             deprecated = (row["deprecated"] as? Number)?.toInt() ?: 0,
                             DataB = row["DataB"] as? String ?: "",
                             name = nameFr ?: row["nameDef"] as? String,
+                            lastUpdateDate = row.str(
+                                "lastUpdateDate", "dateMaj", "last_update_date"
+                            ),
+                            imageRef = row.str("imageRef", "image", "imagePath"),
                             especesJson = especesStr,
                             indicationsJson = indicationsStr
                         )
                         foodDao.insertFood(entity)
                         stats.impFoods++
+
+                        row.stringList(
+                            "refBiblio", "biblioRef", "biblioRefId",
+                            "bibRef", "bib_ref", "bibliography"
+                        ).forEach { biblioRefUuid ->
+                            pendingBiblioLinks += uuid to biblioRefUuid
+                        }
 
                         // Valeurs nutritionnelles
                         val nutrientValues = mutableListOf<NutrientValueEntity>()
@@ -1133,8 +1145,41 @@ private suspend fun importLegacyFoodDb(
             }
         }
     }
+    return pendingBiblioLinks.distinct()
+}
 
-
+private suspend fun importLegacyFoodBiblioLinks(
+    links: List<Pair<String, String>>,
+    appDatabase: AppDatabase,
+    errors: MutableList<String>,
+    log: suspend (String) -> Unit
+) {
+    if (links.isEmpty()) {
+        log("Aucun lien aliment-bibliographie détecté dans Data-Food.db")
+        return
+    }
+    val validLinks = links.filter { (foodUuid, biblioRefUuid) ->
+        val valid = appDatabase.foodDao().getFoodById(foodUuid) != null &&
+            appDatabase.biblioRefDao().getBiblioRefById(biblioRefUuid) != null
+        if (!valid) {
+            errors += "Lien aliment-bibliographie non résolu: $foodUuid -> $biblioRefUuid"
+        }
+        valid
+    }
+    validLinks.chunked(500).forEach { chunk ->
+        appDatabase.alimentBiblioRefDao().insertAll(
+            chunk.map { (foodUuid, biblioRefUuid) ->
+                fr.vetbrain.vetnutri_mp.DataBase.AlimentBiblioRefEntity(
+                    alimentUuid = foodUuid,
+                    biblioRefUuid = biblioRefUuid
+                )
+            }
+        )
+    }
+    log(
+        "Liens aliment-bibliographie importés: ${validLinks.size}, " +
+            "non résolus: ${links.size - validLinks.size}"
+    )
 }
 
 private suspend fun importLegacyRefDb(
@@ -1520,8 +1565,9 @@ suspend fun runV2Migration(
     log("Traducteur UUID références VetNutri 2 -> VetNutri MP actif: ${LEGACY_REFERENCE_TRANSLATIONS.size} correspondances")
 
     importLegacyAnimDb(animDb, appDatabase, legacyReferencesByUuid, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
-    importLegacyFoodDb(foodDb, appDatabase, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
+    val foodBiblioLinks = importLegacyFoodDb(foodDb, appDatabase, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
     importLegacyRefDb(refDbFile, dbFolderPath, appDatabase, coefToRefMap, stats, errors, { msg -> log(msg) }, { msg, e -> logError(msg, e) })
+    importLegacyFoodBiblioLinks(foodBiblioLinks, appDatabase, errors, ::log)
 
     validateAndRepairConsultationReferences(appDatabase, coefToRefMap, ::log)
 

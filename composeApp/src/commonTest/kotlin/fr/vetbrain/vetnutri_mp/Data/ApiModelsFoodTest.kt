@@ -62,4 +62,34 @@ class ApiModelsFoodTest {
         val restored = original.toApi().toDomain()
         assertEquals(original.biblioRefs.map { it.uuid }, restored.biblioRefs.map { it.uuid })
     }
+
+    @Test
+    fun foodApi_toDomain_toApi_preservesEveryExportedField() {
+        val original = FoodApi(
+            uuid = "food-all-fields",
+            name = "Aliment complet",
+            group = "AUTRES",
+            kind = "COMPLET",
+            brand = "Marque",
+            price = 12.34,
+            categoryPrice = "Premium",
+            ingredients = "Poulet, riz",
+            gamme = "Gamme vétérinaire",
+            presentation = "CAN",
+            presentationQuantity = 395.0,
+            deprecated = true,
+            dataB = "VF2026",
+            consistent = true,
+            lastUpdateDate = "2026-07-31T12:34:56Z",
+            imageRef = "images/food-all-fields.png",
+            rationId = "ration-1",
+            species = listOf("CHIEN", "CHAT"),
+            indications = listOf("PHYS", "DERM"),
+            nutrients = mapOf("PROTEINE" to 24.5, "LIPIDE" to 13.2),
+            energyPerSpecies = mapOf("CHIEN" to 365.0, "CHAT" to 380.0),
+            biblioRefIds = listOf("biblio-1", "biblio-2")
+        )
+
+        assertEquals(original, original.toDomain().toApi())
+    }
 }

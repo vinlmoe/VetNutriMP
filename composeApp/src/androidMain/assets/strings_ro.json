@@ -1,5 +1,9 @@
 {
     "translations": {
+        "graph.chartTypeEvolutionPoids": "Evoluția greutății",
+        "graph.chartTypeRationsEnergie": "Distribuția energiei",
+        "graph.chartTypeNutrimentsRations": "Nutrienții rațiilor",
+        "graph.nutrimentNone": "Niciunul",
         "name": "Nume",
         "description": "Descriere",
         "id": "ID",

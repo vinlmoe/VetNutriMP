@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Repository
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
+import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
 import kotlin.test.AfterTest
@@ -133,5 +134,29 @@ class DatabaseFoodRepositoryImportOnlyIfNewerTest {
 
         assertEquals(1, result.updatedCount)
         assertEquals("Nom obsolète de l'import", db.foodDao().getFoodById("food-1")?.nameDef)
+    }
+
+    @Test
+    fun importFoodsDomain_existingFood_updatesBrandAndDatabase() = runTest {
+        seedExistingFood("food-1", "Aliment existant", "2024-01-01")
+
+        val result =
+            repository.importFoodsDomain(
+                listOf(
+                    AlimentEv(
+                        uuid = "food-1",
+                        nom = "Aliment existant",
+                        brand = "Nouvelle marque",
+                        dataB = "VF2026",
+                        lastUpdateDate = "2026-01-01"
+                    )
+                ),
+                importOnlyIfNewer = false
+            )
+
+        val updated = db.foodDao().getFoodById("food-1")
+        assertEquals(1, result.updatedCount)
+        assertEquals("Nouvelle marque", updated?.brand)
+        assertEquals("VF2026", updated?.DataB)
     }
 }

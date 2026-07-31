@@ -8,4 +8,4 @@ plugins {
     alias(libs.plugins.ksp) apply false
 
 }
-val releaseVersionNameSuffix by extra("4")
+val releaseVersionNameSuffix by extra("")

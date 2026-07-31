@@ -1,6 +1,6 @@
 # Makefile pour VetNutri MP - Gestion des icônes et du projet
 
-.PHONY: help icons test-icons clean-icons build test-all
+.PHONY: help icons test-icons clean-icons build test-all run-fresh
 
 # Variables
 ICON_SOURCE ?= assets/icon_example.svg
@@ -19,6 +19,7 @@ help:
 	@echo "Build :"
 	@echo "  make build              # Construire le projet"
 	@echo "  make test-all           # Tester et construire"
+	@echo "  make run-fresh          # Lancer Desktop avec une base temporaire neuve"
 	@echo ""
 	@echo "Exemples :"
 	@echo "  make icons SOURCE=assets/logo.png"
@@ -56,6 +57,10 @@ build:
 # Test complet et build
 test-all: test-icons build
 	@echo "✓ Tests et build terminés avec succès !"
+
+# Lancement Desktop isolé : la base est recréée à chaque exécution puis supprimée.
+run-fresh:
+	@./scripts/run_fresh_desktop.sh
 
 # Installation des dépendances (macOS)
 install-deps:
