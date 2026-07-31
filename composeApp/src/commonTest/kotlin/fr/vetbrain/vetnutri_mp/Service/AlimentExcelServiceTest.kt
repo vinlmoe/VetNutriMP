@@ -98,6 +98,32 @@ class AlimentExcelServiceTest {
     }
 
     @Test
+    fun importFromCsv_toleratesExcelHeadersForBrandAndDatabase() {
+        val csv =
+            "\uFEFFUUID;Nom;MARQUE ;Base-de-données\n" +
+                "food-1;Aliment test;Nouvelle marque;VetFood 2026"
+
+        val result = service.importFromCsv(csv)
+
+        assertEquals(emptyList(), result.errors)
+        assertEquals("Nouvelle marque", result.aliments.single().brand)
+        assertEquals("VF2026", result.aliments.single().dataB)
+    }
+
+    @Test
+    fun importFromCsv_selectedDatabaseOverridesCsvDatabase() {
+        val csv =
+            "UUID;Nom;Brand;DataB\n" +
+                "food-1;Aliment test;Nouvelle marque;VF24"
+
+        val result = service.importFromCsv(csv, dataB = "VF2026")
+
+        assertEquals(emptyList(), result.errors)
+        assertEquals("Nouvelle marque", result.aliments.single().brand)
+        assertEquals("VF2026", result.aliments.single().dataB)
+    }
+
+    @Test
     fun generateExampleCsv_includesEnergieParEspeceExample() {
         val csv = AlimentExcelService.generateExampleCsv()
         assertTrue(csv.contains("Énergie par Espèce"))
@@ -252,5 +278,34 @@ class AlimentExcelServiceTest {
         val parNom = result.aliments.associateBy { it.nom }
         assertEquals(listOf(refA), parNom["Aliment A"]?.biblioRefs)
         assertEquals(listOf(refB), parNom["Aliment B"]?.biblioRefs)
+    }
+
+    @Test
+    fun importFromCsv_plainTextProductBook_createsBibliographicReference() {
+        val csv =
+            "UUID;Nom;Bibliographie\n" +
+                "food-1;FCD;Product Book scientifique 2026.pdf (2026)"
+
+        val result = service.importFromCsv(csv)
+
+        assertEquals(emptyList(), result.errors)
+        val ref = result.aliments.single().biblioRefs.single()
+        assertEquals("Product Book scientifique 2026.pdf", ref.firstAuthor)
+        assertEquals(2026, ref.year)
+        assertEquals("Product Book scientifique 2026.pdf (2026)", ref.completeRef)
+        assertTrue(ref.uuid.startsWith("csv-biblio-"))
+    }
+
+    @Test
+    fun importFromCsv_samePlainTextReference_reusesStableUuid() {
+        val csv =
+            "UUID;Nom;Bibliographie\n" +
+                "food-1;FCD;Product Book scientifique 2026.pdf (2026)\n" +
+                "food-2;FPD;Product Book scientifique 2026.pdf (2026)"
+
+        val result = service.importFromCsv(csv)
+
+        val refs = result.aliments.map { it.biblioRefs.single() }
+        assertEquals(refs[0].uuid, refs[1].uuid)
     }
 }

@@ -1,5 +1,9 @@
 {
     "translations": {
+        "graph.chartTypeEvolutionPoids": "体重变化",
+        "graph.chartTypeRationsEnergie": "能量分布",
+        "graph.chartTypeNutrimentsRations": "日粮营养素",
+        "graph.nutrimentNone": "无",
         "welcome": "欢迎",
         "loading": "加载中...",
         "save": "保存",

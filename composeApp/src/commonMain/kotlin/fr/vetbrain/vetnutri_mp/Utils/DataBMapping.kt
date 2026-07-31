@@ -11,6 +11,7 @@ enum class DataB(val code: String, val displayName: String) {
     GENERIQUE("4", "Générique"),
     ALIMENT_BARF("5", "Aliment Barf"),
     VETFOOD_2024("VF24", "VetFood 2024"),
+    VETFOOD_2026("VF2026", "VetFood 2026"),
     CHEVAL("CHEVAL", "Cheval");
 
     companion object {
@@ -81,7 +82,7 @@ enum class DataB(val code: String, val displayName: String) {
  * }
  *
  * // 4. Liste de toutes les valeurs disponibles val allDataB = DataB.values() // Array<DataB> val
- * allCodes = DataB.values().map { it.code } // ["0", "1", "2", "4", "5", "VF24"]
+ * allCodes = DataB.values().map { it.code } // ["0", "1", "2", "4", "5", "VF24", "VF2026"]
  *
  * // 5. Recherche par nom d'enum val vetFood = DataB.valueOf("VETFOOD_2024") // DataB.VETFOOD_2024
  */

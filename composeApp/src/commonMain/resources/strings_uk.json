@@ -1,5 +1,9 @@
 {
     "translations": {
+        "graph.chartTypeEvolutionPoids": "Динаміка ваги",
+        "graph.chartTypeRationsEnergie": "Розподіл енергії",
+        "graph.chartTypeNutrimentsRations": "Поживні речовини раціонів",
+        "graph.nutrimentNone": "Немає",
         "name": "Назва",
         "description": "Опис",
         "id": "ID",

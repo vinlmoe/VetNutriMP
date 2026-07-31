@@ -4,8 +4,11 @@ import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
+import fr.vetbrain.vetnutri_mp.Data.toApi
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefEntity
+import fr.vetbrain.vetnutri_mp.Service.AlimentExcelService
+import fr.vetbrain.vetnutri_mp.Service.ExcelFoodService
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -94,5 +97,94 @@ class DatabaseFoodRepositoryBiblioImportTest {
         // Second import (mise à jour) : uniquement refB -> refA doit disparaître, sans doublon
         repository.importFoodsDomain(listOf(AlimentEv(uuid = "food-1", nom = "Test", biblioRefs = listOf(refB))))
         assertEquals(listOf("b"), db.alimentBiblioRefDao().getBiblioRefUuids("food-1"))
+    }
+
+    @Test
+    fun getAllFoods_afterImport_returnsCompleteBiblioRefsForExport() = runTest {
+        val refA = BiblioRef(
+            uuid = "a",
+            firstAuthor = "Auteur A",
+            year = 2019,
+            completeRef = "Référence A",
+            comments = "Commentaire A",
+            bibtex = "@article{a}",
+            consistent = 1
+        )
+        val refB = BiblioRef(
+            uuid = "b",
+            firstAuthor = "Auteur B",
+            year = 2022,
+            completeRef = "Référence B",
+            comments = "Commentaire B",
+            bibtex = "@article{b}",
+            consistent = 0
+        )
+        insertBiblioRef(refA)
+        insertBiblioRef(refB)
+        repository.importFoodsDomain(
+            listOf(
+                AlimentEv(
+                    uuid = "food-1",
+                    nom = "Test",
+                    biblioRefs = listOf(refA, refB)
+                )
+            )
+        )
+
+        val exportedFood = repository.getAllFoods().single()
+
+        assertEquals(listOf(refA, refB), exportedFood.biblioRefs)
+        assertEquals(listOf("a", "b"), exportedFood.toApi().biblioRefIds)
+    }
+
+    @Test
+    fun csvImport_addsUnknownBiblioRefWithoutOverwritingKnownReference() = runTest {
+        val knownStored = BiblioRef(
+            uuid = "known",
+            firstAuthor = "Auteur conservé",
+            year = 2018,
+            completeRef = "Référence locale à conserver"
+        )
+        insertBiblioRef(knownStored)
+
+        val knownFromCsv = knownStored.copy(
+            firstAuthor = "Auteur du CSV",
+            completeRef = "Cette valeur ne doit pas écraser la référence locale"
+        )
+        val unknownFromCsv = BiblioRef(
+            uuid = "unknown",
+            firstAuthor = "Nouvel auteur",
+            year = 2025,
+            completeRef = "Nouvelle référence importée"
+        )
+        val csv = AlimentExcelService().exportToCsv(
+            listOf(
+                AlimentEv(
+                    uuid = "food-from-csv",
+                    nom = "Aliment importé",
+                    biblioRefs = listOf(knownFromCsv, unknownFromCsv)
+                )
+            )
+        )
+        val service = ExcelFoodService(
+            foodRepository = repository,
+            biblioRefRepository = DatabaseBiblioRefRepository(db.biblioRefDao())
+        )
+
+        val result = service.importFoodsFromCsv(csv)
+
+        assertTrue(result.success, result.message)
+        assertEquals(
+            "Référence locale à conserver",
+            db.biblioRefDao().getBiblioRefById("known")?.completeRef
+        )
+        assertEquals(
+            "Nouvelle référence importée",
+            db.biblioRefDao().getBiblioRefById("unknown")?.completeRef
+        )
+        assertEquals(
+            setOf("known", "unknown"),
+            db.alimentBiblioRefDao().getBiblioRefUuids("food-from-csv").toSet()
+        )
     }
 }

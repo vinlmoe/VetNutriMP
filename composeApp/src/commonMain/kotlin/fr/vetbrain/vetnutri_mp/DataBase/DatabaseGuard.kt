@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.DataBase
 
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.datetime.Clock
 import okio.FileSystem
 import okio.Path.Companion.toPath
@@ -19,6 +20,28 @@ fun backupDatabaseFiles(dbPath: String) {
                 fs.copy(src, "$dbPath$ext.bak".toPath())
             }
         } catch (_: Exception) {}
+    }
+}
+
+/**
+ * Force une première lecture SQLite avant la construction paresseuse de Room.
+ *
+ * `RoomDatabase.Builder.build()` n'ouvre pas immédiatement la connexion : sans ce contrôle,
+ * une corruption n'est découverte qu'au premier appel DAO, hors du `try/catch` d'initialisation.
+ */
+fun isDatabaseReadable(dbPath: String): Boolean {
+    val path = dbPath.toPath()
+    if (!FileSystem.SYSTEM.exists(path)) return true
+
+    return try {
+        BundledSQLiteDriver().open(dbPath).use { connection ->
+            connection.prepare("PRAGMA schema_version").use { statement ->
+                statement.step()
+            }
+        }
+        true
+    } catch (_: Exception) {
+        false
     }
 }
 

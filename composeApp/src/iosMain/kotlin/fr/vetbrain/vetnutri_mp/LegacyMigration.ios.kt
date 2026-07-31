@@ -3,7 +3,7 @@ package fr.vetbrain.vetnutri_mp
 import fr.vetbrain.vetnutri_mp.ViewModel.LegacyMigrationViewModel
 
 actual fun detectLegacyV2DbFolder(): String? = null
-actual fun browseLegacyV2DbFolder(): String? = null
+actual suspend fun browseLegacyV2DbFolder(): String? = null
 actual suspend fun previewLegacyV2Migration(
     dbFolderPath: String
 ): LegacyMigrationViewModel.MigrationCounts = LegacyMigrationViewModel.MigrationCounts()

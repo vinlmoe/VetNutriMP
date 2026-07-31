@@ -414,15 +414,12 @@ fun RationsEnergieChart(
                                                                 // Point principal avec couleur
                                                                 // selon sélection
                                                                 val couleurPoint =
-                                                                        if (data.rationId ==
-                                                                                        rationSelectionnee
-                                                                        ) {
-                                                                                Color(
-                                                                                        0xFF9C27B0
-                                                                                ) // Violet
-                                                                        } else {
-                                                                                VetNutriColors
-                                                                                        .Primary
+                                                                        when {
+                                                                                data.rationId == rationSelectionnee ->
+                                                                                        Color(0xFF9C27B0)
+                                                                                data.rationId in rationsActuellesIds ->
+                                                                                        Color(0xFFFF9800)
+                                                                                else -> VetNutriColors.Primary
                                                                         }
 
                                                                 androidx.compose.foundation.Canvas(
@@ -471,8 +468,14 @@ fun RationsEnergieChart(
                                         if (labelX < -halfBadge || labelX > maxWidth ||
                                                 labelY < -halfBadge || labelY > maxHeight) return@forEachIndexed
 
-                                        val numeroColor = if (data.rationId == rationSelectionnee)
-                                                Color(0xFF9C27B0) else VetNutriColors.Primary
+                                        val numeroColor =
+                                                when {
+                                                        data.rationId == rationSelectionnee ->
+                                                                Color(0xFF9C27B0)
+                                                        data.rationId in rationsActuellesIds ->
+                                                                Color(0xFFFF9800)
+                                                        else -> VetNutriColors.Primary
+                                                }
                                         val numFontSize = if (data.numero >= 100) 9.sp else if (data.numero >= 10) 10.sp else 12.sp
                                         val shortName = data.rationName.take(9).let {
                                                 if (data.rationName.length > 9) "$it…" else it
@@ -607,11 +610,39 @@ fun RationsEnergieChart(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
-                                Text(
-                                        text = translate(LocalizationKeys.Graph.LEGEND_RATIONS),
-                                        style = MaterialTheme.typography.caption,
-                                        fontWeight = FontWeight.Bold
-                                )
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        Text(
+                                                text = translate(LocalizationKeys.Graph.LEGEND_RATIONS),
+                                                style = MaterialTheme.typography.caption,
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                        Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingMedium)
+                                        ) {
+                                                RationTypeLegendItem(
+                                                        color = Color(0xFFFF9800),
+                                                        label =
+                                                                translate(
+                                                                        LocalizationKeys.Graph
+                                                                                .LEGEND_CURRENT_RATIONS
+                                                                )
+                                                )
+                                                RationTypeLegendItem(
+                                                        color = VetNutriColors.Primary,
+                                                        label =
+                                                                translate(
+                                                                        LocalizationKeys.Ration
+                                                                                .PROPOSED
+                                                                )
+                                                )
+                                        }
+                                }
                                 rationsEnergieData.forEach { data ->
                                         Row(
                                                 modifier =
@@ -625,42 +656,67 @@ fun RationsEnergieChart(
                                                                                 else data.rationId
                                                                 }
                                                                 .background(
-                                                                        if (rationSelectionnee ==
-                                                                                        data.rationId
-                                                                        )
-                                                                                Color(0xFF9C27B0)
-                                                                                        .copy(
-                                                                                                alpha =
-                                                                                                        0.1f
-                                                                                        )
-                                                                        else Color.Transparent
+                                                                        when {
+                                                                                rationSelectionnee ==
+                                                                                        data.rationId ->
+                                                                                        Color(0xFF9C27B0)
+                                                                                                .copy(alpha = 0.1f)
+                                                                                data.rationId in
+                                                                                        rationsActuellesIds ->
+                                                                                        Color(0xFFFF9800)
+                                                                                                .copy(alpha = 0.1f)
+                                                                                else -> Color.Transparent
+                                                                        }
                                                                 )
                                                                 .padding(AppSizes.paddingSmall),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                        Text(
-                                                                text =
-                                                                        "${data.numero}. ${data.rationName}",
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .caption,
-                                                                fontWeight = FontWeight.Medium
-                                                        )
-                                                        Text(
-                                                                text =
-                                                                        "${translate(LocalizationKeys.Chart.PROTEIN)}: ${GraphFormattingUtils.formatPercentage(data.proteineEnergyPercentage)} | ${translate(LocalizationKeys.Chart.FAT)}: ${GraphFormattingUtils.formatPercentage(data.lipideEnergyPercentage)}",
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .caption,
-                                                                color =
-                                                                        MaterialTheme.colors
-                                                                                .onSurface.copy(
-                                                                                alpha = 0.6f
-                                                                        ),
-                                                                fontSize = 10.sp
-                                                        )
+                                                Row(
+                                                        modifier = Modifier.weight(1f),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                ) {
+                                                        val rationColor =
+                                                                if (data.rationId in rationsActuellesIds)
+                                                                        Color(0xFFFF9800)
+                                                                else VetNutriColors.Primary
+                                                        androidx.compose.foundation.Canvas(
+                                                                modifier = Modifier.size(8.dp)
+                                                        ) {
+                                                                drawCircle(
+                                                                        color = rationColor,
+                                                                        radius = 4f,
+                                                                        center = center
+                                                                )
+                                                        }
+                                                        Column {
+                                                                Text(
+                                                                        text =
+                                                                                "${data.numero}. ${data.rationName}",
+                                                                        style =
+                                                                                MaterialTheme.typography
+                                                                                        .caption,
+                                                                        fontWeight = FontWeight.Medium,
+                                                                        color = rationColor
+                                                                )
+                                                                Text(
+                                                                        text =
+                                                                                "${translate(LocalizationKeys.Chart.PROTEIN)}: ${GraphFormattingUtils.formatPercentage(data.proteineEnergyPercentage)} | ${translate(LocalizationKeys.Chart.FAT)}: ${GraphFormattingUtils.formatPercentage(data.lipideEnergyPercentage)}",
+                                                                        style =
+                                                                                MaterialTheme.typography
+                                                                                        .caption,
+                                                                        color =
+                                                                                MaterialTheme.colors
+                                                                                        .onSurface.copy(
+                                                                                        alpha = 0.6f
+                                                                                ),
+                                                                        fontSize = 10.sp
+                                                                )
+                                                        }
                                                 }
                                                 Text(
                                                         text =
@@ -678,3 +734,19 @@ fun RationsEnergieChart(
         }
 }
 
+@Composable
+private fun RationTypeLegendItem(color: Color, label: String) {
+        Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+        ) {
+                androidx.compose.foundation.Canvas(modifier = Modifier.size(10.dp)) {
+                        drawCircle(color = color, radius = 5f, center = center)
+                }
+                Text(
+                        text = label,
+                        style = MaterialTheme.typography.caption,
+                        color = color
+                )
+        }
+}

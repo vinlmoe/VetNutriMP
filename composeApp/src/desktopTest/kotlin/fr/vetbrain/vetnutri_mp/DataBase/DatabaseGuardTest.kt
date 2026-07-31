@@ -81,6 +81,19 @@ class DatabaseGuardTest {
     }
 
     @Test
+    fun isDatabaseReadable_missingFile_isValidForFirstLaunch() {
+        assertTrue(isDatabaseReadable(dbPath))
+        assertFalse(File(dbPath).exists(), "le contrôle ne doit pas créer la base avant Room")
+    }
+
+    @Test
+    fun isDatabaseReadable_rejectsNonSqliteFile() {
+        File(dbPath).writeText("not a real sqlite database file")
+
+        assertFalse(isDatabaseReadable(dbPath))
+    }
+
+    @Test
     fun rotateCorruptDatabaseFiles_movesMainFile_leavingOriginalPathFree() {
         File(dbPath).writeText("corrupt-data")
 
