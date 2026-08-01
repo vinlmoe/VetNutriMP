@@ -9,3 +9,13 @@ plugins {
 
 }
 val releaseVersionNameSuffix by extra("")
+
+// Permet de placer tous les artefacts de build hors d'un dossier synchronisé
+// (par exemple OneDrive) : -Pvetnutri.buildDir=C:\\VetNutriBuild
+providers.gradleProperty("vetnutri.buildDir").orNull?.let { configuredPath ->
+    val externalBuildRoot = file(configuredPath)
+    layout.buildDirectory.set(externalBuildRoot.resolve("root"))
+    subprojects {
+        layout.buildDirectory.set(externalBuildRoot.resolve(name))
+    }
+}
