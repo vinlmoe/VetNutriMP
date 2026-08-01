@@ -1052,11 +1052,12 @@ private suspend fun importLegacyFoodDb(
 
                 // Pré-charger les IDs existants pour éviter N requêtes
                 val existingIds = foodDao.getAllFoodIds().toHashSet()
+                val existingIdsNormalized = existingIds.map { it.lowercase() }.toHashSet()
 
                 rows.forEach { row ->
                     try {
                         val uuid = row["UUID"] as? String ?: return@forEach
-                        if (uuid in existingIds) {
+                        if (uuid in existingIds || uuid.lowercase() in existingIdsNormalized) {
                             stats.skipFoods++; return@forEach
                         }
 
