@@ -43,7 +43,12 @@ class DatabaseFoodRepositoryImportOnlyIfNewerTest {
         db.close()
     }
 
-    private suspend fun seedExistingFood(uuid: String, nom: String, lastUpdateDate: String?) {
+    private suspend fun seedExistingFood(
+        uuid: String,
+        nom: String,
+        lastUpdateDate: String?,
+        deprecated: Int = 0
+    ) {
         db.foodDao().insertFood(
             FoodEntity(
                 uuid = uuid,
@@ -61,7 +66,7 @@ class DatabaseFoodRepositoryImportOnlyIfNewerTest {
                 date = "",
                 nameDef = nom,
                 consistent = 0,
-                deprecated = 0,
+                deprecated = deprecated,
                 DataB = "6",
                 name = nom,
                 lastUpdateDate = lastUpdateDate
@@ -107,9 +112,7 @@ class DatabaseFoodRepositoryImportOnlyIfNewerTest {
     }
 
     @Test
-    fun importFoods_incomingDataWithoutDate_withImportOnlyIfNewer_stillUpdates() = runTest {
-        // Un import sans date exploitable ne peut pas être comparé : on privilégie la
-        // disponibilité de la donnée plutôt qu'un blocage silencieux (cf. shouldUpdateFood).
+    fun importFoods_incomingDataWithoutDate_withImportOnlyIfNewer_doesNotOverwrite() = runTest {
         seedExistingFood("food-1", "Ancien nom", "2024-06-01")
 
         val result = repository.importFoods(
@@ -118,8 +121,8 @@ class DatabaseFoodRepositoryImportOnlyIfNewerTest {
             importOnlyIfNewer = true
         )
 
-        assertEquals(1, result.updatedCount)
-        assertEquals("Nom sans date", db.foodDao().getFoodById("food-1")?.nameDef)
+        assertEquals(0, result.updatedCount)
+        assertEquals("Ancien nom", db.foodDao().getFoodById("food-1")?.nameDef)
     }
 
     @Test
@@ -158,5 +161,29 @@ class DatabaseFoodRepositoryImportOnlyIfNewerTest {
         assertEquals(1, result.updatedCount)
         assertEquals("Nouvelle marque", updated?.brand)
         assertEquals("VF2026", updated?.DataB)
+    }
+
+    @Test
+    fun importFoodsDomain_existingDeprecatedFood_incomingActiveDoesNotReactivateIt() = runTest {
+        seedExistingFood("food-1", "Aliment obsolète", "2024-01-01", deprecated = 1)
+
+        val result =
+            repository.importFoodsDomain(
+                listOf(
+                    AlimentEv(
+                        uuid = "food-1",
+                        nom = "Aliment obsolète",
+                        brand = "Marque importée",
+                        deprecated = false,
+                        lastUpdateDate = "2026-01-01"
+                    )
+                ),
+                importOnlyIfNewer = true
+            )
+
+        val updated = db.foodDao().getFoodById("food-1")
+        assertEquals(1, result.updatedCount)
+        assertEquals("Marque importée", updated?.brand)
+        assertEquals(1, updated?.deprecated)
     }
 }
