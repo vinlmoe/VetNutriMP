@@ -256,7 +256,9 @@ fun AnalyseSelectionAlimentsView(
                     lysine != null && lysine > 0.0 && methionine != null && methionine > 0.0
                 }
 
-            matchesSearch && matchesType && matchesGroup && matchesEspece && matchesIndications && matchesDataB && matchesNutrients && matchesAmino
+            val matchesDeprecated = filters.includeDeprecated || !aliment.deprecated
+
+            matchesSearch && matchesType && matchesGroup && matchesEspece && matchesIndications && matchesDataB && matchesNutrients && matchesAmino && matchesDeprecated
         }
         
         // Trier les résultats
@@ -365,7 +367,7 @@ fun AnalyseSelectionAlimentsView(
                             contentDescription = translate(LocalizationKeys.Chart.ADVANCED_SORT_CONTENT_DESC),
                             tooltip = translate(LocalizationKeys.Chart.ADVANCED_SORT_TOOLTIP),
                             onClick = { showAdvancedSortDialog = true },
-                            tint = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface,
+                            tint = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null || filters.includeDeprecated) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface,
                             iconModifier = Modifier.size(18.dp)
                         )
                     }

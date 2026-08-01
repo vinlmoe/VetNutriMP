@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## 3.3.06
+
+### Changed
+- Bump de version applicative vers **3.3.06 (306)** sur Android, iOS et Desktop.
+- Mise à jour des données initiales intégrées vers la version **3.3.06**.
+
 ## 3.3.05
 
 ### Changed
