@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View.Components
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -118,12 +120,16 @@ fun TermsDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = translate(LocalizationKeys.Terms.TITLE),
+                text = translate(LocalizationKeys.Terms.FULL_TITLE),
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Text(
                     text = translate(LocalizationKeys.Terms.WARNING),
                     style = MaterialTheme.typography.body2,
@@ -139,28 +145,43 @@ fun TermsDialog(
                 )
 
                 Text(
-                    text = translate(LocalizationKeys.Terms.CONDITION_PRO),
+                    text = translate(LocalizationKeys.Terms.POINT_VETS),
                     style = MaterialTheme.typography.body2,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Text(
-                    text = translate(LocalizationKeys.Terms.CONDITION_INFO),
+                    text = translate(LocalizationKeys.Terms.POINT_INFORMATIVE),
                     style = MaterialTheme.typography.body2,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Text(
-                    text = translate(LocalizationKeys.Terms.CONDITION_RESPONSIBILITY),
+                    text = translate(LocalizationKeys.Terms.POINT_NO_MEDICAL),
                     style = MaterialTheme.typography.body2,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Text(
-                    text = translate(LocalizationKeys.Terms.CONDITION_PRIVACY),
+                    text = translate(LocalizationKeys.Terms.POINT_RESPONSIBILITY),
+                    style = MaterialTheme.typography.body2,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Text(
+                    text = translate(LocalizationKeys.Terms.POINT_CONFIDENTIAL),
+                    style = MaterialTheme.typography.body2,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Text(
+                    text = translate(LocalizationKeys.Terms.POINT_DATA_EXPORT),
+                    style = MaterialTheme.typography.body2,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Text(
+                    text = translate(LocalizationKeys.Terms.POINT_PRIVACY_POLICY),
                     style = MaterialTheme.typography.body2,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
                 Text(
-                    text = translate(LocalizationKeys.Terms.CREDITS),
+                    text = translate(LocalizationKeys.Terms.AUTHOR_FOOTER),
                     style = MaterialTheme.typography.caption,
                     color = VetNutriColors.Secondary,
                     textAlign = TextAlign.Center

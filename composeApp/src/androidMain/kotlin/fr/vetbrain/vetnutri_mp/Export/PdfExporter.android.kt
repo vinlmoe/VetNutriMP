@@ -8,26 +8,28 @@ import android.print.PrintManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 actual object PdfExporter {
     actual suspend fun exportDocument(
             documentType: DocumentType,
             data: ExportData,
             defaultFileName: String
-    ): Boolean {
+    ): Boolean = withContext(Dispatchers.Main) {
                 val activity: Activity? = AndroidContext.getCurrentActivityOrNull()
-                if (activity == null) return false
+                if (activity == null) return@withContext false
                 val html: String = HtmlDocumentBuilder.buildHtml(documentType, data)
-                return exportHtmlInternal(activity, html, defaultFileName)
+                exportHtmlInternal(activity, html, defaultFileName)
         }
 
     actual suspend fun exportHtmlDocument(
             html: String,
             defaultFileName: String
-    ): Boolean {
+    ): Boolean = withContext(Dispatchers.Main) {
                 val activity: Activity? = AndroidContext.getCurrentActivityOrNull()
-                if (activity == null) return false
-                return exportHtmlInternal(activity, html, defaultFileName)
+                if (activity == null) return@withContext false
+                exportHtmlInternal(activity, html, defaultFileName)
         }
 
     private fun exportHtmlInternal(
@@ -38,10 +40,10 @@ actual object PdfExporter {
                 try {
                         val webView = WebView(activity)
                         webView.settings.javaScriptEnabled = false
-                        webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
                         webView.webViewClient =
                                 object : WebViewClient() {
                                         override fun onPageFinished(view: WebView?, url: String?) {
+                                                val loadedView = view ?: return
                                                 val printManager =
                                                         activity.getSystemService(
                                                                 Context.PRINT_SERVICE
@@ -50,7 +52,7 @@ actual object PdfExporter {
                                                 val jobName =
                                                         defaultFileName.ifBlank { "document.pdf" }
                                                 val printAdapter: PrintDocumentAdapter =
-                                                        view!!.createPrintDocumentAdapter(jobName)
+                                                        loadedView.createPrintDocumentAdapter(jobName)
                                                 val attributes =
                                                         PrintAttributes.Builder()
                                                                 .setMediaSize(
@@ -78,6 +80,7 @@ actual object PdfExporter {
                                                 )
                                         }
                                 }
+                        webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
                         return true
                 } catch (t: Throwable) {
                         return false
