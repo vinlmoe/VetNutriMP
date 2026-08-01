@@ -180,7 +180,8 @@ class DatabaseFoodRepository(
         if (!importOnlyIfNewer) return true
         val incomingInstant = parseDateToInstantOrNull(incomingDate)
         val existingInstant = parseDateToInstantOrNull(existing.lastUpdateDate)
-        if (incomingInstant == null || existingInstant == null) return true
+        if (incomingInstant == null) return false
+        if (existingInstant == null) return true
         return incomingInstant > existingInstant
     }
 
@@ -340,7 +341,12 @@ class DatabaseFoodRepository(
                                     }
                                     val updated: FoodEntity =
                                             aliment.toFoodEntity()
-                                                    .copy(RefRation = existing.RefRation)
+                                                    .copy(
+                                                            RefRation = existing.RefRation,
+                                                            deprecated =
+                                                                    if (aliment.deprecated) 1
+                                                                    else existing.deprecated
+                                                    )
                                     updateEntities.add(updated)
                                     batchNutrientValues.addAll(
                                             aliment.valMap.toNutrientValueEntities(aliment.uuid)
