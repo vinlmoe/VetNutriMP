@@ -26,6 +26,7 @@ import fr.vetbrain.vetnutri_mp.Utils.DatabaseVersionManager
 import fr.vetbrain.vetnutri_mp.Utils.AppLogo
 import fr.vetbrain.vetnutri_mp.Utils.TermsAcceptanceStorage
 import fr.vetbrain.vetnutri_mp.Utils.UpdateChecker
+import fr.vetbrain.vetnutri_mp.Utils.isWindowsPlatform
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel.ImportResult
 import fr.vetbrain.vetnutri_mp.Enumer.TextConstant
@@ -112,6 +113,47 @@ fun StartupScreen(
         var hasJustImported by remember { mutableStateOf(false) }
 
         val coroutineScope = rememberCoroutineScope()
+        fun launchDatabaseUpdateAutomatically() {
+                if (isUpdatingDatabase || hasJustImported) return
+                showJsonUpdateDialog = false
+                showUpdateDialog = false
+                showUpdateButtonByDefault = false
+                isUpdatingDatabase = true
+                settingsViewModel.launchAutomaticImport(forceImport = true) { result ->
+                        coroutineScope.launch {
+                                when (result) {
+                                        is SettingsViewModel.ImportResult.Success -> {
+                                                val foodCount = settingsViewModel.foodRepository.getAllFoods().size
+                                                val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
+                                                val conseilsCount = try {
+                                                        conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+                                                } catch (_: Exception) { 0 }
+                                                databaseStatus = databaseStatus?.copy(
+                                                        foodCount = foodCount,
+                                                        referenceCount = referenceCount,
+                                                        conseilsCount = conseilsCount,
+                                                        needsUpdate = false,
+                                                        error = null
+                                                )
+                                                currentJsonVersion = databaseVersionManager.getStoredJsonVersion()
+                                                jsonUpdateAvailable = embeddedJsonVersion?.let { embedded ->
+                                                        currentJsonVersion?.let { stored ->
+                                                                databaseVersionManager.compareVersions(embedded, stored) > 0
+                                                        } ?: true
+                                                } ?: false
+                                                hasJustImported = true
+                                                isUpdatingDatabase = false
+                                        }
+                                        is SettingsViewModel.ImportResult.Error -> {
+                                                databaseStatus = databaseStatus?.copy(
+                                                        error = translate("startup.update_error", result.message ?: "")
+                                                )
+                                                isUpdatingDatabase = false
+                                        }
+                                }
+                        }
+                }
+        }
 
         // Vérifier l'état de la base de données, des CGU et des versions au démarrage
         LaunchedEffect(Unit) {
@@ -196,7 +238,8 @@ fun StartupScreen(
                                         jsonUpdateAvailable = isUpdate
                                         // Ne pas afficher le dialogue si un import vient d'être fait ou si une mise à jour est en cours
                                         if (jsonUpdateAvailable && !isUpdatingDatabase && !hasJustImported) {
-                                                showJsonUpdateDialog = true
+                                                if (isWindowsPlatform) launchDatabaseUpdateAutomatically()
+                                                else showJsonUpdateDialog = true
                                                 val formattedIntegrated: String =
                                                         databaseVersionManager.formatVersion(
                                                                 localEmbeddedJsonVersion
@@ -276,7 +319,8 @@ fun StartupScreen(
                                                 jsonUpdateAvailable = isUpdate
                                                 // Ne pas afficher le dialogue si un import vient d'être fait ou si une mise à jour est en cours
                                                 if (jsonUpdateAvailable && !isUpdatingDatabase && !hasJustImported) {
-                                                        showJsonUpdateDialog = true
+                                                        if (isWindowsPlatform) launchDatabaseUpdateAutomatically()
+                                                        else showJsonUpdateDialog = true
                                                         val formattedIntegrated: String =
                                                                 databaseVersionManager
                                                                         .formatVersion(
@@ -902,7 +946,8 @@ fun StartupScreen(
                                                 ) {
                                                         Button(
                                                                 onClick = {
-                                                                        showUpdateDialog = true
+                                                                        if (isWindowsPlatform) launchDatabaseUpdateAutomatically()
+                                                                        else showUpdateDialog = true
                                                                         journaliserMiseAJour(
                                                                                 "Ouverture du popup de mise à jour de la base (manuel)"
                                                                         )
@@ -1367,7 +1412,7 @@ fun StartupScreen(
 
                 // Dialogue automatique de mise à jour JSON (priorité haute)
                 // Ne pas afficher si un import vient d'être fait
-                if (showJsonUpdateDialog && !isUpdatingDatabase && !showUpdateDialog && !hasJustImported) {
+                if (!isWindowsPlatform && showJsonUpdateDialog && !isUpdatingDatabase && !showUpdateDialog && !hasJustImported) {
                         journaliserMiseAJour("Affichage du popup de mise à jour JSON")
                         JsonUpdateDialog(
                                 currentJsonVersion = currentJsonVersion,
@@ -1481,7 +1526,7 @@ fun StartupScreen(
                 }
 
                 // Dialogue de confirmation de mise à jour
-                if (showUpdateDialog) {
+                if (!isWindowsPlatform && showUpdateDialog) {
                         journaliserMiseAJour("Affichage du popup de mise à jour de la base")
                         UpdateConfirmationDialog(
                                 onConfirm = {
