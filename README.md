@@ -78,7 +78,7 @@ fr.vetbrain.vetnutri_mp/
 ### Prérequis
 
 - JDK 11+
-- Android SDK API 35
+- Android SDK API 36
 - Xcode (iOS uniquement)
 - Gradle via wrapper (`./gradlew`)
 
