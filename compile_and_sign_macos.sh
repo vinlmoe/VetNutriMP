@@ -52,8 +52,8 @@ fi
 # 3. Créez un nouveau mot de passe pour "App Store Connect API"
 # 4. Configurez les variables ci-dessous
 
-APPLE_ID="sebastien.lefebvre@vetbrain.fr"  # Votre Apple ID (ex: votre@email.com)
-APP_SPECIFIC_PASSWORD="slub-kica-ofmz-iwnz"  # Mot de passe spécifique généré (format: xxxx-xxxx-xxxx-xxxx)
+APPLE_ID="${APPLE_ID:-}"  # Votre Apple ID (ex: votre@email.com)
+APP_SPECIFIC_PASSWORD="${APP_SPECIFIC_PASSWORD:-}"  # Mot de passe spécifique généré (format: xxxx-xxxx-xxxx-xxxx)
 
 # Alternative: Utiliser un fichier de configuration pour éviter de mettre les credentials dans le script
 # Créez un fichier .notarization_config avec:
@@ -295,8 +295,8 @@ if [ -z "$APPLE_ID" ] || [ -z "$APP_SPECIFIC_PASSWORD" ]; then
     echo "   APPLE_ID=votre@email.com"
     echo "   APP_SPECIFIC_PASSWORD=xxxx-xxxx-xxxx-xxxx"
     echo ""
-    echo "   Option 2: Modifier directement ce script"
-    echo "   Décommentez et configurez APPLE_ID et APP_SPECIFIC_PASSWORD"
+    echo "   Option 2: Définir les variables d'environnement"
+    echo "   APPLE_ID=votre@email.com APP_SPECIFIC_PASSWORD=xxxx-xxxx-xxxx-xxxx ./compile_and_sign_macos.sh"
     echo ""
     echo "   Pour générer un mot de passe spécifique:"
     echo "   1. Allez sur https://appleid.apple.com"
