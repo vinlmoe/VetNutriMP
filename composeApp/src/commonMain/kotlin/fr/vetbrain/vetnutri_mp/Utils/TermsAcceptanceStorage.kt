@@ -13,7 +13,7 @@ class TermsAcceptanceStorage {
     companion object {
         private const val KEY_TERMS_ACCEPTED = "terms_accepted"
         private const val KEY_TERMS_VERSION = "terms_version"
-        private const val CURRENT_TERMS_VERSION = "1.0"
+        private const val CURRENT_TERMS_VERSION = "1.1"
     }
 
     private val _isTermsAccepted = MutableStateFlow(false)

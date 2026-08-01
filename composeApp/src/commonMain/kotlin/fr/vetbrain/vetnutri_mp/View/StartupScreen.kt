@@ -2012,7 +2012,11 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
                         )
                 },
                 text = {
-                        Column {
+                        Column(
+                                modifier =
+                                        Modifier.heightIn(max = 420.dp)
+                                                .verticalScroll(rememberScrollState())
+                        ) {
                                 Text(
                                         text =
                                                                                                 translate(LocalizationKeys.Terms.SUBTITLE),
@@ -2051,6 +2055,12 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
                                 )
                                 Text(
                                         text =
+                                                translate(LocalizationKeys.Terms.POINT_NO_MEDICAL),
+                                        style = MaterialTheme.typography.body2,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                                Text(
+                                        text =
                                                 translate(LocalizationKeys.Terms.POINT_RESPONSIBILITY),
                                         style = MaterialTheme.typography.body2,
                                         modifier = Modifier.padding(bottom = 4.dp)
@@ -2058,6 +2068,18 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
                                 Text(
                                         text =
                                                 translate(LocalizationKeys.Terms.POINT_CONFIDENTIAL),
+                                        style = MaterialTheme.typography.body2,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                                Text(
+                                        text =
+                                                translate(LocalizationKeys.Terms.POINT_DATA_EXPORT),
+                                        style = MaterialTheme.typography.body2,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                                Text(
+                                        text =
+                                                translate(LocalizationKeys.Terms.POINT_PRIVACY_POLICY),
                                         style = MaterialTheme.typography.body2,
                                         modifier = Modifier.padding(bottom = 16.dp)
                                 )
