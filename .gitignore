@@ -1,6 +1,7 @@
 *.iml
 .kotlin
 .gradle
+.gradle-local/
 **/build/
 xcuserdata
 !src/**/build/
