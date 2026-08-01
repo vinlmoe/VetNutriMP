@@ -4,7 +4,7 @@
 
 VetNutri MP permet aux vétérinaires et nutritionnistes de calculer et d'analyser les rations alimentaires des animaux de compagnie. Elle couvre la sélection des aliments, le calcul des besoins énergétiques, l'analyse nutritionnelle détaillée et l'export de rapports.
 
-> Version actuelle : **3.3.05**
+> Version actuelle : **3.3.06**
 
 ---
 
