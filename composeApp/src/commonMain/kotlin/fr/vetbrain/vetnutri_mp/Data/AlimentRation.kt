@@ -92,7 +92,7 @@ data class AlimentRation(
                 // D'abord, essayer d'obtenir la valeur directement (avec calcul d'énergie si
                 // nécessaire)
                 val valeurDirecte = getNutrient(nutrient, referenceEv)
-                if (valeurDirecte != null && valeurDirecte > 0.0) {
+                if (valeurDirecte != null) {
                         return valeurDirecte
                 }
 

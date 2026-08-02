@@ -2,6 +2,16 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## 3.3.11
+
+- Bump de version applicative vers **3.3.11 (311)** sur Android, iOS et Desktop.
+- Mise à jour des trois données initiales intégrées avec `vetnutri_export_init_finv6.json`.
+
+## 3.3.10
+
+- Bump de version applicative vers **3.3.10 (310)** sur Android, iOS et Desktop.
+- Mise à jour des trois données initiales intégrées vers la version **3.3.10**.
+
 ## 3.3.06
 
 ### Changed
