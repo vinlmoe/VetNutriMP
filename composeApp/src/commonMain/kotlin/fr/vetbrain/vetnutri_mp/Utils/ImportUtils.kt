@@ -886,65 +886,6 @@ object ImportUtils {
             }
         }
 
-        // Calcul de l'ENA si manquant mais qu'on a les autres valeurs
-        if (valMap.containsKey("ENA")) {
-            val enaValue =
-                    try {
-                        val enaObj = valMap["ENA"] as? JsonObject
-                        (enaObj?.get("value") as? JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0
-                    } catch (e: Exception) {
-                        0.0
-                    }
-
-            // Si ENA est 0, essayer de le calculer
-            if (enaValue == 0.0) {
-                try {
-                    val proteine =
-                            (valMap["PROTEINE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
-                            }
-                                    ?: 0.0
-                    val lipide =
-                            (valMap["LIPIDE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
-                            }
-                                    ?: 0.0
-                    val humidite =
-                            (valMap["HUMIDITE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
-                            }
-                                    ?: 0.0
-                    val cendre =
-                            (valMap["CENDRE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
-                            }
-                                    ?: 0.0
-                    val cellulose =
-                            (valMap["CELLULOSE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
-                            }
-                                    ?: 0.0
-
-                    // Formule pour calculer l'ENA
-                    val calculatedEna = 100.0 - proteine - lipide - humidite - cendre - cellulose
-
-                    // Ne mettre à jour que si le résultat est positif et que les valeurs semblent
-                    // cohérentes
-                    if (calculatedEna > 0 &&
-                                    (proteine + lipide + humidite + cendre + cellulose) <= 100.0
-                    ) {
-                        val nutritionValue =
-                                JsonObject(
-                                        mapOf(
-                                                "value" to JsonPrimitive(calculatedEna),
-                                                "nut" to JsonPrimitive("ENA")
-                                        )
-                                )
-                        valMap["ENA"] = nutritionValue
-                    }
-                } catch (e: Exception) {}
-            }
-        }
     }
 
     /**
