@@ -795,9 +795,6 @@ fun suggestDefaultTargetNutrient(
         val aliment = alimentRation.aliment ?: return null
         val kind: FoodKind? = aliment.typeAliment
 
-        // Si aliment complet → par défaut ÉNERGIE (ajustement énergétique par défaut)
-        if (kind == FoodKind.COMPLET) return NutrientMain.ENERGIE.label
-
         fun n(nutrient: Nutrient): Double {
                 return aliment.valMap[nutrient]?.value ?: 0.0
         }
@@ -811,6 +808,7 @@ fun suggestDefaultTargetNutrient(
         val lipideMs: Double = toMsPercent(n(NutrientMain.LIPIDE))
         val enaMs: Double = toMsPercent(n(NutrientMain.ENA))
         val celluloseMs: Double = toMsPercent(n(NutrientMain.CELLULOSE))
+        val sodiumMs: Double = toMsPercent(n(NutrientMacro.NA))
         val o6Ms: Double = toMsPercent(n(NutrientLipid.O6))
         val epaDha: Double = n(NutrientLipid.EPADHA)
 
@@ -832,6 +830,12 @@ fun suggestDefaultTargetNutrient(
         }
 
         return when {
+                // Un aliment très concentré en sodium (notamment le sel) doit être ajusté sur NA,
+                // jamais utilisé comme source d'énergie.
+                (sodiumMs > 20.0 && hasReferenceForNutrient(NutrientMacro.NA)) ->
+                        NutrientMacro.NA.label
+                // Si aliment complet → par défaut ÉNERGIE (ajustement énergétique par défaut)
+                kind == FoodKind.COMPLET -> NutrientMain.ENERGIE.label
                 // (Cendres/MS > 10) et présence de Calcium
                 (cendreMs > 10.0 &&
                         aliment.valMap.containsKey(NutrientMacro.CAL) &&

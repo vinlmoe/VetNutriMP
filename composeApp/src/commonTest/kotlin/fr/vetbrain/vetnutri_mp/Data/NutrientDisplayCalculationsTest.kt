@@ -8,6 +8,7 @@ import fr.vetbrain.vetnutri_mp.Repository.InMemoryEquationRepository
 import kotlinx.coroutines.test.runTest
 import kotlin.math.abs
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @OptIn(kotlin.uuid.ExperimentalUuidApi::class)
@@ -62,6 +63,66 @@ class NutrientDisplayCalculationsTest {
         )
         // valeurPour100g = PROTEINE(20) * 0.1 = 2.0 ; contribution = 2.0 * 200 / 100 = 4.0
         assertNear(4.0, contribution)
+    }
+
+    @Test
+    fun getNutrientWithComplementary_valeurExpliciteZero_neLancePasEquation() = runTest {
+        val aliment = AlimentEv().also { it.setNutrient(NutrientMain.ENA, 0.0) }
+        val alimentRation = AlimentRation(aliment = aliment, quantite = 100.0)
+        val equationRepository = InMemoryEquationRepository()
+        val equation = Equation(
+                uuid = "eq-ena",
+                equationScript = "100-PROTEINE-HUMIDITE-CELLULOSE-CENDRE-LIPIDE",
+                kind = EquationKind.COMPLEMENTARY_NUTRIENT,
+                nutrient = NutrientMain.ENA,
+                ratio = false,
+                specie = Espece.CHIEN
+        )
+        equationRepository.saveEquation(equation)
+        val reference = ReferenceEv(espece = Espece.CHIEN).also {
+            it.equationsNut = mutableListOf(equation)
+        }
+
+        val ena = alimentRation.getNutrientWithComplementary(
+                NutrientMain.ENA,
+                equationRepository,
+                reference
+        )
+
+        assertEquals(0.0, ena)
+    }
+
+    @Test
+    fun getNutrientWithComplementary_enaAbsente_utiliseEquationComplementaire() = runTest {
+        val aliment = AlimentEv().also {
+            it.setNutrient(NutrientMain.PROTEINE, 20.0)
+            it.setNutrient(NutrientMain.HUMIDITE, 10.0)
+            it.setNutrient(NutrientMain.CELLULOSE, 5.0)
+            it.setNutrient(NutrientMain.CENDRE, 5.0)
+            it.setNutrient(NutrientMain.LIPIDE, 10.0)
+        }
+        val alimentRation = AlimentRation(aliment = aliment, quantite = 100.0)
+        val equationRepository = InMemoryEquationRepository()
+        val equation = Equation(
+                uuid = "eq-ena-absente",
+                equationScript = "100-PROTEINE-HUMIDITE-CELLULOSE-CENDRE-LIPIDE",
+                kind = EquationKind.COMPLEMENTARY_NUTRIENT,
+                nutrient = NutrientMain.ENA,
+                ratio = false,
+                specie = Espece.CHIEN
+        )
+        equationRepository.saveEquation(equation)
+        val reference = ReferenceEv(espece = Espece.CHIEN).also {
+            it.equationsNut = mutableListOf(equation)
+        }
+
+        val ena = alimentRation.getNutrientWithComplementary(
+                NutrientMain.ENA,
+                equationRepository,
+                reference
+        )
+
+        assertEquals(50.0, ena)
     }
 
     @Test

@@ -683,7 +683,7 @@ object Mappers {
 
         /**
          * Convertit une map de nutriments et valeurs en liste d'entités de valeurs de nutriments.
-         * Ne crée des entités que pour les nutriments avec des valeurs > 0.
+         * Crée des entités pour les valeurs positives ou explicitement nulles.
          */
         // DÉBUT ZONE PROTÉGÉE - NE PAS MODIFIER SANS AUTORISATION EXPRESSE
         // Description: Méthode critique pour la conversion de Map<Nutrient, NutrientQuantity> en
@@ -694,8 +694,8 @@ object Mappers {
 alimentUuid: String
         ): List<NutrientValueEntity> {
                 return mapNotNull { (nutrient, nutrientQuantity) ->
-                        // Ne créer des entités que pour les valeurs strictement positives
-                        if (nutrientQuantity.value > 0) {
+                        // Conserver zéro afin de distinguer une valeur explicite d'une absence.
+                        if (nutrientQuantity.value >= 0) {
                                 NutrientValueEntity(
                                         refAliment = alimentUuid,
                                         nutrientLabel = nutrient.label,
