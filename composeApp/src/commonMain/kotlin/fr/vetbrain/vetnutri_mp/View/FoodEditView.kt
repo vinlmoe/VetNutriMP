@@ -273,8 +273,7 @@ fun FoodEditView(
                                                                                                         "."
                                                                                                 )
                                                                                                 .toDoubleOrNull()
-                                                                                                ?: 0.0
-                                                                                if (value > 0.0) {
+                                                                                if (value != null && value >= 0.0) {
                                                                                         processedNutrientValues[
                                                                                                 nutrient] =
                                                                                                 fr.vetbrain
@@ -286,9 +285,8 @@ fun FoodEditView(
                                                                                                         )
                                                                                 }
                                                                         }
-                                                                        // Si vide ou valeur ≤ 0,
-                                                                        // ne pas ajouter pour
-                                                                        // supprimer la valeur.
+                                                                        // Un champ vide supprime la valeur ; un
+                                                                        // zéro explicite est conservé.
                                                                 }
                                                         }
 
