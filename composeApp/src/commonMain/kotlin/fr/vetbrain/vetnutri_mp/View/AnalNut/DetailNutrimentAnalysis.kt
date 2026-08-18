@@ -110,6 +110,7 @@ fun NutrientDetailDialog(
         poidsMetabolique: Double?,
         referenceUtilisee: ReferenceEv?,
         besoinEnergetiqueEntretien: Double?,
+        besoinEnergetiqueCible: Double? = besoinEnergetiqueEntretien,
         poidsAnimal: Double?,
         espece: Espece,
         preferencesStorage: PreferencesStorage,
@@ -204,6 +205,8 @@ fun NutrientDetailDialog(
                                                                                 poidsMetabolique,
                                                                         besoinEnergetiqueEntretien =
                                                                                 besoinEnergetiqueEntretien,
+                                                                        besoinEnergetiqueCible =
+                                                                                besoinEnergetiqueCible,
                                                                         referencesMaladies =
                                                                                 referencesMaladies,
                                                                         ration = ration,
@@ -251,6 +254,8 @@ fun NutrientDetailDialog(
                                                                                         poidsMetabolique,
                                                                                 besoinEnergetiqueEntretien =
                                                                                         besoinEnergetiqueEntretien,
+                                                                                besoinEnergetiqueCible =
+                                                                                        besoinEnergetiqueCible,
                                                                                 ration = ration,
                                                                                 equationRepository =
                                                                                         equationRepository
@@ -289,6 +294,7 @@ fun ReferenceBulletGraph(
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
         besoinEnergetiqueEntretien: Double?,
+        besoinEnergetiqueCible: Double? = besoinEnergetiqueEntretien,
         referencesMaladies: List<ReferenceEv> = emptyList(),
         onClick: (() -> Unit)? = null,
         ration: Ration? = null,
@@ -326,7 +332,7 @@ fun ReferenceBulletGraph(
                                 nutriment = nutriment,
                                 level = Reflevel.MIN,
                                 typeExpressionBesoin = typeExpressionBesoin,
-                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                besoinEnergetiqueEntretien = besoinEnergetiqueCible,
                                 poidsAnimal = poidsAnimal,
                                 poidsMetabolique = poidsMetabolique
                         )
@@ -379,7 +385,7 @@ fun ReferenceBulletGraph(
                                 nutriment = nutriment,
                                 level = Reflevel.MAX,
                                 typeExpressionBesoin = typeExpressionBesoin,
-                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                besoinEnergetiqueEntretien = besoinEnergetiqueCible,
                                 poidsAnimal = poidsAnimal,
                                 poidsMetabolique = poidsMetabolique
                         )
@@ -1130,6 +1136,7 @@ private fun ReferenceCard(
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
         besoinEnergetiqueEntretien: Double?,
+        besoinEnergetiqueCible: Double? = besoinEnergetiqueEntretien,
         referencesMaladies: List<ReferenceEv> = emptyList(),
         ration: Ration? = null,
         equationRepository: EquationRepository? = null
@@ -1152,10 +1159,10 @@ private fun ReferenceCard(
                 }
         val apportBulletGraph: Double =
                 if (nutrient == fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE &&
-                                besoinEnergetiqueEntretien != null &&
-                                besoinEnergetiqueEntretien > 0.0
+                                besoinEnergetiqueCible != null &&
+                                besoinEnergetiqueCible > 0.0
                 ) {
-                        (valeurNutritionnelle.valeur / besoinEnergetiqueEntretien) * 100.0
+                        (valeurNutritionnelle.valeur / besoinEnergetiqueCible) * 100.0
                 } else {
                         apportConverti
                 }
@@ -1183,6 +1190,7 @@ private fun ReferenceCard(
                                 poidsAnimal = poidsAnimal,
                                 poidsMetabolique = poidsMetabolique,
                                 besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                besoinEnergetiqueCible = besoinEnergetiqueCible,
                                 referencesMaladies = referencesMaladies,
                                 onClick = null,
                                 ration = ration,
@@ -1196,6 +1204,7 @@ private fun ReferenceCard(
                                 poidsAnimal = poidsAnimal,
                                 poidsMetabolique = poidsMetabolique,
                                 besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                besoinEnergetiqueCible = besoinEnergetiqueCible,
                                 isAnalysisNoUnit = isAnalysisNoUnit
                         )
                 }
@@ -1211,6 +1220,7 @@ private fun ReferenceLevelsList(
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
         besoinEnergetiqueEntretien: Double?,
+        besoinEnergetiqueCible: Double? = besoinEnergetiqueEntretien,
         isAnalysisNoUnit: Boolean
 ) {
         val refLevels: List<Pair<Reflevel, String>> =
@@ -1226,7 +1236,7 @@ private fun ReferenceLevelsList(
                         if (!hasExplicitReference &&
                                         hasDefaultEnergyReferenceLevels(
                                                 nutrient,
-                                                besoinEnergetiqueEntretien
+                                                besoinEnergetiqueCible
                                         )
                         ) {
                                 when (level) {
@@ -1252,7 +1262,7 @@ private fun ReferenceLevelsList(
                         val biblioRef = reference.obtenirBiblioNutriment(nutrient, level)
                         val besoinAbsolu: Double? =
                                 if (defaultEnergyFactor != null) {
-                                        besoinEnergetiqueEntretien?.let { it * defaultEnergyFactor }
+                                        besoinEnergetiqueCible?.let { it * defaultEnergyFactor }
                                 } else if (isAnalysisNoUnit) null
                                 else {
                                         calculerBesoinAbsolu(
