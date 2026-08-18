@@ -1,5 +1,5 @@
 {
-  "version": "3.3.11",
+  "version": "3.3.12",
   "generatedAtEpochMs": 1785677693571,
   "animals": [],
   "foods": [
@@ -821459,6 +821459,7 @@
       "espece": "CHAT",
       "stadePhysio": "ADULTE",
       "equationBW": "58762753-f70e-488c-8651-5f2bf8392d93",
+      "equationBEE": "b77d731f-c073-4e43-9465-359b62862ceb",
       "equationDEcom": "3605a2c3-bae8-45a1-a92f-f211f4014634",
       "equationDEraw": "7c30719d-086f-4d08-8f06-ef40e9951185",
       "equationsNut": [
@@ -822543,6 +822544,7 @@
       "espece": "CHIEN",
       "stadePhysio": "ADULTE",
       "equationBW": "fb07e159-5d58-480f-b15e-4c90f652331d",
+      "equationBEE": "b77d731f-c073-4e43-9465-359b62862ceb",
       "equationDEcom": "91601582-3b6e-41a8-b168-5feaa4e5bbfd",
       "equationDEraw": "7c30719d-086f-4d08-8f06-ef40e9951185",
       "equationsNut": [
