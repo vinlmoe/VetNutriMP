@@ -1,7 +1,11 @@
 package fr.vetbrain.vetnutri_mp.Localization
 
+import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import java.io.File
 import kotlin.io.path.readText
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 
 actual open class ResourceReader actual constructor() {
     actual open fun readResource(name: String): String {
@@ -68,6 +72,33 @@ actual open class ResourceReader actual constructor() {
             readResource(name)
         } catch (e: Exception) {
             throw IllegalStateException("Failed to read resource $name: ${e.message}", e)
+        }
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    actual open fun readApiEnvelopeOptimized(name: String): ApiEnvelope {
+        val json = Json {
+            ignoreUnknownKeys = true
+            explicitNulls = false
+        }
+        val classLoader = this::class.java.classLoader
+        val resourceStream = classLoader.getResourceAsStream(name)
+        if (resourceStream != null) {
+            return resourceStream.use { inputStream ->
+                json.decodeFromStream(ApiEnvelope.serializer(), inputStream)
+            }
+        }
+
+        val candidateFiles =
+                listOf(
+                        File("composeApp/src/commonMain/resources/$name"),
+                        File("../composeApp/src/commonMain/resources/$name"),
+                        File("src/commonMain/resources/$name")
+                )
+        val file = candidateFiles.firstOrNull { it.exists() }
+                ?: throw IllegalStateException("Resource not found: $name")
+        return file.inputStream().use { inputStream ->
+            json.decodeFromStream(ApiEnvelope.serializer(), inputStream)
         }
     }
     

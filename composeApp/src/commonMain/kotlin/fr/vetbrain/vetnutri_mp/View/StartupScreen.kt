@@ -267,92 +267,9 @@ fun StartupScreen(
                                                         triggered
                                         )
                                 } else {
-                                        // Fallback: lire seulement les premières lignes pour
-                                        // extraire la version
-                                        val candidats: List<String> =
-                                                listOf(
-                                                        "data/vetnutri_export_init.json",
-                                                        "vetnutri_export_init.json"
-                                                )
-                                        var versionTrouvee: String? = null
-                                        for (nom in candidats) {
-                                                try {
-                                                        // ⚠️ CRITIQUE: Ne lire que les premières
-                                                        // lignes au lieu du fichier complet 18MB
-                                                        val contenuPartiel: String =
-                                                                resourceReader
-                                                                        .readResourceOptimized(nom)
-                                                        val lignes =
-                                                                contenuPartiel
-                                                                        .lines()
-                                                                        .take(
-                                                                                50
-                                                                        ) // Seulement 50 premières
-                                                        // lignes
-                                                        val contenuReduit =
-                                                                lignes.joinToString("\n")
-                                                        versionTrouvee =
-                                                                extraireVersionJson(contenuReduit)
-                                                        if (versionTrouvee != null) {
-                                                                embeddedJsonVersion = versionTrouvee
-                                                                break
-                                                        }
-                                                } catch (_: Exception) {}
-                                        }
-                                        if (versionTrouvee != null) {
-                                                journaliserMiseAJour(
-                                                        "Version JSON intégrée (fallback)=" +
-                                                                versionTrouvee
-                                                )
-                                                // Aligner le comportement: recalcul de la mise à
-                                                // jour et popup éventuel
-                                                val currentStoredVersion: String? =
-                                                        databaseVersionManager
-                                                                .getStoredJsonVersion()
-                                                val isUpdate: Boolean =
-                                                        currentStoredVersion == null ||
-                                                                databaseVersionManager
-                                                                        .compareVersions(
-                                                                                versionTrouvee,
-                                                                                currentStoredVersion
-                                                                        ) > 0
-                                                jsonUpdateAvailable = isUpdate
-                                                // Ne pas afficher le dialogue si un import vient d'être fait ou si une mise à jour est en cours
-                                                if (jsonUpdateAvailable && !isUpdatingDatabase && !hasJustImported) {
-                                                        if (isWindowsPlatform) launchDatabaseUpdateAutomatically()
-                                                        else showJsonUpdateDialog = true
-                                                        val formattedIntegrated: String =
-                                                                databaseVersionManager
-                                                                        .formatVersion(
-                                                                                versionTrouvee
-                                                                        )
-                                                        val stored: String =
-                                                                currentStoredVersion ?: "Aucune"
-                                                        journaliserMiseAJour(
-                                                                "Détection nouvelle version JSON intégrée=" +
-                                                                        formattedIntegrated +
-                                                                        "; version stockée=" +
-                                                                        stored +
-                                                                        "; déclenchement du popup JSON=true"
-                                                        )
-                                                }
-                                                val stored: String =
-                                                        currentStoredVersion ?: "Aucune"
-                                                val triggered: Boolean =
-                                                        jsonUpdateAvailable && !isUpdatingDatabase
-                                                journaliserMiseAJour(
-                                                        "Version JSON stockée=" +
-                                                                stored +
-                                                                "; Version JSON intégrée=" +
-                                                                versionTrouvee +
-                                                                "; popupDéclenché=" +
-                                                                triggered
-                                                )
-                                        } else {
-                                                journaliserMiseAJour(
-                                                        "Version JSON intégrée introuvable"
-                                                )
-                                        }
+                                        journaliserMiseAJour(
+                                                "Version JSON intégrée introuvable via lecture partielle"
+                                        )
                                 }
                         } catch (e: Exception) {
                                 // En cas d'erreur, on considère qu'aucune mise à jour n'est

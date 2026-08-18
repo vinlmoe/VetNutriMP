@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Localization
 
+import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
+
 expect open class ResourceReader() {
     open fun readResource(name: String): String
 
@@ -8,6 +10,12 @@ expect open class ResourceReader() {
      * Utilise un buffer plus petit pour éviter les OutOfMemoryError.
      */
     open fun readResourceOptimized(name: String): String
+
+    /**
+     * Décode une ressource ApiEnvelope sans matérialiser le JSON complet en String
+     * sur les plateformes qui supportent le streaming.
+     */
+    open fun readApiEnvelopeOptimized(name: String): ApiEnvelope
 
     /**
      * Lit seulement le début d'une ressource JSON pour extraire la version.
