@@ -212,15 +212,11 @@ fun StartupScreen(
                                         try {
                                                 resourceReader.readJsonVersion(
                                                         "vetnutri_export_init.json"
+                                                ) ?: resourceReader.readJsonVersion(
+                                                        "data/vetnutri_export_init.json"
                                                 )
                                         } catch (e: Exception) {
-                                                try {
-                                                        resourceReader.readJsonVersion(
-                                                                "data/vetnutri_export_init.json"
-                                                        )
-                                                } catch (e2: Exception) {
-                                                        null
-                                                }
+                                                null
                                         }
                                 embeddedJsonVersion = localEmbeddedJsonVersion
                                 if (localEmbeddedJsonVersion != null) {
