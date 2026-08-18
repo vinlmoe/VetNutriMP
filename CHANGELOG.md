@@ -2,6 +2,10 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## 3.3.12
+
+- Bump de version applicative vers **3.3.12 (312)** sur Android, iOS et Desktop.
+
 ## 3.3.11
 
 - Bump de version applicative vers **3.3.11 (311)** sur Android, iOS et Desktop.
