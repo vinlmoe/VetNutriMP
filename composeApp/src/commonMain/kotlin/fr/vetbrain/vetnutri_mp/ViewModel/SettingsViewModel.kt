@@ -632,23 +632,23 @@ class SettingsViewModel(
                 log("⚠️ Import forcé: base de données incomplète ou vide")
             }
 
-            // Lire le fichier de ressources pour l'import automatique (plein JSON)
-            log("Lecture du fichier JSON de ressources...")
-            val json =
+            // Lire et parser le fichier de ressources sans matérialiser le JSON complet sur JVM.
+            log("Lecture/parsing du fichier JSON de ressources...")
+            val envelope =
                     try {
                         // Essayer d'abord le chemin iOS (direct), puis le chemin Android/Desktop
                         // (data/)
                         try {
                             log("Tentative de lecture: vetnutri_export_init.json")
                             val result = resourceReader
-                                    .readResourceOptimized("vetnutri_export_init.json")
-                            log("✓ Fichier lu avec succès (${result.length} caractères)")
+                                    .readApiEnvelopeOptimized("vetnutri_export_init.json")
+                            log("✓ Fichier lu avec succès (foods=${result.foods.size}, references=${result.references.size})")
                             result
                         } catch (e: Exception) {
                             log("⚠ Chemin direct échoué, tentative: data/vetnutri_export_init.json")
                             val result = resourceReader
-                                    .readResourceOptimized("data/vetnutri_export_init.json")
-                            log("✓ Fichier lu avec succès (${result.length} caractères)")
+                                    .readApiEnvelopeOptimized("data/vetnutri_export_init.json")
+                            log("✓ Fichier lu avec succès (foods=${result.foods.size}, references=${result.references.size})")
                             result
                         }
                     } catch (e: Exception) {
@@ -658,8 +658,8 @@ class SettingsViewModel(
                         )
                     }
 
-            if (json.isEmpty()) {
-                log("❌ ERREUR: Le fichier JSON est vide")
+            if (envelope.foods.isEmpty() && envelope.references.isEmpty() && envelope.animals.isEmpty()) {
+                log("❌ ERREUR: Le fichier JSON ne contient aucune donnée importable")
                 throw IllegalStateException(translate("settings.importFileEmpty"))
             }
 
@@ -667,7 +667,7 @@ class SettingsViewModel(
             log("Démarrage de l'import des données...")
             val importCounts =
                     exportImportRepo.importAll(
-                            apiJson = json,
+                            envelope = envelope,
                             listener =
                                     fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
                                             .ImportProgressListener(
@@ -697,13 +697,10 @@ class SettingsViewModel(
 
             // Mettre à jour la version JSON après import réussi
             log("Mise à jour de la version JSON stockée...")
-            if (embeddedVersion != null) {
-                databaseVersionManager.updateJsonVersionAfterImport(
-                        embeddedVersion = embeddedVersion
-                )
-            } else {
-                databaseVersionManager.updateJsonVersionAfterImport(json)
-            }
+            databaseVersionManager.updateJsonVersionAfterImport(
+                    embeddedVersion = embeddedVersion ?: envelope.version,
+                    embeddedTimestamp = envelope.generatedAtEpochMs
+            )
             val newStoredVersion = databaseVersionManager.getStoredJsonVersion()
             log("✓ Version JSON mise à jour: ${newStoredVersion ?: "Aucune"}")
 

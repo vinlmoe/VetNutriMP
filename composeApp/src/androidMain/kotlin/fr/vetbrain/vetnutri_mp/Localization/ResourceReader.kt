@@ -1,6 +1,10 @@
 package fr.vetbrain.vetnutri_mp.Localization
 
+import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import java.io.File
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 
 actual open class ResourceReader actual constructor() {
     actual open fun readResource(name: String): String {
@@ -21,6 +25,17 @@ actual open class ResourceReader actual constructor() {
                 output.append(String(buffer, 0, bytesRead))
             }
             output.toString()
+        }
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    actual open fun readApiEnvelopeOptimized(name: String): ApiEnvelope {
+        val json = Json {
+            ignoreUnknownKeys = true
+            explicitNulls = false
+        }
+        return AndroidContext.appContext.assets.open(name).use { inputStream ->
+            json.decodeFromStream(ApiEnvelope.serializer(), inputStream)
         }
     }
     

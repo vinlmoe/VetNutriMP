@@ -1,8 +1,10 @@
 package fr.vetbrain.vetnutri_mp.Localization
 
+import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
+import kotlinx.serialization.json.Json
 import platform.Foundation.NSBundle
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -57,6 +59,14 @@ actual open class ResourceReader actual constructor() {
      */
     actual open fun readResourceOptimized(name: String): String {
         return readResource(name)
+    }
+
+    actual open fun readApiEnvelopeOptimized(name: String): ApiEnvelope {
+        val json = Json {
+            ignoreUnknownKeys = true
+            explicitNulls = false
+        }
+        return json.decodeFromString(ApiEnvelope.serializer(), readResource(name))
     }
     
     /**

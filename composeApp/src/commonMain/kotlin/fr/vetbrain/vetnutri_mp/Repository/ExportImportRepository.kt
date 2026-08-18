@@ -565,10 +565,16 @@ class ExportImportRepository(
                 apiJson: String,
                 listener: ImportProgressListener? = null
         ): ImportCounts {
-
                 listener?.onProgress?.invoke(0.02)
                 listener?.onLog?.invoke("Lecture/Parsing du JSON…")
                 val envelope = jsonPretty.decodeFromString<ApiEnvelope>(apiJson)
+                return importAll(envelope, listener)
+        }
+
+        suspend fun importAll(
+                envelope: ApiEnvelope,
+                listener: ImportProgressListener? = null
+        ): ImportCounts {
 
                 listener?.onLog?.invoke(
                         "Contenu: animals=${envelope.animals.size}, foods=${envelope.foods.size}, rations=${envelope.rations.size}, recipes=${envelope.recipes.size}, equations=${envelope.equations.size}, biblioRefs=${envelope.biblioRefs.size}, references=${envelope.references.size}, conseils=${envelope.conseils.size}, consultationKeywords=${envelope.consultationKeywords.size}"
