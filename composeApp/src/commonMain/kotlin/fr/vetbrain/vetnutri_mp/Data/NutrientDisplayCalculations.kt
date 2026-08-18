@@ -153,7 +153,8 @@ fun calculerBulletGraphData(
     typeExpressionBesoin: TypeExpressionBesoin?,
     poidsAnimal: Double?,
     poidsMetabolique: Double?,
-    besoinEnergetiqueEntretien: Double?
+    besoinEnergetiqueEntretien: Double?,
+    besoinEnergetiqueCible: Double?
 ): BulletGraphData? {
     if (reference == null) return null
     val nutrient = valeurNutritionnelle.nutriment
@@ -171,7 +172,7 @@ fun calculerBulletGraphData(
         return if (valeurRef > 0.0) {
             convertirRef(valeurRef, UnitReqEnum.getById(reference.obtenirUniteNutriment(nutrient, level)))
         } else if (defaultLevel != null) {
-            defaultEnergyReferenceLevel(nutrient, defaultLevel, besoinEnergetiqueEntretien = besoinEnergetiqueEntretien)
+            defaultEnergyReferenceLevel(nutrient, defaultLevel, besoinEnergetiqueEntretien = besoinEnergetiqueCible)
         } else null
     }
 
@@ -188,8 +189,8 @@ fun calculerBulletGraphData(
             besoinEnergetiqueEntretien, poidsAnimal, poidsMetabolique
         ) ?: valeurNutritionnelle.valeur
     }
-    val apport = if (hasDefaultEnergyReferenceLevels(nutrient, besoinEnergetiqueEntretien)) {
-        (valeurNutritionnelle.valeur / besoinEnergetiqueEntretien!!) * 100.0
+    val apport = if (hasDefaultEnergyReferenceLevels(nutrient, besoinEnergetiqueCible)) {
+        (valeurNutritionnelle.valeur / besoinEnergetiqueCible!!) * 100.0
     } else {
         apportConverti
     }
@@ -234,7 +235,8 @@ fun calculerConformite(
     besoinEnergetiqueEntretien: Double?,
     poidsAnimal: Double?,
     poidsMetabolique: Double?,
-    referencesMaladies: List<ReferenceEv> = emptyList()
+    referencesMaladies: List<ReferenceEv> = emptyList(),
+    besoinEnergetiqueCible: Double? = besoinEnergetiqueEntretien
 ): ConformiteResult? {
     val nutrient = valeurNutritionnelle.nutriment
     val apportAbsolu = valeurNutritionnelle.valeur
@@ -270,7 +272,7 @@ fun calculerConformite(
         var hasReferences = false
 
         listOf(Reflevel.MIN, Reflevel.OPTIMIN).forEach { level ->
-            val defaultNeed = defaultEnergyNeed(nutrient, level, besoinEnergetiqueEntretien)
+            val defaultNeed = defaultEnergyNeed(nutrient, level, besoinEnergetiqueCible)
             if (reference.contientNutriment(nutrient, level) || defaultNeed != null) {
                 hasReferences = true
                 val valeurRef = reference.obtenirNutriment(nutrient, level)
@@ -293,7 +295,7 @@ fun calculerConformite(
         }
 
         listOf(Reflevel.MAX, Reflevel.OPTIMAX).forEach { level ->
-            val defaultNeed = defaultEnergyNeed(nutrient, level, besoinEnergetiqueEntretien)
+            val defaultNeed = defaultEnergyNeed(nutrient, level, besoinEnergetiqueCible)
             if (reference.contientNutriment(nutrient, level) || defaultNeed != null) {
                 hasReferences = true
                 val valeurRef = reference.obtenirNutriment(nutrient, level)

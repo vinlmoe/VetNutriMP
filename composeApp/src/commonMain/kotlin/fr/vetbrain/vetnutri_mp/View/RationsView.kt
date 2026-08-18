@@ -444,7 +444,7 @@ fun RationsView(
                                                                 poidsMetabolique =
                                                                         poidsMetabolique,
                                                                 besoinEnergetiqueEntretien =
-                                                                        besoinEnergetiqueTotal,
+                                                                        besoinEnergetiqueStandard,
                                                                 besoinEnergetiqueStandard =
                                                                         besoinEnergetiqueStandard,
                                                                 besoinEnergetiqueTotal =
@@ -1017,6 +1017,8 @@ fun RationsView(
                                                                                 referenceUtilisee =
                                                                                         referenceUtilisee,
                                                                                 besoinEnergetiqueEntretien =
+                                                                                        besoinEnergetiqueStandard,
+                                                                                besoinEnergetiqueCible =
                                                                                         besoinEnergetiqueTotal,
                                                                                 poidsAnimal =
                                                                                         selectedConsultation
@@ -1424,6 +1426,8 @@ fun RationsView(
                                                                         referenceUtilisee =
                                                                                 referenceUtilisee,
                                                                         besoinEnergetiqueEntretien =
+                                                                                besoinEnergetiqueStandard,
+                                                                        besoinEnergetiqueCible =
                                                                                 besoinEnergetiqueTotal,
                                                                         poidsAnimal =
                                                                                 selectedConsultation
@@ -1628,7 +1632,8 @@ fun RationsView(
                                 ration = ration,
                                 poidsMetabolique = poidsMetabolique,
                                 referenceUtilisee = referenceUtilisee,
-                                besoinEnergetiqueEntretien = besoinEnergetiqueTotal,
+                                besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
+                                besoinEnergetiqueCible = besoinEnergetiqueTotal,
                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                 espece = animal?.getEspece() ?: Espece.CHIEN,
                                 preferencesStorage = preferencesStorage,

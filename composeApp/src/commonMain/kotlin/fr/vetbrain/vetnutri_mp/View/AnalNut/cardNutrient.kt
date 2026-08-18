@@ -81,6 +81,7 @@ fun AnalyseNutritionnelleCard(
         poidsMetabolique: Double?,
         referenceUtilisee: ReferenceEv?,
         besoinEnergetiqueEntretien: Double?,
+        besoinEnergetiqueCible: Double? = besoinEnergetiqueEntretien,
         poidsAnimal: Double?,
         modifier: Modifier = Modifier,
         nutrimentsSelectionnes: List<String>? = null,
@@ -507,6 +508,8 @@ fun AnalyseNutritionnelleCard(
                                                             referenceUtilisee = referenceUtilisee,
                                                             besoinEnergetiqueEntretien =
                                                                     besoinEnergetiqueEntretien,
+                                                            besoinEnergetiqueCible =
+                                                                    besoinEnergetiqueCible,
                                                             poidsAnimal = poidsAnimal,
                                                             modifier = Modifier.weight(1f),
                                                             onClick = {
@@ -571,10 +574,10 @@ fun AnalyseNutritionnelleCard(
                                     }
                                     val apportBulletGraph =
                                             if (valeur.nutriment == NutrientMain.ENERGIE &&
-                                                            besoinEnergetiqueEntretien != null &&
-                                                            besoinEnergetiqueEntretien > 0.0
+                                                            besoinEnergetiqueCible != null &&
+                                                            besoinEnergetiqueCible > 0.0
                                             ) {
-                                                (apport / besoinEnergetiqueEntretien) * 100.0
+                                                (apport / besoinEnergetiqueCible) * 100.0
                                             } else {
                                                 apportConverti
                                             }
@@ -587,7 +590,8 @@ fun AnalyseNutritionnelleCard(
                                                 besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
                                                 poidsAnimal = poidsAnimal,
                                                 poidsMetabolique = poidsMetabolique,
-                                                referencesMaladies = referencesMaladies
+                                                referencesMaladies = referencesMaladies,
+                                                besoinEnergetiqueCible = besoinEnergetiqueCible
                                         )
                                         
                                         Row(
@@ -672,6 +676,8 @@ fun AnalyseNutritionnelleCard(
                                                         poidsMetabolique = poidsMetabolique,
                                                         besoinEnergetiqueEntretien =
                                                                 besoinEnergetiqueEntretien,
+                                                        besoinEnergetiqueCible =
+                                                                besoinEnergetiqueCible,
                                                         referencesMaladies = referencesMaladies,
                                                         onClick = { onNutrimentClick(nom, valeur) },
                                                         ration = ration,
@@ -697,7 +703,8 @@ fun AnalyseNutritionnelleCard(
                                                 besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
                                                 poidsAnimal = poidsAnimal,
                                                 poidsMetabolique = poidsMetabolique,
-                                                referencesMaladies = referencesMaladies
+                                                referencesMaladies = referencesMaladies,
+                                                besoinEnergetiqueCible = besoinEnergetiqueCible
                                         )
                                         
                                         // Couleur selon l'icône de conformité : violet pour maladie, bleu si une flèche, rouge si deux
@@ -814,6 +821,7 @@ private fun NutrimentCard(
         poidsMetabolique: Double?,
         referenceUtilisee: ReferenceEv?,
         besoinEnergetiqueEntretien: Double?,
+        besoinEnergetiqueCible: Double?,
         poidsAnimal: Double?,
         modifier: Modifier = Modifier,
         onClick: () -> Unit,
@@ -829,7 +837,8 @@ private fun NutrimentCard(
                     besoinEnergetiqueEntretien,
                     poidsAnimal,
                     poidsMetabolique,
-                    referencesMaladies
+                    referencesMaladies,
+                    besoinEnergetiqueCible
             )
 
     Card(
@@ -963,7 +972,8 @@ private fun obtenirIconeConformite(
         besoinEnergetiqueEntretien: Double?,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
-        referencesMaladies: List<ReferenceEv> = emptyList()
+        referencesMaladies: List<ReferenceEv> = emptyList(),
+        besoinEnergetiqueCible: Double? = besoinEnergetiqueEntretien
 ): IconeConformite? {
     val resultat = calculerConformite(
             valeurNutritionnelle,
@@ -971,7 +981,8 @@ private fun obtenirIconeConformite(
             besoinEnergetiqueEntretien,
             poidsAnimal,
             poidsMetabolique,
-            referencesMaladies
+            referencesMaladies,
+            besoinEnergetiqueCible
     ) ?: return null
 
     val isMaladie = resultat.status == ConformiteStatus.CARENCE_MALADIE ||

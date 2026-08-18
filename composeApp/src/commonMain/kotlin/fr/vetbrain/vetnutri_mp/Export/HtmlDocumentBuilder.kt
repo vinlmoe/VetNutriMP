@@ -383,12 +383,16 @@ object HtmlDocumentBuilder {
                                     equationRepository,
                                     poidsAnimal,
                                     poidsMetabolique,
-                                    // Même piège de nommage que RationsView.kt : le "besoin énergétique
-                                    // d'entretien" utilisé pour l'affichage PAR_KCAL/PAR_KJ est en réalité
-                                    // le BE total, pas le BEE brut.
-                                    besoinEnergetiqueTotal,
+                                    // Les seuils de référence exprimés en g/1000kcal (protéines,
+                                    // minéraux, vitamines...) se convertissent toujours avec le BEE
+                                    // brut, jamais le BE réel : restreindre les calories (K1-K5) ne
+                                    // réduit pas le besoin en nutriments, qui reste lié au poids
+                                    // métabolique. Seule la ligne ENERGIE elle-même (son propre
+                                    // bandeau ±10 % et son % de couverture) se compare au BE réel.
+                                    besoinEnergetiqueStandard,
                                     referencesMaladies,
-                                    typeExpressionBesoin
+                                    typeExpressionBesoin,
+                                    besoinEnergetiqueTotal
                             )
                         } else ""
                 ) +
@@ -467,7 +471,8 @@ object HtmlDocumentBuilder {
             poidsMetabolique: Double?,
             besoinEnergetiqueEntretien: Double?,
             referencesMaladies: List<ReferenceEv>,
-            typeExpressionBesoinPreference: TypeExpressionBesoin? = null
+            typeExpressionBesoinPreference: TypeExpressionBesoin? = null,
+            besoinEnergetiqueCible: Double? = besoinEnergetiqueEntretien
     ): String {
         val valeurs: Map<String, ValeurNutritionnelle> =
                 if (reference != null && equationRepository != null) {
@@ -507,7 +512,7 @@ object HtmlDocumentBuilder {
                         referenceUtilisee = reference
                 )
                 val bulletGraphData = calculerBulletGraphData(
-                        valeur, reference, typeExpressionBesoin, poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien
+                        valeur, reference, typeExpressionBesoin, poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, besoinEnergetiqueCible
                 )
                 val repereHtml = bulletGraphData?.let { bgData ->
                     val contributions = calculerContributionsIngredients(
