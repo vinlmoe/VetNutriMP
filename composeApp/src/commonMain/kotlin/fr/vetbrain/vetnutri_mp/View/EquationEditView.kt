@@ -80,7 +80,12 @@ fun EquationEditView(
 
         if (message != null) {
             if (saveSuccessful) {
-                // Naviguer directement sans afficher de dialogue
+                // Remettre l'état à zéro avant de naviguer : sinon ce
+                // "saveSuccessful=true" reste dans le ViewModel (singleton) et,
+                // à la prochaine ouverture de cet écran (autre équation), les
+                // LaunchedEffect ci-dessous le liraient encore à `true` dès le
+                // montage et renaviguerait aussitôt vers la liste.
+                viewModel.clearOperationMessage()
                 onNavigateBack()
             } else if (message.isNotEmpty()) {
                 showErrorAlert = true
@@ -91,6 +96,7 @@ fun EquationEditView(
     // Navigation explicite sur succès même sans message
     LaunchedEffect(saveSuccessful) {
         if (saveSuccessful) {
+            viewModel.clearOperationMessage()
             onNavigateBack()
         }
     }
