@@ -566,7 +566,7 @@ class ReferenceEvViewModel(
             _actionInProgress.value = true
             try {
                 // Clone de la référence actuelle pour modification
-                val updatedReference = currentRef.copy()
+                val updatedReference = currentRef.deepCopy()
 
                 // Rechercher l'équation correspondante dans la liste disponible
                 val selectedEquation =
@@ -616,7 +616,7 @@ class ReferenceEvViewModel(
                 val isAlreadyAssociated = currentRef.equationsNut.any { it.uuid == equation.uuid }
 
                 // Clone de la référence actuelle pour modification
-                val updatedReference = currentRef.copy()
+                val updatedReference = currentRef.deepCopy()
 
                 // Mise à jour de la liste des équations nutritionnelles
                 if (isAlreadyAssociated) {

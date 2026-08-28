@@ -348,6 +348,26 @@ data class ReferenceEv(
         /** Alias pour obtenirToutesEquations - pour compatibilité avec le code d'importation */
         fun getAllEquations(): MutableList<Equation> = obtenirToutesEquations()
 
+        /**
+         * Copie profonde préservant les propriétés qui ne sont pas dans le constructeur
+         * (equationBW/BEE/DEcom/DEraw/ME, equationsNut, maps de nutriments), contrairement
+         * à `copy()` qui les réinitialise à leurs valeurs par défaut.
+         */
+        fun deepCopy(): ReferenceEv {
+                val copy = this.copy()
+                copy.equationBW = equationBW
+                copy.equationBEE = equationBEE
+                copy.equationDEcom = equationDEcom
+                copy.equationDEraw = equationDEraw
+                copy.equationME = equationME
+                copy.equationsNut = ArrayList(equationsNut)
+                copy.refMapMin.putAll(refMapMin)
+                copy.refMapMax.putAll(refMapMax)
+                copy.refMapOMin.putAll(refMapOMin)
+                copy.refMapOMax.putAll(refMapOMax)
+                return copy
+        }
+
         /** Alias pour obtenirToutesBiblios - pour compatibilité avec le code d'importation */
         fun getAllBiblioRefs(): MutableList<BiblioRef> = obtenirToutesBiblios()
 
