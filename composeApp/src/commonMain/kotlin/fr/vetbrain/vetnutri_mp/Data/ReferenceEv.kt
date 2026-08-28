@@ -40,6 +40,54 @@ data class ReferenceEv(
         var equationME: Equation? = null
         var equationsNut: MutableList<Equation> = mutableListOf()
 
+        /**
+         * equals()/hashCode() générés par le compilateur pour un `data class` ne portent que sur
+         * les propriétés du constructeur : ils ignorent equationBW/BEE/DEcom/DEraw/ME et
+         * equationsNut (déclarées dans le corps de la classe). Or `MutableStateFlow.value =` ne
+         * notifie ses collecteurs que si la nouvelle valeur est `!= ancienne valeur` : sans cet
+         * override, changer uniquement l'association d'une équation (ex. cases à cocher
+         * "Assigner aux références") ne déclenche aucune recomposition, même si la BD a bien été
+         * mise à jour (l'UI semble ne "rien faire").
+         */
+        override fun equals(other: Any?): Boolean {
+                if (this === other) return true
+                if (other !is ReferenceEv) return false
+                return uuid == other.uuid &&
+                        nom == other.nom &&
+                        description == other.description &&
+                        maladie == other.maladie &&
+                        nomMaladie == other.nomMaladie &&
+                        nomEnergie == other.nomEnergie &&
+                        consistent == other.consistent &&
+                        espece == other.espece &&
+                        stadePhysio == other.stadePhysio &&
+                        equationBW == other.equationBW &&
+                        equationBEE == other.equationBEE &&
+                        equationDEcom == other.equationDEcom &&
+                        equationDEraw == other.equationDEraw &&
+                        equationME == other.equationME &&
+                        equationsNut == other.equationsNut
+        }
+
+        override fun hashCode(): Int {
+                var result = uuid.hashCode()
+                result = 31 * result + nom.hashCode()
+                result = 31 * result + description.hashCode()
+                result = 31 * result + maladie.hashCode()
+                result = 31 * result + nomMaladie.hashCode()
+                result = 31 * result + nomEnergie.hashCode()
+                result = 31 * result + consistent
+                result = 31 * result + espece.hashCode()
+                result = 31 * result + stadePhysio.hashCode()
+                result = 31 * result + (equationBW?.hashCode() ?: 0)
+                result = 31 * result + (equationBEE?.hashCode() ?: 0)
+                result = 31 * result + (equationDEcom?.hashCode() ?: 0)
+                result = 31 * result + (equationDEraw?.hashCode() ?: 0)
+                result = 31 * result + (equationME?.hashCode() ?: 0)
+                result = 31 * result + equationsNut.hashCode()
+                return result
+        }
+
         // Cache pour les calculs fréquents
         private var cachedEquationCount: Int? = null
         private var cachedHasEquations: Boolean? = null
