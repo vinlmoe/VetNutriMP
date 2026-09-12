@@ -158,8 +158,8 @@ fun RationsView(
         val rationAnalysisScope by viewModel.rationAnalysisScope.collectAsState()
 
         // Mode d'analyse groupée : la ration analysée n'est plus une ration de la consultation mais
-        // le cumul de toutes les rations actuelles (ou de toutes les proposées), chaque ration étant
-        // pondérée par son coefficient. Sa composition est donc en lecture seule.
+        // la moyenne de toutes les rations actuelles (ou de toutes les proposées), pondérée par le
+        // coefficient de chaque ration. Sa composition est donc en lecture seule.
         val analyseGroupee = rationAnalysisScope.estGroupe
         val rationsActuelles =
                 remember(selectedConsultation) {

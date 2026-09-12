@@ -143,7 +143,7 @@ fun RationItem(
  * Entrée de liste représentant un groupe de rations analysées comme une ration unique.
  *
  * Sélectionner cette entrée bascule l'analyse en mode groupé : toutes les rations du groupe
- * (actuelles ou proposées) sont cumulées, chacune pondérée par son coefficient.
+ * (actuelles ou proposées) sont moyennées, chacune pesant son coefficient.
  *
  * @param scope Le périmètre d'analyse représenté (actuelles ou proposées)
  * @param rations Les rations composant le groupe
@@ -159,7 +159,7 @@ fun RationGroupItem(
         onClick: () -> Unit,
         modifier: Modifier = Modifier
 ) {
-        val sommeCoefficients = rations.sumOf { RationAggregator.coefficientEffectif(it) }
+        val sommeCoefficients = RationAggregator.sommeCoefficients(rations)
 
         Card(
                 modifier =

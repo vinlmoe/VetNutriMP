@@ -7,7 +7,7 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
  *
  * - [RATION_UNIQUE] : mode historique, une seule ration sélectionnée est analysée.
  * - [GROUPE_ACTUELLES] : toutes les rations actuelles de la consultation sont agrégées en une
- *   ration virtuelle unique, chaque ration étant pondérée par son coefficient.
+ *   ration virtuelle unique, moyenne pondérée par le coefficient de chaque ration.
  * - [GROUPE_PROPOSEES] : idem pour toutes les rations proposées.
  */
 enum class RationAnalysisScope(val labelKey: String) {

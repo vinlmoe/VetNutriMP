@@ -90,7 +90,7 @@ class AnimalDetailViewModel(
     val selectedRation: StateFlow<Ration?> = _selectedRation.asStateFlow()
 
     // Périmètre d'analyse : ration unique (défaut) ou agrégat de toutes les rations actuelles /
-    // proposées de la consultation, pondérées par le coefficient de chaque ration.
+    // proposées de la consultation, en moyenne pondérée par le coefficient de chaque ration.
     private val _rationAnalysisScope = MutableStateFlow(RationAnalysisScope.RATION_UNIQUE)
     val rationAnalysisScope: StateFlow<RationAnalysisScope> = _rationAnalysisScope.asStateFlow()
 
@@ -539,9 +539,9 @@ class AnimalDetailViewModel(
      * Change le périmètre d'analyse des rations.
      *
      * En mode groupé, la ration analysée n'est plus une ration de la consultation mais une ration
-     * virtuelle cumulant toutes les rations actuelles (ou toutes les proposées), chacune pondérée
-     * par son coefficient. Cette ration virtuelle n'est jamais persistée et sa composition est en
-     * lecture seule.
+     * virtuelle : la moyenne pondérée de toutes les rations actuelles (ou de toutes les proposées),
+     * chacune pesant son coefficient. Cette ration virtuelle n'est jamais persistée et sa
+     * composition est en lecture seule.
      *
      * @param scope Le périmètre demandé
      */

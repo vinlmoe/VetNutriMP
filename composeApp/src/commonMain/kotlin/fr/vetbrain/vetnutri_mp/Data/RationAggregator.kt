@@ -7,14 +7,20 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 /**
  * Agrégation de plusieurs rations d'une consultation en une ration virtuelle unique.
  *
- * Chaque ration du groupe contribue proportionnellement à son coefficient (`Ration.coef`) :
- * la quantité retenue pour un aliment est `quantite * coef`. Les aliments identiques présents
- * dans plusieurs rations sont fusionnés en une seule ligne dont la quantité est la somme des
- * quantités pondérées.
+ * Les rations d'un groupe sont des **alternatives** et non des composants à additionner : le
+ * coefficient (`Ration.coef`) exprime le poids de chaque ration dans l'alimentation. L'agrégat est
+ * donc une **moyenne pondérée**, pas une somme : la quantité retenue pour un aliment est
+ * `somme(quantite * coef) / somme(coef)`. Les aliments identiques présents dans plusieurs rations
+ * sont fusionnés en une seule ligne.
  *
  * Comme tous les calculs nutritionnels de `Ration` et `AlimentRation` sont linéaires en quantité
- * (`valeur * quantite / 100`), la ration agrégée fournit exactement la somme pondérée des apports
- * des rations du groupe, et sa densité énergétique correspond à la moyenne pondérée.
+ * (`valeur * quantite / 100`), la ration agrégée fournit exactement la moyenne pondérée des apports
+ * des rations du groupe. Elle reste donc directement comparable au besoin énergétique journalier :
+ * deux rations couvrant chacune 100 % du besoin donnent bien 100 % de couverture, et non 200 %.
+ *
+ * La normalisation n'affecte que les grandeurs absolues (quantités, énergie apportée) : la
+ * composition relative (pourcentages, teneurs pour 100 g ou 100 g de MS) et la densité énergétique
+ * sont inchangées, puisque ce sont des rapports.
  *
  * La ration produite est un objet de travail en mémoire : elle n'est jamais persistée.
  */
@@ -77,13 +83,17 @@ object RationAggregator {
     ): Ration? {
         if (rations.isEmpty()) return null
 
+        // Diviseur de la moyenne pondérée. `coefficientEffectif` garantit des poids strictement
+        // positifs, donc la somme ne peut pas être nulle pour une liste non vide.
+        val poidsTotal = sommeCoefficients(rations)
+
         // Fusion des aliments : une entrée par aliment sous-jacent, quantités pondérées cumulées
         val alimentsFusionnes = LinkedHashMap<String, AlimentRation>()
         rations.forEach { ration ->
-            val coefficient = coefficientEffectif(ration)
+            val poids = coefficientEffectif(ration) / poidsTotal
             ration.alimentMutableList.forEach { alimentRation ->
                 val cle = cleFusion(alimentRation)
-                val quantitePonderee = alimentRation.quantite * coefficient
+                val quantitePonderee = alimentRation.quantite * poids
                 val existant = alimentsFusionnes[cle]
                 alimentsFusionnes[cle] =
                         if (existant == null) {
@@ -134,22 +144,32 @@ object RationAggregator {
             }
 
     /**
-     * Coefficient réellement appliqué à une ration lors de l'agrégation.
+     * Poids réellement appliqué à une ration lors de l'agrégation.
      *
-     * Un coefficient nul exclut la ration du cumul ; une valeur invalide (négative, NaN, infinie)
-     * retombe sur 1.0 pour ne pas fausser silencieusement l'analyse.
+     * L'éditeur de ration n'accepte que des coefficients strictement positifs ; toute autre valeur
+     * (0 des rations importées de la V2 où le champ n'était pas renseigné, valeur négative, NaN,
+     * infinie) est traitée comme un poids neutre de 1.0. Le diviseur de la moyenne pondérée est
+     * ainsi toujours strictement positif.
      */
     fun coefficientEffectif(ration: Ration): Double {
         val coef = ration.coef
-        return if (coef.isFinite() && coef >= 0.0) coef else 1.0
+        return if (coef.isFinite() && coef > 0.0) coef else 1.0
     }
 
-    /** Détail lisible des rations agrégées et de leur coefficient. */
-    private fun descriptionGroupe(rations: List<Ration>): String =
-            rations.joinToString(separator = ", ") { ration ->
-                val nom = ration.name.ifBlank { translate(LocalizationKeys.Ration.NAME) }
-                "$nom (x${formaterCoefficient(coefficientEffectif(ration))})"
-            }
+    /** Somme des poids d'un groupe : diviseur de la moyenne pondérée. */
+    fun sommeCoefficients(rations: List<Ration>): Double =
+            rations.sumOf { coefficientEffectif(it) }
+
+    /** Détail lisible des rations agrégées, avec leur coefficient et la part qui en résulte. */
+    private fun descriptionGroupe(rations: List<Ration>): String {
+        val somme = sommeCoefficients(rations)
+        return rations.joinToString(separator = ", ") { ration ->
+            val coefficient = coefficientEffectif(ration)
+            val nom = ration.name.ifBlank { translate(LocalizationKeys.Ration.NAME) }
+            val part = formaterCoefficient(coefficient / somme * 100.0)
+            "$nom (x${formaterCoefficient(coefficient)} - $part %)"
+        }
+    }
 
     private fun formaterCoefficient(coefficient: Double): String {
         val arrondi = kotlin.math.round(coefficient * 100.0) / 100.0
