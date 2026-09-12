@@ -1156,6 +1156,56 @@ suspend fun calculerAjustement(
                         }
                 }
 
+                // ÉTAPE PRIORITAIRE : Garantir qu'une part minimale de l'énergie totale provient des
+                // aliments complets (FoodKind.COMPLET), avant tout autre ajustement. Le reste du
+                // besoin énergétique (et des autres nutriments) est complété librement aux étapes
+                // suivantes avec les autres aliments.
+                if (pourcentageEnergieAlimentsComplets != null && pourcentageEnergieAlimentsComplets > 0.0) {
+                        val besoinEnergieComplets =
+                                (pourcentageEnergieAlimentsComplets / 100.0) * besoinEnergetiqueTotal
+
+                        var apportEnergieComplets = 0.0
+                        for (alimentRation in adjustedAliments) {
+                                if (alimentRation.aliment?.typeAliment == FoodKind.COMPLET && alimentRation.quantite > 0.0) {
+                                        apportEnergieComplets +=
+                                                alimentRation.getEnergie(referenceUtilisee, equationRepository)
+                                }
+                        }
+
+                        val manqueEnergieComplets = besoinEnergieComplets - apportEnergieComplets
+
+                        if (manqueEnergieComplets > 0.01) {
+                                val alimentsCompletsAjustables =
+                                        adjustmentData.filter {
+                                                it.alimentRation.aliment?.typeAliment == FoodKind.COMPLET &&
+                                                        !it.isLocked
+                                        }
+
+                                if (alimentsCompletsAjustables.isEmpty()) {
+                                        return RationAdjustmentResult(
+                                                success = false,
+                                                message = translate(LocalizationKeys.AnalNut.NO_COMPLETE_FOOD_FOR_ENERGY_SHARE)
+                                        )
+                                }
+
+                                val result =
+                                        ajusterAlimentsPourNutriment(
+                                                nutriment = NutrientMain.ENERGIE,
+                                                manque = manqueEnergieComplets,
+                                                alimentsAjustables = alimentsCompletsAjustables,
+                                                adjustedAliments = adjustedAliments,
+                                                alimentsVerrouilles = alimentsVerrouilles,
+                                                constraints = emptyMap(),
+                                                referenceUtilisee = referenceUtilisee,
+                                                equationRepository = equationRepository
+                                        )
+
+                                if (!result.success) {
+                                        return result
+                                }
+                        }
+                }
+
                 // Étape 2: Traiter les nutriments sélectionnés par l'utilisateur, avec ordre
                 // dynamique
                 val nutrimentsTraites = mutableSetOf<String>()
@@ -1246,54 +1296,6 @@ suspend fun calculerAjustement(
                         } else {}
 
                         nutrimentsTraites.add(nutrientLabel)
-                }
-                // ÉTAPE INTERMÉDIAIRE : Garantir qu'une part minimale de l'énergie totale provient
-                // des aliments complets (FoodKind.COMPLET), avant de compléter le reste du besoin
-                // énergétique avec les autres aliments à l'étape suivante.
-                if (pourcentageEnergieAlimentsComplets != null && pourcentageEnergieAlimentsComplets > 0.0) {
-                        val besoinEnergieComplets =
-                                (pourcentageEnergieAlimentsComplets / 100.0) * besoinEnergetiqueTotal
-
-                        var apportEnergieComplets = 0.0
-                        for (alimentRation in adjustedAliments) {
-                                if (alimentRation.aliment?.typeAliment == FoodKind.COMPLET && alimentRation.quantite > 0.0) {
-                                        apportEnergieComplets +=
-                                                alimentRation.getEnergie(referenceUtilisee, equationRepository)
-                                }
-                        }
-
-                        val manqueEnergieComplets = besoinEnergieComplets - apportEnergieComplets
-
-                        if (manqueEnergieComplets > 0.01) {
-                                val alimentsCompletsAjustables =
-                                        adjustmentData.filter {
-                                                it.alimentRation.aliment?.typeAliment == FoodKind.COMPLET &&
-                                                        !it.isLocked
-                                        }
-
-                                if (alimentsCompletsAjustables.isEmpty()) {
-                                        return RationAdjustmentResult(
-                                                success = false,
-                                                message = translate(LocalizationKeys.AnalNut.NO_COMPLETE_FOOD_FOR_ENERGY_SHARE)
-                                        )
-                                }
-
-                                val result =
-                                        ajusterAlimentsPourNutriment(
-                                                nutriment = NutrientMain.ENERGIE,
-                                                manque = manqueEnergieComplets,
-                                                alimentsAjustables = alimentsCompletsAjustables,
-                                                adjustedAliments = adjustedAliments,
-                                                alimentsVerrouilles = alimentsVerrouilles,
-                                                constraints = emptyMap(),
-                                                referenceUtilisee = referenceUtilisee,
-                                                equationRepository = equationRepository
-                                        )
-
-                                if (!result.success) {
-                                        return result
-                                }
-                        }
                 }
 
                 // DEUXIÈME ÉTAPE : Ajuster l'énergie en recalculant l'apport total de la ration
