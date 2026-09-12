@@ -714,7 +714,9 @@ fun MultiNutrientAdjustmentView(
                                                                                         besoinEnergetiqueStandard = besoinEnergetiqueStandard,
                                                                                         poidsAnimal = poidsAnimal,
                                                                                         poidsMetabolique = poidsMetabolique,
-                                                                                        equationRepository = equationRepository
+                                                                                        equationRepository = equationRepository,
+                                                                                        pourcentageEnergieAlimentsComplets =
+                                                                                                pourcentageEnergieCompletsText.replace(',', '.').toDoubleOrNull()
                                                                                 )
                                                                         val result = constraintResult.toRationAdjustmentResult()
                                                                         isProcessing = false
