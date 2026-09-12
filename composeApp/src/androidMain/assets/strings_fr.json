@@ -1877,6 +1877,9 @@
         "enum.NutrientMain.FIBRESOL": "Fibre soluble",
         "enum.NutrientMain.FIBRETOT": "Fibre totale",
         "enum.NutrientMain.NDF": "NDF",
-        "enum.NutrientMain.ADF": "ADFe"
+        "enum.NutrientMain.ADF": "ADFe",
+        "analnut.error.no_complete_food_energy_share": "Aucun aliment complet disponible pour couvrir la part d'énergie demandée.",
+        "analnut.label.energy_share_complete_food": "Part d'énergie couverte par les aliments complets (%)",
+        "analnut.hint.energy_share_complete_food": "Impose qu'au moins ce pourcentage du besoin énergétique total soit couvert par les aliments complets ; le reste est complété par les autres aliments."
     }
 }

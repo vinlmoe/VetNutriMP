@@ -512,6 +512,28 @@ fun MultiNutrientAdjustmentView(
                                 }
                         }
 
+                        // Part d'énergie minimale à couvrir par les aliments complets
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                backgroundColor = MaterialTheme.colors.surface,
+                                elevation = 4.dp
+                        ) {
+                                Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
+                                        OutlinedTextField(
+                                                value = pourcentageEnergieCompletsText,
+                                                onValueChange = { pourcentageEnergieCompletsText = it },
+                                                label = { Text(translate(LocalizationKeys.AnalNut.ENERGY_SHARE_COMPLETE_FOOD_LABEL)) },
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Text(
+                                                text = translate(LocalizationKeys.AnalNut.ENERGY_SHARE_COMPLETE_FOOD_HINT),
+                                                style = MaterialTheme.typography.caption,
+                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                                                modifier = Modifier.padding(top = AppSizes.paddingSmall)
+                                        )
+                                }
+                        }
+
                         // Actions dans une Card
                         Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -556,7 +578,9 @@ fun MultiNutrientAdjustmentView(
                                                                                         poidsMetabolique =
                                                                                                 poidsMetabolique,
                                                                                         equationRepository =
-                                                                                                equationRepository
+                                                                                                equationRepository,
+                                                                                        pourcentageEnergieAlimentsComplets =
+                                                                                                pourcentageEnergieCompletsText.replace(',', '.').toDoubleOrNull()
                                                                                 )
                                                                         isProcessing = false
                                                                         processingMessage = ""
@@ -594,7 +618,9 @@ fun MultiNutrientAdjustmentView(
                                                                                         poidsMetabolique =
                                                                                                 poidsMetabolique,
                                                                                         equationRepository =
-                                                                                                equationRepository
+                                                                                                equationRepository,
+                                                                                        pourcentageEnergieAlimentsComplets =
+                                                                                                pourcentageEnergieCompletsText.replace(',', '.').toDoubleOrNull()
                                                                                 )
                                                                         isProcessing = false
                                                                         processingMessage = ""
@@ -1104,7 +1130,8 @@ suspend fun calculerAjustement(
         besoinEnergetiqueStandard: Double,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
-        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?,
+        pourcentageEnergieAlimentsComplets: Double? = null
 ): RationAdjustmentResult {
         try {
                 // Créer une copie des aliments pour les ajustements
@@ -1218,6 +1245,55 @@ suspend fun calculerAjustement(
 
                         nutrimentsTraites.add(nutrientLabel)
                 }
+                // ÉTAPE INTERMÉDIAIRE : Garantir qu'une part minimale de l'énergie totale provient
+                // des aliments complets (FoodKind.COMPLET), avant de compléter le reste du besoin
+                // énergétique avec les autres aliments à l'étape suivante.
+                if (pourcentageEnergieAlimentsComplets != null && pourcentageEnergieAlimentsComplets > 0.0) {
+                        val besoinEnergieComplets =
+                                (pourcentageEnergieAlimentsComplets / 100.0) * besoinEnergetiqueTotal
+
+                        var apportEnergieComplets = 0.0
+                        for (alimentRation in adjustedAliments) {
+                                if (alimentRation.aliment?.typeAliment == FoodKind.COMPLET && alimentRation.quantite > 0.0) {
+                                        apportEnergieComplets +=
+                                                alimentRation.getEnergie(referenceUtilisee, equationRepository)
+                                }
+                        }
+
+                        val manqueEnergieComplets = besoinEnergieComplets - apportEnergieComplets
+
+                        if (manqueEnergieComplets > 0.01) {
+                                val alimentsCompletsAjustables =
+                                        adjustmentData.filter {
+                                                it.alimentRation.aliment?.typeAliment == FoodKind.COMPLET &&
+                                                        !it.isLocked
+                                        }
+
+                                if (alimentsCompletsAjustables.isEmpty()) {
+                                        return RationAdjustmentResult(
+                                                success = false,
+                                                message = translate(LocalizationKeys.AnalNut.NO_COMPLETE_FOOD_FOR_ENERGY_SHARE)
+                                        )
+                                }
+
+                                val result =
+                                        ajusterAlimentsPourNutriment(
+                                                nutriment = NutrientMain.ENERGIE,
+                                                manque = manqueEnergieComplets,
+                                                alimentsAjustables = alimentsCompletsAjustables,
+                                                adjustedAliments = adjustedAliments,
+                                                alimentsVerrouilles = alimentsVerrouilles,
+                                                constraints = emptyMap(),
+                                                referenceUtilisee = referenceUtilisee,
+                                                equationRepository = equationRepository
+                                        )
+
+                                if (!result.success) {
+                                        return result
+                                }
+                        }
+                }
+
                 // DEUXIÈME ÉTAPE : Ajuster l'énergie en recalculant l'apport total de la ration
                 // finale
                 if (processingOrder.contains("ENERGIE")) {
