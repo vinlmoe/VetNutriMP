@@ -608,6 +608,14 @@
         "reference.vm.updateBwError": "Erreur lors de la mise à jour du poids corporel.",
         "reference.vm.updateComplementaryError": "Erreur lors de la mise à jour des équations complémentaires.",
         "reference.vm.updateDecomError": "Erreur lors de la mise à jour de DEcom.",
-        "reference.vm.updateDerawError": "Erreur lors de la mise à jour de DEraw."
+        "reference.vm.updateDerawError": "Erreur lors de la mise à jour de DEraw.",
+        "ration.scope.single": "Окремий раціон",
+        "ration.scope.groupActual": "Усі поточні",
+        "ration.scope.groupProposed": "Усі запропоновані",
+        "ration.group.actualName": "Усі поточні раціони",
+        "ration.group.proposedName": "Усі запропоновані раціони",
+        "ration.group.rationCount": "Об'єднано раціонів: %1$s",
+        "ration.group.totalCoef": "Сума коефіцієнтів: %1$s",
+        "ration.group.readOnlyHint": "Груповий аналіз: склад лише для читання"
     }
 }

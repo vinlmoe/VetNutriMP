@@ -1877,6 +1877,14 @@
         "enum.NutrientMain.FIBRESOL": "Soluble fiber",
         "enum.NutrientMain.FIBRETOT": "Total fiber",
         "enum.NutrientMain.NDF": "NDF",
-        "enum.NutrientMain.ADF": "ADF"
+        "enum.NutrientMain.ADF": "ADF",
+        "ration.scope.single": "Single ration",
+        "ration.scope.groupActual": "All current ones",
+        "ration.scope.groupProposed": "All proposed ones",
+        "ration.group.actualName": "All current rations",
+        "ration.group.proposedName": "All proposed rations",
+        "ration.group.rationCount": "%1$s ration(s) combined",
+        "ration.group.totalCoef": "Sum of coefficients: %1$s",
+        "ration.group.readOnlyHint": "Grouped analysis: composition is read-only"
     }
 }

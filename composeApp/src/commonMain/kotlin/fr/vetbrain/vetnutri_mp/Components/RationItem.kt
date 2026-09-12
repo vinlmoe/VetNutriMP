@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Functions
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,6 +15,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.RationAggregator
+import fr.vetbrain.vetnutri_mp.Enumer.RationAnalysisScope
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -129,6 +132,95 @@ fun RationItem(
                                                 imageVector = Icons.Filled.Delete,
                                                 contentDescription = translate(General.DELETE),
                                                 tint = VetNutriColors.Error
+                                        )
+                                }
+                        }
+                }
+        }
+}
+
+/**
+ * Entrée de liste représentant un groupe de rations analysées comme une ration unique.
+ *
+ * Sélectionner cette entrée bascule l'analyse en mode groupé : toutes les rations du groupe
+ * (actuelles ou proposées) sont cumulées, chacune pondérée par son coefficient.
+ *
+ * @param scope Le périmètre d'analyse représenté (actuelles ou proposées)
+ * @param rations Les rations composant le groupe
+ * @param isSelected Indique si ce groupe est le périmètre d'analyse courant
+ * @param onClick Action à exécuter lors du clic sur le groupe
+ * @param modifier Modificateur optionnel
+ */
+@Composable
+fun RationGroupItem(
+        scope: RationAnalysisScope,
+        rations: List<Ration>,
+        isSelected: Boolean,
+        onClick: () -> Unit,
+        modifier: Modifier = Modifier
+) {
+        val sommeCoefficients = rations.sumOf { RationAggregator.coefficientEffectif(it) }
+
+        Card(
+                modifier =
+                        modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable {
+                                onClick()
+                        },
+                elevation = if (isSelected) AppSizes.elevationMedium else AppSizes.elevationSmall,
+                backgroundColor =
+                        if (isSelected) VetNutriColors.Primary.copy(alpha = 0.1f)
+                        else MaterialTheme.colors.surface
+        ) {
+                Row(
+                        modifier = Modifier.padding(AppSizes.paddingSmall),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        Icon(
+                                imageVector = Icons.Filled.Functions,
+                                contentDescription = null,
+                                tint =
+                                        if (scope.cibleRationsActuelles) VetNutriColors.Primary
+                                        else VetNutriColors.Secondary,
+                                modifier = Modifier.size(AppSizes.iconSizeSmall)
+                        )
+                        Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                        Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXXSmall)
+                        ) {
+                                Text(
+                                        text = RationAggregator.nomGroupe(scope),
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight =
+                                                if (isSelected) FontWeight.Bold
+                                                else FontWeight.Normal
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                                text =
+                                                        translate(
+                                                                RationKeys.GROUP_RATION_COUNT,
+                                                                rations.size.toString()
+                                                        ),
+                                                style = MaterialTheme.typography.caption,
+                                                color =
+                                                        if (scope.cibleRationsActuelles)
+                                                                VetNutriColors.Primary
+                                                        else VetNutriColors.Secondary
+                                        )
+                                        Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                                        Text(
+                                                text =
+                                                        translate(
+                                                                RationKeys.GROUP_TOTAL_COEF,
+                                                                TextUtils.formatDecimal(
+                                                                        sommeCoefficients,
+                                                                        2
+                                                                )
+                                                        ),
+                                                style = MaterialTheme.typography.caption,
+                                                color = Color.Gray
                                         )
                                 }
                         }
