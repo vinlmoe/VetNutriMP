@@ -1,0 +1,258 @@
+name: CI
+
+# Pipeline unique du dépôt : tests, compilation des cibles, puis empaquetage.
+# Rien n'est empaqueté si les tests échouent — c'est le point du gating par
+# `needs:`. L'ancien workflow build-deb.yml produisait un .deb même sur une
+# branche cassée ; il a été absorbé par le job `package-deb` ci-dessous.
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - revetBackUp
+      - 'claude/**'
+    # Une modification uniquement documentaire ne justifie pas 40 min de CI.
+    # Volontairement absent du déclencheur `pull_request` : un check requis
+    # qui ne démarre jamais bloque la PR indéfiniment.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.vscode/**'
+      - '.cursor/**'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      run_ios:
+        description: "Compiler aussi la cible iOS (runner macOS, plus lent)"
+        type: boolean
+        default: false
+
+concurrency:
+  # Un nouveau push sur une branche de travail annule le run précédent ;
+  # sur main on laisse chaque run aller au bout (il produit le .deb).
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
+permissions:
+  contents: read
+
+env:
+  # AppSecretsTest impose des clés non vides. On utilise les secrets du dépôt
+  # s'ils sont configurés, sinon une valeur factice : ces tests vérifient que
+  # l'injection build-time fonctionne, pas la validité de la clé jsonbin.
+  JSONBIN_CREATE_KEY: ${{ secrets.JSONBIN_CREATE_KEY || 'ci-placeholder' }}
+  JSONBIN_READ_KEY: ${{ secrets.JSONBIN_READ_KEY || 'ci-placeholder' }}
+  GRADLE_OPTS: -Dorg.gradle.welcome=never
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Retour rapide : les 40 fichiers de commonTest + les 9 de desktopTest, sans
+  # passer par la chaîne Android (la plus lente).
+  # ---------------------------------------------------------------------------
+  tests-jvm:
+    name: Tests JVM (common + desktop)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Indispensable : les PNG/ICO sont suivis par Git LFS (.gitattributes).
+          # Sans ceci, composeApp/src/desktopMain/resources/icon.png arrive sous
+          # forme de pointeur texte de 131 octets et l'empaquetage embarque une
+          # icône invalide.
+          lfs: true
+
+      - name: Préparer le build
+        uses: ./.github/actions/setup-build
+        with:
+          cache-read-only: ${{ github.ref_name != 'main' }}
+
+      - name: Dépendances natives de Skiko
+        # AppLogoDecoderTest décode un PNG via Skia : la bibliothèque native
+        # skiko-linux-x64 réclame libGL et fontconfig, absents d'un runner nu.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libgl1 libfontconfig1 libfreetype6
+
+      - name: Tests desktop
+        run: ./gradlew :composeApp:desktopTest --stacktrace
+
+      - name: Vérifier que les schémas Room exportés sont à jour
+        # 35 schémas sont versionnés dans composeApp/schemas/. Si une entité
+        # change sans que le schéma régénéré soit commité, les migrations
+        # divergent du code et Room échoue au démarrage chez l'utilisateur.
+        run: |
+          # --porcelain (et non `git diff`) pour détecter aussi un schéma
+          # nouvellement généré mais jamais ajouté à l'index.
+          drift=$(git status --porcelain --untracked-files=all -- composeApp/schemas)
+          if [ -n "$drift" ]; then
+            echo "::error::Les schémas Room exportés ne correspondent plus aux entités."
+            echo "Régénérez-les localement puis commitez composeApp/schemas/ :"
+            echo "  ./gradlew :composeApp:desktopTest && git add composeApp/schemas/"
+            echo "$drift"
+            exit 1
+          fi
+          echo "Schémas Room à jour."
+
+      - name: Archiver les rapports de test
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapports-tests-jvm
+          path: |
+            composeApp/build/reports/tests/
+            composeApp/build/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------------------
+  # Tests unitaires Android + APK debug dans le même job : `testDebugUnitTest`
+  # compile déjà les sources debug, autant réutiliser cette compilation pour
+  # `assembleDebug` plutôt que de la refaire dans un job séparé.
+  # ---------------------------------------------------------------------------
+  build-android:
+    name: Android — tests unitaires + APK debug
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Les mipmap/ic_launcher.png sont dans Git LFS : sans résolution,
+          # AAPT2 échoue en lisant un pointeur texte à la place d'un PNG.
+          lfs: true
+
+      - name: Préparer le build
+        uses: ./.github/actions/setup-build
+        with:
+          cache-read-only: ${{ github.ref_name != 'main' }}
+
+      - name: Tests unitaires Android
+        run: ./gradlew :composeApp:testDebugUnitTest --stacktrace
+
+      - name: Construire l'APK debug
+        run: ./gradlew :composeApp:assembleDebug --stacktrace
+
+      - name: Archiver les rapports de test
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapports-tests-android
+          path: |
+            composeApp/build/reports/tests/
+            composeApp/build/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Archiver l'APK debug
+        uses: actions/upload-artifact@v4
+        with:
+          name: VetNutriMP-debug-apk
+          path: composeApp/build/outputs/apk/debug/*.apk
+          retention-days: 7
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # iOS : runner macOS facturé 10× — on ne le déclenche pas sur chaque PR.
+  # Sur une PR, poser le label `ci:ios` pour forcer la compilation.
+  # ---------------------------------------------------------------------------
+  build-ios:
+    name: iOS — compilation Kotlin/Native
+    runs-on: macos-latest
+    timeout-minutes: 90
+    if: >-
+      github.event_name == 'push' && github.ref_name == 'main' ||
+      github.event_name == 'workflow_dispatch' && inputs.run_ios ||
+      contains(github.event.pull_request.labels.*.name, 'ci:ios')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Préparer le build
+        uses: ./.github/actions/setup-build
+        with:
+          cache-read-only: ${{ github.ref_name != 'main' }}
+
+      - name: Compiler la cible iosSimulatorArm64
+        # Compilation seule : le link du framework est nettement plus long et
+        # n'apporte rien tant qu'on ne publie pas d'IPA depuis la CI.
+        run: ./gradlew :composeApp:compileKotlinIosSimulatorArm64 --stacktrace
+
+  # ---------------------------------------------------------------------------
+  # Empaquetage Debian — hérité de build-deb.yml, désormais conditionné à des
+  # tests verts. Restreint aux branches publiables : sur une branche de travail
+  # l'artefact n'intéresse personne et coûte ~5 min de runner par push.
+  # ---------------------------------------------------------------------------
+  package-deb:
+    name: Paquet Debian
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: [tests-jvm, build-android]
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' &&
+      contains(fromJSON('["main", "master", "revetBackUp"]'), github.ref_name)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Préparer le build
+        uses: ./.github/actions/setup-build
+        with:
+          cache-read-only: ${{ github.ref_name != 'main' }}
+
+      - name: Construire le paquet Debian
+        run: ./gradlew :composeApp:packageReleaseDeb --stacktrace
+
+      - name: Vérifier que le runtime embarqué cible le x86-64 générique
+        # Bloque la publication d'un .deb dont le runtime requiert AVX2
+        # (crash "invalid opcode" sur les CPU d'avant 2013) — cf. incident
+        # v3.2.40 documenté dans scripts/check_deb_runtime.sh.
+        run: bash scripts/check_deb_runtime.sh
+
+      - name: Archiver le .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: VetNutriMP-deb
+          path: composeApp/build/compose/binaries/main*/deb/*.deb
+          retention-days: 30
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Check unique à exiger dans la protection de branche : il agrège les jobs
+  # ci-dessus, y compris ceux qui peuvent être ignorés (iOS, paquet Debian).
+  # ---------------------------------------------------------------------------
+  ci-status:
+    name: Résultat CI
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [tests-jvm, build-android, build-ios, package-deb]
+    steps:
+      - name: Contrôler le résultat des jobs
+        run: |
+          declare -A results=(
+            [tests-jvm]="${{ needs.tests-jvm.result }}"
+            [build-android]="${{ needs.build-android.result }}"
+            [build-ios]="${{ needs.build-ios.result }}"
+            [package-deb]="${{ needs.package-deb.result }}"
+          )
+          status=0
+          for job in "${!results[@]}"; do
+            result="${results[$job]}"
+            printf '%-15s %s\n' "$job" "$result"
+            # `skipped` est attendu : iOS hors main, paquet Debian sur PR.
+            case "$result" in
+              success|skipped) ;;
+              *) echo "::error::Le job $job a terminé en '$result'."; status=1 ;;
+            esac
+          done
+          exit $status
