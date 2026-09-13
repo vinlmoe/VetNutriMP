@@ -59,7 +59,7 @@ jobs:
     timeout-minutes: 40
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Indispensable : les PNG/ICO sont suivis par Git LFS (.gitattributes).
           # Sans ceci, composeApp/src/desktopMain/resources/icon.png arrive sous
@@ -101,7 +101,7 @@ jobs:
 
       - name: Archiver les rapports de test
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rapports-tests-jvm
           path: |
@@ -121,7 +121,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Les mipmap/ic_launcher.png sont dans Git LFS : sans résolution,
           # AAPT2 échoue en lisant un pointeur texte à la place d'un PNG.
@@ -140,7 +140,7 @@ jobs:
 
       - name: Archiver les rapports de test
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rapports-tests-android
           path: |
@@ -150,7 +150,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Archiver l'APK debug
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: VetNutriMP-debug-apk
           path: composeApp/build/outputs/apk/debug/*.apk
@@ -171,7 +171,7 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'ci:ios')
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           lfs: true
 
@@ -201,7 +201,7 @@ jobs:
       contains(fromJSON('["main", "master", "revetBackUp"]'), github.ref_name)
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           lfs: true
 
@@ -220,7 +220,7 @@ jobs:
         run: bash scripts/check_deb_runtime.sh
 
       - name: Archiver le .deb
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: VetNutriMP-deb
           path: composeApp/build/compose/binaries/main*/deb/*.deb
