@@ -187,14 +187,18 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Empaquetage Debian — hérité de build-deb.yml, désormais conditionné à des
-  # tests verts. Jamais exécuté sur une PR (artefact inutile, temps machine).
+  # tests verts. Restreint aux branches publiables : sur une branche de travail
+  # l'artefact n'intéresse personne et coûte ~5 min de runner par push.
   # ---------------------------------------------------------------------------
   package-deb:
     name: Paquet Debian
     runs-on: ubuntu-latest
     timeout-minutes: 60
     needs: [tests-jvm, build-android]
-    if: github.event_name != 'pull_request'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' &&
+      contains(fromJSON('["main", "master", "revetBackUp"]'), github.ref_name)
     steps:
       - name: Checkout
         uses: actions/checkout@v4

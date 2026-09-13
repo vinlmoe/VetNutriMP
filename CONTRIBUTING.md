@@ -77,9 +77,10 @@ chaque push des branches de travail.
 - **iOS** ne tourne pas sur chaque PR (runner macOS facturé 10×). Il se déclenche
   sur les push vers `main`, via `workflow_dispatch`, ou en posant le label
   **`ci:ios`** sur une PR qui touche du code iOS.
-- **Paquet Debian** ne tourne jamais sur une PR, et seulement si les tests JVM
-  et Android sont passés. Auparavant (`build-deb.yml`), un `.deb` était produit
-  même depuis une branche cassée.
+- **Paquet Debian** ne tourne que sur `main`, `master`, `revetBackUp` ou via
+  `workflow_dispatch`, et seulement si les tests JVM et Android sont passés.
+  Auparavant (`build-deb.yml`), un `.deb` était produit même depuis une branche
+  cassée.
 
 ### Protection de branche
 
