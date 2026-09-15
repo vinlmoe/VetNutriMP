@@ -1873,6 +1873,9 @@
         "enum.NutrientMain.FIBRESOL": "Soluble fiber",
         "enum.NutrientMain.FIBRETOT": "Total fiber",
         "enum.NutrientMain.NDF": "NDF",
-        "enum.NutrientMain.ADF": "ADF"
+        "enum.NutrientMain.ADF": "ADF",
+        "analnut.error.no_complete_food_energy_share": "No complete food available to cover the requested energy share.",
+        "analnut.label.energy_share_complete_food": "Energy share covered by complete foods (%)",
+        "analnut.hint.energy_share_complete_food": "Requires that at least this percentage of the total energy need be covered by complete foods; the remainder is completed by the other foods."
     }
 }
