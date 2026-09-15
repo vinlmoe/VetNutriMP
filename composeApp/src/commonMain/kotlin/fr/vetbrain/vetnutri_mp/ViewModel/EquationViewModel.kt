@@ -89,6 +89,11 @@ class EquationViewModel(
     private val _allReferences = MutableStateFlow<List<ReferenceEv>>(emptyList())
     val allReferences: StateFlow<List<ReferenceEv>> = _allReferences.asStateFlow()
 
+    // Références à associer/dissocier lors de la prochaine sauvegarde (cas d'une équation
+    // pas encore enregistrée, où l'association ne peut pas encore être persistée)
+    private val _pendingReferenceUuids = MutableStateFlow<Set<String>>(emptySet())
+    val pendingReferenceUuids: StateFlow<Set<String>> = _pendingReferenceUuids.asStateFlow()
+
     // Équations spécifiques actuellement sélectionnées (pour les combobox)
     private val _equationBW = MutableStateFlow<Equation?>(null)
     val equationBW: StateFlow<Equation?> = _equationBW.asStateFlow()
@@ -310,6 +315,17 @@ class EquationViewModel(
     /** Crée une nouvelle équation */
     fun createNewEquation() {
         _currentEquation.value = Equation()
+        _pendingReferenceUuids.value = emptySet()
+    }
+
+    /**
+     * Associe/dissocie en attente une référence pour une équation pas encore enregistrée.
+     * L'association réelle sera persistée lors de l'appel à `saveCurrentEquation()`.
+     */
+    fun togglePendingReferenceAssociation(referenceUuid: String) {
+        val current = _pendingReferenceUuids.value
+        _pendingReferenceUuids.value =
+                if (referenceUuid in current) current - referenceUuid else current + referenceUuid
     }
 
     /** Charge une équation par son ID */
@@ -584,7 +600,7 @@ class EquationViewModel(
         coroutineScope.launch(AppDispatchers.IO) {
             try {
                 val isAssociated = reference.equationsNut.any { it.uuid == equation.uuid }
-                val updated = reference.copy()
+                val updated = reference.deepCopy()
                 if (isAssociated) {
                     updated.equationsNut = ArrayList(updated.equationsNut.filter { it.uuid != equation.uuid })
                 } else {
@@ -638,6 +654,18 @@ class EquationViewModel(
             _isLoading.value = true
             try {
                 equationRepository.saveEquation(equationToSave)
+
+                // Appliquer les associations de références en attente (cas d'une création)
+                val pendingUuids = _pendingReferenceUuids.value
+                if (pendingUuids.isNotEmpty()) {
+                    val referencesToAssociate =
+                            _allReferences.value.filter { it.uuid in pendingUuids }
+                    referencesToAssociate.forEach { reference ->
+                        toggleEquationForReference(equationToSave, reference)
+                    }
+                    _pendingReferenceUuids.value = emptySet()
+                }
+
                 _saveSuccessful.value = true
                 _operationMessage.value =
                         if (isConsistent) {
