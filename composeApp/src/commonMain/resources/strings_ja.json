@@ -608,6 +608,14 @@
         "reference.vm.updateBwError": "Erreur lors de la mise à jour du poids corporel.",
         "reference.vm.updateComplementaryError": "Erreur lors de la mise à jour des équations complémentaires.",
         "reference.vm.updateDecomError": "Erreur lors de la mise à jour de DEcom.",
-        "reference.vm.updateDerawError": "Erreur lors de la mise à jour de DEraw."
+        "reference.vm.updateDerawError": "Erreur lors de la mise à jour de DEraw.",
+        "ration.scope.single": "単一の給与量",
+        "ration.scope.groupActual": "現行のすべて",
+        "ration.scope.groupProposed": "提案のすべて",
+        "ration.group.actualName": "現行の給与量すべて",
+        "ration.group.proposedName": "提案の給与量すべて",
+        "ration.group.rationCount": "%1$s 件を合算",
+        "ration.group.totalCoef": "係数の合計: %1$s",
+        "ration.group.readOnlyHint": "グループ分析: 構成は読み取り専用"
     }
 }

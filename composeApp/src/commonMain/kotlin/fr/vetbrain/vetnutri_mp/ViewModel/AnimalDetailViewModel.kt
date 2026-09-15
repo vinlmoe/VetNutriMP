@@ -11,9 +11,11 @@ import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.RationAggregator
 import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.RationAnalysisScope
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
@@ -86,6 +88,14 @@ class AnimalDetailViewModel(
 
     private val _selectedRation = MutableStateFlow<Ration?>(null)
     val selectedRation: StateFlow<Ration?> = _selectedRation.asStateFlow()
+
+    // Périmètre d'analyse : ration unique (défaut) ou agrégat de toutes les rations actuelles /
+    // proposées de la consultation, en moyenne pondérée par le coefficient de chaque ration.
+    private val _rationAnalysisScope = MutableStateFlow(RationAnalysisScope.RATION_UNIQUE)
+    val rationAnalysisScope: StateFlow<RationAnalysisScope> = _rationAnalysisScope.asStateFlow()
+
+    // Ration individuelle à restaurer quand on quitte un périmètre groupé
+    private var rationAvantGroupe: Ration? = null
 
     // Section actuellement sélectionnée dans la vue détaillée
     private val _currentSection = MutableStateFlow(AnimalDetailSection.IDENTIFICATION)
@@ -298,6 +308,8 @@ class AnimalDetailViewModel(
     /** Ajoute un aliment à une ration */
     @OptIn(ExperimentalUuidApi::class)
     fun addAlimentToRation(ration: Ration, aliment: AlimentEv, quantite: Double) {
+        // Refus sur la ration virtuelle du mode groupé : elle n'existe pas en base
+        if (RationAggregator.estRationGroupee(ration.uuid)) return
 
         viewModelScope.launch {
             try {
@@ -346,6 +358,8 @@ class AnimalDetailViewModel(
             // Réinitialiser les états immédiatement pour éviter toute rémanence
             _selectedRation.value = null
             _selectedConsultation.value = null
+            _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+            rationAvantGroupe = null
             isEditingConsultation = false
             isEditingRation = false
             isEditingAnimal = false
@@ -471,24 +485,30 @@ class AnimalDetailViewModel(
                 ration.alimentMutableList.forEachIndexed { alimentIndex, aliment -> }
             }
 
-            // Réinitialiser la ration sélectionnée si elle n'appartient pas à la nouvelle consultation
-            val currentRation = _selectedRation.value
-            val rationBelongsToConsultation = currentRation?.let { ration ->
-                fullConsultation?.rations?.any { it.uuid == ration.uuid } == true
-            } ?: false
+            if (_rationAnalysisScope.value.estGroupe) {
+                // En mode groupé, la ration analysée est recalculée à partir des rations de la
+                // consultation fraîchement chargée
+                rafraichirRationGroupee()
+            } else {
+                // Réinitialiser la ration sélectionnée si elle n'appartient pas à la nouvelle consultation
+                val currentRation = _selectedRation.value
+                val rationBelongsToConsultation = currentRation?.let { ration ->
+                    fullConsultation?.rations?.any { it.uuid == ration.uuid } == true
+                } ?: false
 
-            // Si la consultation n'a pas de rations, réinitialiser la ration sélectionnée
-            if (fullConsultation?.rations.isNullOrEmpty()) {
-                _selectedRation.value = null
-            } else if (currentRation != null && !rationBelongsToConsultation) {
-                // Si la ration sélectionnée n'appartient pas à la nouvelle consultation, la réinitialiser
-                _selectedRation.value = null
-            }
+                // Si la consultation n'a pas de rations, réinitialiser la ration sélectionnée
+                if (fullConsultation?.rations.isNullOrEmpty()) {
+                    _selectedRation.value = null
+                } else if (currentRation != null && !rationBelongsToConsultation) {
+                    // Si la ration sélectionnée n'appartient pas à la nouvelle consultation, la réinitialiser
+                    _selectedRation.value = null
+                }
 
-            // Si aucune ration n'est sélectionnée mais qu'il y en a dans la consultation, en
-            // sélectionner une
-            if (_selectedRation.value == null && !fullConsultation?.rations.isNullOrEmpty()) {
-                selectRation(fullConsultation!!.rations.first())
+                // Si aucune ration n'est sélectionnée mais qu'il y en a dans la consultation, en
+                // sélectionner une
+                if (_selectedRation.value == null && !fullConsultation?.rations.isNullOrEmpty()) {
+                    selectRation(fullConsultation!!.rations.first())
+                }
             }
 
             // Calculer automatiquement les valeurs métaboliques pour la consultation sélectionnée
@@ -505,20 +525,99 @@ class AnimalDetailViewModel(
 
         ration.alimentMutableList.forEachIndexed { k, a -> }
 
-        // Créer une copie profonde de la ration, y compris sa liste d'aliments
-        val rationCopy =
-                ration.copy(
-                        alimentMutableList =
-                                ration.alimentMutableList.map { it.copy() }.toMutableList()
-                )
+        // Sélectionner une ration individuelle fait sortir d'un éventuel périmètre groupé
+        _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+        rationAvantGroupe = null
 
-        rationCopy.alimentMutableList.forEachIndexed { k, a -> }
-
-        _selectedRation.value = rationCopy
+        _selectedRation.value = copieProfonde(ration)
 
         // Lancer l'analyse de la ration automatiquement
         analyserRationSelectionnee()
     }
+
+    /**
+     * Change le périmètre d'analyse des rations.
+     *
+     * En mode groupé, la ration analysée n'est plus une ration de la consultation mais une ration
+     * virtuelle : la moyenne pondérée de toutes les rations actuelles (ou de toutes les proposées),
+     * chacune pesant son coefficient. Cette ration virtuelle n'est jamais persistée et sa
+     * composition est en lecture seule.
+     *
+     * @param scope Le périmètre demandé
+     */
+    fun setRationAnalysisScope(scope: RationAnalysisScope) {
+        if (_rationAnalysisScope.value == scope) return
+
+        if (!scope.estGroupe) {
+            _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+            restaurerRationIndividuelle()
+            return
+        }
+
+        val agregat = RationAggregator.agreger(_selectedConsultation.value, scope)
+        if (agregat == null) {
+            // Aucune ration dans ce groupe : on reste sur le mode ration unique
+            return
+        }
+
+        if (!_rationAnalysisScope.value.estGroupe) {
+            rationAvantGroupe = _selectedRation.value
+        }
+        _rationAnalysisScope.value = scope
+        _selectedRation.value = agregat
+        analyserRationSelectionnee()
+    }
+
+    /**
+     * Recalcule la ration virtuelle du périmètre groupé courant.
+     *
+     * À appeler après tout changement de la consultation sélectionnée ou de ses rations. Si le
+     * groupe est devenu vide, on retombe sur le mode ration unique.
+     */
+    private fun rafraichirRationGroupee() {
+        val scope = _rationAnalysisScope.value
+        if (!scope.estGroupe) return
+
+        val agregat = RationAggregator.agreger(_selectedConsultation.value, scope)
+        if (agregat == null) {
+            _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+            restaurerRationIndividuelle()
+            return
+        }
+
+        _selectedRation.value = agregat
+        analyserRationSelectionnee()
+    }
+
+    /** Restaure la ration individuelle sélectionnée avant le passage en mode groupé. */
+    private fun restaurerRationIndividuelle() {
+        val rations = _selectedConsultation.value?.rations.orEmpty()
+        val precedente = rationAvantGroupe
+        rationAvantGroupe = null
+
+        val cible =
+                rations.firstOrNull { it.uuid == precedente?.uuid }
+                        ?: rations.firstOrNull()
+        _selectedRation.value = cible?.let { copieProfonde(it) }
+        if (cible != null) {
+            analyserRationSelectionnee()
+        }
+    }
+
+    /**
+     * Indique si la ration analysée est une ration virtuelle issue d'une agrégation : dans ce cas
+     * toute modification de composition doit être refusée (la ration n'existe pas en base).
+     */
+    private fun estAnalyseGroupee(): Boolean =
+            _rationAnalysisScope.value.estGroupe ||
+                    RationAggregator.estRationGroupee(_selectedRation.value?.uuid)
+
+    /** Copie profonde d'une ration (ration + liste d'aliments). */
+    private fun copieProfonde(ration: Ration): Ration =
+            ration.copy(
+                    alimentMutableList =
+                            ration.alimentMutableList.map { it.copy() }.toMutableList()
+            )
 
     /**
      * Analyse la ration actuellement sélectionnée L'analyse est lancée automatiquement lors de la
@@ -591,6 +690,7 @@ class AnimalDetailViewModel(
 
     /** Applique une recette (liste d'aliments) à la ration sélectionnée et recharge l'état */
     fun applyRecipeToRation(recipe: Ration) {
+        if (estAnalyseGroupee()) return
 
         val rationActuelle = _selectedRation.value
         if (rationActuelle == null) {
@@ -726,6 +826,8 @@ class AnimalDetailViewModel(
     /** Réinitialise la ration sélectionnée en mettant selectedRation à null */
     fun resetSelectedRation() {
         _selectedRation.value = null
+        _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+        rationAvantGroupe = null
     }
 
     fun startEditingConsultation() {
@@ -744,6 +846,8 @@ class AnimalDetailViewModel(
     fun stopEditingRation() {
         isEditingRation = false
         _selectedRation.value = null
+        _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+        rationAvantGroupe = null
     }
 
     fun startEditingAnimal() {
@@ -834,10 +938,13 @@ class AnimalDetailViewModel(
         _selectedConsultation.value = updatedConsultation
         updateConsultation(updatedConsultation)
 
-        // Log pour déboguer
+        // La nouvelle ration entre dans l'un des deux groupes : recalculer l'agrégat si besoin
+        rafraichirRationGroupee()
     }
 
     fun updateRationInConsultation(ration: Ration) {
+        // Une ration virtuelle (agrégat du mode groupé) ne doit jamais être persistée
+        if (RationAggregator.estRationGroupee(ration.uuid)) return
 
         ration.alimentMutableList.forEachIndexed { k, a -> }
 
@@ -868,8 +975,11 @@ class AnimalDetailViewModel(
         // Mettre à jour dans la base de données
         updateConsultation(updatedConsultation)
 
-        // Si la ration supprimée était sélectionnée, sélectionner une autre ration si disponible
-        if (_selectedRation.value?.uuid == ration.uuid) {
+        if (_rationAnalysisScope.value.estGroupe) {
+            // En mode groupé, l'agrégat doit être recalculé sans la ration supprimée
+            rafraichirRationGroupee()
+        } else if (_selectedRation.value?.uuid == ration.uuid) {
+            // Si la ration supprimée était sélectionnée, sélectionner une autre ration si disponible
             updatedRations.firstOrNull()?.let { selectRation(it) }
                     ?: run { _selectedRation.value = null }
         }
@@ -896,6 +1006,8 @@ class AnimalDetailViewModel(
                 } ?: run {
                     _selectedConsultation.value = null
                     _selectedRation.value = null
+                    _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+                    rationAvantGroupe = null
                 }
             }
         }
@@ -1019,6 +1131,8 @@ class AnimalDetailViewModel(
      * @param newQuantity Nouvelle quantité de l'aliment
      */
     fun updateAlimentQuantity(alimentUuid: String, newQuantity: Double) {
+        // La ration virtuelle du mode groupé n'existe pas en base : aucune modification possible
+        if (estAnalyseGroupee()) return
         val currentRation = _selectedRation.value?.copy() ?: return
 
         // Créer une nouvelle liste d'aliments avec la quantité mise à jour
@@ -1089,6 +1203,7 @@ class AnimalDetailViewModel(
      * @param alimentUuid UUID de l'aliment à supprimer
      */
     fun removeAlimentFromRation(alimentUuid: String) {
+        if (estAnalyseGroupee()) return
         val currentRation = _selectedRation.value?.copy() ?: return
 
         // Créer une nouvelle liste d'aliments sans l'aliment à supprimer
@@ -1124,6 +1239,8 @@ class AnimalDetailViewModel(
      * @param ration Ration à mettre à jour
      */
     fun updateRation(ration: Ration) {
+        if (RationAggregator.estRationGroupee(ration.uuid)) return
+
         // Mettre à jour la ration sélectionnée
         _selectedRation.value = ration
 
@@ -1195,6 +1312,7 @@ class AnimalDetailViewModel(
      * @param aliments Nouvelle liste d'aliments
      */
     fun updateRationAliments(ration: Ration, aliments: List<AlimentRation>) {
+        if (RationAggregator.estRationGroupee(ration.uuid) || estAnalyseGroupee()) return
         // Créer une nouvelle liste avec de nouveaux objets pour forcer la recomposition
         val newAliments = aliments.map { it.copy() }.toMutableList()
         

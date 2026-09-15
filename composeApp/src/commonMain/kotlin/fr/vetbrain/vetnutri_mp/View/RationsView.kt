@@ -37,6 +37,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.CenteredMessage
+import fr.vetbrain.vetnutri_mp.Components.RationGroupItem
 import fr.vetbrain.vetnutri_mp.Components.RationItem
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
@@ -95,6 +96,47 @@ private fun LocalInfoRow(label: String, value: String) {
 }
 
 /**
+ * Entrées de sélection des périmètres d'analyse groupée (toutes les rations actuelles d'une part,
+ * toutes les proposées d'autre part).
+ *
+ * Les groupes ne sont proposés que lorsque la consultation compte au moins deux rations : en deçà,
+ * l'analyse groupée se confondrait avec l'analyse de la ration unique.
+ *
+ * @param rationsActuelles Rations actuelles de la consultation
+ * @param rationsProposees Rations proposées de la consultation
+ * @param scopeCourant Périmètre d'analyse actuellement actif
+ * @param onSelectGroupe Callback de sélection d'un périmètre groupé
+ */
+@Composable
+private fun GroupesRationsItems(
+        rationsActuelles: List<Ration>,
+        rationsProposees: List<Ration>,
+        scopeCourant: RationAnalysisScope,
+        onSelectGroupe: (RationAnalysisScope) -> Unit
+) {
+        if (rationsActuelles.size + rationsProposees.size < 2) return
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (rationsActuelles.isNotEmpty()) {
+                        RationGroupItem(
+                                scope = RationAnalysisScope.GROUPE_ACTUELLES,
+                                rations = rationsActuelles,
+                                isSelected = scopeCourant == RationAnalysisScope.GROUPE_ACTUELLES,
+                                onClick = { onSelectGroupe(RationAnalysisScope.GROUPE_ACTUELLES) }
+                        )
+                }
+                if (rationsProposees.isNotEmpty()) {
+                        RationGroupItem(
+                                scope = RationAnalysisScope.GROUPE_PROPOSEES,
+                                rations = rationsProposees,
+                                isSelected = scopeCourant == RationAnalysisScope.GROUPE_PROPOSEES,
+                                onClick = { onSelectGroupe(RationAnalysisScope.GROUPE_PROPOSEES) }
+                        )
+                }
+        }
+}
+
+/**
  * Rations d'un animal.
  * - S'appuie sur `AnimalDetailViewModel` pour les consultations/rations/ref. nutritionnelles.
  * - Calcule BE/K/énergie additionnelle et affiche les rations + analyses associées.
@@ -113,6 +155,26 @@ fun RationsView(
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
         val availableReferences by viewModel.availableReferences.collectAsState()
         val selectedRation by viewModel.selectedRation.collectAsState()
+        val rationAnalysisScope by viewModel.rationAnalysisScope.collectAsState()
+
+        // Mode d'analyse groupée : la ration analysée n'est plus une ration de la consultation mais
+        // la moyenne de toutes les rations actuelles (ou de toutes les proposées), pondérée par le
+        // coefficient de chaque ration. Sa composition est donc en lecture seule.
+        val analyseGroupee = rationAnalysisScope.estGroupe
+        val rationsActuelles =
+                remember(selectedConsultation) {
+                        RationAggregator.rationsDuGroupe(
+                                selectedConsultation,
+                                RationAnalysisScope.GROUPE_ACTUELLES
+                        )
+                }
+        val rationsProposees =
+                remember(selectedConsultation) {
+                        RationAggregator.rationsDuGroupe(
+                                selectedConsultation,
+                                RationAnalysisScope.GROUPE_PROPOSEES
+                        )
+                }
 
         // Résolution centralisée des références maladies sélectionnées + logs
         val referencesMaladiesResolues =
@@ -878,6 +940,15 @@ fun RationsView(
                                                                                                                 8.dp
                                                                                                         )
                                                                                 ) {
+                                                                                        GroupesRationsItems(
+                                                                                                rationsActuelles = rationsActuelles,
+                                                                                                rationsProposees = rationsProposees,
+                                                                                                scopeCourant = rationAnalysisScope,
+                                                                                                onSelectGroupe = { scope ->
+                                                                                                        focusManager.clearFocus(force = true)
+                                                                                                        viewModel.setRationAnalysisScope(scope)
+                                                                                                }
+                                                                                        )
                                                                                         selectedConsultation
                                                                                                 ?.rations
                                                                                                 ?.forEach {
@@ -965,6 +1036,7 @@ fun RationsView(
                                                                         isExamMode = isExamMode,
                                                                         showSnackbar = showSnackbar,
                                                                         isCompact = isCompact,
+                                                                        isReadOnly = analyseGroupee,
                                                                         modifier = Modifier.fillMaxWidth()
                                                                 )
                                                         } else {
@@ -1290,6 +1362,17 @@ fun RationsView(
                                                                                                         8.dp
                                                                                                 )
                                                                         ) {
+                                                                                item(key = "groupes-rations") {
+                                                                                        GroupesRationsItems(
+                                                                                                rationsActuelles = rationsActuelles,
+                                                                                                rationsProposees = rationsProposees,
+                                                                                                scopeCourant = rationAnalysisScope,
+                                                                                                onSelectGroupe = { scope ->
+                                                                                                        focusManager.clearFocus(force = true)
+                                                                                                        viewModel.setRationAnalysisScope(scope)
+                                                                                                }
+                                                                                        )
+                                                                                }
                                                                                 items(
                                                                                         selectedConsultation
                                                                                                 ?.rations
@@ -1372,6 +1455,7 @@ fun RationsView(
                                                                 },
                                                                 isExamMode = isExamMode,
                                                                 showSnackbar = showSnackbar,
+                                                                isReadOnly = analyseGroupee,
                                                                 modifier =
                                                                         Modifier.weight(1f).fillMaxWidth()
                                                         )

@@ -86,6 +86,7 @@ fun genererTexteRationPressePapier(ration: fr.vetbrain.vetnutri_mp.Data.Ration):
  * @param onQuantityChange Action à exécuter lorsque la quantité change
  * @param onFinishEditing Action à exécuter lorsque l'édition est terminée
  * @param onDelete Action à exécuter pour supprimer l'aliment
+ * @param isReadOnly Masque les actions d'édition et de suppression (ex. ration virtuelle agrégée)
  * @param modifier Modificateur optionnel
  */
 @Composable
@@ -98,8 +99,11 @@ fun AlimentItem(
         onDelete: () -> Unit,
         feedColor: Color? = null,
         referenceEv: ReferenceEv? = null,
+        isReadOnly: Boolean = false,
         modifier: Modifier = Modifier
 ) {
+        // En lecture seule, aucune édition de quantité n'est possible
+        @Suppress("NAME_SHADOWING") val isEditing = isEditing && !isReadOnly
         // État local pour la quantité en cours d'édition
         var quantityText by
                 remember(aliment.uuid, aliment.quantite) { mutableStateOf(aliment.quantite.toString()) }
@@ -234,34 +238,36 @@ fun AlimentItem(
                                                 )
                                         }
 
-                                        IconButton(
-                                                onClick = onStartEditing,
-                                                modifier = Modifier.size(16.dp) // icône plus petite
-                                        ) {
-                                                Icon(
-                                                        imageVector = Icons.Filled.Edit,
-                                                        contentDescription = translate("alimentItem.editQuantity"),
-                                                        tint = VetNutriColors.Secondary,
-                                                        modifier =
-                                                                Modifier.size(
-                                                                        16.dp
-                                                                ) // icône plus petite
-                                                )
-                                        }
+                                        if (!isReadOnly) {
+                                                IconButton(
+                                                        onClick = onStartEditing,
+                                                        modifier = Modifier.size(16.dp) // icône plus petite
+                                                ) {
+                                                        Icon(
+                                                                imageVector = Icons.Filled.Edit,
+                                                                contentDescription = translate("alimentItem.editQuantity"),
+                                                                tint = VetNutriColors.Secondary,
+                                                                modifier =
+                                                                        Modifier.size(
+                                                                                16.dp
+                                                                        ) // icône plus petite
+                                                        )
+                                                }
 
-                                        IconButton(
-                                                onClick = onDelete,
-                                                modifier = Modifier.size(16.dp) // icône plus petite
-                                        ) {
-                                                Icon(
-                                                        imageVector = Icons.Filled.Delete,
-                                                        contentDescription = translate(LocalizationKeys.General.DELETE),
-                                                        tint = VetNutriColors.Error,
-                                                        modifier =
-                                                                Modifier.size(
-                                                                        16.dp
-                                                                ) // icône plus petite
-                                                )
+                                                IconButton(
+                                                        onClick = onDelete,
+                                                        modifier = Modifier.size(16.dp) // icône plus petite
+                                                ) {
+                                                        Icon(
+                                                                imageVector = Icons.Filled.Delete,
+                                                                contentDescription = translate(LocalizationKeys.General.DELETE),
+                                                                tint = VetNutriColors.Error,
+                                                                modifier =
+                                                                        Modifier.size(
+                                                                                16.dp
+                                                                        ) // icône plus petite
+                                                        )
+                                                }
                                         }
                                 }
                         }
