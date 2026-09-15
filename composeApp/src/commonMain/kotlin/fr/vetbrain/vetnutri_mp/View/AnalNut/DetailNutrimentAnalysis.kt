@@ -1279,16 +1279,34 @@ private fun ReferenceLevelsList(
                                         valeurNutritionnelle.valeur,
                                         besoinAbsolu
                                 )
+                        // Couverture = apport / besoin pour cette référence, affichée sous le
+                        // type de référence (à gauche)
+                        val couverturePourcentage: Double? =
+                                if (besoinAbsolu != null && besoinAbsolu > 0.0) {
+                                        (valeurNutritionnelle.valeur.toDouble() / besoinAbsolu) *
+                                                100.0
+                                } else {
+                                        null
+                                }
                         Column(modifier = Modifier.fillMaxWidth()) {
                                 Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                        Text(
-                                                text = translate("analnut.reference.level_label", levelName),
-                                                style = MaterialTheme.typography.body2,
-                                                fontWeight = FontWeight.Medium
-                                        )
+                                        Column(horizontalAlignment = Alignment.Start) {
+                                                Text(
+                                                        text = translate("analnut.reference.level_label", levelName),
+                                                        style = MaterialTheme.typography.body2,
+                                                        fontWeight = FontWeight.Medium
+                                                )
+                                                couverturePourcentage?.let { pct ->
+                                                        Text(
+                                                                text = "${TextUtils.formatDecimal(pct, 0)} % couverts",
+                                                                style = MaterialTheme.typography.caption,
+                                                                color = couleurConformite
+                                                        )
+                                                }
+                                        }
                                         Column(horizontalAlignment = Alignment.End) {
                                                 Text(
                                                         text =

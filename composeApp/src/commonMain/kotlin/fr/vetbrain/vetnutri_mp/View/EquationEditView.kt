@@ -80,7 +80,12 @@ fun EquationEditView(
 
         if (message != null) {
             if (saveSuccessful) {
-                // Naviguer directement sans afficher de dialogue
+                // Remettre l'état à zéro avant de naviguer : sinon ce
+                // "saveSuccessful=true" reste dans le ViewModel (singleton) et,
+                // à la prochaine ouverture de cet écran (autre équation), les
+                // LaunchedEffect ci-dessous le liraient encore à `true` dès le
+                // montage et renaviguerait aussitôt vers la liste.
+                viewModel.clearOperationMessage()
                 onNavigateBack()
             } else if (message.isNotEmpty()) {
                 showErrorAlert = true
@@ -91,6 +96,7 @@ fun EquationEditView(
     // Navigation explicite sur succès même sans message
     LaunchedEffect(saveSuccessful) {
         if (saveSuccessful) {
+            viewModel.clearOperationMessage()
             onNavigateBack()
         }
     }
@@ -543,6 +549,7 @@ private fun EquationEditTab(
         if (currentEquation.kind == EquationKind.COMPLEMENTARY_NUTRIENT) {
             val allReferences by viewModel.allReferences.collectAsState()
             val equations by viewModel.equations.collectAsState()
+            val pendingReferenceUuids by viewModel.pendingReferenceUuids.collectAsState()
             val isSaved = equations.any { it.uuid == currentEquation.uuid }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -554,11 +561,12 @@ private fun EquationEditTab(
             Spacer(modifier = Modifier.height(4.dp))
             if (!isSaved) {
                 Text(
-                        translate("auto.view.equationeditview.enregistrez_d_abord_l_equation_pour_l_assigner_a"),
+                        "Les associations seront appliquées à l'enregistrement de l'équation.",
                         style = MaterialTheme.typography.caption,
                         color = Color.Gray
                 )
-            } else if (allReferences.isEmpty()) {
+            }
+            if (allReferences.isEmpty()) {
                 Text(
                         translate("auto.view.equationeditview.aucune_reference_disponible"),
                         style = MaterialTheme.typography.caption,
@@ -566,7 +574,12 @@ private fun EquationEditTab(
                 )
             } else {
                 allReferences.forEach { reference ->
-                    val isAssociated = reference.equationsNut.any { it.uuid == currentEquation.uuid }
+                    val isAssociated =
+                            if (isSaved) {
+                                reference.equationsNut.any { it.uuid == currentEquation.uuid }
+                            } else {
+                                reference.uuid in pendingReferenceUuids
+                            }
                     Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
@@ -574,7 +587,11 @@ private fun EquationEditTab(
                         Checkbox(
                                 checked = isAssociated,
                                 onCheckedChange = {
-                                    viewModel.toggleEquationForReference(currentEquation, reference)
+                                    if (isSaved) {
+                                        viewModel.toggleEquationForReference(currentEquation, reference)
+                                    } else {
+                                        viewModel.togglePendingReferenceAssociation(reference.uuid)
+                                    }
                                 }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
