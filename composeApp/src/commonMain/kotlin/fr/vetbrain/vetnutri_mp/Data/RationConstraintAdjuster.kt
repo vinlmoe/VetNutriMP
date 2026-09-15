@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
@@ -77,6 +78,11 @@ data class ConstraintAdjustmentResult(
  * décision. Les champs [AlimentAdjustmentData.minQuantity]/[AlimentAdjustmentData.maxQuantity]
  * (jusqu'ici jamais appliqués par l'heuristique existante) deviennent les bornes réelles des
  * variables de décision.
+ *
+ * [pourcentageEnergieAlimentsComplets], lorsqu'il est fourni (0-100), ajoute une contrainte
+ * supplémentaire imposant qu'au moins cette part de l'énergie totale de la ration provienne des
+ * aliments de type [FoodKind.COMPLET]. Le reste de l'énergie (et des autres nutriments) est
+ * complété librement par la résolution simultanée des autres contraintes MIN/MAX.
  */
 suspend fun adjustRationByConstraints(
         ration: Ration,
@@ -86,7 +92,8 @@ suspend fun adjustRationByConstraints(
         besoinEnergetiqueStandard: Double,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
-        equationRepository: EquationRepository?
+        equationRepository: EquationRepository?,
+        pourcentageEnergieAlimentsComplets: Double? = null
 ): ConstraintAdjustmentResult {
         try {
                 val lockedUuids =
@@ -145,6 +152,41 @@ suspend fun adjustRationByConstraints(
 
                 val constraints = mutableListOf<LpConstraint>()
                 val constraintInfos = mutableMapOf<String, NutrientConstraintInfo>()
+
+                // Contrainte optionnelle, posée en priorité : une part minimale de l'énergie totale
+                // doit provenir des aliments complets (FoodKind.COMPLET). Les autres aliments
+                // (complémentaires, bruts, BARF...) complètent librement le reste, sous réserve des
+                // autres contraintes MIN/MAX posées ensuite.
+                if (pourcentageEnergieAlimentsComplets != null && pourcentageEnergieAlimentsComplets > 0.0) {
+                        val requiredCompletGrams =
+                                (pourcentageEnergieAlimentsComplets / 100.0) * besoinEnergetiqueTotal
+                        val coefficients = DoubleArray(totalVarCount)
+                        for (i in 0 until numFoods) {
+                                if (freeAliments[i].aliment?.typeAliment == FoodKind.COMPLET) {
+                                        coefficients[i] = gramCoefficient(freeAliments[i], NutrientMain.ENERGIE)
+                                }
+                        }
+                        var lockedContribution = 0.0
+                        for (locked in lockedAliments) {
+                                if (locked.aliment?.typeAliment == FoodKind.COMPLET) {
+                                        lockedContribution += gramCoefficient(locked, NutrientMain.ENERGIE) * locked.quantite
+                                }
+                        }
+                        val adjustedRhs = requiredCompletGrams - lockedContribution
+                        if (adjustedRhs > 1e-9) {
+                                val name = "MIN(%ENERGIE_COMPLET)"
+                                constraints.add(
+                                        LpConstraint(name, coefficients, LpConstraintSense.GE, adjustedRhs)
+                                )
+                                constraintInfos[name] =
+                                        NutrientConstraintInfo(
+                                                NutrientMain.ENERGIE,
+                                                Reflevel.MIN,
+                                                requiredCompletGrams,
+                                                LpConstraintSense.GE
+                                        )
+                        }
+                }
 
                 for (nutrient in candidateNutrients) {
                         val coefficients = DoubleArray(totalVarCount)
