@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
  * @param onOpenRecipeDialog Callback pour ouvrir le gestionnaire de recettes
  * @param onSaveRecipe Callback pour sauvegarder la ration actuelle comme recette
  * @param showSnackbar Callback pour afficher des messages
+ * @param isReadOnly Désactive toute modification de la composition (ration virtuelle agrégée)
  * @param modifier Modificateur optionnel pour personnaliser l'apparence
  */
 @Composable
@@ -62,6 +63,7 @@ fun SectionAlimentsRation(
         isExamMode: Boolean = false,
         showSnackbar: (String) -> Unit,
         isCompact: Boolean = false,
+        isReadOnly: Boolean = false,
         modifier: Modifier = Modifier
 ) {
         var editingAlimentId by remember { mutableStateOf<String?>(null) }
@@ -93,7 +95,7 @@ fun SectionAlimentsRation(
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingXSmall)
                                 ) {
-                                        if (!isExamMode) {
+                                        if (!isExamMode && !isReadOnly) {
                                                 // Sauvegarder la ration comme recette
                                                 IconWithTooltip(
                                                         imageVector = Icons.Filled.Save,
@@ -139,166 +141,176 @@ fun SectionAlimentsRation(
                                                 )
                                         }
 
-                                        // Bouton pour l'ajustement multi-nutriments
-                                        IconWithTooltip(
-                                                imageVector = Icons.Filled.Tune,
-                                                contentDescription = translate(LocalizationKeys.AnalNut.MULTI_NUTRIENT_ADJUSTMENT),
-                                                tint =
-                                                        if (selectedRation?.alimentMutableList
-                                                                        ?.isNotEmpty() == true
-                                                        )
-                                                                VetNutriColors.Primary
-                                                        else
-                                                                VetNutriColors.Primary.copy(
-                                                                        alpha = 0.5f
-                                                                ),
-                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
-                                                tooltip = translate(LocalizationKeys.AnalNut.MULTI_NUTRIENT_ADJUSTMENT),
-                                                enabled =
-                                                        selectedRation
-                                                                ?.alimentMutableList
-                                                                ?.isNotEmpty() ==
-                                                                true,
-                                                onClick = onMultiNutrientAdjustment
-                                        )
+                                        if (!isReadOnly) {
+                                                // Bouton pour l'ajustement multi-nutriments
+                                                IconWithTooltip(
+                                                        imageVector = Icons.Filled.Tune,
+                                                        contentDescription = translate(LocalizationKeys.AnalNut.MULTI_NUTRIENT_ADJUSTMENT),
+                                                        tint =
+                                                                if (selectedRation?.alimentMutableList
+                                                                                ?.isNotEmpty() == true
+                                                                )
+                                                                        VetNutriColors.Primary
+                                                                else
+                                                                        VetNutriColors.Primary.copy(
+                                                                                alpha = 0.5f
+                                                                        ),
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.AnalNut.MULTI_NUTRIENT_ADJUSTMENT),
+                                                        enabled =
+                                                                selectedRation
+                                                                        ?.alimentMutableList
+                                                                        ?.isNotEmpty() ==
+                                                                        true,
+                                                        onClick = onMultiNutrientAdjustment
+                                                )
 
-                                        // Bouton pour ajustement rapide multi-nutriments
-                                        IconWithTooltip(
-                                                imageVector = Icons.Filled.Balance,
-                                                contentDescription =
-                                                        translate(LocalizationKeys.AnalNut.QUICK_MULTI_NUTRIENT_ADJUSTMENT),
-                                                tint =
-                                                        if (selectedRation != null &&
-                                                                        referenceUtilisee != null &&
+                                                // Bouton pour ajustement rapide multi-nutriments
+                                                IconWithTooltip(
+                                                        imageVector = Icons.Filled.Balance,
+                                                        contentDescription =
+                                                                translate(LocalizationKeys.AnalNut.QUICK_MULTI_NUTRIENT_ADJUSTMENT),
+                                                        tint =
+                                                                if (selectedRation != null &&
+                                                                                referenceUtilisee != null &&
+                                                                                (selectedRation
+                                                                                        .alimentMutableList
+                                                                                        .isNotEmpty())
+                                                                )
+                                                                        VetNutriColors.Primary
+                                                                else
+                                                                        VetNutriColors.Primary.copy(
+                                                                                alpha = 0.5f
+                                                                        ),
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.AnalNut.QUICK_MULTI_NUTRIENT_ADJUSTMENT),
+                                                        enabled =
+                                                                selectedRation !=
+                                                                        null &&
+                                                                        referenceUtilisee !=
+                                                                                null &&
                                                                         (selectedRation
                                                                                 .alimentMutableList
-                                                                                .isNotEmpty())
-                                                        )
-                                                                VetNutriColors.Primary
-                                                        else
-                                                                VetNutriColors.Primary.copy(
-                                                                        alpha = 0.5f
-                                                                ),
-                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
-                                                tooltip = translate(LocalizationKeys.AnalNut.QUICK_MULTI_NUTRIENT_ADJUSTMENT),
-                                                enabled =
-                                                        selectedRation !=
-                                                                null &&
-                                                                referenceUtilisee !=
-                                                                        null &&
-                                                                (selectedRation
-                                                                        .alimentMutableList
-                                                                        .isNotEmpty()),
-                                                onClick = {
-                                                                                if (selectedRation !=
-                                                                                                null &&
-                                                                                                referenceUtilisee !=
-                                                                                                        null
-                                                                                ) {
-                                                                                        coroutineScope
-                                                                                                .launch {
-                                                                                                        try {
-                                                                                                                // Créer les données d'ajustement par défaut
-                                                                                                                val adjustmentData =
-                                                                                                                        selectedRation
-                                                                                                                                .alimentMutableList
-                                                                                                                                .map {
-                                                                                                                                        alimentRation
-                                                                                                                                        ->
-                                                                                                                                        val suggestion =
-                                                                                                                                                suggestDefaultTargetNutrient(
-                                                                                                                                                        alimentRation,
-                                                                                                                                                        referenceUtilisee
+                                                                                .isNotEmpty()),
+                                                        onClick = {
+                                                                                        if (selectedRation !=
+                                                                                                        null &&
+                                                                                                        referenceUtilisee !=
+                                                                                                                null
+                                                                                        ) {
+                                                                                                coroutineScope
+                                                                                                        .launch {
+                                                                                                                try {
+                                                                                                                        // Créer les données d'ajustement par défaut
+                                                                                                                        val adjustmentData =
+                                                                                                                                selectedRation
+                                                                                                                                        .alimentMutableList
+                                                                                                                                        .map {
+                                                                                                                                                alimentRation
+                                                                                                                                                ->
+                                                                                                                                                val suggestion =
+                                                                                                                                                        suggestDefaultTargetNutrient(
+                                                                                                                                                                alimentRation,
+                                                                                                                                                                referenceUtilisee
+                                                                                                                                                        )
+                                                                                                                                                AlimentAdjustmentData(
+                                                                                                                                                        alimentRation =
+                                                                                                                                                                alimentRation,
+                                                                                                                                                        selectedNutrient =
+                                                                                                                                                                suggestion,
+                                                                                                                                                        isLocked =
+                                                                                                                                                                false,
+                                                                                                                                                        isEnergyAdjustable =
+                                                                                                                                                                true
                                                                                                                                                 )
-                                                                                                                                        AlimentAdjustmentData(
-                                                                                                                                                alimentRation =
-                                                                                                                                                        alimentRation,
-                                                                                                                                                selectedNutrient =
-                                                                                                                                                        suggestion,
-                                                                                                                                                isLocked =
-                                                                                                                                                        false,
-                                                                                                                                                isEnergyAdjustable =
-                                                                                                                                                        true
-                                                                                                                                        )
-                                                                                                                                }
+                                                                                                                                        }
 
-                                                                                                                // Calculer l'ajustement avec les valeurs par défaut
-                                                                                                                val result =
-                                                                                                                        calculerAjustement(
-                                                                                                                                ration =
-                                                                                                                                        selectedRation,
-                                                                                                                                adjustmentData =
-                                                                                                                                        adjustmentData,
-                                                                                                                                referenceUtilisee =
-                                                                                                                                        referenceUtilisee,
-                                                                                                                                besoinEnergetiqueTotal =
-                                                                                                                                        besoinEnergetiqueTotal
-                                                                                                                                                ?: 0.0,
-                                                                                                                                besoinEnergetiqueStandard =
-                                                                                                                                        besoinEnergetiqueStandard
-                                                                                                                                                ?: 0.0,
-                                                                                                                                poidsAnimal =
-                                                                                                                                        null, // Valeur par défaut
-                                                                                                                                poidsMetabolique =
-                                                                                                                                        null, // Valeur par défaut
-                                                                                                                                equationRepository =
-                                                                                                                                        equationRepository
-                                                                                                                        )
+                                                                                                                        // Calculer l'ajustement avec les valeurs par défaut
+                                                                                                                        val result =
+                                                                                                                                calculerAjustement(
+                                                                                                                                        ration =
+                                                                                                                                                selectedRation,
+                                                                                                                                        adjustmentData =
+                                                                                                                                                adjustmentData,
+                                                                                                                                        referenceUtilisee =
+                                                                                                                                                referenceUtilisee,
+                                                                                                                                        besoinEnergetiqueTotal =
+                                                                                                                                                besoinEnergetiqueTotal
+                                                                                                                                                        ?: 0.0,
+                                                                                                                                        besoinEnergetiqueStandard =
+                                                                                                                                                besoinEnergetiqueStandard
+                                                                                                                                                        ?: 0.0,
+                                                                                                                                        poidsAnimal =
+                                                                                                                                                null, // Valeur par défaut
+                                                                                                                                        poidsMetabolique =
+                                                                                                                                                null, // Valeur par défaut
+                                                                                                                                        equationRepository =
+                                                                                                                                                equationRepository
+                                                                                                                                )
 
-                                                                                                                if (result.success
-                                                                                                                ) {
-                                                                                                                        result.adjustedAliments
-                                                                                                                                ?.let {
-                                                                                                                                        adjustedAliments
-                                                                                                                                        ->
-                                                                                                                                        viewModel
-                                                                                                                                                .updateRationAliments(
-                                                                                                                                                        selectedRation,
-                                                                                                                                                        adjustedAliments
+                                                                                                                        if (result.success
+                                                                                                                        ) {
+                                                                                                                                result.adjustedAliments
+                                                                                                                                        ?.let {
+                                                                                                                                                adjustedAliments
+                                                                                                                                                ->
+                                                                                                                                                viewModel
+                                                                                                                                                        .updateRationAliments(
+                                                                                                                                                                selectedRation,
+                                                                                                                                                                adjustedAliments
+                                                                                                                                                        )
+                                                                                                                                                showSnackbar(
+                                                                                                                                                        translate(LocalizationKeys.AnalNut.QUICK_ADJUST_SUCCESS, result.message)
                                                                                                                                                 )
-                                                                                                                                        showSnackbar(
-                                                                                                                                                translate(LocalizationKeys.AnalNut.QUICK_ADJUST_SUCCESS, result.message)
-                                                                                                                                        )
-                                                                                                                                }
-                                                                                                                } else {
+                                                                                                                                        }
+                                                                                                                        } else {
+                                                                                                                                showSnackbar(
+                                                                                                                                        translate(LocalizationKeys.AnalNut.ADJUST_ERROR, result.message)
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                } catch (
+                                                                                                                        e:
+                                                                                                                                Exception) {
                                                                                                                         showSnackbar(
-                                                                                                                                translate(LocalizationKeys.AnalNut.ADJUST_ERROR, result.message)
+                                                                                                                                translate(LocalizationKeys.AnalNut.ADJUST_ERROR, e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR))
                                                                                                                         )
                                                                                                                 }
-                                                                                                        } catch (
-                                                                                                                e:
-                                                                                                                        Exception) {
-                                                                                                                showSnackbar(
-                                                                                                                        translate(LocalizationKeys.AnalNut.ADJUST_ERROR, e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR))
-                                                                                                                )
                                                                                                         }
-                                                                                                }
+                                                                                        }
                                                                                 }
-                                                                        }
-                                        )
+                                                )
 
-                                        if (!isExamMode) {
-                                                // Ouvrir le gestionnaire de recettes
+                                                if (!isExamMode) {
+                                                        // Ouvrir le gestionnaire de recettes
+                                                        IconWithTooltip(
+                                                                imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                                                                contentDescription = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
+                                                                tint = VetNutriColors.Primary,
+                                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                                tooltip = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
+                                                                onClick = onOpenRecipeDialog
+                                                        )
+                                                }
+
+                                                // Bouton pour ajouter un aliment
                                                 IconWithTooltip(
-                                                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                                                        contentDescription = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
+                                                        imageVector = Icons.Filled.Add,
+                                                        contentDescription = translate(LocalizationKeys.AnalNut.ADD_ALIMENT),
                                                         tint = VetNutriColors.Primary,
                                                         modifier = Modifier.size(AppSizes.iconSizeXSmall),
-                                                        tooltip = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
-                                                        onClick = onOpenRecipeDialog
+                                                        tooltip = translate(LocalizationKeys.AnalNut.ADD_ALIMENT),
+                                                        onClick = onAddAliment
                                                 )
                                         }
-
-                                        // Bouton pour ajouter un aliment
-                                        IconWithTooltip(
-                                                imageVector = Icons.Filled.Add,
-                                                contentDescription = translate(LocalizationKeys.AnalNut.ADD_ALIMENT),
-                                                tint = VetNutriColors.Primary,
-                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
-                                                tooltip = translate(LocalizationKeys.AnalNut.ADD_ALIMENT),
-                                                onClick = onAddAliment
-                                        )
                                 }
+                        }
+
+                        if (isReadOnly) {
+                                Text(
+                                        text = translate(LocalizationKeys.Ration.GROUP_READ_ONLY_HINT),
+                                        style = MaterialTheme.typography.caption,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
                         }
 
                         Divider()
@@ -328,6 +340,7 @@ fun SectionAlimentsRation(
                                                                         aliment = aliment,
                                                                         feedColor = VetNutriColors.getFeedColor(index),
                                                                         referenceEv = referenceUtilisee,
+                                                                        isReadOnly = isReadOnly,
                                                                         isEditing =
                                                                                 editingAlimentId ==
                                                                                         aliment.uuid,
@@ -378,6 +391,7 @@ fun SectionAlimentsRation(
                                                                 aliment = aliment,
                                                                 feedColor = VetNutriColors.getFeedColor(index),
                                                                 referenceEv = referenceUtilisee,
+                                                                isReadOnly = isReadOnly,
                                                                 isEditing =
                                                                         editingAlimentId ==
                                                                                 aliment.uuid,

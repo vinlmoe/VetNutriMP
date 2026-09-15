@@ -1877,6 +1877,14 @@
         "enum.NutrientMain.FIBRESOL": "可溶性纤维",
         "enum.NutrientMain.FIBRETOT": "总纤维",
         "enum.NutrientMain.NDF": "NDF",
-        "enum.NutrientMain.ADF": "ADF"
+        "enum.NutrientMain.ADF": "ADF",
+        "ration.scope.single": "单个日粮",
+        "ration.scope.groupActual": "全部现用日粮",
+        "ration.scope.groupProposed": "全部建议日粮",
+        "ration.group.actualName": "全部现用日粮",
+        "ration.group.proposedName": "全部建议日粮",
+        "ration.group.rationCount": "已合计 %1$s 个日粮",
+        "ration.group.totalCoef": "系数合计：%1$s",
+        "ration.group.readOnlyHint": "分组分析：组成为只读"
     }
 }

@@ -608,6 +608,14 @@
         "reference.vm.updateBwError": "Erreur lors de la mise à jour du poids corporel.",
         "reference.vm.updateComplementaryError": "Erreur lors de la mise à jour des équations complémentaires.",
         "reference.vm.updateDecomError": "Erreur lors de la mise à jour de DEcom.",
-        "reference.vm.updateDerawError": "Erreur lors de la mise à jour de DEraw."
+        "reference.vm.updateDerawError": "Erreur lors de la mise à jour de DEraw.",
+        "ration.scope.single": "Razione singola",
+        "ration.scope.groupActual": "Tutte le attuali",
+        "ration.scope.groupProposed": "Tutte le proposte",
+        "ration.group.actualName": "Tutte le razioni attuali",
+        "ration.group.proposedName": "Tutte le razioni proposte",
+        "ration.group.rationCount": "%1$s razione/i cumulate",
+        "ration.group.totalCoef": "Somma dei coefficienti: %1$s",
+        "ration.group.readOnlyHint": "Analisi raggruppata: composizione in sola lettura"
     }
 }
