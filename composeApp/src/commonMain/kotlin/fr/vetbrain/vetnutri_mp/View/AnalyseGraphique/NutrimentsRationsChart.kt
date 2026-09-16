@@ -43,9 +43,16 @@ import io.github.koalaplot.core.xygraph.*
 @Composable
 fun NutrimentsRationsChart(
         viewModel: AnimalDetailViewModel,
-        equationRepository: EquationRepository? = null
+        equationRepository: EquationRepository? = null,
+        currentConsultationOnly: Boolean = false,
+        showRationArea: Boolean = false
 ) {
         val animal by viewModel.animal.collectAsState()
+        val selectedConsultation by viewModel.selectedConsultation.collectAsState()
+        val consultations = consultationsPourGraphique(
+                animal?.consultations.orEmpty(), selectedConsultation, currentConsultationOnly,
+                showRationArea
+        )
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
 
         // États pour les données des rations
@@ -60,20 +67,20 @@ fun NutrimentsRationsChart(
         } // "" = histogramme, autre = scatter plot
 
         // Calculer les données des rations de manière asynchrone
-        LaunchedEffect(animal?.consultations?.size, referenceUtilisee) {
+        LaunchedEffect(consultations, referenceUtilisee, equationRepository) {
                 isLoading = true
                 val resultat = mutableListOf<RationNutrimentData>()
 
                 // Identifier les rations actuelles
                 val rationsActuellesIds =
-                        animal?.consultations
+                        consultations
                                 ?.flatMap { it.rations }
                                 ?.filter { it.actual }
                                 ?.map { it.uuid }
                                 ?.toSet()
                                 ?: emptySet()
 
-                animal?.consultations?.forEachIndexed { consultationIndex, consultation ->
+                consultations.forEachIndexed { consultationIndex, consultation ->
                         consultation.rations.forEachIndexed { rationIndex, ration ->
                                 try {
                                         val rationData =
@@ -88,6 +95,7 @@ fun NutrimentsRationsChart(
                                         rationData?.let { data ->
                                                 val dataWithDate =
                                                         data.copy(
+                                                                consultationId = consultation.uuid,
                                                                 consultationDate =
                                                                         consultation.date,
                                                                 numero =
@@ -108,7 +116,7 @@ fun NutrimentsRationsChart(
         }
 
         // Vérifier si une consultation et une référence sont disponibles
-        val hasConsultations = animal?.consultations?.isNotEmpty() == true
+        val hasConsultations = consultations.isNotEmpty()
         val hasReference = referenceUtilisee != null
 
         if (!hasConsultations) {
@@ -260,6 +268,10 @@ fun NutrimentsRationsChart(
                                         Box(modifier = Modifier.height(400.dp)) {
                                                 XYGraph(
                                                         xAxisModel = remember(categories) { CategoryAxisModel(categories) },
+                                                        xAxisLabels = { category ->
+                                                                val ration = rationsNutrimentData[categories.indexOf(category)]
+                                                                graphRationLabel(ration.rationId, ration.numero)
+                                                        },
                                                         yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartYAxisModel(yRange) },
                                                         yAxisTitle = "${xOption?.let { translate(it.displayName) }} (${xOption?.unit})",
                                                         modifier = Modifier.fillMaxSize()
@@ -309,7 +321,7 @@ fun NutrimentsRationsChart(
                                                                         ration.isRationActuelle -> Color(0xFFFF9800)
                                                                         else -> VetNutriColors.Primary
                                                                 }
-                                                                val numFontSize = if (ration.numero >= 100) 9.sp else if (ration.numero >= 10) 10.sp else 12.sp
+                                                                val numFontSize = if (graphRationLabel(ration.rationId, ration.numero) == "Σ") 12.sp else if (ration.numero >= 100) 9.sp else if (ration.numero >= 10) 10.sp else 12.sp
                                                                 val shortName = ration.rationName.take(9).let { if (ration.rationName.length > 9) "$it…" else it }
                                                                 val barValueStr = fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils.formatDecimal(barValue.toDouble(), 1)
 
@@ -332,7 +344,7 @@ fun NutrimentsRationsChart(
                                                                                                 drawCircle(color = rationColor, radius = size.minDimension / 2, style = Stroke(width = 2.dp.toPx()))
                                                                                         }
                                                                                         Text(
-                                                                                                text = "${ration.numero}",
+                                                                                                text = graphRationLabel(ration.rationId, ration.numero),
                                                                                                 style = MaterialTheme.typography.caption.copy(fontWeight = FontWeight.Bold, fontSize = numFontSize),
                                                                                                 color = rationColor
                                                                                         )
@@ -480,6 +492,10 @@ fun NutrimentsRationsChart(
                                                                         }
                                                                 }
                                                 ) {
+                                        if (showRationArea) RationPossibilityAreas(
+                                                points, rationsNutrimentData.map { it.consultationId to it.isRationActuelle },
+                                                rationsNutrimentData.map { it.rationName.startsWith("Σ") }
+                                        )
                                                         rationsNutrimentData.forEachIndexed { index, data ->
                                                                 val point = points[index]
                                                                 val isPointVisible = point.x >= xRange.start &&
@@ -536,7 +552,7 @@ fun NutrimentsRationsChart(
                                                                         data.isRationActuelle -> Color(0xFFFF9800)
                                                                         else -> VetNutriColors.Primary
                                                                 }
-                                                                val numFontSize = if (data.numero >= 100) 9.sp else if (data.numero >= 10) 10.sp else 12.sp
+                                                                val numFontSize = if (graphRationLabel(data.rationId, data.numero) == "Σ") 12.sp else if (data.numero >= 100) 9.sp else if (data.numero >= 10) 10.sp else 12.sp
                                                                 val shortName = data.rationName.take(9).let { if (data.rationName.length > 9) "$it…" else it }
 
                                                                 Box(
@@ -552,7 +568,7 @@ fun NutrimentsRationsChart(
                                                                                                 drawCircle(color = numeroColor, radius = size.minDimension / 2, style = Stroke(width = 2.dp.toPx()))
                                                                                         }
                                                                                         Text(
-                                                                                                text = "${data.numero}",
+                                                                                                text = graphRationLabel(data.rationId, data.numero),
                                                                                                 style = MaterialTheme.typography.caption.copy(fontWeight = FontWeight.Bold, fontSize = numFontSize),
                                                                                                 color = numeroColor
                                                                                         )
@@ -671,7 +687,7 @@ fun NutrimentsRationsChart(
                                                 Column {
                                                         Text(
                                                                 text =
-                                                                        "${data.numero}. ${data.rationName}",
+                                                                        graphRationLegend(data.rationId, data.numero, data.rationName),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,
@@ -706,4 +722,3 @@ fun NutrimentsRationsChart(
                 }
         }
 }
-

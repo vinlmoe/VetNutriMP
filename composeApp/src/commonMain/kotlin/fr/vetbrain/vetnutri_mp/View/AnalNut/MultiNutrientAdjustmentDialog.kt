@@ -149,6 +149,7 @@ fun MultiNutrientAdjustmentView(
         }
 
         var refLevelByNutrient by remember { mutableStateOf<Map<String, Reflevel>>(emptyMap()) }
+        var pourcentageEnergieCompletsText by remember { mutableStateOf("") }
         var preview by remember { mutableStateOf<RationAdjustmentResult?>(null) }
         var isProcessing by remember { mutableStateOf(false) }
         var processingMessage by remember { mutableStateOf("") }
@@ -512,7 +513,7 @@ fun MultiNutrientAdjustmentView(
                                 }
                         }
 
-                        // Part d'énergie minimale à couvrir par les aliments complets
+                        // Part d'énergie fixe à couvrir par les aliments complets
                         Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 backgroundColor = MaterialTheme.colors.surface,
@@ -580,7 +581,7 @@ fun MultiNutrientAdjustmentView(
                                                                                         equationRepository =
                                                                                                 equationRepository,
                                                                                         pourcentageEnergieAlimentsComplets =
-                                                                                                pourcentageEnergieCompletsText.replace(',', '.').toDoubleOrNull()
+                                                                                                pourcentageEnergieCompletsText.takeIf { it.isNotBlank() }?.let { it.replace(',', '.').toDoubleOrNull() ?: Double.NaN }
                                                                                 )
                                                                         isProcessing = false
                                                                         processingMessage = ""
@@ -620,7 +621,7 @@ fun MultiNutrientAdjustmentView(
                                                                                         equationRepository =
                                                                                                 equationRepository,
                                                                                         pourcentageEnergieAlimentsComplets =
-                                                                                                pourcentageEnergieCompletsText.replace(',', '.').toDoubleOrNull()
+                                                                                                pourcentageEnergieCompletsText.takeIf { it.isNotBlank() }?.let { it.replace(',', '.').toDoubleOrNull() ?: Double.NaN }
                                                                                 )
                                                                         isProcessing = false
                                                                         processingMessage = ""
@@ -691,7 +692,7 @@ fun MultiNutrientAdjustmentView(
                                                                         }
                                                                 }
                                                         },
-                                                        enabled = !isProcessing,
+                                                        enabled = !isProcessing && pourcentageEnergieCompletsText.isBlank(),
                                                         modifier = Modifier.weight(1f)
                                                 ) { Text(translate(LocalizationKeys.AnalNut.ADJUST_ENERGY_EQUAL)) }
 
@@ -716,7 +717,7 @@ fun MultiNutrientAdjustmentView(
                                                                                         poidsMetabolique = poidsMetabolique,
                                                                                         equationRepository = equationRepository,
                                                                                         pourcentageEnergieAlimentsComplets =
-                                                                                                pourcentageEnergieCompletsText.replace(',', '.').toDoubleOrNull()
+                                                                                                pourcentageEnergieCompletsText.takeIf { it.isNotBlank() }?.let { it.replace(',', '.').toDoubleOrNull() ?: Double.NaN }
                                                                                 )
                                                                         val result = constraintResult.toRationAdjustmentResult()
                                                                         isProcessing = false
@@ -1156,62 +1157,50 @@ suspend fun calculerAjustement(
                         }
                 }
 
-                // ÉTAPE PRIORITAIRE : Garantir qu'une part minimale de l'énergie totale provient des
-                // aliments complets (FoodKind.COMPLET), avant tout autre ajustement. Le reste du
-                // besoin énergétique (et des autres nutriments) est complété librement aux étapes
-                // suivantes avec les autres aliments.
-                if (pourcentageEnergieAlimentsComplets != null && pourcentageEnergieAlimentsComplets > 0.0) {
-                        val besoinEnergieComplets =
-                                (pourcentageEnergieAlimentsComplets / 100.0) * besoinEnergetiqueTotal
-
-                        var apportEnergieComplets = 0.0
-                        for (alimentRation in adjustedAliments) {
-                                if (alimentRation.aliment?.typeAliment == FoodKind.COMPLET && alimentRation.quantite > 0.0) {
-                                        apportEnergieComplets +=
-                                                alimentRation.getEnergie(referenceUtilisee, equationRepository)
+                // Fixer la contribution des aliments complets avant les autres ajustements.
+                if (pourcentageEnergieAlimentsComplets != null) {
+                        require(pourcentageEnergieAlimentsComplets.isFinite() &&
+                                pourcentageEnergieAlimentsComplets in 0.0..100.0) {
+                                "Le pourcentage d'énergie des aliments complets doit être compris entre 0 et 100."
+                        }
+                        val cible = pourcentageEnergieAlimentsComplets / 100.0 * besoinEnergetiqueTotal
+                        var apportVerrouille = 0.0
+                        val disponibles = mutableListOf<Pair<Int, Double>>()
+                        for (i in adjustedAliments.indices) {
+                                val ar = adjustedAliments[i]
+                                if (ar.aliment?.typeAliment != FoodKind.COMPLET) continue
+                                if (ar.uuid in alimentsVerrouilles) {
+                                        apportVerrouille += ar.getEnergie(referenceUtilisee, equationRepository)
+                                } else {
+                                        val densite = ar.copy(quantite = 100.0).getEnergie(referenceUtilisee, equationRepository) / 100.0
+                                        if (densite > 0.0) disponibles.add(i to densite)
                                 }
                         }
-
-                        val manqueEnergieComplets = besoinEnergieComplets - apportEnergieComplets
-
-                        if (manqueEnergieComplets > 0.01) {
-                                val alimentsCompletsAjustables =
-                                        adjustmentData.filter {
-                                                it.alimentRation.aliment?.typeAliment == FoodKind.COMPLET &&
-                                                        !it.isLocked
-                                        }
-
-                                if (alimentsCompletsAjustables.isEmpty()) {
-                                        return RationAdjustmentResult(
-                                                success = false,
-                                                message = translate(LocalizationKeys.AnalNut.NO_COMPLETE_FOOD_FOR_ENERGY_SHARE)
-                                        )
-                                }
-
-                                val result =
-                                        ajusterAlimentsPourNutriment(
-                                                nutriment = NutrientMain.ENERGIE,
-                                                manque = manqueEnergieComplets,
-                                                alimentsAjustables = alimentsCompletsAjustables,
-                                                adjustedAliments = adjustedAliments,
-                                                alimentsVerrouilles = alimentsVerrouilles,
-                                                constraints = emptyMap(),
-                                                referenceUtilisee = referenceUtilisee,
-                                                equationRepository = equationRepository
-                                        )
-
-                                if (!result.success) {
-                                        return result
-                                }
+                        val reste = cible - apportVerrouille
+                        require(reste >= -1e-6) {
+                                "Les aliments complets verrouillés dépassent la part d'énergie demandée."
                         }
+                        require(reste <= 1e-6 || disponibles.isNotEmpty()) {
+                                "Aucun aliment complet ajustable ne permet d'atteindre la part d'énergie demandée."
+                        }
+                        for ((i, densite) in disponibles) {
+                                adjustedAliments[i] = adjustedAliments[i].copy(
+                                        quantite = reste.coerceAtLeast(0.0) / disponibles.size / densite
+                                )
+                        }
+                }
+                // Les étapes suivantes ne doivent plus modifier les aliments complets.
+                val remainingAdjustmentData = adjustmentData.filter {
+                        pourcentageEnergieAlimentsComplets == null ||
+                                it.alimentRation.aliment?.typeAliment != FoodKind.COMPLET
                 }
 
                 // Étape 2: Traiter les nutriments sélectionnés par l'utilisateur, avec ordre
                 // dynamique
                 val nutrimentsTraites = mutableSetOf<String>()
-                val processingOrder = buildProcessingOrderFromSelections(adjustmentData)
+                val processingOrder = buildProcessingOrderFromSelections(remainingAdjustmentData)
 
-                adjustmentData.forEach { data -> }
+                remainingAdjustmentData.forEach { data -> }
 
                 // PREMIÈRE ÉTAPE : Ajuster tous les nutriments sauf l'énergie
                 val nutrimentsNonEnergetiques = processingOrder.filter { it != "ENERGIE" }
@@ -1246,7 +1235,7 @@ suspend fun calculerAjustement(
                         // Trouver les aliments ajustables pour ce nutriment
                         val constraintByUuid = emptyMap<String, AlimentConstraint>()
                         val alimentsAjustables =
-                                adjustmentData.filter {
+                                remainingAdjustmentData.filter {
                                         it.selectedNutrient == nutrientLabel && !it.isLocked
                                 }
 
@@ -1286,7 +1275,8 @@ suspend fun calculerAjustement(
                                                 alimentsVerrouilles = alimentsVerrouilles,
                                                 constraints = constraintByUuid,
                                                 referenceUtilisee = referenceUtilisee,
-                                                equationRepository = equationRepository
+                                                equationRepository = equationRepository,
+                                                roundQuantities = pourcentageEnergieAlimentsComplets == null
                                         )
 
                                 if (!result.success) {
@@ -1300,7 +1290,7 @@ suspend fun calculerAjustement(
 
                 // DEUXIÈME ÉTAPE : Ajuster l'énergie en recalculant l'apport total de la ration
                 // finale
-                if (processingOrder.contains("ENERGIE")) {
+                if (processingOrder.contains("ENERGIE") || pourcentageEnergieAlimentsComplets != null) {
 
                         // Créer une ration temporaire avec les ajustements effectués
                         val rationTemp =
@@ -1355,7 +1345,7 @@ suspend fun calculerAjustement(
                                 // 1. Aliments avec l'énergie comme nutriment principal (priorité
                                 // maximale)
                                 val alimentsEnergiePrincipale =
-                                        adjustmentData.filter {
+                                        remainingAdjustmentData.filter {
                                                 it.selectedNutrient == "ENERGIE" && !it.isLocked
                                         }
 
@@ -1373,7 +1363,7 @@ suspend fun calculerAjustement(
                                         } else {
                                                 // Seulement si aucun aliment n'a l'énergie comme
                                                 // nutriment principal
-                                                adjustmentData.filter {
+                                                remainingAdjustmentData.filter {
                                                         it.selectedNutrient !=
                                                                 "ENERGIE" && // Pas déjà traité
                                                                 // comme nutriment
@@ -1397,7 +1387,8 @@ suspend fun calculerAjustement(
                                                 alimentsVerrouilles = alimentsVerrouilles,
                                                 constraints = constraintByUuid,
                                                 referenceUtilisee = referenceUtilisee,
-                                                equationRepository = equationRepository
+                                                equationRepository = equationRepository,
+                                                roundQuantities = pourcentageEnergieAlimentsComplets == null
                                         )
 
                                 if (result.success) {
@@ -1433,11 +1424,11 @@ suspend fun calculerAjustement(
                 */
 
                 // TROISIÈME ÉTAPE : Ajustement final du ratio CAP après tous les ajustements
-                val calciumSelectionne: Boolean = adjustmentData.any { it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked }
+                val calciumSelectionne: Boolean = remainingAdjustmentData.any { it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked }
 
                 if (calciumSelectionne) {
                         val capMinRequis: Double = obtenirCapMinDepuisReference(referenceUtilisee)
-                        val alimentsCalcium = adjustmentData.filter { 
+                        val alimentsCalcium = remainingAdjustmentData.filter {
                                 it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked 
                         }
                         
@@ -1546,8 +1537,19 @@ suspend fun calculerAjustement(
                         
                 }
 
+                if (pourcentageEnergieAlimentsComplets != null) {
+                        var energieTotale = 0.0
+                        for (ar in adjustedAliments) {
+                                energieTotale += ar.getEnergie(referenceUtilisee, equationRepository)
+                        }
+                        require(kotlin.math.abs(energieTotale - besoinEnergetiqueTotal) <= 0.01) {
+                                "Impossible de respecter le besoin énergétique avec cette répartition et ces ajustements. Essayez l'ajustement par contraintes."
+                        }
+                }
+
                 // Arrondi final selon règles métier
                 for (i in adjustedAliments.indices) {
+                        if (pourcentageEnergieAlimentsComplets != null || adjustedAliments[i].uuid in alimentsVerrouilles) continue
                         val rounded: Double = arrondirQuantiteSelonRegles(adjustedAliments[i], adjustedAliments[i].quantite.toDouble())
                         adjustedAliments[i] = adjustedAliments[i].copy(quantite = rounded)
                 }
@@ -1757,7 +1759,8 @@ private suspend fun ajusterAlimentsPourNutriment(
         alimentsVerrouilles: Set<String>,
         constraints: Map<String, AlimentConstraint> = emptyMap(),
         referenceUtilisee: ReferenceEv? = null,
-        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
+        roundQuantities: Boolean = true
 ): RationAdjustmentResult {
         try {
                 // Filtrer les aliments disponibles pour l'ajustement
@@ -1927,7 +1930,7 @@ private suspend fun ajusterAlimentsPourNutriment(
                                         (quantiteActuelle + quantiteAAjouter).coerceIn(minQ, maxQ)
                                 // Arrondir selon règles
                                 val nouvelleQuantiteArrondie: Double =
-                                        arrondirQuantiteSelonRegles(adjustedAliments[index], nouvelleQuantite)
+                                        if (roundQuantities) arrondirQuantiteSelonRegles(adjustedAliments[index], nouvelleQuantite) else nouvelleQuantite
                                 adjustedAliments[index] =
                                         adjustedAliments[index].copy(
                                                 quantite = nouvelleQuantiteArrondie

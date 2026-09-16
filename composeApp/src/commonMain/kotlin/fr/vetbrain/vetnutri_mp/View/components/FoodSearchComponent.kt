@@ -929,6 +929,7 @@ private fun FoodSearchResults(
 
 
 /** Élément de liste d'aliment */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FoodListItem(
         aliment: AlimentEv,
@@ -1008,8 +1009,17 @@ private fun FoodListItem(
                                 }
                         }
 
-                        // Contenu principal de l'aliment
-                        Column(modifier = Modifier.weight(1f).padding(AppSizes.paddingMedium)) {
+                        // Deux colonnes lorsque la largeur permet de garder les textes lisibles.
+                        BoxWithConstraints(modifier = Modifier.weight(1f).padding(AppSizes.paddingSmall)) {
+                            val spacing = AppSizes.paddingMedium
+                            val twoColumns = maxWidth >= 360.dp
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(spacing),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
+                                maxItemsInEachRow = if (twoColumns) 2 else 1
+                            ) {
+                              Column(modifier = Modifier.weight(0.55f)) {
                                 Text(
                                         text = aliment.nom ?: "Sans nom",
                                         style = MaterialTheme.typography.subtitle1,
@@ -1040,9 +1050,11 @@ private fun FoodListItem(
                                         )
                                 }
 
+                              }
+                              Column(modifier = Modifier.weight(0.45f)) {
                                 // Afficher quelques infos clés (type et groupe) en ignorant les
                                 // valeurs ALL
-                                Row(
+                                FlowRow(
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingSmall)
                                 ) {
@@ -1112,6 +1124,8 @@ private fun FoodListItem(
                                                 )
                                         }
                                 }
+                              }
+                            }
                         }
                 }
         }

@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.sortedForDisplay
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
@@ -117,7 +118,7 @@ fun ConsultationEditDialog(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(editedConsultation.rations) { ration ->
+                    items(editedConsultation.rations.sortedForDisplay(), key = { it.uuid }) { ration ->
                         RationCard(
                                 ration = ration,
                                 onEdit = { /* TODO: Implémenter l'édition de ration */},

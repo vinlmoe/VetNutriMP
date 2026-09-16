@@ -24,6 +24,8 @@ fun AnalyseGraphiqueView(
         equationRepository: EquationRepository? = null,
         modifier: Modifier = Modifier
 ) {
+        var currentConsultationOnly by remember { mutableStateOf(true) }
+        var showRationArea by remember { mutableStateOf(true) }
         var selectedChart by remember { mutableStateOf(ChartType.EVOLUTION_POIDS) }
         var weightConeState by remember { mutableStateOf<WeightConeState?>(null) }
         var minVariationPercent by remember { mutableStateOf<Double>(DEFAULT_MIN_VARIATION_PERCENT) }
@@ -53,6 +55,37 @@ fun AnalyseGraphiqueView(
                                 onChartSelected = { selectedChart = it },
                                 isCompact = isCompact
                         )
+
+                        if (selectedChart != ChartType.EVOLUTION_POIDS) {
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        Row(
+                                                modifier = Modifier.weight(1f),
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Switch(currentConsultationOnly, { currentConsultationOnly = it })
+                                                Text("Consultation actuelle uniquement", style = MaterialTheme.typography.body2)
+                                        }
+                                        if (selectedChart != ChartType.DENSITE_RATIONS) {
+                                                Row(
+                                                        modifier = Modifier.weight(1f),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                        Switch(showRationArea, { showRationArea = it })
+                                                        Text("Aire des possibilités et sommes", style = MaterialTheme.typography.body2)
+                                                }
+                                        }
+                                }
+                                if (selectedChart != ChartType.DENSITE_RATIONS) {
+                                        if (showRationArea) Text(
+                                                "Zones séparées par consultation : orange pour les rations actuelles, bleu pour les proposées. Σ : moyenne pondérée par les coefficients. Pour les nutriments, sélectionnez deux axes pour voir l’aire.",
+                                                style = MaterialTheme.typography.caption
+                                        )
+                                }
+                        }
 
                         // Toggle pour /1000 kcal vs /100g MS (seulement pour les graphiques de densité)
                         if (selectedChart == ChartType.DENSITE_RATIONS) {
@@ -105,15 +138,16 @@ fun AnalyseGraphiqueView(
                                         onUpdateMaxVariation = { maxVariationPercent = it }
                                 )
                                 ChartType.RATIONS_ENERGIE ->
-                                        RationsEnergieChart(viewModel, equationRepository)
+                                        RationsEnergieChart(viewModel, equationRepository, currentConsultationOnly, showRationArea)
                                 ChartType.DENSITE_RATIONS ->
                                         DensiteRationsChart(
                                                 viewModel,
                                                 equationRepository,
-                                                useDryMatterPer100g
+                                                useDryMatterPer100g,
+                                                currentConsultationOnly
                                         )
                                 ChartType.NUTRIMENTS_RATIONS ->
-                                        NutrimentsRationsChart(viewModel, equationRepository)
+                                        NutrimentsRationsChart(viewModel, equationRepository, currentConsultationOnly, showRationArea)
                         }
 
                         // Légende et informations

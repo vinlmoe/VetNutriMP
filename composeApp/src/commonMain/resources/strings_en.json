@@ -1880,7 +1880,7 @@
         "enum.NutrientMain.ADF": "ADF",
         "analnut.error.no_complete_food_energy_share": "No complete food available to cover the requested energy share.",
         "analnut.label.energy_share_complete_food": "Energy share covered by complete foods (%)",
-        "analnut.hint.energy_share_complete_food": "Requires that at least this percentage of the total energy need be covered by complete foods; the remainder is completed by the other foods.",
+        "analnut.hint.energy_share_complete_food": "Sets exactly this percentage of the total energy need for complete foods; other foods cover the remainder. Quantities are not rounded to preserve this split.",
         "ration.scope.single": "Single ration",
         "ration.scope.groupActual": "All current ones",
         "ration.scope.groupProposed": "All proposed ones",

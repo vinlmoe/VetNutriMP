@@ -14,6 +14,7 @@ import fr.vetbrain.vetnutri_mp.Components.CenteredMessage
 import fr.vetbrain.vetnutri_mp.Components.RationItem
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.sortedForDisplay
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -84,7 +85,7 @@ fun SectionRationsConsultation(
                                         modifier = Modifier.weight(1f),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                        items(consultation?.rations ?: emptyList()) { ration ->
+                                        items(consultation?.rations.orEmpty().sortedForDisplay(), key = { it.uuid }) { ration ->
                                                 RationItem(
                                                         ration = ration,
                                                         isSelected =

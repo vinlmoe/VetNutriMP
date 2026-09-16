@@ -950,7 +950,7 @@ fun RationsView(
                                                                                                 }
                                                                                         )
                                                                                         selectedConsultation
-                                                                                                ?.rations
+                                                                                                ?.rations?.sortedForDisplay()
                                                                                                 ?.forEach {
                                                                                                         ration
                                                                                                         ->
@@ -1375,7 +1375,7 @@ fun RationsView(
                                                                                 }
                                                                                 items(
                                                                                         selectedConsultation
-                                                                                                ?.rations
+                                                                                                ?.rations?.sortedForDisplay()
                                                                                                 ?: emptyList(),
                                                                                         key = { ration -> ration.uuid }
                                                                                 ) { ration ->
@@ -1863,6 +1863,13 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                 )
         }
 
+        // Conserver le texte brut pendant la saisie, sans réinsérer les décimales effacées.
+        var coefficientText by remember(ration?.uuid) {
+                mutableStateOf(editedRation.coef.toString().replace('.', ','))
+        }
+        val coefficient = coefficientText.replace(',', '.').toDoubleOrNull()
+        val coefficientValid = coefficient != null && coefficient.isFinite() && coefficient > 0
+
         AlertDialog(
                 onDismissRequest = onDismiss,
                 title = { Text(title, style = MaterialTheme.typography.h6) },
@@ -1939,24 +1946,9 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
 
                                 // Coefficient de la ration
                                 OutlinedTextField(
-                                        value =
-                                                fr.vetbrain.vetnutri_mp.Utils.TextUtils
-                                                        .formatDecimal(
-                                                                editedRation.coef.toDouble(),
-                                                                2
-                                                        )
-                                                        .replace('.', ','),
-                                        onValueChange = { newValue ->
-                                                // Accepter seulement les nombres positifs
-                                                val normalizedValue = newValue.replace(',', '.')
-                                                val coefficient = normalizedValue.toDoubleOrNull()
-                                                if (coefficient != null && coefficient > 0) {
-                                                        editedRation =
-                                                                editedRation.copy(
-                                                                        coef = coefficient
-                                                                )
-                                                }
-                                        },
+                                        value = coefficientText,
+                                        onValueChange = { coefficientText = it },
+                                        isError = !coefficientValid,
                                         label = { Text(translate(RationKeys.COEFFICIENT_LABEL)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         keyboardOptions =
@@ -1971,7 +1963,8 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                 },
                 confirmButton = {
                         Button(
-                                onClick = { onSave(editedRation) },
+                                onClick = { coefficient?.let { onSave(editedRation.copy(coef = it)) } },
+                                enabled = coefficientValid,
                                 colors =
                                         ButtonDefaults.buttonColors(
                                                 backgroundColor = VetNutriColors.Primary,

@@ -42,9 +42,16 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 @Composable
 fun RationsEnergieChart(
         viewModel: AnimalDetailViewModel,
-        equationRepository: EquationRepository? = null
+        equationRepository: EquationRepository? = null,
+        currentConsultationOnly: Boolean = false,
+        showRationArea: Boolean = false
 ) {
         val animal by viewModel.animal.collectAsState()
+        val selectedConsultation by viewModel.selectedConsultation.collectAsState()
+        val consultations = consultationsPourGraphique(
+                animal?.consultations.orEmpty(), selectedConsultation, currentConsultationOnly,
+                showRationArea
+        )
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
         val scope = rememberCoroutineScope()
 
@@ -54,11 +61,11 @@ fun RationsEnergieChart(
         var rationSelectionnee by remember { mutableStateOf<String?>(null) }
 
         // Calculer les données des rations de manière asynchrone
-        LaunchedEffect(animal?.consultations?.size, referenceUtilisee) {
+        LaunchedEffect(consultations, referenceUtilisee, equationRepository) {
                 isLoading = true
                 val resultat = mutableListOf<RationEnergyData>()
 
-                animal?.consultations?.forEachIndexed { consultationIndex, consultation ->
+                consultations.forEachIndexed { consultationIndex, consultation ->
                         consultation.rations.forEachIndexed { rationIndex, ration ->
                                 try {
                                         // 🔍 LOG DIAGNOSTIC : Vérifier les données de la ration
@@ -75,6 +82,7 @@ fun RationsEnergieChart(
                                                 // unique
                                                 val dataWithDate =
                                                         data.copy(
+                                                                consultationId = consultation.uuid,
                                                                 consultationDate =
                                                                         consultation.date,
                                                                 numero =
@@ -97,7 +105,7 @@ fun RationsEnergieChart(
         }
 
         // Vérifier si une consultation et une référence sont disponibles
-        val hasConsultations = animal?.consultations?.isNotEmpty() == true
+        val hasConsultations = consultations.isNotEmpty()
         val hasReference = referenceUtilisee != null
 
         if (!hasConsultations) {
@@ -183,7 +191,7 @@ fun RationsEnergieChart(
                                 .filter { data ->
                                         // Trouver la ration originale pour vérifier sa propriété
                                         // 'actual'
-                                        animal?.consultations
+                                        consultations
                                                 ?.flatMap { it.rations }
                                                 ?.find { it.uuid == data.rationId }
                                                 ?.actual == true
@@ -317,6 +325,10 @@ fun RationsEnergieChart(
                                                         }
                                                 }
                                 ) {
+                                        if (showRationArea) RationPossibilityAreas(
+                                                points, rationsEnergieData.map { it.consultationId to (it.rationId in rationsActuellesIds) },
+                                                rationsEnergieData.map { it.rationName.startsWith("Σ") }
+                                        )
                                         // 🔸 LIGNES DE RÉFÉRENCE pour la répartition énergétique
                                         // Ligne 80-x : Protéines + Lipides = 80% (ENA = 20%)
                                         val ligne80MinusX =
@@ -476,7 +488,7 @@ fun RationsEnergieChart(
                                                                 Color(0xFFFF9800)
                                                         else -> VetNutriColors.Primary
                                                 }
-                                        val numFontSize = if (data.numero >= 100) 9.sp else if (data.numero >= 10) 10.sp else 12.sp
+                                        val numFontSize = if (graphRationLabel(data.rationId, data.numero) == "Σ") 12.sp else if (data.numero >= 100) 9.sp else if (data.numero >= 10) 10.sp else 12.sp
                                         val shortName = data.rationName.take(9).let {
                                                 if (data.rationName.length > 9) "$it…" else it
                                         }
@@ -496,7 +508,7 @@ fun RationsEnergieChart(
                                                                         drawCircle(color = numeroColor, radius = size.minDimension / 2, style = Stroke(width = 2.dp.toPx()))
                                                                 }
                                                                 Text(
-                                                                        text = "${data.numero}",
+                                                                        text = graphRationLabel(data.rationId, data.numero),
                                                                         style = MaterialTheme.typography.caption.copy(fontWeight = FontWeight.Bold, fontSize = numFontSize),
                                                                         color = numeroColor
                                                                 )
@@ -696,7 +708,7 @@ fun RationsEnergieChart(
                                                         Column {
                                                                 Text(
                                                                         text =
-                                                                                "${data.numero}. ${data.rationName}",
+                                                                                graphRationLegend(data.rationId, data.numero, data.rationName),
                                                                         style =
                                                                                 MaterialTheme.typography
                                                                                         .caption,
