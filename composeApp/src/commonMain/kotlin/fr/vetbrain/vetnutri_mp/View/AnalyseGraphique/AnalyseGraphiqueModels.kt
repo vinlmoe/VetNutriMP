@@ -3,6 +3,17 @@ package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
+import fr.vetbrain.vetnutri_mp.Data.RationAggregator
+
+internal fun graphRationLabel(rationId: String, numero: Int): String =
+        if (RationAggregator.estRationGroupee(rationId) ||
+                rationId.startsWith(RationAggregator.UUID_GROUPE_ACTUELLES + "-") ||
+                rationId.startsWith(RationAggregator.UUID_GROUPE_PROPOSEES + "-")) "Σ"
+        else numero.toString()
+
+internal fun graphRationLegend(rationId: String, numero: Int, name: String): String =
+        if (graphRationLabel(rationId, numero) == "Σ") "Σ " + name.removePrefix("Σ").trimStart()
+        else "$numero. $name"
 
 // Data class pour gérer l'état du cône de perte de poids
 data class WeightConeState(

@@ -81,7 +81,7 @@ fun RationItem(
                                                         else translate(RationKeys.PROPOSED),
                                                 style = MaterialTheme.typography.caption,
                                                 color =
-                                                        if (ration.actual) VetNutriColors.Primary
+                                                        if (ration.actual) Color(0xFFFF9800)
                                                         else VetNutriColors.Secondary
                                         )
                                         Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
@@ -160,6 +160,9 @@ fun RationGroupItem(
         modifier: Modifier = Modifier
 ) {
         val sommeCoefficients = RationAggregator.sommeCoefficients(rations)
+        val groupColor =
+                if (scope.cibleRationsActuelles) Color(0xFFFF9800)
+                else VetNutriColors.Secondary
 
         Card(
                 modifier =
@@ -179,9 +182,7 @@ fun RationGroupItem(
                         Icon(
                                 imageVector = Icons.Filled.Functions,
                                 contentDescription = null,
-                                tint =
-                                        if (scope.cibleRationsActuelles) VetNutriColors.Primary
-                                        else VetNutriColors.Secondary,
+                                tint = groupColor,
                                 modifier = Modifier.size(AppSizes.iconSizeSmall)
                         )
                         Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
@@ -192,6 +193,7 @@ fun RationGroupItem(
                                 Text(
                                         text = RationAggregator.nomGroupe(scope),
                                         style = MaterialTheme.typography.subtitle1,
+                                        color = groupColor,
                                         fontWeight =
                                                 if (isSelected) FontWeight.Bold
                                                 else FontWeight.Normal
@@ -204,10 +206,7 @@ fun RationGroupItem(
                                                                 rations.size.toString()
                                                         ),
                                                 style = MaterialTheme.typography.caption,
-                                                color =
-                                                        if (scope.cibleRationsActuelles)
-                                                                VetNutriColors.Primary
-                                                        else VetNutriColors.Secondary
+                                                color = groupColor
                                         )
                                         Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
                                         Text(

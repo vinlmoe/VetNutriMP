@@ -80,7 +80,7 @@ data class ConstraintAdjustmentResult(
  * variables de décision.
  *
  * [pourcentageEnergieAlimentsComplets], lorsqu'il est fourni (0-100), ajoute une contrainte
- * supplémentaire imposant qu'au moins cette part de l'énergie totale de la ration provienne des
+ * supplémentaire imposant que cette part exacte du besoin énergétique provienne des
  * aliments de type [FoodKind.COMPLET]. Le reste de l'énergie (et des autres nutriments) est
  * complété librement par la résolution simultanée des autres contraintes MIN/MAX.
  */
@@ -153,11 +153,12 @@ suspend fun adjustRationByConstraints(
                 val constraints = mutableListOf<LpConstraint>()
                 val constraintInfos = mutableMapOf<String, NutrientConstraintInfo>()
 
-                // Contrainte optionnelle, posée en priorité : une part minimale de l'énergie totale
-                // doit provenir des aliments complets (FoodKind.COMPLET). Les autres aliments
-                // (complémentaires, bruts, BARF...) complètent librement le reste, sous réserve des
-                // autres contraintes MIN/MAX posées ensuite.
-                if (pourcentageEnergieAlimentsComplets != null && pourcentageEnergieAlimentsComplets > 0.0) {
+                // Contribution exacte des aliments complets, y compris ceux verrouillés.
+                if (pourcentageEnergieAlimentsComplets != null) {
+                        require(pourcentageEnergieAlimentsComplets.isFinite() &&
+                                pourcentageEnergieAlimentsComplets in 0.0..100.0) {
+                                "Le pourcentage d'énergie des aliments complets doit être compris entre 0 et 100."
+                        }
                         val requiredCompletGrams =
                                 (pourcentageEnergieAlimentsComplets / 100.0) * besoinEnergetiqueTotal
                         val coefficients = DoubleArray(totalVarCount)
@@ -173,17 +174,17 @@ suspend fun adjustRationByConstraints(
                                 }
                         }
                         val adjustedRhs = requiredCompletGrams - lockedContribution
-                        if (adjustedRhs > 1e-9) {
-                                val name = "MIN(%ENERGIE_COMPLET)"
+                        run {
+                                val name = "PART_FIXE(%ENERGIE_COMPLET)"
                                 constraints.add(
-                                        LpConstraint(name, coefficients, LpConstraintSense.GE, adjustedRhs)
+                                        LpConstraint(name, coefficients, LpConstraintSense.EQ, adjustedRhs)
                                 )
                                 constraintInfos[name] =
                                         NutrientConstraintInfo(
                                                 NutrientMain.ENERGIE,
                                                 Reflevel.MIN,
                                                 requiredCompletGrams,
-                                                LpConstraintSense.GE
+                                                LpConstraintSense.EQ
                                         )
                         }
                 }
@@ -210,7 +211,7 @@ suspend fun adjustRationByConstraints(
                                                 NutrientConstraintInfo(nutrient, Reflevel.MIN, requiredGrams, LpConstraintSense.GE)
                                 }
                                 val upperRef = bestUpperBound(nutrient)
-                                if (upperRef != null && upperRef.quantite > 0.0) {
+                                if (pourcentageEnergieAlimentsComplets != null || (upperRef != null && upperRef.quantite > 0.0)) {
                                         val name = "MAX(${nutrient.label})"
                                         constraints.add(
                                                 LpConstraint(name, coefficients.copyOf(), LpConstraintSense.LE, adjustedRhs)
@@ -218,7 +219,7 @@ suspend fun adjustRationByConstraints(
                                         constraintInfos[name] =
                                                 NutrientConstraintInfo(
                                                         nutrient,
-                                                        upperRef.niveauRelatif,
+                                                        upperRef?.niveauRelatif ?: Reflevel.MAX,
                                                         requiredGrams,
                                                         LpConstraintSense.LE
                                                 )
@@ -334,7 +335,8 @@ suspend fun adjustRationByConstraints(
                                                 } else {
                                                         val idx = freeAliments.indexOfFirst { it.uuid == ar.uuid }
                                                         val rawQuantite = solution.values[idx]
-                                                        ar.copy(quantite = arrondirQuantiteSelonRegles(ar, rawQuantite))
+                                                        // Garder la précision pour respecter la part fixe et l'énergie totale.
+                                                        ar.copy(quantite = if (pourcentageEnergieAlimentsComplets != null) rawQuantite else arrondirQuantiteSelonRegles(ar, rawQuantite))
                                                 }
                                         }
                                 ConstraintAdjustmentResult(

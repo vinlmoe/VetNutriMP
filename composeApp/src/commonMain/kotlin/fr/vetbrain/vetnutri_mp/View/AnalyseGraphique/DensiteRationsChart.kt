@@ -33,9 +33,15 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 fun DensiteRationsChart(
         viewModel: AnimalDetailViewModel,
         equationRepository: EquationRepository? = null,
-        useDryMatterPer100g: Boolean = false
+        useDryMatterPer100g: Boolean = false,
+        currentConsultationOnly: Boolean = false
 ) {
         val animal by viewModel.animal.collectAsState()
+        val selectedConsultation by viewModel.selectedConsultation.collectAsState()
+        val consultations = consultationsPourGraphique(
+                animal?.consultations.orEmpty(), selectedConsultation, currentConsultationOnly,
+                false
+        )
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
 
         // États pour les données des rations
@@ -45,11 +51,11 @@ fun DensiteRationsChart(
         var nutrimentX by remember { mutableStateOf<String?>("energie") }
 
         // Calculer les données des rations de manière asynchrone
-        LaunchedEffect(animal?.consultations?.size, referenceUtilisee) {
+        LaunchedEffect(consultations, referenceUtilisee, equationRepository) {
                 isLoading = true
                 val resultat = mutableListOf<RationEnergyData>()
 
-                animal?.consultations?.forEachIndexed { consultationIndex, consultation ->
+                consultations.forEachIndexed { consultationIndex, consultation ->
                         consultation.rations.forEachIndexed { rationIndex, ration ->
                                 try {
                                         val rationData =
@@ -62,6 +68,7 @@ fun DensiteRationsChart(
                                         rationData?.let { data ->
                                                 val dataWithDate =
                                                         data.copy(
+                                                                consultationId = consultation.uuid,
                                                                 consultationDate =
                                                                         consultation.date,
                                                                 numero =
@@ -82,7 +89,7 @@ fun DensiteRationsChart(
         }
 
         // Vérifier si une consultation et une référence sont disponibles
-        val hasConsultations = animal?.consultations?.isNotEmpty() == true
+        val hasConsultations = consultations.isNotEmpty()
         val hasReference = referenceUtilisee != null
 
         if (!hasConsultations) {
@@ -166,7 +173,7 @@ fun DensiteRationsChart(
                                 .filter { data ->
                                         // Trouver la ration originale pour vérifier sa propriété
                                         // 'actual'
-                                        animal?.consultations
+                                        consultations
                                                 ?.flatMap { it.rations }
                                                 ?.find { it.uuid == data.rationId }
                                                 ?.actual == true
@@ -369,7 +376,7 @@ fun DensiteRationsChart(
                                                         Column {
                                                                 Text(
                                                                         text =
-                                                                                "${data.numero}. ${data.rationName}",
+                                                                                graphRationLegend(data.rationId, data.numero, data.rationName),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -427,4 +434,3 @@ fun DensiteRationsChart(
                
         }
 }
-

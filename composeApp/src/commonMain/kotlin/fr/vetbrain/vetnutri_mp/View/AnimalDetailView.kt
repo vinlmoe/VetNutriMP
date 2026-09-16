@@ -34,6 +34,7 @@ import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.sortedForDisplay
 import fr.vetbrain.vetnutri_mp.Export.DocumentType
 import fr.vetbrain.vetnutri_mp.Export.ExportData
 import fr.vetbrain.vetnutri_mp.Export.HtmlDocumentBuilder
@@ -1927,7 +1928,7 @@ private fun WideScreenLayout(
 
                                                         val currentConsultation: ConsultationEv? = selectedConsultation
                                                         if (currentConsultation != null && currentConsultation.rations.isNotEmpty()) {
-                                                                items(currentConsultation.rations, key = { it.uuid }) { ration ->
+                                                                items(currentConsultation.rations.sortedForDisplay(), key = { it.uuid }) { ration ->
                                                                 Row(
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth()
@@ -3733,7 +3734,7 @@ private fun NarrowScreenLayout(
 
                                                                         val currentConsultation: ConsultationEv? = selectedConsultation
                                                                         if (currentConsultation != null && currentConsultation.rations.isNotEmpty()) {
-                                                                                items(currentConsultation.rations, key = { it.uuid }) { ration ->
+                                                                                items(currentConsultation.rations.sortedForDisplay(), key = { it.uuid }) { ration ->
                                                                                 Row(
                                                                                         modifier =
                                                                                                 Modifier.fillMaxWidth()

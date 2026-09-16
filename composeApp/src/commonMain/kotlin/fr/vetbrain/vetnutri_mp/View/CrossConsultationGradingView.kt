@@ -1,6 +1,8 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Components.BufferedNumberTextField
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -588,7 +590,7 @@ fun CrossConsultationGradingView(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    OutlinedTextField(
+                                    BufferedNumberTextField(
                                         value = grade.manualScore?.toString() ?: "",
                                         onValueChange = { value ->
                                             val manual = value.toDoubleOrNull()
@@ -644,7 +646,7 @@ private fun RuleEditor(
                     label = { Text(translate("auto.view.crossconsultationgradingview.libelle_exercice")) },
                     modifier = Modifier.weight(1f)
                 )
-                OutlinedTextField(
+                BufferedNumberTextField(
                     value = rule.autoScoreMax.toString(),
                     onValueChange = { value ->
                         onRuleChange(rule.copy(autoScoreMax = value.toDoubleOrNull() ?: 20.0))
@@ -672,7 +674,7 @@ private fun RuleEditor(
                     label = { Text(translate("auto.view.crossconsultationgradingview.absents_separes_par")) },
                     modifier = Modifier.weight(1f)
                 )
-                OutlinedTextField(
+                BufferedNumberTextField(
                     value = rule.ingredientRule.points.toString(),
                     onValueChange = { value ->
                         onRuleChange(rule.copy(ingredientRule = rule.ingredientRule.copy(points = value.toIntOrNull() ?: 0)))
@@ -706,7 +708,7 @@ private fun RuleEditor(
                             label = { Text(translate("nutrientComponents.columnNutrient")) },
                             modifier = Modifier.weight(1f)
                         )
-                        OutlinedTextField(
+                        BufferedNumberTextField(
                             value = item.min?.toString() ?: "",
                             onValueChange = { value ->
                                 val updated = rule.nutrientRules.toMutableList()
@@ -716,7 +718,7 @@ private fun RuleEditor(
                             label = { Text(translate("new_reference.level.min")) },
                             modifier = Modifier.width(90.dp)
                         )
-                        OutlinedTextField(
+                        BufferedNumberTextField(
                             value = item.max?.toString() ?: "",
                             onValueChange = { value ->
                                 val updated = rule.nutrientRules.toMutableList()
@@ -726,7 +728,7 @@ private fun RuleEditor(
                             label = { Text(translate("new_reference.level.max")) },
                             modifier = Modifier.width(90.dp)
                         )
-                        OutlinedTextField(
+                        BufferedNumberTextField(
                             value = item.points.toString(),
                             onValueChange = { value ->
                                 val updated = rule.nutrientRules.toMutableList()
@@ -758,7 +760,7 @@ private fun RuleEditor(
                     label = { Text(translate("auto.view.crossconsultationgradingview.id_references_separes_par")) },
                     modifier = Modifier.weight(1f)
                 )
-                OutlinedTextField(
+                BufferedNumberTextField(
                     value = rule.referenceRule.points.toString(),
                     onValueChange = { value ->
                         onRuleChange(rule.copy(referenceRule = rule.referenceRule.copy(points = value.toIntOrNull() ?: 0)))
@@ -786,7 +788,7 @@ private fun RuleEditor(
                     label = { Text(translate("auto.view.crossconsultationgradingview.mots_absents")) },
                     modifier = Modifier.weight(1f)
                 )
-                OutlinedTextField(
+                BufferedNumberTextField(
                     value = rule.adviceRule.points.toString(),
                     onValueChange = { value ->
                         onRuleChange(rule.copy(adviceRule = rule.adviceRule.copy(points = value.toIntOrNull() ?: 0)))
@@ -850,7 +852,7 @@ private fun RuleEditor(
                                     }
                                 ) { Text(translate("auto.view.crossconsultationgradingview.portee_arg", (criterion.rationScope.uiLabel()).toString())) }
 
-                                OutlinedTextField(
+                                BufferedNumberTextField(
                                     value = criterion.points.toString(),
                                     onValueChange = { value ->
                                         val updated = rule.customCriteria.toMutableList()
@@ -876,7 +878,7 @@ private fun RuleEditor(
                             }
 
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                OutlinedTextField(
+                                BufferedNumberTextField(
                                     value = criterion.min?.toString() ?: "",
                                     onValueChange = { value ->
                                         val updated = rule.customCriteria.toMutableList()
@@ -886,7 +888,7 @@ private fun RuleEditor(
                                     label = { Text(translate("new_reference.level.min")) },
                                     modifier = Modifier.width(120.dp)
                                 )
-                                OutlinedTextField(
+                                BufferedNumberTextField(
                                     value = criterion.max?.toString() ?: "",
                                     onValueChange = { value ->
                                         val updated = rule.customCriteria.toMutableList()
@@ -967,19 +969,19 @@ private fun MinMaxEditor(
     onChange: (MinMaxPointsRule) -> Unit
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
+        BufferedNumberTextField(
             value = rule.min?.toString() ?: "",
             onValueChange = { onChange(rule.copy(min = it.toDoubleOrNull())) },
             label = { Text(translate("new_reference.level.min")) },
             modifier = Modifier.width(90.dp)
         )
-        OutlinedTextField(
+        BufferedNumberTextField(
             value = rule.max?.toString() ?: "",
             onValueChange = { onChange(rule.copy(max = it.toDoubleOrNull())) },
             label = { Text(translate("new_reference.level.max")) },
             modifier = Modifier.width(90.dp)
         )
-        OutlinedTextField(
+        BufferedNumberTextField(
             value = rule.points.toString(),
             onValueChange = { onChange(rule.copy(points = it.toIntOrNull() ?: 0)) },
             label = { Text(translate("auto.view.crossconsultationgradingview.pts")) },
