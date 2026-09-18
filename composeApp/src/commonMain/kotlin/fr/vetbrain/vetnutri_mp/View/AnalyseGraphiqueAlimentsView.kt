@@ -2084,13 +2084,9 @@ private fun GraphiqueNuagePoints(
                                                                         NutrientMain.HUMIDITE
                                                                 )
                                                         if (humidite == null || humidite < 20.0) {
-                                                            Color(
-                                                                    0xFFFF9800
-                                                            ) // Orange pour aliments sans humidité
-                                                            // ou < 20%
+                                                            VetNutriColors.FoodAnalysisDry
                                                         } else {
-                                                            VetNutriColors
-                                                                    .Primary // Couleur normale
+                                                            VetNutriColors.FoodAnalysisWet
                                                         }
                                                     }
 
@@ -2332,11 +2328,9 @@ private fun GraphiqueNuagePoints(
                                         val humidite =
                                                 data.aliment.getNutrient(NutrientMain.HUMIDITE)
                                         if (humidite == null || humidite < 20.0) {
-                                            Color(
-                                                    0xFFFF9800
-                                            ) // Orange pour aliments sans humidité ou < 20%
+                                            VetNutriColors.FoodAnalysisDry
                                         } else {
-                                            VetNutriColors.Primary // Couleur par défaut
+                                            VetNutriColors.FoodAnalysisWet
                                         }
                                     }
 
@@ -2825,11 +2819,9 @@ private fun GraphiqueNutrimentsPersonnalise(
                                             val humidite =
                                                     data.aliment.getNutrient(NutrientMain.HUMIDITE)
                                             if (humidite == null || humidite < 20.0) {
-                                                Color(
-                                                        0xFFFF9800
-                                                ) // Orange pour aliments sans humidité ou < 20%
+                                                VetNutriColors.FoodAnalysisDry
                                             } else {
-                                                VetNutriColors.Primary // Couleur normale
+                                                VetNutriColors.FoodAnalysisWet
                                             }
                                         }
 
@@ -2887,9 +2879,9 @@ private fun GraphiqueNutrimentsPersonnalise(
                                 // Vérifier l'humidité pour les aliments non sélectionnés
                                 val humidite = data.aliment.getNutrient(NutrientMain.HUMIDITE)
                                 if (humidite == null || humidite < 20.0) {
-                                    Color(0xFFFF9800) // Orange pour aliments sans humidité ou < 20%
+                                    VetNutriColors.FoodAnalysisDry
                                 } else {
-                                    VetNutriColors.Primary // Couleur par défaut
+                                    VetNutriColors.FoodAnalysisWet
                                 }
                             }
 
@@ -2987,11 +2979,9 @@ private fun GraphiqueNutrimentsPersonnalise(
                                     val humidite =
                                             aliment.aliment.getNutrient(NutrientMain.HUMIDITE)
                                     if (humidite == null || humidite < 20.0) {
-                                        Color(
-                                                0xFFFF9800
-                                        ) // Orange pour aliments sans humidité ou < 20%
+                                        VetNutriColors.FoodAnalysisDry
                                     } else {
-                                        VetNutriColors.Primary // Couleur normale
+                                        VetNutriColors.FoodAnalysisWet
                                     }
                                 }
                         DefaultVerticalBar(SolidColor(couleur))
@@ -3073,9 +3063,9 @@ private fun HistogrammeEnergieAliments(
                                 // Vérifier l'humidité pour les aliments non sélectionnés
                                 val humidite = aliment.aliment.getNutrient(NutrientMain.HUMIDITE)
                                 if (humidite == null || humidite < 20.0) {
-                                    Color(0xFFFF9800) // Orange pour aliments sans humidité ou < 20%
+                                    VetNutriColors.FoodAnalysisDry
                                 } else {
-                                    VetNutriColors.Primary // Couleur par défaut
+                                    VetNutriColors.FoodAnalysisWet
                                 }
                             }
                     DefaultVerticalBar(SolidColor(couleur))
