@@ -681,8 +681,6 @@ fun AnalyseGraphiqueAlimentsView(
     // États pour observer les consultations et rations sélectionnées
     val selectedConsultation by viewModel?.selectedConsultation?.collectAsState() ?: remember { mutableStateOf(null) }
     val selectedRation by viewModel?.selectedRation?.collectAsState() ?: remember { mutableStateOf(null) }
-    var includeCurrentRations by remember { mutableStateOf(true) }
-    var includeProposedRations by remember { mutableStateOf(true) }
     var rationGraphData by remember { mutableStateOf<List<AlimentAnalyseData>>(emptyList()) }
     
     // États pour les valeurs métaboliques nécessaires à la HeatMap
@@ -714,8 +712,7 @@ fun AnalyseGraphiqueAlimentsView(
     // États pour les toggles d'unités
     var useDryMatterPer100g by remember { mutableStateOf(false) } // Toggle pour /1000 kcal vs /100g MS
 
-    LaunchedEffect(selectedConsultation, referenceEv, equationRepository, useDryMatterPer100g,
-        includeCurrentRations, includeProposedRations) {
+    LaunchedEffect(selectedConsultation, referenceEv, equationRepository, useDryMatterPer100g) {
         rationGraphData = emptyList()
         val consultation = selectedConsultation ?: return@LaunchedEffect
         val prepared = fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.prepareGraphConsultations(
@@ -724,7 +721,6 @@ fun AnalyseGraphiqueAlimentsView(
         val result = mutableListOf<AlimentAnalyseData>()
         var number = 0
         for (ration in prepared.rations) {
-            if (if (ration.actual) !includeCurrentRations else !includeProposedRations) continue
             val isSum = fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.graphRationLabel(ration.uuid, 0) == "Σ"
             if (!isSum) number++
             rationFoodGraphData(ration, number, isSum, referenceEv, equationRepository, useDryMatterPer100g)
@@ -1112,33 +1108,6 @@ fun AnalyseGraphiqueAlimentsView(
                 )
             }
         }
-
-
-        if (selectedConsultation != null && ongletActif != "analyse_detaillee" && ongletActif != "heatmap") {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                    Switch(includeCurrentRations, { includeCurrentRations = it })
-                    Text("Rations actuelles", style = MaterialTheme.typography.body2)
-                }
-                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                    Switch(includeProposedRations, { includeProposedRations = it })
-                    Text("Rations proposées", style = MaterialTheme.typography.body2)
-                }
-            }
-            if (rationGraphData.isNotEmpty()) {
-                Column(Modifier.fillMaxWidth().heightIn(max = 100.dp).verticalScroll(rememberScrollState())) {
-                    Text("Consultation sélectionnée · Aires sur les graphes XY · Σ : moyenne pondérée par les coefficients",
-                        style = MaterialTheme.typography.caption)
-                    rationGraphData.forEach { data ->
-                        Text(
-                            "${data.graphLabel} — ${data.aliment.nom.orEmpty().removePrefix("Σ").trim()} (${if (data.rationActual == true) "actuelle" else "proposée"})",
-                            color = data.rationColor!!, style = MaterialTheme.typography.caption
-                        )
-                    }
-                }
-            }
-        }
-
         // Vérifier si une référence est disponible
         val hasReference = referenceEv != null
         val hasEquationRepository = equationRepository != null
@@ -1247,7 +1216,7 @@ fun AnalyseGraphiqueAlimentsView(
                             // Graphique principal
                             // Graphique principal
                             GraphiqueNuagePoints(
-                                    alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques } + rationGraphData,
+                                    alimentsAnalyses = (alimentsAnalyses + rationGraphData).filter { it.aliment.uuid !in alimentsMasques },
                                     ongletActif = ongletActif,
                                     alimentSelectionne = alimentSelectionne,
                                     nutrimentX = nutrimentX,
@@ -1284,7 +1253,7 @@ fun AnalyseGraphiqueAlimentsView(
 
                             // Liste des aliments (sans LazyColumn en mode compact)
                             ListeAlimentsAnalyse(
-                                    alimentsAnalyses = alimentsAnalyses,
+                                    alimentsAnalyses = alimentsAnalyses + rationGraphData,
                                     alimentSelectionne = alimentSelectionne,
                                     alimentsMasques = alimentsMasques,
                                     onAlimentSelected = { uuid -> alimentSelectionne = uuid },
@@ -1315,7 +1284,7 @@ fun AnalyseGraphiqueAlimentsView(
                                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                             ) {
                                 ListeAlimentsAnalyse(
-                                        alimentsAnalyses = alimentsAnalyses,
+                                        alimentsAnalyses = alimentsAnalyses + rationGraphData,
                                         alimentSelectionne = alimentSelectionne,
                                         alimentsMasques = alimentsMasques,
                                         onAlimentSelected = { uuid -> alimentSelectionne = uuid },
@@ -1373,7 +1342,7 @@ fun AnalyseGraphiqueAlimentsView(
                                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                             ) {
                                 GraphiqueNuagePoints(
-                                        alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques } + rationGraphData,
+                                        alimentsAnalyses = (alimentsAnalyses + rationGraphData).filter { it.aliment.uuid !in alimentsMasques },
                                         ongletActif = ongletActif,
                                         alimentSelectionne = alimentSelectionne,
                                         nutrimentX = nutrimentX,
@@ -2015,7 +1984,9 @@ private fun GraphiqueNuagePoints(
                         // Graphique principal avec gestes de zoom/pan
                         XYGraph(
                                 xAxisModel = KoalaPlotExtensions.createSmartXAxisModel(range = xRange),
+                                xAxisLabels = { GraphFormattingUtils.formatAxisTick(it, xRange) },
                                 yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(range = yRange),
+                                yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
                                 xAxisTitle = when (ongletActif) {
                                     "protein_lipid" -> "Protéines (% énergie)"
                                     "phosphore_protein" -> if (useDryMatterPer100g) "Phosphore (g/100g MS)" else "Phosphore (g/1000 kcal)"
@@ -2400,7 +2371,7 @@ private fun GraphiqueNuagePoints(
     }
 }
 
-/** Ligne d'aliment dans le tableau */
+/** Ligne d'aliment, de ration ou de somme dans la légende du graphique. */
 @Composable
 private fun AlimentRow(
         data: AlimentAnalyseData,
@@ -2409,6 +2380,13 @@ private fun AlimentRow(
         onAlimentSelected: (String?) -> Unit,
         onToggleHidden: (String, Boolean) -> Unit
 ) {
+    val rowColor = data.rationColor ?: VetNutriColors.Primary
+    val itemType = when {
+        data.isRationSum -> "la somme"
+        data.rationActual != null -> "la ration"
+        else -> "l'aliment"
+    }
+    val visibilityLabel = if (isHidden) "Afficher $itemType" else "Masquer $itemType"
     Row(
             modifier =
                     Modifier.fillMaxWidth()
@@ -2425,36 +2403,42 @@ private fun AlimentRow(
     ) {
         Text(
                 text = data.graphLabel,
-                modifier = Modifier.weight(0.1f),
+                modifier = Modifier.width(28.dp),
                 style = MaterialTheme.typography.caption,
                 fontWeight = FontWeight.Bold,
-                color = VetNutriColors.Primary
+                color = rowColor
         )
         Text(
-                text = data.aliment.nom ?: "Sans nom",
+                text = if (data.isRationSum) data.aliment.nom.orEmpty().removePrefix("Σ").trim().ifEmpty { "Somme" }
+                       else data.aliment.nom ?: "Sans nom",
                 modifier = Modifier.weight(0.6f),
                 style = MaterialTheme.typography.caption,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = data.rationColor ?: MaterialTheme.colors.onSurface
         )
         Text(
-                text = data.aliment.brand ?: "-",
+                text = when (data.rationActual) {
+                    true -> "Actuelle"
+                    false -> "Proposée"
+                    null -> data.aliment.brand ?: "-"
+                },
                 modifier = Modifier.weight(0.3f),
                 style = MaterialTheme.typography.caption
         )
-        // Icône pour masquer/afficher l'aliment avec checkbox réduite
+        // Visibilité individuelle des aliments, rations et sommes.
         IconButtonWithTooltip(
                 onClick = { onToggleHidden(data.aliment.uuid, !isHidden) },
                 modifier = Modifier.size(32.dp),
                 imageVector = if (isHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                contentDescription = if (isHidden) "Afficher l'aliment" else "Masquer l'aliment",
-                tooltip = if (isHidden) "Afficher l'aliment" else "Masquer l'aliment",
+                contentDescription = visibilityLabel,
+                tooltip = visibilityLabel,
                 iconModifier = Modifier.size(20.dp),
-                tint = if (isHidden) MaterialTheme.colors.onSurface.copy(alpha = 0.5f) else VetNutriColors.Primary
+                tint = if (isHidden) MaterialTheme.colors.onSurface.copy(alpha = 0.5f) else rowColor
         )
     }
 }
 
-/** Liste des aliments avec leurs données d'analyse */
+/** Légende commune aux aliments, rations et sommes représentés dans les graphiques. */
 @Composable
 private fun ListeAlimentsAnalyse(
         alimentsAnalyses: List<AlimentAnalyseData>,
@@ -2465,10 +2449,11 @@ private fun ListeAlimentsAnalyse(
         isCompactMode: Boolean = false, // ✨ Mode compact pour éviter les conflits de scroll
         modifier: Modifier = Modifier
 ) {
+    val hasRations = alimentsAnalyses.any { it.rationActual != null }
     Card(modifier = modifier, elevation = AppSizes.elevationMedium) {
         Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
             Text(
-                    text = translate("animalList.foodList"),
+                    text = if (hasRations) "Aliments et rations" else translate("animalList.foodList"),
                     style = MaterialTheme.typography.h6,
                     fontWeight = FontWeight.Bold,
                     color = VetNutriColors.Primary
@@ -2484,7 +2469,7 @@ private fun ListeAlimentsAnalyse(
                 ) {
                     Text(
                             text = translate("auto.view.analysegraphiquealimentsview.n"),
-                            modifier = Modifier.weight(0.1f),
+                            modifier = Modifier.width(28.dp),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
                     )
@@ -2495,7 +2480,7 @@ private fun ListeAlimentsAnalyse(
                             fontWeight = FontWeight.Bold
                     )
                     Text(
-                            text = translate("food_edit.field.brand"),
+                            text = if (hasRations) "Marque / type" else translate("food_edit.field.brand"),
                             modifier = Modifier.weight(0.3f),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
@@ -2766,7 +2751,9 @@ private fun GraphiqueNutrimentsPersonnalise(
         BoxWithConstraints(modifier = modifier.clipToBounds()) {
             XYGraph(
                     xAxisModel = KoalaPlotExtensions.createSmartXAxisModel(range = xRange),
+                    xAxisLabels = { GraphFormattingUtils.formatAxisTick(it, xRange) },
                     yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(range = yRange),
+                    yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
                     xAxisTitle = "${xOption?.displayName} (${if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"})",
                     yAxisTitle = "${yOption?.displayName} (${if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"})",
                     modifier = Modifier
@@ -2963,6 +2950,7 @@ private fun GraphiqueNutrimentsPersonnalise(
                 // A previous axis tick may survive briefly while the filtered data is recomposed.
                 xAxisLabels = { id -> alimentsAnalyses.firstOrNull { it.aliment.uuid == id }?.graphLabel.orEmpty() },
                 yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartYAxisModel(range = yRange) },
+                yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
                 yAxisTitle = "${xOption?.displayName} (${if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"})",
                 modifier = modifier
         ) {
@@ -3044,6 +3032,7 @@ private fun HistogrammeEnergieAliments(
                 // A previous axis tick may survive briefly while the filtered data is recomposed.
                 xAxisLabels = { id -> alimentsAnalyses.firstOrNull { it.aliment.uuid == id }?.graphLabel.orEmpty() },
             yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartDensityAxisModel(range = yRange) },
+            yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
             yAxisTitle = if (useDryMatterPer100g) 
                     "Densité énergétique (kcal/100g MS)"
                 else  

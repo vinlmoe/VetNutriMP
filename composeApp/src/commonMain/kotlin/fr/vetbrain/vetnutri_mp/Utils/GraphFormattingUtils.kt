@@ -1,13 +1,35 @@
 package fr.vetbrain.vetnutri_mp.Utils
 
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.log10
 import kotlin.math.pow
+import kotlin.math.round
 
 /**
  * Utilitaires de formatage intelligent pour les graphiques
  */
 object GraphFormattingUtils {
+
+    /** Formate les graduations sans exposer les erreurs binaires des Float. */
+    fun formatAxisTick(value: Float, range: ClosedFloatingPointRange<Float>): String {
+        if (!value.isFinite()) return "N/A"
+        val span = (range.endInclusive.toDouble() - range.start.toDouble()).let { abs(it) }
+        // Garder assez de précision pour distinguer les graduations après un zoom.
+        val decimals = if (span > 0.0 && span.isFinite()) {
+            ceil(-log10(span / 10.0)).toInt().coerceIn(0, 9)
+        } else {
+            2
+        }
+        val scale = 10.0.pow(decimals).toLong()
+        val scaled = round(value.toDouble() * scale).toLong()
+        val magnitude = abs(scaled)
+        val sign = if (scaled < 0) "-" else ""
+        val integer = magnitude / scale
+        if (decimals == 0) return "$sign$integer"
+        val fraction = (magnitude % scale).toString().padStart(decimals, '0').trimEnd('0')
+        return if (fraction.isEmpty()) "$sign$integer" else "$sign$integer.$fraction"
+    }
 
     /**
      * Formate un nombre avec un nombre intelligent de décimales selon la valeur

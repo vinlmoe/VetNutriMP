@@ -5,9 +5,9 @@ import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 /**
  * Extensions pour KoalaPlot avec formatage intelligent des décimales
  * 
- * Note: KoalaPlot utilise son propre formatage interne pour les étiquettes d'axes des graphiques XY.
- * Le formatage intelligent est appliqué dans les légendes, titres et informations contextuelles
- * où l'utilisateur peut vraiment voir la différence.
+ * Ces modèles règlent l'espacement des graduations. Les libellés des graphiques XY doivent
+ * être formatés explicitement avec GraphFormattingUtils.formatAxisTick pour éviter
+ * d'afficher les erreurs de représentation des Float.
  */
 object KoalaPlotExtensions {
 
