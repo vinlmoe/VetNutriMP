@@ -269,8 +269,10 @@ fun NutrimentsRationsChart(
                                                 XYGraph(
                                                         xAxisModel = remember(categories) { CategoryAxisModel(categories) },
                                                         xAxisLabels = { category ->
-                                                                val ration = rationsNutrimentData[categories.indexOf(category)]
-                                                                graphRationLabel(ration.rationId, ration.numero)
+                                                                // Axis ticks can still refer to the previous filtered data.
+                                                                rationsNutrimentData.getOrNull(categories.indexOf(category))
+                                                                        ?.let { graphRationLabel(it.rationId, it.numero) }
+                                                                        .orEmpty()
                                                         },
                                                         yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartYAxisModel(yRange) },
                                                         yAxisTitle = "${xOption?.let { translate(it.displayName) }} (${xOption?.unit})",

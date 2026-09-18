@@ -77,7 +77,10 @@ data class AlimentAnalyseData(
         // Autres nutriments macro en g/1000kcal
         val fibrePer1000Kcal: Double = 0.0,
         val cendrePer1000Kcal: Double = 0.0,
-        val eauPer1000Kcal: Double = 0.0
+        val eauPer1000Kcal: Double = 0.0,
+        val rationActual: Boolean? = null,
+        val isRationSum: Boolean = false,
+        val energyAsFed: Double? = null
 )
 
 /** Calcule la densité énergétique d'un aliment de manière asynchrone */
@@ -351,7 +354,7 @@ private val NUTRIMENT_OPTIONS =
         )
 
 /** Récupère la valeur d'un nutriment depuis AlimentAnalyseData */
-private suspend fun AlimentAnalyseData.getNutrimentValue(
+internal suspend fun AlimentAnalyseData.getNutrimentValue(
     key: String?,
     referenceEv: ReferenceEv?,
     equationRepository: EquationRepository?,
@@ -368,128 +371,131 @@ private suspend fun AlimentAnalyseData.getNutrimentValue(
         densiteEnergetique = 0.0
     )
     
-    val baseValue = when (key) {
+    val nutrient = when (key) {
         // Nutriments principaux (NutrientMain)
-        "humidite" -> alimentRation.getNutrientWithComplementary(NutrientMain.HUMIDITE, equationRepository, referenceEv) ?: 0.0
-        "proteine" -> alimentRation.getNutrientWithComplementary(NutrientMain.PROTEINE, equationRepository, referenceEv) ?: 0.0
-        "lipide" -> alimentRation.getNutrientWithComplementary(NutrientMain.LIPIDE, equationRepository, referenceEv) ?: 0.0
-        "glucide" -> alimentRation.getNutrientWithComplementary(NutrientMain.GLUCIDE, equationRepository, referenceEv) ?: 0.0
-        "ena" -> alimentRation.getNutrientWithComplementary(NutrientMain.ENA, equationRepository, referenceEv) ?: 0.0
-        "fibre" -> alimentRation.getNutrientWithComplementary(NutrientMain.CELLULOSE, equationRepository, referenceEv) ?: 0.0
-        "cellulose" -> alimentRation.getNutrientWithComplementary(NutrientMain.CELLULOSE, equationRepository, referenceEv) ?: 0.0
-        "cendre" -> alimentRation.getNutrientWithComplementary(NutrientMain.CENDRE, equationRepository, referenceEv) ?: 0.0
-        "energie" -> alimentRation.getNutrientWithComplementary(NutrientMain.ENERGIE, equationRepository, referenceEv) ?: 0.0
-        "sucre" -> alimentRation.getNutrientWithComplementary(NutrientMain.SUCRE, equationRepository, referenceEv) ?: 0.0
-        "amidon" -> alimentRation.getNutrientWithComplementary(NutrientMain.AMIDON, equationRepository, referenceEv) ?: 0.0
-        "fibresol" -> alimentRation.getNutrientWithComplementary(NutrientMain.FIBRESOL, equationRepository, referenceEv) ?: 0.0
-        "fibretot" -> alimentRation.getNutrientWithComplementary(NutrientMain.FIBRETOT, equationRepository, referenceEv) ?: 0.0
-        "ndf" -> alimentRation.getNutrientWithComplementary(NutrientMain.NDF, equationRepository, referenceEv) ?: 0.0
-        "adf" -> alimentRation.getNutrientWithComplementary(NutrientMain.ADF, equationRepository, referenceEv) ?: 0.0
-        "dm" -> alimentRation.getNutrientWithComplementary(NutrientMain.DM, equationRepository, referenceEv) ?: 0.0
+        "humidite" -> NutrientMain.HUMIDITE
+        "proteine" -> NutrientMain.PROTEINE
+        "lipide" -> NutrientMain.LIPIDE
+        "glucide" -> NutrientMain.GLUCIDE
+        "ena" -> NutrientMain.ENA
+        "fibre" -> NutrientMain.CELLULOSE
+        "cellulose" -> NutrientMain.CELLULOSE
+        "cendre" -> NutrientMain.CENDRE
+        "energie" -> NutrientMain.ENERGIE
+        "sucre" -> NutrientMain.SUCRE
+        "amidon" -> NutrientMain.AMIDON
+        "fibresol" -> NutrientMain.FIBRESOL
+        "fibretot" -> NutrientMain.FIBRETOT
+        "ndf" -> NutrientMain.NDF
+        "adf" -> NutrientMain.ADF
+        "dm" -> NutrientMain.DM
         
         // Minéraux (NutrientMacro)
-        "calcium" -> alimentRation.getNutrientWithComplementary(NutrientMacro.CAL, equationRepository, referenceEv) ?: 0.0
-        "phosphore" -> alimentRation.getNutrientWithComplementary(NutrientMacro.PHOS, equationRepository, referenceEv) ?: 0.0
-        "magnesium" -> alimentRation.getNutrientWithComplementary(NutrientMacro.MG, equationRepository, referenceEv) ?: 0.0
-        "sodium" -> alimentRation.getNutrientWithComplementary(NutrientMacro.NA, equationRepository, referenceEv) ?: 0.0
-        "potassium" -> alimentRation.getNutrientWithComplementary(NutrientMacro.K, equationRepository, referenceEv) ?: 0.0
-        "chlore" -> alimentRation.getNutrientWithComplementary(NutrientMacro.CHL, equationRepository, referenceEv) ?: 0.0
+        "calcium" -> NutrientMacro.CAL
+        "phosphore" -> NutrientMacro.PHOS
+        "magnesium" -> NutrientMacro.MG
+        "sodium" -> NutrientMacro.NA
+        "potassium" -> NutrientMacro.K
+        "chlore" -> NutrientMacro.CHL
         
         // Oligo-éléments (NutrientMin)
-        "fer" -> alimentRation.getNutrientWithComplementary(NutrientMin.FE, equationRepository, referenceEv) ?: 0.0
-        "cuivre" -> alimentRation.getNutrientWithComplementary(NutrientMin.CU, equationRepository, referenceEv) ?: 0.0
-        "zinc" -> alimentRation.getNutrientWithComplementary(NutrientMin.ZN, equationRepository, referenceEv) ?: 0.0
-        "manganese" -> alimentRation.getNutrientWithComplementary(NutrientMin.MN, equationRepository, referenceEv) ?: 0.0
-        "iode" -> alimentRation.getNutrientWithComplementary(NutrientMin.I, equationRepository, referenceEv) ?: 0.0
-        "selenium" -> alimentRation.getNutrientWithComplementary(NutrientMin.SE, equationRepository, referenceEv) ?: 0.0
+        "fer" -> NutrientMin.FE
+        "cuivre" -> NutrientMin.CU
+        "zinc" -> NutrientMin.ZN
+        "manganese" -> NutrientMin.MN
+        "iode" -> NutrientMin.I
+        "selenium" -> NutrientMin.SE
         
         // Vitamines (NutrientVitam)
-        "vitamine_a" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITA, equationRepository, referenceEv) ?: 0.0
-        "vitamine_c" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITC, equationRepository, referenceEv) ?: 0.0
-        "vitamine_d" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITD, equationRepository, referenceEv) ?: 0.0
-        "vitamine_e" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITE, equationRepository, referenceEv) ?: 0.0
-        "vitamine_k" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITK, equationRepository, referenceEv) ?: 0.0
-        "vitamine_b1" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITB1, equationRepository, referenceEv) ?: 0.0
-        "vitamine_b2" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITB2, equationRepository, referenceEv) ?: 0.0
-        "vitamine_b3" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITB3, equationRepository, referenceEv) ?: 0.0
-        "vitamine_b5" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITB5, equationRepository, referenceEv) ?: 0.0
-        "vitamine_b6" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITB6, equationRepository, referenceEv) ?: 0.0
-        "vitamine_b8" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITB8, equationRepository, referenceEv) ?: 0.0
-        "vitamine_b9" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITB9, equationRepository, referenceEv) ?: 0.0
-        "vitamine_b12" -> alimentRation.getNutrientWithComplementary(NutrientVitam.VITB12, equationRepository, referenceEv) ?: 0.0
-        "choline" -> alimentRation.getNutrientWithComplementary(NutrientVitam.CHOLINE, equationRepository, referenceEv) ?: 0.0
-        "retinol" -> alimentRation.getNutrientWithComplementary(NutrientVitam.RETINOL, equationRepository, referenceEv) ?: 0.0
-        "betacarotene" -> alimentRation.getNutrientWithComplementary(NutrientVitam.BETACAR, equationRepository, referenceEv) ?: 0.0
+        "vitamine_a" -> NutrientVitam.VITA
+        "vitamine_c" -> NutrientVitam.VITC
+        "vitamine_d" -> NutrientVitam.VITD
+        "vitamine_e" -> NutrientVitam.VITE
+        "vitamine_k" -> NutrientVitam.VITK
+        "vitamine_b1" -> NutrientVitam.VITB1
+        "vitamine_b2" -> NutrientVitam.VITB2
+        "vitamine_b3" -> NutrientVitam.VITB3
+        "vitamine_b5" -> NutrientVitam.VITB5
+        "vitamine_b6" -> NutrientVitam.VITB6
+        "vitamine_b8" -> NutrientVitam.VITB8
+        "vitamine_b9" -> NutrientVitam.VITB9
+        "vitamine_b12" -> NutrientVitam.VITB12
+        "choline" -> NutrientVitam.CHOLINE
+        "retinol" -> NutrientVitam.RETINOL
+        "betacarotene" -> NutrientVitam.BETACAR
         
         // Acides gras (NutrientLipid)
-        "agsature" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AGSATURE, equationRepository, referenceEv) ?: 0.0
-        "agmono" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AGMONO, equationRepository, referenceEv) ?: 0.0
-        "agpoly" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AGPOLY, equationRepository, referenceEv) ?: 0.0
-        "ag40" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG40, equationRepository, referenceEv) ?: 0.0
-        "ag60" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG60, equationRepository, referenceEv) ?: 0.0
-        "ag80" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG80, equationRepository, referenceEv) ?: 0.0
-        "ag100" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG100, equationRepository, referenceEv) ?: 0.0
-        "ag120" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG120, equationRepository, referenceEv) ?: 0.0
-        "ag140" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG140, equationRepository, referenceEv) ?: 0.0
-        "ag160" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG160, equationRepository, referenceEv) ?: 0.0
-        "ag180" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG180, equationRepository, referenceEv) ?: 0.0
-        "ag181" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG181, equationRepository, referenceEv) ?: 0.0
-        "ag182" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG182, equationRepository, referenceEv) ?: 0.0
-        "ag183" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG183, equationRepository, referenceEv) ?: 0.0
-        "ag204" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG204, equationRepository, referenceEv) ?: 0.0
-        "ag205" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG205, equationRepository, referenceEv) ?: 0.0
-        "ag226" -> alimentRation.getNutrientWithComplementary(NutrientLipid.AG226, equationRepository, referenceEv) ?: 0.0
-        "cholesterol" -> alimentRation.getNutrientWithComplementary(NutrientLipid.CHOL, equationRepository, referenceEv) ?: 0.0
-        "omega3" -> alimentRation.getNutrientWithComplementary(NutrientLipid.O3, equationRepository, referenceEv) ?: 0.0
-        "omega6" -> alimentRation.getNutrientWithComplementary(NutrientLipid.O6, equationRepository, referenceEv) ?: 0.0
-        "epadha" -> alimentRation.getNutrientWithComplementary(NutrientLipid.EPADHA, equationRepository, referenceEv) ?: 0.0
+        "agsature" -> NutrientLipid.AGSATURE
+        "agmono" -> NutrientLipid.AGMONO
+        "agpoly" -> NutrientLipid.AGPOLY
+        "ag40" -> NutrientLipid.AG40
+        "ag60" -> NutrientLipid.AG60
+        "ag80" -> NutrientLipid.AG80
+        "ag100" -> NutrientLipid.AG100
+        "ag120" -> NutrientLipid.AG120
+        "ag140" -> NutrientLipid.AG140
+        "ag160" -> NutrientLipid.AG160
+        "ag180" -> NutrientLipid.AG180
+        "ag181" -> NutrientLipid.AG181
+        "ag182" -> NutrientLipid.AG182
+        "ag183" -> NutrientLipid.AG183
+        "ag204" -> NutrientLipid.AG204
+        "ag205" -> NutrientLipid.AG205
+        "ag226" -> NutrientLipid.AG226
+        "cholesterol" -> NutrientLipid.CHOL
+        "omega3" -> NutrientLipid.O3
+        "omega6" -> NutrientLipid.O6
+        "epadha" -> NutrientLipid.EPADHA
         
         // Acides aminés (AAEnum)
-        "alanine" -> alimentRation.getNutrientWithComplementary(AAEnum.ALANINE, equationRepository, referenceEv) ?: 0.0
-        "arginine" -> alimentRation.getNutrientWithComplementary(AAEnum.ARGININE, equationRepository, referenceEv) ?: 0.0
-        "asparagine" -> alimentRation.getNutrientWithComplementary(AAEnum.ASPARAGINE, equationRepository, referenceEv) ?: 0.0
-        "asparate" -> alimentRation.getNutrientWithComplementary(AAEnum.ASPARATE, equationRepository, referenceEv) ?: 0.0
-        "cysteine" -> alimentRation.getNutrientWithComplementary(AAEnum.CYSTEINE, equationRepository, referenceEv) ?: 0.0
-        "glutamate" -> alimentRation.getNutrientWithComplementary(AAEnum.GLUTAMATE, equationRepository, referenceEv) ?: 0.0
-        "glutamine" -> alimentRation.getNutrientWithComplementary(AAEnum.GLUTAMINE, equationRepository, referenceEv) ?: 0.0
-        "glycine" -> alimentRation.getNutrientWithComplementary(AAEnum.GLYCINE, equationRepository, referenceEv) ?: 0.0
-        "histidine" -> alimentRation.getNutrientWithComplementary(AAEnum.HISTIDINE, equationRepository, referenceEv) ?: 0.0
-        "isoleucine" -> alimentRation.getNutrientWithComplementary(AAEnum.ISOLEUCINE, equationRepository, referenceEv) ?: 0.0
-        "leucine" -> alimentRation.getNutrientWithComplementary(AAEnum.LEUCINE, equationRepository, referenceEv) ?: 0.0
-        "lysine" -> alimentRation.getNutrientWithComplementary(AAEnum.LYSINE, equationRepository, referenceEv) ?: 0.0
-        "methionine" -> alimentRation.getNutrientWithComplementary(AAEnum.METHIONINE, equationRepository, referenceEv) ?: 0.0
-        "phenylalanine" -> alimentRation.getNutrientWithComplementary(AAEnum.PHENYLALANINE, equationRepository, referenceEv) ?: 0.0
-        "proline" -> alimentRation.getNutrientWithComplementary(AAEnum.PROLINE, equationRepository, referenceEv) ?: 0.0
-        "pyrrolysine" -> alimentRation.getNutrientWithComplementary(AAEnum.PYRROLYSINE, equationRepository, referenceEv) ?: 0.0
-        "selenocysteine" -> alimentRation.getNutrientWithComplementary(AAEnum.SELENOCYSTEINE, equationRepository, referenceEv) ?: 0.0
-        "serine" -> alimentRation.getNutrientWithComplementary(AAEnum.SERINE, equationRepository, referenceEv) ?: 0.0
-        "threonine" -> alimentRation.getNutrientWithComplementary(AAEnum.THREONINE, equationRepository, referenceEv) ?: 0.0
-        "tryptophane" -> alimentRation.getNutrientWithComplementary(AAEnum.TRYPTOPHANE, equationRepository, referenceEv) ?: 0.0
-        "tyrosine" -> alimentRation.getNutrientWithComplementary(AAEnum.TYROSINE, equationRepository, referenceEv) ?: 0.0
-        "valine" -> alimentRation.getNutrientWithComplementary(AAEnum.VALINE, equationRepository, referenceEv) ?: 0.0
+        "alanine" -> AAEnum.ALANINE
+        "arginine" -> AAEnum.ARGININE
+        "asparagine" -> AAEnum.ASPARAGINE
+        "asparate" -> AAEnum.ASPARATE
+        "cysteine" -> AAEnum.CYSTEINE
+        "glutamate" -> AAEnum.GLUTAMATE
+        "glutamine" -> AAEnum.GLUTAMINE
+        "glycine" -> AAEnum.GLYCINE
+        "histidine" -> AAEnum.HISTIDINE
+        "isoleucine" -> AAEnum.ISOLEUCINE
+        "leucine" -> AAEnum.LEUCINE
+        "lysine" -> AAEnum.LYSINE
+        "methionine" -> AAEnum.METHIONINE
+        "phenylalanine" -> AAEnum.PHENYLALANINE
+        "proline" -> AAEnum.PROLINE
+        "pyrrolysine" -> AAEnum.PYRROLYSINE
+        "selenocysteine" -> AAEnum.SELENOCYSTEINE
+        "serine" -> AAEnum.SERINE
+        "threonine" -> AAEnum.THREONINE
+        "tryptophane" -> AAEnum.TRYPTOPHANE
+        "tyrosine" -> AAEnum.TYROSINE
+        "valine" -> AAEnum.VALINE
         
         // Autres nutriments (NutrientOther)
-        "taurine" -> alimentRation.getNutrientWithComplementary(NutrientOther.TAURINE, equationRepository, referenceEv) ?: 0.0
-        "carnitine" -> alimentRation.getNutrientWithComplementary(NutrientOther.CARNITINE, equationRepository, referenceEv) ?: 0.0
-        "fos" -> alimentRation.getNutrientWithComplementary(NutrientOther.FOS, equationRepository, referenceEv) ?: 0.0
-        "mos" -> alimentRation.getNutrientWithComplementary(NutrientOther.MOS, equationRepository, referenceEv) ?: 0.0
-        "saccharose" -> alimentRation.getNutrientWithComplementary(NutrientOther.SUCR, equationRepository, referenceEv) ?: 0.0
-        "fructose" -> alimentRation.getNutrientWithComplementary(NutrientOther.FRUCT, equationRepository, referenceEv) ?: 0.0
-        "lactose" -> alimentRation.getNutrientWithComplementary(NutrientOther.LACT, equationRepository, referenceEv) ?: 0.0
-        "maltose" -> alimentRation.getNutrientWithComplementary(NutrientOther.MALT, equationRepository, referenceEv) ?: 0.0
-        "acide_oxalique" -> alimentRation.getNutrientWithComplementary(NutrientOther.AcOx, equationRepository, referenceEv) ?: 0.0
-        "galactose" -> alimentRation.getNutrientWithComplementary(NutrientOther.GAL, equationRepository, referenceEv) ?: 0.0
-        "glucose" -> alimentRation.getNutrientWithComplementary(NutrientOther.GLUCOSE, equationRepository, referenceEv) ?: 0.0
-        "dextrose" -> alimentRation.getNutrientWithComplementary(NutrientOther.DEXTROSE, equationRepository, referenceEv) ?: 0.0
+        "taurine" -> NutrientOther.TAURINE
+        "carnitine" -> NutrientOther.CARNITINE
+        "fos" -> NutrientOther.FOS
+        "mos" -> NutrientOther.MOS
+        "saccharose" -> NutrientOther.SUCR
+        "fructose" -> NutrientOther.FRUCT
+        "lactose" -> NutrientOther.LACT
+        "maltose" -> NutrientOther.MALT
+        "acide_oxalique" -> NutrientOther.AcOx
+        "galactose" -> NutrientOther.GAL
+        "glucose" -> NutrientOther.GLUCOSE
+        "dextrose" -> NutrientOther.DEXTROSE
         
-        else -> 0.0
+        else -> return 0.0
     }
+    val baseValue = if (rationActual != null) aliment.getNutrient(nutrient) ?: 0.0
+        else alimentRation.getNutrientWithComplementary(nutrient, equationRepository, referenceEv) ?: 0.0
     
     // Convertir selon le mode d'affichage
     return if (useDryMatterPer100g) {
         // Mode /100g MS : convertir de g/100g as fed vers g/100g MS
         // Obtenir l'humidité pour calculer la matière sèche
-        val humidite = alimentRation.getNutrientWithComplementary(NutrientMain.HUMIDITE, equationRepository, referenceEv) ?: 0.0
+        val humidite = if (rationActual != null) aliment.getNutrient(NutrientMain.HUMIDITE) ?: 0.0
+            else alimentRation.getNutrientWithComplementary(NutrientMain.HUMIDITE, equationRepository, referenceEv) ?: 0.0
         val matiereSeche = 100.0 - humidite
         if (matiereSeche > 0) {
             // Convertir : valeur_MS = (valeur_as_fed * 100) / matière_sèche
@@ -499,8 +505,8 @@ private suspend fun AlimentAnalyseData.getNutrimentValue(
         }
     } else {
         // Mode /1000 kcal : convertir en valeur par 1000 kcal
-        if (densiteEnergetique > 0) {
-            (baseValue * 1000.0) / densiteEnergetique
+        if ((energyAsFed ?: densiteEnergetique) > 0) {
+            (baseValue * 1000.0) / (energyAsFed ?: densiteEnergetique)
         } else {
             0.0
         }
@@ -675,6 +681,9 @@ fun AnalyseGraphiqueAlimentsView(
     // États pour observer les consultations et rations sélectionnées
     val selectedConsultation by viewModel?.selectedConsultation?.collectAsState() ?: remember { mutableStateOf(null) }
     val selectedRation by viewModel?.selectedRation?.collectAsState() ?: remember { mutableStateOf(null) }
+    var includeCurrentRations by remember { mutableStateOf(true) }
+    var includeProposedRations by remember { mutableStateOf(true) }
+    var rationGraphData by remember { mutableStateOf<List<AlimentAnalyseData>>(emptyList()) }
     
     // États pour les valeurs métaboliques nécessaires à la HeatMap
     val poidsMetabolique by viewModel?.poidsMetabolique?.collectAsState() ?: remember { mutableStateOf(null) }
@@ -704,6 +713,25 @@ fun AnalyseGraphiqueAlimentsView(
 
     // États pour les toggles d'unités
     var useDryMatterPer100g by remember { mutableStateOf(false) } // Toggle pour /1000 kcal vs /100g MS
+
+    LaunchedEffect(selectedConsultation, referenceEv, equationRepository, useDryMatterPer100g,
+        includeCurrentRations, includeProposedRations) {
+        rationGraphData = emptyList()
+        val consultation = selectedConsultation ?: return@LaunchedEffect
+        val prepared = fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.prepareGraphConsultations(
+            emptyList(), consultation, true, true
+        ).single()
+        val result = mutableListOf<AlimentAnalyseData>()
+        var number = 0
+        for (ration in prepared.rations) {
+            if (if (ration.actual) !includeCurrentRations else !includeProposedRations) continue
+            val isSum = fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.graphRationLabel(ration.uuid, 0) == "Σ"
+            if (!isSum) number++
+            rationFoodGraphData(ration, number, isSum, referenceEv, equationRepository, useDryMatterPer100g)
+                ?.let { result.add(it) }
+        }
+        rationGraphData = result
+    }
 
     // Utiliser directement la liste des aliments sans filtrage
     val alimentsFiltres = aliments
@@ -818,20 +846,21 @@ fun AnalyseGraphiqueAlimentsView(
                                 aliment,
                                 referenceEv,
                                 equationRepository,
-                                useDryMatterPer100g
+                                false
                         )
-                val densiteEnergetique = densiteEnergetiqueBase
+                val densiteEnergetique = if (useDryMatterPer100g && matiereSeche > 0)
+                        densiteEnergetiqueBase * 100.0 / matiereSeche else densiteEnergetiqueBase
                 val pourcentageProteines =
                         calculerPourcentageEnergieProteinesAsync(
                                 aliment,
-                                densiteEnergetique,
+                                densiteEnergetiqueBase,
                                 equationRepository,
                                 referenceEv
                         )
                 val pourcentageLipides =
                         calculerPourcentageEnergieLipidesAsync(
                                 aliment,
-                                densiteEnergetique,
+                                densiteEnergetiqueBase,
                                 equationRepository,
                                 referenceEv
                         )
@@ -875,6 +904,7 @@ fun AnalyseGraphiqueAlimentsView(
                                 aliment = aliment,
                                 numero = 0, // Numéro temporaire, sera réassigné après le tri
                                 densiteEnergetique = densiteEnergetique,
+                                energyAsFed = densiteEnergetiqueBase,
                                 pourcentageProteines = pourcentageProteines,
                                 pourcentageLipides = pourcentageLipides,
                                 phosphorePer1000Kcal = phosphorePer1000Kcal,
@@ -1084,6 +1114,31 @@ fun AnalyseGraphiqueAlimentsView(
         }
 
 
+        if (selectedConsultation != null && ongletActif != "analyse_detaillee" && ongletActif != "heatmap") {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Switch(includeCurrentRations, { includeCurrentRations = it })
+                    Text("Rations actuelles", style = MaterialTheme.typography.body2)
+                }
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Switch(includeProposedRations, { includeProposedRations = it })
+                    Text("Rations proposées", style = MaterialTheme.typography.body2)
+                }
+            }
+            if (rationGraphData.isNotEmpty()) {
+                Column(Modifier.fillMaxWidth().heightIn(max = 100.dp).verticalScroll(rememberScrollState())) {
+                    Text("Consultation sélectionnée · Aires sur les graphes XY · Σ : moyenne pondérée par les coefficients",
+                        style = MaterialTheme.typography.caption)
+                    rationGraphData.forEach { data ->
+                        Text(
+                            "${data.graphLabel} — ${data.aliment.nom.orEmpty().removePrefix("Σ").trim()} (${if (data.rationActual == true) "actuelle" else "proposée"})",
+                            color = data.rationColor!!, style = MaterialTheme.typography.caption
+                        )
+                    }
+                }
+            }
+        }
+
         // Vérifier si une référence est disponible
         val hasReference = referenceEv != null
         val hasEquationRepository = equationRepository != null
@@ -1192,7 +1247,7 @@ fun AnalyseGraphiqueAlimentsView(
                             // Graphique principal
                             // Graphique principal
                             GraphiqueNuagePoints(
-                                    alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
+                                    alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques } + rationGraphData,
                                     ongletActif = ongletActif,
                                     alimentSelectionne = alimentSelectionne,
                                     nutrimentX = nutrimentX,
@@ -1318,7 +1373,7 @@ fun AnalyseGraphiqueAlimentsView(
                                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                             ) {
                                 GraphiqueNuagePoints(
-                                        alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
+                                        alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques } + rationGraphData,
                                         ongletActif = ongletActif,
                                         alimentSelectionne = alimentSelectionne,
                                         nutrimentX = nutrimentX,
@@ -1999,6 +2054,7 @@ private fun GraphiqueNuagePoints(
                                             }
                                         }
                         ) {
+                            FoodGraphRationAreas(alimentsAnalyses, points)
                             // Afficher chaque point individuellement avec LinePlot et symbol
                             // Filtrer les points qui sont dans la plage visible
                             alimentsAnalyses.forEachIndexed { index, data ->
@@ -2018,7 +2074,7 @@ private fun GraphiqueNuagePoints(
                                             symbol = {
                                             // Point principal avec couleur selon sélection
                                             val couleurPoint =
-                                                    if (data.aliment.uuid == alimentSelectionne) {
+                                                    if (data.rationActual != null) { data.rationColor!! } else if (data.aliment.uuid == alimentSelectionne) {
                                                         Color(0xFF9C27B0) // Violet pour sélectionné
                                                     } else {
                                                         // Vérifier l'humidité pour les aliments non
@@ -2269,7 +2325,7 @@ private fun GraphiqueNuagePoints(
 
                             // Couleur selon la sélection et l'humidité
                             val numeroColor =
-                                    if (data.aliment.uuid == alimentSelectionne) {
+                                    if (data.rationActual != null) { data.rationColor!! } else if (data.aliment.uuid == alimentSelectionne) {
                                         Color(0xFF9C27B0) // Violet pour sélectionné
                                     } else {
                                         // Vérifier l'humidité pour les aliments non sélectionnés
@@ -2327,7 +2383,7 @@ private fun GraphiqueNuagePoints(
 
                                 // Numéro
                                 Text(
-                                        text = "${data.numero}",
+                                        text = data.graphLabel,
                                         style =
                                                 MaterialTheme.typography.caption.copy(
                                                         fontWeight = FontWeight.Bold,
@@ -2374,7 +2430,7 @@ private fun AlimentRow(
             verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-                text = "${data.numero}",
+                text = data.graphLabel,
                 modifier = Modifier.weight(0.1f),
                 style = MaterialTheme.typography.caption,
                 fontWeight = FontWeight.Bold,
@@ -2745,6 +2801,7 @@ private fun GraphiqueNutrimentsPersonnalise(
                                 }
                             }
             ) {
+                FoodGraphRationAreas(alimentsAnalyses, points)
                 // Afficher chaque point (uniquement ceux dans la plage visible)
                 alimentsAnalyses.forEachIndexed { index, data ->
                     val point = points[index]
@@ -2761,7 +2818,7 @@ private fun GraphiqueNutrimentsPersonnalise(
                             data = listOf(point),
                             symbol = {
                                 val couleurPoint =
-                                        if (data.aliment.uuid == alimentSelectionne) {
+                                        if (data.rationActual != null) { data.rationColor!! } else if (data.aliment.uuid == alimentSelectionne) {
                                             Color(0xFF9C27B0) // Violet pour sélectionné
                                         } else {
                                             // Vérifier l'humidité pour les aliments non sélectionnés
@@ -2824,7 +2881,7 @@ private fun GraphiqueNutrimentsPersonnalise(
                     if (!isLabelVisible) return@forEachIndexed
 
                     val numeroColor =
-                            if (data.aliment.uuid == alimentSelectionne) {
+                            if (data.rationActual != null) { data.rationColor!! } else if (data.aliment.uuid == alimentSelectionne) {
                                 Color(0xFF9C27B0) // Violet pour sélectionné
                             } else {
                                 // Vérifier l'humidité pour les aliments non sélectionnés
@@ -2871,7 +2928,7 @@ private fun GraphiqueNutrimentsPersonnalise(
                         }
 
                         Text(
-                                text = "${data.numero}",
+                                text = data.graphLabel,
                                 style =
                                         MaterialTheme.typography.caption.copy(
                                                 fontWeight = FontWeight.Bold,
@@ -2886,7 +2943,7 @@ private fun GraphiqueNutrimentsPersonnalise(
     } else {
         // 📊 HISTOGRAMME : Distribution du nutriment X
         val valeurs = histogramValues
-        val categories = alimentsAnalyses.map { "${it.numero}" }
+        val categories = alimentsAnalyses.map { it.aliment.uuid }
 
         // Vérifier que nous avons des données valides
         if (valeurs.isEmpty() || valeurs.all { it == 0f }) {
@@ -2911,6 +2968,8 @@ private fun GraphiqueNutrimentsPersonnalise(
 
         XYGraph(
                 xAxisModel = remember(categories) { CategoryAxisModel(categories) },
+                // A previous axis tick may survive briefly while the filtered data is recomposed.
+                xAxisLabels = { id -> alimentsAnalyses.firstOrNull { it.aliment.uuid == id }?.graphLabel.orEmpty() },
                 yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartYAxisModel(range = yRange) },
                 yAxisTitle = "${xOption?.displayName} (${if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"})",
                 modifier = modifier
@@ -2921,7 +2980,7 @@ private fun GraphiqueNutrimentsPersonnalise(
                     bar = { index ->
                         val aliment = alimentsAnalyses[index]
                         val couleur =
-                                if (aliment.aliment.uuid == alimentSelectionne) {
+                                if (aliment.rationActual != null) { aliment.rationColor!! } else if (aliment.aliment.uuid == alimentSelectionne) {
                                     Color(0xFF9C27B0) // Violet pour sélectionné
                                 } else {
                                     // Vérifier l'humidité pour les aliments non sélectionnés
@@ -2962,7 +3021,7 @@ private fun HistogrammeEnergieAliments(
 
     // Préparer les données pour l'histogramme
     // Créer les catégories avec seulement les numéros des aliments
-    val categories = alimentsAnalyses.map { data -> "${data.numero}" }
+    val categories = alimentsAnalyses.map { it.aliment.uuid }
 
     // Données de densité énergétique
     val densiteEnergetique = alimentsAnalyses.map { it.densiteEnergetique.toFloat() }
@@ -2992,6 +3051,8 @@ private fun HistogrammeEnergieAliments(
     // Créer le graphique
     XYGraph(
             xAxisModel = remember(categories) { CategoryAxisModel(categories) },
+                // A previous axis tick may survive briefly while the filtered data is recomposed.
+                xAxisLabels = { id -> alimentsAnalyses.firstOrNull { it.aliment.uuid == id }?.graphLabel.orEmpty() },
             yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartDensityAxisModel(range = yRange) },
             yAxisTitle = if (useDryMatterPer100g) 
                     "Densité énergétique (kcal/100g MS)"
@@ -3006,7 +3067,7 @@ private fun HistogrammeEnergieAliments(
                     // Couleur de la barre selon si l'aliment est sélectionné
                     val aliment = alimentsAnalyses[index]
                     val couleur =
-                            if (aliment.aliment.uuid == alimentSelectionne) {
+                            if (aliment.rationActual != null) { aliment.rationColor!! } else if (aliment.aliment.uuid == alimentSelectionne) {
                                 Color(0xFF9C27B0) // Violet pour l'aliment sélectionné
                             } else {
                                 // Vérifier l'humidité pour les aliments non sélectionnés
