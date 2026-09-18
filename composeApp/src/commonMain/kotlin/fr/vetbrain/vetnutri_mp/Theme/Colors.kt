@@ -16,6 +16,10 @@ object VetNutriColors {
     val OnSurface = Color(0xFF000000) // Noir
     val OnError = Color(0xFFFFFFFF) // Blanc
 
+    // Analyse des aliments : teintes distinctes du turquoise et de l'orange des rations.
+    val FoodAnalysisDry = Color(0xFF527A3A) // Vert sauge soutenu (humidité < 20 % ou inconnue)
+    val FoodAnalysisWet = Color(0xFF356A9A) // Bleu ardoise (humidité ≥ 20 %)
+
     // Palette de couleurs pour les aliments dans les graphiques
     val FeedColors = listOf(
         Color(0xFF2E7D32), // Vert
