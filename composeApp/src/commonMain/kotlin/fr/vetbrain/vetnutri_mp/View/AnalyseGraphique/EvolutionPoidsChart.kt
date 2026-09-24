@@ -59,11 +59,9 @@ import kotlinx.datetime.daysUntil
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.plus
-import kotlin.math.pow
-import kotlin.math.floor
-import kotlin.math.log10
 import kotlin.math.ceil
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -77,6 +75,38 @@ data class GrowthWeightPoint(
     val weight: Double,
     val isConsultation: Boolean
 )
+
+/**
+ * Espacement de la grille de poids dans les graphiques SVG exportés.
+ *
+ * Les traits restent assez fins pour suivre les variations de poids sans encombrer
+ * le PDF de libellés : un trait par kg au maximum, et un pas plus précis pour les
+ * petites amplitudes.
+ */
+data class ExportWeightGrid(val step: Float, val labelEvery: Int)
+
+data class ExportWeightGridLineStyle(val color: String, val strokeWidth: Float)
+
+fun exportWeightGridFor(rangeSpan: Float): ExportWeightGrid =
+        when {
+                !rangeSpan.isFinite() || rangeSpan <= 0f -> ExportWeightGrid(1f, 1)
+                rangeSpan < 10f -> ExportWeightGrid(0.1f, 5)
+                rangeSpan <= 20f -> ExportWeightGrid(1f, 2)
+                rangeSpan <= 50f -> ExportWeightGrid(1f, 5)
+                else -> ExportWeightGrid(1f, 10)
+        }
+
+fun exportWeightGridLineStyle(
+        weight: Float,
+        grid: ExportWeightGrid
+): ExportWeightGridLineStyle {
+        val isFiveKilogramMultiple = (weight * 10f).roundToInt() % 50 == 0
+        return when {
+                isFiveKilogramMultiple -> ExportWeightGridLineStyle("#B0B0B0", 0.8f)
+                grid.step <= 0.1f -> ExportWeightGridLineStyle("#E2E2E2", 0.3f)
+                else -> ExportWeightGridLineStyle("lightgray", 0.5f)
+        }
+}
 
 const val DEFAULT_MIN_VARIATION_PERCENT: Double = 0.5
 const val DEFAULT_MAX_VARIATION_PERCENT: Double = 2.0
@@ -1138,30 +1168,28 @@ fun generateConeGraphSvg(
     sb.append("<line x1='$padding' y1='${height - padding}' x2='${width - padding}' y2='${height - padding}' stroke='black' stroke-width='1' />") // X
     sb.append("<line x1='$padding' y1='$padding' x2='$padding' y2='${height - padding}' stroke='black' stroke-width='1' />") // Y
     
-    // Grille et labels Y (Calcul de pas "intelligent")
+    // Grille de poids : au moins un repère par kg, plus fin sur les petites plages.
+    // Les libellés sont volontairement moins fréquents afin que le PDF reste lisible.
     val yRangeSpan = yMax - yMin
-    val targetYSteps = 5f
-    val rawYStep = (yRangeSpan / targetYSteps).takeIf { it > 0f && it.isFinite() } ?: 1f
-    val magY = 10.0.pow(floor(log10(rawYStep.toDouble()))).toFloat()
-    val normY = rawYStep / magY
-    val yStep = (when {
-        normY < 1.5f -> 1f
-        normY < 3.5f -> 2f
-        normY < 7.5f -> 5f
-        else -> 10f
-    } * magY).toFloat()
+    val weightGrid = exportWeightGridFor(yRangeSpan)
+    val yStep = weightGrid.step
 
     val startY = (ceil(yMin / yStep) * yStep).toFloat()
     var currentY = startY
+    var gridLineIndex = 0
     
     while (currentY <= yMax + (yStep * 0.01f)) {
         val yPos = scaleY(currentY)
         // Ne dessiner que si c'est dans la zone visible
         if (yPos >= padding - 1 && yPos <= height - padding + 1) {
-            sb.append("<line x1='$padding' y1='$yPos' x2='${width - padding}' y2='$yPos' stroke='lightgray' stroke-width='0.5' />")
-            sb.append("<text x='${padding - 5}' y='$yPos' font-family='Arial' font-size='10' text-anchor='end' dominant-baseline='middle'>${GraphFormattingUtils.formatDecimal(currentY.toDouble(), 1)}</text>")
+            val lineStyle = exportWeightGridLineStyle(currentY, weightGrid)
+            sb.append("<line x1='$padding' y1='$yPos' x2='${width - padding}' y2='$yPos' stroke='${lineStyle.color}' stroke-width='${lineStyle.strokeWidth}' />")
+            if (gridLineIndex % weightGrid.labelEvery == 0) {
+                sb.append("<text x='${padding - 5}' y='$yPos' font-family='Arial' font-size='10' text-anchor='end' dominant-baseline='middle'>${GraphFormattingUtils.formatDecimal(currentY.toDouble(), 1)}</text>")
+            }
         }
         currentY += yStep
+        gridLineIndex++
     }
     
     // Labels X (Semaines - Pas entier)
@@ -1523,33 +1551,28 @@ fun generateGrowthGraphSvg(
     )
 
     val yRangeSpan = yMax - yMin
-    val targetYSteps = 5f
-    val rawYStep = (yRangeSpan / targetYSteps).takeIf { it > 0f && it.isFinite() } ?: 1f
-    val magY = 10.0.pow(floor(log10(rawYStep.toDouble()))).toFloat()
-    val normY = rawYStep / magY
-    val yStep =
-            (when {
-                        normY < 1.5f -> 1f
-                        normY < 3.5f -> 2f
-                        normY < 7.5f -> 5f
-                        else -> 10f
-                } * magY)
-                    .toFloat()
+    val weightGrid = exportWeightGridFor(yRangeSpan)
+    val yStep = weightGrid.step
 
     val startY = (ceil(yMin / yStep) * yStep).toFloat()
     var currentY = startY
+    var gridLineIndex = 0
 
     while (currentY <= yMax + (yStep * 0.01f)) {
         val yPos = scaleY(currentY)
         if (yPos >= padding - 1 && yPos <= height - padding + 1) {
+            val lineStyle = exportWeightGridLineStyle(currentY, weightGrid)
             sb.append(
-                    "<line x1='$padding' y1='$yPos' x2='${width - padding}' y2='$yPos' stroke='lightgray' stroke-width='0.5' />"
+                    "<line x1='$padding' y1='$yPos' x2='${width - padding}' y2='$yPos' stroke='${lineStyle.color}' stroke-width='${lineStyle.strokeWidth}' />"
             )
-            sb.append(
-                    "<text x='${padding - 5}' y='$yPos' font-family='Arial' font-size='10' text-anchor='end' dominant-baseline='middle'>${GraphFormattingUtils.formatDecimal(currentY.toDouble(), 1)}</text>"
-            )
+            if (gridLineIndex % weightGrid.labelEvery == 0) {
+                sb.append(
+                        "<text x='${padding - 5}' y='$yPos' font-family='Arial' font-size='10' text-anchor='end' dominant-baseline='middle'>${GraphFormattingUtils.formatDecimal(currentY.toDouble(), 1)}</text>"
+                )
+            }
         }
         currentY += yStep
+        gridLineIndex++
     }
 
     val xStep = 2f // Grille toutes les 2 semaines
