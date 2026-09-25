@@ -100,10 +100,13 @@ fun exportWeightGridLineStyle(
         weight: Float,
         grid: ExportWeightGrid
 ): ExportWeightGridLineStyle {
-        val isFiveKilogramMultiple = (weight * 10f).roundToInt() % 50 == 0
+        val weightInTenths = (weight * 10f).roundToInt()
+        val isFiveKilogramMultiple = weightInTenths % 50 == 0
+        val isWholeKilogram = weightInTenths % 10 == 0
         return when {
-                isFiveKilogramMultiple -> ExportWeightGridLineStyle("#B0B0B0", 0.8f)
-                grid.step <= 0.1f -> ExportWeightGridLineStyle("#E2E2E2", 0.3f)
+                isFiveKilogramMultiple -> ExportWeightGridLineStyle("#909090", 1.1f)
+                isWholeKilogram -> ExportWeightGridLineStyle("#B8B8B8", 0.7f)
+                grid.step <= 0.1f -> ExportWeightGridLineStyle("#E8E8E8", 0.2f)
                 else -> ExportWeightGridLineStyle("lightgray", 0.5f)
         }
 }
