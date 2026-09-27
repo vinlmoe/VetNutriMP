@@ -3,6 +3,8 @@ package fr.vetbrain.vetnutri_mp.ViewModel
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.DataBase.*
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.*
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
@@ -177,7 +179,7 @@ class PlanEvolutifInteractionTest {
         vm.creerPlanEvolutif(vm.selectedConsultation.value!!.rations.first()); idle()
         val reel = etapes().single()
         assertNull(reel.poids)
-        assertEquals("Étape poids réel", reel.name)
+        assertEquals(PlanEvolutif.nomAutomatique(null, emptyList()), reel.name)
         assertEquals(reel.uuid, vm.selectedRation.value?.uuid)
         assertProche(5.0, vm.poidsEffectif.value, "étape au poids réel")
         assertProche(bee(5.0, 25.0), vm.besoinEnergetiqueStandard.value, "BEE étape réelle")
@@ -194,7 +196,7 @@ class PlanEvolutifInteractionTest {
         // 3. Poids et variable propres à l'étape (AW=30 prioritaire sur la consultation)
         vm.mettreAJourEtape(e8, 10.0, listOf(SupplementalvariableP(VariableKind.AdultWeight, 30.0))); idle()
         val e10 = vm.selectedConsultation.value!!.rations.first { it.uuid == e8.uuid }
-        assertEquals("Étape 10.0 kg · AW 30.0", e10.name)
+        assertEquals(PlanEvolutif.nomAutomatique(10.0, listOf(SupplementalvariableP(VariableKind.AdultWeight, 30.0))), e10.name)
         assertProche(10.0, vm.poidsEffectif.value, "poids modifié")
         assertProche(bee(10.0, 30.0), vm.besoinEnergetiqueStandard.value, "BEE avec AW de l'étape")
 
@@ -303,8 +305,8 @@ class PlanEvolutifInteractionTest {
             fr.vetbrain.vetnutri_mp.Export.DocumentType.PRESCRIPTION,
             fr.vetbrain.vetnutri_mp.Export.ExportData(animal = null, ration = null, reference = null,
                 rations = c.rations.filter { it.uuid in selection }, consultation = c))
-        assertTrue(html(avecPlan).contains("Plan de rationnement"))
-        assertFalse(html(sansPlan).contains("Plan de rationnement"))
+        assertTrue(html(avecPlan).contains(translate(LocalizationKeys.Evolutive.PRESCRIPTION_TITLE)))
+        assertFalse(html(sansPlan).contains(translate(LocalizationKeys.Evolutive.PRESCRIPTION_TITLE)))
         assertTrue(html(sansPlan).contains("Actuelle"))
     }
 }

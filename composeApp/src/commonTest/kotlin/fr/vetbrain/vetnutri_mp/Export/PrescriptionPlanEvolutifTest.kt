@@ -5,6 +5,8 @@ import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Enumer.TypeConsultation
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Evolutive
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -58,9 +60,11 @@ class PrescriptionPlanEvolutifTest {
                         )
                 )
 
-        assertTrue(html.contains("Plan de rationnement"))
+        assertTrue(html.contains(translate(Evolutive.PRESCRIPTION_TITLE)))
         // Colonnes triées par poids croissant, poids réel signalé
-        assertTrue(html.indexOf("5.0 kg (actuel)") < html.indexOf("12.0 kg"))
+        val enteteReel = translate(Evolutive.STEP_LABEL_REAL, "5.0 kg")
+        assertTrue(html.contains(enteteReel))
+        assertTrue(html.indexOf(enteteReel) < html.indexOf("12.0 kg"))
         assertTrue(html.contains("Croquettes chiot"))
         assertTrue(html.contains("120.0 g") && html.contains("250.0 g"))
         // Les étapes ne sont pas répétées en blocs de ration ; les autres rations restent
@@ -86,7 +90,7 @@ class PrescriptionPlanEvolutifTest {
                         )
                 )
 
-        assertFalse(html.contains("Plan de rationnement"))
+        assertFalse(html.contains(translate(Evolutive.PRESCRIPTION_TITLE)))
         assertTrue(html.contains("RationStandard"))
     }
 }

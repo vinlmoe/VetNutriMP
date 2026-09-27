@@ -1,6 +1,8 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 
@@ -83,25 +85,28 @@ object PlanEvolutif {
     fun peutSupprimer(consultation: ConsultationEv, etape: Ration): Boolean =
             !estPoidsReel(etape) || consultation.etapesEvolutives.count { estPoidsReel(it) } > 1
 
-    /** Préfixe des noms d'étape générés automatiquement (renommage suivi seulement pour eux). */
-    const val PREFIXE_NOM_ETAPE = "Étape"
-
     /**
-     * Nom automatique d'une étape d'après ses propres données : « Étape 8.0 kg · D 12.0 », ou
-     * « Étape poids réel » quand l'étape suit le poids de la consultation.
+     * Nom automatique d'une étape d'après ses propres données, dans la langue de l'interface :
+     * « Étape 8.0 kg · D 12.0 », ou « Étape poids réel » quand l'étape suit le poids réel.
      */
     fun nomAutomatique(poids: Double?, suppVarp: List<SupplementalvariableP>): String {
-        val base = poids?.let { "${TextUtils.formatDecimal(it, 1)} kg" } ?: "poids réel"
+        val base =
+                poids?.let { "${TextUtils.formatDecimal(it, 1)} kg" }
+                        ?: translate(LocalizationKeys.Evolutive.REAL_WEIGHT_NAME)
         val vars =
                 suppVarp.mapNotNull { sv ->
                     sv.variable?.let { "${it.label} ${TextUtils.formatDecimal(sv.varue ?: 0.0, 1)}" }
                 }
-        return (listOf("$PREFIXE_NOM_ETAPE $base") + vars).joinToString(" · ")
+        return (listOf(translate(LocalizationKeys.Evolutive.AUTO_STEP_NAME, base)) + vars)
+                .joinToString(" · ")
     }
 
-    /** Vrai si le nom est vide ou a été généré automatiquement (il peut alors être recalculé). */
-    fun nomEstAutomatique(nom: String): Boolean =
-            nom.isBlank() || nom.startsWith("$PREFIXE_NOM_ETAPE ")
+    /**
+     * Vrai si le nom de l'étape est vide ou est encore son nom automatique (non renommée à la
+     * main) : il peut alors suivre le nouveau poids et les nouvelles variables.
+     */
+    fun nomEstAutomatique(etape: Ration): Boolean =
+            etape.name.isBlank() || etape.name == nomAutomatique(etape.poids, etape.suppVarp)
 
     /** Copie d'une ration en étape (nouveaux UUID pour la ration et ses aliments). */
     fun copierEnEtape(

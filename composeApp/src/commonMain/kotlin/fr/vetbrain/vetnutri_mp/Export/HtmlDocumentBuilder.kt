@@ -29,6 +29,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Evolutive
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
@@ -772,8 +774,11 @@ object HtmlDocumentBuilder {
         val entetes =
                 etapes.joinToString("") { etape ->
                     val libelle = PlanEvolutif.libelleEtape(consultation, etape, distinctives)
-                    val suffixe = if (PlanEvolutif.estPoidsReel(etape)) " (actuel)" else ""
-                    "<th class='right'>${escapeXml(libelle + suffixe)}</th>"
+                    val entete =
+                            if (PlanEvolutif.estPoidsReel(etape))
+                                    translate(Evolutive.STEP_LABEL_REAL, libelle)
+                            else libelle
+                    "<th class='right'>${escapeXml(entete)}</th>"
                 }
         val lignes =
                 PlanEvolutif.matriceSynthese(consultation).joinToString("\n") { ligne ->
@@ -816,14 +821,14 @@ object HtmlDocumentBuilder {
         }
         return """
             <div class='section'>
-                <h2>Plan de rationnement</h2>
-                <div class='small muted'>Quantités journalières selon l'étape.</div>
+                <h2>${escapeXml(translate(Evolutive.PRESCRIPTION_TITLE))}</h2>
+                <div class='small muted'>${escapeXml(translate(Evolutive.PRESCRIPTION_HINT))}</div>
                 <table>
-                    <thead><tr><th>Ingrédient</th>${entetes}</tr></thead>
+                    <thead><tr><th>${escapeXml(translate(Evolutive.INGREDIENT))}</th>${entetes}</tr></thead>
                     <tbody>
                         ${lignes}
-                        <tr><td><b>Total (g/j)</b></td>${totaux}</tr>
-                        <tr><td>Énergie apportée (kcal/j)</td>${energies}</tr>
+                        <tr><td><b>${escapeXml(translate(Evolutive.TOTAL_ROW))}</b></td>${totaux}</tr>
+                        <tr><td>${escapeXml(translate(Evolutive.ENERGY_ROW))}</td>${energies}</tr>
                     </tbody>
                 </table>
             </div>
