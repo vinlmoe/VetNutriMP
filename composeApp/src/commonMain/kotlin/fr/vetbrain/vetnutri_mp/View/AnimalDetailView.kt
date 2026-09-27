@@ -1095,7 +1095,6 @@ private fun WideScreenLayout(
                 mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
         }
         var isLoadingConseils by remember { mutableStateOf(true) }
-        var searchQuery by remember { mutableStateOf("") }
         var showSearchDialog by remember { mutableStateOf(false) }
         var pendingCopyText by remember { mutableStateOf<String?>(null) }
         var anamneseText by remember { mutableStateOf("") }
@@ -1889,480 +1888,69 @@ private fun WideScreenLayout(
                                                         }
                                                 }
                                         } else {
-                                                // Section export normale
-                                                LazyColumn(
-                                                        modifier =
-                                                                Modifier.fillMaxSize()
-                                                                        .padding(
-                                                                                AppSizes.paddingMedium
-                                                                        ),
-                                                        verticalArrangement =
-                                                                Arrangement.spacedBy(
-                                                                        AppSizes.paddingMedium
-                                                                )
-                                                ) {
-                                                        item {
-                                                        Text(
-                                                                translate(AnimalDetail.EXPORT_DOCUMENTS_TITLE),
-                                                                style = MaterialTheme.typography.h6,
-                                                                color = VetNutriColors.Primary
+                                                // Préparation de l'ordonnance et du compte rendu
+                                                val compteRenduText =
+                                                        buildCompteRenduText(
+                                                                animal = animalDetails,
+                                                                consultation = selectedConsultation,
+                                                                practitionerContact = practitionerContact,
+                                                                anamnese = anamneseText,
+                                                                examenClinique = examenCliniqueText,
+                                                                facteurNutritionnelClef = facteurNutritionnelClefText,
+                                                                additionalText = additionalText,
+                                                                selectedConseils = selectedConseils
                                                         )
-                                                        }
-                                                        // Ligne d'information sur la ration sélectionnée supprimée pour alléger l'UI
-                                                        item {
-                                                        if (selectedConsultation == null) {
-                                                                Text(
-                                                                        translate(AnimalDetail.NO_CONSULTATION_FOR_PRESCRIPTION),
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .subtitle1,
-                                                                        color = VetNutriColors.Primary
-                                                                )
-                                                        } else {
-                                                                Text(
-                                                                        translate(AnimalDetail.SELECT_RATIONS_FOR_PRESCRIPTION),
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .subtitle1,
-                                                                        color = VetNutriColors.Primary
-                                                                )
-                                                        }
-                                                        }
-
-                                                        val currentConsultation: ConsultationEv? = selectedConsultation
-                                                        if (currentConsultation != null && currentConsultation.rations.isNotEmpty()) {
-                                                                items(PlanEvolutif.rationsPrincipales(currentConsultation).sortedForDisplay(), key = { it.uuid }) { ration ->
-                                                                Row(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth()
-                                                                                        .padding(
-                                                                                                vertical =
-                                                                                                        0.dp
-                                                                                        ),
-                                                                        verticalAlignment =
-                                                                                Alignment.CenterVertically
-                                                                ) {
-                                                                        val isSelectedRation: Boolean =
-                                                                                selectedRationIdsForPrescription
-                                                                                        .contains(
-                                                                                                ration.uuid
-                                                                                        )
-                                                                        Checkbox(
-                                                                                checked = isSelectedRation,
-                                                                                onCheckedChange = { isChecked: Boolean ->
-                                                                                        selectedRationIdsForPrescription =
-                                                                                                if (isChecked) {
-                                                                                                        selectedRationIdsForPrescription +
-                                                                                                                ration.uuid
-                                                                                                } else {
-                                                                                                        selectedRationIdsForPrescription -
-                                                                                                                ration.uuid
-                                                                                                }
-                                                                                        schedulePrescriptionSave()
-                                                                                }
-                                                                        )
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.width(
-                                                                                                8.dp
-                                                                                        )
-                                                                        )
-                                                                        Column {
-                                                                                val rationLabel: String =
-                                                                                        if (ration.actual) {
-                                                                                                translate(AnimalDetail.RATION_CURRENT)
-                                                                                        } else {
-                                                                                                translate(AnimalDetail.RATION_PROPOSED)
-                                                                                        }
-                                                                                Text(
-                                                                                        text =
-                                                                                                translate(
-                                                                                                        AnimalDetail.RATION_LINE,
-                                                                                                        ration.name,
-                                                                                                        rationLabel,
-                                                                                                        ration.getQuantiteTotale().toString()
-                                                                                                ),
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .body2
-                                                                                )
-                                                                        }
+                                                PrescriptionPreparationPanel(
+                                                        consultation = selectedConsultation,
+                                                        selectedRationIds = selectedRationIdsForPrescription,
+                                                        onSelectedRationIdsChange = {
+                                                                selectedRationIdsForPrescription = it
+                                                                schedulePrescriptionSave()
+                                                        },
+                                                        isExamMode = isExamMode,
+                                                        selectedConseils = selectedConseils,
+                                                        onRemoveConseil = { conseil ->
+                                                                selectedConseils = selectedConseils.filter { it.id != conseil.id }
+                                                                schedulePrescriptionSave()
+                                                        },
+                                                        onAddConseil = { showSearchDialog = true },
+                                                        localSections = localHtmlSections,
+                                                        onRemoveLocalSection = { section ->
+                                                                localHtmlSections = localHtmlSections.filter { it.id != section.id }
+                                                                schedulePrescriptionSave()
+                                                        },
+                                                        onOpenSectionEditor = { showRichTextEditor = true },
+                                                        anamnese = anamneseText,
+                                                        onAnamneseChange = {
+                                                                anamneseText = it
+                                                                schedulePrescriptionSave()
+                                                        },
+                                                        examenClinique = examenCliniqueText,
+                                                        onExamenCliniqueChange = {
+                                                                examenCliniqueText = it
+                                                                schedulePrescriptionSave()
+                                                        },
+                                                        facteurNutritionnelClef = facteurNutritionnelClefText,
+                                                        onFacteurNutritionnelClefChange = {
+                                                                facteurNutritionnelClefText = it
+                                                                schedulePrescriptionSave()
+                                                        },
+                                                        additionalText = additionalText,
+                                                        onAdditionalTextChange = {
+                                                                additionalText = it
+                                                                schedulePrescriptionSave()
+                                                        },
+                                                        onCopyCompteRendu = {
+                                                                pendingCopyText = compteRenduText
+                                                                scope.launch {
+                                                                        snackbarHostState.showSnackbar(translate(AnimalDetail.CR_COPY_SUCCESS))
                                                                 }
-                                                                }
-                                                        } else {
-                                                                item {
-                                                                Text(
-                                                                        translate(AnimalDetail.NO_RATION_AVAILABLE),
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .body2,
-                                                                        color =
-                                                                                MaterialTheme
-                                                                                        .colors
-                                                                                        .onSurface
-                                                                                        .copy(
-                                                                                                alpha =
-                                                                                                        0.7f
-                                                                                        )
-                                                                )
-                                                                }
-                                                        }
-
-                                                        if (isExamMode) {
-                                                                item {
-                                                                        Text(
-                                                                                translate(AnimalDetail.CUSTOM_ADVICE_UNAVAILABLE_EXAM_MODE),
-                                                                                style = MaterialTheme.typography.body2,
-                                                                                color = Color.Gray
-                                                                        )
-                                                                }
-                                                        } else {
-                                                                // Section pour les conseils personnalisés
-                                                                item {
-                                                                Text(
-                                                                        translate(AnimalDetail.CUSTOM_ADVICE_TITLE),
-                                                                        style =
-                                                                                MaterialTheme.typography
-                                                                                        .subtitle1,
-                                                                        color = VetNutriColors.Primary
-                                                                )
-                                                                }
-
-                                                                // Affichage des conseils sélectionnés
-                                                                if (selectedConseils.isNotEmpty()) {
-                                                                        item {
-                                                                        Column(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxWidth(),
-                                                                                verticalArrangement =
-                                                                                        Arrangement
-                                                                                                .spacedBy(
-                                                                                                        4.dp
-                                                                                                )
-                                                                        ) {
-                                                                                selectedConseils.forEach {
-                                                                                        conseil ->
-                                                                                        Card(
-                                                                                                modifier =
-                                                                                                        Modifier.fillMaxWidth(),
-                                                                                                elevation =
-                                                                                                        2.dp
-                                                                                        ) {
-                                                                                                Row(
-                                                                                                        modifier =
-                                                                                                                Modifier.fillMaxWidth()
-                                                                                                                        .padding(
-                                                                                                                                8.dp
-                                                                                                                        ),
-                                                                                                        horizontalArrangement =
-                                                                                                                Arrangement
-                                                                                                                        .SpaceBetween,
-                                                                                                        verticalAlignment =
-                                                                                                                Alignment
-                                                                                                                        .CenterVertically
-                                                                                                ) {
-                                                                                                        Column(
-                                                                                                                modifier =
-                                                                                                                        Modifier.weight(
-                                                                                                                                1f
-                                                                                                                        )
-                                                                                                        ) {
-                                                                                                                Text(
-                                                                                                                        text =
-                                                                                                                                conseil.title,
-                                                                                                                        style =
-                                                                                                                                MaterialTheme
-                                                                                                                                        .typography
-                                                                                                                                        .body2,
-                                                                                                                        fontWeight =
-                                                                                                                                FontWeight
-                                                                                                                                        .Medium
-                                                                                                                )
-                                                                                                                Text(
-                                                                                                                        text =
-                                                                                                                                translate(
-                                                                                                                                        AnimalDetail.CATEGORY_LABEL,
-                                                                                                                                        conseil.category.name
-                                                                                                                                ),
-                                                                                                                        style =
-                                                                                                                                MaterialTheme
-                                                                                                                                       .typography
-                                                                                                                                       .caption,
-                                                                                                                        color =
-                                                                                                                                Color.Gray
-                                                                                                                )
-                                                                                                        }
-                                                                                                        IconButtonWithTooltip(
-                                                                                                                onClick = {
-                                                                                                                        selectedConseils =
-                                                                                                                                selectedConseils
-                                                                                                                                        .filter {
-                                                                                                                                                it.id !=
-                                                                                                                                                        conseil.id
-                                                                                                                                        }
-                                                                                                                        schedulePrescriptionSave()
-                                                                                                                },
-                                                                                                                imageVector = Icons.Default.Delete,
-                                                                                                                contentDescription = translate(General.DELETE),
-                                                                                                                tooltip = translate(General.DELETE),
-                                                                                                                tint = Color.Red
-                                                                                                        )
-                                                                                                        }
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                }
-
-                                                                // Bouton pour ajouter des conseils
-                                                                item {
-                                                                Button(
-                                                                        onClick = {
-                                                                                showSearchDialog = true
-                                                                        },
-                                                                        modifier = Modifier.fillMaxWidth(),
-                                                                        colors =
-                                                                                ButtonDefaults.buttonColors(
-                                                                                        backgroundColor =
-                                                                                                VetNutriColors
-                                                                                                        .Secondary,
-                                                                                        contentColor =
-                                                                                                VetNutriColors
-                                                                                                        .OnSecondary
-                                                                                )
-                                                                ) {
-                                                                        Icon(
-                                                                                Icons.Default.Add,
-                                                                                translate(General.ADD)
-                                                                        )
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.width(8.dp)
-                                                                        )
-                                                                        Text(translate(AnimalDetail.ADD_ADVICE))
-                                                                        }
-                                                                }
-                                                        }
-
-                                                        item {
-                                                        Spacer(modifier = Modifier.height(16.dp))
-                                                        }
-
-                                                        // Section pour les sections HTML créées
-                                                        // localement
-                                                        if (localHtmlSections.isNotEmpty()) {
-                                                                item {
-                                                                Text(
-                                                                translate(
-                                                                        AnimalDetail.LOCAL_HTML_SECTIONS_TITLE,
-                                                                        localHtmlSections.size.toString()
-                                                                ),
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .subtitle1,
-                                                                        color =
-                                                                                VetNutriColors
-                                                                                        .Primary
-                                                                )
-                                                                }
-                                                                item {
-                                                                Column(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        verticalArrangement =
-                                                                                Arrangement
-                                                                                        .spacedBy(
-                                                                                                4.dp
-                                                                                        )
-                                                                ) {
-                                                                        localHtmlSections.forEach {
-                                                                                section ->
-                                                                                Card(
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxWidth(),
-                                                                                        elevation =
-                                                                                                2.dp
-                                                                                ) {
-                                                                                        Row(
-                                                                                                modifier =
-                                                                                                        Modifier.fillMaxWidth()
-                                                                                                                .padding(
-                                                                                                                        8.dp
-                                                                                                                ),
-                                                                                                horizontalArrangement =
-                                                                                                        Arrangement
-                                                                                                                .SpaceBetween,
-                                                                                                verticalAlignment =
-                                                                                                        Alignment
-                                                                                                                .CenterVertically
-                                                                                        ) {
-                                                                                                Column(
-                                                                                                        modifier =
-                                                                                                                Modifier.weight(
-                                                                                                                        1f
-                                                                                                                )
-                                                                                                ) {
-                                                                                                        Text(
-                                                                                                                text =
-                                                                                                                        section.title,
-                                                                                                                style =
-                                                                                                                        MaterialTheme
-                                                                                                                                .typography
-                                                                                                                                .body2,
-                                                                                                                fontWeight =
-                                                                                                                        FontWeight
-                                                                                                                                .Medium
-                                                                                                        )
-                                                                                                        Text(
-                                                                                                                text =
-                                                                                                                        translate(
-                                                                                                                                AnimalDetail.BLOCKS_COUNT,
-                                                                                                                                section.content.blocks.size.toString()
-                                                                                                                        ),
-                                                                                                                style =
-                                                                                                                        MaterialTheme
-                                                                                                                               .typography
-                                                                                                                               .caption,
-                                                                                                                color =
-                                                                                                                        Color.Gray
-                                                                                                        )
-                                                                                                }
-                                                                                                IconButtonWithTooltip(
-                                                                                                        onClick = {
-                                                                                                                localHtmlSections =
-                                                                                                                        localHtmlSections
-                                                                                                                                .filter {
-                                                                                                                                        it.id !=
-                                                                                                                                                section.id
-                                                                                                                                }
-                                                                                                                schedulePrescriptionSave()
-                                                                                                        },
-                                                                                                        imageVector = Icons.Default.Delete,
-                                                                                                        contentDescription = translate(General.DELETE),
-                                                                                                        tooltip = translate(General.DELETE),
-                                                                                                        tint = Color.Red
-                                                                                                )
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                }
-                                                                }
-                                                                item {
-                                                                Spacer(
-                                                                        modifier =
-                                                                                Modifier.height(
-                                                                                        16.dp
-                                                                                )
-                                                                )
-                                                                }
-                                                        }
-
-                                                        // Bouton pour accéder à l'éditeur de texte
-                                                        // enrichi
-                                                        item {
-                                                        Button(
-                                                                onClick = {
-                                                                        showRichTextEditor = true
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Secondary,
-                                                                                contentColor =
-                                                                                        VetNutriColors
-                                                                                                .OnSecondary
-                                                                        )
-                                                        ) {
-                                                                Icon(
-                                                                        Icons.Default.Edit,
-                                                                        translate(AnimalDetail.HTML_EDITOR)
-                                                                )
-                                                                Spacer(
-                                                                        modifier =
-                                                                                Modifier.width(
-                                                                                        AppSizes.paddingSmall
-                                                                                )
-                                                                )
-                                                                Text(
-                                                                translate(AnimalDetail.CREATE_CUSTOM_HTML_SECTIONS)
-                                                        )
-                                                        }
-                                                        }
-
-                                                item {
-                                                        OutlinedTextField(
-                                                                value = anamneseText,
-                                                                onValueChange = {
-                                                                        anamneseText = it
-                                                                        schedulePrescriptionSave()
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                label = { Text(translate(AnimalDetail.CR_SECTION_ANAMNESE)) },
-                                                                maxLines = 6
-                                                        )
-                                                        }
-
-                                                item {
-                                                        OutlinedTextField(
-                                                                value = examenCliniqueText,
-                                                                onValueChange = {
-                                                                        examenCliniqueText = it
-                                                                        schedulePrescriptionSave()
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                label = { Text(translate(AnimalDetail.CR_EXAM_CLINIQUE)) },
-                                                                maxLines = 6
-                                                        )
-                                                        }
-
-                                                item {
-                                                        OutlinedTextField(
-                                                                value = facteurNutritionnelClefText,
-                                                                onValueChange = {
-                                                                        facteurNutritionnelClefText = it
-                                                                        schedulePrescriptionSave()
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                label = {
-                                                                        Text(translate(AnimalDetail.CR_KEY_NUTRITIONAL_FACTOR))
-                                                                },
-                                                                maxLines = 4
-                                                        )
-                                                        }
-
-                                                item {
-                                                        OutlinedTextField(
-                                                                value = additionalText,
-                                                                onValueChange = {
-                                                                        additionalText = it
-                                                                        schedulePrescriptionSave()
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                label = {
-                                                                        Text(
-                                                                                translate(AnimalDetail.ADDITIONAL_TEXT_LABEL)
-                                                                        )
-                                                                },
-                                                                maxLines = 6
-                                                        )
-                                                        }
-
-                                                        item {
-                                                        Row(
-                                                                horizontalArrangement =
-                                                                        Arrangement.spacedBy(
-                                                                                AppSizes.paddingSmall
-                                                                        )
-                                                        ) {
-                                                                val compteRenduText =
-                                                                        buildCompteRenduText(
+                                                        },
+                                                        onPreviewCompteRendu = {
+                                                                previewMode = "CR"
+                                                                previewCompteRenduText = compteRenduText
+                                                                previewHtml =
+                                                                        buildCompteRenduHtml(
                                                                                 animal = animalDetails,
                                                                                 consultation = selectedConsultation,
                                                                                 practitionerContact = practitionerContact,
@@ -2372,116 +1960,58 @@ private fun WideScreenLayout(
                                                                                 additionalText = additionalText,
                                                                                 selectedConseils = selectedConseils
                                                                         )
-                                                                OutlinedButton(
-                                                                        onClick = {
-                                                                                pendingCopyText = compteRenduText
-                                                                                scope.launch {
-                                                                                        snackbarHostState.showSnackbar(translate(AnimalDetail.CR_COPY_SUCCESS))
-                                                                                }
-                                                                        }
-                                                                ) { Text(translate(AnimalDetail.CR_COPY_BUTTON)) }
-                                                                OutlinedButton(
-                                                                        onClick = {
-                                                                                previewMode = "CR"
-                                                                                previewCompteRenduText = compteRenduText
-                                                                                previewHtml =
-                                                                                        buildCompteRenduHtml(
-                                                                                                animal = animalDetails,
-                                                                                                consultation = selectedConsultation,
-                                                                                                practitionerContact = practitionerContact,
-                                                                                                anamnese = anamneseText,
-                                                                                                examenClinique = examenCliniqueText,
-                                                                                                facteurNutritionnelClef = facteurNutritionnelClefText,
-                                                                                                additionalText = additionalText,
-                                                                                                selectedConseils = selectedConseils
-                                                                                        )
-                                                                                showPreview = true
-                                                                        }
-                                                                ) { Text(translate(AnimalDetail.CR_PREVIEW_BUTTON)) }
-                                                                Button(
-                                                                        onClick = {
-                                                                                val prefsStorage = createPreferencesStorage()
-                                                                                val prefsRepo = PreferencesRepository(prefsStorage)
-                                                                                scope.launch {
-                                                                                        try {
-                                                                                                prefsRepo.loadPreferences()
-                                                                                                val prefs = prefsRepo.preferences
-                                                                                                val practitioner = fr.vetbrain.vetnutri_mp.Export.PractitionerInfo(
-                                                                                                        nom = prefs.nomUtilisateur,
-                                                                                                        numeroOrdre = prefs.numeroOrdre,
-                                                                                                        adressePostale = prefs.adressePostale,
-                                                                                                        codePostal = prefs.codePostal,
-                                                                                                        ville = prefs.ville,
-                                                                                                        telephone = prefs.telephone,
-                                                                                                        email = prefs.email
-                                                                                                )
-                                                                                                val selectedRationsForPrescription: List<Ration> =
-                                                                                                        selectedConsultation?.rations
-                                                                                                                ?.filter { ration: Ration ->
-                                                                                                                        selectedRationIdsForPrescription
-                                                                                                                                .contains(
-                                                                                                                                        ration.uuid
-                                                                                                                                )
-                                                                                                                }
-                                                                                                                ?.toList()
-                                                                                                                        ?: emptyList()
-                                                                                                previewHtml =
-                                                                                                        HtmlDocumentBuilder
-                                                                                                                .buildHtml(
-                                                                                                                        DocumentType
-                                                                                                                                .PRESCRIPTION,
-                                                                                                                        ExportData(
-                                                                                                                                animal =
-                                                                                                                                        animalDetails,
-                                                                                                                                ration =
-                                                                                                                                        null,
-                                                                                                                                reference =
-                                                                                                                                        referenceUtilisee,
-                                                                                                                                conseils =
-                                                                                                                                        listOf(
-                                                                                                                                                translate(AnimalDetail.DEFAULT_ADVICE_HYDRATION)
-                                                                                                                                        ),
-                                                                                                                                title =
-                                                                                                                                        translate(AnimalDetail.PRESCRIPTION_TITLE),
-                                                                                                                                additionalText =
-                                                                                                                                        additionalText,
-                                                                                                                                htmlSections =
-                                                                                                                                        getSelectedConseils(),
-                                                                                                                                rations = selectedRationsForPrescription,
-                                                                                                                                practitioner = practitioner,
-                                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
-                                                                                                                                poidsMetabolique = null,
-                                                                                                                                besoinEnergetiqueEntretien = null,
-                                                                                                                                // Plan évolutif exporté en tableau ingrédients × étapes
-                                                                                                                                consultation = selectedConsultation
-                                                                                                                        )
+                                                                showPreview = true
+                                                        },
+                                                        onPreviewPrescription = {
+                                                                val prefsStorage = createPreferencesStorage()
+                                                                val prefsRepo = PreferencesRepository(prefsStorage)
+                                                                scope.launch {
+                                                                        try {
+                                                                                prefsRepo.loadPreferences()
+                                                                                val prefs = prefsRepo.preferences
+                                                                                val practitioner = fr.vetbrain.vetnutri_mp.Export.PractitionerInfo(
+                                                                                        nom = prefs.nomUtilisateur,
+                                                                                        numeroOrdre = prefs.numeroOrdre,
+                                                                                        adressePostale = prefs.adressePostale,
+                                                                                        codePostal = prefs.codePostal,
+                                                                                        ville = prefs.ville,
+                                                                                        telephone = prefs.telephone,
+                                                                                        email = prefs.email
+                                                                                )
+                                                                                val selectedRationsForPrescription: List<Ration> =
+                                                                                        selectedConsultation?.rations
+                                                                                                ?.filter { ration: Ration ->
+                                                                                                        selectedRationIdsForPrescription
+                                                                                                                .contains(
+                                                                                                                        ration.uuid
                                                                                                                 )
-                                                                                                previewMode = "PRESCRIPTION"
-                                                                                                previewCompteRenduText = ""
-                                                                                                showPreview = true
-                                                                                        } catch (e: Exception) {
-                                                                                                val selectedRationsForPrescription: List<Ration> =
-                                                                                                        selectedConsultation?.rations
-                                                                                                                ?.filter { ration: Ration ->
-                                                                                                                        selectedRationIdsForPrescription
-                                                                                                                                .contains(
-                                                                                                                                        ration.uuid
-                                                                                                                                )
-                                                                                                                }
-                                                                                                                ?.toList()
-                                                                                                                        ?: emptyList()
-                                                                                                previewHtml = HtmlDocumentBuilder.buildHtml(
-                                                                                                        DocumentType.PRESCRIPTION,
+                                                                                                }
+                                                                                                ?.toList()
+                                                                                                        ?: emptyList()
+                                                                                previewHtml =
+                                                                                        HtmlDocumentBuilder
+                                                                                                .buildHtml(
+                                                                                                        DocumentType
+                                                                                                                .PRESCRIPTION,
                                                                                                         ExportData(
-                                                                                                                animal = animalDetails,
-                                                                                                                ration = null,
-                                                                                                                reference = referenceUtilisee,
-                                                                                                                conseils = emptyList(),
-                                                                                                                title = translate(AnimalDetail.PRESCRIPTION_TITLE),
-                                                                                                                additionalText = additionalText,
-                                                                                                                htmlSections = getSelectedConseils(),
+                                                                                                                animal =
+                                                                                                                        animalDetails,
+                                                                                                                ration =
+                                                                                                                        null,
+                                                                                                                reference =
+                                                                                                                        referenceUtilisee,
+                                                                                                                conseils =
+                                                                                                                        listOf(
+                                                                                                                                translate(AnimalDetail.DEFAULT_ADVICE_HYDRATION)
+                                                                                                                        ),
+                                                                                                                title =
+                                                                                                                        translate(AnimalDetail.PRESCRIPTION_TITLE),
+                                                                                                                additionalText =
+                                                                                                                        additionalText,
+                                                                                                                htmlSections =
+                                                                                                                        getSelectedConseils(),
                                                                                                                 rations = selectedRationsForPrescription,
-                                                                                                                practitioner = null,
+                                                                                                                practitioner = practitioner,
                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                                                                                                 poidsMetabolique = null,
                                                                                                                 besoinEnergetiqueEntretien = null,
@@ -2489,23 +2019,46 @@ private fun WideScreenLayout(
                                                                                                                 consultation = selectedConsultation
                                                                                                         )
                                                                                                 )
-                                                                                                previewMode = "PRESCRIPTION"
-                                                                                                previewCompteRenduText = ""
-                                                                                                showPreview = true
-                                                                                        }
-                                                                                }
+                                                                                previewMode = "PRESCRIPTION"
+                                                                                previewCompteRenduText = ""
+                                                                                showPreview = true
+                                                                        } catch (e: Exception) {
+                                                                                val selectedRationsForPrescription: List<Ration> =
+                                                                                        selectedConsultation?.rations
+                                                                                                ?.filter { ration: Ration ->
+                                                                                                        selectedRationIdsForPrescription
+                                                                                                                .contains(
+                                                                                                                        ration.uuid
+                                                                                                                )
+                                                                                                }
+                                                                                                ?.toList()
+                                                                                                        ?: emptyList()
+                                                                                previewHtml = HtmlDocumentBuilder.buildHtml(
+                                                                                        DocumentType.PRESCRIPTION,
+                                                                                        ExportData(
+                                                                                                animal = animalDetails,
+                                                                                                ration = null,
+                                                                                                reference = referenceUtilisee,
+                                                                                                conseils = emptyList(),
+                                                                                                title = translate(AnimalDetail.PRESCRIPTION_TITLE),
+                                                                                                additionalText = additionalText,
+                                                                                                htmlSections = getSelectedConseils(),
+                                                                                                rations = selectedRationsForPrescription,
+                                                                                                practitioner = null,
+                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                poidsMetabolique = null,
+                                                                                                besoinEnergetiqueEntretien = null,
+                                                                                                // Plan évolutif exporté en tableau ingrédients × étapes
+                                                                                                consultation = selectedConsultation
+                                                                                        )
+                                                                                )
+                                                                                previewMode = "PRESCRIPTION"
+                                                                                previewCompteRenduText = ""
+                                                                                showPreview = true
                                                                         }
-                                                                ) {
-                                                                        Text(
-                                                                                translate(AnimalDetail.PREVIEW_PRESCRIPTION)
-                                                                        )
                                                                 }
                                                         }
-                                                        }
-
-                                                        // Texte additionnel
-        
-                                                }
+                                                )
                                         }
 
                                         // Dialogue de prévisualisation HTML (en dehors du LazyColumn)
@@ -2547,158 +2100,14 @@ private fun WideScreenLayout(
 
                         // Dialogue de recherche et sélection des conseils
                         if (showSearchDialog) {
-                                AlertDialog(
-                                        onDismissRequest = { showSearchDialog = false },
-                                        title = { Text(translate(AnimalDetail.ADD_ADVICE)) },
-                                        text = {
-                                                Column {
-                                                        OutlinedTextField(
-                                                                value = searchQuery,
-                                                                onValueChange = {
-                                                                        searchQuery = it
-                                                                },
-                                                                label = {
-                                                                        Text(
-                                                                                translate(AnimalDetail.SEARCH_ADVICE_HINT)
-                                                                        )
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        )
-
-                                                        Spacer(modifier = Modifier.height(16.dp))
-
-                                                        val filteredConseils =
-                                                                availableConseils.filter { conseil
-                                                                        ->
-                                                                        conseil.title.contains(
-                                                                                searchQuery,
-                                                                                ignoreCase = true
-                                                                        ) ||
-                                                                                conseil.category
-                                                                                        .name
-                                                                                        .contains(
-                                                                                                searchQuery,
-                                                                                                ignoreCase =
-                                                                                                        true
-                                                                                        )
-                                                                }
-
-                                                        LazyColumn(
-                                                                modifier =
-                                                                        Modifier.heightIn(
-                                                                                max = 300.dp
-                                                                        ),
-                                                                verticalArrangement =
-                                                                        Arrangement.spacedBy(4.dp)
-                                                        ) {
-                                                                items(filteredConseils, key = { it.id ?: it.hashCode() }) { conseil ->
-                                                                        val isAlreadySelected =
-                                                                                selectedConseils
-                                                                                        .any {
-                                                                                                it.id ==
-                                                                                                        conseil.id
-                                                                                        }
-
-                                                                        Card(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxWidth(),
-                                                                                elevation =
-                                                                                        if (isAlreadySelected
-                                                                                        )
-                                                                                                4.dp
-                                                                                        else 1.dp,
-                                                                                backgroundColor =
-                                                                                        if (isAlreadySelected
-                                                                                        )
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                                        .copy(
-                                                                                                                alpha =
-                                                                                                                        0.1f
-                                                                                                        )
-                                                                                        else
-                                                                                                Color.Transparent
-                                                                        ) {
-                                                                                Row(
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxWidth()
-                                                                                                        .padding(
-                                                                                                                12.dp
-                                                                                                        ),
-                                                                                        horizontalArrangement =
-                                                                                                Arrangement
-                                                                                                        .SpaceBetween,
-                                                                                        verticalAlignment =
-                                                                                                Alignment
-                                                                                                        .CenterVertically
-                                                                                ) {
-                                                                                        Column(
-                                                                                                modifier =
-                                                                                                        Modifier.weight(
-                                                                                                                1f
-                                                                                                        )
-                                                                                        ) {
-                                                                                                Text(
-                                                                                                        text =
-                                                                                                                conseil.title,
-                                                                                                        style =
-                                                                                                                MaterialTheme
-                                                                                                                        .typography
-                                                                                                                        .body1,
-                                                                                                        fontWeight =
-                                                                                                                FontWeight
-                                                                                                                        .Medium
-                                                                                                )
-                                                                                                Text(
-                                                                                                        text =
-                                                                                                                translate(
-                                                                                                                        AnimalDetail.CATEGORY_LABEL,
-                                                                                                                        conseil.category.name
-                                                                                                                ),
-                                                                                                        style =
-                                                                                                                MaterialTheme
-                                                                                                                       .typography
-                                                                                                                       .caption,
-                                                                                                        color =
-                                                                                                                Color.Gray
-                                                                                                )
-                                                                                        }
-
-                                                                                        if (isAlreadySelected
-                                                                                        ) {
-                                                                                                Icon(
-                                                                                                        Icons.Default
-                                                                                                                .Check,
-                                                                                                        translate(AnimalDetail.SELECTED),
-                                                                                                        tint =
-                                                                                                                VetNutriColors
-                                                                                                                       .Primary
-                                                                                                )
-                                                                                        } else {
-                                                                                                IconButtonWithTooltip(
-                                                                                                        onClick = {
-                                                                                                                selectedConseils =
-                                                                                                                        selectedConseils +
-                                                                                                                                conseil
-                                                                                                                schedulePrescriptionSave()
-                                                                                                        },
-                                                                                                        imageVector = Icons.Default.Add,
-                                                                                                        contentDescription = translate(General.ADD),
-                                                                                                        tooltip = translate(General.ADD),
-                                                                                                        tint = VetNutriColors.Primary
-                                                                                                )
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                }
-                                                        }
-                                                }
+                                ConseilPickerDialog(
+                                        availableConseils = availableConseils,
+                                        selectedConseils = selectedConseils,
+                                        onAdd = { conseil ->
+                                                selectedConseils = selectedConseils + conseil
+                                                schedulePrescriptionSave()
                                         },
-                                        confirmButton = {
-                                                TextButton(onClick = { showSearchDialog = false }) {
-                                                        Text(translate(General.CLOSE))
-                                                }
-                                        }
+                                        onDismiss = { showSearchDialog = false }
                                 )
                         }
                 }
@@ -2755,7 +2164,6 @@ private fun NarrowScreenLayout(
                 mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
         }
         var isLoadingConseils by remember { mutableStateOf(true) }
-        var searchQuery by remember { mutableStateOf("") }
         var showSearchDialog by remember { mutableStateOf(false) }
         var pendingCopyText by remember { mutableStateOf<String?>(null) }
         var anamneseText by remember { mutableStateOf("") }
@@ -3689,519 +3097,69 @@ private fun NarrowScreenLayout(
                                                                         }
                                                                 }
                                                         } else {
-                                                                // Section export normale
-                                                                LazyColumn(
-                                                                        modifier =
-                                                                                Modifier.fillMaxSize()
-                                                                                        .padding(
-                                                                                                AppSizes.paddingMedium
-                                                                                        ),
-                                                                        verticalArrangement =
-                                                                                Arrangement
-                                                                                        .spacedBy(
-                                                                                                AppSizes.paddingMedium
-                                                                                        )
-                                                                ) {
-                                                                        item {
-                                                                        Text(
-                                                                                translate(AnimalDetail.EXPORT_DOCUMENTS_TITLE),
-                                                                                style =
-                                                                                        MaterialTheme
-                                                                                                .typography
-                                                                                                .h6,
-                                                                                color =
-                                                                                        VetNutriColors
-                                                                                                .Primary
+                                                                // Préparation de l'ordonnance et du compte rendu
+                                                                val compteRenduText =
+                                                                        buildCompteRenduText(
+                                                                                animal = animalDetails,
+                                                                                consultation = selectedConsultation,
+                                                                                practitionerContact = practitionerContact,
+                                                                                anamnese = anamneseText,
+                                                                                examenClinique = examenCliniqueText,
+                                                                                facteurNutritionnelClef = facteurNutritionnelClefText,
+                                                                                additionalText = additionalText,
+                                                                                selectedConseils = selectedConseils
                                                                         )
-                                                                        }
-                                                                        // Ligne d'information sur la ration sélectionnée supprimée pour alléger l'UI
-                                                                        item {
-                                                                        if (selectedConsultation == null) {
-                                                                                Text(
-                                                                                        translate(AnimalDetail.NO_CONSULTATION_FOR_PRESCRIPTION),
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .subtitle1,
-                                                                                        color =
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                )
-                                                                        } else {
-                                                                                Text(
-                                                                                        translate(AnimalDetail.SELECT_RATIONS_FOR_PRESCRIPTION),
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .subtitle1,
-                                                                                        color =
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                )
-                                                                        }
-                                                                        }
-
-                                                                        val currentConsultation: ConsultationEv? = selectedConsultation
-                                                                        if (currentConsultation != null && currentConsultation.rations.isNotEmpty()) {
-                                                                                items(PlanEvolutif.rationsPrincipales(currentConsultation).sortedForDisplay(), key = { it.uuid }) { ration ->
-                                                                                Row(
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxWidth()
-                                                                                                        .padding(
-                                                                                                                vertical =
-                                                                                                                        0.dp
-                                                                                                        ),
-                                                                                        verticalAlignment =
-                                                                                                Alignment
-                                                                                                        .CenterVertically
-                                                                                ) {
-                                                                                        val isSelectedRation: Boolean =
-                                                                                                selectedRationIdsForPrescription
-                                                                                                        .contains(
-                                                                                                                ration.uuid
-                                                                                                        )
-                                                                                        Checkbox(
-                                                                                                checked = isSelectedRation,
-                                                                                                onCheckedChange = { isChecked: Boolean ->
-                                                                                                        selectedRationIdsForPrescription =
-                                                                                                                if (isChecked) {
-                                                                                                                        selectedRationIdsForPrescription +
-                                                                                                                                ration.uuid
-                                                                                                                } else {
-                                                                                                                        selectedRationIdsForPrescription -
-                                                                                                                                ration.uuid
-                                                                                                                }
-                                                                                                        schedulePrescriptionSave()
-                                                                                                }
-                                                                                        )
-                                                                                        Spacer(
-                                                                                                modifier =
-                                                                                                        Modifier.width(
-                                                                                                                8.dp
-                                                                                                        )
-                                                                                        )
-                                                                                        Column {
-                                                                                                val rationLabel: String =
-                                                                                                        if (ration.actual) {
-                                                                                                                translate(AnimalDetail.RATION_CURRENT)
-                                                                                                        } else {
-                                                                                                                translate(AnimalDetail.RATION_PROPOSED)
-                                                                                                        }
-                                                                                                Text(
-                                                                                                        text =
-                                                                                                                translate(
-                                                                                                                        AnimalDetail.RATION_LINE,
-                                                                                                                        ration.name,
-                                                                                                                        rationLabel,
-                                                                                                                        ration.getQuantiteTotale().toString()
-                                                                                                                ),
-                                                                                                        style =
-                                                                                                                MaterialTheme
-                                                                                                                       .typography
-                                                                                                                       .body2
-                                                                                                )
-                                                                                        }
+                                                                PrescriptionPreparationPanel(
+                                                                        consultation = selectedConsultation,
+                                                                        selectedRationIds = selectedRationIdsForPrescription,
+                                                                        onSelectedRationIdsChange = {
+                                                                                selectedRationIdsForPrescription = it
+                                                                                schedulePrescriptionSave()
+                                                                        },
+                                                                        isExamMode = isExamMode,
+                                                                        selectedConseils = selectedConseils,
+                                                                        onRemoveConseil = { conseil ->
+                                                                                selectedConseils = selectedConseils.filter { it.id != conseil.id }
+                                                                                schedulePrescriptionSave()
+                                                                        },
+                                                                        onAddConseil = { showSearchDialog = true },
+                                                                        localSections = localHtmlSections,
+                                                                        onRemoveLocalSection = { section ->
+                                                                                localHtmlSections = localHtmlSections.filter { it.id != section.id }
+                                                                                schedulePrescriptionSave()
+                                                                        },
+                                                                        onOpenSectionEditor = { showRichTextEditor = true },
+                                                                        anamnese = anamneseText,
+                                                                        onAnamneseChange = {
+                                                                                anamneseText = it
+                                                                                schedulePrescriptionSave()
+                                                                        },
+                                                                        examenClinique = examenCliniqueText,
+                                                                        onExamenCliniqueChange = {
+                                                                                examenCliniqueText = it
+                                                                                schedulePrescriptionSave()
+                                                                        },
+                                                                        facteurNutritionnelClef = facteurNutritionnelClefText,
+                                                                        onFacteurNutritionnelClefChange = {
+                                                                                facteurNutritionnelClefText = it
+                                                                                schedulePrescriptionSave()
+                                                                        },
+                                                                        additionalText = additionalText,
+                                                                        onAdditionalTextChange = {
+                                                                                additionalText = it
+                                                                                schedulePrescriptionSave()
+                                                                        },
+                                                                        onCopyCompteRendu = {
+                                                                                pendingCopyText = compteRenduText
+                                                                                scope.launch {
+                                                                                        snackbarHostState.showSnackbar(translate(AnimalDetail.CR_COPY_SUCCESS))
                                                                                 }
-                                                                                }
-                                                                        } else {
-                                                                                item {
-                                                                                Text(
-                                                                                        translate(AnimalDetail.NO_RATION_AVAILABLE),
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                       .typography
-                                                                                                       .body2,
-                                                                                        color =
-                                                                                                MaterialTheme
-                                                                                                        .colors
-                                                                                                        .onSurface
-                                                                                                        .copy(
-                                                                                                                alpha =
-                                                                                                                        0.7f
-                                                                                                        )
-                                                                                )
-                                                                                }
-                                                                        }
-
-                                                                        if (isExamMode) {
-                                                                                item {
-                                                                                Text(
-                                                                                        translate(AnimalDetail.CUSTOM_ADVICE_UNAVAILABLE_EXAM_MODE),
-                                                                                        style = MaterialTheme.typography.body2,
-                                                                                        color = Color.Gray
-                                                                                )
-                                                                                }
-                                                                        } else {
-                                                                                // Section pour les conseils
-                                                                                // personnalisés
-                                                                                item {
-                                                                                Text(
-                                                                                        translate(AnimalDetail.CUSTOM_ADVICE_TITLE),
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .subtitle1,
-                                                                                        color =
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                )
-                                                                                }
-
-                                                                                // Affichage des conseils
-                                                                                // sélectionnés
-                                                                                if (selectedConseils
-                                                                                                .isNotEmpty()
-                                                                                ) {
-                                                                                        item {
-                                                                                        Column(
-                                                                                                modifier =
-                                                                                                        Modifier.fillMaxWidth(),
-                                                                                                verticalArrangement =
-                                                                                                        Arrangement
-                                                                                                                .spacedBy(
-                                                                                                                        4.dp
-                                                                                                                )
-                                                                                        ) {
-                                                                                                selectedConseils
-                                                                                                        .forEach {
-                                                                                                                conseil
-                                                                                                                ->
-                                                                                                                Card(
-                                                                                                                        modifier =
-                                                                                                                                Modifier.fillMaxWidth(),
-                                                                                                                        elevation =
-                                                                                                                                2.dp
-                                                                                                                ) {
-                                                                                                                        Row(
-                                                                                                                                modifier =
-                                                                                                                                        Modifier.fillMaxWidth()
-                                                                                                                                                .padding(
-                                                                                                                                                        8.dp
-                                                                                                                                                ),
-                                                                                                                                horizontalArrangement =
-                                                                                                                                        Arrangement
-                                                                                                                                                .SpaceBetween,
-                                                                                                                                verticalAlignment =
-                                                                                                                                        Alignment
-                                                                                                                                                .CenterVertically
-                                                                                                                        ) {
-                                                                                                                                Column(
-                                                                                                                                        modifier =
-                                                                                                                                                Modifier.weight(
-                                                                                                                                                        1f
-                                                                                                                                                )
-                                                                                                                                ) {
-                                                                                                                                        Text(
-                                                                                                                                                text =
-                                                                                                                                                        conseil.title,
-                                                                                                                                                style =
-                                                                                                                                                        MaterialTheme
-                                                                                                                                                                .typography
-                                                                                                                                                                .body2,
-                                                                                                                                                fontWeight =
-                                                                                                                                                        FontWeight
-                                                                                                                                                                .Medium
-                                                                                                                                        )
-                                                                                                                                        Text(
-                                                                                                                                                text =
-                                                                                                                                                        translate(
-                                                                                                                                                                AnimalDetail.CATEGORY_LABEL,
-                                                                                                                                                                conseil.category.name
-                                                                                                                                                        ),
-                                                                                                                                                style =
-                                                                                                                                                        MaterialTheme
-                                                                                                                                                                .typography
-                                                                                                                                                                .caption,
-                                                                                                                                                color =
-                                                                                                                                                        Color.Gray
-                                                                                                                                        )
-                                                                                                                                }
-                                                                                                                                IconButtonWithTooltip(
-                                                                                                                                                onClick = {
-                                                                                                                                                        selectedConseils =
-                                                                                                                                                                selectedConseils
-                                                                                                                                                                        .filter {
-                                                                                                                                                                                it.id !=
-                                                                                                                                                                                        conseil.id
-                                                                                                                                                                        }
-                                                                                                                                                        schedulePrescriptionSave()
-                                                                                                                                                },
-                                                                                                                                        imageVector = Icons.Default.Delete,
-                                                                                                                                        contentDescription = translate(General.DELETE),
-                                                                                                                                        tooltip = translate(General.DELETE),
-                                                                                                                                        tint = Color.Red
-                                                                                                                                )
-                                                                                                                                }
-                                                                                                                        }
-                                                                                                                }
-                                                                                                        }
-                                                                                        }
-                                                                                }
-
-                                                                                // Bouton pour ajouter des
-                                                                                // conseils
-                                                                                item {
-                                                                                Button(
-                                                                                        onClick = {
-                                                                                                showSearchDialog =
-                                                                                                        true
-                                                                                        },
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxWidth(),
-                                                                                        colors =
-                                                                                                ButtonDefaults
-                                                                                                        .buttonColors(
-                                                                                                                backgroundColor =
-                                                                                                                        VetNutriColors
-                                                                                                                                .Secondary,
-                                                                                                                contentColor =
-                                                                                                                        VetNutriColors
-                                                                                                                                .OnSecondary
-                                                                                                        )
-                                                                                ) {
-                                                                                        Icon(
-                                                                                                Icons.Default
-                                                                                                        .Add,
-                                                                                                translate(General.ADD)
-                                                                                        )
-                                                                                        Spacer(
-                                                                                                modifier =
-                                                                                                        Modifier.width(
-                                                                                                                8.dp
-                                                                                                        )
-                                                                                        )
-                                                                                        Text(translate(AnimalDetail.ADD_ADVICE))
-                                                                                        }
-                                                                                }
-                                                                        }
-
-                                                                        item {
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.height(
-                                                                                                16.dp
-                                                                                        )
-                                                                        )
-                                                                        }
-
-                                                                        // Section pour les sections
-                                                                        // HTML créées localement
-                                                                        if (localHtmlSections
-                                                                                        .isNotEmpty()
-                                                                        ) {
-                                                                                item {
-                                                                                Text(
-                                                                                        translate(
-                                                                                                AnimalDetail.LOCAL_HTML_SECTIONS_TITLE,
-                                                                                                localHtmlSections.size.toString()
-                                                                                        ),
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .subtitle1,
-                                                                                        color =
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                )
-                                                                                }
-                                                                                item {
-                                                                                Column(
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxWidth(),
-                                                                                        verticalArrangement =
-                                                                                                Arrangement
-                                                                                                        .spacedBy(
-                                                                                                                4.dp
-                                                                                                        )
-                                                                                ) {
-                                                                                        localHtmlSections
-                                                                                                .forEach {
-                                                                                                        section
-                                                                                                        ->
-                                                                                                        Card(
-                                                                                                                modifier =
-                                                                                                                        Modifier.fillMaxWidth(),
-                                                                                                                elevation =
-                                                                                                                        2.dp
-                                                                                                        ) {
-                                                                                                                Row(
-                                                                                                                        modifier =
-                                                                                                                                Modifier.fillMaxWidth()
-                                                                                                                                        .padding(
-                                                                                                                                                8.dp
-                                                                                                                                        ),
-                                                                                                                        horizontalArrangement =
-                                                                                                                                Arrangement
-                                                                                                                                        .SpaceBetween,
-                                                                                                                        verticalAlignment =
-                                                                                                                                Alignment
-                                                                                                                                        .CenterVertically
-                                                                                                                ) {
-                                                                                                                        Column(
-                                                                                                                                modifier =
-                                                                                                                                        Modifier.weight(
-                                                                                                                                                1f
-                                                                                                                                        )
-                                                                                                                        ) {
-                                                                                                                                Text(
-                                                                                                                                        text =
-                                                                                                                                                section.title,
-                                                                                                                                        style =
-                                                                                                                                                MaterialTheme
-                                                                                                                                                        .typography
-                                                                                                                                                        .body2,
-                                                                                                                                        fontWeight =
-                                                                                                                                                FontWeight
-                                                                                                                                                        .Medium
-                                                                                                                                )
-                                                                                                                                Text(
-                                                                                                                                        text =
-                                                                                                                                                translate(
-                                                                                                                                                        AnimalDetail.BLOCKS_COUNT,
-                                                                                                                                                        section.content.blocks.size.toString()
-                                                                                                                                                ),
-                                                                                                                                        style =
-                                                                                                                                                MaterialTheme
-                                                                                                                                                        .typography
-                                                                                                                                                        .caption,
-                                                                                                                                        color =
-                                                                                                                                                Color.Gray
-                                                                                                                                )
-                                                                                                                        }
-                                                                                                                        IconButtonWithTooltip(
-                                                                                                        onClick = {
-                                                                                                                localHtmlSections =
-                                                                                                                        localHtmlSections
-                                                                                                                                .filter {
-                                                                                                                                        it.id !=
-                                                                                                                                                section.id
-                                                                                                                                }
-                                                                                                                schedulePrescriptionSave()
-                                                                                                        },
-                                                                                                                                imageVector = Icons.Default.Delete,
-                                                                                                                                contentDescription = translate(General.DELETE),
-                                                                                                                                tooltip = translate(General.DELETE),
-                                                                                                                                tint = Color.Red
-                                                                                                                        )
-                                                                                                                }
-                                                                                                        }
-                                                                                                }
-                                                                                }
-                                                                                }
-                                                                                item {
-                                                                                Spacer(
-                                                                                        modifier =
-                                                                                                Modifier.height(
-                                                                                                        16.dp
-                                                                                                )
-                                                                                )
-                                                                                }
-                                                                        }
-
-                                                                        // Bouton pour accéder à
-                                                                        // l'éditeur de texte
-                                                                        // enrichi
-                                                                        item {
-                                                                        Button(
-                                                                                onClick = {
-                                                                                        showRichTextEditor =
-                                                                                                true
-                                                                                },
-                                                                                modifier =
-                                                                                        Modifier.fillMaxWidth(),
-                                                                                colors =
-                                                                                        ButtonDefaults
-                                                                                                .buttonColors(
-                                                                                                        backgroundColor =
-                                                                                                                VetNutriColors
-                                                                                                                        .Secondary,
-                                                                                                        contentColor =
-                                                                                                                VetNutriColors
-                                                                                                                        .OnSecondary
-                                                                                                )
-                                                                        ) {
-                                                                                Icon(
-                                                                                        Icons.Default
-                                                                                                .Edit,
-                                                                                        translate(AnimalDetail.HTML_EDITOR)
-                                                                                )
-                                                                                Spacer(
-                                                                                        modifier =
-                                                                                                Modifier.width(
-                                                                                                        AppSizes.paddingSmall
-                                                                                                )
-                                                                                )
-                                                                                Text(translate(AnimalDetail.CREATE_CUSTOM_HTML_SECTIONS))
-                                                                                }
-                                                                        }
-
-
-                                                                        item {
-                                                                        OutlinedTextField(
-                                                                                value = anamneseText,
-                                                                                onValueChange = {
-                                                                                        anamneseText = it
-                                                                                        schedulePrescriptionSave()
-                                                                                },
-                                                                                modifier = Modifier.fillMaxWidth(),
-                                                                                label = { Text(translate(AnimalDetail.CR_SECTION_ANAMNESE)) },
-                                                                                maxLines = 6
-                                                                        )
-                                                                                }
-
-                                                                        item {
-                                                                        OutlinedTextField(
-                                                                                value = examenCliniqueText,
-                                                                                onValueChange = {
-                                                                                        examenCliniqueText = it
-                                                                                        schedulePrescriptionSave()
-                                                                                },
-                                                                                modifier = Modifier.fillMaxWidth(),
-                                                                                label = { Text(translate(AnimalDetail.CR_EXAM_CLINIQUE)) },
-                                                                                maxLines = 6
-                                                                        )
-                                                                                }
-
-                                                                        item {
-                                                                        OutlinedTextField(
-                                                                                value = facteurNutritionnelClefText,
-                                                                                onValueChange = {
-                                                                                        facteurNutritionnelClefText = it
-                                                                                        schedulePrescriptionSave()
-                                                                                },
-                                                                                modifier = Modifier.fillMaxWidth(),
-                                                                                label = { Text(translate(AnimalDetail.CR_KEY_NUTRITIONAL_FACTOR)) },
-                                                                                maxLines = 4
-                                                                        )
-                                                                                }
-
-                                                                        item {
-                                                                        OutlinedTextField(
-                                                                                value = additionalText,
-                                                                                onValueChange = {
-                                                                                        additionalText = it
-                                                                                        schedulePrescriptionSave()
-                                                                                },
-                                                                                modifier = Modifier.fillMaxWidth(),
-                                                                                label = {
-                                                                                        Text(
-                                                                                                translate(AnimalDetail.ADDITIONAL_TEXT_LABEL)
-                                                                                        )
-                                                                                },
-                                                                                maxLines = 6
-                                                                        )
-                                                                                }
-
-                                                                        item {
-                                                                        Row(
-                                                                                horizontalArrangement =
-                                                                                        Arrangement
-                                                                                                .spacedBy(
-                                                                                                        AppSizes.paddingSmall
-                                                                                                )
-                                                                        ) {
-                                                                                val compteRenduText =
-                                                                                        buildCompteRenduText(
+                                                                        },
+                                                                        onPreviewCompteRendu = {
+                                                                                previewMode = "CR"
+                                                                                previewCompteRenduText = compteRenduText
+                                                                                previewHtml =
+                                                                                        buildCompteRenduHtml(
                                                                                                 animal = animalDetails,
                                                                                                 consultation = selectedConsultation,
                                                                                                 practitionerContact = practitionerContact,
@@ -4211,130 +3169,95 @@ private fun NarrowScreenLayout(
                                                                                                 additionalText = additionalText,
                                                                                                 selectedConseils = selectedConseils
                                                                                         )
-                                                                                OutlinedButton(
-                                                                                        onClick = {
-                                                                                                pendingCopyText = compteRenduText
-                                                                                                scope.launch {
-                                                                                                        snackbarHostState.showSnackbar(translate(AnimalDetail.CR_COPY_SUCCESS))
-                                                                                                }
-                                                                                        }
-                                                                                ) {
-                                                                                        Text(translate(AnimalDetail.CR_COPY_BUTTON))
-                                                                                }
-                                                                                OutlinedButton(
-                                                                                        onClick = {
-                                                                                                previewMode = "CR"
-                                                                                                previewCompteRenduText = compteRenduText
+                                                                                showPreview = true
+                                                                        },
+                                                                        onPreviewPrescription = {
+                                                                                scope.launch {
+                                                                                        try {
+                                                                                                val prefsStorage = createPreferencesStorage()
+                                                                                                val prefsRepo = PreferencesRepository(prefsStorage)
+                                                                                                prefsRepo.loadPreferences()
+                                                                                                val prefs = prefsRepo.preferences
+                                                                                                val practitioner = fr.vetbrain.vetnutri_mp.Export.PractitionerInfo(
+                                                                                                        nom = prefs.nomUtilisateur,
+                                                                                                        numeroOrdre = prefs.numeroOrdre,
+                                                                                                        adressePostale = prefs.adressePostale,
+                                                                                                        codePostal = prefs.codePostal,
+                                                                                                        ville = prefs.ville,
+                                                                                                        telephone = prefs.telephone,
+                                                                                                        email = prefs.email
+                                                                                                )
+                                                                                                val selectedRationsForPrescription: List<Ration> =
+                                                                                                        selectedConsultation?.rations
+                                                                                                                ?.filter { ration: Ration ->
+                                                                                                                        selectedRationIdsForPrescription
+                                                                                                                                .contains(
+                                                                                                                                        ration.uuid
+                                                                                                                                )
+                                                                                                                }
+                                                                                                                ?.toList()
+                                                                                                                        ?: emptyList()
                                                                                                 previewHtml =
-                                                                                                        buildCompteRenduHtml(
-                                                                                                                animal = animalDetails,
-                                                                                                                consultation = selectedConsultation,
-                                                                                                                practitionerContact = practitionerContact,
-                                                                                                                anamnese = anamneseText,
-                                                                                                                examenClinique = examenCliniqueText,
-                                                                                                                facteurNutritionnelClef = facteurNutritionnelClefText,
-                                                                                                                additionalText = additionalText,
-                                                                                                                selectedConseils = selectedConseils
-                                                                                                        )
-                                                                                                showPreview = true
-                                                                                        }
-                                                                                ) {
-                                                                                        Text(translate(AnimalDetail.CR_PREVIEW_BUTTON))
-                                                                                }
-
-                                                                                Button(
-                                                                                        onClick = {
-                                                                                                scope.launch {
-                                                                                                        try {
-                                                                                                                val prefsStorage = createPreferencesStorage()
-                                                                                                                val prefsRepo = PreferencesRepository(prefsStorage)
-                                                                                                                prefsRepo.loadPreferences()
-                                                                                                                val prefs = prefsRepo.preferences
-                                                                                                                val practitioner = fr.vetbrain.vetnutri_mp.Export.PractitionerInfo(
-                                                                                                                        nom = prefs.nomUtilisateur,
-                                                                                                                        numeroOrdre = prefs.numeroOrdre,
-                                                                                                                        adressePostale = prefs.adressePostale,
-                                                                                                                        codePostal = prefs.codePostal,
-                                                                                                                        ville = prefs.ville,
-                                                                                                                        telephone = prefs.telephone,
-                                                                                                                        email = prefs.email
-                                                                                                                )
-                                                                                                                val selectedRationsForPrescription: List<Ration> =
-                                                                                                                        selectedConsultation?.rations
-                                                                                                                                ?.filter { ration: Ration ->
-                                                                                                                                        selectedRationIdsForPrescription
-                                                                                                                                                .contains(
-                                                                                                                                                        ration.uuid
-                                                                                                                                                )
-                                                                                                                                }
-                                                                                                                                ?.toList()
-                                                                                                                                        ?: emptyList()
-                                                                                                                previewHtml =
-                                                                                                                        HtmlDocumentBuilder
-                                                                                                                                .buildHtml(
-                                                                                                                                        DocumentType.PRESCRIPTION,
-                                                                                                                                        ExportData(
-                                                                                                                                                animal = animalDetails,
-                                                                                                                                                ration = null,
-                                                                                                                                                reference = referenceUtilisee,
-                                                                                                                                                conseils = listOf(translate(AnimalDetail.DEFAULT_ADVICE_HYDRATION)),
-                                                                                                                                                title = translate(AnimalDetail.PRESCRIPTION_TITLE),
-                                                                                                                                                additionalText = additionalText,
-                                                                                                                                                htmlSections = getSelectedConseils(),
-                                                                                                                                                rations = selectedRationsForPrescription,
-                                                                                                                                                practitioner = practitioner,
-                                                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
-                                                                                                                                                poidsMetabolique = null,
-                                                                                                                                                besoinEnergetiqueEntretien = null,
-                                                                                                                                                // Plan évolutif exporté en tableau ingrédients × étapes
-                                                                                                                                                consultation = selectedConsultation
-                                                                                                                )
-                                                                                                        )
-                                                                                                                previewMode = "PRESCRIPTION"
-                                                                                                                previewCompteRenduText = ""
-                                                                                                                showPreview = true
-                                                                                                        } catch (e: Exception) {
-                                                                                                                val selectedRationsForPrescription: List<Ration> =
-                                                                                                                        selectedConsultation?.rations
-                                                                                                                                ?.filter { ration: Ration ->
-                                                                                                                                        selectedRationIdsForPrescription
-                                                                                                                                                .contains(
-                                                                                                                                                        ration.uuid
-                                                                                                                                                )
-                                                                                                                                }
-                                                                                                                                ?.toList()
-                                                                                                                                        ?: emptyList()
-                                                                                                                previewHtml = HtmlDocumentBuilder.buildHtml(
+                                                                                                        HtmlDocumentBuilder
+                                                                                                                .buildHtml(
                                                                                                                         DocumentType.PRESCRIPTION,
                                                                                                                         ExportData(
                                                                                                                                 animal = animalDetails,
                                                                                                                                 ration = null,
                                                                                                                                 reference = referenceUtilisee,
-                                                                                                                                conseils = emptyList(),
+                                                                                                                                conseils = listOf(translate(AnimalDetail.DEFAULT_ADVICE_HYDRATION)),
                                                                                                                                 title = translate(AnimalDetail.PRESCRIPTION_TITLE),
                                                                                                                                 additionalText = additionalText,
                                                                                                                                 htmlSections = getSelectedConseils(),
                                                                                                                                 rations = selectedRationsForPrescription,
-                                                                                                                                practitioner = null,
+                                                                                                                                practitioner = practitioner,
                                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                                                                                                                 poidsMetabolique = null,
                                                                                                                                 besoinEnergetiqueEntretien = null,
                                                                                                                                 // Plan évolutif exporté en tableau ingrédients × étapes
                                                                                                                                 consultation = selectedConsultation
-                                                                                                                )
-                                                                                                                )
-                                                                                                                previewMode = "PRESCRIPTION"
-                                                                                                                previewCompteRenduText = ""
-                                                                                                                showPreview = true
-                                                                                                        }
-                                                                                                }
+                                                                                                )
+                                                                                        )
+                                                                                                previewMode = "PRESCRIPTION"
+                                                                                                previewCompteRenduText = ""
+                                                                                                showPreview = true
+                                                                                        } catch (e: Exception) {
+                                                                                                val selectedRationsForPrescription: List<Ration> =
+                                                                                                        selectedConsultation?.rations
+                                                                                                                ?.filter { ration: Ration ->
+                                                                                                                        selectedRationIdsForPrescription
+                                                                                                                                .contains(
+                                                                                                                                        ration.uuid
+                                                                                                                                )
+                                                                                                                }
+                                                                                                                ?.toList()
+                                                                                                                        ?: emptyList()
+                                                                                                previewHtml = HtmlDocumentBuilder.buildHtml(
+                                                                                                        DocumentType.PRESCRIPTION,
+                                                                                                        ExportData(
+                                                                                                                animal = animalDetails,
+                                                                                                                ration = null,
+                                                                                                                reference = referenceUtilisee,
+                                                                                                                conseils = emptyList(),
+                                                                                                                title = translate(AnimalDetail.PRESCRIPTION_TITLE),
+                                                                                                                additionalText = additionalText,
+                                                                                                                htmlSections = getSelectedConseils(),
+                                                                                                                rations = selectedRationsForPrescription,
+                                                                                                                practitioner = null,
+                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                                poidsMetabolique = null,
+                                                                                                                besoinEnergetiqueEntretien = null,
+                                                                                                                // Plan évolutif exporté en tableau ingrédients × étapes
+                                                                                                                consultation = selectedConsultation
+                                                                                                )
+                                                                                                )
+                                                                                                previewMode = "PRESCRIPTION"
+                                                                                                previewCompteRenduText = ""
+                                                                                                showPreview = true
                                                                                         }
-                                                                                ) {
-                                                                                        Text(translate(AnimalDetail.PREVIEW_PRESCRIPTION))
-                                                                                }
                                                                                 }
                                                                         }
-                                                                }
+                                                                )
                                                         }
                                                 }
                                         }
@@ -4348,158 +3271,14 @@ private fun NarrowScreenLayout(
 
                         // Dialogue de recherche et sélection des conseils
                         if (showSearchDialog) {
-                                AlertDialog(
-                                        onDismissRequest = { showSearchDialog = false },
-                                        title = { Text(translate(AnimalDetail.ADD_ADVICE)) },
-                                        text = {
-                                                Column {
-                                                        OutlinedTextField(
-                                                                value = searchQuery,
-                                                                onValueChange = {
-                                                                        searchQuery = it
-                                                                },
-                                                                label = {
-                                                                        Text(
-                                                                                translate(AnimalDetail.SEARCH_ADVICE_HINT)
-                                                                        )
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        )
-
-                                                        Spacer(modifier = Modifier.height(16.dp))
-
-                                                        val filteredConseils =
-                                                                availableConseils.filter { conseil
-                                                                        ->
-                                                                        conseil.title.contains(
-                                                                                searchQuery,
-                                                                                ignoreCase = true
-                                                                        ) ||
-                                                                                conseil.category
-                                                                                        .name
-                                                                                        .contains(
-                                                                                                searchQuery,
-                                                                                                ignoreCase =
-                                                                                                        true
-                                                                                        )
-                                                                }
-
-                                                        LazyColumn(
-                                                                modifier =
-                                                                        Modifier.heightIn(
-                                                                                max = 300.dp
-                                                                        ),
-                                                                verticalArrangement =
-                                                                        Arrangement.spacedBy(4.dp)
-                                                        ) {
-                                                                items(filteredConseils, key = { it.id ?: it.hashCode() }) { conseil ->
-                                                                        val isAlreadySelected =
-                                                                                selectedConseils
-                                                                                        .any {
-                                                                                                it.id ==
-                                                                                                        conseil.id
-                                                                                        }
-
-                                                                        Card(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxWidth(),
-                                                                                elevation =
-                                                                                        if (isAlreadySelected
-                                                                                        )
-                                                                                                4.dp
-                                                                                        else 1.dp,
-                                                                                backgroundColor =
-                                                                                        if (isAlreadySelected
-                                                                                        )
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                                        .copy(
-                                                                                                                alpha =
-                                                                                                                        0.1f
-                                                                                                        )
-                                                                                        else
-                                                                                                Color.Transparent
-                                                                        ) {
-                                                                                Row(
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxWidth()
-                                                                                                        .padding(
-                                                                                                                12.dp
-                                                                                                        ),
-                                                                                        horizontalArrangement =
-                                                                                                Arrangement
-                                                                                                        .SpaceBetween,
-                                                                                        verticalAlignment =
-                                                                                                Alignment
-                                                                                                        .CenterVertically
-                                                                                ) {
-                                                                                        Column(
-                                                                                                modifier =
-                                                                                                        Modifier.weight(
-                                                                                                                1f
-                                                                                                        )
-                                                                                        ) {
-                                                                                                Text(
-                                                                                                        text =
-                                                                                                                conseil.title,
-                                                                                                        style =
-                                                                                                                MaterialTheme
-                                                                                                                        .typography
-                                                                                                                        .body1,
-                                                                                                        fontWeight =
-                                                                                                                FontWeight
-                                                                                                                        .Medium
-                                                                                                )
-                                                                                                Text(
-                                                                                                        text =
-                                                                                                                translate(
-                                                                                                                        AnimalDetail.CATEGORY_LABEL,
-                                                                                                                        conseil.category.name
-                                                                                                                ),
-                                                                                                        style =
-                                                                                                                MaterialTheme
-                                                                                                                       .typography
-                                                                                                                       .caption,
-                                                                                                        color =
-                                                                                                                Color.Gray
-                                                                                                )
-                                                                                        }
-
-                                                                                        if (isAlreadySelected
-                                                                                        ) {
-                                                                                                Icon(
-                                                                                                        Icons.Default
-                                                                                                                .Check,
-                                                                                                        translate(AnimalDetail.SELECTED),
-                                                                                                        tint =
-                                                                                                                VetNutriColors
-                                                                                                                       .Primary
-                                                                                                )
-                                                                                        } else {
-                                                                                                IconButtonWithTooltip(
-                                                                                                        onClick = {
-                                                                                                                selectedConseils =
-                                                                                                                        selectedConseils +
-                                                                                                                                conseil
-                                                                                                                schedulePrescriptionSave()
-                                                                                                        },
-                                                                                                        imageVector = Icons.Default.Add,
-                                                                                                        contentDescription = translate(General.ADD),
-                                                                                                        tooltip = translate(General.ADD),
-                                                                                                        tint = VetNutriColors.Primary
-                                                                                                )
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                }
-                                                        }
-                                                }
+                                ConseilPickerDialog(
+                                        availableConseils = availableConseils,
+                                        selectedConseils = selectedConseils,
+                                        onAdd = { conseil ->
+                                                selectedConseils = selectedConseils + conseil
+                                                schedulePrescriptionSave()
                                         },
-                                        confirmButton = {
-                                                TextButton(onClick = { showSearchDialog = false }) {
-                                                        Text(translate(General.CLOSE))
-                                                }
-                                        }
+                                        onDismiss = { showSearchDialog = false }
                                 )
                         }
 

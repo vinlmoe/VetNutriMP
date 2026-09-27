@@ -1697,9 +1697,9 @@ fun RationsView(
                                                 etape = null,
                                                 variablesRequises = variablesEtapeRequises,
                                                 onDismiss = { parentNouvelleEtape = null },
-                                                onSave = { poids, variables ->
+                                                onSave = { poids, variables, libelle ->
                                                         parentNouvelleEtape = null
-                                                        viewModel.ajouterEtape(parent, poids, variables)
+                                                        viewModel.ajouterEtape(parent, poids, variables, libelle)
                                                 }
                                         )
                                 }
@@ -1713,9 +1713,9 @@ fun RationsView(
                                                 etape = etape,
                                                 variablesRequises = variablesEtapeRequises,
                                                 onDismiss = { etapeAEditer = null },
-                                                onSave = { poids, variables ->
+                                                onSave = { poids, variables, libelle ->
                                                         etapeAEditer = null
-                                                        viewModel.mettreAJourEtape(etape, poids, variables)
+                                                        viewModel.mettreAJourEtape(etape, poids, variables, libelle = libelle)
                                                 }
                                         )
                                 }

@@ -35,6 +35,7 @@ class ApiModelsConsultationEvolutiveTest {
                                             etapeEvolutive = true,
                                             poids = 8.0,
                                             refRationParente = "r-std",
+                                            nomLibre = "Croissance",
                                             suppVarp =
                                                     mutableListOf(
                                                             SupplementalvariableP(
@@ -62,6 +63,8 @@ class ApiModelsConsultationEvolutiveTest {
         val etape8 = restored.rations.first { it.uuid == "r-8" }
         assertEquals(8.0, etape8.poids)
         assertEquals("r-std", etape8.refRationParente)
+        assertEquals("Croissance", etape8.nomLibre)
+        assertNull(reel.nomLibre)
         assertEquals(
                 listOf(SupplementalvariableP(VariableKind.WeekGestation, 6.0)),
                 etape8.suppVarp

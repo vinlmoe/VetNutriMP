@@ -79,6 +79,21 @@ class PlanEvolutifTest {
     }
 
     @Test
+    fun nomLibre_replacesStepPrefix_andIsTrimmed() {
+        val p = parent("p")
+
+        val nommee = PlanEvolutif.nouvelleEtape(p, 30.0, emptyList(), "  Croissance poulet ")
+        assertEquals("Croissance poulet", nommee.nomLibre)
+        assertEquals("Croissance poulet 30.0 kg", nommee.name)
+        assertEquals("Croissance poulet · 30.0 kg", PlanEvolutif.libelleEtape(consultation(p, nommee), nommee))
+
+        // Nom vide : nom automatique seul
+        val anonyme = PlanEvolutif.nouvelleEtape(p, 30.0, emptyList(), "   ")
+        assertEquals(null, anonyme.nomLibre)
+        assertEquals(PlanEvolutif.nomAutomatique(30.0, emptyList()), anonyme.name)
+    }
+
+    @Test
     fun estActuelle_stepInheritsTheColorStatusOfItsParent() {
         val parentActuelle = parent("p").apply { actual = true }
         val etapeProposee = etape("e", "p", 3.0).apply { actual = false }

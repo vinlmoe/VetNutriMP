@@ -93,7 +93,10 @@ object PlanEvolutif {
                 )
     }
 
-    /** Libellé de colonne : « 8.0 kg · D 12.0 » (mention « actuel » ajoutée par l'appelant). */
+    /**
+     * Libellé de colonne : « Croissance · 8.0 kg · D 12.0 » (nom libre éventuel, poids, variables
+     * distinctives ; mention « actuel » ajoutée par l'appelant).
+     */
     fun libelleEtape(
             consultation: ConsultationEv,
             etape: Ration,
@@ -101,7 +104,8 @@ object PlanEvolutif {
                     variablesDistinctives(consultation, parentDe(consultation, etape))
     ): String {
         val poids = VariablesEtape.poidsEtape(consultation, etape)
-        val base = poids?.let { "${TextUtils.formatDecimal(it, 1)} kg" } ?: "? kg"
+        val poidsTexte = poids?.let { "${TextUtils.formatDecimal(it, 1)} kg" } ?: "? kg"
+        val base = listOfNotNull(libelleNormalise(etape.nomLibre), poidsTexte).joinToString(" · ")
         if (distinctives.isEmpty()) return base
         val vars =
                 VariablesEtape.variablesFusionnees(consultation, etape).associate {
@@ -117,11 +121,19 @@ object PlanEvolutif {
     /** Vrai pour la ration parente du plan (calculée au poids de la consultation). */
     fun estRationParente(etape: Ration): Boolean = etape.refRationParente == null
 
+    /** Nom libre d'étape nettoyé : null si vide. */
+    fun libelleNormalise(libelle: String?): String? = libelle?.trim()?.takeIf { it.isNotEmpty() }
+
     /**
      * Nom fixe d'une étape, déduit de ses propres données et traduit : « Étape 8.0 kg · AW 30.0 »,
-     * ou « Étape poids réel » quand l'étape n'a pas de poids propre.
+     * ou « Étape poids réel » quand l'étape n'a pas de poids propre. Avec un nom libre, il remplace
+     * « Étape » : « Croissance 8.0 kg · AW 30.0 ».
      */
-    fun nomAutomatique(poids: Double?, suppVarp: List<SupplementalvariableP>): String {
+    fun nomAutomatique(
+            poids: Double?,
+            suppVarp: List<SupplementalvariableP>,
+            libelle: String? = null
+    ): String {
         val base =
                 poids?.let { "${TextUtils.formatDecimal(it, 1)} kg" }
                         ?: translate(LocalizationKeys.Evolutive.REAL_WEIGHT_NAME)
@@ -129,24 +141,27 @@ object PlanEvolutif {
                 suppVarp.mapNotNull { sv ->
                     sv.variable?.let { "${it.label} ${TextUtils.formatDecimal(sv.varue ?: 0.0, 1)}" }
                 }
-        return (listOf(translate(LocalizationKeys.Evolutive.AUTO_STEP_NAME, base)) + vars)
-                .joinToString(" · ")
+        val tete =
+                libelleNormalise(libelle)?.let { "$it $base" }
+                        ?: translate(LocalizationKeys.Evolutive.AUTO_STEP_NAME, base)
+        return (listOf(tete) + vars).joinToString(" · ")
     }
 
     /**
      * Nouvelle étape sous [parent] : copie de ses aliments (nouveaux UUID), poids et variables
-     * propres, nom fixe.
+     * propres, nom libre facultatif, nom fixe qui en découle.
      */
     fun nouvelleEtape(
             parent: Ration,
             poids: Double?,
-            suppVarp: List<SupplementalvariableP>
+            suppVarp: List<SupplementalvariableP>,
+            libelle: String? = null
     ): Ration {
         val uuid = genUUID()
         return Ration(
                 uuid = uuid,
                 idConsult = parent.idConsult,
-                name = nomAutomatique(poids, suppVarp),
+                name = nomAutomatique(poids, suppVarp, libelle),
                 coef = parent.coef,
                 actual = false,
                 number = parent.number,
@@ -160,7 +175,8 @@ object PlanEvolutif {
                 etapeEvolutive = true,
                 poids = poids,
                 refRationParente = parent.uuid,
-                suppVarp = suppVarp.toMutableList()
+                suppVarp = suppVarp.toMutableList(),
+                nomLibre = libelleNormalise(libelle)
         )
     }
 
