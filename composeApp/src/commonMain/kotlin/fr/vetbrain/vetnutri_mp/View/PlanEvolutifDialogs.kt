@@ -21,8 +21,10 @@ import androidx.compose.ui.window.Dialog
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.LigneSynthese
 import fr.vetbrain.vetnutri_mp.Data.PlanEvolutif
+import fr.vetbrain.vetnutri_mp.Data.PositionReference
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
+import fr.vetbrain.vetnutri_mp.Data.nomTraduitNutriment
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Evolutive
@@ -158,7 +160,8 @@ fun EtapeEditDialog(
 
 /**
  * Synthèse du plan rangé sous [parent] : ingrédients en lignes, rations du plan en colonnes
- * (triées par poids), masses modifiables, besoin, apport et couverture par colonne.
+ * (triées par poids), masses modifiables, besoin, apport et couverture par colonne, puis
+ * nutriments non couverts (% du minimum) et maximums dépassés (% du maximum).
  */
 @Composable
 fun SynthesePlanDialog(
@@ -257,6 +260,24 @@ fun SynthesePlanDialog(
                                 "${TextUtils.formatDecimal(bilan.energieApportee / besoin * 100.0, 0)} %"
                         else "—"
                     }
+                    // Nutriments dont le minimum n'est pas couvert dans au moins une étape
+                    SectionPositions(
+                            titre = translate(Evolutive.MIN_NOT_COVERED_SECTION),
+                            etapes = etapes,
+                            positions = { bilans[it.uuid]?.couverturesMin },
+                            horsNorme = { it < 100.0 },
+                            largeurNom = largeurNom,
+                            largeurCellule = largeurCellule
+                    )
+                    // Nutriments dont le maximum est dépassé dans au moins une étape
+                    SectionPositions(
+                            titre = translate(Evolutive.MAX_EXCEEDED_SECTION),
+                            etapes = etapes,
+                            positions = { bilans[it.uuid]?.positionsMax },
+                            horsNorme = { it > 100.0 },
+                            largeurNom = largeurNom,
+                            largeurCellule = largeurCellule
+                    )
                 }
                 Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -282,6 +303,60 @@ fun SynthesePlanDialog(
         )
     }
 }
+
+/**
+ * Section de la synthèse : une ligne par nutriment hors norme dans au moins une étape, avec
+ * l'apport en % de la borne pour chaque étape (hors norme en rouge, violet si réf. maladie).
+ */
+@Composable
+private fun SectionPositions(
+        titre: String,
+        etapes: List<Ration>,
+        positions: (Ration) -> Map<String, PositionReference>?,
+        horsNorme: (Double) -> Boolean,
+        largeurNom: Dp,
+        largeurCellule: Dp
+) {
+    val parEtape = etapes.map { positions(it).orEmpty() }
+    // Ordre des nutriments de l'analyse, dédoublonné sur l'ensemble des étapes
+    val labels =
+            parEtape.flatMap { carte -> carte.filterValues { horsNorme(it.pourcentage) }.keys }
+                    .distinct()
+
+    Divider(color = VetNutriColors.Primary.copy(alpha = 0.4f))
+    Row {
+        CelluleTexte(titre, largeurNom, gras = true, alignDebut = true)
+        if (labels.isEmpty()) {
+            CelluleTexte(translate(Evolutive.NONE_OUT_OF_RANGE), largeurCellule, alignDebut = true)
+        }
+    }
+    labels.forEach { label ->
+        val nutriment = parEtape.firstNotNullOf { it[label] }.nutriment
+        Row {
+            CelluleTexte(nomTraduitNutriment(nutriment), largeurNom, alignDebut = true)
+            parEtape.forEach { carte ->
+                val position = carte[label]
+                CelluleTexte(
+                        texte =
+                                position?.let { "${TextUtils.formatDecimal(it.pourcentage, 0)} %" }
+                                        ?: "—",
+                        largeur = largeurCellule,
+                        gras = position != null && horsNorme(position.pourcentage),
+                        couleur =
+                                when {
+                                    position == null || !horsNorme(position.pourcentage) ->
+                                            Color.Unspecified
+                                    position.maladie -> COULEUR_MALADIE
+                                    else -> VetNutriColors.Error
+                                }
+                )
+            }
+        }
+    }
+}
+
+/** Couleur des bornes issues d'une référence maladie (comme l'écran d'analyse). */
+private val COULEUR_MALADIE = Color(0xFF9C27B0)
 
 @Composable
 private fun LigneBilan(
