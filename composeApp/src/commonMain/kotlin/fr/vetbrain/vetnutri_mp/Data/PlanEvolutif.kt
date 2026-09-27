@@ -83,6 +83,26 @@ object PlanEvolutif {
     fun peutSupprimer(consultation: ConsultationEv, etape: Ration): Boolean =
             !estPoidsReel(etape) || consultation.etapesEvolutives.count { estPoidsReel(it) } > 1
 
+    /** Préfixe des noms d'étape générés automatiquement (renommage suivi seulement pour eux). */
+    const val PREFIXE_NOM_ETAPE = "Étape"
+
+    /**
+     * Nom automatique d'une étape d'après ses propres données : « Étape 8.0 kg · D 12.0 », ou
+     * « Étape poids réel » quand l'étape suit le poids de la consultation.
+     */
+    fun nomAutomatique(poids: Double?, suppVarp: List<SupplementalvariableP>): String {
+        val base = poids?.let { "${TextUtils.formatDecimal(it, 1)} kg" } ?: "poids réel"
+        val vars =
+                suppVarp.mapNotNull { sv ->
+                    sv.variable?.let { "${it.label} ${TextUtils.formatDecimal(sv.varue ?: 0.0, 1)}" }
+                }
+        return (listOf("$PREFIXE_NOM_ETAPE $base") + vars).joinToString(" · ")
+    }
+
+    /** Vrai si le nom est vide ou a été généré automatiquement (il peut alors être recalculé). */
+    fun nomEstAutomatique(nom: String): Boolean =
+            nom.isBlank() || nom.startsWith("$PREFIXE_NOM_ETAPE ")
+
     /** Copie d'une ration en étape (nouveaux UUID pour la ration et ses aliments). */
     fun copierEnEtape(
             modele: Ration?,
@@ -94,7 +114,7 @@ object PlanEvolutif {
         return Ration(
                 uuid = uuid,
                 idConsult = idConsult,
-                name = modele?.name ?: "",
+                name = nomAutomatique(poids, suppVarp),
                 coef = modele?.coef ?: 1.0,
                 actual = false,
                 number = modele?.number ?: 1,
@@ -175,6 +195,32 @@ object PlanEvolutif {
                             }
             )
         }
+    }
+
+    /** Vrai si toutes les étapes du plan (au moins une) définissent la variable. */
+    fun variableDansToutesLesEtapes(consultation: ConsultationEv, variable: VariableKind): Boolean {
+        val etapes = consultation.etapesEvolutives
+        return consultation.isEvolutive &&
+                etapes.isNotEmpty() &&
+                etapes.all { etape -> etape.suppVarp.any { it.variable == variable } }
+    }
+
+    /** Rations qui ne sont pas des étapes du plan (toutes, si la consultation n'est pas évolutive). */
+    fun rationsHorsPlan(consultation: ConsultationEv): List<Ration> =
+            consultation.rations.filterNot { VariablesEtape.estEtape(consultation, it) }
+
+    /** Ordonnance : le plan est inclus dès qu'une de ses étapes fait partie de la sélection. */
+    fun planSelectionne(consultation: ConsultationEv, selection: Set<String>): Boolean =
+            consultation.isEvolutive && consultation.etapesEvolutives.any { it.uuid in selection }
+
+    /** Ordonnance : (dé)sélectionne le plan d'un bloc, c'est-à-dire toutes ses étapes. */
+    fun selectionAvecPlan(
+            consultation: ConsultationEv,
+            selection: Set<String>,
+            inclure: Boolean
+    ): Set<String> {
+        val etapes = consultation.etapesEvolutives.map { it.uuid }.toSet()
+        return if (inclure) selection + etapes else selection - etapes
     }
 
     /** Remplace la masse d'un ingrédient dans une étape (première occurrence de l'aliment). */

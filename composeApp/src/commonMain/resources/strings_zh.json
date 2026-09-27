@@ -1924,6 +1924,7 @@
         "evolutive.coverageRow": "覆盖率",
         "evolutive.stepLabelReal": "%1$s（当前）",
         "evolutive.prescriptionTitle": "喂养计划",
-        "evolutive.prescriptionHint": "按阶段的每日用量。"
+        "evolutive.prescriptionHint": "按阶段的每日用量。",
+        "evolutive.stepWeightShort": "阶段体重"
     }
 }

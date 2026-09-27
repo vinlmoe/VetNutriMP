@@ -153,9 +153,16 @@ fun ConsultationFullScreenEditView(
                         )
 
                 // Vérifier les variables supplémentaires manquantes
+                // Consultation évolutive : une variable renseignée dans toutes les étapes du plan
+                // n'est pas manquante
                 val variablesManquantes =
                         variablesRequises.filter { variableKind ->
-                                editedConsultation.suppVarp.none { it.variable == variableKind }
+                                editedConsultation.suppVarp.none { it.variable == variableKind } &&
+                                        !fr.vetbrain.vetnutri_mp.Data.PlanEvolutif
+                                                .variableDansToutesLesEtapes(
+                                                        editedConsultation,
+                                                        variableKind
+                                                )
                         }
 
                 if (!showDateError &&

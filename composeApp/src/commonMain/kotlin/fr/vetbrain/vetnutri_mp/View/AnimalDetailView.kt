@@ -33,6 +33,7 @@ import fr.vetbrain.vetnutri_mp.Components.RichTextEditor
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.PlanEvolutif
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.sortedForDisplay
 import fr.vetbrain.vetnutri_mp.Export.DocumentType
@@ -1949,7 +1950,18 @@ private fun WideScreenLayout(
 
                                                         val currentConsultation: ConsultationEv? = selectedConsultation
                                                         if (currentConsultation != null && currentConsultation.rations.isNotEmpty()) {
-                                                                items(currentConsultation.rations.sortedForDisplay(), key = { it.uuid }) { ration ->
+                                                                // Consultation évolutive : le plan se sélectionne d'un bloc (toutes ses étapes)
+                                                                item(key = "plan-evolutif") {
+                                                                        PlanEvolutifPrescriptionItem(
+                                                                                consultation = currentConsultation,
+                                                                                selection = selectedRationIdsForPrescription,
+                                                                                onSelectionChange = { selection ->
+                                                                                        selectedRationIdsForPrescription = selection
+                                                                                        schedulePrescriptionSave()
+                                                                                }
+                                                                        )
+                                                                }
+                                                                items(PlanEvolutif.rationsHorsPlan(currentConsultation).sortedForDisplay(), key = { it.uuid }) { ration ->
                                                                 Row(
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth()
@@ -3769,7 +3781,18 @@ private fun NarrowScreenLayout(
 
                                                                         val currentConsultation: ConsultationEv? = selectedConsultation
                                                                         if (currentConsultation != null && currentConsultation.rations.isNotEmpty()) {
-                                                                                items(currentConsultation.rations.sortedForDisplay(), key = { it.uuid }) { ration ->
+                                                                                // Consultation évolutive : le plan se sélectionne d'un bloc (toutes ses étapes)
+                                                                                item(key = "plan-evolutif") {
+                                                                                        PlanEvolutifPrescriptionItem(
+                                                                                                consultation = currentConsultation,
+                                                                                                selection = selectedRationIdsForPrescription,
+                                                                                                onSelectionChange = { selection ->
+                                                                                                        selectedRationIdsForPrescription = selection
+                                                                                                        schedulePrescriptionSave()
+                                                                                                }
+                                                                                        )
+                                                                                }
+                                                                                items(PlanEvolutif.rationsHorsPlan(currentConsultation).sortedForDisplay(), key = { it.uuid }) { ration ->
                                                                                 Row(
                                                                                         modifier =
                                                                                                 Modifier.fillMaxWidth()

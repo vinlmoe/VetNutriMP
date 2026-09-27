@@ -136,6 +136,10 @@ class AnimalDetailViewModel(
 
     private val cacheValidityDuration = 2 * 60 * 1000L
     private val analysisCacheMutex = Mutex()
+    // Sérialise les enregistrements de consultation : sans cela, deux sauvegardes lancées coup sur
+    // coup (ex. éditions rapides d'un plan évolutif) peuvent se terminer dans le désordre et la
+    // plus ancienne écraser la plus récente.
+    private val consultationSaveMutex = Mutex()
     private val analysisCacheTime = mutableMapOf<String, Long>()
     private val rationAnalysisCache = LruMap<String, AnalyseResultat>(50) { evictedKey ->
         analysisCacheTime.remove(evictedKey)
@@ -922,6 +926,9 @@ class AnimalDetailViewModel(
     }
 
     fun updateConsultation(consultation: ConsultationEv) {
+        // Sélection au moment de la demande : si elle change pendant l'enregistrement (nouvelle
+        // modification ou autre consultation), elle ne doit pas être écrasée par cet instantané.
+        val selectionAuLancement = _selectedConsultation.value
         viewModelScope.launch {
             try {
                 // Vérifier que l'animal existe dans la base de données
@@ -932,19 +939,23 @@ class AnimalDetailViewModel(
                     return@launch
                 }
 
-                // Sauvegarder la consultation
-                consultationRepository.saveConsultation(consultation)
+                consultationSaveMutex.withLock {
+                    // Sauvegarder la consultation
+                    consultationRepository.saveConsultation(consultation)
 
-                // Rafraîchir les consultations depuis la base de données au lieu de mettre à jour
-                // manuellement
-                val updatedConsultations =
-                        consultationRepository.getConsultationsForAnimal(consultation.idAnim)
-                _animal.update { currentAnimal ->
-                    currentAnimal?.copy(consultations = updatedConsultations.toMutableList())
+                    // Rafraîchir les consultations depuis la base de données au lieu de mettre à
+                    // jour manuellement
+                    val updatedConsultations =
+                            consultationRepository.getConsultationsForAnimal(consultation.idAnim)
+                    _animal.update { currentAnimal ->
+                        currentAnimal?.copy(consultations = updatedConsultations.toMutableList())
+                    }
                 }
 
-                // Mettre à jour la consultation sélectionnée
-                _selectedConsultation.value = consultation
+                // Mettre à jour la consultation sélectionnée (sauf modification plus récente)
+                if (_selectedConsultation.value === selectionAuLancement) {
+                    _selectedConsultation.value = consultation
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -994,6 +1005,10 @@ class AnimalDetailViewModel(
 
     fun removeRationFromConsultation(ration: Ration) {
         val consultation = _selectedConsultation.value?.copy() ?: return
+        // Plan évolutif : l'étape au poids réel doit toujours exister
+        if (VariablesEtape.estEtape(consultation, ration) &&
+                        !PlanEvolutif.peutSupprimer(consultation, ration)
+        ) return
         val updatedRations = consultation.rations.toMutableList()
         updatedRations.removeAll { it.uuid == ration.uuid }
         val updatedConsultation = consultation.copy(rations = updatedRations)
@@ -1738,13 +1753,36 @@ class AnimalDetailViewModel(
         return true
     }
 
-    /** Modifie le poids et les variables propres d'une étape, puis recalcule ses besoins. */
-    fun mettreAJourEtape(etape: Ration, poids: Double?, suppVarp: List<SupplementalvariableP>) {
+    /**
+     * Modifie le poids et les variables propres d'une étape, puis recalcule ses besoins.
+     *
+     * @param poidsReel nouveau poids réel de la consultation, enregistré dans la même opération
+     */
+    fun mettreAJourEtape(
+            etape: Ration,
+            poids: Double?,
+            suppVarp: List<SupplementalvariableP>,
+            poidsReel: Double? = null
+    ) {
         val courante =
                 _selectedConsultation.value?.rations?.firstOrNull { it.uuid == etape.uuid } ?: etape
-        val majEtape = courante.copy(poids = poids, suppVarp = suppVarp.toMutableList())
+        val majEtape =
+                courante.copy(
+                        poids = poids,
+                        suppVarp = suppVarp.toMutableList(),
+                        // Un nom généré automatiquement suit le poids et les variables de l'étape
+                        name =
+                                if (PlanEvolutif.nomEstAutomatique(courante.name))
+                                        PlanEvolutif.nomAutomatique(poids, suppVarp)
+                                else courante.name
+                )
         if (_selectedRation.value?.uuid == etape.uuid) {
             _selectedRation.value = copieProfonde(majEtape)
+        }
+        // Poids réel modifié en même temps : un seul enregistrement de la consultation
+        val consultation = _selectedConsultation.value
+        if (poidsReel != null && consultation != null && poidsReel != consultation.weight) {
+            _selectedConsultation.value = consultation.copy(weight = poidsReel)
         }
         updateRationInConsultation(majEtape)
         if (_selectedRation.value?.uuid == etape.uuid) analyserRationSelectionnee()

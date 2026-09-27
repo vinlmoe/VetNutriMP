@@ -72,13 +72,13 @@ class VariablesEtapeTest {
                         suppVarp =
                                 mutableListOf(
                                         SupplementalvariableP(VariableKind.AdultWeight, 30.0),
-                                        SupplementalvariableP(VariableKind.Distance, 12.0)
+                                        SupplementalvariableP(VariableKind.D, 12.0)
                                 )
                 )
         val c = consultation(TypeConsultation.EVOLUTIVE, etape)
 
         val fusion = VariablesEtape.variablesFusionnees(c, etape).associate { it.variable to it.varue }
-        assertEquals(mapOf(VariableKind.AdultWeight to 30.0, VariableKind.Distance to 12.0), fusion)
+        assertEquals(mapOf<VariableKind?, Double?>(VariableKind.AdultWeight to 30.0, VariableKind.D to 12.0), fusion)
         assertEquals(listOf(aw25), c.suppVarp)
     }
 
@@ -89,7 +89,7 @@ class VariablesEtapeTest {
         val s1 = VariablesEtape.signature(c, etape)
         etape.poids = 10.0
         val s2 = VariablesEtape.signature(c, etape)
-        etape.suppVarp = mutableListOf(SupplementalvariableP(VariableKind.Distance, 3.0))
+        etape.suppVarp = mutableListOf(SupplementalvariableP(VariableKind.D, 3.0))
         val s3 = VariablesEtape.signature(c, etape)
         assertTrue(s1 != s2 && s2 != s3)
     }
