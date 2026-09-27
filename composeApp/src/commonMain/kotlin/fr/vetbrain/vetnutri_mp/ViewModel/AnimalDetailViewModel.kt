@@ -204,6 +204,8 @@ class AnimalDetailViewModel(
     // Groupe des calculs métaboliques — mis à jour atomiquement pour éviter les états partiels
     private data class ValeursMetaboliques(
             val referenceUtilisee: ReferenceEv? = null,
+            // Poids (kg) réellement utilisé : poids de l'étape pour un plan évolutif
+            val poidsCorps: Double? = null,
             val poidsMetabolique: Double? = null,
             val besoinEnergetiqueStandard: Double? = null,
             val besoinEnergetiqueTotal: Double? = null
@@ -222,6 +224,13 @@ class AnimalDetailViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val besoinEnergetiqueTotal: StateFlow<Double?> = _valeursMetaboliques
             .map { it.besoinEnergetiqueTotal }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    /**
+     * Poids (kg) utilisé pour les besoins de la ration sélectionnée : poids propre de l'étape pour
+     * un plan évolutif, sinon poids effectif de la consultation.
+     */
+    val poidsEffectif: StateFlow<Double?> = _valeursMetaboliques
+            .map { it.poidsCorps }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     // Énergie additionnelle issue des références maladies (calculée via EquationEvaluator)
@@ -531,6 +540,9 @@ class AnimalDetailViewModel(
 
         _selectedRation.value = copieProfonde(ration)
 
+        // Plan évolutif : chaque étape a son propre poids et ses variables → besoins à recalculer
+        _selectedConsultation.value?.takeIf { it.isEvolutive }?.let { calculerValeursMetaboliques(it) }
+
         // Lancer l'analyse de la ration automatiquement
         analyserRationSelectionnee()
     }
@@ -644,8 +656,13 @@ class AnimalDetailViewModel(
                     return@launch
                 }
 
-                // Effectuer l'analyse en passant la consultation pour les variables supplémentaires
-                val resultat = rationAnalyzer.analyserRation(rationActuelle, consultationActuelle)
+                // Effectuer l'analyse en passant la consultation (vue depuis l'étape pour un plan
+                // évolutif) pour le poids et les variables supplémentaires
+                val consultationEtape =
+                        consultationActuelle?.let {
+                            VariablesEtape.consultationPourEtape(it, rationActuelle)
+                        }
+                val resultat = rationAnalyzer.analyserRation(rationActuelle, consultationEtape)
                 _rationAnalyseResultat.value = resultat
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -961,6 +978,11 @@ class AnimalDetailViewModel(
             _selectedConsultation.value = updatedConsultation
 
             updateConsultation(updatedConsultation)
+
+            // Plan évolutif : le poids ou les variables de l'étape ont pu changer
+            if (updatedConsultation.isEvolutive && _selectedRation.value?.uuid == ration.uuid) {
+                calculerValeursMetaboliques(updatedConsultation)
+            }
         } else {}
     }
 
@@ -1355,8 +1377,13 @@ class AnimalDetailViewModel(
                 // Nettoyer les caches si nécessaire avant l'analyse
                 cleanupCachesIfNeeded()
 
-                // Créer une clé de cache basée sur la ration et la consultation
-                val cacheKey = "${ration.uuid}:${consultation?.uuid ?: "no_consultation"}"
+                // Créer une clé de cache basée sur la ration, la consultation et (plan évolutif) le
+                // poids et les variables de l'étape
+                val consultationEtape =
+                        consultation?.let { VariablesEtape.consultationPourEtape(it, ration) }
+                val cacheKey =
+                        "${ration.uuid}:${consultation?.uuid ?: "no_consultation"}:" +
+                                (consultation?.let { VariablesEtape.signature(it, ration) } ?: "")
 
                 // Vérifier le cache sous verrou
                 val cachedResult = analysisCacheMutex.withLock {
@@ -1369,7 +1396,8 @@ class AnimalDetailViewModel(
                     } else null
                 }
 
-                val resultat = cachedResult ?: rationAnalyzer.analyserRation(ration, consultation)
+                val resultat =
+                        cachedResult ?: rationAnalyzer.analyserRation(ration, consultationEtape)
 
                 if (cachedResult == null) {
                     analysisCacheMutex.withLock {
@@ -1675,14 +1703,16 @@ class AnimalDetailViewModel(
             val bee = _valeursMetaboliques.value.besoinEnergetiqueStandard ?: return@launch
             val mw = _valeursMetaboliques.value.poidsMetabolique ?: return@launch
             val beK = _valeursMetaboliques.value.besoinEnergetiqueTotal ?: return@launch
+            // Plan évolutif : poids et variables de l'étape
+            val consultationEtape = VariablesEtape.consultationPourEtape(consultation, ration)
             val add = EquationEvaluator.calculerEnergieAdditionnelle(
                     referencesMaladies = referencesMaladies,
-                    poidsCorps = consultation.effectiveWeight?.toDouble()
-                            ?: consultation.weight?.toDouble() ?: 0.0,
+                    poidsCorps = consultationEtape.effectiveWeight?.toDouble()
+                            ?: consultationEtape.weight?.toDouble() ?: 0.0,
                     besoinEnergetiqueApresK = beK,
                     besoinEnergetiqueStandard = bee,
                     poidsMetabolique = mw,
-                    variablesSupp = consultation.suppVarp,
+                    variablesSupp = consultationEtape.suppVarp,
                     ration = ration,
                     referenceEv = referenceEv,
                     equationRepository = equationRepository
@@ -1692,17 +1722,26 @@ class AnimalDetailViewModel(
     }
 
     /**
-     * Calcule les valeurs métaboliques (poids métabolique, BEE) pour une consultation donnée
+     * Calcule les valeurs métaboliques (poids métabolique, BEE) pour une consultation donnée.
+     *
+     * Plan évolutif : si la ration sélectionnée est une étape du plan, les calculs utilisent le
+     * poids et les variables propres à cette étape (voir [VariablesEtape]).
      *
      * @param consultation La consultation pour laquelle calculer les valeurs
      */
     fun calculerValeursMetaboliques(consultation: ConsultationEv) {
+        // Relire l'étape depuis la consultation pour disposer de son poids/variables à jour
+        val rationSelectionnee =
+                _selectedRation.value?.uuid?.let { uuid ->
+                    consultation.rations.firstOrNull { it.uuid == uuid }
+                }
+        val consultationEtape = VariablesEtape.consultationPourEtape(consultation, rationSelectionnee)
 
         viewModelScope.launch {
             try {
 
                 // 1. Charger la référence appropriée
-                val reference = obtenirReferenceActiveConsultation(consultation)
+                val reference = obtenirReferenceActiveConsultation(consultationEtape)
 
                 if (reference == null) {
                     resetCalculsMetaboliques()
@@ -1711,12 +1750,13 @@ class AnimalDetailViewModel(
 
                 // 2-4. Calculer toutes les valeurs puis mettre à jour atomiquement (évite
                 // les recompositions intermédiaires avec état partiel)
-                val poidsMetabolique = calculerPoidsMetabolique(consultation, reference)
-                val bee = calculerBesoinEnergetiqueStandard(consultation, reference)
-                val besoinTotal = bee?.let { calculerBesoinEnergetiqueTotal(consultation, it) }
+                val poidsMetabolique = calculerPoidsMetabolique(consultationEtape, reference)
+                val bee = calculerBesoinEnergetiqueStandard(consultationEtape, reference)
+                val besoinTotal = bee?.let { calculerBesoinEnergetiqueTotal(consultationEtape, it) }
 
                 _valeursMetaboliques.value = ValeursMetaboliques(
                         referenceUtilisee = reference,
+                        poidsCorps = consultationEtape.effectiveWeight,
                         poidsMetabolique = poidsMetabolique,
                         besoinEnergetiqueStandard = bee,
                         besoinEnergetiqueTotal = besoinTotal
@@ -1745,16 +1785,8 @@ class AnimalDetailViewModel(
             val variables = mutableMapOf<String, Double>()
             variables["BW"] = poids.toDouble()
 
-            // Ajouter les variables supplémentaires de la consultation
-            consultation.suppVarp.forEach { suppVar ->
-                suppVar.variable?.let { varKind ->
-                    val valeur = suppVar.varue?.toDouble() ?: 0.0
-                    variables[varKind.variable] = valeur
-                }
-            }
-
-            // Mapper les variables avec leurs équivalents dans l'équation
-            mapperVariablesEquation(variables)
+            // Ajouter les variables supplémentaires (nom défini dans les équations : AW, wG, D...)
+            VariablesEtape.injecterVariables(variables, consultation.suppVarp)
 
             // Ajouter des valeurs par défaut pour les variables manquantes courantes
             val variablesManquantes =
@@ -1793,16 +1825,8 @@ class AnimalDetailViewModel(
             val variables = mutableMapOf<String, Double>()
             variables["BW"] = poidsDouble
 
-            // Ajouter les variables supplémentaires de la consultation
-            consultation.suppVarp.forEach { suppVar ->
-                suppVar.variable?.let { varKind ->
-                    val valeur = suppVar.varue?.toDouble() ?: 0.0
-                    variables[varKind.variable] = valeur
-                }
-            }
-
-            // Mappe les variables avec leurs équivalents dans les équations
-            mapperVariablesEquation(variables)
+            // Ajouter les variables supplémentaires (nom défini dans les équations : AW, wG, D...)
+            VariablesEtape.injecterVariables(variables, consultation.suppVarp)
 
             // Ajouter des valeurs par défaut pour les variables manquantes courantes
             val variablesManquantes =
@@ -1869,25 +1893,6 @@ class AnimalDetailViewModel(
             null
         } catch (e: Exception) {
             null
-        }
-    }
-
-    /** Mappe les variables avec leurs équivalents dans les équations */
-    private fun mapperVariablesEquation(variables: MutableMap<String, Double>) {
-        // Mapping des variables courantes vers les noms utilisés dans les équations
-        val mappings =
-                mapOf(
-                        "adultWeight" to "AW", // Adult Weight
-                        "litterSize" to "L", // Litter size (taille de portée)
-                        "gestationWeek" to
-                                "wG", // Gestation week (peut être utilisé pour weight gain)
-                        "lactationWeek" to
-                                "wL", // Lactation week (peut être utilisé pour weight loss)
-                        "bodyConditionScore" to "BCS" // Body Condition Score
-                )
-
-        mappings.forEach { (originalName, mappedName) ->
-            variables[originalName]?.let { value -> variables[mappedName] = value }
         }
     }
 

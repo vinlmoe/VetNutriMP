@@ -59,7 +59,7 @@ portée), ainsi que toute évolution décrite par des variables d'équation.
 - Plusieurs étapes peuvent être au poids réel si seules leurs variables diffèrent (activité : même
   poids, distances différentes).
 
-## 2. Résolution des variables et calculs par étape (lot 2, sans changement d'interface)
+## 2. Résolution des variables et calculs par étape (lot 2 — ✅ réalisé)
 
 C'est le lot structurant. Il doit être **iso-fonctionnel** pour les consultations standard.
 
