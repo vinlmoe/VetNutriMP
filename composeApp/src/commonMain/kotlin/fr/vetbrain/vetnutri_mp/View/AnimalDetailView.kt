@@ -783,7 +783,9 @@ private fun handlePdfExport(
                         practitioner = practitioner,
                         poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                         poidsMetabolique = null,
-                        besoinEnergetiqueEntretien = null
+                        besoinEnergetiqueEntretien = null,
+                        // Plan évolutif exporté en tableau ingrédients × étapes
+                        consultation = selectedConsultation
                     ),
                     defaultFileName = generateDefaultPdfFileName(animalDetails, selectedConsultation)
                 )
@@ -802,7 +804,9 @@ private fun handlePdfExport(
                         practitioner = null,
                         poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                         poidsMetabolique = null,
-                        besoinEnergetiqueEntretien = null
+                        besoinEnergetiqueEntretien = null,
+                        // Plan évolutif exporté en tableau ingrédients × étapes
+                        consultation = selectedConsultation
                     ),
                     defaultFileName = generateDefaultPdfFileName(animalDetails, selectedConsultation)
                 )
@@ -2463,7 +2467,9 @@ private fun WideScreenLayout(
                                                                                                                                 practitioner = practitioner,
                                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                                                                                                                 poidsMetabolique = null,
-                                                                                                                                besoinEnergetiqueEntretien = null
+                                                                                                                                besoinEnergetiqueEntretien = null,
+                                                                                                                                // Plan évolutif exporté en tableau ingrédients × étapes
+                                                                                                                                consultation = selectedConsultation
                                                                                                                         )
                                                                                                                 )
                                                                                                 previewMode = "PRESCRIPTION"
@@ -2494,7 +2500,9 @@ private fun WideScreenLayout(
                                                                                                                 practitioner = null,
                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                                                                                                 poidsMetabolique = null,
-                                                                                                                besoinEnergetiqueEntretien = null
+                                                                                                                besoinEnergetiqueEntretien = null,
+                                                                                                                // Plan évolutif exporté en tableau ingrédients × étapes
+                                                                                                                consultation = selectedConsultation
                                                                                                         )
                                                                                                 )
                                                                                                 previewMode = "PRESCRIPTION"
@@ -4303,7 +4311,9 @@ private fun NarrowScreenLayout(
                                                                                                                                                 practitioner = practitioner,
                                                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                                                                                                                                 poidsMetabolique = null,
-                                                                                                                                                besoinEnergetiqueEntretien = null
+                                                                                                                                                besoinEnergetiqueEntretien = null,
+                                                                                                                                                // Plan évolutif exporté en tableau ingrédients × étapes
+                                                                                                                                                consultation = selectedConsultation
                                                                                                                 )
                                                                                                         )
                                                                                                                 previewMode = "PRESCRIPTION"
@@ -4334,7 +4344,9 @@ private fun NarrowScreenLayout(
                                                                                                                                 practitioner = null,
                                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                                                                                                                 poidsMetabolique = null,
-                                                                                                                                besoinEnergetiqueEntretien = null
+                                                                                                                                besoinEnergetiqueEntretien = null,
+                                                                                                                                // Plan évolutif exporté en tableau ingrédients × étapes
+                                                                                                                                consultation = selectedConsultation
                                                                                                                 )
                                                                                                                 )
                                                                                                                 previewMode = "PRESCRIPTION"

@@ -158,7 +158,7 @@ Nouvelle section `AnimalDetailSection.PLAN_EVOLUTIF` :
 - **Propager aliments** : un aliment ajouté à une étape est proposé aux autres étapes à 0 g.
 - **Ajuster tout** : lance l'ajustement multi-nutriments sur chaque étape, l'une après l'autre.
 
-## 5. Ordonnance (lot 5)
+## 5. Ordonnance (lot 5 — ✅ réalisé)
 - `ExportData` : ajouter `typeConsultation`, `profilEvolutif` et `planEvolutif: List<Ration>` (déjà
   trié).
 - `HtmlDocumentBuilder.buildPrescriptionHtml` : si la consultation est évolutive, appeler

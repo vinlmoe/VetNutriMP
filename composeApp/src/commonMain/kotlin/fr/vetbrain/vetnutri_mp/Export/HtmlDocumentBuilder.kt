@@ -1,6 +1,9 @@
 package fr.vetbrain.vetnutri_mp.Export
 
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.PlanEvolutif
+import fr.vetbrain.vetnutri_mp.Data.VariablesEtape
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
@@ -62,7 +65,7 @@ object HtmlDocumentBuilder {
             if (semantic == "null" || semantic == "none" || semantic == "na") return null
             return normalized
         }
-        val parts = listOf(
+        val parts = listOfNotNull(
             clean(aliment.brand),
             clean(aliment.gamme),
             clean(aliment.nom)
@@ -165,7 +168,10 @@ object HtmlDocumentBuilder {
                             data.poidsAnimal,
                             data.poidsMetabolique,
                             data.besoinEnergetiqueEntretien,
-                            data.bulletGraphImages
+                            data.bulletGraphImages,
+                            data.consultation,
+                            data.equationRepository,
+                            data.isLandscape
                     )
         }
     }
@@ -720,19 +726,105 @@ object HtmlDocumentBuilder {
             poidsAnimal: Double? = null,
             poidsMetabolique: Double? = null,
             besoinEnergetiqueEntretien: Double? = null,
-            bulletGraphImages: Map<String, Map<String, String>> = emptyMap()
+            bulletGraphImages: Map<String, Map<String, String>> = emptyMap(),
+            consultation: ConsultationEv? = null,
+            equationRepository: EquationRepository? = null,
+            isLandscape: Boolean = false
     ): String {
+        // Consultation évolutive : le plan est exporté en un seul tableau (ingrédients × étapes)
+        val etapesPlan =
+                consultation?.takeIf { it.isEvolutive }?.let { PlanEvolutif.etapesTriees(it) }
+                        ?: emptyList()
+        val rationsHorsPlan =
+                rations.filterNot { ration -> VariablesEtape.estEtape(consultation, ration) }
+        val blocPlan =
+                if (consultation != null && etapesPlan.isNotEmpty())
+                        buildPlanEvolutifBlock(consultation, reference, equationRepository)
+                else ""
         return buildHeader(
                         if (title.isNotBlank()) title else "Ordonnance nutritionnelle",
-                        false
+                        isLandscape || etapesPlan.size > 5
                 ) +
                 buildPractitionerHeader(practitioner) +
                 buildAnimalBlock(animal) +
-                buildRationsBlocks(rations) +
+                blocPlan +
+                buildRationsBlocks(rationsHorsPlan) +
                 buildConseilsBlock(conseils) +
                 buildAdditionalTextBlock(additionalText) +
                 buildHtmlSectionsBlock(htmlSections) +
                 buildFooter()
+    }
+
+    /**
+     * Plan évolutif : une ligne par ingrédient, une colonne par étape (triées), masses en g/j avec
+     * l'équivalent en unités (sachet, cuillère...) quand l'aliment en définit. Pas d'interpolation.
+     */
+    private suspend fun buildPlanEvolutifBlock(
+            consultation: ConsultationEv,
+            reference: ReferenceEv?,
+            equationRepository: EquationRepository?
+    ): String {
+        val etapes = PlanEvolutif.etapesTriees(consultation)
+        val distinctives = PlanEvolutif.variablesDistinctives(consultation)
+        val entetes =
+                etapes.joinToString("") { etape ->
+                    val libelle = PlanEvolutif.libelleEtape(consultation, etape, distinctives)
+                    val suffixe = if (PlanEvolutif.estPoidsReel(etape)) " (actuel)" else ""
+                    "<th class='right'>${escapeXml(libelle + suffixe)}</th>"
+                }
+        val lignes =
+                PlanEvolutif.matriceSynthese(consultation).joinToString("\n") { ligne ->
+                    val nom = ligne.aliment?.let { formatAlimentDisplayName(it) } ?: ligne.nom
+                    val cellules =
+                            ligne.quantites.joinToString("") { quantite ->
+                                if (quantite == null) {
+                                    "<td class='right muted'>—</td>"
+                                } else {
+                                    val unites =
+                                            calculerQuantiteEnUnites(
+                                                    fr.vetbrain.vetnutri_mp.Data.AlimentRation(
+                                                            aliment = ligne.aliment,
+                                                            quantite = quantite
+                                                    )
+                                            )
+                                    val detail =
+                                            unites?.let {
+                                                "<br/><small style='color: #666;'>${escapeXml(it)}</small>"
+                                            } ?: ""
+                                    "<td class='right'>${TextUtils.formatDecimal(quantite, 1)} g$detail</td>"
+                                }
+                            }
+                    "<tr><td>${escapeXml(nom)}</td>$cellules</tr>"
+                }
+        val totaux =
+                etapes.joinToString("") { etape ->
+                    "<td class='right'><b>${TextUtils.formatDecimal(etape.getQuantiteTotale(), 1)} g</b></td>"
+                }
+        // buildString est inline : l'appel suspendu y est autorisé (pas joinToString)
+        val energies = buildString {
+            for (etape in etapes) {
+                val energie =
+                        etape.getDensiteEnergetiqueMoyenne(
+                                referenceEv = reference,
+                                equationRepository = equationRepository
+                        ) * etape.getQuantiteTotale()
+                append("<td class='right'>${TextUtils.formatDecimal(energie, 0)} kcal</td>")
+            }
+        }
+        return """
+            <div class='section'>
+                <h2>Plan de rationnement</h2>
+                <div class='small muted'>Quantités journalières selon l'étape.</div>
+                <table>
+                    <thead><tr><th>Ingrédient</th>${entetes}</tr></thead>
+                    <tbody>
+                        ${lignes}
+                        <tr><td><b>Total (g/j)</b></td>${totaux}</tr>
+                        <tr><td>Énergie apportée (kcal/j)</td>${energies}</tr>
+                    </tbody>
+                </table>
+            </div>
+        """.trimIndent()
     }
 
     private fun buildAdditionalTextBlock(text: String): String {
