@@ -1883,11 +1883,14 @@ class AnimalDetailViewModel(
                             val (couverturesMin, positionsMax) =
                                     reference?.let { ref ->
                                         val valeurs =
-                                                analyserValeursNutritionnellesRationAvecEquations(
-                                                                ration = etape,
-                                                                equationRepository = equationRepository,
-                                                                referenceEv = ref
-                                                        )
+                                                (equationRepository?.let { repository ->
+                                                                analyserValeursNutritionnellesRationAvecEquations(
+                                                                        ration = etape,
+                                                                        equationRepository = repository,
+                                                                        referenceEv = ref
+                                                                )
+                                                        }
+                                                        ?: analyserValeursNutritionnellesRation(etape))
                                                         .values
                                                         .filter { it.valeur > 0.0 }
                                         calculerPositionsReferences(
