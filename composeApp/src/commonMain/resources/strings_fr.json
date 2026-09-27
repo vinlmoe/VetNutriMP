@@ -1928,6 +1928,8 @@
         "evolutive.stepLabelReal": "%1$s (actuel)",
         "evolutive.prescriptionTitle": "Plan de rationnement",
         "evolutive.prescriptionHint": "Quantités journalières selon l'étape.",
-        "evolutive.stepWeightShort": "Poids de l'étape"
+        "evolutive.stepWeightShort": "Poids de l'étape",
+        "evolutive.autoStepName": "Étape %1$s",
+        "evolutive.realWeightName": "poids réel"
     }
 }

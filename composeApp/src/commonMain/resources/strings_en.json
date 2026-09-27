@@ -1928,6 +1928,8 @@
         "evolutive.stepLabelReal": "%1$s (current)",
         "evolutive.prescriptionTitle": "Feeding plan",
         "evolutive.prescriptionHint": "Daily amounts by stage.",
-        "evolutive.stepWeightShort": "Stage weight"
+        "evolutive.stepWeightShort": "Stage weight",
+        "evolutive.autoStepName": "Stage %1$s",
+        "evolutive.realWeightName": "real weight"
     }
 }

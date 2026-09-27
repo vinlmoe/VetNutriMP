@@ -1772,7 +1772,7 @@ class AnimalDetailViewModel(
                         suppVarp = suppVarp.toMutableList(),
                         // Un nom généré automatiquement suit le poids et les variables de l'étape
                         name =
-                                if (PlanEvolutif.nomEstAutomatique(courante.name))
+                                if (PlanEvolutif.nomEstAutomatique(courante))
                                         PlanEvolutif.nomAutomatique(poids, suppVarp)
                                 else courante.name
                 )
