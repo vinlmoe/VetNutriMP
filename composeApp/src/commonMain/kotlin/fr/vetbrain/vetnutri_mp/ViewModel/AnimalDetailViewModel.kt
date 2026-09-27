@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
@@ -1713,11 +1714,16 @@ class AnimalDetailViewModel(
 
     // ===== PLAN ÉVOLUTIF (une ration par étape) =====
 
-    /** Bilan énergétique d'une étape : poids utilisé, besoin total (K + complémentaire), apport. */
+    /**
+     * Bilan d'une étape : poids utilisé, besoin total (K + complémentaire), apport énergétique, et
+     * apport en % des bornes MIN / MAX des références (par label de nutriment).
+     */
     data class BilanEtape(
             val poids: Double?,
             val besoinTotal: Double?,
-            val energieApportee: Double
+            val energieApportee: Double,
+            val couverturesMin: Map<String, PositionReference> = emptyMap(),
+            val positionsMax: Map<String, PositionReference> = emptyMap()
     )
 
     private val _bilansEtapes = MutableStateFlow<Map<String, BilanEtape>>(emptyMap())
@@ -1820,7 +1826,8 @@ class AnimalDetailViewModel(
         viewModelScope.launch {
             try {
                 val reference = obtenirReferenceActiveConsultation(consultation)
-                val bilans =
+                // Analyse de tous les nutriments de chaque étape : hors du thread UI
+                val bilans = withContext(AppDispatchers.Default) {
                         // Toutes les rations des plans : rations parentes et étapes
                         consultation.rations
                                 .filter { r ->
@@ -1857,8 +1864,38 @@ class AnimalDetailViewModel(
                                             beK + additionnelle
                                         }
                                     }
-                            etape.uuid to BilanEtape(vue.effectiveWeight, besoin, apport)
+                            // Nutriments : bornes MIN/MAX converties avec le BEE brut (comme
+                            // l'écran d'analyse et le PDF), nutriments sans donnée ignorés
+                            val (couverturesMin, positionsMax) =
+                                    reference?.let { ref ->
+                                        val valeurs =
+                                                analyserValeursNutritionnellesRationAvecEquations(
+                                                                ration = etape,
+                                                                equationRepository = equationRepository,
+                                                                referenceEv = ref
+                                                        )
+                                                        .values
+                                                        .filter { it.valeur > 0.0 }
+                                        calculerPositionsReferences(
+                                                valeurs = valeurs,
+                                                referenceUtilisee = ref,
+                                                besoinEnergetiqueEntretien =
+                                                        calculerBesoinEnergetiqueStandard(vue, ref),
+                                                poidsAnimal = vue.effectiveWeight,
+                                                poidsMetabolique = calculerPoidsMetabolique(vue, ref),
+                                                referencesMaladies = maladies
+                                        )
+                                    } ?: (emptyMap<String, PositionReference>() to emptyMap<String, PositionReference>())
+                            etape.uuid to
+                                    BilanEtape(
+                                            vue.effectiveWeight,
+                                            besoin,
+                                            apport,
+                                            couverturesMin,
+                                            positionsMax
+                                    )
                         }
+                }
                 _bilansEtapes.value = bilans
             } catch (e: Exception) {
                 e.printStackTrace()

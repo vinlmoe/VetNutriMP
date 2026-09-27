@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrient
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientEnergy
@@ -324,6 +325,71 @@ fun calculerConformite(
 
     return null // Pas de référence
 }
+
+/**
+ * Position d'un apport par rapport à une borne de référence : [pourcentage] = apport / borne × 100.
+ * [maladie] = true si la borne retenue vient d'une référence maladie.
+ */
+data class PositionReference(val nutriment: Nutrient, val pourcentage: Double, val maladie: Boolean)
+
+/**
+ * Pour chaque nutriment ayant une borne MIN (resp. MAX) dans la référence principale ou une
+ * référence maladie, calcule l'apport en % de cette borne. Si plusieurs références donnent une
+ * borne, la plus contraignante est retenue (MIN la plus haute, MAX la plus basse). Mêmes
+ * conversions que [calculerConformite] ; l'énergie est exclue (déjà traitée à part).
+ *
+ * @return Pair(positions vis-à-vis des MIN, positions vis-à-vis des MAX), indexées par label
+ */
+fun calculerPositionsReferences(
+    valeurs: Collection<ValeurNutritionnelle>,
+    referenceUtilisee: ReferenceEv?,
+    besoinEnergetiqueEntretien: Double?,
+    poidsAnimal: Double?,
+    poidsMetabolique: Double?,
+    referencesMaladies: List<ReferenceEv> = emptyList()
+): Pair<Map<String, PositionReference>, Map<String, PositionReference>> {
+    val minimums = mutableMapOf<String, PositionReference>()
+    val maximums = mutableMapOf<String, PositionReference>()
+    val sources = listOfNotNull(referenceUtilisee?.let { it to false }) + referencesMaladies.map { it to true }
+
+    valeurs.forEach { valeur ->
+        val nutrient = valeur.nutriment
+        if (nutrient == NutrientMain.ENERGIE) return@forEach
+        val isRatio = estNutrimentAnalysisRatio(nutrient)
+
+        fun position(level: Reflevel): PositionReference? =
+            sources.mapNotNull { (reference, maladie) ->
+                if (!reference.contientNutriment(nutrient, level)) return@mapNotNull null
+                val valeurRef = reference.obtenirNutriment(nutrient, level)
+                val besoin = if (isRatio) {
+                    valeurRef
+                } else {
+                    calculerBesoinAbsolu(
+                        valeurRef,
+                        UnitReqEnum.getById(reference.obtenirUniteNutriment(nutrient, level)),
+                        besoinEnergetiqueEntretien,
+                        poidsAnimal,
+                        poidsMetabolique
+                    )
+                }
+                besoin?.takeIf { it > 0.0 }?.let {
+                    PositionReference(nutrient, valeur.valeur / it * 100.0, maladie)
+                }
+            }.let { positions ->
+                // Borne la plus contraignante : % le plus bas pour un MIN, le plus haut pour un MAX
+                if (level == Reflevel.MIN) positions.minByOrNull { it.pourcentage }
+                else positions.maxByOrNull { it.pourcentage }
+            }
+
+        position(Reflevel.MIN)?.let { minimums[nutrient.label] = it }
+        position(Reflevel.MAX)?.let { maximums[nutrient.label] = it }
+    }
+    return minimums to maximums
+}
+
+/** Nom traduit d'un nutriment, pour les affichages hors écran d'analyse. */
+fun nomTraduitNutriment(nutriment: Nutrient): String =
+    if (nutriment is CustomNutrient) nutriment.nameToString() else nutriment.translateEnum()
 
 /**
  * Calcule l'affichage d'un nutriment selon le type d'expression des besoins choisi (préférences
