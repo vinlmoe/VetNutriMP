@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Enumer.ProfilEvolutif
+import fr.vetbrain.vetnutri_mp.Enumer.TypeConsultation
 import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.datetime.LocalDate
@@ -9,6 +11,8 @@ import kotlinx.datetime.LocalDate
  * - Données cliniques (poids, BCS, coefficients K, observations).
  * - Rations associées et références nutritionnelles (générale + maladies).
  * - Fournit `effectiveWeight` (poids idéal prioritaire) avec cache simple.
+ * - Consultation évolutive : un seul plan d'étapes (rations `etapeEvolutive`), chacune ayant son
+ *   propre poids ; `weight` reste le seul poids réel de l'animal.
  */
 data class ConsultationEv(
         var uuid: String = genUUID(),
@@ -51,8 +55,18 @@ data class ConsultationEv(
         var prescriptionAdditionalText: String = "",
         var prescriptionSelectedConseilIds: MutableList<String> = mutableListOf(),
         var prescriptionLocalHtmlSections: MutableList<HtmlSection> = mutableListOf(),
-        var prescriptionSelectedRationIds: MutableList<String> = mutableListOf()
+        var prescriptionSelectedRationIds: MutableList<String> = mutableListOf(),
+        // Consultation évolutive (plan multi-étapes)
+        var typeConsultation: TypeConsultation = TypeConsultation.STANDARD,
+        var profilEvolutif: ProfilEvolutif? = null
 ) {
+
+        val isEvolutive: Boolean
+                get() = typeConsultation == TypeConsultation.EVOLUTIVE
+
+        /** Étapes du plan évolutif (rations marquées `etapeEvolutive`), dans l'ordre de stockage. */
+        val etapesEvolutives: List<Ration>
+                get() = rations.filter { it.etapeEvolutive }
 
         // Cache pour la propriété calculée
         private var cachedEffectiveWeight: Double? = null

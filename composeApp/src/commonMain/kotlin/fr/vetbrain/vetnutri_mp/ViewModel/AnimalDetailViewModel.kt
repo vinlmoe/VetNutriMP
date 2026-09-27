@@ -616,7 +616,8 @@ class AnimalDetailViewModel(
     private fun copieProfonde(ration: Ration): Ration =
             ration.copy(
                     alimentMutableList =
-                            ration.alimentMutableList.map { it.copy() }.toMutableList()
+                            ration.alimentMutableList.map { it.copy() }.toMutableList(),
+                    suppVarp = ration.suppVarp.toMutableList()
             )
 
     /**
@@ -1269,8 +1270,10 @@ class AnimalDetailViewModel(
                             uuid = Uuid.random().toString(),
                             name = translate(RationKeys.DUPLICATED_NAME_FORMAT, ration.name),
                             alimentMutableList =
-                                    mutableListOf() // Liste vide temporaire, nous allons la remplir
+                                    mutableListOf(), // Liste vide temporaire, nous allons la remplir
                             // juste après
+                            // Poids et variables d'étape recopiés (liste indépendante)
+                            suppVarp = ration.suppVarp.toMutableList()
                             )
 
             // Duplicater chaque aliment avec un nouveau UUID

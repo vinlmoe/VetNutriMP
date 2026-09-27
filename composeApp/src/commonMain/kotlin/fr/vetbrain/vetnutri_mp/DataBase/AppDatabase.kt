@@ -46,8 +46,9 @@ import kotlinx.coroutines.withContext
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class,
                         CustomNutrientEntity::class,
-                        EnergyPerSpeciesEntity::class],
-        version = 36,
+                        EnergyPerSpeciesEntity::class,
+                        RationSupplementalVariableEntity::class],
+        version = 37,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -139,7 +140,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
                         // Migration 34→35 : Table CUSTOM_NUTRIENTS pour persister les métadonnées des nutriments personnalisés
                         createMigration34to35(),
                         // Migration 35→36 : Table ENERGY_PER_SPECIES pour l'énergie par espèce
-                        createMigration35to36()
+                        createMigration35to36(),
+                        // Migration 36→37 : Consultation évolutive (type, étapes, variables par étape)
+                        createMigration36to37()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -154,7 +157,7 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
             DatabaseChangeNotifier.ChangeType.DATABASE_MIGRATION_FAILED,
             e.message
         )
-        // Ouvre une base vide propre (v36). Le .bak binaire + les JSON backups permettent la restauration.
+        // Ouvre une base vide propre (v37). Le .bak binaire + les JSON backups permettent la restauration.
         builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -738,6 +741,44 @@ fun createMigration35to36(): Migration {
                 WHERE nv.nutrientLabel = 'Énergie'
                   AND nv.value > 0
             """.trimIndent()).use { it.step() }
+        }
+    }
+}
+
+/**
+ * Migration 36→37 : consultation évolutive.
+ * - CONSULTATIONS : type de consultation (STANDARD/EVOLUTIVE) + profil évolutif.
+ * - RATIONS : marqueur d'étape évolutive + poids propre de l'étape (NULL = poids réel).
+ * - RATION_SUPPLEMENTAL_VARIABLES : variables d'énergie propres à chaque étape.
+ */
+fun createMigration36to37(): Migration {
+    return object : Migration(36, 37) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE CONSULTATIONS ADD COLUMN typeConsultation TEXT NOT NULL DEFAULT 'STANDARD'"
+            )
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE CONSULTATIONS ADD COLUMN profilEvolutif TEXT"
+            )
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE RATIONS ADD COLUMN etapeEvolutive INTEGER NOT NULL DEFAULT 0"
+            )
+            runStatementIgnoreIfExists(connection, "ALTER TABLE RATIONS ADD COLUMN poids REAL")
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS RATION_SUPPLEMENTAL_VARIABLES (
+                    idRation TEXT NOT NULL,
+                    variableKind INTEGER NOT NULL,
+                    value REAL NOT NULL,
+                    PRIMARY KEY(idRation, variableKind),
+                    FOREIGN KEY(idRation) REFERENCES RATIONS(uuid) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+            """.trimIndent()).use { it.step() }
+            connection.prepare(
+                    "CREATE INDEX IF NOT EXISTS index_RATION_SUPPLEMENTAL_VARIABLES_idRation ON RATION_SUPPLEMENTAL_VARIABLES(idRation)"
+            ).use { it.step() }
         }
     }
 }

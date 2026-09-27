@@ -169,7 +169,10 @@ data class ConsultationEntity(
         val prescriptionAdditionalText: String? = null,
         val prescriptionSelectedConseilIdsJson: String? = null,
         val prescriptionLocalHtmlSectionsJson: String? = null,
-        val prescriptionSelectedRationIdsJson: String? = null
+        val prescriptionSelectedRationIdsJson: String? = null,
+        // Consultation évolutive (v37) : nom de TypeConsultation / ProfilEvolutif
+        val typeConsultation: String = "STANDARD",
+        val profilEvolutif: String? = null
 )
 
 @Serializable
@@ -224,7 +227,10 @@ data class RationEntity(
         val number: Int = 0,
         val espece: String?,
         val recette: Boolean = false,
-        val description: String?
+        val description: String?,
+        // Étape de plan évolutif (v37) ; poids null = poids réel de la consultation
+        val etapeEvolutive: Boolean = false,
+        val poids: Double? = null
 )
 
 @Serializable
@@ -350,6 +356,27 @@ data class IndicationAlimentEntity(val refAliment: String, val indication: Int)
 )
 data class SupplementalVariableEntity(
         val idConsult: String,
+        val variableKind: Int,
+        val value: Double = 0.0
+)
+
+/** Variables d'énergie propres à une étape de plan évolutif (prioritaires sur la consultation). */
+@Serializable
+@Entity(
+        tableName = "RATION_SUPPLEMENTAL_VARIABLES",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = RationEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["idRation"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("idRation")],
+        primaryKeys = ["idRation", "variableKind"]
+)
+data class RationSupplementalVariableEntity(
+        val idRation: String,
         val variableKind: Int,
         val value: Double = 0.0
 )
