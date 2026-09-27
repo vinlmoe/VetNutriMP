@@ -908,7 +908,7 @@ fun AnimalDetailView(
 
         // Options du menu
         val menuOptions =
-                listOf(
+                listOfNotNull(
                         MenuOption(
                                 section = AnimalDetailSection.IDENTIFICATION,
                                 title = translate(AnimalDetail.IDENTIFICATION),
@@ -924,6 +924,14 @@ fun AnimalDetailView(
                                 title = translate(AnimalDetail.RATIONS),
                                 icon = Icons.AutoMirrored.Filled.List
                         ),
+                        // Plan évolutif : uniquement pour une consultation évolutive
+                        if (selectedConsultation?.isEvolutive == true)
+                                MenuOption(
+                                        section = AnimalDetailSection.PLAN_EVOLUTIF,
+                                        title = translate(AnimalDetail.EVOLUTIVE_PLAN),
+                                        icon = AppIcons.Analytics
+                                )
+                        else null,
                         MenuOption(
                                 section = AnimalDetailSection.GRAPHIQUE,
                                 title = translate(AnimalDetail.GRAPH),
@@ -1470,6 +1478,15 @@ private fun WideScreenLayout(
                                 }
                                 AnimalDetailSection.RATIONS -> {
                                         RationsView(
+                                                viewModel = viewModel,
+                                                showSnackbar = { message -> },
+                                                equationRepository = equationRepository,
+                                                recipeRepository = recipeRepository,
+                                                isExamMode = isExamMode
+                                        )
+                                }
+                                AnimalDetailSection.PLAN_EVOLUTIF -> {
+                                        PlanEvolutifView(
                                                 viewModel = viewModel,
                                                 showSnackbar = { message -> },
                                                 equationRepository = equationRepository,
@@ -3166,6 +3183,16 @@ private fun NarrowScreenLayout(
                                                 }
                                                 AnimalDetailSection.RATIONS -> {
                                                         RationsView(
+                                                                viewModel = viewModel,
+                                                                showSnackbar = { message -> },
+                                                                equationRepository =
+                                                                        equationRepository,
+                                                                recipeRepository = recipeRepository,
+                                                                isExamMode = isExamMode
+                                                        )
+                                                }
+                                                AnimalDetailSection.PLAN_EVOLUTIF -> {
+                                                        PlanEvolutifView(
                                                                 viewModel = viewModel,
                                                                 showSnackbar = { message -> },
                                                                 equationRepository =

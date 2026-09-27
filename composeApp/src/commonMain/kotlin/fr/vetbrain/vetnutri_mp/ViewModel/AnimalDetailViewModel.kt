@@ -58,6 +58,7 @@ enum class AnimalDetailSection {
     IDENTIFICATION, // Informations d'identification de l'animal
     CONSULTATIONS, // Liste des consultations
     RATIONS, // Vue des rations
+    PLAN_EVOLUTIF, // Plan de rations multi-étapes (consultation évolutive)
     GRAPHIQUE, // Analyse graphique des rations
     GRAPHIQUE_ALIMENTS, // Analyse graphique des aliments
     EXPORT
@@ -522,6 +523,8 @@ class AnimalDetailViewModel(
 
             // Calculer automatiquement les valeurs métaboliques pour la consultation sélectionnée
             fullConsultation?.let { consultation -> calculerValeursMetaboliques(consultation) }
+            // Plan évolutif : bilan énergétique de chaque étape
+            recalculerBilansEtapes()
         }
     }
 
@@ -979,9 +982,12 @@ class AnimalDetailViewModel(
 
             updateConsultation(updatedConsultation)
 
-            // Plan évolutif : le poids ou les variables de l'étape ont pu changer
-            if (updatedConsultation.isEvolutive && _selectedRation.value?.uuid == ration.uuid) {
-                calculerValeursMetaboliques(updatedConsultation)
+            // Plan évolutif : le poids, les variables ou les aliments de l'étape ont pu changer
+            if (updatedConsultation.isEvolutive) {
+                if (_selectedRation.value?.uuid == ration.uuid) {
+                    calculerValeursMetaboliques(updatedConsultation)
+                }
+                recalculerBilansEtapes()
             }
         } else {}
     }
@@ -997,6 +1003,7 @@ class AnimalDetailViewModel(
 
         // Mettre à jour dans la base de données
         updateConsultation(updatedConsultation)
+        if (updatedConsultation.isEvolutive) recalculerBilansEtapes()
 
         if (_rationAnalysisScope.value.estGroupe) {
             // En mode groupé, l'agrégat doit être recalculé sans la ration supprimée
@@ -1681,6 +1688,153 @@ class AnimalDetailViewModel(
 
                 // Recalculer les valeurs métaboliques après la sauvegarde
                 calculerValeursMetaboliques(consultationToSave)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ===== PLAN ÉVOLUTIF (une ration par étape) =====
+
+    /** Bilan énergétique d'une étape : poids utilisé, besoin total (K + complémentaire), apport. */
+    data class BilanEtape(
+            val poids: Double?,
+            val besoinTotal: Double?,
+            val energieApportee: Double
+    )
+
+    private val _bilansEtapes = MutableStateFlow<Map<String, BilanEtape>>(emptyMap())
+    /** Bilans par UUID d'étape, pour la synthèse du plan évolutif. */
+    val bilansEtapes: StateFlow<Map<String, BilanEtape>> = _bilansEtapes.asStateFlow()
+
+    /** Crée le plan : première étape au poids réel, copiée depuis [rationDepart] (ou vide). */
+    fun creerPlanEvolutif(rationDepart: Ration?) {
+        val consultation = _selectedConsultation.value ?: return
+        if (!consultation.isEvolutive || consultation.etapesEvolutives.isNotEmpty()) return
+        val etape = PlanEvolutif.creerPlan(consultation, rationDepart)
+        enregistrerRationsPlan(consultation, consultation.rations + etape, selection = etape)
+    }
+
+    /**
+     * Ajoute une étape copiée depuis l'étape sélectionnée (ou la dernière), avec ses variables.
+     *
+     * @param poids poids de la nouvelle étape ; null = poids réel de la consultation
+     */
+    fun ajouterEtape(poids: Double?) {
+        val consultation = _selectedConsultation.value ?: return
+        if (!consultation.isEvolutive) return
+        val modele =
+                consultation.etapesEvolutives.firstOrNull { it.uuid == _selectedRation.value?.uuid }
+                        ?: PlanEvolutif.etapesTriees(consultation).lastOrNull()
+        val etape = PlanEvolutif.copierEnEtape(modele, consultation.uuid, poids)
+        enregistrerRationsPlan(consultation, consultation.rations + etape, selection = etape)
+    }
+
+    /** Supprime une étape ; refusé pour la dernière étape au poids réel. */
+    fun supprimerEtape(etape: Ration): Boolean {
+        val consultation = _selectedConsultation.value ?: return false
+        if (!PlanEvolutif.peutSupprimer(consultation, etape)) return false
+        removeRationFromConsultation(etape)
+        return true
+    }
+
+    /** Modifie le poids et les variables propres d'une étape, puis recalcule ses besoins. */
+    fun mettreAJourEtape(etape: Ration, poids: Double?, suppVarp: List<SupplementalvariableP>) {
+        val courante =
+                _selectedConsultation.value?.rations?.firstOrNull { it.uuid == etape.uuid } ?: etape
+        val majEtape = courante.copy(poids = poids, suppVarp = suppVarp.toMutableList())
+        if (_selectedRation.value?.uuid == etape.uuid) {
+            _selectedRation.value = copieProfonde(majEtape)
+        }
+        updateRationInConsultation(majEtape)
+        if (_selectedRation.value?.uuid == etape.uuid) analyserRationSelectionnee()
+    }
+
+    /** Modifie la masse d'un ingrédient dans une étape (tableau de synthèse). */
+    fun mettreAJourQuantiteEtape(etape: Ration, refAlimUnif: String, quantite: Double) {
+        val courante =
+                _selectedConsultation.value?.rations?.firstOrNull { it.uuid == etape.uuid } ?: etape
+        val majEtape = PlanEvolutif.avecQuantite(courante, refAlimUnif, quantite)
+        if (_selectedRation.value?.uuid == etape.uuid) {
+            _selectedRation.value = copieProfonde(majEtape)
+        }
+        updateRationInConsultation(majEtape)
+        if (_selectedRation.value?.uuid == etape.uuid) analyserRationSelectionnee()
+    }
+
+    /**
+     * Ajoute aux autres étapes (à 0 g) les aliments de [source] qui leur manquent.
+     *
+     * @return le nombre d'aliments ajoutés
+     */
+    fun propagerAlimentsEtape(source: Ration): Int {
+        val consultation = _selectedConsultation.value ?: return 0
+        val courante = consultation.rations.firstOrNull { it.uuid == source.uuid } ?: source
+        val (rations, ajouts) = PlanEvolutif.propagerAliments(consultation, courante)
+        if (ajouts > 0) enregistrerRationsPlan(consultation, rations, selection = null)
+        return ajouts
+    }
+
+    private fun enregistrerRationsPlan(
+            consultation: ConsultationEv,
+            rations: List<Ration>,
+            selection: Ration?
+    ) {
+        val majConsultation = consultation.copy(rations = rations.toMutableList())
+        _selectedConsultation.value = majConsultation
+        updateConsultation(majConsultation)
+        selection?.let { selectRation(it) }
+        recalculerBilansEtapes()
+    }
+
+    /** Recalcule le bilan énergétique de chaque étape du plan de la consultation sélectionnée. */
+    fun recalculerBilansEtapes() {
+        val consultation = _selectedConsultation.value
+        if (consultation == null || !consultation.isEvolutive) {
+            _bilansEtapes.value = emptyMap()
+            return
+        }
+        val maladies =
+                consultation.referencesMaladies.mapNotNull { id ->
+                    _availableReferences.value.firstOrNull { it.uuid == id }
+                }
+        viewModelScope.launch {
+            try {
+                val reference = obtenirReferenceActiveConsultation(consultation)
+                val bilans =
+                        consultation.etapesEvolutives.associate { etape ->
+                            val vue = VariablesEtape.consultationPourEtape(consultation, etape)
+                            val apport =
+                                    etape.getDensiteEnergetiqueMoyenne(
+                                            referenceEv = reference,
+                                            equationRepository = equationRepository
+                                    ) * etape.getQuantiteTotale()
+                            val besoin =
+                                    reference?.let { ref ->
+                                        val bee = calculerBesoinEnergetiqueStandard(vue, ref)
+                                        val mw = calculerPoidsMetabolique(vue, ref)
+                                        bee?.let { b ->
+                                            val beK = calculerBesoinEnergetiqueTotal(vue, b)
+                                            val additionnelle =
+                                                    if (mw != null) {
+                                                        EquationEvaluator.calculerEnergieAdditionnelle(
+                                                                referencesMaladies = maladies,
+                                                                poidsCorps = vue.effectiveWeight ?: 0.0,
+                                                                besoinEnergetiqueApresK = beK,
+                                                                besoinEnergetiqueStandard = b,
+                                                                poidsMetabolique = mw,
+                                                                variablesSupp = vue.suppVarp,
+                                                                ration = etape,
+                                                                referenceEv = ref,
+                                                                equationRepository = equationRepository
+                                                        )
+                                                    } else 0.0
+                                            beK + additionnelle
+                                        }
+                                    }
+                            etape.uuid to BilanEtape(vue.effectiveWeight, besoin, apport)
+                        }
+                _bilansEtapes.value = bilans
             } catch (e: Exception) {
                 e.printStackTrace()
             }

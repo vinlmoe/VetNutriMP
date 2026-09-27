@@ -121,7 +121,7 @@ valeurs.
 - Repasser une consultation en « Standard » : les étapes redeviennent des rations ordinaires
   (`etapeEvolutive = false`). On demande confirmation et on ne supprime aucune donnée.
 
-## 4. Vue `PlanEvolutifView` (lot 4)
+## 4. Vue `PlanEvolutifView` (lot 4 — ✅ réalisé)
 
 Nouvelle section `AnimalDetailSection.PLAN_EVOLUTIF` :
 - visible seulement si la consultation est évolutive ;
