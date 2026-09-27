@@ -178,7 +178,7 @@ Nouvelle section `AnimalDetailSection.PLAN_EVOLUTIF` :
 - **Aucune interpolation** et aucune note sur les étapes intermédiaires.
 - Écran ordonnance : le plan se sélectionne d'un bloc, et non étape par étape.
 
-## 6. Tests et finitions (lot 6)
+## 6. Tests et finitions (lot 6 — tests écrits, non exécutés dans l'environnement cloud)
 - Tests unitaires :
   - `poidsEtape` et `variablesEtape` (priorités, cas `null`, standard contre évolutive) ;
   - `variablesEnergieRequises` (avec et sans ENERCOMP) ;
@@ -187,3 +187,19 @@ Nouvelle section `AnimalDetailSection.PLAN_EVOLUTIF` :
   - migration 36 → 37 ;
   - **non-régression** des BEE et du BE total en consultation standard.
 - Ordre de livraison conseillé : **1 → 2** (valider seul, c'est le plus risqué) **→ 3 → 4 → 5 → 6**.
+
+## État d'avancement et limites connues
+
+Les lots 1 à 5 sont implémentés. Les tests unitaires sont dans `commonTest` (VariablesEtape,
+PlanEvolutif, ApiModels, ordonnance) et `desktopTest` (persistance Room). Ils n'ont pas pu être
+exécutés dans l'environnement de développement cloud (dépôt Google Maven inaccessible).
+
+À vérifier ou compléter :
+- Générer et committer `composeApp/schemas/.../37.json` (produit par Room au premier build).
+- Tester la migration 36 → 37 sur une base réelle.
+- L'onglet « Étape » réutilise `RationsView` tel quel : sa liste montre toutes les rations de la
+  consultation, étapes comprises, sous le nom de la ration de départ.
+- L'ordonnance inclut toujours le plan complet, sans tenir compte de la sélection des rations
+  (les étapes sont seulement retirées des blocs de ration individuels).
+- `MetabolicSummarySection` (édition rapide du poids) modifie toujours le poids de la consultation,
+  pas celui de l'étape.
