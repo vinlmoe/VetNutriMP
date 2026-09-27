@@ -111,7 +111,7 @@ $$BEE = 130\,BW^{0{,}75}\times 3{,}2\left[e^{-0{,}87\,p}-0{,}1\right],\qquad p=\
 C'est la même chose pour la gestation ($wG$) ou la lactation ($L$, $wL$) : chaque étape porte ses propres
 valeurs.
 
-## 3. Saisie du type de consultation (lot 3)
+## 3. Saisie du type de consultation (lot 3 — ✅ réalisé)
 - Dans `ConsultationFullScreenEditView` et `ConsultationEditDialog`, ajouter un sélecteur
   « Standard / Évolutive » et, si « Évolutive », le choix du profil.
 - Les variables communes à toutes les étapes restent sur la consultation (par exemple `AW` en
