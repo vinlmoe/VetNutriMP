@@ -625,6 +625,8 @@ object EquationEvaluator {
         if (poidsMetabolique != null) variables["MW"] = poidsMetabolique
         for (variable in variablesSupp) {
             variable.variable?.let { varKind ->
+                // Nom défini dans les équations (AW, wG, D, CW...) + nom long historique
+                variables[varKind.label] = variable.varue?.toDouble() ?: 0.0
                 variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
             }
         }
@@ -656,6 +658,8 @@ object EquationEvaluator {
         // Variables supplémentaires
         for (variable in variablesSupp) {
             variable.variable?.let { varKind ->
+                // Nom défini dans les équations (AW, wG, D, CW...) + nom long historique
+                variables[varKind.label] = variable.varue?.toDouble() ?: 0.0
                 variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
             }
         }

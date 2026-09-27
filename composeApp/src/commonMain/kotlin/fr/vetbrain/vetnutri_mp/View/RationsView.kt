@@ -193,6 +193,8 @@ fun RationsView(
 
         // Récupération des valeurs métaboliques calculées
         val poidsMetabolique by viewModel.poidsMetabolique.collectAsState()
+        // Poids utilisé pour les besoins (poids de l'étape pour un plan évolutif)
+        val poidsEffectif by viewModel.poidsEffectif.collectAsState()
         val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
         // Le BE final devient la seule valeur de BE utilisée dans la vue
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
@@ -237,7 +239,10 @@ fun RationsView(
                 selectedConsultation,
                 referencesMaladiesResolues,
                 referenceUtilisee,
-                selectedRation
+                selectedRation,
+                // Plan évolutif : relancer une fois le BEE de l'étape recalculé
+                besoinEnergetiqueStandard,
+                poidsMetabolique
         ) {
                 val consultation = selectedConsultation
                 val ration = selectedRation
@@ -499,10 +504,14 @@ fun RationsView(
                                                                                 rationAExporter.name.let { if (it.isNotBlank()) " - $it" else "" },
                                                                 typeExpressionBesoin =
                                                                         effectiveTypeExpressionBesoin,
+                                                                // Poids réel, ou poids de l'étape pour un plan évolutif
                                                                 poidsAnimal =
-                                                                        selectedConsultation
-                                                                                ?.weight
-                                                                                ?.toDouble(),
+                                                                        if (fr.vetbrain.vetnutri_mp.Data.VariablesEtape.estEtape(
+                                                                                        selectedConsultation,
+                                                                                        rationAExporter
+                                                                                )
+                                                                        ) poidsEffectif
+                                                                        else selectedConsultation?.weight,
                                                                 poidsMetabolique =
                                                                         poidsMetabolique,
                                                                 besoinEnergetiqueEntretien =
@@ -1513,10 +1522,7 @@ fun RationsView(
                                                                                 besoinEnergetiqueStandard,
                                                                         besoinEnergetiqueCible =
                                                                                 besoinEnergetiqueTotal,
-                                                                        poidsAnimal =
-                                                                                selectedConsultation
-                                                                                        ?.effectiveWeight
-                                                                                        ?.toDouble(),
+                                                                        poidsAnimal = poidsEffectif,
                                                                         modifier = Modifier.fillMaxWidth(),
                                                                         nutrimentsSelectionnes =
                                                                                 nutrimentsSelectionnesPreferences,
@@ -1688,6 +1694,7 @@ fun RationsView(
                         if (showMetabolicValuesDialog) {
                                 MetabolicValuesDialog(
                                         selectedConsultation = selectedConsultation,
+                                        poidsCalcul = poidsEffectif,
                                         poidsMetabolique = poidsMetabolique,
                                         besoinEnergetiqueStandard = besoinEnergetiqueStandard,
                                         besoinEnergetiqueTotal = besoinEnergetiqueTotal,
@@ -1718,7 +1725,7 @@ fun RationsView(
                                 referenceUtilisee = referenceUtilisee,
                                 besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
                                 besoinEnergetiqueCible = besoinEnergetiqueTotal,
-                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                poidsAnimal = poidsEffectif,
                                 espece = animal?.getEspece() ?: Espece.CHIEN,
                                 preferencesStorage = preferencesStorage,
                                 equationRepository = equationRepository,
@@ -1745,7 +1752,7 @@ fun RationsView(
                                 referenceUtilisee = reference,
                                 besoinEnergetiqueTotal = besoinEnergetique,
                                 besoinEnergetiqueStandard = besoinEnergetiqueStandard!!,
-                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                poidsAnimal = poidsEffectif,
                                 poidsMetabolique = poidsMetabolique,
                                 equationRepository = equationRepository,
                                 onConfirm = { result ->
@@ -2000,6 +2007,7 @@ private fun CompactLocalInfoRow(label: String, value: String) {
 @Composable
 private fun MetabolicValuesDialog(
         selectedConsultation: ConsultationEv?,
+        poidsCalcul: Double?,
         poidsMetabolique: Double?,
         besoinEnergetiqueStandard: Double?,
         besoinEnergetiqueTotal: Double?,
@@ -2031,7 +2039,7 @@ private fun MetabolicValuesDialog(
                                 LocalInfoRow(
                                         label = translate(AnalNut.WEIGHT_IDEAL),
                                         value =
-                                                selectedConsultation?.effectiveWeight?.let {
+                                                poidsCalcul?.let {
                                                         "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                                 }
                                                         ?: translate(General.NOT_CALCULATED)

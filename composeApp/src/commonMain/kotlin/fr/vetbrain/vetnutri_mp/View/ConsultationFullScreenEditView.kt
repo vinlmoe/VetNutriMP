@@ -143,9 +143,9 @@ fun ConsultationFullScreenEditView(
                         editedConsultation.referencesMaladies.contains(maladieRef.uuid)
                 }
                 val variablesRequises =
-                        extraireVariablesRequises(
+                        fr.vetbrain.vetnutri_mp.Utils.VariablesEnergie.variablesRequises(
                                 reference = referenceGeneraleSelectionnee,
-                                referencesMaladies = selectedDiseaseRefs
+                                referencesComplementaires = selectedDiseaseRefs
                         )
 
                 // Vérifier les variables supplémentaires manquantes
@@ -961,9 +961,9 @@ fun ConsultationFullScreenEditView(
                         val selectedDiseaseRefs = referencesMaladies.filter { maladieRef ->
                                 editedConsultation.referencesMaladies.contains(maladieRef.uuid)
                         }
-                        extraireVariablesRequises(
+                        fr.vetbrain.vetnutri_mp.Utils.VariablesEnergie.variablesRequises(
                                 reference = referenceGeneraleSelectionnee,
-                                referencesMaladies = selectedDiseaseRefs
+                                referencesComplementaires = selectedDiseaseRefs
                         )
                 }
 
@@ -2113,113 +2113,6 @@ private fun ConsultationKeywordDialog(
                         }
                 }
         )
-}
-
-/** Fonction pour extraire les variables requises par les équations d'une référence */
-private fun extraireVariablesRequises(
-        reference: fr.vetbrain.vetnutri_mp.Data.ReferenceEv?,
-        referencesMaladies: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> = emptyList()
-): List<fr.vetbrain.vetnutri_mp.Enumer.VariableKind> {
-        if (reference == null) return emptyList()
-
-        val variablesRequises = mutableSetOf<fr.vetbrain.vetnutri_mp.Enumer.VariableKind>()
-        val scriptVariables = mutableSetOf<String>()
-
-        // Extraire les variables en parsant les scripts des équations
-        reference.equationBW?.equationScript?.let { script ->
-                if (script.isNotBlank()) {
-                        val variables =
-                                fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator.extraireVariables(
-                                        script
-                                )
-                        scriptVariables.addAll(variables)
-                }
-        }
-
-        reference.equationBEE?.equationScript?.let { script ->
-                if (script.isNotBlank()) {
-                        val variables =
-                                fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator.extraireVariables(
-                                        script
-                                )
-                        scriptVariables.addAll(variables)
-                }
-        }
-
-        reference.equationDEcom?.equationScript?.let { script ->
-                if (script.isNotBlank()) {
-                        val variables =
-                                fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator.extraireVariables(
-                                        script
-                                )
-                        scriptVariables.addAll(variables)
-                }
-        }
-
-        reference.equationDEraw?.equationScript?.let { script ->
-                if (script.isNotBlank()) {
-                        val variables =
-                                fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator.extraireVariables(
-                                        script
-                                )
-                        scriptVariables.addAll(variables)
-                }
-        }
-
-        reference.equationME?.equationScript?.let { script ->
-                if (script.isNotBlank()) {
-                        val variables =
-                                fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator.extraireVariables(
-                                        script
-                                )
-                        scriptVariables.addAll(variables)
-                }
-        }
-
-        // Extraire les variables des équations nutritionnelles (référence générale)
-        reference.equationsNut.forEach { equation ->
-                if (equation.equationScript.isNotBlank()) {
-                        val variables =
-                                fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator.extraireVariables(
-                                        equation.equationScript
-                                )
-                        scriptVariables.addAll(variables)
-                }
-        }
-
-        // Inclure uniquement les variables des équations ENERCOMP des références maladies sélectionnées
-        referencesMaladies.forEach { refMaladie ->
-                refMaladie.equationsNut.forEach { eq ->
-                        if (eq.kind == fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP &&
-                                        eq.equationScript.isNotBlank()
-                        ) {
-                                val variables =
-                                        fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator.extraireVariables(
-                                                eq.equationScript
-                                        )
-                                scriptVariables.addAll(variables)
-                        }
-                }
-        }
-
-        // Convertir les noms de variables en VariableKind
-        for (variableName in scriptVariables) {
-                val variableKind =
-                        fr.vetbrain.vetnutri_mp.Enumer.VariableKind.entries.find {
-                                it.label == variableName
-                        }
-                if (variableKind != null) {
-                        variablesRequises.add(variableKind)
-                } else {}
-        }
-
-        // Exclure les variables calculées/pilotées par le système
-        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BW) // Poids saisi
-        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.MW) // Poids métabolique calculé
-        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BEE) // BEE calculé/résolu
-        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BE) // BE dérivé (après K et compl.)
-
-        return variablesRequises.toList().sortedBy { it.label }
 }
 
 @Composable

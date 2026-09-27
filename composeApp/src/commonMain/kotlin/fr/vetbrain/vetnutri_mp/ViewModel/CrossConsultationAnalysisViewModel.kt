@@ -374,13 +374,22 @@ class CrossConsultationAnalysisViewModel(
                 consultation.referenceGeneraleId?.let {
                     referenceEvRepository.getReferenceEvById(it)
                 }
-        val beeKcal = computeBeeKcal(consultation, referenceEv)
+        val beeConsultation = computeBeeKcal(consultation, referenceEv)
         val dateLabel =
                 consultation.date?.toString()
                         ?: CrossConsultationAnalysis.DATE_UNKNOWN.translate()
         val rationSummaries =
                 consultation.rations.map { ration ->
-                    val analyse = rationAnalyzer.analyserRation(ration, consultation)
+                    // Plan évolutif : poids, variables et BEE propres à l'étape
+                    val consultationEtape =
+                            fr.vetbrain.vetnutri_mp.Data.VariablesEtape.consultationPourEtape(
+                                    consultation,
+                                    ration
+                            )
+                    val beeKcal =
+                            if (consultationEtape === consultation) beeConsultation
+                            else computeBeeKcal(consultationEtape, referenceEv)
+                    val analyse = rationAnalyzer.analyserRation(ration, consultationEtape)
                     val nutrientValues = buildNutrientValues(ration, referenceEv)
                     val proteins = nutrientValues[NutrientMain.PROTEINE.label] ?: 0.0
                     val lipids = nutrientValues[NutrientMain.LIPIDE.label] ?: 0.0
@@ -393,8 +402,8 @@ class CrossConsultationAnalysisViewModel(
                     val qty = ration.getQuantiteTotale()
                     val energyTotalKcal = energyTotalKcalFromDensity(energyDensity, qty)
                     val weightKg =
-                            consultation.effectiveWeight?.toDouble()
-                                    ?: consultation.weight?.toDouble()
+                            consultationEtape.effectiveWeight?.toDouble()
+                                    ?: consultationEtape.weight?.toDouble()
                                     ?: 0.0
                     val metabolicWeight =
                             if (weightKg > 0.0) weightKg.pow(0.75) else 0.0
