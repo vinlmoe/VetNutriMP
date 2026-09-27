@@ -47,11 +47,13 @@ object PlanEvolutif {
             listOf(VariablesEtape.poidsEtape(consultation, etape) ?: 0.0) +
                     distinctives.map { vars[it] ?: 0.0 }
         }
-        return consultation.etapesEvolutives.sortedWith { a, b ->
-            val ka = cle(a)
-            val kb = cle(b)
-            ka.zip(kb).map { (x, y) -> x.compareTo(y) }.firstOrNull { it != 0 } ?: 0
-        }
+        return consultation.etapesEvolutives.sortedWith(
+                Comparator { a, b ->
+                    val ka = cle(a)
+                    val kb = cle(b)
+                    ka.zip(kb).map { (x, y) -> x.compareTo(y) }.firstOrNull { it != 0 } ?: 0
+                }
+        )
     }
 
     /** Libellé d'étape : « 8 kg · D 12 » (sans mention « actuel », ajoutée par l'appelant). */
