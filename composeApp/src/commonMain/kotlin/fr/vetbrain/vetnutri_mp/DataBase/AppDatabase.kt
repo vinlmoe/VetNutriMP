@@ -14,6 +14,9 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.withContext
 
+/** Version du schéma Room ; à incrémenter avec chaque nouvelle migration. */
+const val DATABASE_SCHEMA_VERSION = 37
+
 /**
  * Base de données Room pour KMP. Cette classe définit la structure de la base de données et ses
  * DAOs. Elle est utilisée à la fois sur Android et iOS.
@@ -48,7 +51,7 @@ import kotlinx.coroutines.withContext
                         CustomNutrientEntity::class,
                         EnergyPerSpeciesEntity::class,
                         RationSupplementalVariableEntity::class],
-        version = 37,
+        version = DATABASE_SCHEMA_VERSION,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -89,6 +92,14 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
  * les données en cas d'erreur de migration.
  */
 fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String): AppDatabase {
+    // Base créée par une version plus récente (ou retour sur une branche plus ancienne) : la mettre
+    // de côté AVANT la sauvegarde .bak et l'ouverture Room, pour ne jamais la perdre.
+    protectDatabaseAgainstVersionChange(dbPath, DATABASE_SCHEMA_VERSION)?.let { message ->
+        DatabaseChangeNotifier.notifyChange(
+                DatabaseChangeNotifier.ChangeType.DATABASE_VERSION_UPDATED,
+                message
+        )
+    }
     backupDatabaseFiles(dbPath)
 
     // Room ouvre la connexion de façon paresseuse : valider explicitement le fichier ici afin que
@@ -147,8 +158,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
                 // ❌ SUPPRIMÉ: .fallbackToDestructiveMigration(true)
-                // ✅ Seulement en cas de downgrade de version explicite
-                .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = false)
+                // ❌ SUPPRIMÉ: .fallbackToDestructiveMigrationOnDowngrade() — une base plus récente
+                // est mise de côté par protectDatabaseAgainstVersionChange ; si elle arrivait
+                // quand même ici, l'échec est traité par rotation (jamais d'effacement).
                 .build()
     } catch (e: Exception) {
         // ⚠️ Migration ou initialisation échouée : rotation du fichier corrompu, jamais d'effacement
@@ -157,7 +169,7 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
             DatabaseChangeNotifier.ChangeType.DATABASE_MIGRATION_FAILED,
             e.message
         )
-        // Ouvre une base vide propre (v37). Le .bak binaire + les JSON backups permettent la restauration.
+        // Ouvre une base vide propre (version courante). Le .bak binaire + les JSON backups permettent la restauration.
         builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
