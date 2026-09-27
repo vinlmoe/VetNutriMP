@@ -1261,6 +1261,8 @@ object LocalizationKeys {
         val STEP_SUBTITLE = "evolutive.stepSubtitle"
         val REAL_WEIGHT_NAME = "evolutive.realWeightName"
         val STEP_WEIGHT_HINT = "evolutive.stepWeightHint"
+        val STEP_LABEL = "evolutive.stepLabel"
+        val STEP_LABEL_HINT = "evolutive.stepLabelHint"
         val STEP_VARIABLES = "evolutive.stepVariables"
         val STEP_VARIABLE_HINT = "evolutive.stepVariableHint"
         val NO_STEP_VARIABLES = "evolutive.noStepVariables"

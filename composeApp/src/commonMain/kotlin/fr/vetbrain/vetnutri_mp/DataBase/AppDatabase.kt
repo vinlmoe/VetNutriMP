@@ -15,7 +15,7 @@ import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.withContext
 
 /** Version du schéma Room ; à incrémenter avec chaque nouvelle migration. */
-const val DATABASE_SCHEMA_VERSION = 38
+const val DATABASE_SCHEMA_VERSION = 39
 
 /**
  * Base de données Room pour KMP. Cette classe définit la structure de la base de données et ses
@@ -155,7 +155,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
                         // Migration 36→37 : Consultation évolutive (type, étapes, variables par étape)
                         createMigration36to37(),
                         // Migration 37→38 : plan évolutif rangé sous une ration (ration parente)
-                        createMigration37to38()
+                        createMigration37to38(),
+                        // Migration 38→39 : nom libre des étapes de plan évolutif
+                        createMigration38to39()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -804,6 +806,18 @@ fun createMigration37to38(): Migration {
             runStatementIgnoreIfExists(
                     connection,
                     "ALTER TABLE RATIONS ADD COLUMN refRationParente TEXT"
+            )
+        }
+    }
+}
+
+/** Migration 38→39 : nom libre d'une étape de plan évolutif. */
+fun createMigration38to39(): Migration {
+    return object : Migration(38, 39) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE RATIONS ADD COLUMN nomLibre TEXT"
             )
         }
     }

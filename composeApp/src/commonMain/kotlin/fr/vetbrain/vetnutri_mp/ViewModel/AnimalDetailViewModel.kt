@@ -1314,7 +1314,11 @@ class AnimalDetailViewModel(
                             // Étape de plan : nom fixe déduit de ses variables
                             name =
                                     if (ration.refRationParente != null)
-                                            PlanEvolutif.nomAutomatique(ration.poids, ration.suppVarp)
+                                            PlanEvolutif.nomAutomatique(
+                                                    ration.poids,
+                                                    ration.suppVarp,
+                                                    ration.nomLibre
+                                            )
                                     else translate(RationKeys.DUPLICATED_NAME_FORMAT, ration.name),
                             alimentMutableList =
                                     mutableListOf(), // Liste vide temporaire, nous allons la remplir
@@ -1735,24 +1739,33 @@ class AnimalDetailViewModel(
      * étape) : copie des aliments de la ration parente, poids et variables propres, nom fixe.
      *
      * @param poids poids de l'étape ; null = poids réel de la consultation
+     * @param libelle nom libre de l'étape (ex. « Croissance ») ; null ou vide = aucun
      */
-    fun ajouterEtape(parent: Ration, poids: Double?, suppVarp: List<SupplementalvariableP>) {
+    fun ajouterEtape(
+            parent: Ration,
+            poids: Double?,
+            suppVarp: List<SupplementalvariableP>,
+            libelle: String? = null
+    ) {
         val consultation = _selectedConsultation.value ?: return
         val racine = PlanEvolutif.parentDe(consultation, parent)
-        val etape = PlanEvolutif.nouvelleEtape(racine, poids, suppVarp)
+        val etape = PlanEvolutif.nouvelleEtape(racine, poids, suppVarp, libelle)
         enregistrerRationsPlan(consultation, consultation.rations + etape, selection = etape)
     }
 
     /**
-     * Modifie le poids et les variables propres d'une étape, puis recalcule ses besoins.
+     * Modifie le poids, les variables propres et le nom libre d'une étape, puis recalcule ses
+     * besoins.
      *
      * @param poidsReel nouveau poids réel de la consultation, enregistré dans la même opération
+     * @param libelle nom libre de l'étape ; par défaut celui de [etape] (inchangé)
      */
     fun mettreAJourEtape(
             etape: Ration,
             poids: Double?,
             suppVarp: List<SupplementalvariableP>,
-            poidsReel: Double? = null
+            poidsReel: Double? = null,
+            libelle: String? = etape.nomLibre
     ) {
         val courante =
                 _selectedConsultation.value?.rations?.firstOrNull { it.uuid == etape.uuid } ?: etape
@@ -1760,8 +1773,9 @@ class AnimalDetailViewModel(
                 courante.copy(
                         poids = poids,
                         suppVarp = suppVarp.toMutableList(),
-                        // Nom fixe, déduit du poids et des variables de l'étape
-                        name = PlanEvolutif.nomAutomatique(poids, suppVarp)
+                        nomLibre = PlanEvolutif.libelleNormalise(libelle),
+                        // Nom fixe, déduit du nom libre, du poids et des variables de l'étape
+                        name = PlanEvolutif.nomAutomatique(poids, suppVarp, libelle)
                 )
         if (_selectedRation.value?.uuid == etape.uuid) {
             _selectedRation.value = copieProfonde(majEtape)

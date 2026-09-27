@@ -1909,6 +1909,8 @@
         "evolutive.realWeight": "实际",
         "evolutive.stepWeight": "阶段体重（kg）",
         "evolutive.stepWeightHint": "留空 = 问诊实际体重（%1$s）",
+        "evolutive.stepLabel": "阶段名称（可选）",
+        "evolutive.stepLabelHint": "例如：生长期",
         "evolutive.stepVariables": "阶段变量",
         "evolutive.stepVariableHint": "留空 = 问诊值（%1$s）",
         "evolutive.noStepVariables": "能量方程不需要其他变量。",
