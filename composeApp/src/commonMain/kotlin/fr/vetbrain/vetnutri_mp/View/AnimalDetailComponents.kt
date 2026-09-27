@@ -160,22 +160,6 @@ fun ConsultationCard(
                                         }
                                 }
 
-                                // Badge consultation évolutive (profil)
-                                if (consultation.isEvolutive) {
-                                        Text(
-                                                text =
-                                                        translate(
-                                                                LocalizationKeys.Evolutive.BADGE_FORMAT,
-                                                                consultation.profilEvolutif
-                                                                        ?.translateEnum()
-                                                                        ?: ""
-                                                        ),
-                                                style = MaterialTheme.typography.caption,
-                                                color = VetNutriColors.Primary,
-                                                fontWeight = FontWeight.Bold
-                                        )
-                                }
-
                                 Divider(
                                         modifier =
                                                 Modifier.padding(

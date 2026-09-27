@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import fr.vetbrain.vetnutri_mp.Data.PlanEvolutif
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
@@ -87,8 +88,12 @@ fun RationsEnergieChart(
                                                                         consultation.date,
                                                                 numero =
                                                                         consultationIndex * 100 +
-                                                                                rationIndex +
-                                                                                1
+                                                                                rationIndex + 1,
+                                                                isRationActuelle =
+                                                                        PlanEvolutif.estActuelle(
+                                                                                consultation,
+                                                                                ration
+                                                                        )
                                                         )
                                                 resultat.add(dataWithDate)
                                         }
@@ -185,17 +190,10 @@ fun RationsEnergieChart(
                         )
                 }
         } else {
-                // Identifier les rations actuelles basées sur la propriété 'actual' des rations
+                // Les étapes d'un plan héritent du statut actuel/proposé de leur ration parente.
                 val rationsActuellesIds =
                         rationsEnergieData
-                                .filter { data ->
-                                        // Trouver la ration originale pour vérifier sa propriété
-                                        // 'actual'
-                                        consultations
-                                                ?.flatMap { it.rations }
-                                                ?.find { it.uuid == data.rationId }
-                                                ?.actual == true
-                                }
+                                .filter { it.isRationActuelle }
                                 .map { it.rationId }
                                 .toSet()
 

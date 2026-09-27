@@ -79,6 +79,18 @@ class PlanEvolutifTest {
     }
 
     @Test
+    fun estActuelle_stepInheritsTheColorStatusOfItsParent() {
+        val parentActuelle = parent("p").apply { actual = true }
+        val etapeProposee = etape("e", "p", 3.0).apply { actual = false }
+        val rationProposee = parent("autre")
+        val c = consultation(parentActuelle, etapeProposee, rationProposee)
+
+        assertTrue(PlanEvolutif.estActuelle(c, etapeProposee))
+        assertTrue(PlanEvolutif.estActuelle(c, parentActuelle))
+        assertFalse(PlanEvolutif.estActuelle(c, rationProposee))
+    }
+
+    @Test
     fun propagerAliments_withinThePlanOnly_parentIncluded() {
         val p = parent("p", aliment("croq", 100.0))
         val source = etape("s", "p", 3.0, aliment("croq", 80.0), aliment("huile", 5.0))

@@ -176,14 +176,14 @@ class PlanEvolutifInteractionTest {
     @Test
     fun planSousUneRation_deBoutEnBout() = run {
         consultationEnBase()
-        // 1. Première étape ajoutée sous la ration : le plan existe, la consultation devient évolutive
+        // 1. Première étape ajoutée sous la ration : le plan existe sans changer le type de consultation.
         vm.ajouterEtape(ration("actuelle"), 8.0, emptyList()); idle()
         val e8 = etapes().single()
         assertEquals("actuelle", e8.refRationParente)
         assertEquals(PlanEvolutif.nomAutomatique(8.0, emptyList()), e8.name)
         assertEquals(listOf(100.0), e8.alimentMutableList.map { it.quantite })
         assertEquals(e8.uuid, vm.selectedRation.value?.uuid)
-        assertEquals(TypeConsultation.EVOLUTIVE, consultation().typeConsultation)
+        assertEquals(TypeConsultation.STANDARD, consultation().typeConsultation)
         assertProche(8.0, vm.poidsEffectif.value, "étape 8 kg")
         assertProche(bee(8.0, 25.0), vm.besoinEnergetiqueStandard.value, "BEE 8 kg")
 
@@ -206,7 +206,7 @@ class PlanEvolutifInteractionTest {
         assertEquals(10.0, e10Relue.poids)
         assertEquals("actuelle", e10Relue.refRationParente)
         assertEquals(aw30, e10Relue.suppVarp)
-        assertEquals(TypeConsultation.EVOLUTIVE, relue.typeConsultation)
+        assertEquals(TypeConsultation.STANDARD, relue.typeConsultation)
 
         // 5. Deuxième étape ; bilans de toutes les rations du plan
         vm.ajouterEtape(ration("actuelle"), 3.0, emptyList()); idle()
