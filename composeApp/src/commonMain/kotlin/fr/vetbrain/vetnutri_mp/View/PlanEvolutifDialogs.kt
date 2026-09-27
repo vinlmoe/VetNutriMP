@@ -43,9 +43,9 @@ private fun formatSaisie(valeur: Double?): String =
         valeur?.let { TextUtils.formatDecimal(it, 2).trimEnd('0').trimEnd(',', '.') } ?: ""
 
 /**
- * Création ou édition d'une étape de plan évolutif : poids de l'étape (vide = poids réel de la
- * consultation) et variables requises par les équations d'énergie (vide = valeur de la
- * consultation). Le nom de l'étape en découle et n'est pas saisi.
+ * Création ou édition d'une étape de plan évolutif : nom libre facultatif, poids de l'étape (vide =
+ * poids réel de la consultation) et variables requises par les équations d'énergie (vide = valeur
+ * de la consultation). Le nom affiché de l'étape en découle.
  *
  * @param etape l'étape éditée, ou null pour une nouvelle étape
  */
@@ -56,8 +56,9 @@ fun EtapeEditDialog(
         etape: Ration?,
         variablesRequises: List<VariableKind>,
         onDismiss: () -> Unit,
-        onSave: (poids: Double?, variables: List<SupplementalvariableP>) -> Unit
+        onSave: (poids: Double?, variables: List<SupplementalvariableP>, libelle: String?) -> Unit
 ) {
+    var libelleTexte by remember(etape?.uuid) { mutableStateOf(etape?.nomLibre ?: "") }
     var poidsTexte by remember(etape?.uuid) { mutableStateOf(formatSaisie(etape?.poids)) }
     var variablesTexte by
             remember(etape?.uuid, variablesRequises) {
@@ -94,9 +95,17 @@ fun EtapeEditDialog(
                 ) {
                     val (poidsApercu, varsApercu) = saisie()
                     Text(
-                            text = PlanEvolutif.nomAutomatique(poidsApercu, varsApercu),
+                            text = PlanEvolutif.nomAutomatique(poidsApercu, varsApercu, libelleTexte),
                             style = MaterialTheme.typography.subtitle2,
                             color = VetNutriColors.Primary
+                    )
+                    OutlinedTextField(
+                            value = libelleTexte,
+                            onValueChange = { libelleTexte = it },
+                            label = { Text(translate(Evolutive.STEP_LABEL)) },
+                            placeholder = { Text(translate(Evolutive.STEP_LABEL_HINT)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                             value = poidsTexte,
@@ -149,7 +158,7 @@ fun EtapeEditDialog(
                 TextButton(
                         onClick = {
                             val (poids, variables) = saisie()
-                            onSave(poids, variables)
+                            onSave(poids, variables, PlanEvolutif.libelleNormalise(libelleTexte))
                         }
                 ) { Text(translate(LocalizationKeys.General.OK)) }
             },

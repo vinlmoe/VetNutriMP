@@ -303,7 +303,8 @@ object Mappers {
                                 description = this.description ?: "",
                                 etapeEvolutive = this.etapeEvolutive,
                                 poids = this.poids,
-                                refRationParente = this.refRationParente
+                                refRationParente = this.refRationParente,
+                                nomLibre = this.nomLibre
                         )
                         .apply {
                                 if (includeRelations) {
@@ -344,7 +345,8 @@ object Mappers {
                         etapeEvolutive = this.etapeEvolutive,
                         poids = this.poids,
                         refRationParente = this.refRationParente,
-                        suppVarp = suppVars.map { it.toData() }.toMutableList()
+                        suppVarp = suppVars.map { it.toData() }.toMutableList(),
+                        nomLibre = this.nomLibre
                 )
         }
 

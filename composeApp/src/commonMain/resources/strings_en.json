@@ -1912,6 +1912,8 @@
         "evolutive.realWeight": "real",
         "evolutive.stepWeight": "Stage weight (kg)",
         "evolutive.stepWeightHint": "Empty = real consultation weight (%1$s)",
+        "evolutive.stepLabel": "Step name (optional)",
+        "evolutive.stepLabelHint": "e.g. Growth",
         "evolutive.stepVariables": "Stage variables",
         "evolutive.stepVariableHint": "Empty = consultation value (%1$s)",
         "evolutive.noStepVariables": "No additional variable required by the energy equations.",
