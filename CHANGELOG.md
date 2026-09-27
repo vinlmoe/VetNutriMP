@@ -2,6 +2,30 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## 3.3.15
+
+- Bump de version applicative vers **3.3.15 (315)** sur Android, iOS et Desktop.
+
+### Nouveautés
+
+- **Plans évolutifs par ration** : une ration peut maintenant porter plusieurs étapes, chacune
+  avec son poids et ses variables énergétiques propres. Les noms d'étape sont générés
+  automatiquement et traduits en français, anglais et chinois.
+- **Synthèse et ordonnance de plan** : affichage et export sous forme de tableau
+  ingrédients × étapes, pour comparer clairement les quantités à chaque phase.
+- **Analyse groupée des rations** : comparaison séparée des rations actuelles et proposées,
+  avec une moyenne pondérée par les quantités plutôt qu'une simple somme.
+- **Ajustement nutritionnel renforcé** : l'optimiseur peut préserver une part cible d'énergie
+  apportée par les aliments complets ; le détail des nutriments affiche aussi le pourcentage
+  de couverture par référence.
+
+### Fiabilité
+
+- Les associations entre équations et références nutritionnelles restent éditables après leur
+  création et l'interface se rafraîchit après modification.
+- Les mises à jour de base de données préservent une base ouverte par une version plus récente ;
+  les schémas Room v37 et v38 documentent les migrations des plans évolutifs.
+
 ## 3.3.12
 
 - Bump de version applicative vers **3.3.12 (312)** sur Android, iOS et Desktop.
