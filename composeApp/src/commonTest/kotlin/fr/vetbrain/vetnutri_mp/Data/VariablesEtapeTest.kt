@@ -30,9 +30,10 @@ class VariablesEtapeTest {
             )
 
     @Test
-    fun standardConsultation_isUnchanged() {
+    fun rationPrincipale_isUnchanged() {
+        // Sans ration parente, ni le poids ni les variables propres ne s'appliquent
         val ration = Ration(uuid = "r", etapeEvolutive = true, poids = 9.0)
-        val c = consultation(TypeConsultation.STANDARD, ration)
+        val c = consultation(TypeConsultation.EVOLUTIVE, ration)
 
         assertFalse(VariablesEtape.estEtape(c, ration))
         assertEquals(6.0, VariablesEtape.poidsEtape(c, ration)) // poids idéal prioritaire
@@ -41,8 +42,8 @@ class VariablesEtapeTest {
 
     @Test
     fun evolutiveStep_usesOwnWeight_andRealWeightWhenNull() {
-        val etape = Ration(uuid = "e", etapeEvolutive = true, poids = 9.0)
-        val reel = Ration(uuid = "r", etapeEvolutive = true)
+        val etape = Ration(uuid = "e", etapeEvolutive = true, poids = 9.0, refRationParente = "p")
+        val reel = Ration(uuid = "r", etapeEvolutive = true, refRationParente = "p")
         val c = consultation(TypeConsultation.EVOLUTIVE, etape, reel)
 
         assertEquals(9.0, VariablesEtape.poidsEtape(c, etape))
@@ -69,6 +70,7 @@ class VariablesEtapeTest {
                 Ration(
                         uuid = "e",
                         etapeEvolutive = true,
+                        refRationParente = "p",
                         suppVarp =
                                 mutableListOf(
                                         SupplementalvariableP(VariableKind.AdultWeight, 30.0),
@@ -84,7 +86,7 @@ class VariablesEtapeTest {
 
     @Test
     fun signature_changesWithWeightAndVariables() {
-        val etape = Ration(uuid = "e", etapeEvolutive = true, poids = 9.0)
+        val etape = Ration(uuid = "e", etapeEvolutive = true, poids = 9.0, refRationParente = "p")
         val c = consultation(TypeConsultation.EVOLUTIVE, etape)
         val s1 = VariablesEtape.signature(c, etape)
         etape.poids = 10.0

@@ -145,7 +145,8 @@ data class RationApi(
         // Étape de plan évolutif (absents des anciens exports)
         val isEvolutiveStep: Boolean = false,
         val weightKg: Double? = null,
-        val supplementalVariables: List<SupplementalVariableApi> = emptyList()
+        val supplementalVariables: List<SupplementalVariableApi> = emptyList(),
+        val parentRationId: String? = null
 )
 
 @Serializable
@@ -531,7 +532,8 @@ fun Ration.toApi(): RationApi {
                         },
                 isEvolutiveStep = etapeEvolutive,
                 weightKg = poids,
-                supplementalVariables = suppVarp.toSupplementalVariablesApi()
+                supplementalVariables = suppVarp.toSupplementalVariablesApi(),
+                parentRationId = refRationParente
         )
 }
 
@@ -817,6 +819,7 @@ fun ConsultationApi.toDomain(): ConsultationEv {
                                                 description = rApi.description,
                                                 etapeEvolutive = rApi.isEvolutiveStep,
                                                 poids = rApi.weightKg,
+                                                refRationParente = rApi.parentRationId,
                                                 suppVarp =
                                                         rApi.supplementalVariables
                                                                 .toSupplementalVariablesDomain(),

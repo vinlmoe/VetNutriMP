@@ -145,12 +145,10 @@ class PlanEvolutifInteractionTest {
         abonnements.forEach { it.cancel() }
     }
 
-    private suspend fun consultationEnBase(evolutive: Boolean = true): ConsultationEv {
+    private suspend fun consultationEnBase(idealWeight: Double? = null): ConsultationEv {
         val c = ConsultationEv(
-            uuid = "c", idAnim = "a", weight = 5.0, idealWeight = if (evolutive) null else 6.0,
+            uuid = "c", idAnim = "a", weight = 5.0, idealWeight = idealWeight,
             referenceGeneraleId = refId,
-            typeConsultation = if (evolutive) TypeConsultation.EVOLUTIVE else TypeConsultation.STANDARD,
-            profilEvolutif = if (evolutive) ProfilEvolutif.CROISSANCE else null,
             suppVarp = mutableListOf(SupplementalvariableP(VariableKind.AdultWeight, 25.0)),
             rations = mutableListOf(Ration(uuid = "actuelle", idConsult = "c", name = "Actuelle", actual = true,
                 alimentMutableList = mutableListOf(AlimentRation(uuid = "a1", refAlimUnif = "croq", quantite = 100.0, aliment = croq))))
@@ -160,123 +158,119 @@ class PlanEvolutifInteractionTest {
         return c
     }
 
-    private fun etapes() = vm.selectedConsultation.value!!.let { PlanEvolutif.etapesTriees(it) }
+    private fun consultation() = vm.selectedConsultation.value!!
+    private fun ration(uuid: String) = consultation().rations.first { it.uuid == uuid }
+    private fun etapes() = consultation().etapesEvolutives.sortedBy { it.poids ?: 0.0 }
     private fun assertProche(attendu: Double, obtenu: Double?, msg: String) =
         assertTrue(obtenu != null && kotlin.math.abs(attendu - obtenu) < 1e-6, "$msg : attendu $attendu, obtenu $obtenu")
 
     @Test
-    fun standardConsultation_unchanged() = run {
-        consultationEnBase(evolutive = false)
+    fun rationSansPlan_inchangee() = run {
+        consultationEnBase(idealWeight = 6.0)
         assertEquals("actuelle", vm.selectedRation.value?.uuid)
-        assertProche(6.0, vm.poidsEffectif.value, "poids idéal prioritaire en standard")
-        assertProche(bee(6.0, 25.0), vm.besoinEnergetiqueStandard.value, "BEE standard (AW injecté sous son nom d'équation)")
+        assertProche(6.0, vm.poidsEffectif.value, "poids idéal prioritaire hors plan")
+        assertProche(bee(6.0, 25.0), vm.besoinEnergetiqueStandard.value, "BEE (AW injecté sous son nom d'équation)")
+        assertEquals(TypeConsultation.STANDARD, consultation().typeConsultation)
     }
 
     @Test
-    fun planLifecycle_endToEnd() = run {
+    fun planSousUneRation_deBoutEnBout() = run {
         consultationEnBase()
-        // 1. Création du plan depuis la ration actuelle : étape au poids réel, sélectionnée
-        vm.creerPlanEvolutif(vm.selectedConsultation.value!!.rations.first()); idle()
-        val reel = etapes().single()
-        assertNull(reel.poids)
-        assertEquals(PlanEvolutif.nomAutomatique(null, emptyList()), reel.name)
-        assertEquals(reel.uuid, vm.selectedRation.value?.uuid)
-        assertProche(5.0, vm.poidsEffectif.value, "étape au poids réel")
-        assertProche(bee(5.0, 25.0), vm.besoinEnergetiqueStandard.value, "BEE étape réelle")
-
-        // 2. Ajout d'une étape à 8 kg : copiée, sélectionnée, besoins recalculés
-        vm.ajouterEtape(8.0); idle()
-        assertEquals(listOf(null, 8.0), etapes().map { it.poids })
-        val e8 = etapes()[1]
-        assertEquals(e8.uuid, vm.selectedRation.value?.uuid)
+        // 1. Première étape ajoutée sous la ration : le plan existe, la consultation devient évolutive
+        vm.ajouterEtape(ration("actuelle"), 8.0, emptyList()); idle()
+        val e8 = etapes().single()
+        assertEquals("actuelle", e8.refRationParente)
+        assertEquals(PlanEvolutif.nomAutomatique(8.0, emptyList()), e8.name)
         assertEquals(listOf(100.0), e8.alimentMutableList.map { it.quantite })
+        assertEquals(e8.uuid, vm.selectedRation.value?.uuid)
+        assertEquals(TypeConsultation.EVOLUTIVE, consultation().typeConsultation)
         assertProche(8.0, vm.poidsEffectif.value, "étape 8 kg")
         assertProche(bee(8.0, 25.0), vm.besoinEnergetiqueStandard.value, "BEE 8 kg")
 
-        // 3. Poids et variable propres à l'étape (AW=30 prioritaire sur la consultation)
-        vm.mettreAJourEtape(e8, 10.0, listOf(SupplementalvariableP(VariableKind.AdultWeight, 30.0))); idle()
-        val e10 = vm.selectedConsultation.value!!.rations.first { it.uuid == e8.uuid }
-        assertEquals(PlanEvolutif.nomAutomatique(10.0, listOf(SupplementalvariableP(VariableKind.AdultWeight, 30.0))), e10.name)
+        // 2. Retour sur la ration parente : poids de la consultation
+        vm.selectRation(ration("actuelle")); idle()
+        assertProche(5.0, vm.poidsEffectif.value, "ration parente")
+        assertProche(bee(5.0, 25.0), vm.besoinEnergetiqueStandard.value, "BEE ration parente")
+
+        // 3. Édition de l'étape : poids + variable ; le nom fixe suit
+        vm.selectRation(ration(e8.uuid)); idle()
+        val aw30 = listOf(SupplementalvariableP(VariableKind.AdultWeight, 30.0))
+        vm.mettreAJourEtape(ration(e8.uuid), 10.0, aw30); idle()
+        assertEquals(PlanEvolutif.nomAutomatique(10.0, aw30), ration(e8.uuid).name)
         assertProche(10.0, vm.poidsEffectif.value, "poids modifié")
         assertProche(bee(10.0, 30.0), vm.besoinEnergetiqueStandard.value, "BEE avec AW de l'étape")
 
-        // 4. Retour sur l'étape réelle : poids réel et AW de la consultation
-        vm.selectRation(reel); idle()
-        assertProche(bee(5.0, 25.0), vm.besoinEnergetiqueStandard.value, "BEE étape réelle après retour")
-
-        // 5. Persistance : relecture depuis le dépôt
+        // 4. Persistance
         val relue = repo.getConsultationById("c")!!
         val e10Relue = relue.rations.first { it.uuid == e8.uuid }
         assertEquals(10.0, e10Relue.poids)
-        assertEquals(listOf(SupplementalvariableP(VariableKind.AdultWeight, 30.0)), e10Relue.suppVarp)
+        assertEquals("actuelle", e10Relue.refRationParente)
+        assertEquals(aw30, e10Relue.suppVarp)
         assertEquals(TypeConsultation.EVOLUTIVE, relue.typeConsultation)
 
-        // 6. Bilans par étape
+        // 5. Deuxième étape ; bilans de toutes les rations du plan
+        vm.ajouterEtape(ration("actuelle"), 3.0, emptyList()); idle()
+        val e3 = etapes().first()
+        assertEquals(listOf(e3.uuid, "actuelle", e8.uuid), PlanEvolutif.planTrie(consultation(), ration("actuelle")).map { it.uuid })
         val bilans = vm.bilansEtapes.value
-        assertEquals(2, bilans.size)
-        assertProche(bee(10.0, 30.0), bilans[e8.uuid]?.besoinTotal, "bilan étape 10 kg")
-        assertProche(bee(5.0, 25.0), bilans[reel.uuid]?.besoinTotal, "bilan étape réelle")
+        assertEquals(setOf("actuelle", e3.uuid, e8.uuid), bilans.keys)
+        assertProche(bee(10.0, 30.0), bilans[e8.uuid]?.besoinTotal, "bilan 10 kg")
+        assertProche(bee(3.0, 25.0), bilans[e3.uuid]?.besoinTotal, "bilan 3 kg")
+        assertProche(bee(5.0, 25.0), bilans["actuelle"]?.besoinTotal, "bilan ration parente")
 
-        // 7. Propagation des aliments : l'huile ajoutée à l'étape réelle part à 0 g vers les autres
-        val reelAvecHuile = vm.selectedConsultation.value!!.rations.first { it.uuid == reel.uuid }.let {
+        // 6. Propagation depuis la ration parente
+        val parentAvecHuile = ration("actuelle").let {
             it.copy(alimentMutableList = (it.alimentMutableList + AlimentRation(uuid = "h1", refAlimUnif = "huile", quantite = 5.0, aliment = huile)).toMutableList())
         }
-        vm.updateRationInConsultation(reelAvecHuile); idle()
-        assertEquals(1, vm.propagerAlimentsEtape(reelAvecHuile)); idle()
+        vm.updateRationInConsultation(parentAvecHuile); idle()
+        assertEquals(2, vm.propagerAlimentsEtape(ration("actuelle"))); idle()
         assertEquals(0.0, repo.getConsultationById("c")!!.rations.first { it.uuid == e8.uuid }
             .alimentMutableList.first { it.refAlimUnif == "huile" }.quantite)
 
-        // 8. Éditions rapides dans la synthèse, sans attendre : aucune ne doit être perdue
-        val cible = vm.selectedConsultation.value!!.rations.first { it.uuid == e8.uuid }
-        vm.mettreAJourQuantiteEtape(cible, "croq", 150.0)
-        vm.mettreAJourQuantiteEtape(cible, "huile", 7.0)
-        vm.mettreAJourQuantiteEtape(vm.selectedConsultation.value!!.rations.first { it.uuid == reel.uuid }, "croq", 90.0)
+        // 7. Rafale d'éditions depuis la synthèse (sans attendre)
+        vm.mettreAJourQuantiteEtape(ration(e8.uuid), "croq", 150.0)
+        vm.mettreAJourQuantiteEtape(ration(e8.uuid), "huile", 7.0)
+        vm.mettreAJourQuantiteEtape(ration("actuelle"), "croq", 90.0)
         idle()
         val apresRafale = repo.getConsultationById("c")!!
         assertEquals(mapOf<String?, Double>("croq" to 150.0, "huile" to 7.0),
             apresRafale.rations.first { it.uuid == e8.uuid }.alimentMutableList.associate { it.refAlimUnif to it.quantite })
-        assertEquals(90.0, apresRafale.rations.first { it.uuid == reel.uuid }.alimentMutableList.first { it.refAlimUnif == "croq" }.quantite)
-        assertEquals(apresRafale.rations.map { it.alimentMutableList.map { a -> a.quantite } },
-            vm.selectedConsultation.value!!.rations.map { it.alimentMutableList.map { a -> a.quantite } }, "mémoire = base")
+        assertEquals(90.0, apresRafale.rations.first { it.uuid == "actuelle" }.alimentMutableList.first { it.refAlimUnif == "croq" }.quantite)
 
-        // 9. Poids de l'étape et poids réel modifiés ensemble (résumé métabolique) : un seul enregistrement
-        vm.selectRation(vm.selectedConsultation.value!!.rations.first { it.uuid == e8.uuid }); idle()
-        vm.mettreAJourEtape(vm.selectedConsultation.value!!.rations.first { it.uuid == e8.uuid }, 12.0,
-            listOf(SupplementalvariableP(VariableKind.AdultWeight, 30.0)), poidsReel = 6.0); idle()
+        // 8. Poids d'étape et poids réel ensemble (résumé métabolique) : un seul enregistrement
+        vm.selectRation(ration(e8.uuid)); idle()
+        vm.mettreAJourEtape(ration(e8.uuid), 12.0, aw30, poidsReel = 6.0); idle()
         val apresPoids = repo.getConsultationById("c")!!
         assertEquals(6.0, apresPoids.weight)
         assertEquals(12.0, apresPoids.rations.first { it.uuid == e8.uuid }.poids)
         assertProche(bee(12.0, 30.0), vm.besoinEnergetiqueStandard.value, "BEE après double modification")
-        assertProche(bee(6.0, 25.0), vm.bilansEtapes.value[reel.uuid]?.besoinTotal, "l'étape réelle suit le nouveau poids réel")
+        assertProche(bee(6.0, 25.0), vm.bilansEtapes.value["actuelle"]?.besoinTotal, "la ration parente suit le poids réel")
 
-        // 10. Suppression : l'étape réelle est protégée, les autres non (variables supprimées en cascade)
-        assertFalse(vm.supprimerEtape(vm.selectedConsultation.value!!.rations.first { it.uuid == reel.uuid }))
-        vm.removeRationFromConsultation(vm.selectedConsultation.value!!.rations.first { it.uuid == reel.uuid }); idle()
-        assertTrue(repo.getConsultationById("c")!!.rations.any { it.uuid == reel.uuid }, "suppression directe refusée aussi")
-        assertTrue(vm.supprimerEtape(vm.selectedConsultation.value!!.rations.first { it.uuid == e8.uuid })); idle()
-        assertEquals(listOf(reel.uuid), repo.getConsultationById("c")!!.etapesEvolutives.map { it.uuid })
-        assertTrue(dao.rationVars.none { it.idRation == e8.uuid })
-        assertEquals(setOf(reel.uuid), vm.bilansEtapes.value.keys)
+        // 9. Groupes d'analyse : les étapes en sont exclues
+        assertEquals(listOf("actuelle"), RationAggregator.rationsDuGroupe(consultation(), RationAnalysisScope.GROUPE_ACTUELLES).map { it.uuid })
+        assertEquals(emptyList<String>(), RationAggregator.rationsDuGroupe(consultation(), RationAnalysisScope.GROUPE_PROPOSEES).map { it.uuid })
 
-        // 11. La ration hors plan reste intacte et hors des groupes d'analyse
-        val finale = vm.selectedConsultation.value!!
-        assertEquals(listOf("actuelle"), PlanEvolutif.rationsHorsPlan(finale).map { it.uuid })
-        assertEquals(listOf("actuelle"), RationAggregator.rationsDuGroupe(finale, RationAnalysisScope.GROUPE_ACTUELLES).map { it.uuid })
+        // 10. Suppression d'une étape (variables supprimées en cascade), puis de la ration parente
+        vm.removeRationFromConsultation(ration(e3.uuid)); idle()
+        assertEquals(listOf(e8.uuid), repo.getConsultationById("c")!!.etapesEvolutives.map { it.uuid })
+        vm.removeRationFromConsultation(ration("actuelle")); idle()
+        assertTrue(repo.getConsultationById("c")!!.rations.isEmpty(), "le plan part avec sa ration")
+        assertTrue(dao.rationVars.isEmpty())
+        assertTrue(vm.bilansEtapes.value.isEmpty())
     }
 
     /** Rafale d'éditions avec E/S parallèles et latence : l'état final doit contenir toutes les éditions. */
     @Test
     fun rafaleEditions_ioParallele_aucunePerte() = run(parallele = true) {
         consultationEnBase()
-        vm.creerPlanEvolutif(vm.selectedConsultation.value!!.rations.first()); idle()
-        vm.ajouterEtape(8.0); idle()
-        vm.ajouterEtape(12.0); idle()
+        vm.ajouterEtape(ration("actuelle"), 8.0, emptyList()); idle()
+        vm.ajouterEtape(ration("actuelle"), 12.0, emptyList()); idle()
         dao.latence = true
         val attendu = mutableMapOf<String, Double>()
         repeat(6) { tour ->
-            PlanEvolutif.etapesTriees(vm.selectedConsultation.value!!).forEach { e ->
+            PlanEvolutif.planTrie(consultation(), ration("actuelle")).forEach { e ->
                 val q = 100.0 + tour * 10 + (e.poids ?: 0.0)
-                vm.mettreAJourQuantiteEtape(vm.selectedConsultation.value!!.rations.first { it.uuid == e.uuid }, "croq", q)
+                vm.mettreAJourQuantiteEtape(ration(e.uuid), "croq", q)
                 attendu[e.uuid] = q
                 yield()
             }
@@ -284,29 +278,20 @@ class PlanEvolutifInteractionTest {
         idle()
         dao.latence = false
         val base = repo.getConsultationById("c")!!
-        assertEquals(attendu, base.etapesEvolutives.associate { it.uuid to it.alimentMutableList.single().quantite }, "base")
-        assertEquals(attendu, vm.selectedConsultation.value!!.etapesEvolutives.associate { it.uuid to it.alimentMutableList.single().quantite }, "mémoire")
-        assertEquals(4, base.rations.size)
+        assertEquals(attendu, base.rations.associate { it.uuid to it.alimentMutableList.single().quantite }, "base")
+        assertEquals(attendu, consultation().rations.associate { it.uuid to it.alimentMutableList.single().quantite }, "mémoire")
     }
 
     @Test
-    fun prescription_followsPlanSelection() = run {
+    fun ordonnance_rationAvecPlan() = run {
         consultationEnBase()
-        vm.creerPlanEvolutif(vm.selectedConsultation.value!!.rations.first()); idle()
-        vm.ajouterEtape(8.0); idle()
-        val c = vm.selectedConsultation.value!!
-        val sansPlan = PlanEvolutif.selectionAvecPlan(c, setOf("actuelle"), inclure = false)
-        assertFalse(PlanEvolutif.planSelectionne(c, sansPlan))
-        val avecPlan = PlanEvolutif.selectionAvecPlan(c, sansPlan, inclure = true)
-        assertTrue(PlanEvolutif.planSelectionne(c, avecPlan))
-        assertEquals(c.etapesEvolutives.map { it.uuid }.toSet() + "actuelle", avecPlan)
-
-        suspend fun html(selection: Set<String>) = fr.vetbrain.vetnutri_mp.Export.HtmlDocumentBuilder.buildHtml(
+        vm.ajouterEtape(ration("actuelle"), 8.0, emptyList()); idle()
+        val c = consultation()
+        suspend fun html(selection: List<Ration>) = fr.vetbrain.vetnutri_mp.Export.HtmlDocumentBuilder.buildHtml(
             fr.vetbrain.vetnutri_mp.Export.DocumentType.PRESCRIPTION,
             fr.vetbrain.vetnutri_mp.Export.ExportData(animal = null, ration = null, reference = null,
-                rations = c.rations.filter { it.uuid in selection }, consultation = c))
-        assertTrue(html(avecPlan).contains(translate(LocalizationKeys.Evolutive.PRESCRIPTION_TITLE)))
-        assertFalse(html(sansPlan).contains(translate(LocalizationKeys.Evolutive.PRESCRIPTION_TITLE)))
-        assertTrue(html(sansPlan).contains("Actuelle"))
+                rations = selection, consultation = c))
+        assertTrue(html(c.rations).contains(translate(LocalizationKeys.Evolutive.PRESCRIPTION_TITLE)))
+        assertFalse(html(c.etapesEvolutives).contains(translate(LocalizationKeys.Evolutive.PRESCRIPTION_TITLE)))
     }
 }

@@ -28,12 +28,13 @@ class ApiModelsConsultationEvolutiveTest {
                     suppVarp = mutableListOf(SupplementalvariableP(VariableKind.AdultWeight, 25.0)),
                     rations =
                             mutableListOf(
-                                    Ration(uuid = "r-reel", idConsult = "c1", etapeEvolutive = true),
+                                    Ration(uuid = "r-reel", idConsult = "c1", etapeEvolutive = true, refRationParente = "r-std"),
                                     Ration(
                                             uuid = "r-8",
                                             idConsult = "c1",
                                             etapeEvolutive = true,
                                             poids = 8.0,
+                                            refRationParente = "r-std",
                                             suppVarp =
                                                     mutableListOf(
                                                             SupplementalvariableP(
@@ -60,6 +61,7 @@ class ApiModelsConsultationEvolutiveTest {
 
         val etape8 = restored.rations.first { it.uuid == "r-8" }
         assertEquals(8.0, etape8.poids)
+        assertEquals("r-std", etape8.refRationParente)
         assertEquals(
                 listOf(SupplementalvariableP(VariableKind.WeekGestation, 6.0)),
                 etape8.suppVarp
@@ -93,6 +95,7 @@ class ApiModelsConsultationEvolutiveTest {
         assertFalse(restored.isEvolutive)
         val ration = restored.rations.single()
         assertFalse(ration.etapeEvolutive)
+        assertNull(ration.refRationParente)
         assertNull(ration.poids)
         assertTrue(ration.suppVarp.isEmpty())
     }

@@ -302,7 +302,8 @@ object Mappers {
                                 recette = this.recette ?: false,
                                 description = this.description ?: "",
                                 etapeEvolutive = this.etapeEvolutive,
-                                poids = this.poids
+                                poids = this.poids,
+                                refRationParente = this.refRationParente
                         )
                         .apply {
                                 if (includeRelations) {
@@ -342,6 +343,7 @@ object Mappers {
                         alimentMutableList = aliments.map { it.toData() }.toMutableList(),
                         etapeEvolutive = this.etapeEvolutive,
                         poids = this.poids,
+                        refRationParente = this.refRationParente,
                         suppVarp = suppVars.map { it.toData() }.toMutableList()
                 )
         }

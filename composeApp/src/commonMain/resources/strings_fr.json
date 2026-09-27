@@ -1930,6 +1930,12 @@
         "evolutive.prescriptionHint": "Quantités journalières selon l'étape.",
         "evolutive.stepWeightShort": "Poids de l'étape",
         "evolutive.autoStepName": "Étape %1$s",
-        "evolutive.realWeightName": "poids réel"
+        "evolutive.realWeightName": "poids réel",
+        "evolutive.summaryTitleFormat": "Synthèse du plan — %1$s",
+        "evolutive.planSummary": "Synthèse du plan",
+        "evolutive.addStepTo": "Ajouter une étape au plan",
+        "evolutive.newStepTitleFormat": "Nouvelle étape — %1$s",
+        "evolutive.editStepTitle": "Étape du plan",
+        "evolutive.stepSubtitle": "Étape du plan évolutif"
     }
 }

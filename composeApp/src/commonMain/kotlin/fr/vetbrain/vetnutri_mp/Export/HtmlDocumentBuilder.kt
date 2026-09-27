@@ -733,27 +733,32 @@ object HtmlDocumentBuilder {
             equationRepository: EquationRepository? = null,
             isLandscape: Boolean = false
     ): String {
-        // Consultation évolutive : le plan est exporté en un seul tableau (ingrédients × étapes)
-        // Le plan n'est exporté que s'il fait partie de la sélection (au moins une étape choisie)
-        val etapesPlan =
-                consultation
-                        ?.takeIf { c -> rations.any { VariablesEtape.estEtape(c, it) } }
-                        ?.let { PlanEvolutif.etapesTriees(it) }
-                        ?: emptyList()
-        val rationsHorsPlan =
-                rations.filterNot { ration -> VariablesEtape.estEtape(consultation, ration) }
-        val blocPlan =
-                if (consultation != null && etapesPlan.isNotEmpty())
-                        buildPlanEvolutifBlock(consultation, reference, equationRepository)
-                else ""
+        // Seules les rations principales sélectionnées sont exportées ; celle qui porte un plan
+        // évolutif l'est sous forme de tableau ingrédients × étapes (elle-même et ses étapes).
+        val principales = rations.filter { !VariablesEtape.estEtape(consultation, it) }
+        fun portePlan(ration: Ration): Boolean =
+                consultation != null && PlanEvolutif.aUnPlan(consultation, ration)
+        val colonnesMax =
+                principales.filter { portePlan(it) }.maxOfOrNull {
+                    PlanEvolutif.planTrie(consultation!!, it).size
+                } ?: 0
+        // buildString est inline : l'appel suspendu y est autorisé
+        val blocsRations = buildString {
+            for (ration in principales) {
+                append(
+                        if (portePlan(ration))
+                                buildPlanEvolutifBlock(consultation!!, ration, reference, equationRepository)
+                        else buildRationsBlocks(listOf(ration))
+                )
+            }
+        }
         return buildHeader(
                         if (title.isNotBlank()) title else "Ordonnance nutritionnelle",
-                        isLandscape || etapesPlan.size > 5
+                        isLandscape || colonnesMax > 5
                 ) +
                 buildPractitionerHeader(practitioner) +
                 buildAnimalBlock(animal) +
-                blocPlan +
-                buildRationsBlocks(rationsHorsPlan) +
+                blocsRations +
                 buildConseilsBlock(conseils) +
                 buildAdditionalTextBlock(additionalText) +
                 buildHtmlSectionsBlock(htmlSections) +
@@ -766,22 +771,23 @@ object HtmlDocumentBuilder {
      */
     private suspend fun buildPlanEvolutifBlock(
             consultation: ConsultationEv,
+            parent: Ration,
             reference: ReferenceEv?,
             equationRepository: EquationRepository?
     ): String {
-        val etapes = PlanEvolutif.etapesTriees(consultation)
-        val distinctives = PlanEvolutif.variablesDistinctives(consultation)
+        val etapes = PlanEvolutif.planTrie(consultation, parent)
+        val distinctives = PlanEvolutif.variablesDistinctives(consultation, parent)
         val entetes =
                 etapes.joinToString("") { etape ->
                     val libelle = PlanEvolutif.libelleEtape(consultation, etape, distinctives)
                     val entete =
-                            if (PlanEvolutif.estPoidsReel(etape))
+                            if (PlanEvolutif.estRationParente(etape))
                                     translate(Evolutive.STEP_LABEL_REAL, libelle)
                             else libelle
                     "<th class='right'>${escapeXml(entete)}</th>"
                 }
         val lignes =
-                PlanEvolutif.matriceSynthese(consultation).joinToString("\n") { ligne ->
+                PlanEvolutif.matriceSynthese(consultation, parent).joinToString("\n") { ligne ->
                     val nom = ligne.aliment?.let { formatAlimentDisplayName(it) } ?: ligne.nom
                     val cellules =
                             ligne.quantites.joinToString("") { quantite ->
@@ -821,7 +827,7 @@ object HtmlDocumentBuilder {
         }
         return """
             <div class='section'>
-                <h2>${escapeXml(translate(Evolutive.PRESCRIPTION_TITLE))}</h2>
+                <h2>${escapeXml(translate(Evolutive.PRESCRIPTION_TITLE))}${if (parent.name.isNotBlank()) " — " + escapeXml(parent.name) else ""}</h2>
                 <div class='small muted'>${escapeXml(translate(Evolutive.PRESCRIPTION_HINT))}</div>
                 <table>
                     <thead><tr><th>${escapeXml(translate(Evolutive.INGREDIENT))}</th>${entetes}</tr></thead>

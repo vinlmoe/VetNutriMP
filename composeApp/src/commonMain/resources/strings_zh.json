@@ -1927,6 +1927,12 @@
         "evolutive.prescriptionHint": "按阶段的每日用量。",
         "evolutive.stepWeightShort": "阶段体重",
         "evolutive.autoStepName": "阶段 %1$s",
-        "evolutive.realWeightName": "实际体重"
+        "evolutive.realWeightName": "实际体重",
+        "evolutive.summaryTitleFormat": "计划汇总 — %1$s",
+        "evolutive.planSummary": "计划汇总",
+        "evolutive.addStepTo": "添加计划阶段",
+        "evolutive.newStepTitleFormat": "新阶段 — %1$s",
+        "evolutive.editStepTitle": "计划阶段",
+        "evolutive.stepSubtitle": "阶段计划中的阶段"
     }
 }

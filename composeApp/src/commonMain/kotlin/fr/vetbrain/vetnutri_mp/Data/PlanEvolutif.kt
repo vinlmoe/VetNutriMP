@@ -11,22 +11,45 @@ data class LigneSynthese(
         val refAlimUnif: String,
         val nom: String,
         val aliment: AlimentEv?,
-        /** Masse (g/j) par étape, dans l'ordre de [PlanEvolutif.etapesTriees] ; null = absent. */
+        /** Masse (g/j) par ration du plan, dans l'ordre de [PlanEvolutif.planTrie] ; null = absent. */
         val quantites: List<Double?>
 )
 
 /**
- * Logique pure du plan évolutif d'une consultation (une ration par étape). Ne touche ni la base
- * ni l'état : les fonctions renvoient de nouvelles rations/listes à persister par le ViewModel.
+ * Logique pure des plans évolutifs. Un plan est rangé sous une ration existante (la ration
+ * parente, calculée au poids de la consultation) : ses étapes sont des rations enfants, chacune
+ * avec son propre poids et ses propres variables d'énergie, et un nom fixe qui en découle.
+ * Ne touche ni la base ni l'état : les fonctions renvoient de nouvelles rations à persister.
  */
 object PlanEvolutif {
 
-    /** Variables dont la valeur diffère d'une étape à l'autre (servent au tri et aux libellés). */
-    fun variablesDistinctives(consultation: ConsultationEv): List<VariableKind> {
-        val etapes = consultation.etapesEvolutives
-        if (etapes.size < 2) return emptyList()
+    /** Étapes rangées sous [parent] (ordre de stockage). */
+    fun etapesDe(consultation: ConsultationEv, parent: Ration): List<Ration> =
+            consultation.rations.filter { it.refRationParente == parent.uuid }
+
+    /** Vrai si la ration porte un plan (au moins une étape rangée dessous). */
+    fun aUnPlan(consultation: ConsultationEv, ration: Ration): Boolean =
+            consultation.rations.any { it.refRationParente == ration.uuid }
+
+    /** Rations principales (hors étapes), celles qu'on liste et qu'on sélectionne. */
+    fun rationsPrincipales(consultation: ConsultationEv): List<Ration> =
+            consultation.rations.filter { it.refRationParente == null }
+
+    /** Ration parente d'une étape, ou la ration elle-même si c'est une ration principale. */
+    fun parentDe(consultation: ConsultationEv, ration: Ration): Ration =
+            ration.refRationParente?.let { id -> consultation.rations.firstOrNull { it.uuid == id } }
+                    ?: ration
+
+    /** Rations du plan : la ration parente et ses étapes (ordre de stockage). */
+    fun membresDuPlan(consultation: ConsultationEv, parent: Ration): List<Ration> =
+            listOf(parent) + etapesDe(consultation, parent)
+
+    /** Variables dont la valeur diffère d'une ration du plan à l'autre (tri et libellés). */
+    fun variablesDistinctives(consultation: ConsultationEv, parent: Ration): List<VariableKind> {
+        val membres = membresDuPlan(consultation, parent)
+        if (membres.size < 2) return emptyList()
         val valeursParEtape =
-                etapes.map { etape ->
+                membres.map { etape ->
                     VariablesEtape.variablesFusionnees(consultation, etape)
                             .mapNotNull { sv -> sv.variable?.let { it to sv.varue } }
                             .toMap()
@@ -38,9 +61,12 @@ object PlanEvolutif {
                 .sortedBy { it.label }
     }
 
-    /** Étapes triées par poids croissant, puis par valeurs des variables distinctives. */
-    fun etapesTriees(consultation: ConsultationEv): List<Ration> {
-        val distinctives = variablesDistinctives(consultation)
+    /**
+     * Ration parente et étapes, triées par poids croissant puis par variables distinctives : ce
+     * sont les colonnes de la synthèse et de l'ordonnance.
+     */
+    fun planTrie(consultation: ConsultationEv, parent: Ration): List<Ration> {
+        val distinctives = variablesDistinctives(consultation, parent)
         val cle: (Ration) -> List<Double> = { etape ->
             val vars =
                     VariablesEtape.variablesFusionnees(consultation, etape).associate {
@@ -49,20 +75,23 @@ object PlanEvolutif {
             listOf(VariablesEtape.poidsEtape(consultation, etape) ?: 0.0) +
                     distinctives.map { vars[it] ?: 0.0 }
         }
-        return consultation.etapesEvolutives.sortedWith(
-                Comparator { a, b ->
-                    val ka = cle(a)
-                    val kb = cle(b)
-                    ka.zip(kb).map { (x, y) -> x.compareTo(y) }.firstOrNull { it != 0 } ?: 0
-                }
-        )
+        return membresDuPlan(consultation, parent)
+                .sortedWith(
+                        Comparator { a, b ->
+                            val ka = cle(a)
+                            val kb = cle(b)
+                            ka.zip(kb).map { (x, y) -> x.compareTo(y) }.firstOrNull { it != 0 }
+                                    ?: 0
+                        }
+                )
     }
 
-    /** Libellé d'étape : « 8 kg · D 12 » (sans mention « actuel », ajoutée par l'appelant). */
+    /** Libellé de colonne : « 8.0 kg · D 12.0 » (mention « actuel » ajoutée par l'appelant). */
     fun libelleEtape(
             consultation: ConsultationEv,
             etape: Ration,
-            distinctives: List<VariableKind> = variablesDistinctives(consultation)
+            distinctives: List<VariableKind> =
+                    variablesDistinctives(consultation, parentDe(consultation, etape))
     ): String {
         val poids = VariablesEtape.poidsEtape(consultation, etape)
         val base = poids?.let { "${TextUtils.formatDecimal(it, 1)} kg" } ?: "? kg"
@@ -78,16 +107,12 @@ object PlanEvolutif {
         return (listOf(base) + suffixe).joinToString(" · ")
     }
 
-    /** Vrai si l'étape est au poids réel de la consultation. */
-    fun estPoidsReel(etape: Ration): Boolean = etape.poids == null
-
-    /** L'étape au poids réel doit toujours exister : la dernière ne peut pas être supprimée. */
-    fun peutSupprimer(consultation: ConsultationEv, etape: Ration): Boolean =
-            !estPoidsReel(etape) || consultation.etapesEvolutives.count { estPoidsReel(it) } > 1
+    /** Vrai pour la ration parente du plan (calculée au poids de la consultation). */
+    fun estRationParente(etape: Ration): Boolean = etape.refRationParente == null
 
     /**
-     * Nom automatique d'une étape d'après ses propres données, dans la langue de l'interface :
-     * « Étape 8.0 kg · D 12.0 », ou « Étape poids réel » quand l'étape suit le poids réel.
+     * Nom fixe d'une étape, déduit de ses propres données et traduit : « Étape 8.0 kg · AW 30.0 »,
+     * ou « Étape poids réel » quand l'étape n'a pas de poids propre.
      */
     fun nomAutomatique(poids: Double?, suppVarp: List<SupplementalvariableP>): String {
         val base =
@@ -102,56 +127,49 @@ object PlanEvolutif {
     }
 
     /**
-     * Vrai si le nom de l'étape est vide ou est encore son nom automatique (non renommée à la
-     * main) : il peut alors suivre le nouveau poids et les nouvelles variables.
+     * Nouvelle étape sous [parent] : copie de ses aliments (nouveaux UUID), poids et variables
+     * propres, nom fixe.
      */
-    fun nomEstAutomatique(etape: Ration): Boolean =
-            etape.name.isBlank() || etape.name == nomAutomatique(etape.poids, etape.suppVarp)
-
-    /** Copie d'une ration en étape (nouveaux UUID pour la ration et ses aliments). */
-    fun copierEnEtape(
-            modele: Ration?,
-            idConsult: String,
+    fun nouvelleEtape(
+            parent: Ration,
             poids: Double?,
-            suppVarp: List<SupplementalvariableP> = modele?.suppVarp ?: emptyList()
+            suppVarp: List<SupplementalvariableP>
     ): Ration {
         val uuid = genUUID()
         return Ration(
                 uuid = uuid,
-                idConsult = idConsult,
+                idConsult = parent.idConsult,
                 name = nomAutomatique(poids, suppVarp),
-                coef = modele?.coef ?: 1.0,
+                coef = parent.coef,
                 actual = false,
-                number = modele?.number ?: 1,
-                espece = modele?.espece,
+                number = parent.number,
+                espece = parent.espece,
                 recette = false,
-                description = modele?.description ?: "",
+                description = "",
                 alimentMutableList =
-                        modele?.alimentMutableList
-                                ?.map { it.copy(uuid = genUUID(), refRation = uuid) }
-                                ?.toMutableList()
-                                ?: mutableListOf(),
+                        parent.alimentMutableList
+                                .map { it.copy(uuid = genUUID(), refRation = uuid) }
+                                .toMutableList(),
                 etapeEvolutive = true,
                 poids = poids,
+                refRationParente = parent.uuid,
                 suppVarp = suppVarp.toMutableList()
         )
     }
 
-    /** Première étape du plan : au poids réel, copiée depuis la ration de départ (ou vide). */
-    fun creerPlan(consultation: ConsultationEv, rationDepart: Ration?): Ration =
-            copierEnEtape(rationDepart, consultation.uuid, poids = null, suppVarp = emptyList())
-
     /**
-     * Ajoute à chaque autre étape les aliments de [source] qui lui manquent, à 0 g.
+     * Ajoute aux autres rations du même plan (parente comprise) les aliments de [source] qui leur
+     * manquent, à 0 g.
      *
-     * @return les étapes mises à jour (toutes les rations de la consultation) et le nombre
-     * d'aliments ajoutés.
+     * @return toutes les rations de la consultation mises à jour et le nombre d'aliments ajoutés
      */
     fun propagerAliments(consultation: ConsultationEv, source: Ration): Pair<List<Ration>, Int> {
+        val parent = parentDe(consultation, source)
+        val membres = membresDuPlan(consultation, parent).map { it.uuid }.toSet()
         var ajouts = 0
         val rations =
                 consultation.rations.map { ration ->
-                    if (!ration.etapeEvolutive || ration.uuid == source.uuid) return@map ration
+                    if (ration.uuid !in membres || ration.uuid == source.uuid) return@map ration
                     val presents = ration.alimentMutableList.mapNotNull { it.refAlimUnif }.toSet()
                     val manquants =
                             source.alimentMutableList.filter {
@@ -176,9 +194,9 @@ object PlanEvolutif {
         return rations to ajouts
     }
 
-    /** Tableau ingrédients × étapes (étapes dans l'ordre de [etapesTriees]). */
-    fun matriceSynthese(consultation: ConsultationEv): List<LigneSynthese> {
-        val etapes = etapesTriees(consultation)
+    /** Tableau ingrédients × rations du plan (colonnes dans l'ordre de [planTrie]). */
+    fun matriceSynthese(consultation: ConsultationEv, parent: Ration): List<LigneSynthese> {
+        val etapes = planTrie(consultation, parent)
         val ordre = LinkedHashMap<String, AlimentRation>()
         etapes.forEach { etape ->
             etape.alimentMutableList.forEach { a ->
@@ -202,30 +220,11 @@ object PlanEvolutif {
         }
     }
 
-    /** Vrai si toutes les étapes du plan (au moins une) définissent la variable. */
+    /** Vrai si toutes les étapes de plan de la consultation (au moins une) définissent la variable. */
     fun variableDansToutesLesEtapes(consultation: ConsultationEv, variable: VariableKind): Boolean {
         val etapes = consultation.etapesEvolutives
-        return consultation.isEvolutive &&
-                etapes.isNotEmpty() &&
+        return etapes.isNotEmpty() &&
                 etapes.all { etape -> etape.suppVarp.any { it.variable == variable } }
-    }
-
-    /** Rations qui ne sont pas des étapes du plan (toutes, si la consultation n'est pas évolutive). */
-    fun rationsHorsPlan(consultation: ConsultationEv): List<Ration> =
-            consultation.rations.filterNot { VariablesEtape.estEtape(consultation, it) }
-
-    /** Ordonnance : le plan est inclus dès qu'une de ses étapes fait partie de la sélection. */
-    fun planSelectionne(consultation: ConsultationEv, selection: Set<String>): Boolean =
-            consultation.isEvolutive && consultation.etapesEvolutives.any { it.uuid in selection }
-
-    /** Ordonnance : (dé)sélectionne le plan d'un bloc, c'est-à-dire toutes ses étapes. */
-    fun selectionAvecPlan(
-            consultation: ConsultationEv,
-            selection: Set<String>,
-            inclure: Boolean
-    ): Set<String> {
-        val etapes = consultation.etapesEvolutives.map { it.uuid }.toSet()
-        return if (inclure) selection + etapes else selection - etapes
     }
 
     /** Remplace la masse d'un ingrédient dans une étape (première occurrence de l'aliment). */

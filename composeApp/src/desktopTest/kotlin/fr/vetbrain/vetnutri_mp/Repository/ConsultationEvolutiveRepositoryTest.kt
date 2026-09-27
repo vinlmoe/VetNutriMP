@@ -62,9 +62,9 @@ class ConsultationEvolutiveRepositoryTest {
         profilEvolutif = ProfilEvolutif.CROISSANCE,
         suppVarp = mutableListOf(SupplementalvariableP(VariableKind.AdultWeight, 25.0)),
         rations = mutableListOf(
-            Ration(uuid = "r-reel", idConsult = "c1", name = "Réel", etapeEvolutive = true),
+            Ration(uuid = "r-reel", idConsult = "c1", name = "Réel", etapeEvolutive = true, refRationParente = "r-std"),
             Ration(
-                uuid = "r-8", idConsult = "c1", name = "8 kg", etapeEvolutive = true, poids = 8.0,
+                uuid = "r-8", idConsult = "c1", name = "8 kg", etapeEvolutive = true, poids = 8.0, refRationParente = "r-std",
                 suppVarp = mutableListOf(
                     SupplementalvariableP(VariableKind.AdultWeight, 30.0),
                     SupplementalvariableP(VariableKind.D, 12.5)
@@ -91,6 +91,7 @@ class ConsultationEvolutiveRepositoryTest {
 
         val etape8 = reloaded.rations.first { it.uuid == "r-8" }
         assertEquals(8.0, etape8.poids)
+        assertEquals("r-std", etape8.refRationParente)
         assertEquals(
             setOf(
                 SupplementalvariableP(VariableKind.AdultWeight, 30.0),
