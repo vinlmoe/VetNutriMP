@@ -9,6 +9,8 @@ import kotlin.uuid.ExperimentalUuidApi
  * Ration alimentaire (liste d'aliments + méta).
  * - Stocke quantités, espèce, statut actuel/recette, description.
  * - Fournit accès nutriments, quantités totales et densité énergétique (sync/suspend).
+ * - Étape de plan évolutif : `poids` propre (null = poids réel de la consultation) et variables
+ *   d'énergie propres (`suppVarp`), prioritaires sur celles de la consultation.
  */
 @OptIn(ExperimentalUuidApi::class)
 data class Ration(
@@ -21,7 +23,10 @@ data class Ration(
         var espece: String? = null,
         var recette: Boolean = false,
         var description: String = "",
-        var alimentMutableList: MutableList<AlimentRation> = mutableListOf()
+        var alimentMutableList: MutableList<AlimentRation> = mutableListOf(),
+        var etapeEvolutive: Boolean = false,
+        var poids: Double? = null,
+        var suppVarp: MutableList<SupplementalvariableP> = mutableListOf()
 ) {
         fun getAlimentByUUID(uuiDalim: String): AlimentRation {
                 return alimentMutableList.last { al -> al.uuid == uuiDalim }

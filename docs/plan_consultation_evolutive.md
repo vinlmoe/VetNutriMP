@@ -21,7 +21,7 @@ portée), ainsi que toute évolution décrite par des variables d'équation.
 | Variables par étape | Variables des **équations d'énergie** de la référence, plus celles des équations **ENERCOMP** des références complémentaires chargées |
 | Ordonnance | Tableau : ingrédients en lignes, étapes en colonnes. **Pas d'interpolation** |
 
-## 1. Modèle de données (lot 1)
+## 1. Modèle de données (lot 1 — ✅ réalisé)
 
 ### Consultation
 - `ConsultationEv` / `ConsultationEntity` :
@@ -73,12 +73,13 @@ fun variablesEtape(c: ConsultationEv, r: Ration?): Map<String, Double>
     // + BW = poidsEtape(c, r)
 ```
 - En consultation évolutive, `idealWeight` ne doit **pas** remplacer le poids de l'étape.
-- **Point à corriger au passage** : les variables ne sont pas nommées de la même façon partout.
-  - `calculerPoidsMetabolique` et `calculerBesoinEnergetiqueStandard` injectent `varKind.variable`
-    (`adultWeight`), puis le traduisent avec `mapperVariablesEquation`.
-  - `EquationEvaluator.calculerEnergieAdditionnelle` injecte directement `varKind.label` (`AW`).
-  - `VariablesEtape` doit produire les deux formes en un seul endroit, puis tous les appels doivent passer
-    par lui.
+- **Nommage des variables** : le nom d'une variable est celui qui est **écrit dans l'équation**
+  (`VariableKind.label` : `AW`, `wG`, `wL`, `L`, `D`, `CW`...). Aujourd'hui,
+  `calculerPoidsMetabolique` et `calculerBesoinEnergetiqueStandard` injectent `varKind.variable`
+  (`adultWeight`) puis passent par une table de traduction (`mapperVariablesEquation`), alors que
+  `EquationEvaluator.calculerEnergieAdditionnelle` injecte directement `varKind.label`.
+  `variablesEtape` injectera uniquement les noms des équations, et la table de traduction sera
+  supprimée.
 
 ### 2.2 Variables éditables par étape
 - Déplacer `extraireVariablesRequises()` depuis `View/ConsultationFullScreenEditView.kt:2119` vers
