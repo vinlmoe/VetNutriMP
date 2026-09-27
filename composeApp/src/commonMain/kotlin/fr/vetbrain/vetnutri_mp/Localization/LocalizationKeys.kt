@@ -1277,6 +1277,7 @@ object LocalizationKeys {
         val MIN_NOT_COVERED_SECTION = "evolutive.minNotCoveredSection"
         val MAX_EXCEEDED_SECTION = "evolutive.maxExceededSection"
         val NONE_OUT_OF_RANGE = "evolutive.noneOutOfRange"
+        val BOUNDS_LEGEND = "evolutive.boundsLegend"
         val STEP_LABEL_REAL = "evolutive.stepLabelReal"
         val PRESCRIPTION_TITLE = "evolutive.prescriptionTitle"
         val PRESCRIPTION_HINT = "evolutive.prescriptionHint"

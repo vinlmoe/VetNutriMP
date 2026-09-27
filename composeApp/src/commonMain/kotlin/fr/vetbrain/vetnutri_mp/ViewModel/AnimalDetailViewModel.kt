@@ -1716,7 +1716,7 @@ class AnimalDetailViewModel(
 
     /**
      * Bilan d'une étape : poids utilisé, besoin total (K + complémentaire), apport énergétique, et
-     * apport en % des bornes MIN / MAX des références (par label de nutriment).
+     * apport en % des bornes basses (MIN/OPTIMIN) et hautes (MAX/OPTIMAX), par label de nutriment.
      */
     data class BilanEtape(
             val poids: Double?,
@@ -1864,7 +1864,7 @@ class AnimalDetailViewModel(
                                             beK + additionnelle
                                         }
                                     }
-                            // Nutriments : bornes MIN/MAX converties avec le BEE brut (comme
+                            // Nutriments : bornes converties avec le BEE brut (comme
                             // l'écran d'analyse et le PDF), nutriments sans donnée ignorés
                             val (couverturesMin, positionsMax) =
                                     reference?.let { ref ->

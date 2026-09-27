@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.LigneSynthese
+import fr.vetbrain.vetnutri_mp.Data.NiveauBorne
 import fr.vetbrain.vetnutri_mp.Data.PlanEvolutif
 import fr.vetbrain.vetnutri_mp.Data.PositionReference
 import fr.vetbrain.vetnutri_mp.Data.Ration
@@ -161,7 +162,7 @@ fun EtapeEditDialog(
 /**
  * Synthèse du plan rangé sous [parent] : ingrédients en lignes, rations du plan en colonnes
  * (triées par poids), masses modifiables, besoin, apport et couverture par colonne, puis
- * nutriments non couverts (% du minimum) et maximums dépassés (% du maximum).
+ * nutriments sous une borne basse et au-dessus d'une borne haute (% de la borne).
  */
 @Composable
 fun SynthesePlanDialog(
@@ -265,7 +266,6 @@ fun SynthesePlanDialog(
                             titre = translate(Evolutive.MIN_NOT_COVERED_SECTION),
                             etapes = etapes,
                             positions = { bilans[it.uuid]?.couverturesMin },
-                            horsNorme = { it < 100.0 },
                             largeurNom = largeurNom,
                             largeurCellule = largeurCellule
                     )
@@ -274,11 +274,15 @@ fun SynthesePlanDialog(
                             titre = translate(Evolutive.MAX_EXCEEDED_SECTION),
                             etapes = etapes,
                             positions = { bilans[it.uuid]?.positionsMax },
-                            horsNorme = { it > 100.0 },
                             largeurNom = largeurNom,
                             largeurCellule = largeurCellule
                     )
                 }
+                Text(
+                        text = translate(Evolutive.BOUNDS_LEGEND),
+                        style = MaterialTheme.typography.caption,
+                        modifier = Modifier.padding(top = AppSizes.paddingSmall)
+                )
                 Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -306,21 +310,20 @@ fun SynthesePlanDialog(
 
 /**
  * Section de la synthèse : une ligne par nutriment hors norme dans au moins une étape, avec
- * l'apport en % de la borne pour chaque étape (hors norme en rouge, violet si réf. maladie).
+ * l'apport en % de la borne retenue pour chaque étape, coloré selon la borne non respectée.
  */
 @Composable
 private fun SectionPositions(
         titre: String,
         etapes: List<Ration>,
         positions: (Ration) -> Map<String, PositionReference>?,
-        horsNorme: (Double) -> Boolean,
         largeurNom: Dp,
         largeurCellule: Dp
 ) {
     val parEtape = etapes.map { positions(it).orEmpty() }
     // Ordre des nutriments de l'analyse, dédoublonné sur l'ensemble des étapes
     val labels =
-            parEtape.flatMap { carte -> carte.filterValues { horsNorme(it.pourcentage) }.keys }
+            parEtape.flatMap { carte -> carte.filterValues { it.horsNorme }.keys }
                     .distinct()
 
     Divider(color = VetNutriColors.Primary.copy(alpha = 0.4f))
@@ -341,22 +344,23 @@ private fun SectionPositions(
                                 position?.let { "${TextUtils.formatDecimal(it.pourcentage, 0)} %" }
                                         ?: "—",
                         largeur = largeurCellule,
-                        gras = position != null && horsNorme(position.pourcentage),
+                        gras = position?.horsNorme == true,
                         couleur =
-                                when {
-                                    position == null || !horsNorme(position.pourcentage) ->
-                                            Color.Unspecified
-                                    position.maladie -> COULEUR_MALADIE
-                                    else -> VetNutriColors.Error
-                                }
+                                if (position?.horsNorme == true) couleurNiveau(position.niveau)
+                                else Color.Unspecified
                 )
             }
         }
     }
 }
 
-/** Couleur des bornes issues d'une référence maladie (comme l'écran d'analyse). */
-private val COULEUR_MALADIE = Color(0xFF9C27B0)
+/** Couleur d'une borne non respectée, comme l'écran d'analyse. */
+private fun couleurNiveau(niveau: NiveauBorne): Color =
+        when (niveau) {
+            NiveauBorne.MALADIE -> Color(0xFF9C27B0) // Violet : référence maladie
+            NiveauBorne.CRITIQUE -> VetNutriColors.Error // Rouge : MIN / MAX
+            NiveauBorne.OPTIMAL -> Color(0xFF2196F3) // Bleu : OPTIMIN / OPTIMAX
+        }
 
 @Composable
 private fun LigneBilan(
