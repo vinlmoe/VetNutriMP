@@ -1727,7 +1727,6 @@ class AnimalDetailViewModel(
     /**
      * Ajoute une étape au plan évolutif rangé sous [parent] (le plan est créé à la première
      * étape) : copie des aliments de la ration parente, poids et variables propres, nom fixe.
-     * La consultation passe en type évolutif si elle ne l'était pas.
      *
      * @param poids poids de l'étape ; null = poids réel de la consultation
      */
@@ -1735,16 +1734,7 @@ class AnimalDetailViewModel(
         val consultation = _selectedConsultation.value ?: return
         val racine = PlanEvolutif.parentDe(consultation, parent)
         val etape = PlanEvolutif.nouvelleEtape(racine, poids, suppVarp)
-        val majConsultation =
-                if (consultation.isEvolutive) consultation
-                else
-                        consultation.copy(
-                                typeConsultation = fr.vetbrain.vetnutri_mp.Enumer.TypeConsultation.EVOLUTIVE,
-                                profilEvolutif =
-                                        consultation.profilEvolutif
-                                                ?: fr.vetbrain.vetnutri_mp.Enumer.ProfilEvolutif.CROISSANCE
-                        )
-        enregistrerRationsPlan(majConsultation, consultation.rations + etape, selection = etape)
+        enregistrerRationsPlan(consultation, consultation.rations + etape, selection = etape)
     }
 
     /**

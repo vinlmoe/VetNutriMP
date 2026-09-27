@@ -11,8 +11,8 @@ import kotlinx.datetime.LocalDate
  * - Données cliniques (poids, BCS, coefficients K, observations).
  * - Rations associées et références nutritionnelles (générale + maladies).
  * - Fournit `effectiveWeight` (poids idéal prioritaire) avec cache simple.
- * - Consultation évolutive : un seul plan d'étapes (rations `etapeEvolutive`), chacune ayant son
- *   propre poids ; `weight` reste le seul poids réel de l'animal.
+ * - Un plan d'étapes peut être rangé sous une ration, chaque étape ayant son propre poids ;
+ *   `weight` reste le seul poids réel de l'animal.
  */
 data class ConsultationEv(
         var uuid: String = genUUID(),
@@ -56,7 +56,8 @@ data class ConsultationEv(
         var prescriptionSelectedConseilIds: MutableList<String> = mutableListOf(),
         var prescriptionLocalHtmlSections: MutableList<HtmlSection> = mutableListOf(),
         var prescriptionSelectedRationIds: MutableList<String> = mutableListOf(),
-        // Consultation évolutive (plan multi-étapes)
+        // Champs historiques, conservés pour relire les sauvegardes antérieures. Les plans de
+        // rations ne dépendent plus d'un type de consultation.
         var typeConsultation: TypeConsultation = TypeConsultation.STANDARD,
         var profilEvolutif: ProfilEvolutif? = null
 ) {

@@ -44,7 +44,8 @@ data class RationEnergyData(
         val lipideEnergyPercentage: Double,
         val energieTotale: Double,
         val matiereSeche: Double = 0.0,
-        val poidsTotal: Double = 0.0
+        val poidsTotal: Double = 0.0,
+        val isRationActuelle: Boolean = false
 )
 
 fun generateUuidString(): String {

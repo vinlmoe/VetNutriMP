@@ -40,6 +40,13 @@ object PlanEvolutif {
             ration.refRationParente?.let { id -> consultation.rations.firstOrNull { it.uuid == id } }
                     ?: ration
 
+    /**
+     * Statut de couleur d'une ration dans les graphiques : une étape hérite toujours du statut
+     * actuel/proposé de sa ration parente, afin que tout le plan ait le même repère visuel.
+     */
+    fun estActuelle(consultation: ConsultationEv, ration: Ration): Boolean =
+            parentDe(consultation, ration).actual
+
     /** Rations du plan : la ration parente et ses étapes (ordre de stockage). */
     fun membresDuPlan(consultation: ConsultationEv, parent: Ration): List<Ration> =
             listOf(parent) + etapesDe(consultation, parent)
