@@ -146,7 +146,8 @@ data class RationApi(
         val isEvolutiveStep: Boolean = false,
         val weightKg: Double? = null,
         val supplementalVariables: List<SupplementalVariableApi> = emptyList(),
-        val parentRationId: String? = null
+        val parentRationId: String? = null,
+        val customName: String? = null
 )
 
 @Serializable
@@ -533,7 +534,8 @@ fun Ration.toApi(): RationApi {
                 isEvolutiveStep = etapeEvolutive,
                 weightKg = poids,
                 supplementalVariables = suppVarp.toSupplementalVariablesApi(),
-                parentRationId = refRationParente
+                parentRationId = refRationParente,
+                customName = nomLibre
         )
 }
 
@@ -820,6 +822,7 @@ fun ConsultationApi.toDomain(): ConsultationEv {
                                                 etapeEvolutive = rApi.isEvolutiveStep,
                                                 poids = rApi.weightKg,
                                                 refRationParente = rApi.parentRationId,
+                                                nomLibre = rApi.customName,
                                                 suppVarp =
                                                         rApi.supplementalVariables
                                                                 .toSupplementalVariablesDomain(),

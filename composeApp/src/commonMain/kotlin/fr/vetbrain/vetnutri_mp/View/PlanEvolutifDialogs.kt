@@ -20,9 +20,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.LigneSynthese
+import fr.vetbrain.vetnutri_mp.Data.NiveauBorne
 import fr.vetbrain.vetnutri_mp.Data.PlanEvolutif
+import fr.vetbrain.vetnutri_mp.Data.PositionReference
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
+import fr.vetbrain.vetnutri_mp.Data.nomTraduitNutriment
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Evolutive
@@ -40,9 +43,9 @@ private fun formatSaisie(valeur: Double?): String =
         valeur?.let { TextUtils.formatDecimal(it, 2).trimEnd('0').trimEnd(',', '.') } ?: ""
 
 /**
- * Création ou édition d'une étape de plan évolutif : poids de l'étape (vide = poids réel de la
- * consultation) et variables requises par les équations d'énergie (vide = valeur de la
- * consultation). Le nom de l'étape en découle et n'est pas saisi.
+ * Création ou édition d'une étape de plan évolutif : nom libre facultatif, poids de l'étape (vide =
+ * poids réel de la consultation) et variables requises par les équations d'énergie (vide = valeur
+ * de la consultation). Le nom affiché de l'étape en découle.
  *
  * @param etape l'étape éditée, ou null pour une nouvelle étape
  */
@@ -53,8 +56,9 @@ fun EtapeEditDialog(
         etape: Ration?,
         variablesRequises: List<VariableKind>,
         onDismiss: () -> Unit,
-        onSave: (poids: Double?, variables: List<SupplementalvariableP>) -> Unit
+        onSave: (poids: Double?, variables: List<SupplementalvariableP>, libelle: String?) -> Unit
 ) {
+    var libelleTexte by remember(etape?.uuid) { mutableStateOf(etape?.nomLibre ?: "") }
     var poidsTexte by remember(etape?.uuid) { mutableStateOf(formatSaisie(etape?.poids)) }
     var variablesTexte by
             remember(etape?.uuid, variablesRequises) {
@@ -91,9 +95,17 @@ fun EtapeEditDialog(
                 ) {
                     val (poidsApercu, varsApercu) = saisie()
                     Text(
-                            text = PlanEvolutif.nomAutomatique(poidsApercu, varsApercu),
+                            text = PlanEvolutif.nomAutomatique(poidsApercu, varsApercu, libelleTexte),
                             style = MaterialTheme.typography.subtitle2,
                             color = VetNutriColors.Primary
+                    )
+                    OutlinedTextField(
+                            value = libelleTexte,
+                            onValueChange = { libelleTexte = it },
+                            label = { Text(translate(Evolutive.STEP_LABEL)) },
+                            placeholder = { Text(translate(Evolutive.STEP_LABEL_HINT)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                             value = poidsTexte,
@@ -146,7 +158,7 @@ fun EtapeEditDialog(
                 TextButton(
                         onClick = {
                             val (poids, variables) = saisie()
-                            onSave(poids, variables)
+                            onSave(poids, variables, PlanEvolutif.libelleNormalise(libelleTexte))
                         }
                 ) { Text(translate(LocalizationKeys.General.OK)) }
             },
@@ -158,7 +170,8 @@ fun EtapeEditDialog(
 
 /**
  * Synthèse du plan rangé sous [parent] : ingrédients en lignes, rations du plan en colonnes
- * (triées par poids), masses modifiables, besoin, apport et couverture par colonne.
+ * (triées par poids), masses modifiables, besoin, apport et couverture par colonne, puis
+ * nutriments sous une borne basse et au-dessus d'une borne haute (% de la borne).
  */
 @Composable
 fun SynthesePlanDialog(
@@ -257,7 +270,28 @@ fun SynthesePlanDialog(
                                 "${TextUtils.formatDecimal(bilan.energieApportee / besoin * 100.0, 0)} %"
                         else "—"
                     }
+                    // Nutriments dont le minimum n'est pas couvert dans au moins une étape
+                    SectionPositions(
+                            titre = translate(Evolutive.MIN_NOT_COVERED_SECTION),
+                            etapes = etapes,
+                            positions = { bilans[it.uuid]?.couverturesMin },
+                            largeurNom = largeurNom,
+                            largeurCellule = largeurCellule
+                    )
+                    // Nutriments dont le maximum est dépassé dans au moins une étape
+                    SectionPositions(
+                            titre = translate(Evolutive.MAX_EXCEEDED_SECTION),
+                            etapes = etapes,
+                            positions = { bilans[it.uuid]?.positionsMax },
+                            largeurNom = largeurNom,
+                            largeurCellule = largeurCellule
+                    )
                 }
+                Text(
+                        text = translate(Evolutive.BOUNDS_LEGEND),
+                        style = MaterialTheme.typography.caption,
+                        modifier = Modifier.padding(top = AppSizes.paddingSmall)
+                )
                 Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -282,6 +316,60 @@ fun SynthesePlanDialog(
         )
     }
 }
+
+/**
+ * Section de la synthèse : une ligne par nutriment hors norme dans au moins une étape, avec
+ * l'apport en % de la borne retenue pour chaque étape, coloré selon la borne non respectée.
+ */
+@Composable
+private fun SectionPositions(
+        titre: String,
+        etapes: List<Ration>,
+        positions: (Ration) -> Map<String, PositionReference>?,
+        largeurNom: Dp,
+        largeurCellule: Dp
+) {
+    val parEtape = etapes.map { positions(it).orEmpty() }
+    // Ordre des nutriments de l'analyse, dédoublonné sur l'ensemble des étapes
+    val labels =
+            parEtape.flatMap { carte -> carte.filterValues { it.horsNorme }.keys }
+                    .distinct()
+
+    Divider(color = VetNutriColors.Primary.copy(alpha = 0.4f))
+    Row {
+        CelluleTexte(titre, largeurNom, gras = true, alignDebut = true)
+        if (labels.isEmpty()) {
+            CelluleTexte(translate(Evolutive.NONE_OUT_OF_RANGE), largeurCellule, alignDebut = true)
+        }
+    }
+    labels.forEach { label ->
+        val nutriment = parEtape.firstNotNullOf { it[label] }.nutriment
+        Row {
+            CelluleTexte(nomTraduitNutriment(nutriment), largeurNom, alignDebut = true)
+            parEtape.forEach { carte ->
+                val position = carte[label]
+                CelluleTexte(
+                        texte =
+                                position?.let { "${TextUtils.formatDecimal(it.pourcentage, 0)} %" }
+                                        ?: "—",
+                        largeur = largeurCellule,
+                        gras = position?.horsNorme == true,
+                        couleur =
+                                if (position?.horsNorme == true) couleurNiveau(position.niveau)
+                                else Color.Unspecified
+                )
+            }
+        }
+    }
+}
+
+/** Couleur d'une borne non respectée, comme l'écran d'analyse. */
+private fun couleurNiveau(niveau: NiveauBorne): Color =
+        when (niveau) {
+            NiveauBorne.MALADIE -> Color(0xFF9C27B0) // Violet : référence maladie
+            NiveauBorne.CRITIQUE -> VetNutriColors.Error // Rouge : MIN / MAX
+            NiveauBorne.OPTIMAL -> Color(0xFF2196F3) // Bleu : OPTIMIN / OPTIMAX
+        }
 
 @Composable
 private fun LigneBilan(

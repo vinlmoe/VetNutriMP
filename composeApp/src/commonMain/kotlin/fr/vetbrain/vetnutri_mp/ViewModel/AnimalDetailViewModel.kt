@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
@@ -1313,7 +1314,11 @@ class AnimalDetailViewModel(
                             // Étape de plan : nom fixe déduit de ses variables
                             name =
                                     if (ration.refRationParente != null)
-                                            PlanEvolutif.nomAutomatique(ration.poids, ration.suppVarp)
+                                            PlanEvolutif.nomAutomatique(
+                                                    ration.poids,
+                                                    ration.suppVarp,
+                                                    ration.nomLibre
+                                            )
                                     else translate(RationKeys.DUPLICATED_NAME_FORMAT, ration.name),
                             alimentMutableList =
                                     mutableListOf(), // Liste vide temporaire, nous allons la remplir
@@ -1713,11 +1718,16 @@ class AnimalDetailViewModel(
 
     // ===== PLAN ÉVOLUTIF (une ration par étape) =====
 
-    /** Bilan énergétique d'une étape : poids utilisé, besoin total (K + complémentaire), apport. */
+    /**
+     * Bilan d'une étape : poids utilisé, besoin total (K + complémentaire), apport énergétique, et
+     * apport en % des bornes basses (MIN/OPTIMIN) et hautes (MAX/OPTIMAX), par label de nutriment.
+     */
     data class BilanEtape(
             val poids: Double?,
             val besoinTotal: Double?,
-            val energieApportee: Double
+            val energieApportee: Double,
+            val couverturesMin: Map<String, PositionReference> = emptyMap(),
+            val positionsMax: Map<String, PositionReference> = emptyMap()
     )
 
     private val _bilansEtapes = MutableStateFlow<Map<String, BilanEtape>>(emptyMap())
@@ -1729,24 +1739,33 @@ class AnimalDetailViewModel(
      * étape) : copie des aliments de la ration parente, poids et variables propres, nom fixe.
      *
      * @param poids poids de l'étape ; null = poids réel de la consultation
+     * @param libelle nom libre de l'étape (ex. « Croissance ») ; null ou vide = aucun
      */
-    fun ajouterEtape(parent: Ration, poids: Double?, suppVarp: List<SupplementalvariableP>) {
+    fun ajouterEtape(
+            parent: Ration,
+            poids: Double?,
+            suppVarp: List<SupplementalvariableP>,
+            libelle: String? = null
+    ) {
         val consultation = _selectedConsultation.value ?: return
         val racine = PlanEvolutif.parentDe(consultation, parent)
-        val etape = PlanEvolutif.nouvelleEtape(racine, poids, suppVarp)
+        val etape = PlanEvolutif.nouvelleEtape(racine, poids, suppVarp, libelle)
         enregistrerRationsPlan(consultation, consultation.rations + etape, selection = etape)
     }
 
     /**
-     * Modifie le poids et les variables propres d'une étape, puis recalcule ses besoins.
+     * Modifie le poids, les variables propres et le nom libre d'une étape, puis recalcule ses
+     * besoins.
      *
      * @param poidsReel nouveau poids réel de la consultation, enregistré dans la même opération
+     * @param libelle nom libre de l'étape ; par défaut celui de [etape] (inchangé)
      */
     fun mettreAJourEtape(
             etape: Ration,
             poids: Double?,
             suppVarp: List<SupplementalvariableP>,
-            poidsReel: Double? = null
+            poidsReel: Double? = null,
+            libelle: String? = etape.nomLibre
     ) {
         val courante =
                 _selectedConsultation.value?.rations?.firstOrNull { it.uuid == etape.uuid } ?: etape
@@ -1754,8 +1773,9 @@ class AnimalDetailViewModel(
                 courante.copy(
                         poids = poids,
                         suppVarp = suppVarp.toMutableList(),
-                        // Nom fixe, déduit du poids et des variables de l'étape
-                        name = PlanEvolutif.nomAutomatique(poids, suppVarp)
+                        nomLibre = PlanEvolutif.libelleNormalise(libelle),
+                        // Nom fixe, déduit du nom libre, du poids et des variables de l'étape
+                        name = PlanEvolutif.nomAutomatique(poids, suppVarp, libelle)
                 )
         if (_selectedRation.value?.uuid == etape.uuid) {
             _selectedRation.value = copieProfonde(majEtape)
@@ -1820,7 +1840,8 @@ class AnimalDetailViewModel(
         viewModelScope.launch {
             try {
                 val reference = obtenirReferenceActiveConsultation(consultation)
-                val bilans =
+                // Analyse de tous les nutriments de chaque étape : hors du thread UI
+                val bilans = withContext(AppDispatchers.Default) {
                         // Toutes les rations des plans : rations parentes et étapes
                         consultation.rations
                                 .filter { r ->
@@ -1857,8 +1878,38 @@ class AnimalDetailViewModel(
                                             beK + additionnelle
                                         }
                                     }
-                            etape.uuid to BilanEtape(vue.effectiveWeight, besoin, apport)
+                            // Nutriments : bornes converties avec le BEE brut (comme
+                            // l'écran d'analyse et le PDF), nutriments sans donnée ignorés
+                            val (couverturesMin, positionsMax) =
+                                    reference?.let { ref ->
+                                        val valeurs =
+                                                analyserValeursNutritionnellesRationAvecEquations(
+                                                                ration = etape,
+                                                                equationRepository = equationRepository,
+                                                                referenceEv = ref
+                                                        )
+                                                        .values
+                                                        .filter { it.valeur > 0.0 }
+                                        calculerPositionsReferences(
+                                                valeurs = valeurs,
+                                                referenceUtilisee = ref,
+                                                besoinEnergetiqueEntretien =
+                                                        calculerBesoinEnergetiqueStandard(vue, ref),
+                                                poidsAnimal = vue.effectiveWeight,
+                                                poidsMetabolique = calculerPoidsMetabolique(vue, ref),
+                                                referencesMaladies = maladies
+                                        )
+                                    } ?: (emptyMap<String, PositionReference>() to emptyMap<String, PositionReference>())
+                            etape.uuid to
+                                    BilanEtape(
+                                            vue.effectiveWeight,
+                                            besoin,
+                                            apport,
+                                            couverturesMin,
+                                            positionsMax
+                                    )
                         }
+                }
                 _bilansEtapes.value = bilans
             } catch (e: Exception) {
                 e.printStackTrace()

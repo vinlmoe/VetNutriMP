@@ -232,7 +232,9 @@ data class RationEntity(
         val etapeEvolutive: Boolean = false,
         val poids: Double? = null,
         // Plan évolutif (v38) : ration parente de l'étape
-        val refRationParente: String? = null
+        val refRationParente: String? = null,
+        // Plan évolutif (v39) : nom libre de l'étape
+        val nomLibre: String? = null
 )
 
 @Serializable
