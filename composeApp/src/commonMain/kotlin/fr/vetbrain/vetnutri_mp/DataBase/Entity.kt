@@ -230,7 +230,9 @@ data class RationEntity(
         val description: String?,
         // Étape de plan évolutif (v37) ; poids null = poids réel de la consultation
         val etapeEvolutive: Boolean = false,
-        val poids: Double? = null
+        val poids: Double? = null,
+        // Plan évolutif (v38) : ration parente de l'étape
+        val refRationParente: String? = null
 )
 
 @Serializable

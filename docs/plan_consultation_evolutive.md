@@ -1,5 +1,21 @@
 # Plan — Consultation évolutive (plan de ration multi-étapes)
 
+> **Mise à jour (v38) — le plan est rangé sous une ration existante.** Il n'y a plus de page
+> « Plan évolutif » séparée :
+> - dans la liste des rations, le bouton « + » d'une ration ajoute une étape au plan rangé sous
+>   elle (le plan est créé à la première étape, la consultation passe en type évolutif) ;
+> - la ration parente est calculée au poids de la consultation ; chaque étape (en retrait sous
+>   elle) a son poids et ses variables d'énergie, et un **nom fixe** qui en découle
+>   (« Étape 8.0 kg · AW 30.0 ») ;
+> - éditer une étape ouvre un dialogue poids + variables requises par les équations d'énergie ;
+> - la synthèse du plan (ingrédients × étapes, besoins, couverture, propagation) est un dialogue ;
+> - l'ordonnance exporte en tableau toute ration sélectionnée qui porte un plan ;
+> - supprimer une ration supprime son plan.
+>
+> Modèle : `Ration.refRationParente` (migration 37 → 38). Une étape = ration avec parente.
+> Les sections ci-dessous décrivent la conception initiale (plan unique par consultation, page
+> dédiée) et sont conservées pour l'historique.
+
 ## Objectif
 
 Une **consultation évolutive** porte **un seul plan** de rations (une ration par *étape*). Chaque étape a
@@ -214,3 +230,11 @@ sur une base construite depuis `schemas/.../36.json`.
 
 Reste à faire avec un build complet : générer et committer `schemas/.../37.json`, exécuter
 `desktopTest` (persistance Room réelle) et vérifier visuellement les écrans Compose.
+
+### Protection de la base lors d'un changement de version
+
+Une version plus ancienne (ex. branche `main`) ouvrant une base plus récente la vidait
+(`fallbackToDestructiveMigrationOnDowngrade`), puis la sauvegarde `.bak` était écrasée au démarrage
+suivant. Désormais `protectDatabaseAgainstVersionChange` met la base plus récente de côté sous
+`<db>.v<N>` et la restaure au retour ; rien n'est supprimé. **Ce correctif doit aussi être présent
+sur `main`** (commit « fix(db): ne plus perdre la base… ») pour protéger les bascules de branche.

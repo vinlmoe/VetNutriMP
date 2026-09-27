@@ -64,9 +64,9 @@ data class ConsultationEv(
         val isEvolutive: Boolean
                 get() = typeConsultation == TypeConsultation.EVOLUTIVE
 
-        /** Étapes du plan évolutif (rations marquées `etapeEvolutive`), dans l'ordre de stockage. */
+        /** Étapes des plans évolutifs (rations rangées sous une ration parente). */
         val etapesEvolutives: List<Ration>
-                get() = rations.filter { it.etapeEvolutive }
+                get() = rations.filter { it.refRationParente != null }
 
         // Cache pour la propriété calculée
         private var cachedEffectiveWeight: Double? = null

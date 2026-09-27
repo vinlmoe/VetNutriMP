@@ -6,17 +6,18 @@ import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
  * Résolution unique du poids et des variables d'énergie utilisés pour calculer les besoins d'une
  * ration.
  *
- * - Consultation standard (ou ration hors plan) : comportement historique — poids effectif de la
- *   consultation (`idealWeight ?: weight`) et variables de la consultation.
- * - Étape de plan évolutif : poids propre de l'étape (null = poids réel `weight`, jamais le poids
- *   idéal) et variables fusionnées, celles de l'étape étant prioritaires sur celles de la
- *   consultation.
+ * - Ration principale (y compris la ration parente d'un plan) : comportement historique — poids
+ *   effectif de la consultation (`idealWeight ?: weight`) et variables de la consultation.
+ * - Étape de plan évolutif (ration rangée sous une ration parente) : poids propre de l'étape
+ *   (null = poids réel `weight`, jamais le poids idéal) et variables fusionnées, celles de l'étape
+ *   étant prioritaires sur celles de la consultation.
  */
 object VariablesEtape {
 
-    /** Vrai si la ration est une étape du plan d'une consultation évolutive. */
+    /** Vrai si la ration est une étape de plan évolutif (rangée sous une ration parente). */
+    @Suppress("UNUSED_PARAMETER")
     fun estEtape(consultation: ConsultationEv?, ration: Ration?): Boolean =
-            consultation?.isEvolutive == true && ration?.etapeEvolutive == true
+            ration?.refRationParente != null
 
     /** Poids (kg) à utiliser pour les calculs de la ration. */
     fun poidsEtape(consultation: ConsultationEv, ration: Ration?): Double? =

@@ -58,7 +58,6 @@ enum class AnimalDetailSection {
     IDENTIFICATION, // Informations d'identification de l'animal
     CONSULTATIONS, // Liste des consultations
     RATIONS, // Vue des rations
-    PLAN_EVOLUTIF, // Plan de rations multi-étapes (consultation évolutive)
     GRAPHIQUE, // Analyse graphique des rations
     GRAPHIQUE_ALIMENTS, // Analyse graphique des aliments
     EXPORT
@@ -548,7 +547,9 @@ class AnimalDetailViewModel(
         _selectedRation.value = copieProfonde(ration)
 
         // Plan évolutif : chaque étape a son propre poids et ses variables → besoins à recalculer
-        _selectedConsultation.value?.takeIf { it.isEvolutive }?.let { calculerValeursMetaboliques(it) }
+        _selectedConsultation.value?.takeIf { it.etapesEvolutives.isNotEmpty() }?.let {
+            calculerValeursMetaboliques(it)
+        }
 
         // Lancer l'analyse de la ration automatiquement
         analyserRationSelectionnee()
@@ -994,7 +995,7 @@ class AnimalDetailViewModel(
             updateConsultation(updatedConsultation)
 
             // Plan évolutif : le poids, les variables ou les aliments de l'étape ont pu changer
-            if (updatedConsultation.isEvolutive) {
+            if (updatedConsultation.etapesEvolutives.isNotEmpty()) {
                 if (_selectedRation.value?.uuid == ration.uuid) {
                     calculerValeursMetaboliques(updatedConsultation)
                 }
@@ -1005,12 +1006,9 @@ class AnimalDetailViewModel(
 
     fun removeRationFromConsultation(ration: Ration) {
         val consultation = _selectedConsultation.value?.copy() ?: return
-        // Plan évolutif : l'étape au poids réel doit toujours exister
-        if (VariablesEtape.estEtape(consultation, ration) &&
-                        !PlanEvolutif.peutSupprimer(consultation, ration)
-        ) return
         val updatedRations = consultation.rations.toMutableList()
-        updatedRations.removeAll { it.uuid == ration.uuid }
+        // Supprimer une ration supprime aussi le plan évolutif rangé dessous
+        updatedRations.removeAll { it.uuid == ration.uuid || it.refRationParente == ration.uuid }
         val updatedConsultation = consultation.copy(rations = updatedRations)
 
         // Forcer la mise à jour du StateFlow pour notifier l'interface
@@ -1018,7 +1016,7 @@ class AnimalDetailViewModel(
 
         // Mettre à jour dans la base de données
         updateConsultation(updatedConsultation)
-        if (updatedConsultation.isEvolutive) recalculerBilansEtapes()
+        recalculerBilansEtapes()
 
         if (_rationAnalysisScope.value.estGroupe) {
             // En mode groupé, l'agrégat doit être recalculé sans la ration supprimée
@@ -1312,7 +1310,11 @@ class AnimalDetailViewModel(
             val duplicatedRation =
                     ration.copy(
                             uuid = Uuid.random().toString(),
-                            name = translate(RationKeys.DUPLICATED_NAME_FORMAT, ration.name),
+                            // Étape de plan : nom fixe déduit de ses variables
+                            name =
+                                    if (ration.refRationParente != null)
+                                            PlanEvolutif.nomAutomatique(ration.poids, ration.suppVarp)
+                                    else translate(RationKeys.DUPLICATED_NAME_FORMAT, ration.name),
                             alimentMutableList =
                                     mutableListOf(), // Liste vide temporaire, nous allons la remplir
                             // juste après
@@ -1722,35 +1724,27 @@ class AnimalDetailViewModel(
     /** Bilans par UUID d'étape, pour la synthèse du plan évolutif. */
     val bilansEtapes: StateFlow<Map<String, BilanEtape>> = _bilansEtapes.asStateFlow()
 
-    /** Crée le plan : première étape au poids réel, copiée depuis [rationDepart] (ou vide). */
-    fun creerPlanEvolutif(rationDepart: Ration?) {
-        val consultation = _selectedConsultation.value ?: return
-        if (!consultation.isEvolutive || consultation.etapesEvolutives.isNotEmpty()) return
-        val etape = PlanEvolutif.creerPlan(consultation, rationDepart)
-        enregistrerRationsPlan(consultation, consultation.rations + etape, selection = etape)
-    }
-
     /**
-     * Ajoute une étape copiée depuis l'étape sélectionnée (ou la dernière), avec ses variables.
+     * Ajoute une étape au plan évolutif rangé sous [parent] (le plan est créé à la première
+     * étape) : copie des aliments de la ration parente, poids et variables propres, nom fixe.
+     * La consultation passe en type évolutif si elle ne l'était pas.
      *
-     * @param poids poids de la nouvelle étape ; null = poids réel de la consultation
+     * @param poids poids de l'étape ; null = poids réel de la consultation
      */
-    fun ajouterEtape(poids: Double?) {
+    fun ajouterEtape(parent: Ration, poids: Double?, suppVarp: List<SupplementalvariableP>) {
         val consultation = _selectedConsultation.value ?: return
-        if (!consultation.isEvolutive) return
-        val modele =
-                consultation.etapesEvolutives.firstOrNull { it.uuid == _selectedRation.value?.uuid }
-                        ?: PlanEvolutif.etapesTriees(consultation).lastOrNull()
-        val etape = PlanEvolutif.copierEnEtape(modele, consultation.uuid, poids)
-        enregistrerRationsPlan(consultation, consultation.rations + etape, selection = etape)
-    }
-
-    /** Supprime une étape ; refusé pour la dernière étape au poids réel. */
-    fun supprimerEtape(etape: Ration): Boolean {
-        val consultation = _selectedConsultation.value ?: return false
-        if (!PlanEvolutif.peutSupprimer(consultation, etape)) return false
-        removeRationFromConsultation(etape)
-        return true
+        val racine = PlanEvolutif.parentDe(consultation, parent)
+        val etape = PlanEvolutif.nouvelleEtape(racine, poids, suppVarp)
+        val majConsultation =
+                if (consultation.isEvolutive) consultation
+                else
+                        consultation.copy(
+                                typeConsultation = fr.vetbrain.vetnutri_mp.Enumer.TypeConsultation.EVOLUTIVE,
+                                profilEvolutif =
+                                        consultation.profilEvolutif
+                                                ?: fr.vetbrain.vetnutri_mp.Enumer.ProfilEvolutif.CROISSANCE
+                        )
+        enregistrerRationsPlan(majConsultation, consultation.rations + etape, selection = etape)
     }
 
     /**
@@ -1770,11 +1764,8 @@ class AnimalDetailViewModel(
                 courante.copy(
                         poids = poids,
                         suppVarp = suppVarp.toMutableList(),
-                        // Un nom généré automatiquement suit le poids et les variables de l'étape
-                        name =
-                                if (PlanEvolutif.nomEstAutomatique(courante))
-                                        PlanEvolutif.nomAutomatique(poids, suppVarp)
-                                else courante.name
+                        // Nom fixe, déduit du poids et des variables de l'étape
+                        name = PlanEvolutif.nomAutomatique(poids, suppVarp)
                 )
         if (_selectedRation.value?.uuid == etape.uuid) {
             _selectedRation.value = copieProfonde(majEtape)
@@ -1828,7 +1819,7 @@ class AnimalDetailViewModel(
     /** Recalcule le bilan énergétique de chaque étape du plan de la consultation sélectionnée. */
     fun recalculerBilansEtapes() {
         val consultation = _selectedConsultation.value
-        if (consultation == null || !consultation.isEvolutive) {
+        if (consultation == null || consultation.etapesEvolutives.isEmpty()) {
             _bilansEtapes.value = emptyMap()
             return
         }
@@ -1840,7 +1831,13 @@ class AnimalDetailViewModel(
             try {
                 val reference = obtenirReferenceActiveConsultation(consultation)
                 val bilans =
-                        consultation.etapesEvolutives.associate { etape ->
+                        // Toutes les rations des plans : rations parentes et étapes
+                        consultation.rations
+                                .filter { r ->
+                                    r.refRationParente != null ||
+                                            PlanEvolutif.aUnPlan(consultation, r)
+                                }
+                                .associate { etape ->
                             val vue = VariablesEtape.consultationPourEtape(consultation, etape)
                             val apport =
                                     etape.getDensiteEnergetiqueMoyenne(

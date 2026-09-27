@@ -26,6 +26,9 @@ data class Ration(
         var alimentMutableList: MutableList<AlimentRation> = mutableListOf(),
         var etapeEvolutive: Boolean = false,
         var poids: Double? = null,
+        // Plan évolutif : UUID de la ration sous laquelle cette étape est rangée (null = ration
+        // principale). La ration parente est l'étape au poids réel du plan.
+        var refRationParente: String? = null,
         var suppVarp: MutableList<SupplementalvariableP> = mutableListOf()
 ) {
         fun getAlimentByUUID(uuiDalim: String): AlimentRation {

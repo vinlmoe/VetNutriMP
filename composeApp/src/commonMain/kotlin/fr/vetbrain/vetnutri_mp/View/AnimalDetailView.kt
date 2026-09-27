@@ -913,7 +913,7 @@ fun AnimalDetailView(
 
         // Options du menu
         val menuOptions =
-                listOfNotNull(
+                listOf(
                         MenuOption(
                                 section = AnimalDetailSection.IDENTIFICATION,
                                 title = translate(AnimalDetail.IDENTIFICATION),
@@ -929,14 +929,6 @@ fun AnimalDetailView(
                                 title = translate(AnimalDetail.RATIONS),
                                 icon = Icons.AutoMirrored.Filled.List
                         ),
-                        // Plan évolutif : uniquement pour une consultation évolutive
-                        if (selectedConsultation?.isEvolutive == true)
-                                MenuOption(
-                                        section = AnimalDetailSection.PLAN_EVOLUTIF,
-                                        title = translate(AnimalDetail.EVOLUTIVE_PLAN),
-                                        icon = AppIcons.Analytics
-                                )
-                        else null,
                         MenuOption(
                                 section = AnimalDetailSection.GRAPHIQUE,
                                 title = translate(AnimalDetail.GRAPH),
@@ -1490,15 +1482,6 @@ private fun WideScreenLayout(
                                                 isExamMode = isExamMode
                                         )
                                 }
-                                AnimalDetailSection.PLAN_EVOLUTIF -> {
-                                        PlanEvolutifView(
-                                                viewModel = viewModel,
-                                                showSnackbar = { message -> },
-                                                equationRepository = equationRepository,
-                                                recipeRepository = recipeRepository,
-                                                isExamMode = isExamMode
-                                        )
-                                }
                                 AnimalDetailSection.GRAPHIQUE -> {
                                         AnalyseGraphiqueView(
                                                 viewModel = viewModel,
@@ -1950,18 +1933,7 @@ private fun WideScreenLayout(
 
                                                         val currentConsultation: ConsultationEv? = selectedConsultation
                                                         if (currentConsultation != null && currentConsultation.rations.isNotEmpty()) {
-                                                                // Consultation évolutive : le plan se sélectionne d'un bloc (toutes ses étapes)
-                                                                item(key = "plan-evolutif") {
-                                                                        PlanEvolutifPrescriptionItem(
-                                                                                consultation = currentConsultation,
-                                                                                selection = selectedRationIdsForPrescription,
-                                                                                onSelectionChange = { selection ->
-                                                                                        selectedRationIdsForPrescription = selection
-                                                                                        schedulePrescriptionSave()
-                                                                                }
-                                                                        )
-                                                                }
-                                                                items(PlanEvolutif.rationsHorsPlan(currentConsultation).sortedForDisplay(), key = { it.uuid }) { ration ->
+                                                                items(PlanEvolutif.rationsPrincipales(currentConsultation).sortedForDisplay(), key = { it.uuid }) { ration ->
                                                                 Row(
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth()
@@ -3211,16 +3183,6 @@ private fun NarrowScreenLayout(
                                                                 isExamMode = isExamMode
                                                         )
                                                 }
-                                                AnimalDetailSection.PLAN_EVOLUTIF -> {
-                                                        PlanEvolutifView(
-                                                                viewModel = viewModel,
-                                                                showSnackbar = { message -> },
-                                                                equationRepository =
-                                                                        equationRepository,
-                                                                recipeRepository = recipeRepository,
-                                                                isExamMode = isExamMode
-                                                        )
-                                                }
                                                 AnimalDetailSection.GRAPHIQUE -> {
                                                         AnalyseGraphiqueView(
                                                                 viewModel = viewModel,
@@ -3781,18 +3743,7 @@ private fun NarrowScreenLayout(
 
                                                                         val currentConsultation: ConsultationEv? = selectedConsultation
                                                                         if (currentConsultation != null && currentConsultation.rations.isNotEmpty()) {
-                                                                                // Consultation évolutive : le plan se sélectionne d'un bloc (toutes ses étapes)
-                                                                                item(key = "plan-evolutif") {
-                                                                                        PlanEvolutifPrescriptionItem(
-                                                                                                consultation = currentConsultation,
-                                                                                                selection = selectedRationIdsForPrescription,
-                                                                                                onSelectionChange = { selection ->
-                                                                                                        selectedRationIdsForPrescription = selection
-                                                                                                        schedulePrescriptionSave()
-                                                                                                }
-                                                                                        )
-                                                                                }
-                                                                                items(PlanEvolutif.rationsHorsPlan(currentConsultation).sortedForDisplay(), key = { it.uuid }) { ration ->
+                                                                                items(PlanEvolutif.rationsPrincipales(currentConsultation).sortedForDisplay(), key = { it.uuid }) { ration ->
                                                                                 Row(
                                                                                         modifier =
                                                                                                 Modifier.fillMaxWidth()

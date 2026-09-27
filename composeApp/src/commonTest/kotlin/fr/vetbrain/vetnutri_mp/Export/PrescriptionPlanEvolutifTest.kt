@@ -4,93 +4,70 @@ import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
-import fr.vetbrain.vetnutri_mp.Enumer.TypeConsultation
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Evolutive
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
-/** Ordonnance d'une consultation évolutive : tableau ingrédients × étapes, sans interpolation. */
+/**
+ * Ordonnance : une ration sélectionnée qui porte un plan évolutif est exportée en tableau
+ * ingrédients × étapes (elle-même au poids réel + ses étapes), sans interpolation.
+ */
 class PrescriptionPlanEvolutifTest {
 
     private val croquettes = AlimentEv(uuid = "croq", nom = "Croquettes chiot")
 
-    private fun etape(uuid: String, nom: String, poids: Double?, quantite: Double) =
+    private fun ration(uuid: String, nom: String, quantite: Double, parent: String? = null, poids: Double? = null) =
             Ration(
                     uuid = uuid,
                     idConsult = "c",
                     name = nom,
-                    etapeEvolutive = true,
+                    etapeEvolutive = parent != null,
                     poids = poids,
+                    refRationParente = parent,
                     alimentMutableList =
                             mutableListOf(
-                                    AlimentRation(
-                                            uuid = "a-$uuid",
-                                            refAlimUnif = "croq",
-                                            quantite = quantite,
-                                            aliment = croquettes
-                                    )
+                                    AlimentRation(uuid = "a-$uuid", refAlimUnif = "croq", quantite = quantite, aliment = croquettes)
                             )
             )
 
+    private val parent = ration("p", "RationCroissance", 120.0)
+    private val e12 = ration("e12", "EtapeDouze", 250.0, parent = "p", poids = 12.0)
+    private val e3 = ration("e3", "EtapeTrois", 80.0, parent = "p", poids = 3.0)
+    private val standard = ration("std", "RationStandard", 60.0)
+    private val consultation =
+            ConsultationEv(uuid = "c", weight = 5.0, rations = mutableListOf(parent, e12, e3, standard))
+
+    private suspend fun html(selection: List<Ration>) =
+            HtmlDocumentBuilder.buildHtml(
+                    DocumentType.PRESCRIPTION,
+                    ExportData(animal = null, ration = null, reference = null, rations = selection, consultation = consultation)
+            )
+
     @Test
-    fun prescription_rendersPlanTable_andSkipsIndividualSteps() = runTest {
-        val e12 = etape("e12", "EtapeDouze", 12.0, 250.0)
-        val reel = etape("reel", "EtapeReelle", null, 120.0)
-        val standard = Ration(uuid = "std", idConsult = "c", name = "RationStandard")
-        val consultation =
-                ConsultationEv(
-                        uuid = "c",
-                        weight = 5.0,
-                        typeConsultation = TypeConsultation.EVOLUTIVE,
-                        rations = mutableListOf(e12, reel, standard)
-                )
+    fun rationAvecPlan_exporteeEnTableau_colonnesTrieesParPoids() = runTest {
+        val html = html(listOf(parent, e12, e3, standard))
 
-        val html =
-                HtmlDocumentBuilder.buildHtml(
-                        DocumentType.PRESCRIPTION,
-                        ExportData(
-                                animal = null,
-                                ration = null,
-                                reference = null,
-                                rations = consultation.rations,
-                                consultation = consultation
-                        )
-                )
-
-        assertTrue(html.contains(translate(Evolutive.PRESCRIPTION_TITLE)))
-        // Colonnes triées par poids croissant, poids réel signalé
-        val enteteReel = translate(Evolutive.STEP_LABEL_REAL, "5.0 kg")
-        assertTrue(html.contains(enteteReel))
-        assertTrue(html.indexOf(enteteReel) < html.indexOf("12.0 kg"))
-        assertTrue(html.contains("Croquettes chiot"))
-        assertTrue(html.contains("120.0 g") && html.contains("250.0 g"))
-        // Les étapes ne sont pas répétées en blocs de ration ; les autres rations restent
+        assertEquals(1, Regex(Regex.escape(translate(Evolutive.PRESCRIPTION_TITLE))).findAll(html).count())
+        val enteteParent = translate(Evolutive.STEP_LABEL_REAL, "5.0 kg")
+        assertTrue(html.contains(enteteParent))
+        assertTrue(html.indexOf("3.0 kg") < html.indexOf(enteteParent))
+        assertTrue(html.indexOf(enteteParent) < html.indexOf("12.0 kg"))
+        assertTrue(html.contains("80.0 g") && html.contains("120.0 g") && html.contains("250.0 g"))
+        // Les étapes ne sont pas répétées en blocs de ration ; la ration sans plan reste un bloc
         assertFalse(html.contains("EtapeDouze"))
-        assertFalse(html.contains("EtapeReelle"))
+        assertFalse(html.contains("EtapeTrois"))
         assertTrue(html.contains("RationStandard"))
     }
 
     @Test
-    fun prescription_standardConsultation_hasNoPlanTable() = runTest {
-        val ration = Ration(uuid = "r", idConsult = "c", name = "RationStandard")
-        val consultation = ConsultationEv(uuid = "c", weight = 5.0, rations = mutableListOf(ration))
-
-        val html =
-                HtmlDocumentBuilder.buildHtml(
-                        DocumentType.PRESCRIPTION,
-                        ExportData(
-                                animal = null,
-                                ration = null,
-                                reference = null,
-                                rations = consultation.rations,
-                                consultation = consultation
-                        )
-                )
-
+    fun rationAvecPlanNonSelectionnee_pasDeTableau() = runTest {
+        val html = html(listOf(standard, e12))
         assertFalse(html.contains(translate(Evolutive.PRESCRIPTION_TITLE)))
+        assertFalse(html.contains("EtapeDouze"))
         assertTrue(html.contains("RationStandard"))
     }
 }

@@ -1930,6 +1930,12 @@
         "evolutive.prescriptionHint": "Daily amounts by stage.",
         "evolutive.stepWeightShort": "Stage weight",
         "evolutive.autoStepName": "Stage %1$s",
-        "evolutive.realWeightName": "real weight"
+        "evolutive.realWeightName": "real weight",
+        "evolutive.summaryTitleFormat": "Plan summary — %1$s",
+        "evolutive.planSummary": "Plan summary",
+        "evolutive.addStepTo": "Add a plan stage",
+        "evolutive.newStepTitleFormat": "New stage — %1$s",
+        "evolutive.editStepTitle": "Plan stage",
+        "evolutive.stepSubtitle": "Evolutive plan stage"
     }
 }
