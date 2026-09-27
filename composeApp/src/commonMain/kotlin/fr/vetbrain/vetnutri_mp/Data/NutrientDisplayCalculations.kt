@@ -327,18 +327,30 @@ fun calculerConformite(
 }
 
 /**
- * Position d'un apport par rapport à une borne de référence : [pourcentage] = apport / borne × 100.
- * [maladie] = true si la borne retenue vient d'une référence maladie.
+ * Niveau de la borne retenue, dans l'ordre de priorité de l'écran d'analyse (et de ses couleurs) :
+ * référence maladie (violet), MIN/MAX (rouge), OPTIMIN/OPTIMAX (bleu).
  */
-data class PositionReference(val nutriment: Nutrient, val pourcentage: Double, val maladie: Boolean)
+enum class NiveauBorne { MALADIE, CRITIQUE, OPTIMAL }
 
 /**
- * Pour chaque nutriment ayant une borne MIN (resp. MAX) dans la référence principale ou une
- * référence maladie, calcule l'apport en % de cette borne. Si plusieurs références donnent une
- * borne, la plus contraignante est retenue (MIN la plus haute, MAX la plus basse). Mêmes
- * conversions que [calculerConformite] ; l'énergie est exclue (déjà traitée à part).
+ * Position d'un apport par rapport à une borne de référence : [pourcentage] = apport / borne × 100.
+ * [horsNorme] = borne non respectée (apport sous un minimum, ou au-dessus d'un maximum).
+ */
+data class PositionReference(
+    val nutriment: Nutrient,
+    val pourcentage: Double,
+    val niveau: NiveauBorne,
+    val horsNorme: Boolean
+)
+
+/**
+ * Pour chaque nutriment ayant une borne basse (MIN maladie, MIN, OPTIMIN) ou haute (MAX maladie,
+ * MAX, OPTIMAX), calcule l'apport en % de la borne retenue. Même priorité que
+ * [calculerConformite] : la première borne non respectée dans l'ordre maladie → MIN/MAX →
+ * OPTIMIN/OPTIMAX est retenue (la plus contraignante si plusieurs références maladies) ; si toutes
+ * sont respectées, la plus proche d'être dépassée. L'énergie est exclue (déjà traitée à part).
  *
- * @return Pair(positions vis-à-vis des MIN, positions vis-à-vis des MAX), indexées par label
+ * @return Pair(positions vis-à-vis des bornes basses, des bornes hautes), indexées par label
  */
 fun calculerPositionsReferences(
     valeurs: Collection<ValeurNutritionnelle>,
@@ -348,43 +360,57 @@ fun calculerPositionsReferences(
     poidsMetabolique: Double?,
     referencesMaladies: List<ReferenceEv> = emptyList()
 ): Pair<Map<String, PositionReference>, Map<String, PositionReference>> {
-    val minimums = mutableMapOf<String, PositionReference>()
-    val maximums = mutableMapOf<String, PositionReference>()
-    val sources = listOfNotNull(referenceUtilisee?.let { it to false }) + referencesMaladies.map { it to true }
+    val basses = mutableMapOf<String, PositionReference>()
+    val hautes = mutableMapOf<String, PositionReference>()
 
     valeurs.forEach { valeur ->
         val nutrient = valeur.nutriment
         if (nutrient == NutrientMain.ENERGIE) return@forEach
         val isRatio = estNutrimentAnalysisRatio(nutrient)
 
-        fun position(level: Reflevel): PositionReference? =
-            sources.mapNotNull { (reference, maladie) ->
-                if (!reference.contientNutriment(nutrient, level)) return@mapNotNull null
-                val valeurRef = reference.obtenirNutriment(nutrient, level)
-                val besoin = if (isRatio) {
-                    valeurRef
-                } else {
-                    calculerBesoinAbsolu(
-                        valeurRef,
-                        UnitReqEnum.getById(reference.obtenirUniteNutriment(nutrient, level)),
-                        besoinEnergetiqueEntretien,
-                        poidsAnimal,
-                        poidsMetabolique
-                    )
-                }
-                besoin?.takeIf { it > 0.0 }?.let {
-                    PositionReference(nutrient, valeur.valeur / it * 100.0, maladie)
-                }
-            }.let { positions ->
-                // Borne la plus contraignante : % le plus bas pour un MIN, le plus haut pour un MAX
-                if (level == Reflevel.MIN) positions.minByOrNull { it.pourcentage }
-                else positions.maxByOrNull { it.pourcentage }
+        fun pourcentage(reference: ReferenceEv, level: Reflevel): Double? {
+            if (!reference.contientNutriment(nutrient, level)) return null
+            val valeurRef = reference.obtenirNutriment(nutrient, level)
+            val besoin = if (isRatio) {
+                valeurRef
+            } else {
+                calculerBesoinAbsolu(
+                    valeurRef,
+                    UnitReqEnum.getById(reference.obtenirUniteNutriment(nutrient, level)),
+                    besoinEnergetiqueEntretien,
+                    poidsAnimal,
+                    poidsMetabolique
+                )
             }
+            return besoin?.takeIf { it > 0.0 }?.let { valeur.valeur / it * 100.0 }
+        }
 
-        position(Reflevel.MIN)?.let { minimums[nutrient.label] = it }
-        position(Reflevel.MAX)?.let { maximums[nutrient.label] = it }
+        fun position(critique: Reflevel, optimal: Reflevel): PositionReference? {
+            val basse = critique == Reflevel.MIN
+            val horsNorme = { pct: Double -> if (basse) pct < 100.0 else pct > 100.0 }
+            // Bornes par ordre de priorité
+            val paliers = listOf(
+                NiveauBorne.MALADIE to referencesMaladies.mapNotNull { pourcentage(it, critique) },
+                NiveauBorne.CRITIQUE to listOfNotNull(referenceUtilisee?.let { pourcentage(it, critique) }),
+                NiveauBorne.OPTIMAL to listOfNotNull(referenceUtilisee?.let { pourcentage(it, optimal) })
+            )
+            val candidats = paliers.flatMap { (niveau, pcts) -> pcts.map { niveau to it } }
+            if (candidats.isEmpty()) return null
+            // Plus contraignante : % le plus bas pour une borne basse, le plus haut pour une haute
+            fun plusContraignante(liste: List<Pair<NiveauBorne, Double>>) =
+                if (basse) liste.minByOrNull { it.second } else liste.maxByOrNull { it.second }
+
+            val (niveau, pct) =
+                paliers.firstNotNullOfOrNull { (niveau, pcts) ->
+                    plusContraignante(pcts.filter(horsNorme).map { niveau to it })
+                } ?: plusContraignante(candidats)!!
+            return PositionReference(nutrient, pct, niveau, horsNorme(pct))
+        }
+
+        position(Reflevel.MIN, Reflevel.OPTIMIN)?.let { basses[nutrient.label] = it }
+        position(Reflevel.MAX, Reflevel.OPTIMAX)?.let { hautes[nutrient.label] = it }
     }
-    return minimums to maximums
+    return basses to hautes
 }
 
 /** Nom traduit d'un nutriment, pour les affichages hors écran d'analyse. */
