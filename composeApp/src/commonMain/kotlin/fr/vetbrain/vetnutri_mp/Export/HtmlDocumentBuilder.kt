@@ -732,8 +732,11 @@ object HtmlDocumentBuilder {
             isLandscape: Boolean = false
     ): String {
         // Consultation évolutive : le plan est exporté en un seul tableau (ingrédients × étapes)
+        // Le plan n'est exporté que s'il fait partie de la sélection (au moins une étape choisie)
         val etapesPlan =
-                consultation?.takeIf { it.isEvolutive }?.let { PlanEvolutif.etapesTriees(it) }
+                consultation
+                        ?.takeIf { c -> rations.any { VariablesEtape.estEtape(c, it) } }
+                        ?.let { PlanEvolutif.etapesTriees(it) }
                         ?: emptyList()
         val rationsHorsPlan =
                 rations.filterNot { ration -> VariablesEtape.estEtape(consultation, ration) }

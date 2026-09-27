@@ -91,7 +91,7 @@ class PlanEvolutifTest {
 
         assertEquals(1, ajouts)
         val maj = rations.first { it.uuid == "o" }
-        assertEquals(mapOf("croq" to 150.0, "huile" to 0.0), maj.alimentMutableList.associate { it.refAlimUnif to it.quantite })
+        assertEquals(mapOf<String?, Double>("croq" to 150.0, "huile" to 0.0), maj.alimentMutableList.associate { it.refAlimUnif to it.quantite })
         assertEquals(source, rations.first { it.uuid == "s" })
     }
 

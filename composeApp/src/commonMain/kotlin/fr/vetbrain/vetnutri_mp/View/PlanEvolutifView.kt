@@ -227,7 +227,8 @@ fun PlanEvolutifView(
                                     showSnackbar = notifier,
                                     equationRepository = equationRepository,
                                     recipeRepository = recipeRepository,
-                                    isExamMode = isExamMode
+                                    isExamMode = isExamMode,
+                                    modePlanEvolutif = true
                             )
                     else ->
                             SynthesePlan(
@@ -617,4 +618,47 @@ private fun SaisieQuantiteDialog(
                 TextButton(onClick = onDismiss) { Text(translate(LocalizationKeys.General.CANCEL)) }
             }
     )
+}
+
+/**
+ * Ordonnance : case à cocher unique pour le plan évolutif (toutes ses étapes). N'affiche rien si
+ * la consultation n'a pas de plan.
+ */
+@Composable
+fun PlanEvolutifPrescriptionItem(
+        consultation: ConsultationEv,
+        selection: Set<String>,
+        onSelectionChange: (Set<String>) -> Unit
+) {
+    if (!consultation.isEvolutive || consultation.etapesEvolutives.isEmpty()) return
+    val coche = PlanEvolutif.planSelectionne(consultation, selection)
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(
+                checked = coche,
+                onCheckedChange = { inclure ->
+                    onSelectionChange(PlanEvolutif.selectionAvecPlan(consultation, selection, inclure))
+                }
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                    text =
+                            translate(
+                                    Evolutive.PLAN_TITLE_FORMAT,
+                                    consultation.profilEvolutif?.translateEnum() ?: ""
+                            ),
+                    style = MaterialTheme.typography.body1
+            )
+            Text(
+                    text =
+                            PlanEvolutif.etapesTriees(consultation).joinToString(" | ") {
+                                PlanEvolutif.libelleEtape(consultation, it)
+                            },
+                    style = MaterialTheme.typography.caption,
+                    color = Color.Gray,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
 }

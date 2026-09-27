@@ -188,18 +188,29 @@ Nouvelle section `AnimalDetailSection.PLAN_EVOLUTIF` :
   - **non-régression** des BEE et du BE total en consultation standard.
 - Ordre de livraison conseillé : **1 → 2** (valider seul, c'est le plus risqué) **→ 3 → 4 → 5 → 6**.
 
-## État d'avancement et limites connues
+## État d'avancement et vérifications
 
-Les lots 1 à 5 sont implémentés. Les tests unitaires sont dans `commonTest` (VariablesEtape,
-PlanEvolutif, ApiModels, ordonnance) et `desktopTest` (persistance Room). Ils n'ont pas pu être
-exécutés dans l'environnement de développement cloud (dépôt Google Maven inaccessible).
+Les lots 1 à 5 sont implémentés. Limites de la première version, désormais corrigées :
+- **Onglet « Étape »** : `RationsView(modePlanEvolutif = true)` ne liste que les étapes (triées par
+  poids) ; l'onglet Rations standard ne liste que les rations hors plan. Les étapes portent un nom
+  automatique (« Étape 8.0 kg · AW 30.0 », « Étape poids réel ») qui suit leur poids et leurs variables
+  tant qu'il n'est pas renommé à la main. Le « + » de la liste crée une nouvelle étape en mode plan.
+- **Ordonnance** : le plan se coche d'un bloc (une case pour toutes les étapes) et n'est exporté que
+  s'il est sélectionné.
+- **Résumé métabolique** : pour une étape, le second poids affiché/édité est celui de l'étape (vide =
+  poids réel) ; poids réel et poids d'étape sont enregistrés en une seule opération.
+- **Suppression** : l'étape au poids réel est protégée aussi depuis la liste de `RationsView`.
+- **Variables manquantes** à l'enregistrement d'une consultation évolutive : une variable renseignée
+  dans toutes les étapes n'est plus signalée.
+- **Enregistrements concurrents** : `updateConsultation` sérialise les sauvegardes (mutex) et ne
+  remplace plus la consultation sélectionnée par un instantané plus ancien.
 
-À vérifier ou compléter :
-- Générer et committer `composeApp/schemas/.../37.json` (produit par Room au premier build).
-- Tester la migration 36 → 37 sur une base réelle.
-- L'onglet « Étape » réutilise `RationsView` tel quel : sa liste montre toutes les rations de la
-  consultation, étapes comprises, sous le nom de la ration de départ.
-- L'ordonnance inclut toujours le plan complet, sans tenir compte de la sélection des rations
-  (les étapes sont seulement retirées des blocs de ration individuels).
-- `MetabolicSummarySection` (édition rapide du poids) modifie toujours le poids de la consultation,
-  pas celui de l'étape.
+Vérifications effectuées hors Gradle (Google Maven inaccessible depuis l'environnement cloud) :
+compilation `kotlinc` 2.2.20 de Data, DataBase, Repository, Export, Utils, Localization et
+`AnimalDetailViewModel` (bouchons pour les annotations Room et Compose runtime) ; exécution de
+527 tests `commonTest` existants + 20 tests du plan évolutif ; simulation d'interactions sur le vrai
+ViewModel (`desktopTest/.../PlanEvolutifInteractionTest.kt`) ; migration 36 → 37 rejouée en SQLite
+sur une base construite depuis `schemas/.../36.json`.
+
+Reste à faire avec un build complet : générer et committer `schemas/.../37.json`, exécuter
+`desktopTest` (persistance Room réelle) et vérifier visuellement les écrans Compose.

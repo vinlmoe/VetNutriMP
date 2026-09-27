@@ -1927,6 +1927,7 @@
         "evolutive.coverageRow": "Coverage",
         "evolutive.stepLabelReal": "%1$s (current)",
         "evolutive.prescriptionTitle": "Feeding plan",
-        "evolutive.prescriptionHint": "Daily amounts by stage."
+        "evolutive.prescriptionHint": "Daily amounts by stage.",
+        "evolutive.stepWeightShort": "Stage weight"
     }
 }

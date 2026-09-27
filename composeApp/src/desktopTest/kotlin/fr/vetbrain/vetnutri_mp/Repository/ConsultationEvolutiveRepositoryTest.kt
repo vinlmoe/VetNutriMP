@@ -67,7 +67,7 @@ class ConsultationEvolutiveRepositoryTest {
                 uuid = "r-8", idConsult = "c1", name = "8 kg", etapeEvolutive = true, poids = 8.0,
                 suppVarp = mutableListOf(
                     SupplementalvariableP(VariableKind.AdultWeight, 30.0),
-                    SupplementalvariableP(VariableKind.Distance, 12.5)
+                    SupplementalvariableP(VariableKind.D, 12.5)
                 )
             ),
             Ration(uuid = "r-std", idConsult = "c1", name = "Actuelle", actual = true)
@@ -94,7 +94,7 @@ class ConsultationEvolutiveRepositoryTest {
         assertEquals(
             setOf(
                 SupplementalvariableP(VariableKind.AdultWeight, 30.0),
-                SupplementalvariableP(VariableKind.Distance, 12.5)
+                SupplementalvariableP(VariableKind.D, 12.5)
             ),
             etape8.suppVarp.toSet()
         )
@@ -114,14 +114,14 @@ class ConsultationEvolutiveRepositoryTest {
         repository.saveConsultation(consultation)
 
         val etape8 = consultation.rations.first { it.uuid == "r-8" }
-        etape8.suppVarp = mutableListOf(SupplementalvariableP(VariableKind.Distance, 20.0))
+        etape8.suppVarp = mutableListOf(SupplementalvariableP(VariableKind.D, 20.0))
         // Suppression d'une étape : ses variables doivent disparaître en cascade
         consultation.rations.removeAll { it.uuid == "r-reel" }
         repository.saveConsultation(consultation)
 
         val reloaded = repository.getConsultationById("c1")!!
         assertEquals(
-            listOf(SupplementalvariableP(VariableKind.Distance, 20.0)),
+            listOf(SupplementalvariableP(VariableKind.D, 20.0)),
             reloaded.rations.first { it.uuid == "r-8" }.suppVarp
         )
         assertTrue(db.consultationDao().getSupplementalVariablesForRation("r-reel").isEmpty())
