@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +23,9 @@ import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
+import fr.vetbrain.vetnutri_mp.Enumer.ProfilEvolutif
+import fr.vetbrain.vetnutri_mp.Enumer.TypeConsultation
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.ConsultationEdit
@@ -382,6 +386,27 @@ fun ConsultationFullScreenEditView(
                                         )
                                 }
                         }
+
+                        // Type de consultation (standard / évolutive + profil)
+                        TypeConsultationCard(
+                                typeConsultation = editedConsultation.typeConsultation,
+                                profilEvolutif = editedConsultation.profilEvolutif,
+                                onTypeChange = { type ->
+                                        editedConsultation =
+                                                editedConsultation.copy(
+                                                        typeConsultation = type,
+                                                        profilEvolutif =
+                                                                if (type == TypeConsultation.EVOLUTIVE)
+                                                                        editedConsultation.profilEvolutif
+                                                                                ?: ProfilEvolutif.CROISSANCE
+                                                                else editedConsultation.profilEvolutif
+                                                )
+                                },
+                                onProfilChange = { profil ->
+                                        editedConsultation =
+                                                editedConsultation.copy(profilEvolutif = profil)
+                                }
+                        )
 
                         // Section Note d'État Corporel
                         Card(
@@ -2113,6 +2138,79 @@ private fun ConsultationKeywordDialog(
                         }
                 }
         )
+}
+
+/** Choix du type de consultation et, si évolutive, de son profil (préréglage uniquement). */
+@Composable
+private fun TypeConsultationCard(
+        typeConsultation: TypeConsultation,
+        profilEvolutif: ProfilEvolutif?,
+        onTypeChange: (TypeConsultation) -> Unit,
+        onProfilChange: (ProfilEvolutif) -> Unit
+) {
+        Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = AppSizes.elevationSmall,
+                backgroundColor = VetNutriColors.Surface
+        ) {
+                Column(
+                        modifier = Modifier.padding(AppSizes.paddingLarge),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                ) {
+                        Text(
+                                text = LocalizationKeys.Evolutive.TYPE_SECTION_TITLE.translate(),
+                                style = MaterialTheme.typography.h6,
+                                color = VetNutriColors.Primary
+                        )
+                        Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
+                        Row(
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                TypeConsultation.entries.forEach { type ->
+                                        OptionRadio(
+                                                label = type.translateEnum(),
+                                                selected = type == typeConsultation,
+                                                onClick = { onTypeChange(type) }
+                                        )
+                                }
+                        }
+                        if (typeConsultation == TypeConsultation.EVOLUTIVE) {
+                                Text(
+                                        text = LocalizationKeys.Evolutive.TYPE_HINT.translate(),
+                                        style = MaterialTheme.typography.caption,
+                                        color = VetNutriColors.OnSurface.copy(alpha = 0.7f)
+                                )
+                                Text(
+                                        text = LocalizationKeys.Evolutive.PROFILE_LABEL.translate(),
+                                        style = MaterialTheme.typography.subtitle2
+                                )
+                                Row(
+                                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        ProfilEvolutif.entries.forEach { profil ->
+                                                OptionRadio(
+                                                        label = profil.translateEnum(),
+                                                        selected = profil == profilEvolutif,
+                                                        onClick = { onProfilChange(profil) }
+                                                )
+                                        }
+                                }
+                        }
+                }
+        }
+}
+
+@Composable
+private fun OptionRadio(label: String, selected: Boolean, onClick: () -> Unit) {
+        Row(
+                modifier = Modifier.clickable(onClick = onClick).padding(end = AppSizes.paddingMedium),
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                RadioButton(selected = selected, onClick = onClick)
+                Text(text = label, style = MaterialTheme.typography.body2)
+        }
 }
 
 @Composable

@@ -27,6 +27,7 @@ import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -157,6 +158,22 @@ fun ConsultationCard(
                                                         color = Color.Gray
                                                 )
                                         }
+                                }
+
+                                // Badge consultation évolutive (profil)
+                                if (consultation.isEvolutive) {
+                                        Text(
+                                                text =
+                                                        translate(
+                                                                LocalizationKeys.Evolutive.BADGE_FORMAT,
+                                                                consultation.profilEvolutif
+                                                                        ?.translateEnum()
+                                                                        ?: ""
+                                                        ),
+                                                style = MaterialTheme.typography.caption,
+                                                color = VetNutriColors.Primary,
+                                                fontWeight = FontWeight.Bold
+                                        )
                                 }
 
                                 Divider(
