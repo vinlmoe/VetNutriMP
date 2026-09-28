@@ -47,6 +47,12 @@ class ImportViewModel(
      *
      * @param jsonContent Le contenu JSON à désérialiser (.vbnr.json format)
      */
+    internal fun pickNutritionalRequirementsFile() {
+        fr.vetbrain.vetnutri_mp.launchJsonFileImport(
+            coroutineScope, ::setNutritionalRequirementImportError
+        ) { content -> importNutritionalRequirementsFromJson(content) }
+    }
+
     fun importNutritionalRequirementsFromJson(jsonContent: String) {
         _isImportingNutritionalRequirements.value = true
         _nutritionalRequirementImportResultMessage.value = "🔄 Importation en cours..."

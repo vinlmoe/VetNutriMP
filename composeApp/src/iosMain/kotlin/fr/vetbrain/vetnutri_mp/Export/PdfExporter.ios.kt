@@ -218,8 +218,9 @@ actual object PdfExporter {
                                 return result
                         }
                         
-                        // Si échec, essayer une méthode alternative
-                        return genererPdfAlternative(cleanHtml)
+                        // Laisser le parcours appelant ouvrir le dialogue d’impression.
+                        // Ne jamais remplacer le rapport par un PDF vide.
+                        return null
                         
                 } catch (t: Throwable) {
                         t.printStackTrace()
@@ -252,7 +253,7 @@ actual object PdfExporter {
                         // Limiter le nombre de pages pour éviter la surconsommation mémoire
                         val maxPages = 5
                         val estimatedPages = renderer.numberOfPages.toInt()
-                        if (estimatedPages > maxPages) {
+                        if (estimatedPages <= 0 || estimatedPages > maxPages) {
                                 // Trop de pages, risque d'OOM
                                 return null
                         }
@@ -275,21 +276,6 @@ actual object PdfExporter {
                         data
                 } catch (t: Throwable) {
                         t.printStackTrace()
-                        null
-                }
-        }
-        
-        private fun genererPdfAlternative(html: String): NSData? {
-                return try {
-                        // Méthode alternative : créer un PDF simple vide
-                        val pageRect = CGRectMake(0.0, 0.0, a4Width, a4Height)
-                        val data: NSMutableData = NSMutableData()
-                        UIGraphicsBeginPDFContextToData(data, pageRect, null)
-                        UIGraphicsBeginPDFPage()
-                        UIGraphicsEndPDFContext()
-                        
-                        data
-                } catch (t: Throwable) {
                         null
                 }
         }

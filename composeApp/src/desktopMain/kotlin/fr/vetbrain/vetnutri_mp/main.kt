@@ -402,6 +402,7 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
                                         )
                 )
             }
+            counts.requireComplete()
             viewModel.updateApiImportProgress(1.0)
             val total = counts.animals + counts.foods + counts.equations + counts.references + counts.conseils
             viewModel.appendApiImportLog(
@@ -430,7 +431,7 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
 }
 
 @Suppress("UNUSED_PARAMETER")
-actual fun exportJsonToFile(content: String, defaultFileName: String): Boolean {
+actual suspend fun exportJsonToFile(content: String, defaultFileName: String): Boolean {
     var resultat: Boolean = false
     if (javax.swing.SwingUtilities.isEventDispatchThread()) {
         resultat =
@@ -452,7 +453,7 @@ actual fun exportJsonToFile(content: String, defaultFileName: String): Boolean {
 
 @Suppress("UNUSED_PARAMETER")
 @OptIn(ExperimentalSerializationApi::class)
-actual fun exportApiEnvelopeToFile(
+actual suspend fun exportApiEnvelopeToFile(
     envelope: fr.vetbrain.vetnutri_mp.Data.ApiEnvelope,
     defaultFileName: String
 ): Boolean {
@@ -487,7 +488,7 @@ actual fun exportApiEnvelopeToFile(
     return resultat
 }
 
-actual fun openJsonFileContent(): String? {
+actual suspend fun openJsonFileContent(): String? {
     var contenu: String? = null
     if (javax.swing.SwingUtilities.isEventDispatchThread()) {
         contenu = fr.vetbrain.vetnutri_mp.Utils.FileUtils.openJsonFileDialog()

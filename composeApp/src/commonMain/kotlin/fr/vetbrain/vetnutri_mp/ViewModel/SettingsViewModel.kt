@@ -333,7 +333,7 @@ class SettingsViewModel(
                         appendApiImportLog(message)
                     }
                 )
-            )
+            ).requireComplete()
             
             updateApiImportProgress(1.0)
             
@@ -682,7 +682,7 @@ class SettingsViewModel(
                                                         log("  → $message")
                                                     }
                                             )
-                    )
+                    ).requireComplete()
 
             log("✓ Import terminé avec succès")
             log("Résultats de l'import:")

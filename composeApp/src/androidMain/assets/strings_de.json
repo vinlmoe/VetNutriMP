@@ -267,7 +267,7 @@
         "auto.view.backuprestoreview.creez_votre_premiere_sauvegarde_en_cliquant_sur": "Créez votre première sauvegarde en cliquant sur le bouton ci-dessus",
         "auto.view.backuprestoreview.supprimer_la_sauvegarde": "Supprimer la sauvegarde",
         "auto.view.backuprestoreview.restaurer_la_sauvegarde": "Restaurer la sauvegarde",
-        "auto.view.backuprestoreview.cette_action_remplacera_toutes_les_donnees_actue": "Cette action remplacera toutes les données actuelles par celles de la sauvegarde.",
+        "auto.view.backuprestoreview.cette_action_remplacera_toutes_les_donnees_actue": "Les données de la sauvegarde seront fusionnées avec les données actuelles. Les éléments correspondants seront mis à jour ; les autres seront conservés. Une sauvegarde préalable sera créée.",
         "auto.view.backuprestoreview.restaurer": "Restaurer",
         "auto.view.backuprestoreview.restauration_terminee": "Restauration terminée",
         "auto.view.backuprestoreview.la_sauvegarde_a_ete_restauree_avec_succes": "La sauvegarde a été restaurée avec succès !",

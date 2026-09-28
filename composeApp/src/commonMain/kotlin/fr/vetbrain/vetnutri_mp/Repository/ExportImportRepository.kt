@@ -90,97 +90,32 @@ class ExportImportRepository(
 
         private suspend fun buildEnvelopeAll(): ApiEnvelope {
                 val domainAnimals = animalRepository.getAllAnimals()
-                // Charger les consultations/rations pour chaque animal pour un export complet
-                val animalsWithConsultations: List<AnimalEv> =
-                        if (consultationRepository != null) {
-                                domainAnimals.map { animal ->
-                                        val cons =
-                                                try {
-                                                        consultationRepository
-                                                                .getConsultationsForAnimal(
-                                                                        animal.uuid
-                                                                )
-                                                } catch (_: Exception) {
-                                                        emptyList()
-                                                }
-                                        animal.copy(consultations = cons.toMutableList())
-                                }
-                        } else domainAnimals
-                val animals: List<AnimalApi> = animalsWithConsultations.map { it.toApi() }
-                // Forcer le chargement frais des aliments (avec nutriments) avant export
-                if (foodRepository is DatabaseFoodRepository) {
-                        try {
-                                foodRepository.forceRefresh()
-                        } catch (_: Exception) {}
-                }
-                val foods = foodRepository?.getAllFoods()?.map { it.toApi() } ?: emptyList()
-
-                // Rassembler toutes les rations depuis les consultations (depuis le domaine)
-                val rationsList: List<RationApi> =
-                        animalsWithConsultations
-                                .asSequence()
-                                .flatMap { animal: AnimalEv ->
-                                        animal.consultations.asSequence().flatMap {
-                                                consult: ConsultationEv ->
-                                                consult.rations.asSequence().map { ration: Ration ->
-                                                        ration.toApi()
-                                                }
-                                        }
-                                }
-                                .toList()
-
-                val equations =
-                        equationRepository?.getAllEquations()?.map { it.toApi() } ?: emptyList()
-
-                // Récupérer toutes les recettes
-                val recipes =
-                        recipeRepository?.getAllRecipesAsRecette()?.map { it.toApi() }
-                                ?: emptyList()
-
-                // Récupérer tous les conseils
-                val conseils =
-                        try {
-                                conseilRepository?.getConseilsActifs()?.getOrThrow()?.map {
-                                        it.toApi()
-                                }
-                                        ?: emptyList()
-                        } catch (_: Exception) {
-                                emptyList()
+                // Do not turn a repository failure into an apparently complete backup.
+                val animalsWithConsultations = if (consultationRepository != null) {
+                        domainAnimals.map { animal ->
+                                animal.copy(consultations = consultationRepository
+                                        .getConsultationsForAnimal(animal.uuid).toMutableList())
                         }
-
-                // Références et biblios
-                val references =
-                        referenceRepository?.getAllReferenceEv()?.map { it.toApiRef() }
-                                ?: emptyList()
-                val biblioRefs =
-                        try {
-                                val list =
-                                        biblioRepository?.getAllBiblioRefs()?.first() ?: emptyList()
-                                list.map { it.toApi() }
-                        } catch (_: Exception) {
-                                emptyList()
-                        }
-                val consultationKeywords: List<ConsultationKeywordApi> =
-                        try {
-                                consultationRepository?.getAllKeywords()?.map {
-                                        ConsultationKeywordApi(uuid = it.uuid, label = it.label)
-                                }
-                                        ?: emptyList()
-                        } catch (_: Exception) {
-                                emptyList()
-                        }
+                } else domainAnimals
+                if (foodRepository is DatabaseFoodRepository) foodRepository.forceRefresh()
                 return ApiEnvelope(
                         version = "2.0.0",
                         generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
-                        animals = animals,
-                        foods = foods,
-                        rations = rationsList,
-                        recipes = recipes,
-                        equations = equations,
-                        biblioRefs = biblioRefs,
-                        references = references,
-                        conseils = conseils,
-                        consultationKeywords = consultationKeywords
+                        animals = animalsWithConsultations.map { it.toApi() },
+                        foods = foodRepository?.getAllFoods()?.map { it.toApi() } ?: emptyList(),
+                        rations = animalsWithConsultations.flatMap { animal ->
+                                animal.consultations.flatMap { consultation ->
+                                        consultation.rations.map { it.toApi() }
+                                }
+                        },
+                        recipes = recipeRepository?.getAllRecipesAsRecette()?.map { it.toApi() } ?: emptyList(),
+                        equations = equationRepository?.getAllEquations()?.map { it.toApi() } ?: emptyList(),
+                        biblioRefs = biblioRepository?.getAllBiblioRefs()?.first()?.map { it.toApi() } ?: emptyList(),
+                        references = referenceRepository?.getAllReferenceEv()?.map { it.toApiRef() } ?: emptyList(),
+                        conseils = conseilRepository?.getConseilsActifs()?.getOrThrow()?.map { it.toApi() } ?: emptyList(),
+                        consultationKeywords = consultationRepository?.getAllKeywords()?.map {
+                                ConsultationKeywordApi(uuid = it.uuid, label = it.label)
+                        } ?: emptyList()
                 )
         }
 
@@ -579,6 +514,7 @@ class ExportImportRepository(
                 listener?.onLog?.invoke(
                         "Contenu: animals=${envelope.animals.size}, foods=${envelope.foods.size}, rations=${envelope.rations.size}, recipes=${envelope.recipes.size}, equations=${envelope.equations.size}, biblioRefs=${envelope.biblioRefs.size}, references=${envelope.references.size}, conseils=${envelope.conseils.size}, consultationKeywords=${envelope.consultationKeywords.size}"
                 )
+                var errorCount = 0
                 var animalsImported: Int = 0
                 var foodsImported: Int = 0
 
@@ -628,6 +564,8 @@ class ExportImportRepository(
                                         biblioImported++
                                         advance()
                                 } catch (e: Exception) {
+                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                        errorCount++
                                         listener?.onLog?.invoke(
                                                 "Erreur biblioRef ${b.uuid}: ${e.message}"
                                         )
@@ -652,6 +590,8 @@ class ExportImportRepository(
                                         keywordsImported++
                                         advance()
                                 } catch (e: Exception) {
+                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                        errorCount++
                                         listener?.onLog?.invoke(
                                                 "Erreur mot-clé ${kw.uuid}: ${e.message}"
                                         )
@@ -685,7 +625,9 @@ class ExportImportRepository(
                                         try {
                                                 biblioRepository.getAllBiblioRefs().first()
                                                         .associateBy { it.uuid }
-                                        } catch (_: Exception) {
+                                        } catch (e: Exception) {
+                                                if (e is kotlinx.coroutines.CancellationException) throw e
+                                                errorCount++
                                                 emptyMap()
                                         }
                                 } else emptyMap()
@@ -698,11 +640,14 @@ class ExportImportRepository(
                                         val aliments = envelope.foods.map { resolveBiblioRefs(it, it.toDomain()) }
                                         val res = foodRepository.importFoodsDomain(aliments)
                                         foodsImported += res.importedCount + res.updatedCount
+                                        errorCount += res.errorCount
                                         advance(envelope.foods.size)
                                         listener?.onLog?.invoke(
                                                 "Aliments importés=${res.importedCount}, mis à jour=${res.updatedCount}, erreurs=${res.errorCount}"
                                         )
                                 } catch (e: Exception) {
+                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                        errorCount++
                                         listener?.onLog?.invoke(
                                                 "Erreur import bulk aliments: ${e.message}"
                                         )
@@ -716,6 +661,8 @@ class ExportImportRepository(
                                                 foodsImported++
                                                 advance()
                                         } catch (e: Exception) {
+                                                if (e is kotlinx.coroutines.CancellationException) throw e
+                                                errorCount++
                                                 listener?.onLog?.invoke(
                                                         "Erreur aliment ${api.uuid}: ${e.message}"
                                                 )
@@ -738,7 +685,10 @@ class ExportImportRepository(
                                         equationRepository.getAllEquations().forEach { eq ->
                                                 eqCache[eq.uuid] = eq
                                         }
-                                } catch (e: Exception) {}
+                                } catch (e: Exception) {
+                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                        errorCount++
+                                }
                         }
                         // Construire un cache de biblio pour éviter des accès répétés
                         val biblioCache: Map<String, BiblioRef> =
@@ -746,7 +696,9 @@ class ExportImportRepository(
                                         try {
                                                 (biblioRepository.getAllBiblioRefs().first())
                                                         .associateBy { it.uuid }
-                                        } catch (_: Exception) {
+                                        } catch (e: Exception) {
+                                                if (e is kotlinx.coroutines.CancellationException) throw e
+                                                errorCount++
                                                 emptyMap()
                                         }
                                 } else emptyMap()
@@ -880,6 +832,8 @@ class ExportImportRepository(
                                                                         )
                                                     }
                                                 } catch (e: Exception) {
+                                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                                        errorCount++
                                                     
                                                                 listener?.onLog?.invoke(
                                                                         "Erreur nutriment ${nutrientApi.nutrientLabel}: ${e.message}"
@@ -935,6 +889,8 @@ class ExportImportRepository(
                                                                                         .add(coef)
                                                     }
                                                 } catch (e: Exception) {
+                                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                                        errorCount++
                                                                 listener?.onLog?.invoke(
                                                                         "Erreur coefficient ${coefApi.uuid}: ${e.message}"
                                                                 )
@@ -946,6 +902,8 @@ class ExportImportRepository(
                                         referencesImported++
                                         advance()
                                 } catch (e: Exception) {
+                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                        errorCount++
                                         listener?.onLog?.invoke(
                                                 "Erreur referenceEv ${refApi.uuid}: ${e.message}"
                                         )
@@ -1019,9 +977,10 @@ class ExportImportRepository(
                                                                                                         foodId!!
                                                                                                 )
                                                                                         foodsImported++
-                                                                                } catch (
-                                                                                        _:
-                                                                                                Exception) {}
+                                                                                } catch (e: Exception) {
+                                                                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                                                                        errorCount++
+                                                                                }
                                                                         }
                                                                 }
                                                         }
@@ -1036,15 +995,17 @@ class ExportImportRepository(
                                         // Compter les rations importées
                                         rationsImported +=
                                                 animal.consultations.sumOf { it.rations.size }
+                                        animalsImported++
+                                        advance()
                                 } catch (e: Exception) {
+                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                        errorCount++
                                         listener?.onLog(
                                                 "Erreur animal ${animalApi.uuid}: ${e.message}"
                                         )
                                         advance()
                                 }
                         }
-                        animalsImported++
-                        advance()
                         listener?.onLog?.invoke(
                                 "Animaux importés=$animalsImported, rations liées=$rationsImported"
                         )
@@ -1059,7 +1020,9 @@ class ExportImportRepository(
                                 if (foodRepository != null) {
                                         try {
                                                 foodRepository.getAllFoods().map { it.uuid }.toSet()
-                                        } catch (_: Exception) {
+                                        } catch (e: Exception) {
+                                                if (e is kotlinx.coroutines.CancellationException) throw e
+                                                errorCount++
                                                 emptySet()
                                         }
                                 } else emptySet()
@@ -1094,7 +1057,10 @@ class ExportImportRepository(
                                                                         .toMutableSet()
                                                                         .add(foodId)
                                                                 foodsImported++
-                                                        } catch (_: Exception) {}
+                                                        } catch (e: Exception) {
+                                                                if (e is kotlinx.coroutines.CancellationException) throw e
+                                                                errorCount++
+                                                        }
                                                 }
                                         }
 
@@ -1142,6 +1108,8 @@ class ExportImportRepository(
                                         recipesImported++
                                         advance()
                                 } catch (e: Exception) {
+                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                        errorCount++
                                         listener?.onLog?.invoke(
                                                 "Erreur recette ${recipeApi.uuid}: ${e.message}"
                                         )
@@ -1157,22 +1125,13 @@ class ExportImportRepository(
                         for (conseilApi in envelope.conseils) {
                                 try {
                                         val conseil = conseilApi.toDomain()
-                                        // Vérifier si le conseil existe déjà
-                                        val existingConseil =
-                                                try {
-                                                        conseilRepository
-                                                                .getConseilsActifs()
-                                                                .getOrThrow()
-                                                        .find { it.id == conseil.id }
-                                        } catch (e: Exception) {
-                                                null
-                                        }
-                                        
                                         // Sauvegarder le conseil (insert ou update)
-                                        conseilRepository.saveConseil(conseil)
+                                        conseilRepository.saveConseil(conseil).getOrThrow()
                                         conseilsImported++
                                         advance()
                                 } catch (e: Exception) {
+                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                        errorCount++
                                         listener?.onLog?.invoke(
                                                 "Erreur conseil ${conseilApi.id}: ${e.message}"
                                         )
@@ -1190,7 +1149,8 @@ class ExportImportRepository(
                         biblios = biblioImported,
                         rations = rationsImported,
                         recipes = recipesImported,
-                        conseils = conseilsImported
+                        conseils = conseilsImported,
+                        errorCount = errorCount
                 )
         }
 
@@ -1202,6 +1162,12 @@ class ExportImportRepository(
                 val biblios: Int,
                 val rations: Int,
                 val recipes: Int,
-                val conseils: Int
-        )
+                val conseils: Int,
+                val errorCount: Int = 0
+        ) {
+                fun requireComplete(): ImportCounts {
+                        check(errorCount == 0) { "Import partiel : $errorCount erreur(s). Certaines données ont pu être importées." }
+                        return this
+                }
+        }
 }

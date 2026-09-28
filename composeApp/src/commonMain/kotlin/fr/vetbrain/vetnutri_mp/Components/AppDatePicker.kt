@@ -21,6 +21,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 
 /**
@@ -89,7 +90,10 @@ fun AppDatePicker(
         }
 
         if (showDatePicker) {
-                val pickerState = rememberDatePickerState()
+                val initialMillis = remember(selectedDate) {
+                        selectedDate?.atStartOfDayIn(TimeZone.UTC)?.toEpochMilliseconds()
+                }
+                val pickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
                 val vetNutriColorScheme = lightColorScheme(
                         primary = VetNutriColors.Primary,
                         onPrimary = VetNutriColors.OnPrimary,
@@ -112,7 +116,7 @@ fun AppDatePicker(
                                                         val selected: Long? = pickerState.selectedDateMillis
                                                         if (selected != null) {
                                                                 val date = Instant.fromEpochMilliseconds(selected)
-                                                                        .toLocalDateTime(TimeZone.currentSystemDefault())
+                                                                        .toLocalDateTime(TimeZone.UTC)
                                                                         .date
                                                                 dateText = date.toString()
                                                                 onDateSelected(date)

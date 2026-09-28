@@ -16,6 +16,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
+import fr.vetbrain.vetnutri_mp.Components.NumberTextField
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
@@ -216,14 +217,17 @@ fun AddWeightForm(viewModel: AnimalDetailViewModel) {
                 )
         }
         var weightText by remember { mutableStateOf("") }
-        var showDatePicker by remember { mutableStateOf(false) }
+        var showDateError by remember { mutableStateOf(false) }
 
         Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = AppSizes.elevationSmall,
                 backgroundColor = MaterialTheme.colors.surface.copy(alpha = 0.8f)
         ) {
-                Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
+                Column(
+                        modifier = Modifier.padding(AppSizes.paddingMedium),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                ) {
                         Text(
                                 text = translate(LocalizationKeys.Graph.ADD_WEIGHT_TITLE),
                                 style = MaterialTheme.typography.subtitle2,
@@ -231,32 +235,21 @@ fun AddWeightForm(viewModel: AnimalDetailViewModel) {
                                 color = VetNutriColors.Primary
                         )
 
-                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                        // Sélecteur de date avec le composant standard AppDatePicker
+                        AppDatePicker(
+                                selectedDate = selectedDate,
+                                onDateSelected = { date ->
+                                        selectedDate = date
+                                        showDateError = false
+                                },
+                                label = translate(LocalizationKeys.General.MEASURE_DATE),
+                                isError = showDateError,
+                                errorMessage = if (showDateError) translate("error.invalidValue") else null,
+                                modifier = Modifier.fillMaxWidth()
+                        )
 
-                        // Sélecteur de date
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                        ) {
-                                Text(
-                                        text = "${translate(LocalizationKeys.Graph.DATE_PREFIX)}${selectedDate}",
-                                        modifier = Modifier.weight(1f),
-                                        style = MaterialTheme.typography.body2
-                                )
-
-                                Button(
-                                        onClick = { showDatePicker = true },
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = VetNutriColors.Primary
-                                                )
-                                ) { Text(translate(LocalizationKeys.Graph.PICK_DATE_BUTTON)) }
-                        }
-
-                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-
-                        // Champ de poids
-                        OutlinedTextField(
+                        // Champ de poids avec le composant standard NumberTextField
+                        NumberTextField(
                                 value = weightText,
                                 onValueChange = { nouveauTexte ->
                                         // Filtrer pour n'accepter que les chiffres, point et virgule
@@ -271,19 +264,18 @@ fun AddWeightForm(viewModel: AnimalDetailViewModel) {
                                                 weightText = texteFiltre
                                         }
                                 },
-                                label = { Text(translate(LocalizationKeys.Graph.WEIGHT_KG_LABEL)) },
-                                keyboardOptions =
-                                        KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                label = translate(LocalizationKeys.Graph.WEIGHT_KG_LABEL),
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true
                         )
 
-                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
 
                         // Boutons d'action
                         Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
                         ) {
                                 TextButton(onClick = { viewModel.stopAddingWeight() }) {
                                         Text(translate(LocalizationKeys.General.CANCEL))
@@ -310,18 +302,6 @@ fun AddWeightForm(viewModel: AnimalDetailViewModel) {
                                 ) { Text(translate(LocalizationKeys.General.ADD)) }
                         }
                 }
-        }
-
-        // Date picker
-        if (showDatePicker) {
-                AppDatePicker(
-                        selectedDate = selectedDate,
-                        onDateSelected = {
-                                selectedDate = it
-                                showDatePicker = false
-                        },
-                        label = translate(LocalizationKeys.General.MEASURE_DATE)
-                )
         }
 }
 

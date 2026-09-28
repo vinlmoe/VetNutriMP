@@ -329,7 +329,7 @@ class ExamGradingViewModel(
                             fileService.writeText(cacheFile, recordJson)
                         }
 
-                        exportImportRepository.importAll(recordJson)
+                        exportImportRepository.importAll(recordJson).requireComplete()
                         entries += ExamCopyImportEntry(
                             nom = row.nom,
                             prenom = row.prenom,
