@@ -815338,6 +815338,16 @@
       "script": "100-HUMIDITE",
       "variables": [],
       "ratio": false
+    },
+    {
+      "uuid": "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5",
+      "name": "EPA + DHA",
+      "specie": "CH",
+      "kind": "COMPLEMENTARY_NUTRIENT",
+      "nutrient": "EPADHA",
+      "script": "AG205+AG226",
+      "variables": [],
+      "ratio": false
     }
   ],
   "biblioRefs": [
@@ -815867,7 +815877,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -816441,7 +816452,8 @@
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
         "d95b85dc-b49d-4309-9a7e-d434773a3085",
-        "39022862-fff9-4488-95f2-a3048ec02bee"
+        "39022862-fff9-4488-95f2-a3048ec02bee",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -816725,7 +816737,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -817382,7 +817395,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -817983,7 +817997,8 @@
         "a8baab3a-cb64-4e8d-9279-ae21bc77d098",
         "c1d0b1e0-870d-4ca7-83e3-fc1d6bb20f73",
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -818465,7 +818480,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -819117,7 +819133,8 @@
         "a8baab3a-cb64-4e8d-9279-ae21bc77d098",
         "c1d0b1e0-870d-4ca7-83e3-fc1d6bb20f73",
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -820074,7 +820091,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -820673,7 +820691,8 @@
       "equationDEraw": "7c30719d-086f-4d08-8f06-ef40e9951185",
       "equationsNut": [
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
-        "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb"
+        "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -820777,7 +820796,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -821364,7 +821384,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -822037,7 +822058,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -822582,7 +822604,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -823122,7 +823145,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -823695,7 +823719,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -824170,7 +824195,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
@@ -824834,7 +824860,8 @@
         "260e2b26-acd0-497c-89c8-3dc27ccb824d",
         "fa47fac5-0423-483e-9e1a-87416ed2f942",
         "cc19d2a2-7af7-41d7-97b9-32b4d4644ceb",
-        "d95b85dc-b49d-4309-9a7e-d434773a3085"
+        "d95b85dc-b49d-4309-9a7e-d434773a3085",
+        "9e141ee1-d4e6-415d-b95e-1b8d0dd67ec5"
       ],
       "nutrients": [
         {
