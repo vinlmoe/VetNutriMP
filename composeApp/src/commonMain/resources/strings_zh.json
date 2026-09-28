@@ -1953,6 +1953,9 @@
         "evolutive.addStepTo": "添加计划阶段",
         "evolutive.newStepTitleFormat": "新阶段 — %1$s",
         "evolutive.editStepTitle": "计划阶段",
-        "evolutive.stepSubtitle": "阶段计划中的阶段"
+        "evolutive.stepSubtitle": "阶段计划中的阶段",
+        "analnut.label.energy_share_complete_food": "全价食品提供的能量占比（%）",
+        "analnut.error.no_complete_food_energy_share": "没有可用于提供所需能量占比的全价食品。",
+        "analnut.hint.energy_share_complete_food": "将全价食品提供的能量精确设定为总能量需求的此百分比，其余能量由其他食品提供。为保持这一比例，食品用量不进行四舍五入。"
     }
 }
