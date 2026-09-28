@@ -69,6 +69,10 @@ data class AdjustmentParams(
         val energyLastRebalance: Boolean = true
 )
 
+/** La cellulose est ajustée à un objectif clinique de cinq fois le besoin de référence. */
+internal fun adjustmentNeedMultiplier(nutrient: Nutrient): Double =
+        if (nutrient == NutrientMain.CELLULOSE) 5.0 else 1.0
+
 /** Résultat d'un ajustement de ration */
 data class RationAdjustmentResult(
         val success: Boolean,
@@ -832,7 +836,7 @@ fun suggestDefaultTargetNutrient(
         val msDenom: Double = (100.0 - humidite).takeIf { it > 0.001 } ?: 100.0
         fun toMsPercent(value: Double): Double = (100.0 * value) / msDenom
 
-        val cendreMs: Double = toMsPercent(n(NutrientMain.CENDRE))
+        val calciumMs: Double = toMsPercent(n(NutrientMacro.CAL))
         val proteineMs: Double = toMsPercent(n(NutrientMain.PROTEINE))
         val lipideMs: Double = toMsPercent(n(NutrientMain.LIPIDE))
         val enaMs: Double = toMsPercent(n(NutrientMain.ENA))
@@ -865,9 +869,10 @@ fun suggestDefaultTargetNutrient(
                         NutrientMacro.NA.label
                 // Si aliment complet → par défaut ÉNERGIE (ajustement énergétique par défaut)
                 kind == FoodKind.COMPLET -> NutrientMain.ENERGIE.label
-                // (Cendres/MS > 10) et présence de Calcium
-                (cendreMs > 10.0 &&
-                        aliment.valMap.containsKey(NutrientMacro.CAL) &&
+                // Source minérale réellement concentrée en calcium (>= 5 % de MS).
+                // Une teneur élevée en cendres seule est fréquente pour les légumes humides
+                // en conserve et ne doit pas les transformer en ajusteurs de calcium.
+                (calciumMs >= 5.0 &&
                         hasReferenceForNutrient(NutrientMacro.CAL)) -> NutrientMacro.CAL.label
                 // Protéines/MS > 30
                 (proteineMs > 30.0 && hasReferenceForNutrient(NutrientMain.PROTEINE)) ->
@@ -1219,13 +1224,15 @@ suspend fun calculerAjustement(
                                 continue
                         }
 
-                        val besoinAbsoluGrammes =
+                        val besoinReferenceGrammes =
                                 calculerBesoinAbsoluGrammes(
                                         nutrimentRef = nutrimentRef,
                                         poidsAnimal = poidsAnimal,
                                         poidsMetabolique = poidsMetabolique,
                                         besoinEnergetiqueReference = besoinEnergetiqueStandard
                                 )
+                        val besoinAbsoluGrammes =
+                                besoinReferenceGrammes * adjustmentNeedMultiplier(nutrient)
 
                         if (besoinAbsoluGrammes <= 0) {
 

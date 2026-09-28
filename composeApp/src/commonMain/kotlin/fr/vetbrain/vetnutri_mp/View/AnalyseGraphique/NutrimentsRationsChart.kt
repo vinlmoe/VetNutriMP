@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import fr.vetbrain.vetnutri_mp.Data.PlanEvolutif
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
@@ -71,15 +72,6 @@ fun NutrimentsRationsChart(
                 isLoading = true
                 val resultat = mutableListOf<RationNutrimentData>()
 
-                // Identifier les rations actuelles
-                val rationsActuellesIds =
-                        consultations
-                                ?.flatMap { it.rations }
-                                ?.filter { it.actual }
-                                ?.map { it.uuid }
-                                ?.toSet()
-                                ?: emptySet()
-
                 consultations.forEachIndexed { consultationIndex, consultation ->
                         consultation.rations.forEachIndexed { rationIndex, ration ->
                                 try {
@@ -89,7 +81,7 @@ fun NutrimentsRationsChart(
                                                         referenceEv = referenceUtilisee,
                                                         equationRepository = equationRepository,
                                                         isRationActuelle =
-                                                                ration.uuid in rationsActuellesIds
+                                                                PlanEvolutif.estActuelle(consultation, ration)
                                                 )
 
                                         rationData?.let { data ->

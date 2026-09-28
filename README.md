@@ -4,7 +4,7 @@
 
 VetNutri MP permet aux vétérinaires et nutritionnistes de calculer et d'analyser les rations alimentaires des animaux de compagnie. Elle couvre la sélection des aliments, le calcul des besoins énergétiques, l'analyse nutritionnelle détaillée et l'export de rapports.
 
-> Version actuelle : **3.3.12**
+> Version actuelle : **3.3.15**
 
 ---
 
@@ -15,6 +15,17 @@ VetNutri MP permet aux vétérinaires et nutritionnistes de calculer et d'analys
 | Android | API 28 (Android 9) | arm64-v8a · armeabi-v7a · x86_64 · 16 KB page size |
 | iOS | — | iosArm64 · iosSimulatorArm64 · iosX64 |
 | Desktop | JVM 11 | DMG (macOS) · EXE (Windows) · DEB (Linux) |
+
+---
+
+## Nouveautés 3.3.15
+
+- **Plans évolutifs par ration** : déclinez une ration en étapes au poids et aux variables
+  énergétiques propres, puis comparez-les dans une synthèse et une ordonnance communes.
+- **Analyse plus fiable** : comparez les rations actuelles et proposées avec une moyenne
+  pondérée, et visualisez la couverture des objectifs nutritionnels par référence.
+- **Ajustement optimisé** : conservez, si nécessaire, une part cible d'énergie issue des
+  aliments complets lors de l'ajustement automatique des quantités.
 
 ---
 
@@ -44,6 +55,9 @@ VetNutri MP permet aux vétérinaires et nutritionnistes de calculer et d'analys
 - **Base d'aliments** — base locale filtrée par espèce, groupe, indication et nutriments
 - **Calcul énergétique** — poids métabolique, BEE, besoin total selon références bibliographiques
 - **Analyse nutritionnelle** — tableaux détaillés et graphiques (macros, minéraux, vitamines, lipides, ratios)
+- **Plans évolutifs** — une ration parent peut décliner plusieurs étapes avec poids, besoins et variables énergétiques propres ; synthèse et ordonnance par étape
+- **Analyse groupée** — comparaison pondérée des rations actuelles et proposées
+- **Ajustement sous contraintes** — optimisation des quantités nutritionnelles, avec contrôle de la part énergétique des aliments complets
 - **Recettes** — création et comparaison de rations
 - **Consultations & examens** — suivi des consultations, notation des exercices
 - **Export / Import** — JSON (format API), PDF (Desktop), QR Code, backup/restore

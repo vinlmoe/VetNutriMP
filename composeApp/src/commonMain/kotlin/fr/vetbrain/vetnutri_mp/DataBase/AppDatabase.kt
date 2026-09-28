@@ -14,6 +14,9 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.withContext
 
+/** Version du schéma Room ; à incrémenter avec chaque nouvelle migration. */
+const val DATABASE_SCHEMA_VERSION = 39
+
 /**
  * Base de données Room pour KMP. Cette classe définit la structure de la base de données et ses
  * DAOs. Elle est utilisée à la fois sur Android et iOS.
@@ -46,8 +49,9 @@ import kotlinx.coroutines.withContext
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class,
                         CustomNutrientEntity::class,
-                        EnergyPerSpeciesEntity::class],
-        version = 36,
+                        EnergyPerSpeciesEntity::class,
+                        RationSupplementalVariableEntity::class],
+        version = DATABASE_SCHEMA_VERSION,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -88,6 +92,14 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
  * les données en cas d'erreur de migration.
  */
 fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String): AppDatabase {
+    // Base créée par une version plus récente (ou retour sur une branche plus ancienne) : la mettre
+    // de côté AVANT la sauvegarde .bak et l'ouverture Room, pour ne jamais la perdre.
+    protectDatabaseAgainstVersionChange(dbPath, DATABASE_SCHEMA_VERSION)?.let { message ->
+        DatabaseChangeNotifier.notifyChange(
+                DatabaseChangeNotifier.ChangeType.DATABASE_VERSION_UPDATED,
+                message
+        )
+    }
     backupDatabaseFiles(dbPath)
 
     // Room ouvre la connexion de façon paresseuse : valider explicitement le fichier ici afin que
@@ -139,13 +151,20 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
                         // Migration 34→35 : Table CUSTOM_NUTRIENTS pour persister les métadonnées des nutriments personnalisés
                         createMigration34to35(),
                         // Migration 35→36 : Table ENERGY_PER_SPECIES pour l'énergie par espèce
-                        createMigration35to36()
+                        createMigration35to36(),
+                        // Migration 36→37 : Consultation évolutive (type, étapes, variables par étape)
+                        createMigration36to37(),
+                        // Migration 37→38 : plan évolutif rangé sous une ration (ration parente)
+                        createMigration37to38(),
+                        // Migration 38→39 : nom libre des étapes de plan évolutif
+                        createMigration38to39()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
                 // ❌ SUPPRIMÉ: .fallbackToDestructiveMigration(true)
-                // ✅ Seulement en cas de downgrade de version explicite
-                .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = false)
+                // ❌ SUPPRIMÉ: .fallbackToDestructiveMigrationOnDowngrade() — une base plus récente
+                // est mise de côté par protectDatabaseAgainstVersionChange ; si elle arrivait
+                // quand même ici, l'échec est traité par rotation (jamais d'effacement).
                 .build()
     } catch (e: Exception) {
         // ⚠️ Migration ou initialisation échouée : rotation du fichier corrompu, jamais d'effacement
@@ -154,7 +173,7 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
             DatabaseChangeNotifier.ChangeType.DATABASE_MIGRATION_FAILED,
             e.message
         )
-        // Ouvre une base vide propre (v36). Le .bak binaire + les JSON backups permettent la restauration.
+        // Ouvre une base vide propre (version courante). Le .bak binaire + les JSON backups permettent la restauration.
         builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -738,6 +757,68 @@ fun createMigration35to36(): Migration {
                 WHERE nv.nutrientLabel = 'Énergie'
                   AND nv.value > 0
             """.trimIndent()).use { it.step() }
+        }
+    }
+}
+
+/**
+ * Migration 36→37 : consultation évolutive.
+ * - CONSULTATIONS : type de consultation (STANDARD/EVOLUTIVE) + profil évolutif.
+ * - RATIONS : marqueur d'étape évolutive + poids propre de l'étape (NULL = poids réel).
+ * - RATION_SUPPLEMENTAL_VARIABLES : variables d'énergie propres à chaque étape.
+ */
+fun createMigration36to37(): Migration {
+    return object : Migration(36, 37) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE CONSULTATIONS ADD COLUMN typeConsultation TEXT NOT NULL DEFAULT 'STANDARD'"
+            )
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE CONSULTATIONS ADD COLUMN profilEvolutif TEXT"
+            )
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE RATIONS ADD COLUMN etapeEvolutive INTEGER NOT NULL DEFAULT 0"
+            )
+            runStatementIgnoreIfExists(connection, "ALTER TABLE RATIONS ADD COLUMN poids REAL")
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS RATION_SUPPLEMENTAL_VARIABLES (
+                    idRation TEXT NOT NULL,
+                    variableKind INTEGER NOT NULL,
+                    value REAL NOT NULL,
+                    PRIMARY KEY(idRation, variableKind),
+                    FOREIGN KEY(idRation) REFERENCES RATIONS(uuid) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+            """.trimIndent()).use { it.step() }
+            connection.prepare(
+                    "CREATE INDEX IF NOT EXISTS index_RATION_SUPPLEMENTAL_VARIABLES_idRation ON RATION_SUPPLEMENTAL_VARIABLES(idRation)"
+            ).use { it.step() }
+        }
+    }
+}
+
+/** Migration 37→38 : les étapes d'un plan évolutif sont rangées sous une ration parente. */
+fun createMigration37to38(): Migration {
+    return object : Migration(37, 38) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE RATIONS ADD COLUMN refRationParente TEXT"
+            )
+        }
+    }
+}
+
+/** Migration 38→39 : nom libre d'une étape de plan évolutif. */
+fun createMigration38to39(): Migration {
+    return object : Migration(38, 39) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE RATIONS ADD COLUMN nomLibre TEXT"
+            )
         }
     }
 }

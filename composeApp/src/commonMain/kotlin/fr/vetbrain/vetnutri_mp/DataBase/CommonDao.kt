@@ -142,6 +142,16 @@ interface ConsultationDao {
         @Query("SELECT * FROM ALIMENTS WHERE refRation = :rationId")
         suspend fun getAlimentsForRation(rationId: String): List<AlimentRationEntity>
 
+        @Query("SELECT * FROM RATION_SUPPLEMENTAL_VARIABLES WHERE idRation = :rationId")
+        suspend fun getSupplementalVariablesForRation(
+                rationId: String
+        ): List<RationSupplementalVariableEntity>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertRationSupplementalVariable(
+                supplementalVariable: RationSupplementalVariableEntity
+        )
+
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertSupplementalVariable(supplementalVariable: SupplementalVariableEntity)
 
@@ -168,21 +178,24 @@ interface ConsultationDao {
 
         /**
          * Remplace atomiquement toutes les relations d'une consultation (rations, aliments,
-         * variables). Sans atomicité, un échec partiel après DELETE laisserait une consultation
-         * sans rations ni aliments.
+         * variables de consultation et variables par étape). Sans atomicité, un échec partiel
+         * après DELETE laisserait une consultation sans rations ni aliments. Les variables par
+         * étape sont supprimées en cascade avec les rations.
          */
         @Transaction
         suspend fun replaceConsultationRelations(
                 consultationId: String,
                 rations: List<RationEntity>,
                 aliments: List<AlimentRationEntity>,
-                suppVars: List<SupplementalVariableEntity>
+                suppVars: List<SupplementalVariableEntity>,
+                rationSuppVars: List<RationSupplementalVariableEntity> = emptyList()
         ) {
                 deleteRationsForConsultation(consultationId)
                 deleteSupplementalVariablesForConsultation(consultationId)
                 rations.forEach { insertRation(it) }
                 aliments.forEach { insertAlimentRation(it) }
                 suppVars.forEach { insertSupplementalVariable(it) }
+                rationSuppVars.forEach { insertRationSupplementalVariable(it) }
         }
 }
 

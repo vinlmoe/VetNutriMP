@@ -45,6 +45,8 @@ data class Equation(
                 // Ajout des variables supplémentaires
                 for (variable in svp) {
                         variable.variable?.let { varKind ->
+                                // Nom défini dans les équations (AW, wG, D, CW...) + nom long
+                                expression[varKind.label] = variable.varue?.toDouble() ?: 0.0
                                 expression[varKind.variable] = variable.varue?.toDouble() ?: 0.0
                         }
                 }

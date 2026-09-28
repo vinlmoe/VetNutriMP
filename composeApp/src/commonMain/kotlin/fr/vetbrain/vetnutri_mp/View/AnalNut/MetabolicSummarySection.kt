@@ -41,8 +41,22 @@ fun SectionValeursMetaboliques(
         referenceUtilisee: ReferenceEv? = null,
         onUpdateWeights: ((currentWeight: Double, idealWeight: Double) -> Unit)? = null,
         onExpand: () -> Unit,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        // Étape de plan évolutif : le second poids affiché/édité est celui de l'étape (vide = poids
+        // réel), à la place du poids idéal de la consultation
+        estEtape: Boolean = false,
+        poidsEtape: Double? = null,
+        onUpdatePoidsEtape: ((poidsEtape: Double?, poidsReel: Double) -> Unit)? = null
 ) {
+    val libelleSecondPoids =
+            if (estEtape) translate(LocalizationKeys.Evolutive.STEP_WEIGHT_SHORT)
+            else translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL)
+    val secondPoids: Double? =
+            if (estEtape) poidsEtape ?: selectedConsultation?.weight
+            else selectedConsultation?.effectiveWeight
+    // Valeur proposée à l'édition : pour une étape au poids réel, champ vide (reste « réel »)
+    val secondPoidsSaisie: Double? =
+            if (estEtape) poidsEtape else selectedConsultation?.effectiveWeight
     BoxWithConstraints(modifier = modifier) {
         val isNarrow = maxWidth < 600.dp // aligner avec le seuil utilisé dans RationsView
         var isEditingWeights by remember { mutableStateOf(false) }
@@ -51,9 +65,22 @@ fun SectionValeursMetaboliques(
                     mutableStateOf(selectedConsultation?.weight?.toString() ?: "")
                 }
         var idealWeightText by
-                remember(selectedConsultation?.uuid, selectedConsultation?.effectiveWeight) {
-                    mutableStateOf(selectedConsultation?.effectiveWeight?.toString() ?: "")
+                remember(selectedConsultation?.uuid, secondPoidsSaisie, estEtape) {
+                    mutableStateOf(secondPoidsSaisie?.toString() ?: "")
                 }
+
+        /** Valide la saisie ; renvoie vrai si elle a été appliquée. */
+        fun validerPoids(): Boolean {
+            val newCurrent = parsePositiveDecimal(currentWeightText) ?: return false
+            if (estEtape) {
+                // Poids de l'étape (vide = poids réel) et poids réel, en une seule mise à jour
+                onUpdatePoidsEtape?.invoke(parsePositiveDecimal(idealWeightText), newCurrent)
+                return true
+            }
+            val newIdeal = parsePositiveDecimal(idealWeightText) ?: return false
+            onUpdateWeights?.invoke(newCurrent, newIdeal)
+            return true
+        }
 
         Column {
             Row(
@@ -92,23 +119,16 @@ fun SectionValeursMetaboliques(
                         BasicAppTextField(
                                 value = idealWeightText,
                                 onValueChange = { idealWeightText = normalizeDecimalInput(it) },
-                                placeholder = translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL),
+                                placeholder = libelleSecondPoids,
                                 modifier = Modifier.width(130.dp).height(50.dp),
                                 trailingIcon = Icons.Filled.Check,
-                                onTrailingIconClick = {
-                                    val newCurrent = parsePositiveDecimal(currentWeightText)
-                                    val newIdeal = parsePositiveDecimal(idealWeightText)
-                                    if (newCurrent != null && newIdeal != null) {
-                                        onUpdateWeights?.invoke(newCurrent, newIdeal)
-                                        isEditingWeights = false
-                                    }
-                                }
+                                onTrailingIconClick = { if (validerPoids()) isEditingWeights = false }
                         )
                         IconButton(
                                 onClick = {
                                     currentWeightText = selectedConsultation?.weight?.toString() ?: ""
                                     idealWeightText =
-                                            selectedConsultation?.effectiveWeight?.toString() ?: ""
+                                            secondPoidsSaisie?.toString() ?: ""
                                     isEditingWeights = false
                                 },
                                 modifier = Modifier.size(24.dp)
@@ -130,9 +150,9 @@ fun SectionValeursMetaboliques(
                                                     ?: translate(LocalizationKeys.General.NOT_SPECIFIED)
                             )
                             LigneInfoLocaleCompacte(
-                                    label = translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL),
+                                    label = libelleSecondPoids,
                                     value =
-                                            selectedConsultation?.effectiveWeight?.let {
+                                            secondPoids?.let {
                                                 "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                             }
                                                     ?: translate(LocalizationKeys.General.NOT_CALCULATED)
@@ -141,7 +161,7 @@ fun SectionValeursMetaboliques(
                                     onClick = {
                                         currentWeightText = selectedConsultation?.weight?.toString() ?: ""
                                         idealWeightText =
-                                                selectedConsultation?.effectiveWeight?.toString() ?: ""
+                                                secondPoidsSaisie?.toString() ?: ""
                                         isEditingWeights = true
                                     },
                                     modifier = Modifier.size(20.dp)
@@ -205,24 +225,17 @@ fun SectionValeursMetaboliques(
                                     onValueChange = {
                                         idealWeightText = normalizeDecimalInput(it)
                                     },
-                                    placeholder = translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL),
+                                    placeholder = libelleSecondPoids,
                                     modifier = Modifier.width(140.dp).height(50.dp),
                                     trailingIcon = Icons.Filled.Check,
-                                    onTrailingIconClick = {
-                                        val newCurrent = parsePositiveDecimal(currentWeightText)
-                                        val newIdeal = parsePositiveDecimal(idealWeightText)
-                                        if (newCurrent != null && newIdeal != null) {
-                                            onUpdateWeights?.invoke(newCurrent, newIdeal)
-                                            isEditingWeights = false
-                                        }
-                                    }
+                                    onTrailingIconClick = { if (validerPoids()) isEditingWeights = false }
                             )
                             IconButton(
                                     onClick = {
                                         currentWeightText =
                                                 selectedConsultation?.weight?.toString() ?: ""
                                         idealWeightText =
-                                                selectedConsultation?.effectiveWeight?.toString() ?: ""
+                                                secondPoidsSaisie?.toString() ?: ""
                                         isEditingWeights = false
                                     },
                                     modifier = Modifier.size(24.dp)
@@ -246,9 +259,9 @@ fun SectionValeursMetaboliques(
                             )
                             Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
                             LigneInfoLocaleCompacte(
-                                    label = translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL),
+                                    label = libelleSecondPoids,
                                     value =
-                                            selectedConsultation?.effectiveWeight?.let {
+                                            secondPoids?.let {
                                                 "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                             }
                                                     ?: translate(LocalizationKeys.General.NOT_CALCULATED)
@@ -258,7 +271,7 @@ fun SectionValeursMetaboliques(
                                         currentWeightText =
                                                 selectedConsultation?.weight?.toString() ?: ""
                                         idealWeightText =
-                                                selectedConsultation?.effectiveWeight?.toString() ?: ""
+                                                secondPoidsSaisie?.toString() ?: ""
                                         isEditingWeights = true
                                     },
                                     modifier = Modifier.size(20.dp)
