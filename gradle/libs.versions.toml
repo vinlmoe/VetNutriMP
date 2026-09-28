@@ -45,7 +45,7 @@ junitVersion = "4.13.2"
 sqliteBundled = "2.5.0"
 coroutines = "1.7.3"
 materialIconsExtended = "1.7.8"
-jansi = "2.4.1"
+jansi = "2.4.3"
 qrKit = "3.0.0"
 slf4j = "2.0.16"
 
