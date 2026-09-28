@@ -1064,46 +1064,7 @@ class ExportImportRepository(
                                                 }
                                         }
 
-                                        // Créer la recette avec l'UUID original
-                                        val createdRecipe =
-                                                recipeRepository.createRecipeWithUuid(
-                                                        uuid = recipe.uuid,
-                                                        name = recipe.name ?: "Recette importée",
-                                                        espece = recipe.espece,
-                                                        description = recipe.description,
-                                                        number = recipe.number ?: 1
-                                                )
-
-                                        // Ajouter les ingrédients à la recette
-                                        if (recipe.aliments.isNotEmpty()) {
-                                                val alimentsRation =
-                                                        recipe.aliments.map { ingredient ->
-                                                                AlimentRation(
-                                                                        uuid = ingredient.uuid,
-                                                                        uuidUnif =
-                                                                                ingredient
-                                                                                        .refAlimUnif,
-                                                                        refAlimUnif =
-                                                                                ingredient
-                                                                                        .refAlimUnif,
-                                                                        quantite =
-                                                                                ingredient.quantity,
-                                                                        refTarget =
-                                                                                ingredient
-                                                                                        .refTarget,
-                                                                        proportion = 0.0,
-                                                                        weight = 1.0,
-                                                                        category = 0,
-                                                                        densiteEnergetique = 0.0,
-                                                                        refRation =
-                                                                                createdRecipe.uuid
-                                                                )
-                                                        }
-                                                recipeRepository.addAliments(
-                                                        createdRecipe.uuid,
-                                                        alimentsRation
-                                                )
-                                        }
+                                        recipeRepository.importRecipe(recipe)
 
                                         recipesImported++
                                         advance()

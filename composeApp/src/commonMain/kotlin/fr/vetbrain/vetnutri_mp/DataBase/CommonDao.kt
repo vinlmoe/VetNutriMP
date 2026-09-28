@@ -219,6 +219,17 @@ interface ExamGradingDao {
 
 @Dao
 interface RecipeDao {
+        @Transaction
+        suspend fun importRecipe(recipe: RecetteEntity, aliments: List<AlimentRecetteEntity>) {
+                if (getRecipeById(recipe.uuid) == null) {
+                        insertRecipe(recipe)
+                } else {
+                        updateRecipe(recipe)
+                }
+                deleteAlimentsForRecipe(recipe.uuid)
+                aliments.forEach { insertAlimentRecette(it) }
+        }
+
         @Insert suspend fun insertRecipe(recipe: RecetteEntity)
         @Update suspend fun updateRecipe(recipe: RecetteEntity)
         @Delete suspend fun deleteRecipe(recipe: RecetteEntity)
