@@ -55,7 +55,11 @@ object RationAggregator {
     ): List<Ration> {
         if (!scope.estGroupe) return emptyList()
         val rations = consultation?.rations ?: return emptyList()
-        return rations.filter { it.actual == scope.cibleRationsActuelles }
+        // Les étapes d'un plan évolutif sont calculées chacune à leur propre poids : les moyenner
+        // n'a pas de sens, elles sont exclues des groupes.
+        return rations.filter {
+            it.actual == scope.cibleRationsActuelles && !VariablesEtape.estEtape(consultation, it)
+        }
     }
 
     /**

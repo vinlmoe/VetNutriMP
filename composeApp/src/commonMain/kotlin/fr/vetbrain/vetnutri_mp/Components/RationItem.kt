@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -17,9 +18,11 @@ import androidx.compose.ui.text.font.FontWeight
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.RationAggregator
 import fr.vetbrain.vetnutri_mp.Enumer.RationAnalysisScope
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Evolutive
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
@@ -45,7 +48,11 @@ fun RationItem(
         onDelete: () -> Unit,
         onDuplicate: (() -> Unit)? = null,
         onEditCoef: ((Double) -> Unit)? = null,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        // Plan évolutif : étape rangée sous une ration (sous-titre fixe, pas de coefficient)
+        estEtape: Boolean = false,
+        onAjouterEtape: (() -> Unit)? = null,
+        onSynthesePlan: (() -> Unit)? = null
 ) {
         Card(
                 modifier =
@@ -74,7 +81,13 @@ fun RationItem(
                                                 if (isSelected) FontWeight.Bold
                                                 else FontWeight.Normal
                                 )
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (estEtape) {
+                                        Text(
+                                                text = translate(Evolutive.STEP_SUBTITLE),
+                                                style = MaterialTheme.typography.caption,
+                                                color = VetNutriColors.Secondary
+                                        )
+                                } else Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                                 text =
                                                         if (ration.actual) translate(RationKeys.ACTUAL)
@@ -102,6 +115,30 @@ fun RationItem(
                         }
                         // Actions
                         Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)) {
+                                if (onSynthesePlan != null) {
+                                        IconButton(
+                                                onClick = onSynthesePlan,
+                                                modifier = Modifier.size(AppSizes.iconSizeSmall)
+                                        ) {
+                                                Icon(
+                                                        imageVector = AppIcons.Analytics,
+                                                        contentDescription = translate(Evolutive.PLAN_SUMMARY),
+                                                        tint = VetNutriColors.Primary
+                                                )
+                                        }
+                                }
+                                if (onAjouterEtape != null) {
+                                        IconButton(
+                                                onClick = onAjouterEtape,
+                                                modifier = Modifier.size(AppSizes.iconSizeSmall)
+                                        ) {
+                                                Icon(
+                                                        imageVector = Icons.Filled.Add,
+                                                        contentDescription = translate(Evolutive.ADD_STEP_TO),
+                                                        tint = VetNutriColors.Primary
+                                                )
+                                        }
+                                }
                                 if (onDuplicate != null) {
                                         IconButton(
                                                 onClick = onDuplicate,

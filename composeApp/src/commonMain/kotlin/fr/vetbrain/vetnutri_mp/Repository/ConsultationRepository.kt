@@ -6,6 +6,7 @@ import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.DataBase.ConsultationDao
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toData
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toSupplementalVariableEntities
 import fr.vetbrain.vetnutri_mp.DataBase.SupplementalVariableEntity
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.withContext
@@ -78,13 +79,19 @@ class DatabaseConsultationRepository(
                     }
                 }
 
+                // Variables d'énergie propres à chaque étape de plan évolutif
+                val rationSuppVarEntities = consultation.rations.flatMap { ration ->
+                    ration.toSupplementalVariableEntities()
+                }
+
                 // DELETE + INSERT atomiques : sans transaction, un échec laisserait la
                 // consultation sans rations si le DELETE avait déjà eu lieu
                 consultationDao.replaceConsultationRelations(
                     consultation.uuid,
                     rationEntities,
                     alimentEntities,
-                    suppVarEntities
+                    suppVarEntities,
+                    rationSuppVarEntities
                 )
             } catch (e: Exception) {
                 throw e
@@ -105,6 +112,7 @@ class DatabaseConsultationRepository(
                     val aliments = consultationDao.getAlimentsForRation(ration.uuid)
                     ration.alimentMutableList.clear()
                     ration.alimentMutableList.addAll(aliments.map { it.toData() })
+                    chargerVariablesEtape(ration)
                 }
                 consultation
             }
@@ -143,6 +151,7 @@ class DatabaseConsultationRepository(
                 val aliments = consultationDao.getAlimentsForRation(ration.uuid)
                 ration.alimentMutableList.clear()
                 ration.alimentMutableList.addAll(aliments.map { it.toData() })
+                chargerVariablesEtape(ration)
             }
 
             // Batch-load tous les aliments référencés en une seule passe
@@ -163,6 +172,14 @@ class DatabaseConsultationRepository(
 
             consultationEv
         }
+    }
+
+    /** Charge les variables d'énergie propres à une étape de plan évolutif. */
+    private suspend fun chargerVariablesEtape(ration: Ration) {
+        ration.suppVarp =
+            consultationDao.getSupplementalVariablesForRation(ration.uuid)
+                .map { it.toData() }
+                .toMutableList()
     }
 
     override suspend fun deleteConsultation(consultation: ConsultationEv) {

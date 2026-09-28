@@ -48,6 +48,7 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnalNut
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.ConsultationEdit
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Evolutive
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -176,6 +177,33 @@ fun RationsView(
                         )
                 }
 
+        // Rations principales, chacune suivie des étapes de son plan évolutif (triées par poids)
+        val rationsAffichees =
+                remember(selectedConsultation) {
+                        val consultation = selectedConsultation
+                        consultation?.let { c ->
+                                PlanEvolutif.rationsPrincipales(c).sortedForDisplay().flatMap { parent ->
+                                        listOf(parent) +
+                                                PlanEvolutif.planTrie(c, parent).filter {
+                                                        it.uuid != parent.uuid
+                                                }
+                                }
+                        } ?: emptyList()
+                }
+        // Plan évolutif : dialogues d'étape (création / édition) et de synthèse
+        var parentNouvelleEtape by remember { mutableStateOf<Ration?>(null) }
+        var etapeAEditer by remember { mutableStateOf<Ration?>(null) }
+        var parentSynthese by remember { mutableStateOf<Ration?>(null) }
+        val bilansEtapes by viewModel.bilansEtapes.collectAsState()
+        // Étape du plan évolutif actuellement sélectionnée (null hors plan)
+        val etapeSelectionnee =
+                remember(selectedConsultation, selectedRation?.uuid) {
+                        val consultation = selectedConsultation
+                        consultation?.rations
+                                ?.firstOrNull { it.uuid == selectedRation?.uuid }
+                                ?.takeIf { VariablesEtape.estEtape(consultation, it) }
+                }
+
         // Résolution centralisée des références maladies sélectionnées + logs
         val referencesMaladiesResolues =
                 remember(selectedConsultation?.referencesMaladies, availableReferences) {
@@ -193,9 +221,19 @@ fun RationsView(
 
         // Récupération des valeurs métaboliques calculées
         val poidsMetabolique by viewModel.poidsMetabolique.collectAsState()
+        // Poids utilisé pour les besoins (poids de l'étape pour un plan évolutif)
+        val poidsEffectif by viewModel.poidsEffectif.collectAsState()
         val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
         // Le BE final devient la seule valeur de BE utilisée dans la vue
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
+        // Variables propres aux étapes : celles des équations d'énergie (et complémentaires)
+        val variablesEtapeRequises =
+                remember(referenceUtilisee, referencesMaladiesResolues) {
+                        fr.vetbrain.vetnutri_mp.Utils.VariablesEnergie.variablesEnergieRequises(
+                                referenceUtilisee,
+                                referencesMaladiesResolues
+                        )
+                }
 
         // L'énergie apportée sera calculée plus bas après chargement des préférences
         var energieApportee by remember { mutableStateOf(0.0) }
@@ -237,7 +275,10 @@ fun RationsView(
                 selectedConsultation,
                 referencesMaladiesResolues,
                 referenceUtilisee,
-                selectedRation
+                selectedRation,
+                // Plan évolutif : relancer une fois le BEE de l'étape recalculé
+                besoinEnergetiqueStandard,
+                poidsMetabolique
         ) {
                 val consultation = selectedConsultation
                 val ration = selectedRation
@@ -499,10 +540,14 @@ fun RationsView(
                                                                                 rationAExporter.name.let { if (it.isNotBlank()) " - $it" else "" },
                                                                 typeExpressionBesoin =
                                                                         effectiveTypeExpressionBesoin,
+                                                                // Poids réel, ou poids de l'étape pour un plan évolutif
                                                                 poidsAnimal =
-                                                                        selectedConsultation
-                                                                                ?.weight
-                                                                                ?.toDouble(),
+                                                                        if (fr.vetbrain.vetnutri_mp.Data.VariablesEtape.estEtape(
+                                                                                        selectedConsultation,
+                                                                                        rationAExporter
+                                                                                )
+                                                                        ) poidsEffectif
+                                                                        else selectedConsultation?.weight,
                                                                 poidsMetabolique =
                                                                         poidsMetabolique,
                                                                 besoinEnergetiqueEntretien =
@@ -825,6 +870,14 @@ fun RationsView(
                                                                         showMetabolicValuesDialog =
                                                                                 true
                                                                 },
+                                                                // Étape de plan évolutif : poids de l'étape affiché et éditable
+                                                                estEtape = etapeSelectionnee != null,
+                                                                poidsEtape = etapeSelectionnee?.poids,
+                                                                onUpdatePoidsEtape = { poids, poidsReel ->
+                                                                        etapeSelectionnee?.let { etape ->
+                                                                                viewModel.mettreAJourEtape(etape, poids, etape.suppVarp, poidsReel)
+                                                                        }
+                                                                },
                                                                 modifier = Modifier.fillMaxWidth()
                                                         )
                                                         Divider()
@@ -920,9 +973,7 @@ fun RationsView(
                                                                                 )
                                                                         }
                                                                         Divider()
-                                                                        if (selectedConsultation
-                                                                                        ?.rations
-                                                                                        .isNullOrEmpty()
+                                                                        if (rationsAffichees.isEmpty()
                                                                         ) {
                                                                                 CenteredMessage(
                                                                                         message =
@@ -949,12 +1000,23 @@ fun RationsView(
                                                                                                         viewModel.setRationAnalysisScope(scope)
                                                                                                 }
                                                                                         )
-                                                                                        selectedConsultation
-                                                                                                ?.rations?.sortedForDisplay()
+                                                                                        rationsAffichees
                                                                                                 ?.forEach {
                                                                                                         ration
                                                                                                         ->
                                                                                                         RationItem(
+                                                                                                                // Plan évolutif : étapes en retrait sous leur ration, actions sur la ration
+                                                                                                                estEtape = ration.refRationParente != null,
+                                                                                                                modifier =
+                                                                                                                        if (ration.refRationParente != null) Modifier.padding(start = 24.dp)
+                                                                                                                        else Modifier,
+                                                                                                                onAjouterEtape =
+                                                                                                                        if (ration.refRationParente == null) { { parentNouvelleEtape = ration } }
+                                                                                                                        else null,
+                                                                                                                onSynthesePlan =
+                                                                                                                        if (selectedConsultation?.let { PlanEvolutif.aUnPlan(it, ration) } == true)
+                                                                                                                                { { parentSynthese = ration } }
+                                                                                                                        else null,
                                                                                                                 ration =
                                                                                                                         ration,
                                                                                                                 isSelected =
@@ -971,11 +1033,14 @@ fun RationsView(
                                                                                                                                 )
                                                                                                                 },
                                                                                                                 onEdit = {
-                                                                                                                        rationToEdit =
-                                                                                                                                ration
-                                                                                                                        showRationEditDialog =
-                                                                                                                                true
-                                                                                                                },
+                                                                                                        // Étape : édition du poids et des variables (nom fixe)
+                                                                                                        if (ration.refRationParente != null) {
+                                                                                                                etapeAEditer = ration
+                                                                                                        } else {
+                                                                                                                rationToEdit = ration
+                                                                                                                showRationEditDialog = true
+                                                                                                        }
+                                                                                                },
                                                                                                                 onDuplicate = {
                                                                                                                         viewModel
                                                                                                                                 .duplicateRation(
@@ -1210,6 +1275,14 @@ fun RationsView(
                                                                                 showMetabolicValuesDialog =
                                                                                         true
                                                                         },
+                                                                        // Étape de plan évolutif : poids de l'étape affiché et éditable
+                                                                        estEtape = etapeSelectionnee != null,
+                                                                        poidsEtape = etapeSelectionnee?.poids,
+                                                                        onUpdatePoidsEtape = { poids, poidsReel ->
+                                                                                etapeSelectionnee?.let { etape ->
+                                                                                        viewModel.mettreAJourEtape(etape, poids, etape.suppVarp, poidsReel)
+                                                                                }
+                                                                        },
                                                                         modifier = Modifier.weight(1f)
                                                                 )
                                                                 Divider(
@@ -1339,8 +1412,7 @@ fun RationsView(
 
                                                                 Divider()
 
-                                                                if (selectedConsultation?.rations
-                                                                                .isNullOrEmpty()
+                                                                if (rationsAffichees.isEmpty()
                                                                 ) {
                                                                         CenteredMessage(
                                                                                 message =
@@ -1374,12 +1446,22 @@ fun RationsView(
                                                                                         )
                                                                                 }
                                                                                 items(
-                                                                                        selectedConsultation
-                                                                                                ?.rations?.sortedForDisplay()
-                                                                                                ?: emptyList(),
+                                                                                        rationsAffichees,
                                                                                         key = { ration -> ration.uuid }
                                                                                 ) { ration ->
                                                                                         RationItem(
+                                                                                                // Plan évolutif : étapes en retrait sous leur ration, actions sur la ration
+                                                                                                estEtape = ration.refRationParente != null,
+                                                                                                modifier =
+                                                                                                        if (ration.refRationParente != null) Modifier.padding(start = 24.dp)
+                                                                                                        else Modifier,
+                                                                                                onAjouterEtape =
+                                                                                                        if (ration.refRationParente == null) { { parentNouvelleEtape = ration } }
+                                                                                                        else null,
+                                                                                                onSynthesePlan =
+                                                                                                        if (selectedConsultation?.let { PlanEvolutif.aUnPlan(it, ration) } == true)
+                                                                                                                { { parentSynthese = ration } }
+                                                                                                        else null,
                                                                                                 ration =
                                                                                                         ration,
                                                                                                 isSelected =
@@ -1396,10 +1478,13 @@ fun RationsView(
                                                                                                                 )
                                                                                                 },
                                                                                                 onEdit = {
-                                                                                                        rationToEdit =
-                                                                                                                ration
-                                                                                                        showRationEditDialog =
-                                                                                                                true
+                                                                                                        // Étape : édition du poids et des variables (nom fixe)
+                                                                                                        if (ration.refRationParente != null) {
+                                                                                                                etapeAEditer = ration
+                                                                                                        } else {
+                                                                                                                rationToEdit = ration
+                                                                                                                showRationEditDialog = true
+                                                                                                        }
                                                                                                 },
                                                                                                 onDuplicate = {
                                                                                                         viewModel
@@ -1513,10 +1598,7 @@ fun RationsView(
                                                                                 besoinEnergetiqueStandard,
                                                                         besoinEnergetiqueCible =
                                                                                 besoinEnergetiqueTotal,
-                                                                        poidsAnimal =
-                                                                                selectedConsultation
-                                                                                        ?.effectiveWeight
-                                                                                        ?.toDouble(),
+                                                                        poidsAnimal = poidsEffectif,
                                                                         modifier = Modifier.fillMaxWidth(),
                                                                         nutrimentsSelectionnes =
                                                                                 nutrimentsSelectionnesPreferences,
@@ -1606,6 +1688,58 @@ fun RationsView(
                         // TODO: Réimplémentez les dialogues d'édition ici quand nécessaire
 
                         // Afficher le dialogue d'édition de ration si nécessaire
+                        // Plan évolutif : nouvelle étape sous une ration
+                        parentNouvelleEtape?.let { parent ->
+                                selectedConsultation?.let { consultation ->
+                                        EtapeEditDialog(
+                                                titre = translate(Evolutive.NEW_STEP_TITLE_FORMAT, parent.name),
+                                                consultation = consultation,
+                                                etape = null,
+                                                variablesRequises = variablesEtapeRequises,
+                                                onDismiss = { parentNouvelleEtape = null },
+                                                onSave = { poids, variables, libelle ->
+                                                        parentNouvelleEtape = null
+                                                        viewModel.ajouterEtape(parent, poids, variables, libelle)
+                                                }
+                                        )
+                                }
+                        }
+                        // Plan évolutif : édition du poids et des variables d'une étape
+                        etapeAEditer?.let { etape ->
+                                selectedConsultation?.let { consultation ->
+                                        EtapeEditDialog(
+                                                titre = translate(Evolutive.EDIT_STEP_TITLE),
+                                                consultation = consultation,
+                                                etape = etape,
+                                                variablesRequises = variablesEtapeRequises,
+                                                onDismiss = { etapeAEditer = null },
+                                                onSave = { poids, variables, libelle ->
+                                                        etapeAEditer = null
+                                                        viewModel.mettreAJourEtape(etape, poids, variables, libelle = libelle)
+                                                }
+                                        )
+                                }
+                        }
+                        // Plan évolutif : synthèse ingrédients × étapes
+                        parentSynthese?.let { parent ->
+                                selectedConsultation?.let { consultation ->
+                                        SynthesePlanDialog(
+                                                consultation = consultation,
+                                                parent = consultation.rations.firstOrNull { it.uuid == parent.uuid } ?: parent,
+                                                bilans = bilansEtapes,
+                                                onQuantite = { etape, ref, quantite ->
+                                                        viewModel.mettreAJourQuantiteEtape(etape, ref, quantite)
+                                                },
+                                                onPropager = {
+                                                        val source = consultation.rations.firstOrNull { it.uuid == parent.uuid } ?: parent
+                                                        val ajouts = viewModel.propagerAlimentsEtape(source)
+                                                        showSnackbar(translate(Evolutive.PROPAGATE_DONE, ajouts.toString()))
+                                                },
+                                                onDismiss = { parentSynthese = null }
+                                        )
+                                }
+                        }
+
                         if (showRationEditDialog) {
                                 RationEditDialog(
                                         ration = rationToEdit,
@@ -1688,6 +1822,7 @@ fun RationsView(
                         if (showMetabolicValuesDialog) {
                                 MetabolicValuesDialog(
                                         selectedConsultation = selectedConsultation,
+                                        poidsCalcul = poidsEffectif,
                                         poidsMetabolique = poidsMetabolique,
                                         besoinEnergetiqueStandard = besoinEnergetiqueStandard,
                                         besoinEnergetiqueTotal = besoinEnergetiqueTotal,
@@ -1718,7 +1853,7 @@ fun RationsView(
                                 referenceUtilisee = referenceUtilisee,
                                 besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
                                 besoinEnergetiqueCible = besoinEnergetiqueTotal,
-                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                poidsAnimal = poidsEffectif,
                                 espece = animal?.getEspece() ?: Espece.CHIEN,
                                 preferencesStorage = preferencesStorage,
                                 equationRepository = equationRepository,
@@ -1745,7 +1880,7 @@ fun RationsView(
                                 referenceUtilisee = reference,
                                 besoinEnergetiqueTotal = besoinEnergetique,
                                 besoinEnergetiqueStandard = besoinEnergetiqueStandard!!,
-                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                poidsAnimal = poidsEffectif,
                                 poidsMetabolique = poidsMetabolique,
                                 equationRepository = equationRepository,
                                 onConfirm = { result ->
@@ -2000,6 +2135,7 @@ private fun CompactLocalInfoRow(label: String, value: String) {
 @Composable
 private fun MetabolicValuesDialog(
         selectedConsultation: ConsultationEv?,
+        poidsCalcul: Double?,
         poidsMetabolique: Double?,
         besoinEnergetiqueStandard: Double?,
         besoinEnergetiqueTotal: Double?,
@@ -2031,7 +2167,7 @@ private fun MetabolicValuesDialog(
                                 LocalInfoRow(
                                         label = translate(AnalNut.WEIGHT_IDEAL),
                                         value =
-                                                selectedConsultation?.effectiveWeight?.let {
+                                                poidsCalcul?.let {
                                                         "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                                 }
                                                         ?: translate(General.NOT_CALCULATED)

@@ -92,7 +92,10 @@ data class ConsultationApi(
         val prescriptionLocalHtmlSections: List<HtmlSection> = emptyList(),
         val prescriptionSelectedRationIds: List<String> = emptyList(),
         val supplementalVariables: List<SupplementalVariableApi> = emptyList(),
-        val rations: List<RationApi> = emptyList()
+        val rations: List<RationApi> = emptyList(),
+        // Consultation évolutive (absents des anciens exports → STANDARD)
+        val consultationType: String = "STANDARD",
+        val evolutiveProfile: String? = null
 )
 
 @Serializable
@@ -138,7 +141,13 @@ data class RationApi(
         val specie: String?,
         val isRecipe: Boolean,
         val description: String,
-        val items: List<RationItemApi>
+        val items: List<RationItemApi>,
+        // Étape de plan évolutif (absents des anciens exports)
+        val isEvolutiveStep: Boolean = false,
+        val weightKg: Double? = null,
+        val supplementalVariables: List<SupplementalVariableApi> = emptyList(),
+        val parentRationId: String? = null,
+        val customName: String? = null
 )
 
 @Serializable
@@ -418,9 +427,32 @@ fun ConsultationEv.toApi(): ConsultationApi {
                                         SupplementalVariableApi(vn, sv.varue ?: 0.0)
                                 }
                         },
-                rations = rations.map { it.toApi() }
+                rations = rations.map { it.toApi() },
+                consultationType = typeConsultation.name,
+                evolutiveProfile = profilEvolutif?.name
         )
 }
+
+private fun List<SupplementalvariableP>.toSupplementalVariablesApi(): List<SupplementalVariableApi> =
+        mapNotNull { sv ->
+                sv.variable?.name?.let { vn -> SupplementalVariableApi(vn, sv.varue ?: 0.0) }
+        }
+
+private fun List<SupplementalVariableApi>.toSupplementalVariablesDomain():
+        MutableList<SupplementalvariableP> =
+        mapNotNull { api ->
+                runCatching {
+                                SupplementalvariableP(
+                                        variable =
+                                                fr.vetbrain.vetnutri_mp.Enumer.VariableKind.valueOf(
+                                                        api.variable
+                                                ),
+                                        varue = api.value
+                                )
+                        }
+                        .getOrNull()
+        }
+                .toMutableList()
 
 /** Mappers API -> domaine */
 fun AnimalApi.toDomain(): AnimalEv {
@@ -498,7 +530,12 @@ fun Ration.toApi(): RationApi {
                                                 density = item.densiteEnergetique
                                         )
                                 else null
-                        }
+                        },
+                isEvolutiveStep = etapeEvolutive,
+                weightKg = poids,
+                supplementalVariables = suppVarp.toSupplementalVariablesApi(),
+                parentRationId = refRationParente,
+                customName = nomLibre
         )
 }
 
@@ -782,6 +819,13 @@ fun ConsultationApi.toDomain(): ConsultationEv {
                                                 espece = rApi.specie,
                                                 recette = rApi.isRecipe,
                                                 description = rApi.description,
+                                                etapeEvolutive = rApi.isEvolutiveStep,
+                                                poids = rApi.weightKg,
+                                                refRationParente = rApi.parentRationId,
+                                                nomLibre = rApi.customName,
+                                                suppVarp =
+                                                        rApi.supplementalVariables
+                                                                .toSupplementalVariablesDomain(),
                                                 alimentMutableList =
                                                         rApi.items
                                                                 .map { itApi ->
@@ -826,7 +870,11 @@ fun ConsultationApi.toDomain(): ConsultationEv {
                 prescriptionLocalHtmlSections =
                         prescriptionLocalHtmlSections.toMutableList(),
                 prescriptionSelectedRationIds =
-                        prescriptionSelectedRationIds.toMutableList()
+                        prescriptionSelectedRationIds.toMutableList(),
+                typeConsultation =
+                        fr.vetbrain.vetnutri_mp.Enumer.TypeConsultation.fromName(consultationType),
+                profilEvolutif =
+                        fr.vetbrain.vetnutri_mp.Enumer.ProfilEvolutif.fromName(evolutiveProfile)
         )
 }
 

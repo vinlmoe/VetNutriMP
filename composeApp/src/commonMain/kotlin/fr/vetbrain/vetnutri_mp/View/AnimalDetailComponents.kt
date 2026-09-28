@@ -27,6 +27,7 @@ import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors

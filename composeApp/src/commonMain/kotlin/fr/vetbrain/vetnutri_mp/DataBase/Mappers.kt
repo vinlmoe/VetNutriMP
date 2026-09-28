@@ -139,7 +139,9 @@ object Mappers {
                                 prescriptionSelectedRationIdsJson =
                                         consultationPrescriptionJson.encodeToString(
                                                 this.prescriptionSelectedRationIds
-                                        )
+                                        ),
+                                typeConsultation = this.typeConsultation.name,
+                                profilEvolutif = this.profilEvolutif?.name
                         )
                         .apply {
                                 if (includeRelations) {
@@ -270,7 +272,9 @@ object Mappers {
                         prescriptionAdditionalText = this.prescriptionAdditionalText ?: "",
                         prescriptionSelectedConseilIds = prescriptionSelectedConseilIds,
                         prescriptionLocalHtmlSections = prescriptionLocalHtmlSections,
-                        prescriptionSelectedRationIds = prescriptionSelectedRationIds
+                        prescriptionSelectedRationIds = prescriptionSelectedRationIds,
+                        typeConsultation = TypeConsultation.fromName(this.typeConsultation),
+                        profilEvolutif = ProfilEvolutif.fromName(this.profilEvolutif)
                 )
         }
 
@@ -296,7 +300,11 @@ object Mappers {
                                 number = this.number ?: 1,
                                 espece = this.espece ?: "",
                                 recette = this.recette ?: false,
-                                description = this.description ?: ""
+                                description = this.description ?: "",
+                                etapeEvolutive = this.etapeEvolutive,
+                                poids = this.poids,
+                                refRationParente = this.refRationParente,
+                                nomLibre = this.nomLibre
                         )
                         .apply {
                                 if (includeRelations) {
@@ -307,7 +315,22 @@ object Mappers {
                         }
         }
 
-        fun RationEntity.toData(aliments: List<AlimentRationEntity> = emptyList()): Ration {
+        /** Variables d'énergie propres à l'étape, prêtes à être persistées. */
+        fun Ration.toSupplementalVariableEntities(): List<RationSupplementalVariableEntity> =
+                this.suppVarp.mapNotNull { suppVar ->
+                        suppVar.variable?.let { variable ->
+                                RationSupplementalVariableEntity(
+                                        idRation = this.uuid,
+                                        variableKind = variable.uuid,
+                                        value = suppVar.varue ?: 0.0
+                                )
+                        }
+                }
+
+        fun RationEntity.toData(
+                aliments: List<AlimentRationEntity> = emptyList(),
+                suppVars: List<RationSupplementalVariableEntity> = emptyList()
+        ): Ration {
                 return Ration(
                         uuid = this.uuid,
                         idConsult = this.idConsult ?: "",
@@ -318,7 +341,12 @@ object Mappers {
                         espece = this.espece ?: "",
                         recette = this.recette ?: false,
                         description = this.description ?: "",
-                        alimentMutableList = aliments.map { it.toData() }.toMutableList()
+                        alimentMutableList = aliments.map { it.toData() }.toMutableList(),
+                        etapeEvolutive = this.etapeEvolutive,
+                        poids = this.poids,
+                        refRationParente = this.refRationParente,
+                        suppVarp = suppVars.map { it.toData() }.toMutableList(),
+                        nomLibre = this.nomLibre
                 )
         }
 
@@ -801,6 +829,13 @@ alimentUuid: String
 
         // Ajouter les mappers manquants
         fun SupplementalVariableEntity.toData(): SupplementalvariableP {
+                return SupplementalvariableP(
+                        variable = VariableKind.getById(this.variableKind),
+                        varue = this.value
+                )
+        }
+
+        fun RationSupplementalVariableEntity.toData(): SupplementalvariableP {
                 return SupplementalvariableP(
                         variable = VariableKind.getById(this.variableKind),
                         varue = this.value
