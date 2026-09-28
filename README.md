@@ -4,7 +4,7 @@
 
 VetNutri MP permet aux vétérinaires et nutritionnistes de calculer et d'analyser les rations alimentaires des animaux de compagnie. Elle couvre la sélection des aliments, le calcul des besoins énergétiques, l'analyse nutritionnelle détaillée et l'export de rapports.
 
-> Version actuelle : **3.3.15**
+> Version actuelle : **3.3.18**
 
 ---
 
@@ -17,6 +17,14 @@ VetNutri MP permet aux vétérinaires et nutritionnistes de calculer et d'analys
 | Desktop | JVM 11 | DMG (macOS) · EXE (Windows) · DEB (Linux) |
 
 ---
+
+## Nouveautés 3.3.18
+
+- Mise à jour de 12 fiches alimentaires Royal Canin, Hill’s et Osalia, avec références sources.
+- Vérification des unités et comparaison des produits proches ; les écarts non résolus sont
+  documentés dans le [rapport de cohérence](docs/audit_nutrition_3.3.18.md).
+- Police des cartes de ration et d’ingrédients réduite de 10 %.
+- Versions Android, iOS, Desktop et jeux de données harmonisées en **3.3.18 (318)**.
 
 ## Nouveautés 3.3.15
 

@@ -155,7 +155,7 @@ fun AlimentItem(
                                                 text = aliment.aliment?.nom ?: translate("alimentItem.noNameLabel"),
                                                 style =
                                                         MaterialTheme.typography
-                                                                .body2, // taille réduite
+                                                                .body2.copy(fontSize = MaterialTheme.typography.body2.fontSize * 0.9f), // taille réduite
                                                 fontWeight = FontWeight.Medium
                                         )
 
@@ -185,7 +185,7 @@ fun AlimentItem(
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
-                                                                                        .caption,
+                                                                                        .caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
                                                                         color =
                                                                                 MaterialTheme.colors
                                                                                         .onSurface
@@ -207,7 +207,7 @@ fun AlimentItem(
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
-                                                                                        .caption,
+                                                                                        .caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
                                                                         color =
                                                                                 if (hum > 15.0)
                                                                                         VetNutriColors
@@ -284,7 +284,7 @@ fun AlimentItem(
                                 ) {
                                         Text(
                                                 text = translate("alimentItem.quantityLabel"),
-                                                style = MaterialTheme.typography.caption
+                                                style = MaterialTheme.typography.caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f)
                                         ) // texte réduit
 
                                         if (isEditing) {
@@ -367,7 +367,7 @@ fun AlimentItem(
                                                                 translate(LocalizationKeys.General.OK),
                                                                 style =
                                                                         MaterialTheme.typography
-                                                                                .caption
+                                                                                .caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f)
                                                         )
                                                 }
                                         } else {
@@ -376,7 +376,7 @@ fun AlimentItem(
                                                         text = "${NumberUtils.format(aliment.quantite.coerceAtLeast(0.0), 1)} g",
                                                         style =
                                                                 MaterialTheme.typography
-                                                                        .caption, // texte réduit
+                                                                        .caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f), // texte réduit
                                                         fontWeight = FontWeight.Medium,
                                                         modifier = Modifier.clickable { onStartEditing() }
                                                 )
@@ -387,7 +387,7 @@ fun AlimentItem(
                                 calculerQuantiteEnUnites(aliment)?.let { quantiteUnites ->
                                         Text(
                                                 text = quantiteUnites,
-                                                style = MaterialTheme.typography.caption,
+                                                style = MaterialTheme.typography.caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
                                                 color =
                                                         MaterialTheme.colors.onSurface.copy(
                                                                 alpha = 0.7f

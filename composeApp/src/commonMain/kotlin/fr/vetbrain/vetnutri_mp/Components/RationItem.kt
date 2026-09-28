@@ -76,7 +76,7 @@ fun RationItem(
                         ) {
                                 Text(
                                         text = ration.name,
-                                        style = MaterialTheme.typography.subtitle1,
+                                        style = MaterialTheme.typography.subtitle1.copy(fontSize = MaterialTheme.typography.subtitle1.fontSize * 0.9f),
                                         fontWeight =
                                                 if (isSelected) FontWeight.Bold
                                                 else FontWeight.Normal
@@ -84,7 +84,7 @@ fun RationItem(
                                 if (estEtape) {
                                         Text(
                                                 text = translate(Evolutive.STEP_SUBTITLE),
-                                                style = MaterialTheme.typography.caption,
+                                                style = MaterialTheme.typography.caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
                                                 color = VetNutriColors.Secondary
                                         )
                                 } else Row(verticalAlignment = Alignment.CenterVertically) {
@@ -92,7 +92,7 @@ fun RationItem(
                                                 text =
                                                         if (ration.actual) translate(RationKeys.ACTUAL)
                                                         else translate(RationKeys.PROPOSED),
-                                                style = MaterialTheme.typography.caption,
+                                                style = MaterialTheme.typography.caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
                                                 color =
                                                         if (ration.actual) Color(0xFFFF9800)
                                                         else VetNutriColors.Secondary
@@ -104,7 +104,7 @@ fun RationItem(
                                                                 "ration.coefficientFormat",
                                                                 TextUtils.formatDecimal(ration.coef.toDouble(), 2)
                                                         ),
-                                                style = MaterialTheme.typography.caption,
+                                                style = MaterialTheme.typography.caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
                                                 color = Color.Gray,
                                                 modifier =
                                                         Modifier.clickable(
@@ -229,7 +229,7 @@ fun RationGroupItem(
                         ) {
                                 Text(
                                         text = RationAggregator.nomGroupe(scope),
-                                        style = MaterialTheme.typography.subtitle1,
+                                        style = MaterialTheme.typography.subtitle1.copy(fontSize = MaterialTheme.typography.subtitle1.fontSize * 0.9f),
                                         color = groupColor,
                                         fontWeight =
                                                 if (isSelected) FontWeight.Bold
@@ -242,7 +242,7 @@ fun RationGroupItem(
                                                                 RationKeys.GROUP_RATION_COUNT,
                                                                 rations.size.toString()
                                                         ),
-                                                style = MaterialTheme.typography.caption,
+                                                style = MaterialTheme.typography.caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
                                                 color = groupColor
                                         )
                                         Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
@@ -255,7 +255,7 @@ fun RationGroupItem(
                                                                         2
                                                                 )
                                                         ),
-                                                style = MaterialTheme.typography.caption,
+                                                style = MaterialTheme.typography.caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
                                                 color = Color.Gray
                                         )
                                 }

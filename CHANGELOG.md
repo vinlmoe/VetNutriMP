@@ -2,6 +2,17 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## 3.3.18
+
+- Versions applicatives harmonisées en **3.3.18 (318)** pour Android, iOS et Desktop.
+- Fiches GlycoAdvanced corrigées, Metabolic + Mobility chat ajouté, cinq fiches GI Biome
+  et quatre fiches OSALIM complétées avec sources et conversions explicites.
+- Audit de cohérence et comparaison aux aliments proches : voir
+  [le rapport](docs/audit_nutrition_3.3.18.md), notamment les points restant à confirmer.
+- Synchronisation des quatre copies du catalogue initial, dont la copie iOS Resources
+  auparavant restée en 3.3.15.
+- Réduction de 10 % des textes des cartes de ration et d’ingrédients.
+
 ## 3.3.15
 
 - Bump de version applicative vers **3.3.15 (315)** sur Android, iOS et Desktop.
