@@ -4,6 +4,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.datetime.Clock
 import okio.FileSystem
 import okio.Path.Companion.toPath
+import okio.SYSTEM
 
 private val DB_EXTENSIONS = listOf("", "-wal", "-shm")
 

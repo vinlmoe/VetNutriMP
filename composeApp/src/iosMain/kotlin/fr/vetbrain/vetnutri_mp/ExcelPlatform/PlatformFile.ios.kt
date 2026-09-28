@@ -47,10 +47,20 @@ actual class PlatformFile actual constructor(path: String) {
             (NSFileManager.defaultManager.moveItemAtPath(fullPath, dest.path, null) == true)
 
     actual fun copyTo(dest: PlatformFile, overwrite: Boolean) {
-        if (overwrite && NSFileManager.defaultManager.fileExistsAtPath(dest.path)) {
-            NSFileManager.defaultManager.removeItemAtPath(dest.path, null)
+        check(isFile()) { "Cannot read source $fullPath" }
+        check(overwrite || !dest.exists()) { "Destination already exists: ${dest.path}" }
+        if (fullPath == dest.path) return
+        // Copy first, then atomically publish on the same filesystem. A failed copy must
+        // never remove an existing destination (e.g. a database recovery file).
+        val temporary = "${dest.path}.copy-${NSUUID().UUIDString}"
+        try {
+            check(NSFileManager.defaultManager.copyItemAtPath(fullPath, temporary, null)) {
+                "Cannot copy $fullPath to ${dest.path}"
+            }
+            check(platform.posix.rename(temporary, dest.path) == 0) { "Cannot replace ${dest.path}" }
+        } finally {
+            NSFileManager.defaultManager.removeItemAtPath(temporary, null)
         }
-        NSFileManager.defaultManager.copyItemAtPath(fullPath, dest.path, null)
     }
 
     actual fun listFiles(): List<PlatformFile>? =
@@ -59,14 +69,15 @@ actual class PlatformFile actual constructor(path: String) {
             }
 
     actual fun readText(): String =
-            NSString.stringWithContentsOfFile(fullPath, NSUTF8StringEncoding, null) ?: ""
+            NSString.stringWithContentsOfFile(fullPath, NSUTF8StringEncoding, null)
+                ?: error("Cannot read $fullPath as UTF-8")
 
     actual fun writeText(text: String) {
         val parent = (fullPath as NSString).stringByDeletingLastPathComponent
         if (parent.isNotEmpty()) {
-            NSFileManager.defaultManager.createDirectoryAtPath(parent, true, null, null)
+            check(NSFileManager.defaultManager.createDirectoryAtPath(parent, true, null, null)) { "Cannot create $parent" }
         }
-        (text as NSString).writeToFile(fullPath, true, NSUTF8StringEncoding, null)
+        check((text as NSString).writeToFile(fullPath, true, NSUTF8StringEncoding, null)) { "Cannot write $fullPath" }
     }
 
     actual companion object {

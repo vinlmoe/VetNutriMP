@@ -553,7 +553,7 @@ class AnimalListViewModel(
                         appendApiImportLog(message)
                     }
                 )
-            )
+            ).requireComplete()
             val postImportIds = try {
                 animalRepository.getAllAnimals().map { it.uuid }.toSet()
             } catch (_: Exception) {

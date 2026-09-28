@@ -24,9 +24,9 @@ expect fun importAnimalsFromFile(viewModel: AnimalListViewModel, clearFoodsBefor
 expect fun importFoodsFromFile(viewModel: SettingsViewModel)
 expect fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel)
 expect fun importApiFromFile(viewModel: SettingsViewModel)
-expect fun exportJsonToFile(content: String, defaultFileName: String): Boolean
-expect fun exportApiEnvelopeToFile(envelope: ApiEnvelope, defaultFileName: String): Boolean
-expect fun openJsonFileContent(): String?
+expect suspend fun exportJsonToFile(content: String, defaultFileName: String): Boolean
+expect suspend fun exportApiEnvelopeToFile(envelope: ApiEnvelope, defaultFileName: String): Boolean
+expect suspend fun openJsonFileContent(): String?
 expect fun performDatabaseFactoryReset(): String?
 expect suspend fun exportPdfDocument(
     documentType: DocumentType,

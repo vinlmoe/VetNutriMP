@@ -26,8 +26,8 @@ actual class FileService(private val context: Context) {
     actual suspend fun createDirectoryIfNotExists(directory: PlatformFile): Result<Unit> {
         return withContext(AppDispatchers.IO) {
             try {
-                if (!directory.exists()) {
-                    directory.mkdirs()
+                check(directory.isDirectory() || directory.mkdirs() || directory.isDirectory()) {
+                    "Cannot create directory ${directory.path}"
                 }
                 Result.success(Unit)
             } catch (e: Exception) {
@@ -47,7 +47,7 @@ actual class FileService(private val context: Context) {
     actual suspend fun deleteFile(file: PlatformFile): Result<Unit> {
         return withContext(AppDispatchers.IO) {
             try {
-                if (file.exists()) file.delete()
+                if (file.exists()) check(file.delete()) { "Cannot delete ${file.path}" }
                 Result.success(Unit)
             } catch (e: Exception) {
                 Result.failure(e)
@@ -84,7 +84,7 @@ actual class FileService(private val context: Context) {
     actual suspend fun moveFile(source: PlatformFile, destination: PlatformFile): Result<Unit> {
         return withContext(AppDispatchers.IO) {
             try {
-                source.renameTo(destination)
+                check(source.renameTo(destination)) { "Cannot move ${source.path} to ${destination.path}" }
                 Result.success(Unit)
             } catch (e: Exception) {
                 Result.failure(e)

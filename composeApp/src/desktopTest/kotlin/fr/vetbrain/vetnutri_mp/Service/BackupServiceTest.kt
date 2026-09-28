@@ -100,4 +100,93 @@ class BackupServiceTest {
 
         backupService.cleanup()
     }
+
+    @Test
+    fun restoreMergesWithoutDeletingNewAnimalsAndKeepsRecoveryBackup() = runTest {
+        val repo = InMemoryAnimalRepository()
+        repo.saveAnimal(AnimalEv(uuid = "a", nom = "Original"))
+        val service = newBackupService(repo)
+        val original = service.createBackup().getOrThrow()
+        repo.saveAnimal(AnimalEv(uuid = "a", nom = "Modified"))
+        repo.saveAnimal(AnimalEv(uuid = "b", nom = "New"))
+        assertTrue(service.restoreBackup(original).isSuccess)
+        assertEquals("Original", repo.getAnimalById("a")?.nom)
+        assertEquals("New", repo.getAnimalById("b")?.nom)
+        val recovery = service.getAvailableBackups().single { it.fileName != original.fileName }
+        assertEquals(2, recovery.animalCount)
+        service.cleanup()
+    }
+
+    @Test
+    fun missingMetadataIsReconstructedFromActualContent() = runTest {
+        val repo = InMemoryAnimalRepository()
+        repeat(3) { repo.saveAnimal(AnimalEv(uuid = "a$it", nom = "Animal$it")) }
+        val service = newBackupService(repo)
+        val backup = service.createBackup().getOrThrow()
+        File(backup.filePath.replace(".json", "_metadata.json")).delete()
+        val recovered = service.getAvailableBackups().single()
+        assertEquals(3, recovered.animalCount)
+        assertEquals(0, recovered.foodCount)
+        assertEquals(0, recovered.equationCount)
+        assertEquals(0, recovered.recipeCount)
+        service.cleanup()
+    }
+
+    @Test
+    fun malformedBackupDoesNotChangeDataOrCreateRecoveryBackup() = runTest {
+        val repo = InMemoryAnimalRepository()
+        repo.saveAnimal(AnimalEv(uuid = "a", nom = "Keep"))
+        val service = newBackupService(repo)
+        val backup = service.createBackup().getOrThrow()
+        File(backup.filePath).writeText("invalid json")
+        assertTrue(service.restoreBackup(backup).isFailure)
+        assertEquals("Keep", repo.getAnimalById("a")?.nom)
+        assertEquals(1, service.getAvailableBackups().size)
+        service.cleanup()
+    }
+
+    @Test
+    fun importFailureIsNotReportedAsSuccessfulRestoration() = runTest {
+        val source = InMemoryAnimalRepository()
+        source.saveAnimal(AnimalEv(uuid = "a", nom = "Rex"))
+        val sourceService = newBackupService(source)
+        val backup = sourceService.createBackup().getOrThrow()
+        val backing = InMemoryAnimalRepository()
+        val failing = object : fr.vetbrain.vetnutri_mp.Repository.AnimalRepository by backing {
+            override suspend fun saveAnimal(animal: AnimalEv) { error("write failed") }
+        }
+        val service = BackupService(ExportImportRepository(failing), FileService())
+        val result = service.restoreBackup(backup)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("Sauvegarde préalable"))
+        assertEquals(2, service.getAvailableBackups().size)
+        service.cleanup()
+        sourceService.cleanup()
+    }
+
+    @Test
+    fun failedRecoveryBackupPreventsImport() = runTest {
+        val source = InMemoryAnimalRepository()
+        source.saveAnimal(AnimalEv(uuid = "a", nom = "Rex"))
+        val sourceService = newBackupService(source)
+        val backup = sourceService.createBackup().getOrThrow()
+        val backing = InMemoryAnimalRepository()
+        var writes = 0
+        val failing = object : fr.vetbrain.vetnutri_mp.Repository.AnimalRepository by backing {
+            override suspend fun getAllAnimals(): List<AnimalEv> = error("read failed")
+            override suspend fun saveAnimal(animal: AnimalEv) { writes++ }
+        }
+        val service = BackupService(ExportImportRepository(failing), FileService())
+        assertTrue(service.restoreBackup(backup).isFailure)
+        assertEquals(0, writes)
+        service.cleanup()
+        sourceService.cleanup()
+    }
+
+    @Test
+    fun missingSourceMoveIsFailure() = runTest {
+        val missing = fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile(File(tempDir, "missing").path)
+        val destination = fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile(File(tempDir, "destination").path)
+        assertTrue(FileService().moveFile(missing, destination).isFailure)
+    }
 }

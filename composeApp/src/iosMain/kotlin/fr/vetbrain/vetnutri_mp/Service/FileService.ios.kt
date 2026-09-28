@@ -53,8 +53,8 @@ actual class FileService {
     actual suspend fun createDirectoryIfNotExists(directory: PlatformFile): Result<Unit> {
         return withContext(AppDispatchers.IO) {
             try {
-                if (!directory.exists()) {
-                    directory.mkdirs()
+                check(directory.isDirectory() || directory.mkdirs() || directory.isDirectory()) {
+                    "Cannot create directory ${directory.path}"
                 }
                 Result.success(Unit)
             } catch (e: Exception) {
@@ -78,7 +78,7 @@ actual class FileService {
         return withContext(AppDispatchers.IO) {
             try {
                 if (file.exists()) {
-                    file.delete()
+                    check(file.delete()) { "Cannot delete ${file.path}" }
                 } else {
                 }
                 Result.success(Unit)
@@ -123,7 +123,7 @@ actual class FileService {
         return withContext(AppDispatchers.IO) {
             try {
                 println("[FileService][iOS] Déplacement: ${source.absolutePath} => ${destination.absolutePath}")
-                source.renameTo(destination)
+                check(source.renameTo(destination)) { "Cannot move ${source.path} to ${destination.path}" }
                 Result.success(Unit)
             } catch (e: Exception) {
                 println("[FileService][iOS] Erreur déplacement ${source.absolutePath} => ${destination.absolutePath}: ${e.message}")

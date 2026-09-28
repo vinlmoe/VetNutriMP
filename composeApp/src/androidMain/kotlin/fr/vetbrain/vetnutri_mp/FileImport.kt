@@ -7,51 +7,14 @@ import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlinx.coroutines.withContext
 
-/**
- * Implémentation Android de la fonction d'importation d'animaux depuis un fichier. Cette fonction
- * ouvre un sélecteur de fichier pour choisir un fichier JSON.
- */
-actual fun importAnimalsFromFile(
-    viewModel: AnimalListViewModel,
-    clearFoodsBeforeImport: Boolean
-) {
-    // Cette fonction sera appelée depuis un composable, mais nous ne pouvons pas
-    // utiliser directement les fonctions de composition ici.
-    // L'implémentation réelle est dans MainActivity.
+actual fun importAnimalsFromFile(viewModel: AnimalListViewModel, clearFoodsBeforeImport: Boolean) =
+    importAnimalJsonFile(viewModel, clearFoodsBeforeImport)
 
-    // Pour l'instant, nous affichons simplement un message d'erreur
-    viewModel.setImportError("L'importation de fichiers n'est pas encore implémentée sur Android.")
+actual fun importFoodsFromFile(viewModel: SettingsViewModel) = importFoodJsonFile(viewModel)
+actual fun importApiFromFile(viewModel: SettingsViewModel) = importApiJsonFile(viewModel)
+
+suspend fun readFileContent(uri: Uri): String = withContext(AppDispatchers.IO) {
+    val stream = AndroidContext.appContext.contentResolver.openInputStream(uri)
+        ?: error("Impossible de lire le fichier sélectionné")
+    stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
 }
-
-/**
- * Implémentation Android de la fonction d'importation d'aliments depuis un fichier. Cette fonction
- * ouvre un sélecteur de fichier pour choisir un fichier JSON.
- */
-actual fun importFoodsFromFile(viewModel: SettingsViewModel) {
-    // Cette fonction sera appelée depuis un composable, mais nous ne pouvons pas
-    // utiliser directement les fonctions de composition ici.
-    // L'implémentation réelle est dans MainActivity.
-
-    // Pour l'instant, nous affichons simplement un message d'erreur
-    viewModel.setImportResult(
-            SettingsViewModel.ImportResult.Error(
-                    "L'importation de fichiers n'est pas encore implémentée sur Android."
-            )
-    )
-}
-
-/** Import API (nouveau format) – Android stub */
-actual fun importApiFromFile(viewModel: SettingsViewModel) {
-    viewModel.setImportResult(
-            SettingsViewModel.ImportResult.Error(
-                    "L'import API n'est pas encore implémenté sur Android."
-            )
-    )
-}
-
-/** Fonction utilitaire pour lire le contenu d'un fichier à partir d'un URI. */
-suspend fun readFileContent(uri: Uri): String =
-        withContext(AppDispatchers.IO) {
-            val inputStream = AndroidContext.appContext.contentResolver.openInputStream(uri)
-            inputStream?.bufferedReader()?.use { it.readText() } ?: ""
-        }

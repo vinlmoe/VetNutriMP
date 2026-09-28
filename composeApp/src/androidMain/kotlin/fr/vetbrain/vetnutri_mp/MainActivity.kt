@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
         // Enregistrement des ActivityResultLauncher pour l'import/export CSV
         // (doit se faire avant STARTED, donc ici plutôt que depuis un composable)
         ExcelFileOperationsBridge.register(this)
+        JsonFileOperationsBridge.register(this)
 
         // Initialisation de la localisation avec détection de la langue du système
         val systemLocale = resources.configuration.locales[0].language
@@ -38,6 +39,11 @@ class MainActivity : ComponentActivity() {
         val appDatabase = getRoomDatabase(getDatabaseBuilder(this), getDatabasePath(this))
 
         setContent { App(appDatabase) }
+    }
+
+    override fun onDestroy() {
+        JsonFileOperationsBridge.unregister(isChangingConfigurations)
+        super.onDestroy()
     }
 
     override fun onResume(): Unit {
