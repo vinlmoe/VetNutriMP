@@ -15,6 +15,30 @@ import kotlinx.coroutines.withContext
  * est analogue à une ration mais indépendante de toute consultation, et sans flags.
  */
 class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: FoodDao) {
+    /** Importe une recette et remplace ses ingrédients dans une seule transaction. */
+    suspend fun importRecipe(recipe: fr.vetbrain.vetnutri_mp.Data.Recette) {
+        withContext(AppDispatchers.IO) {
+            recipeDao.importRecipe(
+                RecetteEntity(
+                    uuid = recipe.uuid,
+                    name = recipe.name,
+                    number = recipe.number,
+                    espece = recipe.espece,
+                    description = recipe.description
+                ),
+                recipe.aliments.map { ingredient ->
+                    AlimentRecetteEntity(
+                        uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(),
+                        refAlimUnif = ingredient.refAlimUnif,
+                        refRecipe = recipe.uuid,
+                        quantity = ingredient.quantity,
+                        refTarget = ingredient.refTarget
+                    )
+                }
+            )
+        }
+    }
+
     suspend fun createRecipe(name: String, espece: String?, description: String?): Ration {
         return withContext(AppDispatchers.IO) {
             val uuid: String = fr.vetbrain.vetnutri_mp.Utils.genUUID()
