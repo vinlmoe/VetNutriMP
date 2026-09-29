@@ -180,52 +180,37 @@ private suspend fun calculerDensiteEnergetiqueAsync(
     }
 }
 
-/** Calcule le pourcentage d'énergie apporté par les protéines de manière asynchrone */
-private suspend fun calculerPourcentageEnergieProteinesAsync(
+/**
+ * Pourcentages d'énergie apportés par les protéines et les lipides, rapportés à la somme
+ * protéines + lipides + ENA (3.5 / 8.5 / 3.5 kcal/g) — même calcul que l'analyse graphique des
+ * rations (calculerPourcentagesEnergieRation) et que le camembert "Origine Énergie".
+ * On ne divise PAS par l'énergie de l'équation du référentiel : celle-ci peut différer de la somme
+ * des macros (fibres, coefficients autres), ce qui décalait les points par rapport aux rations.
+ */
+private suspend fun calculerPourcentagesEnergieAlimentAsync(
         aliment: AlimentEv,
-        densiteEnergetique: Double,
         equationRepository: EquationRepository?,
         referenceEv: ReferenceEv?
-): Double {
-    if (densiteEnergetique <= 0) return 0.0
-
-    // ✅ UTILISER LA MÊME APPROCHE QUE RATIONSVIEW : AlimentRation transitoire
+): Pair<Double, Double> {
     val alimentRation = AlimentRation(aliment = aliment, quantite = 100.0, weight = 1.0)
 
-    val _proteines =
+    suspend fun valeur(nutrient: NutrientMain): Double =
             alimentRation.getNutrientWithComplementary(
-                    nutrient = NutrientMain.PROTEINE,
+                    nutrient = nutrient,
                     equationRepository = equationRepository,
                     referenceEv = referenceEv
             )
                     ?: 0.0
-    val energieProteines = _proteines * 3.5
 
-    return (energieProteines / densiteEnergetique) * 100.0
-}
+    val energieProteines = valeur(NutrientMain.PROTEINE) * 3.5
+    val energieLipides = valeur(NutrientMain.LIPIDE) * 8.5
+    val energieEna = valeur(NutrientMain.ENA) * 3.5
+    val energieTotaleMacro = energieProteines + energieLipides + energieEna
 
-/** Calcule le pourcentage d'énergie apporté par les lipides de manière asynchrone */
-private suspend fun calculerPourcentageEnergieLipidesAsync(
-        aliment: AlimentEv,
-        densiteEnergetique: Double,
-        equationRepository: EquationRepository?,
-        referenceEv: ReferenceEv?
-): Double {
-    if (densiteEnergetique <= 0) return 0.0
+    if (energieTotaleMacro <= 0) return 0.0 to 0.0
 
-    // ✅ UTILISER LA MÊME APPROCHE QUE RATIONSVIEW : AlimentRation transitoire
-    val alimentRation = AlimentRation(aliment = aliment, quantite = 100.0, weight = 1.0)
-
-    val _lipides =
-            alimentRation.getNutrientWithComplementary(
-                    nutrient = NutrientMain.LIPIDE,
-                    equationRepository = equationRepository,
-                    referenceEv = referenceEv
-            )
-                    ?: 0.0
-    val energieLipides = _lipides * 8.5
-
-    return (energieLipides / densiteEnergetique) * 100.0
+    return (energieProteines / energieTotaleMacro) * 100.0 to
+            (energieLipides / energieTotaleMacro) * 100.0
 }
 
 /** Liste des nutriments disponibles pour les graphiques personnalisés */
@@ -846,17 +831,9 @@ fun AnalyseGraphiqueAlimentsView(
                         )
                 val densiteEnergetique = if (useDryMatterPer100g && matiereSeche > 0)
                         densiteEnergetiqueBase * 100.0 / matiereSeche else densiteEnergetiqueBase
-                val pourcentageProteines =
-                        calculerPourcentageEnergieProteinesAsync(
+                val (pourcentageProteines, pourcentageLipides) =
+                        calculerPourcentagesEnergieAlimentAsync(
                                 aliment,
-                                densiteEnergetiqueBase,
-                                equationRepository,
-                                referenceEv
-                        )
-                val pourcentageLipides =
-                        calculerPourcentageEnergieLipidesAsync(
-                                aliment,
-                                densiteEnergetiqueBase,
                                 equationRepository,
                                 referenceEv
                         )
