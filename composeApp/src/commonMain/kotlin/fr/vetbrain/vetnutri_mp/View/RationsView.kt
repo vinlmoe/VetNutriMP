@@ -19,6 +19,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -30,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
+import fr.vetbrain.vetnutri_mp.Components.IconWithTooltip
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -154,6 +156,23 @@ fun RationsView(
 ) {
         val animal by viewModel.animal.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
+        var showCopyRationDialog by remember { mutableStateOf(false) }
+        if (showCopyRationDialog && !isExamMode) {
+                CopyRationDialog(
+                        consultations = animal?.consultations.orEmpty().filter {
+                                it.uuid != selectedConsultation?.uuid && it.idAnim == animal?.uuid
+                        },
+                        onDismiss = { showCopyRationDialog = false },
+                        onCopy = { consultation, ration ->
+                                if (viewModel.copyRationFromConsultation(consultation.uuid, ration.uuid)) {
+                                        showCopyRationDialog = false
+                                        showSnackbar("Ration reprise dans la consultation courante")
+                                } else {
+                                        showSnackbar("Impossible de reprendre cette ration")
+                                }
+                        }
+                )
+        }
         val availableReferences by viewModel.availableReferences.collectAsState()
         val selectedRation by viewModel.selectedRation.collectAsState()
         val rationAnalysisScope by viewModel.rationAnalysisScope.collectAsState()
@@ -453,13 +472,15 @@ fun RationsView(
 
         val typeExpressionSelector: @Composable RowScope.() -> Unit = {
                 Box {
-                        TextButton(
-                                onClick = { showTypeExpressionMenu = true },
-                                contentPadding =
-                                        PaddingValues(
-                                                horizontal = AppSizes.paddingSmall,
-                                                vertical = 0.dp
-                                        )
+                        Row(
+                                modifier = Modifier
+                                        .heightIn(min = AppSizes.iconSizeXSmall)
+                                        .clickable(role = androidx.compose.ui.semantics.Role.Button) {
+                                                showTypeExpressionMenu = true
+                                        }
+                                        .padding(horizontal = AppSizes.paddingXSmall),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
                         ) {
                                 Text(
                                         text =
@@ -471,7 +492,8 @@ fun RationsView(
                                 Icon(
                                         imageVector = Icons.Filled.KeyboardArrowDown,
                                         contentDescription = null,
-                                        tint = VetNutriColors.Primary
+                                        tint = VetNutriColors.Primary,
+                                        modifier = Modifier.size(AppSizes.iconSizeXSmall)
                                 )
                         }
                         DropdownMenu(
@@ -521,11 +543,12 @@ fun RationsView(
                 }
 
                 if (selectedRation != null && referenceUtilisee != null) {
-                        IconButtonWithTooltip(
+                        IconWithTooltip(
                                 imageVector = Icons.Filled.Share,
                                 contentDescription = translate("ration.exportAnalysisPdf"),
                                 tooltip = translate("ration.exportAnalysisPdf"),
                                 tint = VetNutriColors.Primary,
+                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
                                 onClick = {
                                         val rationAExporter = selectedRation
                                         val animalActuel = animal
@@ -941,6 +964,7 @@ fun RationsView(
                                                                                 Text(
                                                                                         text =
                                                                                                 translate(RationKeys.CONSULTATION_RATIONS),
+                                                                                modifier = Modifier.weight(1f),
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -949,28 +973,33 @@ fun RationsView(
                                                                                                 VetNutriColors
                                                                                                         .Primary
                                                                                 )
-                                                                                Icon(
-                                                                                        imageVector =
-                                                                                                Icons.Filled
-                                                                                                        .Add,
-                                                                                        contentDescription =
-                                                                                                translate(AnalNut.ADD_RATION),
-                                                                                        tint =
-                                                                                                VetNutriColors
-                                                                                                        .Primary,
-                                                                                        modifier =
-                                                                                                Modifier.size(
-                                                                                                                AppSizes.iconSizeXSmall
-                                                                                                        )
-                                                                                                        .clickable(
-                                                                                                                onClick = {
-                                                                                                                        rationToEdit =
-                                                                                                                                null
-                                                                                                                        showRationEditDialog =
-                                                                                                                                true
-                                                                                                                }
-                                                                                                        )
-                                                                                )
+                                                                                Row(
+                                                                                    verticalAlignment = Alignment.CenterVertically,
+                                                                                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+                                                                                ) {
+                                                                                    if (!isExamMode) {
+                                                                                        IconWithTooltip(
+                                                                                            imageVector = Icons.Filled.ContentCopy,
+                                                                                            contentDescription = "Reprendre une ration",
+                                                                                            tooltip = "Reprendre une ration d’une autre consultation",
+                                                                                            onClick = { showCopyRationDialog = true },
+                                                                                            enabled = selectedConsultation != null,
+                                                                                            tint = VetNutriColors.Primary,
+                                                                                            modifier = Modifier.size(AppSizes.iconSizeXSmall)
+                                                                                        )
+                                                                                    }
+                                                                                    IconWithTooltip(
+                                                                                        imageVector = Icons.Filled.Add,
+                                                                                        contentDescription = translate(AnalNut.ADD_RATION),
+                                                                                        tooltip = translate(AnalNut.ADD_RATION),
+                                                                                        onClick = {
+                                                                                            rationToEdit = null
+                                                                                            showRationEditDialog = true
+                                                                                        },
+                                                                                        tint = VetNutriColors.Primary,
+                                                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall)
+                                                                                    )
+                                                                                }
                                                                         }
                                                                         Divider()
                                                                         if (rationsAffichees.isEmpty()
@@ -1374,6 +1403,7 @@ fun RationsView(
                                                                         Text(
                                                                                 text =
                                                                                         translate(RationKeys.CONSULTATION_RATIONS),
+                                                                                modifier = Modifier.weight(1f),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -1386,28 +1416,33 @@ fun RationsView(
                                                                         // Bouton pour
                                                                         // ajouter une
                                                                         // nouvelle ration
-                                                                        Icon(
-                                                                                imageVector =
-                                                                                        Icons.Filled
-                                                                                                .Add,
-                                                                                contentDescription =
-                                                                                        translate(AnalNut.ADD_RATION),
-                                                                                tint =
-                                                                                        VetNutriColors
-                                                                                                .Primary,
-                                                                                modifier =
-                                                                                        Modifier.size(
-                                                                                                        AppSizes.iconSizeXSmall
-                                                                                                )
-                                                                                                .clickable(
-                                                                                                        onClick = {
-                                                                                                                rationToEdit =
-                                                                                                                        null // Nouvelle ration
-                                                                                                                showRationEditDialog =
-                                                                                                                        true
-                                                                                                        }
-                                                                                                )
-                                                                        )
+                                                                        Row(
+                                                                            verticalAlignment = Alignment.CenterVertically,
+                                                                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+                                                                        ) {
+                                                                            if (!isExamMode) {
+                                                                                IconWithTooltip(
+                                                                                    imageVector = Icons.Filled.ContentCopy,
+                                                                                    contentDescription = "Reprendre une ration",
+                                                                                    tooltip = "Reprendre une ration d’une autre consultation",
+                                                                                    onClick = { showCopyRationDialog = true },
+                                                                                    enabled = selectedConsultation != null,
+                                                                                    tint = VetNutriColors.Primary,
+                                                                                    modifier = Modifier.size(AppSizes.iconSizeXSmall)
+                                                                                )
+                                                                            }
+                                                                            IconWithTooltip(
+                                                                                imageVector = Icons.Filled.Add,
+                                                                                contentDescription = translate(AnalNut.ADD_RATION),
+                                                                                tooltip = translate(AnalNut.ADD_RATION),
+                                                                                onClick = {
+                                                                                    rationToEdit = null
+                                                                                    showRationEditDialog = true
+                                                                                },
+                                                                                tint = VetNutriColors.Primary,
+                                                                                modifier = Modifier.size(AppSizes.iconSizeXSmall)
+                                                                            )
+                                                                        }
                                                                 }
 
                                                                 Divider()

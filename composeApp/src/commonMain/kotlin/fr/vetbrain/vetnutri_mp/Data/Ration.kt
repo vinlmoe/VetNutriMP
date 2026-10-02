@@ -35,6 +35,26 @@ data class Ration(
         // variables dans le nom affiché ; null = nom automatique seul
         var nomLibre: String? = null
 ) {
+        /** Copie indépendante comme proposition, sans conserver les liens du plan source. */
+        fun copyToConsultation(consultationId: String, order: Int): Ration {
+                val newId = genUUID()
+                return copy(
+                        uuid = newId,
+                        idConsult = consultationId,
+                        number = order,
+                        actual = false,
+                        recette = false,
+                        etapeEvolutive = false,
+                        refRationParente = null,
+                        poids = null,
+                        suppVarp = mutableListOf(),
+                        nomLibre = null,
+                        alimentMutableList = alimentMutableList.map {
+                                it.copy(uuid = genUUID(), refRation = newId)
+                        }.toMutableList()
+                )
+        }
+
         fun getAlimentByUUID(uuiDalim: String): AlimentRation {
                 return alimentMutableList.last { al -> al.uuid == uuiDalim }
         }

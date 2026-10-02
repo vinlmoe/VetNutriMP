@@ -964,6 +964,25 @@ class AnimalDetailViewModel(
         }
     }
 
+    /** Reprend exclusivement une ration d'une autre consultation de l'animal courant. */
+    fun copyRationFromConsultation(sourceConsultationId: String, rationId: String): Boolean {
+        val currentAnimal = _animal.value ?: return false
+        val destination = _selectedConsultation.value ?: return false
+        if (destination.idAnim != currentAnimal.uuid) return false
+        val source = currentAnimal.consultations.firstOrNull {
+            it.uuid == sourceConsultationId && it.uuid != destination.uuid &&
+                it.idAnim == currentAnimal.uuid
+        } ?: return false
+        val ration = source.rations.firstOrNull { it.uuid == rationId } ?: return false
+        val copied = ration.copyToConsultation(
+            destination.uuid,
+            (destination.rations.maxOfOrNull { it.number } ?: 0) + 1
+        )
+        addRationToConsultation(copied)
+        selectRation(copied)
+        return true
+    }
+
     fun addRationToConsultation(ration: Ration) {
         val consultation = _selectedConsultation.value?.copy() ?: return
         val updatedRations = consultation.rations.toMutableList()
