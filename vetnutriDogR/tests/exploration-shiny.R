@@ -35,6 +35,13 @@ if (nzchar(module_root) && nzchar(root) && requireNamespace("shiny", quietly = T
     # Controls can change without mutating the previously calculated result.
     session$setInputs(k_to = 2)
     stopifnot(identical(exploration()$configuration$k_values, c(0.8, 1.2)))
+    stopifnot(isFALSE(exploration()$configuration$missing_as_zero))
+    # The checkbox reaches the engine and the detail tab on the next run.
+    session$setInputs(k_to = 1.2, explore_missing_zero = TRUE, explore_run = 2)
+    out <- exploration()
+    stopifnot(isTRUE(out$configuration$missing_as_zero), "zero_filled" %in% names(out$summary))
+    session$setInputs(explore_scenario = out$summary$scenario_id[1])
+    stopifnot(isTRUE(detail()$missing_as_zero), nzchar(output$explore_summary), nzchar(output$explore_comparison))
   })
   cat("QMD exploration : listes, grille, cibles, calcul, détail et conservation des résultats validés\n")
 } else message("Exploration Shiny integration skipped: source checkout and shiny required")

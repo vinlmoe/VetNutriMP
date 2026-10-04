@@ -29,7 +29,9 @@ référence sans les dupliquer. `VETNUTRI_MP_ROOT` permet aussi de fixer son che
 Le document `inst/quarto/ration_interactive.qmd` explore toutes les combinaisons
 d'ingrédients sélectionnés pour les protéines, fibres, calcium, oméga-6, sodium
 et énergie restante, sur des intervalles de poids et de K. Les cibles du
-référentiel sont modifiables. Il fournit quantités, conformité, diagnostics,
+référentiel sont modifiables. L'option « Valeur absente = 0 (comme Kotlin) »
+permet de calculer les aliments à composition incomplète, en signalant les zéros
+utilisés. Il fournit quantités, conformité, diagnostics,
 comparaisons et exports pour chaque scénario.
 
 [Guide de l'exploration : méthode, cibles, unités et résultats](docs/EXPLORATION.md).

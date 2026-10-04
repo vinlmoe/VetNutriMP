@@ -132,9 +132,11 @@ vn_food_energy <- function(model, food, ref, values) {
 }
 
 #' Evaluate a ration from live INIT foods, in grams, with an explicit reference.
-#' Missing composition remains NA in comparisons; it is never labelled adequate.
+#' Missing composition remains NA in comparisons; it is never labelled adequate,
+#' unless missing_as_zero is TRUE (Kotlin `?: 0.0`), which is then reported.
 #' @export
-vn_init_ration <- function(model, reference_id, items, needs) {
+vn_init_ration <- function(model, reference_id, items, needs, missing_as_zero = FALSE) {
+  if (!isTRUE(missing_as_zero) && !isFALSE(missing_as_zero)) stop("missing_as_zero doit valoir TRUE ou FALSE")
   ref <- vn_init_object(model, "references", reference_id)
   if (ref$espece != "CHIEN") stop("Module limité au chien")
   if (nrow(needs) != 1L || needs$reference_id != reference_id) stop("Besoins incompatibles avec le référentiel")
@@ -173,19 +175,33 @@ vn_init_ration <- function(model, reference_id, items, needs) {
   }
   detail <- do.call(rbind, details)
   ids <- unique(detail$nutrient_id)
+  zero_filled <- character()
   totals <- setNames(vapply(ids, function(id) {
-    # Strict absence propagation (Kotlin may display an incomplete sum).
+    # Strict absence propagation by default (Kotlin may display an incomplete sum).
     v <- vapply(matrix_values, function(x) if (id %in% names(x)) x[[id]] else NA_real_, 0.0)
+    if (missing_as_zero && anyNA(v)) {
+      zero_filled <<- c(zero_filled, id)
+      v[is.na(v)] <- 0
+    }
     sum(v)
   }, 0.0), ids)
   evaluation <- vn_compare_totals(model, reference_id, totals, needs)
+  evaluation$comparison$zero_filled <- evaluation$comparison$nutrient_id %in% zero_filled
   totals <- evaluation$totals
   cmp <- evaluation$comparison
   list(needs = needs, item_intakes = detail, nutrient_totals = totals,
        energy_kcal = sum(energies), energy_coverage = sum(energies) / needs$need_kcal,
-       comparison = cmp,
+       comparison = cmp, missing_as_zero = missing_as_zero,
+       zero_filled = vn_zero_filled_requirements(model, zero_filled, cmp),
        diagnostics = vn_bind_rows(diagnostics, data.frame(item_index = integer(), food_id = character(), message = character(), source_json = character())),
        source_json = model$provenance$source_json)
+}
+
+# Additive nutrients evaluated against a threshold whose total used a zero for an absent value.
+vn_zero_filled_requirements <- function(model, zero_filled, comparison) {
+  dict <- model$dictionaries$nutrients
+  additive <- dict$nutrient_id[!dict$is_ratio]
+  sort(intersect(intersect(zero_filled, additive), unique(comparison$nutrient_id)))
 }
 
 # Shared by manual rations and the exploration grid; no second set of thresholds.
