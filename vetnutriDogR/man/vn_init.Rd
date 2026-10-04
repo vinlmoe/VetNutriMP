@@ -14,7 +14,7 @@ vn_load_init(path = NULL, root = Sys.getenv("VETNUTRI_MP_ROOT", ""), strict = FA
 vn_validate_init(model)
 vn_init_needs(model, reference_id, weight_kg, ideal_weight_kg = NULL,
               variables = list(), coefficient_ids = character(), adjustment = 1)
-vn_init_ration(model, reference_id, items, needs)
+vn_init_ration(model, reference_id, items, needs, missing_as_zero = FALSE)
 }
 \arguments{
 \item{root}{VetNutri MP checkout. If empty, search the current directory and its parents.}
@@ -29,6 +29,8 @@ vn_init_ration(model, reference_id, items, needs)
 \item{adjustment}{Positive adjustment factor; defaults to 1 as in Kotlin.}
 \item{items}{Data frame containing food_id and quantity_g, in grams per day.}
 \item{needs}{One-row result from \code{vn_init_needs} for the same reference.}
+\item{missing_as_zero}{If TRUE, absent values count as zero in totals (Kotlin
+behaviour); affected thresholds are flagged and listed in zero_filled.}
 }
 \value{Locator and validator return data frames. Loader returns a vetnutri_init
 list with normalized tables, raw envelope, provenance and diagnostics. Needs

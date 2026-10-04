@@ -39,6 +39,8 @@ vn_exploration_ui <- function(root = vn_find_root()) {
           ) else shiny::helpText("Quantité calculée en dernier pour compléter l'énergie déjà apportée. Un excédent énergétique est signalé, sans quantité négative.")
         )
       })),
+      shiny::checkboxInput("explore_missing_zero", "Valeur absente = 0 (comme Kotlin)", FALSE),
+      shiny::helpText("Décoché : une composition absente bloque l'ajustement et rend le seuil non évaluable. Coché : elle compte pour 0, comme dans VetNutri MP ; les nutriments concernés sont listés et un scénario sinon conforme reçoit CONFORME_ABSENTS_A_ZERO."),
       shiny::numericInput("scenario_limit", "Nombre maximal de scénarios autorisé", 5000, min = 1, step = 1000),
       shiny::textOutput("explore_count"),
       shiny::actionButton("explore_run", "Calculer toutes les rations", class = "btn-primary")
@@ -147,7 +149,7 @@ vn_exploration_server <- function(input, output, session) {
     shiny::validate(shiny::need(is.list(vars), "Variables : objet JSON requis"))
     shiny::withProgress(message = "Exploration de toutes les combinaisons", value = 0, {
       out <- vn_explore_rations(m, input$explore_refs, lists(), weights(), ks(), targets(), vars,
-        max_scenarios = input$scenario_limit,
+        max_scenarios = input$scenario_limit, missing_as_zero = isTRUE(input$explore_missing_zero),
         progress = function(i, total) shiny::setProgress(value = i / total, detail = paste(i, "/", total)))
     })
     out$model <- m # Snapshot: later catalogue reloads must not change existing results.
@@ -163,7 +165,10 @@ vn_exploration_server <- function(input, output, session) {
   })
   output$explore_summary <- shiny::renderText({
     s <- exploration()$summary
-    paste(nrow(s), "scénarios ;", sum(s$status == "CONFORME"), "entièrement conformes aux seuils connus, sans données manquantes ni avertissement.")
+    text <- paste(nrow(s), "scénarios ;", sum(s$status == "CONFORME"), "entièrement conformes aux seuils connus, sans données manquantes ni avertissement.")
+    if (isTRUE(exploration()$configuration$missing_as_zero))
+      text <- paste(text, sum(s$status == "CONFORME_ABSENTS_A_ZERO"), "conformes en comptant les valeurs absentes à 0.")
+    text
   })
   output$explore_results <- shiny::renderTable({
     s <- exploration()$summary
@@ -171,17 +176,20 @@ vn_exploration_server <- function(input, output, session) {
     shiny::req(input$explore_page >= 1)
     page <- as.integer(input$explore_page)
     s <- s[seq_len(nrow(s)) > (page - 1) * 50 & seq_len(nrow(s)) <= page * 50, ]
-    s[, c("scenario_id", "combination_id", "reference_name", "weight_kg", "K", "need_kcal", "energy_kcal", "status", "insufficient", "excess", "missing", "message")]
+    s[, c("scenario_id", "combination_id", "reference_name", "weight_kg", "K", "need_kcal", "energy_kcal", "status", "insufficient", "excess", "missing", "zero_filled", "message")]
   }, digits = 3)
   output$explore_heatmap <- shiny::renderPlot({
     s <- exploration()$summary
-    counts <- stats::aggregate(list(conformes = as.numeric(s$status == "CONFORME"), total = rep(1, nrow(s))),
+    zero <- isTRUE(exploration()$configuration$missing_as_zero)
+    ok <- s$status == "CONFORME" | (zero & s$status == "CONFORME_ABSENTS_A_ZERO")
+    counts <- stats::aggregate(list(conformes = as.numeric(ok), total = rep(1, nrow(s))),
                                s[, c("weight_kg", "K")], sum)
     rate <- counts$conformes / counts$total
     palette <- grDevices::colorRampPalette(c("#d95f59", "#f5d787", "#4e9b72"))(101)
     graphics::plot(counts$weight_kg, counts$K, pch = 15, cex = 3, col = palette[1 + round(100 * rate)],
       xlab = "Poids (kg)", ylab = "K global", main = "Part de scénarios entièrement conformes",
-      sub = "Toutes les combinaisons et tous les référentiels sélectionnés")
+      sub = paste0("Toutes les combinaisons et tous les référentiels sélectionnés",
+        if (zero) " ; valeurs absentes comptées à 0" else ""))
     graphics::text(counts$weight_kg, counts$K, labels = paste0(round(100 * rate), "%"), pos = 3, cex = 0.8)
     graphics::legend("topright", legend = c("0 %", "50 %", "100 %"), col = palette[c(1, 51, 101)], pch = 15, bty = "n")
   })
@@ -191,7 +199,7 @@ vn_exploration_server <- function(input, output, session) {
     shiny::req(nrow(s) == 1L)
     s
   })
-  output$explore_scenario_summary <- shiny::renderTable(selected()[, c("scenario_id", "reference_id", "reference_name", "stage", "weight_kg", "K", "status", "message", "warnings")])
+  output$explore_scenario_summary <- shiny::renderTable(selected()[, c("scenario_id", "reference_id", "reference_name", "stage", "weight_kg", "K", "status", "zero_filled_nutrients", "message", "warnings")])
   output$explore_quantities <- shiny::renderTable({
     out <- exploration(); s <- selected(); q <- out$quantities
     shiny::req(nrow(q) > 0)
@@ -210,9 +218,10 @@ vn_exploration_server <- function(input, output, session) {
     shiny::req(nrow(q) > 0)
     n <- vn_init_needs(out$model, s$reference_id, s$weight_kg,
       variables = out$configuration$variables, adjustment = s$K)
-    vn_init_ration(out$model, s$reference_id, q[, c("food_id", "quantity_g")], n)
+    vn_init_ration(out$model, s$reference_id, q[, c("food_id", "quantity_g")], n,
+      missing_as_zero = isTRUE(out$configuration$missing_as_zero))
   })
-  output$explore_comparison <- shiny::renderTable(detail()$comparison[, c("nutrient_id", "reflevel", "unit", "intake", "absolute_requirement", "status")], digits = 4)
+  output$explore_comparison <- shiny::renderTable(detail()$comparison[, c("nutrient_id", "reflevel", "unit", "intake", "absolute_requirement", "status", "zero_filled")], digits = 4)
   output$explore_export_summary <- shiny::downloadHandler(filename = function() "scenarios-canins.csv",
     content = function(file) utils::write.csv(exploration()$summary, file, row.names = FALSE))
   output$explore_export_quantities <- shiny::downloadHandler(filename = function() "quantites-rations.csv",

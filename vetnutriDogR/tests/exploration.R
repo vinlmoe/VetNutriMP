@@ -24,6 +24,11 @@ fit <- vn_adjust_combination(profiles, selection, targets)
 stopifnot(fit$quantities["energy"] == 0, fit$totals["ENERGIE"] == 8)
 profiles$protein$values["CAL"] <- NA_real_
 stopifnot(failed(vn_adjust_combination(profiles, selection, targets)))
+# Option "valeur absente = 0": Kotlin `?: 0.0`, with the substitution reported.
+fit <- vn_adjust_combination(profiles, selection, targets, missing_as_zero = TRUE)
+stopifnot(identical(fit$zero_filled, "CAL"), fit$quantities["calcium"] == 1, fit$totals["CAL"] == 1)
+profiles$calcium$values["CAL"] <- NA_real_ # no density left: no silent quantity
+stopifnot(failed(vn_adjust_combination(profiles, selection, targets, missing_as_zero = TRUE)))
 stopifnot(identical(vn_exploration_interval(5, 12, 5), c(5, 10, 12)),
   failed(vn_exploration_interval(0, 10, 1)), failed(vn_exploration_interval(10, 5, 1)), failed(vn_exploration_interval(5, 10, 0)))
 root <- Sys.getenv("VETNUTRI_MP_ROOT", if (dir.exists("composeApp")) getwd() else if (nzchar(module_root) && dir.exists(file.path(dirname(module_root), "composeApp"))) dirname(module_root) else "")
@@ -72,5 +77,39 @@ if (nzchar(root)) {
   stopifnot(failed(vn_explore_rations(m, ref, lists, 1:10, seq(0.5, 1.5, 0.1), max_scenarios = 10)))
   empty <- lists; empty$protein <- character()
   stopifnot(failed(vn_explore_rations(m, ref, empty, 10, 1)))
-  cat("Exploration : 8 scénarios exhaustifs, contrôles de cibles, erreurs et comparaison au moteur de ration validés\n")
+  # Real INIT foods with an absent value: blocked by default, computed with missing_as_zero.
+  lacking <- Filter(function(f) f$uuid %in% m$foods$food_id && is.null(f$nutrients$O6) &&
+    !is.null(f$nutrients$CAL) && f$nutrients$CAL > 0, m$raw$foods)
+  stopifnot(length(lacking) >= 1L)
+  lacking <- lacking[[which.max(vapply(lacking, function(f) f$nutrients$CAL, 0))]]
+  partial <- lists; partial$protein <- lists$protein[1]; partial$calcium <- lacking$uuid
+  # Explicit test target (not production data) so the calcium food is always added before O6.
+  forced <- vn_exploration_targets()
+  forced$source[forced$role == "calcium"] <- "custom"
+  forced$value[forced$role == "calcium"] <- 50
+  forced$uniteReqId[forced$role == "calcium"] <- 6L
+  strict <- vn_explore_rations(m, ref, partial, c(10, 20), 1, targets = forced)
+  stopifnot(all(strict$summary$status == "COMPOSITION_ABSENTE"), isFALSE(strict$configuration$missing_as_zero))
+  zero <- vn_explore_rations(m, ref, partial, c(10, 20), 1, targets = forced, missing_as_zero = TRUE)
+  stopifnot(isTRUE(zero$configuration$missing_as_zero), nrow(zero$quantities) == 12L,
+    !any(zero$summary$status %in% c("COMPOSITION_ABSENTE", "ERREUR_CALCUL")),
+    all(zero$summary$zero_filled > 0), all(grepl("O6", zero$summary$zero_filled_nutrients)),
+    all(zero$quantities$quantity_g[zero$quantities$role == "calcium"] > 0),
+    all(zero$quantities$quantity_g >= 0), all(zero$summary$status != "CONFORME"))
+  for (i in seq_len(nrow(zero$summary))) {
+    s <- zero$summary[i, ]
+    q <- zero$quantities[zero$quantities$scenario_id == s$scenario_id, ]
+    n <- vn_init_needs(m, s$reference_id, s$weight_kg, adjustment = s$K)
+    manual <- vn_init_ration(m, s$reference_id, q[, c("food_id", "quantity_g")], n, missing_as_zero = TRUE)
+    stopifnot(isTRUE(all.equal(s$energy_kcal, manual$energy_kcal, tolerance = 1e-10)),
+      s$insufficient == sum(manual$comparison$status == "INSUFFISANT"),
+      s$excess == sum(manual$comparison$status == "EXCES"),
+      s$missing == sum(manual$comparison$status == "DONNEES_ABSENTES"),
+      identical(s$zero_filled_nutrients, paste(manual$zero_filled, collapse = ",")))
+    # The default manual evaluation stays strict.
+    strict_manual <- vn_init_ration(m, s$reference_id, q[, c("food_id", "quantity_g")], n)
+    stopifnot(!length(strict_manual$zero_filled), sum(strict_manual$comparison$status == "DONNEES_ABSENTES") > s$missing)
+  }
+  stopifnot(failed(vn_explore_rations(m, ref, partial, 10, 1, missing_as_zero = NA)))
+  cat("Exploration : 8 scénarios exhaustifs, contrôles de cibles, erreurs et comparaison au moteur de ration et option valeur absente = 0 validés\n")
 } else message("Live INIT exploration tests skipped: set VETNUTRI_MP_ROOT")

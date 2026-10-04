@@ -94,7 +94,8 @@ vn_exploration_profiles <- function(model, reference_id, food_ids) {
 
 # Deficit/density adjustment, as in ajusterAlimentsPourNutriment; continuous grams.
 # Order: protein, fibre, calcium, omega6, sodium, then the remaining energy.
-vn_adjust_combination <- function(profiles, selection, targets, tolerance = 1e-8) {
+# missing_as_zero reproduces Kotlin `valMap[n]?.value ?: 0.0`; the substitutions are returned.
+vn_adjust_combination <- function(profiles, selection, targets, tolerance = 1e-8, missing_as_zero = FALSE) {
   quantities <- setNames(rep(0, length(selection)), names(selection))
   matrix <- do.call(cbind, lapply(selection, function(id) {
     profile <- profiles[[id]]
@@ -102,6 +103,8 @@ vn_adjust_combination <- function(profiles, selection, targets, tolerance = 1e-8
     profile$values
   }))
   colnames(matrix) <- names(selection)
+  absent <- is.na(matrix)
+  if (missing_as_zero) matrix[absent] <- 0
   for (i in seq_along(selection)) {
     nutrient <- targets$nutrient_id[i]
     density <- matrix[nutrient, i]
@@ -120,7 +123,10 @@ vn_adjust_combination <- function(profiles, selection, targets, tolerance = 1e-8
   active <- quantities > 0
   totals <- if (any(active)) rowSums(sweep(matrix[, active, drop = FALSE], 2, quantities[active], `*`)) else
     setNames(rep(0, nrow(matrix)), rownames(matrix))
-  list(quantities = quantities, totals = totals,
+  used <- quantities > 0
+  zero_filled <- if (missing_as_zero && any(used))
+    rownames(matrix)[rowSums(absent[, used, drop = FALSE]) > 0] else character()
+  list(quantities = quantities, totals = totals, zero_filled = zero_filled,
        messages = unique(unlist(lapply(unique(selection), function(id) profiles[[id]]$messages))))
 }
 
@@ -128,7 +134,8 @@ vn_adjust_combination <- function(profiles, selection, targets, tolerance = 1e-8
 #' @export
 vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, k_values,
                                targets = vn_exploration_targets(), variables = list(),
-                               max_scenarios = 5000, progress = NULL) {
+                               max_scenarios = 5000, progress = NULL, missing_as_zero = FALSE) {
+  if (!isTRUE(missing_as_zero) && !isFALSE(missing_as_zero)) stop("missing_as_zero doit valoir TRUE ou FALSE")
   roles <- vn_exploration_roles()$role
   if (!is.list(ingredient_lists) || !setequal(names(ingredient_lists), roles) || anyDuplicated(names(ingredient_lists)))
     stop("Fournir une liste d'ingrédients pour chacun des six ajustements")
@@ -181,13 +188,14 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         weight_kg = grid$weight_kg[g], K = grid$K[g],
         standard_kcal = NA_real_, need_kcal = NA_real_, energy_kcal = NA_real_, energy_gap_kcal = NA_real_,
         quantity_total_g = NA_real_, insufficient = NA_integer_, excess = NA_integer_, missing = NA_integer_,
-        status = "", message = "", warnings = "", source_json = model$provenance$source_json)
+        zero_filled = NA_integer_, zero_filled_nutrients = "", status = "", message = "", warnings = "", source_json = model$provenance$source_json)
       for (role in roles) row[[paste0("food_", role)]] <- selection[[role]]
       attempt <- tryCatch({
         if (inherits(context, "error")) stop(context)
         n <- context$needs
         row$standard_kcal <- n$standard_kcal; row$need_kcal <- n$need_kcal
-        fit <- vn_adjust_combination(profiles[[reference_id]], selection, context$targets)
+        fit <- vn_adjust_combination(profiles[[reference_id]], selection, context$targets,
+          missing_as_zero = missing_as_zero)
         evaluated <- vn_compare_totals(model, reference_id, fit$totals, n)
         cmp <- evaluated$comparison
         row$energy_kcal <- unname(fit$totals["ENERGIE"])
@@ -196,10 +204,14 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         row$insufficient <- sum(cmp$status == "INSUFFISANT")
         row$excess <- sum(cmp$status == "EXCES")
         row$missing <- sum(cmp$status == "DONNEES_ABSENTES")
+        filled <- vn_zero_filled_requirements(model, fit$zero_filled, cmp)
+        row$zero_filled <- length(filled)
+        row$zero_filled_nutrients <- paste(filled, collapse = ",")
         row$warnings <- paste(fit$messages, collapse = " | ")
         energy_over <- row$energy_gap_kcal > 1e-8 * max(1, row$need_kcal)
         row$status <- if (energy_over) "ENERGIE_DEPASSEE" else if (row$missing > 0) "DONNEES_INCOMPLETES" else
-          if (row$insufficient + row$excess > 0) "SEUILS_NON_RESPECTES" else if (nzchar(row$warnings)) "CALCULEE_AVEC_AVERTISSEMENTS" else "CONFORME"
+          if (row$insufficient + row$excess > 0) "SEUILS_NON_RESPECTES" else if (nzchar(row$warnings)) "CALCULEE_AVEC_AVERTISSEMENTS" else
+          if (row$zero_filled > 0) "CONFORME_ABSENTS_A_ZERO" else "CONFORME"
         if (energy_over) row$message <- "Les ingrédients des autres ajustements dépassent déjà le besoin énergétique ; quantité énergétique nulle."
         quantities[[index]] <- data.frame(scenario_id = sid, role = roles, food_id = unname(selection),
           food_name = model$foods$name[match(unname(selection), model$foods$food_id)],
@@ -225,5 +237,6 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
        targets = vn_bind_rows(resolved_targets, data.frame()), combinations = combinations,
        configuration = list(reference_ids = reference_ids, ingredient_lists = ingredient_lists,
          weights = weights, k_values = k_values, targets = targets, variables = variables,
+         missing_as_zero = missing_as_zero,
          method = "sequential_deficit_energy_last", provenance = model$provenance))
 }

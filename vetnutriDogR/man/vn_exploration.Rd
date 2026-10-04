@@ -13,7 +13,7 @@ vn_exploration_interval(from, to, by)
 vn_exploration_targets()
 vn_explore_rations(model, reference_ids, ingredient_lists, weights, k_values,
                   targets = vn_exploration_targets(), variables = list(),
-                  max_scenarios = 5000, progress = NULL)
+                  max_scenarios = 5000, progress = NULL, missing_as_zero = FALSE)
 vn_exploration_ui(root = vn_find_root())
 vn_exploration_server(input, output, session)
 }
@@ -32,6 +32,10 @@ value, uniteReqId and multiplier. Custom values require an explicit unit.}
 \item{max_scenarios}{Explicit limit checked before expanding the combinations.
 Exceeding it raises an error; no scenarios are sampled or silently dropped.}
 \item{progress}{Optional callback taking completed and total counts.}
+\item{missing_as_zero}{FALSE (default): an absent composition blocks the
+adjustment and leaves thresholds unevaluated. TRUE: absent values count as zero,
+as in Kotlin; summary columns zero_filled and zero_filled_nutrients report the
+substitutions and an otherwise compliant scenario is CONFORME_ABSENTS_A_ZERO.}
 \item{root}{VetNutri MP source checkout.}
 \item{input, output, session}{Shiny session objects.}
 }
@@ -41,7 +45,8 @@ configuration, all with original identifiers and provenance. UI returns HTML;
 server registers reactive handlers.}
 \details{Default nutrient targets use OPTIMIN. Cellulose uses the explicit
 Kotlin adjustment multiplier of five, which can be changed. No missing target
-or composition is inferred. The energy step completes energy from the previous
+is inferred; missing composition is only replaced by zero when
+\code{missing_as_zero = TRUE}. The energy step completes energy from the previous
 steps without permitting negative quantities. All thresholds are evaluated
 again on the resulting ration. Later ingredients can increase an earlier
 nutrient target. This sequential exploration is not a simultaneous constraint

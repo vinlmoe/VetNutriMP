@@ -86,8 +86,32 @@ six listes choisies.
 
 Une composition manquante nécessaire au calcul d'un déficit bloque ce scénario
 avec `COMPOSITION_ABSENTE` ; une densité nulle pour couvrir un manque donne
-`INGREDIENT_INADAPTE`. Une absence n'est pas transformée en zéro. Les replis à
-zéro explicitement prévus par Kotlin pour certaines équations restent signalés.
+`INGREDIENT_INADAPTE`. Par défaut, une absence n'est pas transformée en zéro. Les
+replis à zéro explicitement prévus par Kotlin pour certaines équations restent signalés.
+
+### Option « Valeur absente = 0 (comme Kotlin) »
+
+Beaucoup d'aliments INIT n'ont pas toutes les valeurs (O6 n'est renseigné que pour
+environ 56 % des aliments ; les compléments minéraux sont souvent très incomplets).
+En mode strict, ces aliments bloquent l'ajustement ou rendent des seuils non
+évaluables, si bien que `CONFORME` est rarement atteignable.
+
+La case à cocher reproduit le comportement de VetNutri MP
+(`valMap[n]?.value ?: 0.0` dans `ajusterAlimentsPourNutriment`) : une valeur
+absente compte pour 0, pour l'ajustement comme pour la comparaison aux seuils.
+
+- Elle est décochée par défaut et enregistrée dans la configuration exportée
+  (`missing_as_zero`).
+- Un aliment sans valeur pour le nutriment de son rôle ne peut pas combler un
+  manque : `INGREDIENT_INADAPTE`, jamais une quantité arbitraire.
+- `zero_filled` compte les nutriments additifs, évalués par un seuil, dont le
+  total a utilisé au moins un zéro de substitution ; `zero_filled_nutrients` les
+  liste. Le détail d'une ration marque ces seuils (`zero_filled`).
+- Un scénario qui serait conforme mais a utilisé des zéros reçoit
+  `CONFORME_ABSENTS_A_ZERO`, jamais `CONFORME`. La carte poids/K compte alors
+  les deux statuts et l'indique en sous-titre.
+- Les ratios (Ca/P…) restent recalculés sur les totaux ; un ratio non calculable
+  (division par zéro) reste `DONNEES_ABSENTES`.
 
 ## Lire et exporter les résultats
 
@@ -133,6 +157,8 @@ Rscript vetnutriDogR/tests/init-parity.R
 
 Les tests couvrent les contributions croisées, l'énergie restante, l'absence de
 quantités négatives, les intervalles, le produit cartésien exhaustif, les cibles
-personnalisées et absentes, la limite de taille, la comparaison des résultats au
+personnalisées et absentes, la limite de taille, l'option valeur absente = 0
+(blocage par défaut, calcul et traçabilité avec l'option, cohérence avec la ration
+manuelle), la comparaison des résultats au
 moteur de ration manuelle et le parcours réactif du QMD. Les tests historiques de
 parité Kotlin/R contrôlent toujours les données, unités et conversions partagées.
