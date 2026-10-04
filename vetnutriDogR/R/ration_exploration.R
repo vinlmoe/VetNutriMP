@@ -188,7 +188,7 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         weight_kg = grid$weight_kg[g], K = grid$K[g],
         standard_kcal = NA_real_, need_kcal = NA_real_, energy_kcal = NA_real_, energy_gap_kcal = NA_real_,
         quantity_total_g = NA_real_, insufficient = NA_integer_, excess = NA_integer_, missing = NA_integer_,
-        zero_filled = NA_integer_, zero_filled_nutrients = "", status = "", message = "", warnings = "", source_json = model$provenance$source_json)
+        zero_filled = NA_integer_, zero_filled_nutrients = "", violated = "", violated_documented = "", status = "", message = "", warnings = "", source_json = model$provenance$source_json)
       for (role in roles) row[[paste0("food_", role)]] <- selection[[role]]
       attempt <- tryCatch({
         if (inherits(context, "error")) stop(context)
@@ -204,7 +204,12 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         row$insufficient <- sum(cmp$status == "INSUFFISANT")
         row$excess <- sum(cmp$status == "EXCES")
         row$missing <- sum(cmp$status == "DONNEES_ABSENTES")
+        failed <- cmp$status %in% c("INSUFFISANT", "EXCES")
+        row$violated <- paste(unique(paste(cmp$nutrient_id[failed], cmp$reflevel[failed])), collapse = ";")
         filled <- vn_zero_filled_requirements(model, fit$zero_filled, cmp)
+        # Violations not explained by an absent value counted as zero.
+        documented <- failed & !cmp$nutrient_id %in% filled
+        row$violated_documented <- paste(unique(paste(cmp$nutrient_id[documented], cmp$reflevel[documented])), collapse = ";")
         row$zero_filled <- length(filled)
         row$zero_filled_nutrients <- paste(filled, collapse = ",")
         row$warnings <- paste(fit$messages, collapse = " | ")

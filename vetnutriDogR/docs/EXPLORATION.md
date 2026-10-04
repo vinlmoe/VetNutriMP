@@ -113,16 +113,48 @@ absente compte pour 0, pour l'ajustement comme pour la comparaison aux seuils.
 - Les ratios (Ca/P…) restent recalculés sur les totaux ; un ratio non calculable
   (division par zéro) reste `DONNEES_ABSENTES`.
 
+## Carte poids × K : zones non équilibrables
+
+L'onglet **Résultats** affiche une carte par référentiel : le poids en abscisse,
+K en ordonnée, une case par couple. Une case regroupe toutes les combinaisons
+d'ingrédients testées pour ce couple.
+
+| Zone | Condition | Libellé de la case |
+|---|---|---|
+| Équilibrable (vert) | au moins une combinaison respecte tous les seuils évalués | n/N combinaisons conformes |
+| Sous réserve (jaune, hachures) | aucune conforme, mais au moins une dont seuls des nutriments non renseignés (comptés à 0) échouent | n/N combinaisons |
+| Seuils renseignés non respectés (rouge, du clair au foncé) | toutes les combinaisons évaluables manquent au moins un seuil renseigné | nombre minimal de seuils manqués |
+| Énergie déjà dépassée (orange, hachures) | les cinq premiers ajustements dépassent le besoin | nombre minimal de seuils manqués |
+| Non évaluable (gris, hachures) | cible ou composition absente | – |
+
+Sans combinaison conforme ou sous réserve, la zone est nommée par l'échec le plus
+fréquent. Le tableau sous la carte liste, pour chaque case non équilibrable, les
+seuils renseignés les plus souvent manqués et les échecs dus à des données
+absentes. L'export « Carte poids × K » reprend toutes les colonnes.
+
+Points de lecture :
+
+- Quand tous les seuils d'un référentiel sont exprimés par 1 000 kcal de BEE ou
+  par kg métabolique, les quantités sont proportionnelles au BEE et **le poids ne
+  change pas le résultat** : les zones forment des bandes horizontales selon K.
+  Seuls les seuils par kg vif ou absolus font varier la carte avec le poids.
+- L'ajustement est séquentiel : une case rouge signifie qu'aucune combinaison
+  testée ne convient avec cette méthode, pas qu'aucune ration n'existe.
+- Le calcium est ajusté sur son seul seuil ; le réajustement Ca/P de Kotlin n'est
+  pas porté. Si **CAP** domine les seuils limitants, augmenter le facteur de la
+  cible calcium (par exemple 1,5) puis relancer.
+- Les acides aminés sont absents de nombreux aliments (Ciqual) : avec l'option
+  « valeur absente = 0 », ils apparaissent comme « échecs sur données absentes »
+  et la case passe en « sous réserve », pas en rouge.
+
 ## Lire et exporter les résultats
 
 - **Cibles** : niveau, valeur brute, unité, base et facteur utilisés.
-- **Résultats** : tableau paginé, filtre par statut et carte poids/K. Le
-  pourcentage représente les scénarios entièrement conformes parmi toutes les
-  combinaisons et références demandées à ce poids/K ; les échecs restent dans
-  le dénominateur.
+- **Résultats** : carte poids × K des zones équilibrables (voir ci-dessus),
+  tableau des zones, tableau paginé des scénarios et filtre par statut.
 - **Détail d'une ration** : scénario, quantités par rôle, cibles, apports finaux,
   écarts et comparaison à tous les seuils du référentiel.
-- **Exports** : tous les scénarios, quantités et cibles en CSV ; configuration
+- **Exports** : tous les scénarios, quantités, cibles et zones de la carte en CSV ; configuration
   et provenance en JSON. Les exports ne sont pas limités à la page affichée.
 
 `CONFORME` signifie que l'énergie correspond au besoin et que tous les seuils

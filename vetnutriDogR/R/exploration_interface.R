@@ -51,7 +51,10 @@ vn_exploration_ui <- function(root = vn_find_root()) {
         shiny::tabPanel("Résultats",
           shiny::textOutput("explore_summary"),
           shiny::helpText("Les résultats correspondent au dernier clic sur Calculer. Relancer après une modification des listes, cibles ou intervalles."),
-          shiny::plotOutput("explore_heatmap"),
+          shiny::plotOutput("explore_balance_map", height = "auto"),
+          shiny::helpText("Une case est équilibrable si au moins une combinaison respecte tous les seuils. « Sous réserve » : seuls des nutriments non renseignés (comptés à 0) échouent. L'ajustement est séquentiel : une case rouge signifie qu'aucune combinaison testée ne convient avec cette méthode, pas qu'aucune ration n'existe."),
+          shiny::checkboxInput("explore_balance_all", "Afficher aussi les cases équilibrables dans le tableau", FALSE),
+          shiny::tableOutput("explore_balance_table"),
           shiny::selectInput("explore_status", "Filtrer les scénarios", choices = c("Tous" = "ALL")),
           shiny::numericInput("explore_page", "Page (50 scénarios)", 1, min = 1, step = 1),
           shiny::tableOutput("explore_results")),
@@ -65,6 +68,7 @@ vn_exploration_ui <- function(root = vn_find_root()) {
           shiny::downloadButton("explore_export_summary", "Tous les scénarios (CSV)"), shiny::br(),
           shiny::downloadButton("explore_export_quantities", "Quantités des ingrédients (CSV)"), shiny::br(),
           shiny::downloadButton("explore_export_targets", "Cibles et apports (CSV)"), shiny::br(),
+          shiny::downloadButton("explore_export_balance", "Carte poids × K : zones (CSV)"), shiny::br(),
           shiny::downloadButton("explore_export_config", "Configuration et provenance (JSON)")),
         shiny::tabPanel("Diagnostics INIT", shiny::tableOutput("explore_diagnostics"))
       )
@@ -178,21 +182,22 @@ vn_exploration_server <- function(input, output, session) {
     s <- s[seq_len(nrow(s)) > (page - 1) * 50 & seq_len(nrow(s)) <= page * 50, ]
     s[, c("scenario_id", "combination_id", "reference_name", "weight_kg", "K", "need_kcal", "energy_kcal", "status", "insufficient", "excess", "missing", "zero_filled", "message")]
   }, digits = 3)
-  output$explore_heatmap <- shiny::renderPlot({
-    s <- exploration()$summary
-    zero <- isTRUE(exploration()$configuration$missing_as_zero)
-    ok <- s$status == "CONFORME" | (zero & s$status == "CONFORME_ABSENTS_A_ZERO")
-    counts <- stats::aggregate(list(conformes = as.numeric(ok), total = rep(1, nrow(s))),
-                               s[, c("weight_kg", "K")], sum)
-    rate <- counts$conformes / counts$total
-    palette <- grDevices::colorRampPalette(c("#d95f59", "#f5d787", "#4e9b72"))(101)
-    graphics::plot(counts$weight_kg, counts$K, pch = 15, cex = 3, col = palette[1 + round(100 * rate)],
-      xlab = "Poids (kg)", ylab = "K global", main = "Part de scénarios entièrement conformes",
-      sub = paste0("Toutes les combinaisons et tous les référentiels sélectionnés",
-        if (zero) " ; valeurs absentes comptées à 0" else ""))
-    graphics::text(counts$weight_kg, counts$K, labels = paste0(round(100 * rate), "%"), pos = 3, cex = 0.8)
-    graphics::legend("topright", legend = c("0 %", "50 %", "100 %"), col = palette[c(1, 51, 101)], pch = 15, bty = "n")
+  balance <- shiny::reactive(vn_exploration_balance(exploration()))
+  output$explore_balance_map <- shiny::renderPlot(vn_plot_balance_map(balance()), height = function() {
+    n <- tryCatch(length(unique(balance()$reference_id)), error = function(e) 1L)
+    120 + 380 * ceiling(n / 2)
   })
+  output$explore_balance_table <- shiny::renderTable({
+    b <- balance()
+    if (!isTRUE(input$explore_balance_all)) b <- b[b$zone != "EQUILIBRABLE", ]
+    shiny::req(nrow(b) > 0)
+    zones <- vn_balance_zones()
+    data.frame(`Référentiel` = b$reference_name, `Poids (kg)` = b$weight_kg, K = b$K,
+      Zone = zones$label[match(b$zone, zones$zone)], `Combinaisons` = b$combinations,
+      `Conformes` = b$balanced, `Sous réserve` = b$reserved, `Seuils manqués (min)` = b$min_failed,
+      `Seuils limitants renseignés` = b$limiting, `Échecs sur données absentes` = b$undocumented,
+      check.names = FALSE)
+  }, digits = 2)
   selected <- shiny::reactive({
     out <- exploration(); shiny::req(input$explore_scenario)
     s <- out$summary[out$summary$scenario_id == input$explore_scenario, , drop = FALSE]
@@ -228,6 +233,8 @@ vn_exploration_server <- function(input, output, session) {
     content = function(file) utils::write.csv(exploration()$quantities, file, row.names = FALSE))
   output$explore_export_targets <- shiny::downloadHandler(filename = function() "cibles-apports.csv",
     content = function(file) utils::write.csv(exploration()$targets, file, row.names = FALSE))
+  output$explore_export_balance <- shiny::downloadHandler(filename = function() "zones-equilibrage.csv",
+    content = function(file) utils::write.csv(balance(), file, row.names = FALSE))
   output$explore_export_config <- shiny::downloadHandler(filename = function() "configuration-exploration.json",
     content = function(file) jsonlite::write_json(exploration()$configuration, file, auto_unbox = TRUE, pretty = TRUE, digits = NA))
 }
