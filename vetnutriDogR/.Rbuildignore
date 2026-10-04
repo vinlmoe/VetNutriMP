@@ -1,0 +1,6 @@
+^build$
+^tools$
+^scripts$
+^\.gitignore$
+^.*\.Rproj$
+^\.Rproj\.user$

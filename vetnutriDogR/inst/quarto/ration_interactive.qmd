@@ -1,0 +1,71 @@
+---
+title: "VetNutri — Exploration de rations canines"
+lang: fr
+format:
+  html:
+    page-layout: full
+server: shiny
+params:
+  root: ""
+execute:
+  echo: false
+---
+
+```{r}
+#| label: setup
+#| context: setup
+#| include: false
+
+if (!requireNamespace("shiny", quietly = TRUE) ||
+    !requireNamespace("jsonlite", quietly = TRUE)) {
+    stop('Installer les dépendances : install.packages(c("shiny", "jsonlite"))')
+}
+# Shiny startup has no active knitr input. Locate sources from the document
+# during rendering, or from the working directory during server startup.
+input_path <- knitr::current_input(dir = TRUE)
+search_dir <- if (length(input_path) && nzchar(input_path)) {
+    dirname(normalizePath(input_path, mustWork = TRUE))
+} else {
+    normalizePath(getwd())
+}
+source_dir <- ""
+repeat {
+    candidates <- file.path(c(search_dir, file.path(search_dir, "vetnutriDogR")), "R")
+    found <- candidates[file.exists(file.path(candidates, "init_json_loader.R"))]
+    if (length(found)) {
+        source_dir <- found[1]
+        break
+    }
+    parent <- dirname(search_dir)
+    if (parent == search_dir) break
+    search_dir <- parent
+}
+if (file.exists(file.path(source_dir, "init_json_loader.R"))) {
+    for (file in list.files(source_dir, pattern = "\\.R$", full.names = TRUE)) {
+        sys.source(file, envir = knitr::knit_global())
+    }
+} else if (requireNamespace("vetnutriDogR", quietly = TRUE)) {
+    library(vetnutriDogR)
+} else {
+    stop("Conserver ce document dans vetnutriDogR/inst/quarto avec les sources R du module.")
+}
+```
+
+Définissez une liste d'ingrédients pour chacun des six ajustements : protéines,
+fibres, calcium, oméga-6, sel/sodium et énergie restante. Le document explore
+**toutes les combinaisons**, pour chaque poids, coefficient K et référentiel canin
+choisi. Les cibles viennent du référentiel et peuvent être modifiées.
+
+Les ajustements sont successifs ; l'énergie est complétée en dernier. Les
+incompatibilités, excédents et données manquantes sont conservés dans les résultats.
+
+```{r}
+#| label: interface
+if (nzchar(params$root)) vn_exploration_ui(root = params$root) else vn_exploration_ui()
+```
+
+```{r}
+#| label: calculs
+#| context: server
+vn_exploration_server(input, output, session)
+```

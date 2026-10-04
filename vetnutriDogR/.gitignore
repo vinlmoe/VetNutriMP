@@ -1,0 +1,6 @@
+/build/
+/.Rproj.user/
+/.Rhistory
+/.RData
+/inst/quarto/*_files/
+/inst/quarto/*.html

@@ -212,13 +212,11 @@ fun AnalyseSelectionAlimentsView(
                     }
                 }
 
+            val includedIndications = filters.selectedIndications - AlimIndic.ALL
+            val excludedIndications = filters.excludedIndications - AlimIndic.ALL
             val matchesIndications =
-                if (filters.selectedIndications.isEmpty() ||
-                    filters.selectedIndications.contains(AlimIndic.ALL)
-                ) true
-                else filters.selectedIndications.any { indication ->
-                    aliment.indicat.contains(indication)
-                }
+                (includedIndications.isEmpty() || aliment.indicat.any { it in includedIndications }) &&
+                    excludedIndications.none { it in aliment.indicat }
 
             val matchesDataB =
                 when (val dataBFilter = filters.dataB) {
@@ -472,8 +470,16 @@ fun AnalyseSelectionAlimentsView(
                             MultiSelectDropdownField(
                                 label = translate(LocalizationKeys.FoodEdit.FIELD_INDICATIONS),
                                 selectedValues = filters.selectedIndications,
-                                options = AlimIndic.entries,
-                                onValuesChange = { filters = filters.copy(selectedIndications = it) },
+                                excludedValues = filters.excludedIndications,
+                                options = AlimIndic.entries.filter { it != AlimIndic.ALL },
+                                onValuesChange = {},
+                                onTriStateValuesChange = { included, excluded ->
+                                    filters = filters.copy(
+                                        selectedIndications = included,
+                                        excludedIndications = excluded
+                                    )
+                                },
+                                triState = true,
                                 valueToString = { it.translateEnum() },
                                 modifier = Modifier.fillMaxWidth(),
                                 height = 40.dp,
