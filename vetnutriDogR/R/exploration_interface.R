@@ -41,6 +41,10 @@ vn_exploration_ui <- function(root = vn_find_root()) {
       })),
       shiny::checkboxInput("explore_missing_zero", "Valeur absente = 0 (comme Kotlin)", FALSE),
       shiny::helpText("Décoché : une composition absente bloque l'ajustement et rend le seuil non évaluable. Coché : elle compte pour 0, comme dans VetNutri MP ; les nutriments concernés sont listés et un scénario sinon conforme reçoit CONFORME_ABSENTS_A_ZERO."),
+      shiny::checkboxInput("explore_rounding", "Arrondir les quantités comme VetNutri MP", TRUE),
+      shiny::conditionalPanel("input.explore_rounding",
+        shiny::numericInput("explore_min_dose", "Dose minimale d'un ingrédient utilisé (g)", 5, min = 0, step = 1),
+        shiny::helpText("Arrondi après chaque ajustement : dosette, sachet ou boîte au ½ contenant ; sinon 1 g sous 20 g, 5 g sous 200 g, 25 g au-delà. Sous la dose minimale, l'ingrédient n'est pas utilisé (moins de la moitié) ou est porté à la dose minimale. L'énergie est acceptée à ± ½ pas de l'ingrédient énergétique.")),
       shiny::checkboxInput("explore_ignore_optimax", "Ignorer les OPTIMAX : seuls les MAX limitent les apports", TRUE),
       shiny::numericInput("scenario_limit", "Nombre maximal de scénarios autorisé", 5000, min = 1, step = 1000),
       shiny::textOutput("explore_count"),
@@ -156,6 +160,8 @@ vn_exploration_server <- function(input, output, session) {
       out <- vn_explore_rations(m, input$explore_refs, lists(), weights(), ks(), targets(), vars,
         max_scenarios = input$scenario_limit, missing_as_zero = isTRUE(input$explore_missing_zero),
         ignore_levels = if (isFALSE(input$explore_ignore_optimax)) character() else "OPTIMAX",
+        rounding = !isFALSE(input$explore_rounding),
+        min_dose_g = if (is.null(input$explore_min_dose) || is.na(input$explore_min_dose)) 5 else input$explore_min_dose,
         progress = function(i, total) shiny::setProgress(value = i / total, detail = paste(i, "/", total)))
     })
     out$model <- m # Snapshot: later catalogue reloads must not change existing results.
@@ -182,7 +188,7 @@ vn_exploration_server <- function(input, output, session) {
     shiny::req(input$explore_page >= 1)
     page <- as.integer(input$explore_page)
     s <- s[seq_len(nrow(s)) > (page - 1) * 50 & seq_len(nrow(s)) <= page * 50, ]
-    s[, c("scenario_id", "combination_id", "reference_name", "weight_kg", "K", "need_kcal", "energy_kcal", "status", "insufficient", "excess", "missing", "zero_filled", "message")]
+    s[, c("scenario_id", "combination_id", "reference_name", "weight_kg", "K", "need_kcal", "energy_kcal", "energy_gap_kcal", "status", "insufficient", "excess", "missing", "zero_filled", "message")]
   }, digits = 3)
   balance <- shiny::reactive(vn_exploration_balance(exploration()))
   output$explore_balance_map <- shiny::renderPlot(vn_plot_balance_map(balance()), height = function() {

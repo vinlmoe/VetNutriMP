@@ -48,6 +48,20 @@ stopifnot(nrow(bal) == 6L, identical(bal$weight_kg, as.numeric(1:6)),
   bal$limiting[3] == "CU MIN (2/3), FE MAX (2/3), ZN MIN (1/3)", bal$undocumented[2] == "I MIN (2/2)")
 stopifnot(identical(vn_tile_edges(c(5, 10, 12)), c(2.5, 7.5, 11, 13)))
 stopifnot(failed(vn_exploration_balance(synthetic[0, ])))
+# Rounding as arrondirQuantiteSelonRegles, with a minimum dose of 5 g.
+rq <- function(q, step = NA_real_, min = 5) vn_round_quantity(q, step, min)
+stopifnot(rq(0) == 0, rq(0.6) == 0, rq(2.4) == 0, rq(2.5) == 5, rq(4.9) == 5, rq(6.8) == 7, rq(14.6) == 15,
+  rq(37) == 35, rq(252.6) == 250, rq(517.8) == 525, rq(0.6, min = 0) == 1, rq(12.4, min = 0) == 12,
+  rq(6.8, 2) == 6, rq(3, 2) == 6, rq(2.9, 2) == 0, rq(7.9, 2.5) == 7.5, rq(4, 2.5) == 5, rq(1, 2.5) == 0,
+  vn_container_step(list(presentation = "DOSETTE", presentationQuantity = 4)) == 2,
+  is.na(vn_container_step(list(presentation = "NO", presentationQuantity = 4))),
+  is.na(vn_container_step(list(presentation = "CAN", presentationQuantity = 0))))
+stopifnot(failed(rq(NA_real_)))
+# Rounded adjustment: later steps use the rounded quantities; energy tolerance follows its step.
+profiles_r <- setNames(lapply(seq_len(6), function(i) list(values = matrix[, i] / 10, messages = character(), error = NULL)), roles$role)
+targets_r <- vn_exploration_targets(); targets_r$absolute_target <- c(2.06, 3, 1, 1, 0.04, 100)
+fit <- vn_adjust_combination(profiles_r, selection, targets_r, rounding = TRUE, min_dose_g = 5)
+stopifnot(identical(unname(fit$quantities), c(20, 30, 10, 10, 0, 225)), fit$energy_tolerance_kcal == 0.5 * 25 * 0.4)
 grDevices::pdf(NULL); vn_plot_balance_map(bal); invisible(grDevices::dev.off())
 root <- Sys.getenv("VETNUTRI_MP_ROOT", if (dir.exists("composeApp")) getwd() else if (nzchar(module_root) && dir.exists(file.path(dirname(module_root), "composeApp"))) dirname(module_root) else "")
 if (nzchar(root)) {
@@ -142,11 +156,19 @@ if (nzchar(root)) {
   stopifnot(length(complete) >= 1L)
   alone <- setNames(rep(list(complete[[1]]$uuid), 6), roles$role)
   fibre1 <- vn_exploration_targets(); fibre1$multiplier[fibre1$role == "fibre"] <- 1
-  kib <- vn_explore_rations(m, ref, alone, 20, c(0.1, 3, 4), targets = fibre1, missing_as_zero = TRUE)
+  kib <- vn_explore_rations(m, ref, alone, 20, c(0.1, 3, 4), targets = fibre1, missing_as_zero = TRUE, rounding = FALSE)
   low <- kib$summary[kib$summary$K == 0.1, ]; high <- kib$summary[kib$summary$K > 1, ]
   stopifnot(low$status == "ENERGIE_DEPASSEE", low$energy_kcal > low$need_kcal,
     all(high$status != "ENERGIE_DEPASSEE"), isTRUE(all.equal(high$energy_kcal, high$need_kcal)),
     isTRUE(all.equal(high$quantity_total_g[2] / high$quantity_total_g[1], 4 / 3)))
+  # Rounded (default): VetNutri MP steps, at least 5 g per used ingredient, energy within half a step.
+  kr <- vn_explore_rations(m, ref, alone, 20, c(3, 4), targets = fibre1, missing_as_zero = TRUE)
+  stopifnot(isTRUE(kr$configuration$rounding), kr$configuration$min_dose_g == 5,
+    all(kr$summary$status != "ENERGIE_DEPASSEE"), all(abs(kr$summary$energy_gap_kcal) <= kr$summary$energy_tolerance_kcal + 1e-9))
+  stopifnot(all(kr$quantities$quantity_g == 0 | kr$quantities$quantity_g >= 5))
+  grid_ok <- mapply(function(q, id) { cs <- vn_container_step(vn_init_object(m, "foods", id))
+    q == 0 || abs(q / vn_quantity_step(q, cs) - round(q / vn_quantity_step(q, cs))) < 1e-9 }, out$quantities$quantity_g, out$quantities$food_id)
+  stopifnot(all(grid_ok), all(out$quantities$quantity_g == 0 | out$quantities$quantity_g >= 5))
   # Map of the real grid: one cell per reference × weight × K, every scenario counted once.
   bal <- vn_exploration_balance(zero)
   stopifnot(nrow(bal) == 2L, all(bal$combinations == 1L), all(bal$zone %in% vn_balance_zones()$zone),

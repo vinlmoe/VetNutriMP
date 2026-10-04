@@ -36,7 +36,8 @@ if (nzchar(module_root) && nzchar(root) && requireNamespace("shiny", quietly = T
     session$setInputs(k_to = 2)
     stopifnot(identical(exploration()$configuration$k_values, c(0.8, 1.2)))
     stopifnot(isFALSE(exploration()$configuration$missing_as_zero),
-      identical(exploration()$configuration$ignore_levels, "OPTIMAX"))
+      identical(exploration()$configuration$ignore_levels, "OPTIMAX"),
+      isTRUE(exploration()$configuration$rounding), exploration()$configuration$min_dose_g == 5)
     # The checkbox reaches the engine and the detail tab on the next run.
     session$setInputs(k_to = 1.2, explore_missing_zero = TRUE, explore_run = 2)
     out <- exploration()

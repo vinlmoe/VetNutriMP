@@ -70,6 +70,35 @@ vn_resolve_exploration_targets <- function(model, reference_id, targets, needs) 
   out
 }
 
+# Container rule of arrondirQuantiteSelonRegles: half a unit (presentation ≠ NO,
+# presentationQuantity > 0; INIT "YES" is mapped to CAN as in ApiModels).
+vn_container_step <- function(food) {
+  cont <- food$presentation; size <- food$presentationQuantity
+  if (is.null(cont) || !nzchar(cont) || identical(cont, "NO") || is.null(size) || !is.finite(size) || size <= 0) NA_real_ else size / 2
+}
+
+# Step used by VetNutri MP for a quantity: container half-unit, else 1 g / 5 g / 25 g.
+vn_quantity_step <- function(q, container_step = NA_real_) {
+  if (!is.na(container_step)) container_step else if (q < 20) 1 else if (q < 200) 5 else 25
+}
+
+vn_min_dose <- function(container_step, min_dose_g) {
+  if (min_dose_g <= 0) 0 else if (!is.na(container_step)) ceiling(min_dose_g / container_step - 1e-9) * container_step else min_dose_g
+}
+
+#' Round a quantity as VetNutri MP (arrondirQuantiteSelonRegles), with a minimum dose.
+#' A used ingredient weighs at least min_dose_g (for containers, the first multiple of
+#' the half-unit reaching it); below half that minimum it is not used.
+#' @export
+vn_round_quantity <- function(q, container_step = NA_real_, min_dose_g = 5) {
+  if (length(q) != 1L || !is.finite(q)) stop("Quantité invalide")
+  if (q <= 0) return(0)
+  minimum <- vn_min_dose(container_step, min_dose_g)
+  if (q < minimum) return(if (q >= minimum / 2) minimum else 0)
+  step <- vn_quantity_step(q, container_step)
+  max(0, round(q / step) * step) # R and Kotlin round ties to even.
+}
+
 # Build the composition once for each selected food/reference, not once per dog.
 vn_exploration_profiles <- function(model, reference_id, food_ids) {
   ref <- vn_init_object(model, "references", reference_id)
@@ -83,7 +112,7 @@ vn_exploration_profiles <- function(model, reference_id, food_ids) {
       energy <- vn_food_energy(model, food, ref, values)
       values$values["ENERGIE"] <- energy$value
       list(values = setNames(unname(values$values[ids]), ids) / 100,
-           messages = messages, error = NULL)
+           container_step = vn_container_step(food), messages = messages, error = NULL)
     }, warning = function(w) {
       messages <<- c(messages, conditionMessage(w))
       invokeRestart("muffleWarning")
@@ -92,10 +121,12 @@ vn_exploration_profiles <- function(model, reference_id, food_ids) {
   setNames(profiles, food_ids)
 }
 
-# Deficit/density adjustment, as in ajusterAlimentsPourNutriment; continuous grams.
+# Deficit/density adjustment, as in ajusterAlimentsPourNutriment.
 # Order: protein, fibre, calcium, omega6, sodium, then the remaining energy.
 # missing_as_zero reproduces Kotlin `valMap[n]?.value ?: 0.0`; the substitutions are returned.
-vn_adjust_combination <- function(profiles, selection, targets, tolerance = 1e-8, missing_as_zero = FALSE) {
+# rounding rounds each new quantity as Kotlin does after every step, so later steps use it.
+vn_adjust_combination <- function(profiles, selection, targets, tolerance = 1e-8, missing_as_zero = FALSE,
+                                  rounding = FALSE, min_dose_g = 0) {
   quantities <- setNames(rep(0, length(selection)), names(selection))
   matrix <- do.call(cbind, lapply(selection, function(id) {
     profile <- profiles[[id]]
@@ -118,25 +149,41 @@ vn_adjust_combination <- function(profiles, selection, targets, tolerance = 1e-8
       if (is.na(density)) vn_exploration_error("COMPOSITION_ABSENTE", paste(selection[i], ":", nutrient, "absent"))
       if (density <= 0) vn_exploration_error("INGREDIENT_INADAPTE", paste(selection[i], ": densité nulle pour", nutrient))
       quantities[i] <- quantities[i] + deficit / density
+      if (rounding) quantities[i] <- vn_round_quantity(quantities[i], vn_profile_step(profiles[[selection[i]]]), min_dose_g)
     }
   }
+  # Energy accepted around the need: half a rounding step of the energy ingredient.
+  energy_density <- matrix["ENERGIE", length(selection)]
+  energy_step <- if (!rounding) 0 else {
+    q <- quantities[length(selection)]
+    cs <- vn_profile_step(profiles[[selection[length(selection)]]])
+    # At or below the minimum dose, rounding moved up to half of that dose.
+    minimum <- vn_min_dose(cs, min_dose_g)
+    max(vn_quantity_step(q, cs), if (q <= minimum) minimum else 0)
+  }
+  energy_tolerance <- if (is.finite(energy_density)) 0.5 * energy_step * energy_density else 0
   active <- quantities > 0
   totals <- if (any(active)) rowSums(sweep(matrix[, active, drop = FALSE], 2, quantities[active], `*`)) else
     setNames(rep(0, nrow(matrix)), rownames(matrix))
   used <- quantities > 0
   zero_filled <- if (missing_as_zero && any(used))
     rownames(matrix)[rowSums(absent[, used, drop = FALSE]) > 0] else character()
-  list(quantities = quantities, totals = totals, zero_filled = zero_filled,
+  list(quantities = quantities, totals = totals, zero_filled = zero_filled, energy_tolerance_kcal = energy_tolerance,
        messages = unique(unlist(lapply(unique(selection), function(id) profiles[[id]]$messages))))
 }
+
+vn_profile_step <- function(profile) if (is.null(profile$container_step)) NA_real_ else profile$container_step
 
 #' Explore every ingredient combination across weight/K grids and canine references.
 #' @export
 vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, k_values,
                                targets = vn_exploration_targets(), variables = list(),
                                max_scenarios = 5000, progress = NULL, missing_as_zero = FALSE,
-                               ignore_levels = "OPTIMAX") {
+                               ignore_levels = "OPTIMAX", rounding = TRUE, min_dose_g = 5) {
   if (!isTRUE(missing_as_zero) && !isFALSE(missing_as_zero)) stop("missing_as_zero doit valoir TRUE ou FALSE")
+  if (!isTRUE(rounding) && !isFALSE(rounding)) stop("rounding doit valoir TRUE ou FALSE")
+  if (length(min_dose_g) != 1L || !is.finite(min_dose_g) || min_dose_g < 0) stop("Dose minimale invalide")
+  if (!rounding) min_dose_g <- 0
   if (!is.character(ignore_levels) || any(!ignore_levels %in% c("OPTIMIN", "OPTIMAX", "MAX")))
     stop("ignore_levels : OPTIMIN, OPTIMAX ou MAX uniquement")
   roles <- vn_exploration_roles()$role
@@ -190,7 +237,7 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         stage = model$references$stadePhysio[match(reference_id, model$references$reference_id)],
         weight_kg = grid$weight_kg[g], K = grid$K[g],
         standard_kcal = NA_real_, need_kcal = NA_real_, energy_kcal = NA_real_, energy_gap_kcal = NA_real_,
-        quantity_total_g = NA_real_, insufficient = NA_integer_, excess = NA_integer_, missing = NA_integer_,
+        quantity_total_g = NA_real_, energy_tolerance_kcal = NA_real_, insufficient = NA_integer_, excess = NA_integer_, missing = NA_integer_,
         zero_filled = NA_integer_, zero_filled_nutrients = "", violated = "", violated_documented = "", status = "", message = "", warnings = "", source_json = model$provenance$source_json)
       for (role in roles) row[[paste0("food_", role)]] <- selection[[role]]
       attempt <- tryCatch({
@@ -198,7 +245,7 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         n <- context$needs
         row$standard_kcal <- n$standard_kcal; row$need_kcal <- n$need_kcal
         fit <- vn_adjust_combination(profiles[[reference_id]], selection, context$targets,
-          missing_as_zero = missing_as_zero)
+          missing_as_zero = missing_as_zero, rounding = rounding, min_dose_g = min_dose_g)
         evaluated <- vn_compare_totals(model, reference_id, fit$totals, n, ignore_levels)
         cmp <- evaluated$comparison
         row$energy_kcal <- unname(fit$totals["ENERGIE"])
@@ -216,11 +263,14 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         row$zero_filled <- length(filled)
         row$zero_filled_nutrients <- paste(filled, collapse = ",")
         row$warnings <- paste(fit$messages, collapse = " | ")
-        energy_over <- row$energy_gap_kcal > 1e-8 * max(1, row$need_kcal)
+        row$energy_tolerance_kcal <- fit$energy_tolerance_kcal
+        energy_over <- row$energy_gap_kcal > max(1e-8 * max(1, row$need_kcal), fit$energy_tolerance_kcal)
         row$status <- if (energy_over) "ENERGIE_DEPASSEE" else if (row$missing > 0) "DONNEES_INCOMPLETES" else
           if (row$insufficient + row$excess > 0) "SEUILS_NON_RESPECTES" else if (nzchar(row$warnings)) "CALCULEE_AVEC_AVERTISSEMENTS" else
           if (row$zero_filled > 0) "CONFORME_ABSENTS_A_ZERO" else "CONFORME"
-        if (energy_over) row$message <- "Les ingrédients des autres ajustements dépassent déjà le besoin énergétique ; quantité énergétique nulle."
+        if (energy_over) row$message <- if (fit$quantities[[length(fit$quantities)]] > 0)
+          "Énergie au-dessus du besoin au-delà de la tolérance d'arrondi." else
+          "Les ingrédients des autres ajustements dépassent déjà le besoin énergétique ; quantité énergétique nulle."
         quantities[[index]] <- data.frame(scenario_id = sid, role = roles, food_id = unname(selection),
           food_name = model$foods$name[match(unname(selection), model$foods$food_id)],
           quantity_g = unname(fit$quantities), source_json = model$provenance$source_json)
@@ -246,5 +296,6 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
        configuration = list(reference_ids = reference_ids, ingredient_lists = ingredient_lists,
          weights = weights, k_values = k_values, targets = targets, variables = variables,
          missing_as_zero = missing_as_zero, ignore_levels = ignore_levels,
+         rounding = rounding, min_dose_g = min_dose_g,
          method = "sequential_deficit_energy_last", provenance = model$provenance))
 }

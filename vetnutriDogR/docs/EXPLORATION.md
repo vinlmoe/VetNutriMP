@@ -67,7 +67,34 @@ quantité ajoutée (g) = max(0, manque) / densité du nutriment par gramme
 ```
 
 Cette opération reprend le principe manque/densité de
-`ajusterAlimentsPourNutriment`. Les quantités sont continues, sans arrondi caché.
+`ajusterAlimentsPourNutriment`.
+
+### Arrondi et dose minimale
+
+Par défaut (case « Arrondir les quantités comme VetNutri MP »), chaque quantité est
+arrondie après son étape, comme `arrondirQuantiteSelonRegles` ; les étapes suivantes
+utilisent la quantité arrondie :
+
+| Aliment | Pas |
+|---|---|
+| Avec contenant (`presentation` ≠ NO et `presentationQuantity` > 0 : dosette, sachet, boîte…) | ½ contenant (dosette de 4 g : 2 g) |
+| Sinon, moins de 20 g | 1 g |
+| Sinon, de 20 à 200 g | 5 g |
+| Sinon, 200 g et plus | 25 g |
+
+**Dose minimale** (5 g par défaut, modifiable) : un ingrédient utilisé pèse au moins
+cette dose ; pour un contenant, c'est le premier multiple du pas qui l'atteint
+(dosette de 4 g : 6 g). Une quantité calculée inférieure est ramenée à 0 sous la
+moitié du minimum, portée au minimum au-delà.
+
+L'énergie ne tombe plus exactement sur le besoin : elle est acceptée à ± ½ pas de
+l'ingrédient énergétique (½ dose minimale s'il est au minimum ou à 0). La tolérance
+et l'écart sont exportés (`energy_tolerance_kcal`, `energy_gap_kcal`). Décocher la
+case revient aux grammes continus (dose minimale ignorée).
+
+Conséquence : la dose minimale et les pas fixes en grammes rendent la carte
+**dépendante du poids**. Chez un petit chien, 5 g de CMV ou d'huile représentent
+plus que la cible ; ce surplus peut corriger ou dégrader un seuil (Ca/P notamment).
 Les compositions, nutriments dérivés et énergies sont calculés par les fonctions
 INIT déjà utilisées pour les rations manuelles. Les contributions croisées des
 aliments précédents sont donc prises en compte.

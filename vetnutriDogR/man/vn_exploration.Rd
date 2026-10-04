@@ -4,6 +4,7 @@
 \alias{vn_exploration_targets}
 \alias{vn_exploration_ui}
 \alias{vn_exploration_server}
+\alias{vn_round_quantity}
 \title{Explore canine rations over ingredient combinations, weights and K values}
 \description{Selects one ingredient from each of six lists and evaluates the full
 Cartesian product with the requested reference, weight and global K grids.
@@ -14,7 +15,8 @@ vn_exploration_targets()
 vn_explore_rations(model, reference_ids, ingredient_lists, weights, k_values,
                   targets = vn_exploration_targets(), variables = list(),
                   max_scenarios = 5000, progress = NULL, missing_as_zero = FALSE,
-                  ignore_levels = "OPTIMAX")
+                  ignore_levels = "OPTIMAX", rounding = TRUE, min_dose_g = 5)
+vn_round_quantity(q, container_step = NA_real_, min_dose_g = 5)
 vn_exploration_ui(root = vn_find_root())
 vn_exploration_server(input, output, session)
 }
@@ -33,6 +35,13 @@ value, uniteReqId and multiplier. Custom values require an explicit unit.}
 \item{max_scenarios}{Explicit limit checked before expanding the combinations.
 Exceeding it raises an error; no scenarios are sampled or silently dropped.}
 \item{progress}{Optional callback taking completed and total counts.}
+\item{rounding}{Round each quantity after its step as VetNutri MP
+(arrondirQuantiteSelonRegles): half a container unit, else 1, 5 or 25 g. Energy
+is then accepted within half a step of the energy ingredient. FALSE keeps
+continuous grams and ignores the minimum dose.}
+\item{min_dose_g}{Minimum weight of a used ingredient (first multiple of the
+container step reaching it). Smaller quantities become 0 below half of it.}
+\item{q, container_step}{Quantity in grams and optional container half-unit.}
 \item{ignore_levels}{Threshold levels left out of the conformity evaluation. The
 default ignores OPTIMAX, so only MAX limits intakes; \code{character()} evaluates
 every level.}
