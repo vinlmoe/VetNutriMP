@@ -150,6 +150,33 @@ de les réintégrer ; le choix est enregistré (`ignore_levels`) dans la configu
 exportée et appliqué au détail d'une ration. L'application Shiny de ration manuelle
 évalue toujours tous les niveaux.
 
+## Nutriments évalués
+
+Par défaut, tous les nutriments ayant un seuil dans le référentiel sont évalués.
+Décocher « Évaluer tous les nutriments du référentiel » affiche la liste préremplie :
+retirer un nutriment avec sa croix, ou utiliser « Tout cocher » / « Tout décocher ».
+Seuls les seuils des nutriments retenus entrent dans la conformité, la carte et la
+liste des nutriments non couverts ; les six ajustements de quantité ne changent pas.
+Sans nutriment retenu, aucun seuil n'est évalué. Le choix est enregistré
+(`nutrients`) et appliqué au détail d'une ration.
+
+## Nutriments non couverts
+
+L'onglet **Nutriments non couverts** liste chaque nutriment et niveau de seuil
+manqué par au moins un scénario évalué : sens (insuffisant pour MIN/OPTIMIN, excès
+pour MAX/OPTIMAX), nombre et part des scénarios en échec, échecs dus uniquement à
+des valeurs absentes comptées à 0, et cases poids × K **jamais couvertes** (toutes
+les combinaisons y échouent sur ce seuil). Chaque scénario porte aussi
+`not_covered` (nutriments insuffisants) et `in_excess` (nutriments en excès).
+Export CSV « Nutriments non couverts ».
+
+## Quantités de chaque ration
+
+Chaque scénario donne la quantité de chaque ingrédient : colonne `composition`
+(« Poulet… : 250 g + Son de blé : 15 g + … ») dans le tableau des résultats, et
+colonnes `quantity_<rôle>_g` dans l'export des scénarios. L'export des quantités
+garde une ligne par ingrédient.
+
 ## Carte poids × K : zones non équilibrables
 
 L'onglet **Résultats** affiche une carte par référentiel : le poids en abscisse,

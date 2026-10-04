@@ -69,6 +69,10 @@ stopifnot(identical(unname(fit$quantities), c(20, 30, 15, 10, 0, 225)),
   identical(vn_role_min_doses(5), setNames(rep(5, 6), roles$role)),
   identical(names(vn_role_min_doses(rev(doses))), roles$role),
   failed(vn_role_min_doses(c(viande = 5))), failed(vn_role_min_doses(c(5, 5))), failed(vn_role_min_doses(-1)))
+unc <- vn_uncovered_nutrients(synthetic)
+stopifnot(identical(unc$nutrient_id[unc$reflevel == "MIN" & unc$nutrient_id == "CU"], "CU"),
+  unc$scenarios[unc$nutrient_id == "CU" & unc$reflevel == "MIN"] == 3,
+  unc$absent_data_only[unc$nutrient_id == "I"] == 2, unc$cells_never_covered[unc$nutrient_id == "I"] == 1)
 grDevices::pdf(NULL); vn_plot_balance_map(bal); invisible(grDevices::dev.off())
 root <- Sys.getenv("VETNUTRI_MP_ROOT", if (dir.exists("composeApp")) getwd() else if (nzchar(module_root) && dir.exists(file.path(dirname(module_root), "composeApp"))) dirname(module_root) else "")
 if (nzchar(root)) {
@@ -96,6 +100,30 @@ if (nzchar(root)) {
       s$excess == sum(manual$comparison$status == "EXCES"),
       s$missing == sum(manual$comparison$status == "DONNEES_ABSENTES"))
   }
+  # Quantities per ingredient in each computed ration, and the nutrients not covered.
+  for (i in seq_len(nrow(out$summary))) {
+    s <- out$summary[i, ]; q <- out$quantities[out$quantities$scenario_id == s$scenario_id, ]
+    stopifnot(isTRUE(all.equal(unname(unlist(s[paste0("quantity_", q$role, "_g")])), q$quantity_g)),
+      all(vapply(unique(q$food_name[q$quantity_g > 0]), function(n) grepl(n, s$composition, fixed = TRUE), TRUE)))
+    n <- vn_init_needs(m, s$reference_id, s$weight_kg, adjustment = s$K)
+    cmp <- vn_init_ration(m, s$reference_id, q[, c("food_id", "quantity_g")], n, ignore_levels = "OPTIMAX")$comparison
+    stopifnot(setequal(strsplit(s$not_covered, ",")[[1]], unique(cmp$nutrient_id[cmp$status == "INSUFFISANT"])),
+      setequal(strsplit(s$in_excess, ",")[[1]], unique(cmp$nutrient_id[cmp$status == "EXCES"])))
+  }
+  unc <- vn_uncovered_nutrients(out, m)
+  stopifnot(nrow(unc) > 0, all(unc$scenarios >= 1), all(unc$cells_never_covered <= unc$cells),
+    all(unc$direction == ifelse(unc$reflevel %in% c("MIN", "OPTIMIN"), "Insuffisant", "Excès")), !anyNA(unc$name))
+  for (j in seq_len(nrow(unc))) stopifnot(unc$scenarios[j] ==
+    sum(vapply(strsplit(out$summary$violated, ";"), function(v) paste(unc$nutrient_id[j], unc$reflevel[j]) %in% v, TRUE)))
+  # Nutrients selected for the analysis: only their thresholds are evaluated.
+  only <- vn_explore_rations(m, ref, lists, c(5, 10), c(0.8, 1.2), nutrients = c("PROTEINE", "CAL", "PHOS"))
+  stopifnot(identical(only$configuration$nutrients, c("PROTEINE", "CAL", "PHOS")),
+    all(unlist(strsplit(only$summary$violated, ";")) %in% paste(rep(c("PROTEINE", "CAL", "PHOS"), each = 4), c("MIN", "OPTIMIN", "OPTIMAX", "MAX"))),
+    all(only$summary$insufficient + only$summary$excess <= out$summary$insufficient + out$summary$excess),
+    identical(only$quantities$quantity_g, out$quantities$quantity_g))
+  none <- vn_explore_rations(m, ref, lists, 10, 1, nutrients = character())
+  stopifnot(all(none$summary$insufficient + none$summary$excess + none$summary$missing == 0),
+    nrow(vn_uncovered_nutrients(none, m)) == 0, failed(vn_explore_rations(m, ref, lists, 10, 1, nutrients = "INCONNU")))
   # Upper bounds: only MAX limits by default; OPTIMAX is evaluated again on request.
   stopifnot(identical(out$configuration$ignore_levels, "OPTIMAX"),
     !any(grepl("OPTIMAX", out$summary$violated)), failed(vn_explore_rations(m, ref, lists, 5, 1, ignore_levels = "TOUT")))

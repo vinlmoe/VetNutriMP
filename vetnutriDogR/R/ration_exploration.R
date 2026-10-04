@@ -191,10 +191,15 @@ vn_profile_step <- function(profile) if (is.null(profile$container_step)) NA_rea
 vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, k_values,
                                targets = vn_exploration_targets(), variables = list(),
                                max_scenarios = 5000, progress = NULL, missing_as_zero = FALSE,
-                               ignore_levels = "OPTIMAX", rounding = TRUE, min_dose_g = 5) {
+                               ignore_levels = "OPTIMAX", rounding = TRUE, min_dose_g = 5, nutrients = NULL) {
   if (!isTRUE(missing_as_zero) && !isFALSE(missing_as_zero)) stop("missing_as_zero doit valoir TRUE ou FALSE")
   if (!isTRUE(rounding) && !isFALSE(rounding)) stop("rounding doit valoir TRUE ou FALSE")
   min_dose_g <- vn_role_min_doses(min_dose_g)
+  if (!is.null(nutrients)) {
+    nutrients <- unique(as.character(nutrients))
+    if (anyNA(nutrients) || any(!nutrients %in% model$dictionaries$nutrients$nutrient_id))
+      stop("Nutriments évalués inconnus : ", paste(setdiff(nutrients, model$dictionaries$nutrients$nutrient_id), collapse = ", "))
+  }
   if (!rounding) min_dose_g[] <- 0
   if (!is.character(ignore_levels) || any(!ignore_levels %in% c("OPTIMIN", "OPTIMAX", "MAX")))
     stop("ignore_levels : OPTIMIN, OPTIMAX ou MAX uniquement")
@@ -250,15 +255,17 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         weight_kg = grid$weight_kg[g], K = grid$K[g],
         standard_kcal = NA_real_, need_kcal = NA_real_, energy_kcal = NA_real_, energy_gap_kcal = NA_real_,
         quantity_total_g = NA_real_, energy_tolerance_kcal = NA_real_, insufficient = NA_integer_, excess = NA_integer_, missing = NA_integer_,
-        zero_filled = NA_integer_, zero_filled_nutrients = "", violated = "", violated_documented = "", status = "", message = "", warnings = "", source_json = model$provenance$source_json)
+        zero_filled = NA_integer_, zero_filled_nutrients = "", violated = "", violated_documented = "",
+        not_covered = "", in_excess = "", composition = "", status = "", message = "", warnings = "", source_json = model$provenance$source_json)
       for (role in roles) row[[paste0("food_", role)]] <- selection[[role]]
+      for (role in roles) row[[paste0("quantity_", role, "_g")]] <- NA_real_
       attempt <- tryCatch({
         if (inherits(context, "error")) stop(context)
         n <- context$needs
         row$standard_kcal <- n$standard_kcal; row$need_kcal <- n$need_kcal
         fit <- vn_adjust_combination(profiles[[reference_id]], selection, context$targets,
           missing_as_zero = missing_as_zero, rounding = rounding, min_dose_g = min_dose_g)
-        evaluated <- vn_compare_totals(model, reference_id, fit$totals, n, ignore_levels)
+        evaluated <- vn_compare_totals(model, reference_id, fit$totals, n, ignore_levels, nutrients)
         cmp <- evaluated$comparison
         row$energy_kcal <- unname(fit$totals["ENERGIE"])
         row$energy_gap_kcal <- row$energy_kcal - row$need_kcal
@@ -268,6 +275,12 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         row$missing <- sum(cmp$status == "DONNEES_ABSENTES")
         failed <- cmp$status %in% c("INSUFFISANT", "EXCES")
         row$violated <- paste(unique(paste(cmp$nutrient_id[failed], cmp$reflevel[failed])), collapse = ";")
+        row$not_covered <- paste(unique(cmp$nutrient_id[cmp$status == "INSUFFISANT"]), collapse = ",")
+        row$in_excess <- paste(unique(cmp$nutrient_id[cmp$status == "EXCES"]), collapse = ",")
+        for (role in roles) row[[paste0("quantity_", role, "_g")]] <- fit$quantities[[role]]
+        used <- fit$quantities > 0
+        row$composition <- paste(sprintf("%s : %s g", model$foods$name[match(selection[used], model$foods$food_id)],
+          as.character(round(fit$quantities[used], 1))), collapse = " + ")
         filled <- vn_zero_filled_requirements(model, fit$zero_filled, cmp)
         # Violations not explained by an absent value counted as zero.
         documented <- failed & !cmp$nutrient_id %in% filled
@@ -308,6 +321,6 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
        configuration = list(reference_ids = reference_ids, ingredient_lists = ingredient_lists,
          weights = weights, k_values = k_values, targets = targets, variables = variables,
          missing_as_zero = missing_as_zero, ignore_levels = ignore_levels,
-         rounding = rounding, min_dose_g = as.list(min_dose_g),
+         rounding = rounding, min_dose_g = as.list(min_dose_g), nutrients = nutrients,
          method = "sequential_deficit_energy_last", provenance = model$provenance))
 }

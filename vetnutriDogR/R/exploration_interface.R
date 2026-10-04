@@ -47,6 +47,14 @@ vn_exploration_ui <- function(root = vn_find_root()) {
       shiny::conditionalPanel("input.explore_rounding",
         shiny::helpText("Arrondi après chaque ajustement : dosette, sachet ou boîte au ½ contenant ; sinon 1 g sous 20 g, 5 g sous 200 g, 25 g au-delà. Sous la dose minimale de son type (réglable dans chaque liste ci-dessous), l'ingrédient n'est pas utilisé (moins de la moitié) ou est porté à cette dose. L'énergie est acceptée à ± ½ pas de l'ingrédient énergétique.")),
       shiny::checkboxInput("explore_ignore_optimax", "Ignorer les OPTIMAX : seuls les MAX limitent les apports", TRUE),
+      shiny::h4("Nutriments évalués"),
+      shiny::checkboxInput("explore_all_nutrients", "Évaluer tous les nutriments du référentiel", TRUE),
+      shiny::conditionalPanel("!input.explore_all_nutrients",
+        shiny::selectizeInput("explore_nutrients", "Nutriments retenus (croix pour retirer)", choices = NULL, multiple = TRUE,
+          options = list(plugins = list("remove_button"))),
+        shiny::actionButton("explore_nutrients_all", "Tout cocher"),
+        shiny::actionButton("explore_nutrients_none", "Tout décocher"),
+        shiny::helpText("Seuls les seuils des nutriments retenus entrent dans la conformité, la carte et la liste des nutriments non couverts. Les six ajustements de quantité restent calculés. Aucun nutriment retenu : aucun seuil n'est évalué.")),
       shiny::numericInput("scenario_limit", "Nombre maximal de scénarios autorisé", 5000, min = 1, step = 1000),
       shiny::textOutput("explore_count"),
       shiny::actionButton("explore_run", "Calculer toutes les rations", class = "btn-primary")
@@ -64,6 +72,10 @@ vn_exploration_ui <- function(root = vn_find_root()) {
           shiny::selectInput("explore_status", "Filtrer les scénarios", choices = c("Tous" = "ALL")),
           shiny::numericInput("explore_page", "Page (50 scénarios)", 1, min = 1, step = 1),
           shiny::tableOutput("explore_results")),
+        shiny::tabPanel("Nutriments non couverts",
+          shiny::helpText("Nutriments dont au moins un seuil n'est pas atteint (insuffisance) ou est dépassé (excès), parmi les scénarios évalués. « Jamais couvert » : cases poids × K où toutes les combinaisons échouent sur ce seuil. « Données absentes seulement » : échecs dus uniquement à des valeurs absentes comptées à 0."),
+          shiny::checkboxInput("explore_uncovered_never", "Seulement les nutriments jamais couverts dans au moins une case", FALSE),
+          shiny::tableOutput("explore_uncovered")),
         shiny::tabPanel("Détail d'une ration",
           shiny::selectizeInput("explore_scenario", "Scénario", choices = NULL),
           shiny::tableOutput("explore_scenario_summary"),
@@ -75,6 +87,7 @@ vn_exploration_ui <- function(root = vn_find_root()) {
           shiny::downloadButton("explore_export_quantities", "Quantités des ingrédients (CSV)"), shiny::br(),
           shiny::downloadButton("explore_export_targets", "Cibles et apports (CSV)"), shiny::br(),
           shiny::downloadButton("explore_export_balance", "Carte poids × K : zones (CSV)"), shiny::br(),
+          shiny::downloadButton("explore_export_uncovered", "Nutriments non couverts (CSV)"), shiny::br(),
           shiny::downloadButton("explore_export_config", "Configuration et provenance (JSON)")),
         shiny::tabPanel("Diagnostics INIT", shiny::tableOutput("explore_diagnostics"))
       )
@@ -84,6 +97,7 @@ vn_exploration_ui <- function(root = vn_find_root()) {
 
 vn_exploration_server <- function(input, output, session) {
   roles <- vn_exploration_roles()
+  nutrient_choices <- shiny::reactiveVal(character())
   model <- shiny::eventReactive(input$explore_reload, {
     vn_load_init(root = input$explore_root)
   }, ignoreNULL = FALSE)
@@ -99,6 +113,9 @@ vn_exploration_server <- function(input, output, session) {
       shiny::updateSelectizeInput(session, paste0("ingredients_", role), choices = choices, server = TRUE)
       if (role != "energy") shiny::updateSelectInput(session, paste0("target_unit_", role), choices = setNames(units$uniteReqId, units$label), selected = "1")
     }
+    nutrient_choices(vn_evaluable_nutrients(m))
+    shiny::updateSelectizeInput(session, "explore_nutrients", choices = nutrient_choices(),
+      selected = unname(nutrient_choices()), server = FALSE)
     fibre <- m$dictionaries$nutrients
     fibre <- fibre[fibre$nutrient_id %in% c("CELLULOSE", "FIBRETOT", "FIBRESOL", "NDF", "ADF"), ]
     shiny::updateSelectInput(session, "fibre_nutrient", choices = setNames(fibre$nutrient_id, fibre$name), selected = "CELLULOSE")
@@ -106,6 +123,12 @@ vn_exploration_server <- function(input, output, session) {
   shiny::observeEvent(input$fibre_nutrient, {
     shiny::updateNumericInput(session, "target_factor_fibre", value = if (input$fibre_nutrient == "CELLULOSE") 5 else 1)
   }, ignoreInit = TRUE)
+  shiny::observeEvent(input$explore_nutrients_all, shiny::updateSelectizeInput(session, "explore_nutrients",
+    selected = unname(nutrient_choices())))
+  shiny::observeEvent(input$explore_nutrients_none, shiny::updateSelectizeInput(session, "explore_nutrients",
+    selected = character()))
+  evaluated_nutrients <- shiny::reactive(
+    if (!isFALSE(input$explore_all_nutrients)) NULL else as.character(input$explore_nutrients))
   weights <- shiny::reactive(vn_exploration_interval(input$weight_from, input$weight_to, input$weight_by))
   ks <- shiny::reactive(vn_exploration_interval(input$k_from, input$k_to, input$k_by))
   lists <- shiny::reactive(setNames(lapply(roles$role, function(role) input[[paste0("ingredients_", role)]]), roles$role))
@@ -161,7 +184,7 @@ vn_exploration_server <- function(input, output, session) {
       out <- vn_explore_rations(m, input$explore_refs, lists(), weights(), ks(), targets(), vars,
         max_scenarios = input$scenario_limit, missing_as_zero = isTRUE(input$explore_missing_zero),
         ignore_levels = if (isFALSE(input$explore_ignore_optimax)) character() else "OPTIMAX",
-        rounding = !isFALSE(input$explore_rounding),
+        rounding = !isFALSE(input$explore_rounding), nutrients = evaluated_nutrients(),
         min_dose_g = vapply(roles$role, function(role) {
           v <- input[[paste0("min_dose_", role)]]
           if (is.null(v) || is.na(v)) 5 else v
@@ -192,7 +215,7 @@ vn_exploration_server <- function(input, output, session) {
     shiny::req(input$explore_page >= 1)
     page <- as.integer(input$explore_page)
     s <- s[seq_len(nrow(s)) > (page - 1) * 50 & seq_len(nrow(s)) <= page * 50, ]
-    s[, c("scenario_id", "combination_id", "reference_name", "weight_kg", "K", "need_kcal", "energy_kcal", "energy_gap_kcal", "status", "insufficient", "excess", "missing", "zero_filled", "message")]
+    s[, c("scenario_id", "combination_id", "reference_name", "weight_kg", "K", "need_kcal", "energy_kcal", "energy_gap_kcal", "status", "composition", "not_covered", "in_excess", "zero_filled", "message")]
   }, digits = 3)
   balance <- shiny::reactive(vn_exploration_balance(exploration()))
   output$explore_balance_map <- shiny::renderPlot(vn_plot_balance_map(balance()), height = function() {
@@ -216,7 +239,7 @@ vn_exploration_server <- function(input, output, session) {
     shiny::req(nrow(s) == 1L)
     s
   })
-  output$explore_scenario_summary <- shiny::renderTable(selected()[, c("scenario_id", "reference_id", "reference_name", "stage", "weight_kg", "K", "status", "zero_filled_nutrients", "message", "warnings")])
+  output$explore_scenario_summary <- shiny::renderTable(selected()[, c("scenario_id", "reference_id", "reference_name", "stage", "weight_kg", "K", "status", "not_covered", "in_excess", "zero_filled_nutrients", "message", "warnings")])
   output$explore_quantities <- shiny::renderTable({
     out <- exploration(); s <- selected(); q <- out$quantities
     shiny::req(nrow(q) > 0)
@@ -237,7 +260,8 @@ vn_exploration_server <- function(input, output, session) {
       variables = out$configuration$variables, adjustment = s$K)
     vn_init_ration(out$model, s$reference_id, q[, c("food_id", "quantity_g")], n,
       missing_as_zero = isTRUE(out$configuration$missing_as_zero),
-      ignore_levels = as.character(unlist(out$configuration$ignore_levels)))
+      ignore_levels = as.character(unlist(out$configuration$ignore_levels)),
+      nutrients = out$configuration$nutrients)
   })
   output$explore_comparison <- shiny::renderTable(detail()$comparison[, c("nutrient_id", "reflevel", "unit", "intake", "absolute_requirement", "status", "zero_filled")], digits = 4)
   output$explore_export_summary <- shiny::downloadHandler(filename = function() "scenarios-canins.csv",
@@ -246,6 +270,18 @@ vn_exploration_server <- function(input, output, session) {
     content = function(file) utils::write.csv(exploration()$quantities, file, row.names = FALSE))
   output$explore_export_targets <- shiny::downloadHandler(filename = function() "cibles-apports.csv",
     content = function(file) utils::write.csv(exploration()$targets, file, row.names = FALSE))
+  uncovered <- shiny::reactive(vn_uncovered_nutrients(exploration()))
+  output$explore_uncovered <- shiny::renderTable({
+    u <- uncovered()
+    if (isTRUE(input$explore_uncovered_never)) u <- u[u$cells_never_covered > 0, ]
+    shiny::validate(shiny::need(nrow(u) > 0, "Tous les seuils évalués sont couverts."))
+    data.frame(Nutriment = u$name, Code = u$nutrient_id, Seuil = u$reflevel, Sens = u$direction,
+      `Scénarios en échec` = u$scenarios, `Part` = sprintf("%.0f %%", 100 * u$share),
+      `Données absentes seulement` = u$absent_data_only,
+      `Cases jamais couvertes` = paste0(u$cells_never_covered, "/", u$cells), check.names = FALSE)
+  })
+  output$explore_export_uncovered <- shiny::downloadHandler(filename = function() "nutriments-non-couverts.csv",
+    content = function(file) utils::write.csv(uncovered(), file, row.names = FALSE))
   output$explore_export_balance <- shiny::downloadHandler(filename = function() "zones-equilibrage.csv",
     content = function(file) utils::write.csv(balance(), file, row.names = FALSE))
   output$explore_export_config <- shiny::downloadHandler(filename = function() "configuration-exploration.json",
