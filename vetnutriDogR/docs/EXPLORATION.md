@@ -82,8 +82,10 @@ utilisent la quantité arrondie :
 | Sinon, de 20 à 200 g | 5 g |
 | Sinon, 200 g et plus | 25 g |
 
-**Dose minimale** (5 g par défaut, modifiable) : un ingrédient utilisé pèse au moins
-cette dose ; pour un contenant, c'est le premier multiple du pas qui l'atteint
+**Dose minimale**, réglable **pour chaque type d'ingrédient** (protéines, fibres,
+calcium, oméga-6, sodium, énergie ; 5 g par défaut, champ « Dose minimale si
+utilisé » dans chaque liste) : un ingrédient utilisé pèse au moins la dose de son
+type ; pour un contenant, c'est le premier multiple du pas qui l'atteint
 (dosette de 4 g : 6 g). Une quantité calculée inférieure est ramenée à 0 sous la
 moitié du minimum, portée au minimum au-delà.
 

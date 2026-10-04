@@ -82,6 +82,17 @@ vn_quantity_step <- function(q, container_step = NA_real_) {
   if (!is.na(container_step)) container_step else if (q < 20) 1 else if (q < 200) 5 else 25
 }
 
+# One minimum dose per ingredient role: a single value applies to all six roles.
+vn_role_min_doses <- function(min_dose_g) {
+  roles <- vn_exploration_roles()$role
+  if (!is.numeric(min_dose_g) || anyNA(min_dose_g) || any(!is.finite(min_dose_g) | min_dose_g < 0))
+    stop("Dose minimale invalide : valeurs positives ou nulles")
+  if (length(min_dose_g) == 1L && is.null(names(min_dose_g))) return(setNames(rep(min_dose_g, length(roles)), roles))
+  if (is.null(names(min_dose_g)) || !setequal(names(min_dose_g), roles) || anyDuplicated(names(min_dose_g)))
+    stop("Dose minimale : une valeur, ou une valeur nommée par rôle (", paste(roles, collapse = ", "), ")")
+  min_dose_g[roles]
+}
+
 vn_min_dose <- function(container_step, min_dose_g) {
   if (min_dose_g <= 0) 0 else if (!is.na(container_step)) ceiling(min_dose_g / container_step - 1e-9) * container_step else min_dose_g
 }
@@ -149,7 +160,8 @@ vn_adjust_combination <- function(profiles, selection, targets, tolerance = 1e-8
       if (is.na(density)) vn_exploration_error("COMPOSITION_ABSENTE", paste(selection[i], ":", nutrient, "absent"))
       if (density <= 0) vn_exploration_error("INGREDIENT_INADAPTE", paste(selection[i], ": densité nulle pour", nutrient))
       quantities[i] <- quantities[i] + deficit / density
-      if (rounding) quantities[i] <- vn_round_quantity(quantities[i], vn_profile_step(profiles[[selection[i]]]), min_dose_g)
+      if (rounding) quantities[i] <- vn_round_quantity(quantities[i], vn_profile_step(profiles[[selection[i]]]),
+        if (length(min_dose_g) > 1L) min_dose_g[[i]] else min_dose_g)
     }
   }
   # Energy accepted around the need: half a rounding step of the energy ingredient.
@@ -158,7 +170,7 @@ vn_adjust_combination <- function(profiles, selection, targets, tolerance = 1e-8
     q <- quantities[length(selection)]
     cs <- vn_profile_step(profiles[[selection[length(selection)]]])
     # At or below the minimum dose, rounding moved up to half of that dose.
-    minimum <- vn_min_dose(cs, min_dose_g)
+    minimum <- vn_min_dose(cs, if (length(min_dose_g) > 1L) min_dose_g[[length(selection)]] else min_dose_g)
     max(vn_quantity_step(q, cs), if (q <= minimum) minimum else 0)
   }
   energy_tolerance <- if (is.finite(energy_density)) 0.5 * energy_step * energy_density else 0
@@ -182,8 +194,8 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
                                ignore_levels = "OPTIMAX", rounding = TRUE, min_dose_g = 5) {
   if (!isTRUE(missing_as_zero) && !isFALSE(missing_as_zero)) stop("missing_as_zero doit valoir TRUE ou FALSE")
   if (!isTRUE(rounding) && !isFALSE(rounding)) stop("rounding doit valoir TRUE ou FALSE")
-  if (length(min_dose_g) != 1L || !is.finite(min_dose_g) || min_dose_g < 0) stop("Dose minimale invalide")
-  if (!rounding) min_dose_g <- 0
+  min_dose_g <- vn_role_min_doses(min_dose_g)
+  if (!rounding) min_dose_g[] <- 0
   if (!is.character(ignore_levels) || any(!ignore_levels %in% c("OPTIMIN", "OPTIMAX", "MAX")))
     stop("ignore_levels : OPTIMIN, OPTIMAX ou MAX uniquement")
   roles <- vn_exploration_roles()$role
@@ -296,6 +308,6 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
        configuration = list(reference_ids = reference_ids, ingredient_lists = ingredient_lists,
          weights = weights, k_values = k_values, targets = targets, variables = variables,
          missing_as_zero = missing_as_zero, ignore_levels = ignore_levels,
-         rounding = rounding, min_dose_g = min_dose_g,
+         rounding = rounding, min_dose_g = as.list(min_dose_g),
          method = "sequential_deficit_energy_last", provenance = model$provenance))
 }

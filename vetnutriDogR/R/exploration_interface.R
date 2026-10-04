@@ -25,6 +25,8 @@ vn_exploration_ui <- function(root = vn_find_root()) {
         shiny::tags$details(open = TRUE,
           shiny::tags$summary(shiny::strong(roles$label[i])),
           shiny::selectizeInput(paste0("ingredients_", role), "Ingrédients possibles", choices = NULL, multiple = TRUE),
+          shiny::conditionalPanel("input.explore_rounding",
+            shiny::numericInput(paste0("min_dose_", role), "Dose minimale si utilisé (g)", 5, min = 0, step = 0.5)),
           if (role == "fibre") shiny::selectInput("fibre_nutrient", "Nutriment utilisé pour les fibres", choices = NULL),
           if (role != "energy") shiny::tagList(
             shiny::selectInput(paste0("target_source_", role), "Cible", c("Référentiel" = "reference", "Personnalisée" = "custom")),
@@ -43,8 +45,7 @@ vn_exploration_ui <- function(root = vn_find_root()) {
       shiny::helpText("Décoché : une composition absente bloque l'ajustement et rend le seuil non évaluable. Coché : elle compte pour 0, comme dans VetNutri MP ; les nutriments concernés sont listés et un scénario sinon conforme reçoit CONFORME_ABSENTS_A_ZERO."),
       shiny::checkboxInput("explore_rounding", "Arrondir les quantités comme VetNutri MP", TRUE),
       shiny::conditionalPanel("input.explore_rounding",
-        shiny::numericInput("explore_min_dose", "Dose minimale d'un ingrédient utilisé (g)", 5, min = 0, step = 1),
-        shiny::helpText("Arrondi après chaque ajustement : dosette, sachet ou boîte au ½ contenant ; sinon 1 g sous 20 g, 5 g sous 200 g, 25 g au-delà. Sous la dose minimale, l'ingrédient n'est pas utilisé (moins de la moitié) ou est porté à la dose minimale. L'énergie est acceptée à ± ½ pas de l'ingrédient énergétique.")),
+        shiny::helpText("Arrondi après chaque ajustement : dosette, sachet ou boîte au ½ contenant ; sinon 1 g sous 20 g, 5 g sous 200 g, 25 g au-delà. Sous la dose minimale de son type (réglable dans chaque liste ci-dessous), l'ingrédient n'est pas utilisé (moins de la moitié) ou est porté à cette dose. L'énergie est acceptée à ± ½ pas de l'ingrédient énergétique.")),
       shiny::checkboxInput("explore_ignore_optimax", "Ignorer les OPTIMAX : seuls les MAX limitent les apports", TRUE),
       shiny::numericInput("scenario_limit", "Nombre maximal de scénarios autorisé", 5000, min = 1, step = 1000),
       shiny::textOutput("explore_count"),
@@ -161,7 +162,10 @@ vn_exploration_server <- function(input, output, session) {
         max_scenarios = input$scenario_limit, missing_as_zero = isTRUE(input$explore_missing_zero),
         ignore_levels = if (isFALSE(input$explore_ignore_optimax)) character() else "OPTIMAX",
         rounding = !isFALSE(input$explore_rounding),
-        min_dose_g = if (is.null(input$explore_min_dose) || is.na(input$explore_min_dose)) 5 else input$explore_min_dose,
+        min_dose_g = vapply(roles$role, function(role) {
+          v <- input[[paste0("min_dose_", role)]]
+          if (is.null(v) || is.na(v)) 5 else v
+        }, 0),
         progress = function(i, total) shiny::setProgress(value = i / total, detail = paste(i, "/", total)))
     })
     out$model <- m # Snapshot: later catalogue reloads must not change existing results.
