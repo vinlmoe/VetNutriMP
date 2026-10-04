@@ -135,7 +135,7 @@ vn_food_energy <- function(model, food, ref, values) {
 #' Missing composition remains NA in comparisons; it is never labelled adequate,
 #' unless missing_as_zero is TRUE (Kotlin `?: 0.0`), which is then reported.
 #' @export
-vn_init_ration <- function(model, reference_id, items, needs, missing_as_zero = FALSE) {
+vn_init_ration <- function(model, reference_id, items, needs, missing_as_zero = FALSE, ignore_levels = character()) {
   if (!isTRUE(missing_as_zero) && !isFALSE(missing_as_zero)) stop("missing_as_zero doit valoir TRUE ou FALSE")
   ref <- vn_init_object(model, "references", reference_id)
   if (ref$espece != "CHIEN") stop("Module limité au chien")
@@ -185,7 +185,7 @@ vn_init_ration <- function(model, reference_id, items, needs, missing_as_zero = 
     }
     sum(v)
   }, 0.0), ids)
-  evaluation <- vn_compare_totals(model, reference_id, totals, needs)
+  evaluation <- vn_compare_totals(model, reference_id, totals, needs, ignore_levels)
   evaluation$comparison$zero_filled <- evaluation$comparison$nutrient_id %in% zero_filled
   totals <- evaluation$totals
   cmp <- evaluation$comparison
@@ -205,7 +205,10 @@ vn_zero_filled_requirements <- function(model, zero_filled, comparison) {
 }
 
 # Shared by manual rations and the exploration grid; no second set of thresholds.
-vn_compare_totals <- function(model, reference_id, totals, needs) {
+# ignore_levels removes threshold levels from the evaluation (e.g. OPTIMAX: only MAX limits).
+vn_compare_totals <- function(model, reference_id, totals, needs, ignore_levels = character()) {
+  if (!is.character(ignore_levels) || any(!ignore_levels %in% c("MIN", "OPTIMIN", "OPTIMAX", "MAX")))
+    stop("Niveaux de seuil ignorés invalides")
   ref <- vn_init_object(model, "references", reference_id)
   dict <- model$dictionaries$nutrients
   # Ratios are evaluated from ration totals, never summed per ingredient.
@@ -217,7 +220,8 @@ vn_compare_totals <- function(model, reference_id, totals, needs) {
         totals[id] <- tryCatch(vn_math(eq$script, as.list(totals)), error = function(e) NA_real_)
     }
   }
-  cmp <- model$requirements[model$requirements$reference_id == reference_id & model$requirements$is_effective, , drop = FALSE]
+  cmp <- model$requirements[model$requirements$reference_id == reference_id & model$requirements$is_effective &
+    !model$requirements$reflevel %in% ignore_levels, , drop = FALSE]
   cmp$intake <- unname(totals[cmp$nutrient_id])
   ratio <- dict$is_ratio[match(cmp$nutrient_id, dict$nutrient_id)]
   ratio[is.na(ratio)] <- FALSE

@@ -68,12 +68,18 @@ if (nzchar(root)) {
     s <- out$summary[i, ]
     q <- out$quantities[out$quantities$scenario_id == s$scenario_id, ]
     n <- vn_init_needs(m, s$reference_id, s$weight_kg, adjustment = s$K)
-    manual <- vn_init_ration(m, s$reference_id, q[, c("food_id", "quantity_g")], n)
+    manual <- vn_init_ration(m, s$reference_id, q[, c("food_id", "quantity_g")], n, ignore_levels = "OPTIMAX")
+    stopifnot(!"OPTIMAX" %in% manual$comparison$reflevel, "MAX" %in% manual$comparison$reflevel)
     stopifnot(isTRUE(all.equal(s$energy_kcal, manual$energy_kcal, tolerance = 1e-10)),
       s$insufficient == sum(manual$comparison$status == "INSUFFISANT"),
       s$excess == sum(manual$comparison$status == "EXCES"),
       s$missing == sum(manual$comparison$status == "DONNEES_ABSENTES"))
   }
+  # Upper bounds: only MAX limits by default; OPTIMAX is evaluated again on request.
+  stopifnot(identical(out$configuration$ignore_levels, "OPTIMAX"),
+    !any(grepl("OPTIMAX", out$summary$violated)), failed(vn_explore_rations(m, ref, lists, 5, 1, ignore_levels = "TOUT")))
+  with_optimax <- vn_explore_rations(m, ref, lists, c(5, 10), c(0.8, 1.2), ignore_levels = character())
+  stopifnot(all(with_optimax$summary$excess >= out$summary$excess))
   # Distinct K values must not rescale thresholds expressed per standard BEE.
   a <- out$targets[out$targets$nutrient_id == "PROTEINE", ]
   stopifnot(length(unique(a$absolute_target[out$summary$weight_kg == 5])) == 1L)
@@ -118,14 +124,14 @@ if (nzchar(root)) {
     s <- zero$summary[i, ]
     q <- zero$quantities[zero$quantities$scenario_id == s$scenario_id, ]
     n <- vn_init_needs(m, s$reference_id, s$weight_kg, adjustment = s$K)
-    manual <- vn_init_ration(m, s$reference_id, q[, c("food_id", "quantity_g")], n, missing_as_zero = TRUE)
+    manual <- vn_init_ration(m, s$reference_id, q[, c("food_id", "quantity_g")], n, missing_as_zero = TRUE, ignore_levels = "OPTIMAX")
     stopifnot(isTRUE(all.equal(s$energy_kcal, manual$energy_kcal, tolerance = 1e-10)),
       s$insufficient == sum(manual$comparison$status == "INSUFFISANT"),
       s$excess == sum(manual$comparison$status == "EXCES"),
       s$missing == sum(manual$comparison$status == "DONNEES_ABSENTES"),
       identical(s$zero_filled_nutrients, paste(manual$zero_filled, collapse = ",")))
     # The default manual evaluation stays strict.
-    strict_manual <- vn_init_ration(m, s$reference_id, q[, c("food_id", "quantity_g")], n)
+    strict_manual <- vn_init_ration(m, s$reference_id, q[, c("food_id", "quantity_g")], n, ignore_levels = "OPTIMAX")
     stopifnot(!length(strict_manual$zero_filled), sum(strict_manual$comparison$status == "DONNEES_ABSENTES") > s$missing)
   }
   stopifnot(failed(vn_explore_rations(m, ref, partial, 10, 1, missing_as_zero = NA)))

@@ -113,6 +113,14 @@ absente compte pour 0, pour l'ajustement comme pour la comparaison aux seuils.
 - Les ratios (Ca/P…) restent recalculés sur les totaux ; un ratio non calculable
   (division par zéro) reste `DONNEES_ABSENTES`.
 
+## Bornes hautes : MAX seulement
+
+Par défaut, l'explorateur **ignore les OPTIMAX** : seuls les MAX limitent les
+apports ; les MIN et OPTIMIN restent évalués. La case « Ignorer les OPTIMAX » permet
+de les réintégrer ; le choix est enregistré (`ignore_levels`) dans la configuration
+exportée et appliqué au détail d'une ration. L'application Shiny de ration manuelle
+évalue toujours tous les niveaux.
+
 ## Carte poids × K : zones non équilibrables
 
 L'onglet **Résultats** affiche une carte par référentiel : le poids en abscisse,

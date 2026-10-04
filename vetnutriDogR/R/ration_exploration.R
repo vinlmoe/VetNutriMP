@@ -134,8 +134,11 @@ vn_adjust_combination <- function(profiles, selection, targets, tolerance = 1e-8
 #' @export
 vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, k_values,
                                targets = vn_exploration_targets(), variables = list(),
-                               max_scenarios = 5000, progress = NULL, missing_as_zero = FALSE) {
+                               max_scenarios = 5000, progress = NULL, missing_as_zero = FALSE,
+                               ignore_levels = "OPTIMAX") {
   if (!isTRUE(missing_as_zero) && !isFALSE(missing_as_zero)) stop("missing_as_zero doit valoir TRUE ou FALSE")
+  if (!is.character(ignore_levels) || any(!ignore_levels %in% c("OPTIMIN", "OPTIMAX", "MAX")))
+    stop("ignore_levels : OPTIMIN, OPTIMAX ou MAX uniquement")
   roles <- vn_exploration_roles()$role
   if (!is.list(ingredient_lists) || !setequal(names(ingredient_lists), roles) || anyDuplicated(names(ingredient_lists)))
     stop("Fournir une liste d'ingrédients pour chacun des six ajustements")
@@ -196,7 +199,7 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         row$standard_kcal <- n$standard_kcal; row$need_kcal <- n$need_kcal
         fit <- vn_adjust_combination(profiles[[reference_id]], selection, context$targets,
           missing_as_zero = missing_as_zero)
-        evaluated <- vn_compare_totals(model, reference_id, fit$totals, n)
+        evaluated <- vn_compare_totals(model, reference_id, fit$totals, n, ignore_levels)
         cmp <- evaluated$comparison
         row$energy_kcal <- unname(fit$totals["ENERGIE"])
         row$energy_gap_kcal <- row$energy_kcal - row$need_kcal
@@ -242,6 +245,6 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
        targets = vn_bind_rows(resolved_targets, data.frame()), combinations = combinations,
        configuration = list(reference_ids = reference_ids, ingredient_lists = ingredient_lists,
          weights = weights, k_values = k_values, targets = targets, variables = variables,
-         missing_as_zero = missing_as_zero,
+         missing_as_zero = missing_as_zero, ignore_levels = ignore_levels,
          method = "sequential_deficit_energy_last", provenance = model$provenance))
 }
