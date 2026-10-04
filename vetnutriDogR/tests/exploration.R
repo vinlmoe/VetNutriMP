@@ -62,6 +62,13 @@ profiles_r <- setNames(lapply(seq_len(6), function(i) list(values = matrix[, i] 
 targets_r <- vn_exploration_targets(); targets_r$absolute_target <- c(2.06, 3, 1, 1, 0.04, 100)
 fit <- vn_adjust_combination(profiles_r, selection, targets_r, rounding = TRUE, min_dose_g = 5)
 stopifnot(identical(unname(fit$quantities), c(20, 30, 10, 10, 0, 225)), fit$energy_tolerance_kcal == 0.5 * 25 * 0.4)
+# Minimum dose per ingredient type: calcium 15 g, sodium 0 g (0.4 g -> 0 g at 1 g step), others 5 g.
+doses <- vn_role_min_doses(c(protein = 5, fibre = 5, calcium = 15, omega6 = 5, sodium = 0, energy = 5))
+fit <- vn_adjust_combination(profiles_r, selection, targets_r, rounding = TRUE, min_dose_g = doses)
+stopifnot(identical(unname(fit$quantities), c(20, 30, 15, 10, 0, 225)),
+  identical(vn_role_min_doses(5), setNames(rep(5, 6), roles$role)),
+  identical(names(vn_role_min_doses(rev(doses))), roles$role),
+  failed(vn_role_min_doses(c(viande = 5))), failed(vn_role_min_doses(c(5, 5))), failed(vn_role_min_doses(-1)))
 grDevices::pdf(NULL); vn_plot_balance_map(bal); invisible(grDevices::dev.off())
 root <- Sys.getenv("VETNUTRI_MP_ROOT", if (dir.exists("composeApp")) getwd() else if (nzchar(module_root) && dir.exists(file.path(dirname(module_root), "composeApp"))) dirname(module_root) else "")
 if (nzchar(root)) {
@@ -163,12 +170,16 @@ if (nzchar(root)) {
     isTRUE(all.equal(high$quantity_total_g[2] / high$quantity_total_g[1], 4 / 3)))
   # Rounded (default): VetNutri MP steps, at least 5 g per used ingredient, energy within half a step.
   kr <- vn_explore_rations(m, ref, alone, 20, c(3, 4), targets = fibre1, missing_as_zero = TRUE)
-  stopifnot(isTRUE(kr$configuration$rounding), kr$configuration$min_dose_g == 5,
+  stopifnot(isTRUE(kr$configuration$rounding), all(unlist(kr$configuration$min_dose_g) == 5),
+    identical(names(kr$configuration$min_dose_g), roles$role),
     all(kr$summary$status != "ENERGIE_DEPASSEE"), all(abs(kr$summary$energy_gap_kcal) <= kr$summary$energy_tolerance_kcal + 1e-9))
   stopifnot(all(kr$quantities$quantity_g == 0 | kr$quantities$quantity_g >= 5))
   grid_ok <- mapply(function(q, id) { cs <- vn_container_step(vn_init_object(m, "foods", id))
     q == 0 || abs(q / vn_quantity_step(q, cs) - round(q / vn_quantity_step(q, cs))) < 1e-9 }, out$quantities$quantity_g, out$quantities$food_id)
   stopifnot(all(grid_ok), all(out$quantities$quantity_g == 0 | out$quantities$quantity_g >= 5))
+  big_ca <- vn_explore_rations(m, ref, lists, 10, 1, min_dose_g = c(protein = 5, fibre = 5, calcium = 40, omega6 = 5, sodium = 5, energy = 5))
+  qc <- big_ca$quantities$quantity_g[big_ca$quantities$role == "calcium"]
+  stopifnot(all(qc == 0 | qc >= 40), unlist(big_ca$configuration$min_dose_g)[["calcium"]] == 40)
   # Map of the real grid: one cell per reference × weight × K, every scenario counted once.
   bal <- vn_exploration_balance(zero)
   stopifnot(nrow(bal) == 2L, all(bal$combinations == 1L), all(bal$zone %in% vn_balance_zones()$zone),

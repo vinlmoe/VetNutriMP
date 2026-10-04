@@ -37,10 +37,11 @@ if (nzchar(module_root) && nzchar(root) && requireNamespace("shiny", quietly = T
     stopifnot(identical(exploration()$configuration$k_values, c(0.8, 1.2)))
     stopifnot(isFALSE(exploration()$configuration$missing_as_zero),
       identical(exploration()$configuration$ignore_levels, "OPTIMAX"),
-      isTRUE(exploration()$configuration$rounding), exploration()$configuration$min_dose_g == 5)
+      isTRUE(exploration()$configuration$rounding), all(unlist(exploration()$configuration$min_dose_g) == 5))
     # The checkbox reaches the engine and the detail tab on the next run.
-    session$setInputs(k_to = 1.2, explore_missing_zero = TRUE, explore_run = 2)
+    session$setInputs(k_to = 1.2, explore_missing_zero = TRUE, min_dose_calcium = 12, explore_run = 2)
     out <- exploration()
+    stopifnot(unlist(out$configuration$min_dose_g)[["calcium"]] == 12, unlist(out$configuration$min_dose_g)[["energy"]] == 5)
     stopifnot(isTRUE(out$configuration$missing_as_zero), "zero_filled" %in% names(out$summary))
     session$setInputs(explore_scenario = out$summary$scenario_id[1])
     stopifnot(isTRUE(detail()$missing_as_zero), nzchar(output$explore_summary), nzchar(output$explore_comparison))

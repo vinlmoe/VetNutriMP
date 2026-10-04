@@ -39,8 +39,10 @@ Exceeding it raises an error; no scenarios are sampled or silently dropped.}
 (arrondirQuantiteSelonRegles): half a container unit, else 1, 5 or 25 g. Energy
 is then accepted within half a step of the energy ingredient. FALSE keeps
 continuous grams and ignores the minimum dose.}
-\item{min_dose_g}{Minimum weight of a used ingredient (first multiple of the
-container step reaching it). Smaller quantities become 0 below half of it.}
+\item{min_dose_g}{Minimum weight of a used ingredient: one value for every role,
+or a vector named by role (protein, fibre, calcium, omega6, sodium, energy). For a
+container it is the first multiple of the step reaching it. Smaller quantities
+become 0 below half of it.}
 \item{q, container_step}{Quantity in grams and optional container half-unit.}
 \item{ignore_levels}{Threshold levels left out of the conformity evaluation. The
 default ignores OPTIMAX, so only MAX limits intakes; \code{character()} evaluates
