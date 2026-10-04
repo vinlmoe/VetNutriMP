@@ -138,6 +138,15 @@ Points de lecture :
   par kg métabolique, les quantités sont proportionnelles au BEE et **le poids ne
   change pas le résultat** : les zones forment des bandes horizontales selon K.
   Seuls les seuils par kg vif ou absolus font varier la carte avec le poids.
+- **Effet de K.** Comme dans VetNutri MP (`calculerBesoinAbsolu` reçoit le BEE
+  standard), tous les seuils par 1 000 kcal, MIN comme MAX, restent calculés sur
+  le BEE standard, alors que la ration apporte BEE × K. Les ingrédients ajustés
+  (protéine, fibres, calcium, huile, sel) ont donc la même quantité quel que soit
+  K ; seul l'ingrédient énergétique varie. K élevé : plus d'apports pour des
+  maximums fixes, donc des dépassements d'OPTIMAX/MAX (fer, iode, phosphore…) et,
+  en ration ménagère, un Ca/P qui baisse avec le féculent. K faible : la densité
+  nutritionnelle requise augmente ; un aliment complet seul dépasse alors
+  l'énergie pour couvrir ses minimums (zone orange).
 - L'ajustement est séquentiel : une case rouge signifie qu'aucune combinaison
   testée ne convient avec cette méthode, pas qu'aucune ration n'existe.
 - Le calcium est ajusté sur son seul seuil ; le réajustement Ca/P de Kotlin n'est

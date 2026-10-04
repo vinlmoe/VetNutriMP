@@ -129,6 +129,18 @@ if (nzchar(root)) {
     stopifnot(!length(strict_manual$zero_filled), sum(strict_manual$comparison$status == "DONNEES_ABSENTES") > s$missing)
   }
   stopifnot(failed(vn_explore_rations(m, ref, partial, 10, 1, missing_as_zero = NA)))
+  # A complete food alone in the six lists: quantity set by energy when it covers the
+  # nutrient targets, energy exceeded at very low K (targets stay on the standard BEE).
+  complete <- Filter(function(f) f$uuid %in% m$foods$food_id && identical(f$kind, "COMPLET") &&
+    all(labels %in% names(f$nutrients)) && all(unlist(f$nutrients[labels]) > 0), m$raw$foods)
+  stopifnot(length(complete) >= 1L)
+  alone <- setNames(rep(list(complete[[1]]$uuid), 6), roles$role)
+  fibre1 <- vn_exploration_targets(); fibre1$multiplier[fibre1$role == "fibre"] <- 1
+  kib <- vn_explore_rations(m, ref, alone, 20, c(0.1, 3, 4), targets = fibre1, missing_as_zero = TRUE)
+  low <- kib$summary[kib$summary$K == 0.1, ]; high <- kib$summary[kib$summary$K > 1, ]
+  stopifnot(low$status == "ENERGIE_DEPASSEE", low$energy_kcal > low$need_kcal,
+    all(high$status != "ENERGIE_DEPASSEE"), isTRUE(all.equal(high$energy_kcal, high$need_kcal)),
+    isTRUE(all.equal(high$quantity_total_g[2] / high$quantity_total_g[1], 4 / 3)))
   # Map of the real grid: one cell per reference × weight × K, every scenario counted once.
   bal <- vn_exploration_balance(zero)
   stopifnot(nrow(bal) == 2L, all(bal$combinations == 1L), all(bal$zone %in% vn_balance_zones()$zone),
