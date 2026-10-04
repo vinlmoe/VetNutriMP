@@ -41,6 +41,7 @@ vn_exploration_ui <- function(root = vn_find_root()) {
       })),
       shiny::checkboxInput("explore_missing_zero", "Valeur absente = 0 (comme Kotlin)", FALSE),
       shiny::helpText("Décoché : une composition absente bloque l'ajustement et rend le seuil non évaluable. Coché : elle compte pour 0, comme dans VetNutri MP ; les nutriments concernés sont listés et un scénario sinon conforme reçoit CONFORME_ABSENTS_A_ZERO."),
+      shiny::checkboxInput("explore_ignore_optimax", "Ignorer les OPTIMAX : seuls les MAX limitent les apports", TRUE),
       shiny::numericInput("scenario_limit", "Nombre maximal de scénarios autorisé", 5000, min = 1, step = 1000),
       shiny::textOutput("explore_count"),
       shiny::actionButton("explore_run", "Calculer toutes les rations", class = "btn-primary")
@@ -154,6 +155,7 @@ vn_exploration_server <- function(input, output, session) {
     shiny::withProgress(message = "Exploration de toutes les combinaisons", value = 0, {
       out <- vn_explore_rations(m, input$explore_refs, lists(), weights(), ks(), targets(), vars,
         max_scenarios = input$scenario_limit, missing_as_zero = isTRUE(input$explore_missing_zero),
+        ignore_levels = if (isFALSE(input$explore_ignore_optimax)) character() else "OPTIMAX",
         progress = function(i, total) shiny::setProgress(value = i / total, detail = paste(i, "/", total)))
     })
     out$model <- m # Snapshot: later catalogue reloads must not change existing results.
@@ -224,7 +226,8 @@ vn_exploration_server <- function(input, output, session) {
     n <- vn_init_needs(out$model, s$reference_id, s$weight_kg,
       variables = out$configuration$variables, adjustment = s$K)
     vn_init_ration(out$model, s$reference_id, q[, c("food_id", "quantity_g")], n,
-      missing_as_zero = isTRUE(out$configuration$missing_as_zero))
+      missing_as_zero = isTRUE(out$configuration$missing_as_zero),
+      ignore_levels = as.character(unlist(out$configuration$ignore_levels)))
   })
   output$explore_comparison <- shiny::renderTable(detail()$comparison[, c("nutrient_id", "reflevel", "unit", "intake", "absolute_requirement", "status", "zero_filled")], digits = 4)
   output$explore_export_summary <- shiny::downloadHandler(filename = function() "scenarios-canins.csv",
