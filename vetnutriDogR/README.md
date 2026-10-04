@@ -31,7 +31,8 @@ d'ingrédients sélectionnés pour les protéines, fibres, calcium, oméga-6, so
 et énergie restante, sur des intervalles de poids et de K. Les cibles du
 référentiel sont modifiables. L'option « Valeur absente = 0 (comme Kotlin) »
 permet de calculer les aliments à composition incomplète, en signalant les zéros
-utilisés. Il fournit quantités, conformité, diagnostics,
+utilisés. Une carte poids × K montre, par référentiel, les zones où aucune
+combinaison ne donne une ration équilibrée et les seuils limitants. Il fournit quantités, conformité, diagnostics,
 comparaisons et exports pour chaque scénario.
 
 [Guide de l'exploration : méthode, cibles, unités et résultats](docs/EXPLORATION.md).

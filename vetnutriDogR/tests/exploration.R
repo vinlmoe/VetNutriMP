@@ -31,6 +31,24 @@ profiles$calcium$values["CAL"] <- NA_real_ # no density left: no silent quantity
 stopifnot(failed(vn_adjust_combination(profiles, selection, targets, missing_as_zero = TRUE)))
 stopifnot(identical(vn_exploration_interval(5, 12, 5), c(5, 10, 12)),
   failed(vn_exploration_interval(0, 10, 1)), failed(vn_exploration_interval(10, 5, 1)), failed(vn_exploration_interval(5, 10, 0)))
+# Weight × K balance map: classification of synthetic scenarios (one cell per row group).
+cell <- function(w, status, violated = "", documented = violated) data.frame(reference_id = "R", reference_name = "Réf",
+  weight_kg = w, K = 1, status = status, violated = violated, violated_documented = documented, stringsAsFactors = FALSE)
+synthetic <- rbind(
+  cell(1, c("CONFORME", "SEUILS_NON_RESPECTES"), c("", "CU OPTIMIN")),
+  cell(2, c("SEUILS_NON_RESPECTES", "SEUILS_NON_RESPECTES"), c("I MIN", "I MIN;CU MIN"), c("", "CU MIN")),
+  cell(3, c("SEUILS_NON_RESPECTES", "ENERGIE_DEPASSEE", "ENERGIE_DEPASSEE"), c("CU MIN;ZN MIN", "FE MAX", "FE MAX;CU MIN")),
+  cell(4, c("CIBLE_ABSENTE", "COMPOSITION_ABSENTE")),
+  cell(5, c("CONFORME_ABSENTS_A_ZERO", "DONNEES_INCOMPLETES")),
+  cell(6, c("DONNEES_INCOMPLETES", "SEUILS_NON_RESPECTES"), c("", "ZN MIN")))
+bal <- vn_exploration_balance(synthetic)
+stopifnot(nrow(bal) == 6L, identical(bal$weight_kg, as.numeric(1:6)),
+  identical(bal$zone, c("EQUILIBRABLE", "SOUS_RESERVE", "ENERGIE_DEPASSEE", "NON_EVALUABLE", "EQUILIBRABLE", "SOUS_RESERVE")),
+  identical(bal$best, c(1L, 1L, 0L, 0L, 1L, 1L)), identical(bal$min_failed, c(0L, 0L, 1L, NA, 0L, 0L)),
+  bal$limiting[3] == "CU MIN (2/3), FE MAX (2/3), ZN MIN (1/3)", bal$undocumented[2] == "I MIN (2/2)")
+stopifnot(identical(vn_tile_edges(c(5, 10, 12)), c(2.5, 7.5, 11, 13)))
+stopifnot(failed(vn_exploration_balance(synthetic[0, ])))
+grDevices::pdf(NULL); vn_plot_balance_map(bal); invisible(grDevices::dev.off())
 root <- Sys.getenv("VETNUTRI_MP_ROOT", if (dir.exists("composeApp")) getwd() else if (nzchar(module_root) && dir.exists(file.path(dirname(module_root), "composeApp"))) dirname(module_root) else "")
 if (nzchar(root)) {
   m <- suppressWarnings(vn_load_init(root = root))
@@ -111,5 +129,12 @@ if (nzchar(root)) {
     stopifnot(!length(strict_manual$zero_filled), sum(strict_manual$comparison$status == "DONNEES_ABSENTES") > s$missing)
   }
   stopifnot(failed(vn_explore_rations(m, ref, partial, 10, 1, missing_as_zero = NA)))
-  cat("Exploration : 8 scénarios exhaustifs, contrôles de cibles, erreurs et comparaison au moteur de ration et option valeur absente = 0 validés\n")
+  # Map of the real grid: one cell per reference × weight × K, every scenario counted once.
+  bal <- vn_exploration_balance(zero)
+  stopifnot(nrow(bal) == 2L, all(bal$combinations == 1L), all(bal$zone %in% vn_balance_zones()$zone),
+    sum(bal$balanced + bal$reserved + bal$thresholds_failed + bal$energy_over + bal$not_evaluable) == nrow(zero$summary))
+  documented <- strsplit(zero$summary$violated_documented, ";", fixed = TRUE)
+  stopifnot(all(mapply(function(d, a) all(d %in% a), documented, strsplit(zero$summary$violated, ";", fixed = TRUE))))
+  grDevices::pdf(NULL); vn_plot_balance_map(vn_exploration_balance(out)); invisible(grDevices::dev.off())
+  cat("Exploration : 8 scénarios exhaustifs, contrôles de cibles, erreurs et comparaison au moteur de ration et option valeur absente = 0 et carte poids × K validés\n")
 } else message("Live INIT exploration tests skipped: set VETNUTRI_MP_ROOT")

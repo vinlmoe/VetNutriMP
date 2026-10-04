@@ -42,6 +42,8 @@ if (nzchar(module_root) && nzchar(root) && requireNamespace("shiny", quietly = T
     stopifnot(isTRUE(out$configuration$missing_as_zero), "zero_filled" %in% names(out$summary))
     session$setInputs(explore_scenario = out$summary$scenario_id[1])
     stopifnot(isTRUE(detail()$missing_as_zero), nzchar(output$explore_summary), nzchar(output$explore_comparison))
+    session$setInputs(explore_balance_all = TRUE)
+    stopifnot(nrow(balance()) == 4L, !is.null(output$explore_balance_map), nzchar(output$explore_balance_table))
   })
   cat("QMD exploration : listes, grille, cibles, calcul, détail et conservation des résultats validés\n")
 } else message("Exploration Shiny integration skipped: source checkout and shiny required")
