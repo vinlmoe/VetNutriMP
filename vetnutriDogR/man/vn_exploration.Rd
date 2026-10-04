@@ -15,7 +15,8 @@ vn_exploration_targets()
 vn_explore_rations(model, reference_ids, ingredient_lists, weights, k_values,
                   targets = vn_exploration_targets(), variables = list(),
                   max_scenarios = 5000, progress = NULL, missing_as_zero = FALSE,
-                  ignore_levels = "OPTIMAX", rounding = TRUE, min_dose_g = 5)
+                  ignore_levels = "OPTIMAX", rounding = TRUE, min_dose_g = 5,
+                  nutrients = NULL)
 vn_round_quantity(q, container_step = NA_real_, min_dose_g = 5)
 vn_exploration_ui(root = vn_find_root())
 vn_exploration_server(input, output, session)
@@ -35,6 +36,8 @@ value, uniteReqId and multiplier. Custom values require an explicit unit.}
 \item{max_scenarios}{Explicit limit checked before expanding the combinations.
 Exceeding it raises an error; no scenarios are sampled or silently dropped.}
 \item{progress}{Optional callback taking completed and total counts.}
+\item{nutrients}{Nutrient identifiers whose thresholds are evaluated; NULL
+evaluates all of them and \code{character()} none. Quantity adjustments are unchanged.}
 \item{rounding}{Round each quantity after its step as VetNutri MP
 (arrondirQuantiteSelonRegles): half a container unit, else 1, 5 or 25 g. Energy
 is then accepted within half a step of the energy ingredient. FALSE keeps

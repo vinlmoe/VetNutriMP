@@ -139,3 +139,53 @@ vn_plot_balance_map <- function(balance, labels = NULL) {
     text.col = NA, title = " ", title.col = NA)
   invisible(balance)
 }
+
+#' List the nutrients not covered across an exploration.
+#' One row per nutrient and threshold level missed by at least one evaluated scenario:
+#' scenarios concerned, those explained only by absent values counted as zero, and
+#' weight × K cells where every evaluated combination misses it (never covered).
+#' @export
+vn_uncovered_nutrients <- function(exploration, model = NULL) {
+  s <- if (is.data.frame(exploration)) exploration else exploration$summary
+  if (is.null(model) && !is.data.frame(exploration)) model <- exploration$model
+  required <- c("reference_id", "weight_kg", "K", "violated", "violated_documented")
+  if (!is.data.frame(s) || !all(required %in% names(s))) stop("Résultat d'exploration requis")
+  # Scenarios that reached the threshold comparison (errors leave insufficient as NA).
+  evaluated <- if ("insufficient" %in% names(s)) s[!is.na(s$insufficient), , drop = FALSE] else s
+  empty <- data.frame(nutrient_id = character(), reflevel = character(), direction = character(),
+    scenarios = integer(), share = numeric(), absent_data_only = integer(), cells_never_covered = integer(),
+    cells = integer(), name = character(), unit = character())
+  if (!nrow(evaluated)) return(empty)
+  split_items <- function(x) strsplit(x, ";", fixed = TRUE)
+  all_items <- split_items(evaluated$violated)
+  documented <- split_items(evaluated$violated_documented)
+  items <- sort(unique(unlist(all_items)))
+  if (!length(items)) return(empty)
+  cell <- paste(evaluated$reference_id, evaluated$weight_kg, evaluated$K, sep = "\r")
+  rows <- lapply(items, function(item) {
+    hit <- vapply(all_items, function(v) item %in% v, TRUE)
+    doc <- vapply(documented, function(v) item %in% v, TRUE)
+    per_cell <- tapply(hit, cell, all)
+    parts <- strsplit(item, " ", fixed = TRUE)[[1]]
+    data.frame(nutrient_id = parts[1], reflevel = parts[2],
+      direction = if (parts[2] %in% c("MIN", "OPTIMIN")) "Insuffisant" else "Excès",
+      scenarios = sum(hit), share = sum(hit) / length(hit), absent_data_only = sum(hit & !doc),
+      cells_never_covered = sum(per_cell), cells = length(per_cell), stringsAsFactors = FALSE)
+  })
+  out <- do.call(rbind, rows)
+  dict <- if (!is.null(model)) model$dictionaries$nutrients else NULL
+  out$name <- if (is.null(dict)) out$nutrient_id else dict$name[match(out$nutrient_id, dict$nutrient_id)]
+  out$unit <- if (is.null(dict)) NA_character_ else dict$unit[match(out$nutrient_id, dict$nutrient_id)]
+  out <- out[order(-out$cells_never_covered, -out$scenarios, out$nutrient_id), ]
+  rownames(out) <- NULL
+  out
+}
+
+# Nutrients with at least one effective threshold in a general canine reference, labelled for the UI.
+vn_evaluable_nutrients <- function(model) {
+  refs <- model$references$reference_id[model$references$maladie == "FALSE"]
+  ids <- unique(model$requirements$nutrient_id[model$requirements$reference_id %in% refs & model$requirements$is_effective])
+  dict <- model$dictionaries$nutrients
+  ids <- ids[order(match(ids, dict$nutrient_id))]
+  setNames(ids, paste0(dict$name[match(ids, dict$nutrient_id)], " (", ids, ")"))
+}
