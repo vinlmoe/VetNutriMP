@@ -1,0 +1,48 @@
+\name{vn_explore_rations}
+\alias{vn_explore_rations}
+\alias{vn_exploration_interval}
+\alias{vn_exploration_targets}
+\alias{vn_exploration_ui}
+\alias{vn_exploration_server}
+\title{Explore canine rations over ingredient combinations, weights and K values}
+\description{Selects one ingredient from each of six lists and evaluates the full
+Cartesian product with the requested reference, weight and global K grids.
+Quantities are adjusted sequentially from nutrient deficits, with energy last.}
+\usage{
+vn_exploration_interval(from, to, by)
+vn_exploration_targets()
+vn_explore_rations(model, reference_ids, ingredient_lists, weights, k_values,
+                  targets = vn_exploration_targets(), variables = list(),
+                  max_scenarios = 5000, progress = NULL)
+vn_exploration_ui(root = vn_find_root())
+vn_exploration_server(input, output, session)
+}
+\arguments{
+\item{from, to, by}{Positive interval bounds and step. The maximum is included.}
+\item{model}{Live canine catalogue returned by \code{vn_load_init}.}
+\item{reference_ids}{UUIDs of canine general references.}
+\item{ingredient_lists}{Named list of food UUID vectors for protein, fibre,
+calcium, omega6, sodium and energy. Each list must be nonempty.}
+\item{weights}{Positive body weights in kg.}
+\item{k_values}{Positive global energy multipliers; total need equals standard BEE times K.}
+\item{targets}{Six-row data frame from \code{vn_exploration_targets}, optionally
+modified. Fields: role, nutrient_id, source (reference/custom/energy), reflevel,
+value, uniteReqId and multiplier. Custom values require an explicit unit.}
+\item{variables}{Named list of additional equation variables common to all profiles.}
+\item{max_scenarios}{Explicit limit checked before expanding the combinations.
+Exceeding it raises an error; no scenarios are sampled or silently dropped.}
+\item{progress}{Optional callback taking completed and total counts.}
+\item{root}{VetNutri MP source checkout.}
+\item{input, output, session}{Shiny session objects.}
+}
+\value{Interval returns a numeric vector; targets returns a configuration data
+frame; exploration returns summary, quantities, targets, combinations and
+configuration, all with original identifiers and provenance. UI returns HTML;
+server registers reactive handlers.}
+\details{Default nutrient targets use OPTIMIN. Cellulose uses the explicit
+Kotlin adjustment multiplier of five, which can be changed. No missing target
+or composition is inferred. The energy step completes energy from the previous
+steps without permitting negative quantities. All thresholds are evaluated
+again on the resulting ration. Later ingredients can increase an earlier
+nutrient target. This sequential exploration is not a simultaneous constraint
+solver or an implementation of all Kotlin ration-adjustment modes.}
