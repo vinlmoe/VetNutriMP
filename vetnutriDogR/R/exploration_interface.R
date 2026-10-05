@@ -19,6 +19,7 @@ vn_exploration_ui <- function(root = vn_find_root()) {
       .vn-section { margin-top: 14px; }
       .vn-stale { margin-bottom: 8px; }
       .vn-muted { color: #777; }
+      .vn-map img { cursor: pointer; }
       .vn-table { overflow-x: auto; font-size: 12px; }
       .vn-table td { max-width: 280px; }
       details.vn-fold { margin: 8px 0; }
@@ -161,7 +162,9 @@ vn_exploration_ui <- function(root = vn_find_root()) {
           shiny::tableOutput("explore_target_preview")),
         shiny::tabPanel("Résultats",
           shiny::h4(shiny::textOutput("explore_summary")),
-          shiny::plotOutput("explore_balance_map", height = "auto"),
+          shiny::helpText(shiny::icon("hand-pointer"), " Cliquer sur une case pour éditer une ration de ce poids et de ce K, puis l'enregistrer et l'exporter (onglet « Rations éditées »)."),
+          shiny::uiOutput("explore_balance_maps"),
+          shiny::plotOutput("explore_balance_legend", height = 140),
           shiny::helpText("Une case est équilibrable si au moins une combinaison respecte tous les seuils. « Sous réserve » : seuls des nutriments non renseignés (comptés à 0) échouent. L'ajustement est séquentiel : une case rouge signifie qu'aucune combinaison testée ne convient avec cette méthode, pas qu'aucune ration n'existe."),
           shiny::tags$details(class = "vn-fold",
             shiny::tags$summary("Détail des cases poids × K"),
@@ -174,6 +177,19 @@ vn_exploration_ui <- function(root = vn_find_root()) {
             shiny::column(4, shiny::div(style = "padding-top: 30px;", class = "vn-muted", shiny::textOutput("explore_page_info")))),
           shiny::helpText("Une ligne par scénario ; les textes longs sont tronqués. Détail complet dans l'onglet « Détail d'une ration » ou dans l'export CSV."),
           shiny::div(class = "vn-table vn-table-compact", shiny::tableOutput("explore_results"))),
+        shiny::tabPanel("Rations éditées",
+          shiny::helpText("Rations modifiées à partir d'une case de la carte. Chaque ration garde son référentiel, son poids, son K et la configuration du calcul d'origine."),
+          shiny::div(class = "vn-table vn-table-compact", shiny::tableOutput("edited_rations_table")),
+          shiny::fluidRow(
+            shiny::column(6, shiny::selectInput("edited_ration_pick", "Ration", choices = NULL, width = "100%")),
+            shiny::column(6, shiny::div(style = "padding-top: 25px;",
+              shiny::actionButton("edited_ration_open", "Rouvrir dans l'éditeur", icon = shiny::icon("pen")),
+              shiny::actionButton("edited_ration_delete", "Supprimer", icon = shiny::icon("trash"))))),
+          shiny::h4("Exporter les rations éditées"),
+          shiny::downloadButton("edited_export_summary", "Bilans (CSV)"),
+          shiny::downloadButton("edited_export_quantities", "Quantités (CSV)"),
+          shiny::downloadButton("edited_export_comparison", "Comparaison aux seuils (CSV)"),
+          shiny::downloadButton("edited_export_json", "Rations (JSON)")),
         shiny::tabPanel("Nutriments non couverts",
           shiny::helpText("Nutriments dont au moins un seuil n'est pas atteint (insuffisance) ou est dépassé (excès), parmi les scénarios évalués. « Jamais couvert » : cases poids × K où toutes les combinaisons échouent sur ce seuil. « Données absentes seulement » : échecs dus uniquement à des valeurs absentes comptées à 0."),
           shiny::checkboxInput("explore_uncovered_never", "Seulement les nutriments jamais couverts dans au moins une case", FALSE),
@@ -530,10 +546,237 @@ vn_exploration_server <- function(input, output, session) {
       `Absents = 0` = s$zero_filled, Message = s$message, check.names = FALSE)
   }, digits = 3)
   balance <- shiny::reactive(vn_exploration_balance(exploration()))
-  output$explore_balance_map <- shiny::renderPlot(vn_plot_balance_map(balance()), height = function() {
-    n <- tryCatch(length(unique(balance()$reference_id)), error = function(e) 1L)
-    190 + 380 * ceiling(n / 2)
+  balance_refs <- shiny::reactive(unique(balance()$reference_id))
+  # One clickable plot per reference: Shiny maps clicks only onto the last panel drawn.
+  output$explore_balance_maps <- shiny::renderUI({
+    refs <- balance_refs()
+    width <- if (length(refs) > 1L) 6L else 12L
+    shiny::fluidRow(class = "vn-map", lapply(seq_along(refs), function(i) shiny::column(width,
+      shiny::plotOutput(paste0("explore_balance_map_", i), height = 380, click = paste0("explore_balance_click_", i)))))
   })
+  output$explore_balance_legend <- shiny::renderPlot({
+    balance()
+    vn_plot_balance_legend()
+  })
+  map_slots <- integer()
+  shiny::observeEvent(balance_refs(), {
+    for (slot in setdiff(seq_along(balance_refs()), map_slots)) local({
+      i <- slot
+      map_balance <- function() {
+        refs <- balance_refs()
+        shiny::req(i <= length(refs))
+        b <- balance()
+        b[b$reference_id == refs[i], , drop = FALSE]
+      }
+      output[[paste0("explore_balance_map_", i)]] <- shiny::renderPlot(vn_plot_balance_map(map_balance(), legend = FALSE))
+      shiny::observeEvent(input[[paste0("explore_balance_click_", i)]], {
+        click <- input[[paste0("explore_balance_click_", i)]]
+        cell <- vn_balance_cell_at(map_balance(), click$x, click$y)
+        if (!is.null(cell)) open_editor(cell)
+      })
+    })
+    map_slots <<- union(map_slots, seq_along(balance_refs()))
+  })
+
+  # Ration editor: starts from a combination of the clicked cell, recalculated on each change.
+  editor <- shiny::reactiveValues(cell = NULL, items = NULL, version = 0L, source = "", origin = "",
+    ration_id = NULL, model = NULL, configuration = NULL)
+  edited_rations <- shiny::reactiveVal(list())
+  ration_counter <- 0L
+  accepted_status <- c("CONFORME", "CALCULEE_AVEC_AVERTISSEMENTS", "CONFORME_ABSENTS_A_ZERO")
+  cell_scenarios <- function(cell) {
+    s <- exploration()$summary
+    s <- s[s$reference_id == cell$reference_id & s$weight_kg == cell$weight_kg & s$K == cell$K, , drop = FALSE]
+    misses <- vapply(strsplit(s$violated_documented, ";", fixed = TRUE), length, 0L)
+    s$misses <- misses
+    s[order(!s$status %in% accepted_status, misses, abs(s$energy_gap_kcal)), , drop = FALSE]
+  }
+  scenario_items <- function(scenario_id) {
+    q <- exploration()$quantities
+    q <- q[q$scenario_id == scenario_id, c("role", "food_id", "food_name", "quantity_g"), drop = FALSE]
+    q$role <- roles$label[match(q$role, roles$role)]
+    rownames(q) <- NULL
+    q
+  }
+  load_items <- function(items) {
+    editor$items <- items
+    editor$version <- editor$version + 1L
+  }
+  open_editor <- function(cell, record = NULL) {
+    if (is.null(record)) {
+      out <- exploration()
+      editor$model <- out$model
+      editor$configuration <- out$configuration
+    } else {
+      editor$model <- record$model
+      editor$configuration <- record$configuration
+    }
+    s <- tryCatch(cell_scenarios(cell), error = function(e) data.frame())
+    choices <- if (nrow(s)) setNames(s$scenario_id, paste0(s$combination_id, " — ", s$status, " — ", s$misses,
+      " seuil(s) non respecté(s) — ", substr(s$composition, 1, 80))) else character()
+    if (is.null(record)) {
+      shiny::req(length(choices) > 0)
+      editor$source <- editor$origin <- unname(choices[1])
+      editor$ration_id <- NULL
+      load_items(scenario_items(choices[1]))
+      label <- paste0(cell$reference_name, " — ", cell$weight_kg, " kg — K ", cell$K)
+    } else {
+      choices <- c("Ration enregistrée" = "", choices)
+      editor$source <- ""
+      editor$origin <- record$source_scenario_id
+      editor$ration_id <- record$id
+      load_items(record$items)
+      label <- record$label
+    }
+    editor$cell <- cell
+    food <- editor$model$foods
+    food_choices_edit <- setNames(food$food_id, paste(food$name, food$food_id, sep = " — "))
+    shiny::showModal(shiny::modalDialog(size = "l", easyClose = FALSE,
+      title = paste0("Éditer une ration — ", cell$reference_name, ", ", cell$weight_kg, " kg, K ", cell$K),
+      shiny::fluidRow(
+        shiny::column(8, shiny::selectInput("edit_start", "Point de départ (combinaisons de la case, la meilleure d'abord)",
+          choices, selected = unname(choices[1]), width = "100%")),
+        shiny::column(4, shiny::textInput("edit_label", "Nom de la ration", label, width = "100%"))),
+      shiny::h4("Quantités"),
+      shiny::helpText("0 g = ingrédient retiré. Le bilan se recalcule à chaque modification."),
+      shiny::uiOutput("edit_items"),
+      shiny::fluidRow(
+        shiny::column(6, shiny::selectizeInput("edit_add_food", "Ajouter un aliment", choices = NULL, width = "100%",
+          options = list(placeholder = "Rechercher un aliment…"))),
+        shiny::column(3, shiny::numericInput("edit_add_qty", "Quantité (g)", 10, min = 0, step = 1)),
+        shiny::column(3, shiny::div(style = "padding-top: 25px;", shiny::actionButton("edit_add", "Ajouter", icon = shiny::icon("plus"))))),
+      shiny::tags$hr(),
+      shiny::uiOutput("edit_result"),
+      shiny::div(class = "vn-table", shiny::tableOutput("edit_nonconformities")),
+      footer = shiny::tagList(
+        shiny::actionButton("edit_save", "Enregistrer dans les rations éditées", class = "btn-primary", icon = shiny::icon("floppy-disk")),
+        shiny::modalButton("Fermer"))))
+    session$onFlushed(function() shiny::updateSelectizeInput(session, "edit_add_food", choices = food_choices_edit,
+      selected = character(), server = TRUE), once = TRUE)
+  }
+  shiny::observeEvent(input$edit_start, {
+    shiny::req(nzchar(input$edit_start), !identical(input$edit_start, editor$source))
+    editor$source <- editor$origin <- input$edit_start
+    load_items(scenario_items(input$edit_start))
+  }, ignoreInit = TRUE)
+  output$edit_items <- shiny::renderUI({
+    v <- editor$version
+    items <- shiny::isolate(editor$items)
+    shiny::validate(shiny::need(NROW(items) > 0, "Aucun ingrédient : en ajouter un ci-dessous."))
+    shiny::tags$table(class = "table table-condensed",
+      shiny::tags$thead(shiny::tags$tr(shiny::tags$th("Rôle"), shiny::tags$th("Aliment"), shiny::tags$th("Quantité (g)"))),
+      shiny::tags$tbody(lapply(seq_len(nrow(items)), function(i) shiny::tags$tr(
+        shiny::tags$td(items$role[i]),
+        shiny::tags$td(items$food_name[i], shiny::tags$br(), shiny::tags$small(class = "vn-muted", items$food_id[i])),
+        shiny::tags$td(shiny::numericInput(paste0("edit_q_", v, "_", i), NULL, items$quantity_g[i], min = 0, step = 1, width = "120px"))))))
+  })
+  edited_items <- shiny::reactive({
+    items <- editor$items; v <- editor$version
+    shiny::req(!is.null(items))
+    if (nrow(items)) items$quantity_g <- vapply(seq_len(nrow(items)), function(i) {
+      q <- input[[paste0("edit_q_", v, "_", i)]]
+      if (is.null(q)) items$quantity_g[i] else if (!is.finite(q) || q < 0) 0 else q
+    }, 0)
+    items
+  })
+  evaluate_items <- function(items) {
+    cell <- editor$cell; cfg <- editor$configuration
+    shiny::req(!is.null(cell), !is.null(editor$model))
+    shiny::validate(shiny::need(any(items$quantity_g > 0), "Ration vide : saisir au moins une quantité positive."))
+    tryCatch(vn_evaluate_edited_ration(editor$model, cell$reference_id, cell$weight_kg, cell$K, items,
+        variables = cfg$variables, missing_as_zero = isTRUE(cfg$missing_as_zero),
+        ignore_levels = as.character(unlist(cfg$ignore_levels)), nutrients = cfg$nutrients),
+      error = function(e) shiny::validate(shiny::need(FALSE, paste("Calcul impossible :", conditionMessage(e)))))
+  }
+  edited_evaluation <- shiny::reactive(evaluate_items(edited_items_debounced()))
+  edited_items_debounced <- shiny::debounce(edited_items, 400)
+  output$edit_result <- shiny::renderUI({
+    s <- edited_evaluation()$summary
+    level <- if (s$status %in% accepted_status) "alert-success" else if (s$status == "DONNEES_INCOMPLETES") "alert-warning" else "alert-danger"
+    shiny::div(class = paste("alert", level),
+      shiny::strong(s$status), sprintf(" — énergie %.0f / %.0f kcal (%+.1f %%) — %.0f g au total",
+        s$energy_kcal, s$need_kcal, s$energy_gap_percent, s$quantity_total_g),
+      if (nzchar(s$not_covered)) shiny::tagList(shiny::br(), "Insuffisants : ", s$not_covered),
+      if (nzchar(s$in_excess)) shiny::tagList(shiny::br(), "En excès : ", s$in_excess))
+  })
+  output$edit_nonconformities <- shiny::renderTable({
+    x <- format_comparison(edited_evaluation()$comparison)
+    x <- x[x$Statut %in% c("INSUFFISANT", "EXCES", "DONNEES_ABSENTES"), , drop = FALSE]
+    shiny::validate(shiny::need(nrow(x) > 0, "Tous les seuils évalués sont respectés."))
+    x
+  }, digits = 4)
+  shiny::observeEvent(input$edit_add, {
+    id <- input$edit_add_food
+    if (is.null(id) || !nzchar(id)) {
+      shiny::showNotification("Choisir un aliment à ajouter.", type = "warning")
+      return()
+    }
+    q <- input$edit_add_qty
+    items <- edited_items()
+    items <- rbind(items, data.frame(role = "Ajout", food_id = id,
+      food_name = editor$model$foods$name[match(id, editor$model$foods$food_id)],
+      quantity_g = if (is.null(q) || !is.finite(q) || q < 0) 0 else q))
+    load_items(items)
+    shiny::updateSelectizeInput(session, "edit_add_food", selected = character())
+  })
+  shiny::observeEvent(input$edit_save, {
+    items <- edited_items()
+    evaluation <- tryCatch(evaluate_items(items), error = function(e) e)
+    if (inherits(evaluation, "error")) {
+      shiny::showNotification(paste("Ration non enregistrée :", conditionMessage(evaluation)), type = "error")
+      return()
+    }
+    id <- editor$ration_id
+    if (is.null(id)) {
+      ration_counter <<- ration_counter + 1L
+      id <- sprintf("R%03d", ration_counter)
+    }
+    label <- trimws(if (is.null(input$edit_label)) "" else input$edit_label)
+    rations <- edited_rations()
+    rations[[id]] <- list(id = id, label = if (nzchar(label)) label else id, source_scenario_id = editor$origin,
+      cell = editor$cell, items = items[items$quantity_g > 0, , drop = FALSE], evaluation = evaluation,
+      model = editor$model, configuration = editor$configuration)
+    edited_rations(rations)
+    editor$ration_id <- id
+    shiny::showNotification(paste0("Ration ", id, " enregistrée (onglet « Rations éditées »)."), type = "message")
+  })
+  shiny::observeEvent(edited_rations(), {
+    r <- edited_rations()
+    shiny::updateSelectInput(session, "edited_ration_pick",
+      choices = setNames(names(r), vapply(r, function(x) paste(x$id, "—", x$label), "")),
+      selected = if (length(r)) utils::tail(names(r), 1L) else character())
+  }, ignoreInit = TRUE)
+  output$edited_rations_table <- shiny::renderTable({
+    r <- edited_rations()
+    shiny::validate(shiny::need(length(r) > 0,
+      "Aucune ration éditée : cliquer sur une case de la carte (onglet Résultats) pour en créer une."))
+    s <- vn_edited_rations_tables(r)$summary
+    data.frame(ID = s$ration_id, Nom = s$label, `Référentiel` = s$reference_name, `Poids (kg)` = s$weight_kg, K = s$K,
+      Statut = s$status, `Énergie (kcal)` = s$energy_kcal, `Besoin (kcal)` = s$need_kcal,
+      `Écart énergie (%)` = s$energy_gap_percent, Composition = s$composition, `Non couverts` = s$not_covered,
+      `En excès` = s$in_excess, `Scénario d'origine` = s$source_scenario_id, check.names = FALSE)
+  }, digits = 1)
+  shiny::observeEvent(input$edited_ration_open, {
+    record <- edited_rations()[[input$edited_ration_pick]]
+    shiny::req(!is.null(record))
+    open_editor(record$cell, record)
+  })
+  shiny::observeEvent(input$edited_ration_delete, {
+    r <- edited_rations()
+    shiny::req(input$edited_ration_pick %in% names(r))
+    r[[input$edited_ration_pick]] <- NULL
+    edited_rations(r)
+  })
+  edited_tables <- shiny::reactive(vn_edited_rations_tables(edited_rations()))
+  output$edited_export_summary <- shiny::downloadHandler(filename = function() "rations-editees-bilans.csv",
+    content = function(file) utils::write.csv(edited_tables()$summary, file, row.names = FALSE))
+  output$edited_export_quantities <- shiny::downloadHandler(filename = function() "rations-editees-quantites.csv",
+    content = function(file) utils::write.csv(edited_tables()$quantities, file, row.names = FALSE))
+  output$edited_export_comparison <- shiny::downloadHandler(filename = function() "rations-editees-seuils.csv",
+    content = function(file) utils::write.csv(edited_tables()$comparison, file, row.names = FALSE))
+  output$edited_export_json <- shiny::downloadHandler(filename = function() "rations-editees.json",
+    content = function(file) jsonlite::write_json(vn_edited_rations_json(edited_rations()), file,
+      auto_unbox = TRUE, pretty = TRUE, digits = NA, dataframe = "rows"))
   output$explore_balance_table <- shiny::renderTable({
     b <- balance()
     if (!isTRUE(input$explore_balance_all)) b <- b[b$zone != "EQUILIBRABLE", ]
@@ -591,15 +834,15 @@ vn_exploration_server <- function(input, output, session) {
       ignore_levels = as.character(unlist(out$configuration$ignore_levels)),
       nutrients = out$configuration$nutrients)
   })
-  comparison_display <- shiny::reactive({
-    cmp <- detail()$comparison
+  format_comparison <- function(cmp) {
     cmp$gap <- cmp$intake - cmp$absolute_requirement
     cmp$gap_percent <- ifelse(cmp$absolute_requirement == 0, NA_real_, 100 * cmp$gap / cmp$absolute_requirement)
     data.frame(Nutriment = cmp$nutrient_id, Seuil = cmp$reflevel, Unité = cmp$unit,
       Attendu = cmp$absolute_requirement, Observé = cmp$intake, `Écart (observé − attendu)` = cmp$gap,
       `Écart (%)` = cmp$gap_percent, Statut = cmp$status, `Valeur absente = 0` = cmp$zero_filled,
       check.names = FALSE)
-  })
+  }
+  comparison_display <- shiny::reactive(format_comparison(detail()$comparison))
   output$explore_nonconformities <- shiny::renderTable({
     x <- comparison_display()
     x <- x[x$Statut %in% c("INSUFFISANT", "EXCES", "DONNEES_ABSENTES"), , drop = FALSE]

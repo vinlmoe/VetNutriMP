@@ -53,6 +53,28 @@ qu'un référentiel adulte ou de croissance est approprié à un profil.
   revient à la page 1. L'onglet **Détail d'une ration** permet de passer au
   scénario précédent ou suivant.
 
+### Éditer une ration depuis la carte
+
+Un clic sur une case de la carte poids × K ouvre l'éditeur de ration pour ce
+référentiel, ce poids et ce K :
+
+- le point de départ est la meilleure combinaison de la case (conforme d'abord,
+  puis le moins de seuils renseignés non respectés, puis le plus petit écart
+  énergétique) ; les autres combinaisons de la case restent sélectionnables ;
+- chaque quantité est modifiable (0 g retire l'ingrédient) et un aliment
+  quelconque du catalogue peut être ajouté ;
+- le bilan est recalculé à chaque modification avec la configuration du calcul
+  d'origine (valeurs absentes, OPTIMAX ignorés, nutriments évalués). L'énergie
+  est jugée à ± 2 % du besoin (`ENERGIE_DEPASSEE` ou `ENERGIE_INSUFFISANTE`),
+  sans tolérance d'arrondi ;
+- « Enregistrer » ajoute la ration à l'onglet **Rations éditées** (un nouvel
+  enregistrement depuis le même éditeur la met à jour). Une ration peut y être
+  rouverte, supprimée et exportée : bilans, quantités et comparaison aux seuils
+  en CSV, ou toutes les rations avec leur configuration en JSON.
+
+Les fonctions `vn_evaluate_edited_ration()`, `vn_edited_rations_tables()` et
+`vn_edited_rations_json()` réalisent ces calculs hors de l'interface.
+
 ## Cibles et unités
 
 - Le besoin total vaut **BEE standard × K**. K représente le produit global des

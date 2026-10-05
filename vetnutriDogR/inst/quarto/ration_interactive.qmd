@@ -62,6 +62,8 @@ Le document explore **toutes les combinaisons** ; les ajustements sont
 successifs et l'énergie est complétée en dernier. Les incompatibilités,
 excédents et données manquantes sont conservés dans les résultats. Un bandeau
 signale quand les paramètres ont changé depuis le dernier calcul.
+Un clic sur une case de la carte poids × K ouvre un éditeur de ration ; les
+rations enregistrées sont exportables depuis l'onglet **Rations éditées**.
 
 ```{r}
 #| label: interface
