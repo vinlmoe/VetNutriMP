@@ -78,7 +78,36 @@ if (nzchar(module_root) && nzchar(root) && requireNamespace("shiny", quietly = T
     stopifnot(isTRUE(exploration()$configuration$adjust_cap), exploration()$configuration$cap_increment_g == 2,
       "cap_adjustment_g" %in% names(exploration()$summary))
     session$setInputs(explore_balance_all = TRUE)
-    stopifnot(nrow(balance()) == 4L, !is.null(output$explore_balance_map), nzchar(output$explore_balance_table))
+    stopifnot(nrow(balance()) == 4L, !is.null(output$explore_balance_maps), nzchar(output$explore_balance_table))
+    # Click on the weight × K map: the cell opens in the editor, edits are re-evaluated, saved and exported.
+    stopifnot(is.null(vn_balance_cell_at(balance(), 100, 0.8)))
+    session$setInputs(explore_balance_click_1 = list(x = 10.4, y = 1.15))
+    stopifnot(editor$cell$weight_kg == 10, editor$cell$K == 1.2, nrow(editor$items) == 6L)
+    session$elapse(500)
+    before <- edited_evaluation()$summary
+    stopifnot(before$weight_kg == 10, before$K == 1.2, is.finite(before$energy_kcal))
+    v <- editor$version
+    do.call(session$setInputs, setNames(list(editor$items$quantity_g[1] + 50), paste0("edit_q_", v, "_1")))
+    session$elapse(500)
+    after <- edited_evaluation()$summary
+    stopifnot(after$energy_kcal > before$energy_kcal, after$quantity_total_g > before$quantity_total_g)
+    session$setInputs(edit_add_food = candidates[[2]]$uuid, edit_add_qty = 12, edit_add = 1)
+    stopifnot(nrow(editor$items) == 7L, editor$items$quantity_g[7] == 12, editor$items$role[7] == "Ajout")
+    session$setInputs(edit_label = "Essai 10 kg", edit_save = 1)
+    saved <- edited_rations()
+    stopifnot(length(saved) == 1L, names(saved) == "R001", saved$R001$label == "Essai 10 kg",
+      sum(saved$R001$items$quantity_g) == after$quantity_total_g + 12, nzchar(output$edited_rations_table))
+    tables <- vn_edited_rations_tables(saved)
+    stopifnot(nrow(tables$summary) == 1L, nrow(tables$quantities) == sum(saved$R001$items$quantity_g > 0), identical(exploration()$configuration$nutrients, character()))
+    payload <- jsonlite::fromJSON(jsonlite::toJSON(vn_edited_rations_json(saved), auto_unbox = TRUE, dataframe = "rows", digits = NA))
+    stopifnot(payload$rations$ration_id == "R001", payload$rations$weight_kg == 10)
+    # Saving again from the same editor updates the ration instead of adding one.
+    session$setInputs(edit_save = 2)
+    stopifnot(length(edited_rations()) == 1L)
+    session$setInputs(edited_ration_pick = "R001", edited_ration_open = 1)
+    stopifnot(editor$ration_id == "R001", identical(editor$items, saved$R001$items))
+    session$setInputs(edited_ration_delete = 1)
+    stopifnot(length(edited_rations()) == 0L)
     session$setInputs(scenario_limit = 4, explore_run = 6)
     stopifnot(grepl("Calcul impossible", tryCatch({ exploration(); "" }, error = conditionMessage)))
   })

@@ -87,17 +87,20 @@ vn_tile_edges <- function(x) {
 }
 
 #' Draw the weight × K balance map, one panel per reference.
+#' With `legend = FALSE`, the last panel's coordinates stay active so that a
+#' click on a single-reference map can be mapped back to its cell.
 #' @export
-vn_plot_balance_map <- function(balance, labels = NULL) {
+vn_plot_balance_map <- function(balance, labels = NULL, legend = TRUE) {
   if (!is.data.frame(balance) || !nrow(balance)) stop("Résultat de vn_exploration_balance requis")
   zones <- vn_balance_zones()
   refs <- unique(balance[, c("reference_id", "reference_name")])
   cols <- min(2L, nrow(refs))
   old <- graphics::par(no.readonly = TRUE)
-  on.exit(graphics::par(old))
-  graphics::layout(rbind(matrix(seq_len(cols * ceiling(nrow(refs) / cols)), ncol = cols, byrow = TRUE),
-                         rep(cols * ceiling(nrow(refs) / cols) + 1L, cols)),
-                   heights = c(rep(1, ceiling(nrow(refs) / cols)), graphics::lcm(4.4)))
+  if (legend) on.exit(graphics::par(old))
+  panels <- matrix(seq_len(cols * ceiling(nrow(refs) / cols)), ncol = cols, byrow = TRUE)
+  if (legend) graphics::layout(rbind(panels, rep(length(panels) + 1L, cols)),
+                               heights = c(rep(1, nrow(panels)), graphics::lcm(4.4)))
+  else graphics::layout(panels)
   graphics::par(mar = c(4.2, 4.2, 2.6, 1), mgp = c(2.6, 0.7, 0), las = 1, col.axis = "#555550", fg = "#8a8a85")
   for (r in seq_len(nrow(refs))) {
     b <- balance[balance$reference_id == refs$reference_id[r], ]
@@ -126,7 +129,17 @@ vn_plot_balance_map <- function(balance, labels = NULL) {
     graphics::axis(1, at = at_w[at_w >= min(we) & at_w <= max(we)], lwd = 0, lwd.ticks = 1, tcl = -0.3)
     graphics::axis(2, at = at_k[at_k >= min(ke) & at_k <= max(ke)], lwd = 0, lwd.ticks = 1, tcl = -0.3)
   }
-  for (extra in seq_len(cols * ceiling(nrow(refs) / cols) - nrow(refs))) graphics::plot.new()
+  if (legend) {
+    for (extra in seq_len(cols * ceiling(nrow(refs) / cols) - nrow(refs))) graphics::plot.new()
+    vn_plot_balance_legend()
+  }
+  invisible(balance)
+}
+
+#' Legend of the balance map (zones, hatching and tile labels).
+#' @export
+vn_plot_balance_legend <- function() {
+  zones <- vn_balance_zones()
   graphics::par(mar = c(0, 0, 0, 0))
   graphics::plot.new()
   zones$label[zones$zone == "SEUILS_NON_RESPECTES"] <- paste(zones$label[zones$zone == "SEUILS_NON_RESPECTES"],
@@ -137,7 +150,7 @@ vn_plot_balance_map <- function(balance, labels = NULL) {
   graphics::legend("center", legend = zones$label, fill = "#ffffff99", border = NA, bty = "n", ncol = 1,
     density = ifelse(is.na(zones$angle), 0, 12), angle = ifelse(is.na(zones$angle), 0, zones$angle), cex = 0.9,
     text.col = NA, title = " ", title.col = NA)
-  invisible(balance)
+  invisible(zones)
 }
 
 #' List the nutrients not covered across an exploration.
