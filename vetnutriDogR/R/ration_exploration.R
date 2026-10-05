@@ -184,6 +184,50 @@ vn_adjust_combination <- function(profiles, selection, targets, tolerance = 1e-8
        messages = unique(unlist(lapply(unique(selection), function(id) profiles[[id]]$messages))))
 }
 
+# Optional terminal Ca/P correction. It runs after energy and only increases
+# the ingredient selected for the calcium role; the other five doses are kept.
+vn_adjust_cap_terminal <- function(model, reference_id, profiles, selection, fit, needs,
+                                   ignore_levels, nutrients, increment_g, missing_as_zero,
+                                   max_iterations = 10000L) {
+  if (!is.finite(increment_g) || increment_g <= 0) stop("Incrément Ca/P invalide")
+  compare <- function(totals) vn_compare_totals(model, reference_id, totals, needs, ignore_levels, nutrients)$comparison
+  lower_cap <- function(cmp) cmp[cmp$nutrient_id == "CAP" & cmp$reflevel %in% c("MIN", "OPTIMIN"), , drop = FALSE]
+  cap <- lower_cap(compare(fit$totals))
+  if (!nrow(cap)) {
+    fit$messages <- unique(c(fit$messages, "Ajustement terminal Ca/P non appliqué : aucun seuil inférieur Ca/P actif."))
+    fit$cap_adjustment_g <- 0
+    return(fit)
+  }
+  if (all(cap$status != "INSUFFISANT")) {
+    fit$cap_adjustment_g <- 0
+    return(fit)
+  }
+  profile <- profiles[[selection[["calcium"]]]]
+  if (is.null(profile) || !is.null(profile$error) || is.na(profile$values["CAL"]) || profile$values["CAL"] <= 0) {
+    fit$messages <- unique(c(fit$messages, "Ajustement terminal Ca/P impossible : l'ingrédient calcium n'apporte pas de calcium exploitable."))
+    fit$cap_adjustment_g <- 0
+    return(fit)
+  }
+  delta <- profile$values
+  if (missing_as_zero) delta[is.na(delta)] <- 0
+  added <- 0
+  for (i in seq_len(max_iterations)) {
+    fit$quantities[["calcium"]] <- fit$quantities[["calcium"]] + increment_g
+    fit$totals <- fit$totals + delta * increment_g
+    added <- added + increment_g
+    if (missing_as_zero) fit$zero_filled <- unique(c(fit$zero_filled, names(profile$values)[is.na(profile$values)]))
+    cap <- lower_cap(compare(fit$totals))
+    if (nrow(cap) && all(cap$status != "INSUFFISANT")) {
+      fit$messages <- unique(c(fit$messages, paste0("Ajustement terminal Ca/P : +", format(added, trim = TRUE), " g de l'ingrédient calcium.")))
+      fit$cap_adjustment_g <- added
+      return(fit)
+    }
+  }
+  fit$messages <- unique(c(fit$messages, paste0("Ajustement terminal Ca/P arrêté après ", max_iterations, " incréments sans atteindre le seuil.")))
+  fit$cap_adjustment_g <- added
+  fit
+}
+
 vn_profile_step <- function(profile) if (is.null(profile$container_step)) NA_real_ else profile$container_step
 
 #' Explore every ingredient combination across weight/K grids and canine references.
@@ -191,9 +235,12 @@ vn_profile_step <- function(profile) if (is.null(profile$container_step)) NA_rea
 vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, k_values,
                                targets = vn_exploration_targets(), variables = list(),
                                max_scenarios = 5000, progress = NULL, missing_as_zero = FALSE,
-                               ignore_levels = "OPTIMAX", rounding = TRUE, min_dose_g = 5, nutrients = NULL) {
+                               ignore_levels = "OPTIMAX", rounding = TRUE, min_dose_g = 5, nutrients = NULL,
+                               adjust_cap = FALSE, cap_increment_g = 1) {
   if (!isTRUE(missing_as_zero) && !isFALSE(missing_as_zero)) stop("missing_as_zero doit valoir TRUE ou FALSE")
   if (!isTRUE(rounding) && !isFALSE(rounding)) stop("rounding doit valoir TRUE ou FALSE")
+  if (!isTRUE(adjust_cap) && !isFALSE(adjust_cap)) stop("adjust_cap doit valoir TRUE ou FALSE")
+  if (length(cap_increment_g) != 1L || !is.finite(cap_increment_g) || cap_increment_g <= 0) stop("Incrément Ca/P invalide")
   min_dose_g <- vn_role_min_doses(min_dose_g)
   if (!is.null(nutrients)) {
     nutrients <- unique(as.character(nutrients))
@@ -255,7 +302,7 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         weight_kg = grid$weight_kg[g], K = grid$K[g],
         standard_kcal = NA_real_, need_kcal = NA_real_, energy_kcal = NA_real_, energy_gap_kcal = NA_real_,
         quantity_total_g = NA_real_, energy_tolerance_kcal = NA_real_, insufficient = NA_integer_, excess = NA_integer_, missing = NA_integer_,
-        zero_filled = NA_integer_, zero_filled_nutrients = "", violated = "", violated_documented = "",
+        zero_filled = NA_integer_, zero_filled_nutrients = "", cap_adjustment_g = NA_real_, violated = "", violated_documented = "",
         not_covered = "", in_excess = "", composition = "", status = "", message = "", warnings = "", source_json = model$provenance$source_json)
       for (role in roles) row[[paste0("food_", role)]] <- selection[[role]]
       for (role in roles) row[[paste0("quantity_", role, "_g")]] <- NA_real_
@@ -265,6 +312,8 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         row$standard_kcal <- n$standard_kcal; row$need_kcal <- n$need_kcal
         fit <- vn_adjust_combination(profiles[[reference_id]], selection, context$targets,
           missing_as_zero = missing_as_zero, rounding = rounding, min_dose_g = min_dose_g)
+        if (adjust_cap) fit <- vn_adjust_cap_terminal(model, reference_id, profiles[[reference_id]], selection, fit, n,
+          ignore_levels, nutrients, cap_increment_g, missing_as_zero)
         evaluated <- vn_compare_totals(model, reference_id, fit$totals, n, ignore_levels, nutrients)
         cmp <- evaluated$comparison
         row$energy_kcal <- unname(fit$totals["ENERGIE"])
@@ -287,6 +336,7 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
         row$violated_documented <- paste(unique(paste(cmp$nutrient_id[documented], cmp$reflevel[documented])), collapse = ";")
         row$zero_filled <- length(filled)
         row$zero_filled_nutrients <- paste(filled, collapse = ",")
+        row$cap_adjustment_g <- if (is.null(fit$cap_adjustment_g)) 0 else fit$cap_adjustment_g
         row$warnings <- paste(fit$messages, collapse = " | ")
         row$energy_tolerance_kcal <- fit$energy_tolerance_kcal
         energy_over <- row$energy_gap_kcal > max(1e-8 * max(1, row$need_kcal), fit$energy_tolerance_kcal)
@@ -322,5 +372,6 @@ vn_explore_rations <- function(model, reference_ids, ingredient_lists, weights, 
          weights = weights, k_values = k_values, targets = targets, variables = variables,
          missing_as_zero = missing_as_zero, ignore_levels = ignore_levels,
          rounding = rounding, min_dose_g = as.list(min_dose_g), nutrients = nutrients,
+         adjust_cap = adjust_cap, cap_increment_g = cap_increment_g,
          method = "sequential_deficit_energy_last", provenance = model$provenance))
 }

@@ -44,14 +44,25 @@ if (nzchar(module_root) && nzchar(root) && requireNamespace("shiny", quietly = T
     stopifnot(unlist(out$configuration$min_dose_g)[["calcium"]] == 12, unlist(out$configuration$min_dose_g)[["energy"]] == 5)
     stopifnot(isTRUE(out$configuration$missing_as_zero), "zero_filled" %in% names(out$summary))
     session$setInputs(explore_scenario = out$summary$scenario_id[1])
-    stopifnot(isTRUE(detail()$missing_as_zero), nzchar(output$explore_summary), nzchar(output$explore_comparison))
+    stopifnot(isTRUE(detail()$missing_as_zero), nzchar(output$explore_summary), nzchar(output$explore_comparison),
+      all(c("Attendu", "Observé", "Écart (observé − attendu)") %in% names(comparison_display())))
     stopifnot(nzchar(output$explore_uncovered), is.null(out$configuration$nutrients))
+    session$setInputs(explore_curve_reference = ref, explore_curve_combination = out$summary$combination_id[1],
+      explore_curve_weight = "5", explore_curve_k = "0.8", explore_curve_nutrients = "CAP")
+    curves <- curve_data()
+    stopifnot(nrow(curves) == 24L, all(c("weight_kg", "K", "series", "quantity_g") %in% names(curves)))
+    cap_by_k <- unique(curves[curves$weight_kg == 5, c("scenario_id", "weight_kg", "K")])
+    cap_by_k <- nutrient_curve_data(cap_by_k)
+    stopifnot(nrow(cap_by_k) == 2L, all(cap_by_k$nutrient_id == "CAP"), all(is.finite(cap_by_k$intake)))
     # Nutrient selection: only the retained nutrients are evaluated; "Tout décocher" empties it.
     session$setInputs(explore_all_nutrients = FALSE, explore_nutrients = c("PROTEINE", "CAL"), explore_run = 3)
     stopifnot(identical(exploration()$configuration$nutrients, c("PROTEINE", "CAL")), length(nutrient_choices()) > 20,
       all(unlist(strsplit(exploration()$summary$violated, ";")) %in% c("PROTEINE MIN", "PROTEINE OPTIMIN", "CAL MIN", "CAL OPTIMIN", "CAL MAX", "PROTEINE MAX")))
     session$setInputs(explore_nutrients = NULL, explore_run = 4)
     stopifnot(identical(exploration()$configuration$nutrients, character()))
+    session$setInputs(explore_adjust_cap = TRUE, cap_increment_g = 2, explore_run = 5)
+    stopifnot(isTRUE(exploration()$configuration$adjust_cap), exploration()$configuration$cap_increment_g == 2,
+      "cap_adjustment_g" %in% names(exploration()$summary))
     session$setInputs(explore_balance_all = TRUE)
     stopifnot(nrow(balance()) == 4L, !is.null(output$explore_balance_map), nzchar(output$explore_balance_table))
   })
