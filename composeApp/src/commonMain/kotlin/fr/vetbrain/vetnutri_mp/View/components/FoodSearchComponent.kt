@@ -152,6 +152,7 @@ fun FoodSearchComponent(
                         filters.selectedFoodGroup,
                         filters.selectedEspece,
                         filters.selectedIndications,
+                        filters.excludedIndications,
                         filters.dataB,
                         filters.includeDeprecated,
                         filters.aminoOnly,
@@ -247,20 +248,12 @@ fun FoodSearchComponent(
                                                 }
 
                                         // Filtre par indications (ALL = pas de filtre)
+                                        val includedIndications = filters.selectedIndications - AlimIndic.ALL
+                                        val excludedIndications = filters.excludedIndications - AlimIndic.ALL
                                         val matchesIndications =
-                                                if (filters.selectedIndications.isEmpty() ||
-                                                                filters.selectedIndications
-                                                                        .contains(
-                                                                                AlimIndic.ALL
-                                                                        ) // "ALL" = pas de filtre,
-                                                // toutes les
-                                                // indications acceptées
-                                                ) true
-                                                else
-                                                        filters.selectedIndications.any { indication
-                                                                ->
-                                                                aliment.indicat.contains(indication)
-                                                        }
+                                                (includedIndications.isEmpty() ||
+                                                        aliment.indicat.any { it in includedIndications }) &&
+                                                        excludedIndications.none { it in aliment.indicat }
 
                                         // Filtre par base de données (null/"" = pas de filtre)
                                         val matchesDataB =
@@ -630,12 +623,18 @@ private fun FiltersSection(
                                 MultiSelectDropdownField(
                                         label = translate("food_edit.field.indications"),
                                         selectedValues = filters.selectedIndications,
-                                        options = AlimIndic.entries,
-                                        onValuesChange = {
+                                        excludedValues = filters.excludedIndications,
+                                        options = AlimIndic.entries.filter { it != AlimIndic.ALL },
+                                        onValuesChange = {},
+                                        onTriStateValuesChange = { included, excluded ->
                                                 onFiltersChange(
-                                                        filters.copy(selectedIndications = it)
+                                                        filters.copy(
+                                                                selectedIndications = included,
+                                                                excludedIndications = excluded
+                                                        )
                                                 )
                                         },
+                                        triState = true,
                                         valueToString = { it.translateEnum() },
                                         modifier = Modifier.fillMaxWidth(),
                                         height = 40.dp,

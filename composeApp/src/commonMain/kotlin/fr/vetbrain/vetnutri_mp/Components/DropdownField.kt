@@ -235,6 +235,7 @@ fun <T> DropdownField(
  * @param T Type d'élément pour la liste déroulante
  * @param label Libellé du champ
  * @param selectedValues Valeurs actuellement sélectionnées
+ * @param excludedValues Valeurs explicitement exclues lorsque [triState] est activé
  * @param options Liste des options disponibles
  * @param onValuesChange Callback appelé lorsqu'une ou plusieurs valeurs sont sélectionnées
  * @param valueToString Fonction de conversion des valeurs en chaînes affichables
@@ -249,8 +250,12 @@ fun <T> DropdownField(
 fun <T> MultiSelectDropdownField(
         label: String,
         selectedValues: Set<T>,
+        excludedValues: Set<T> = emptySet(),
         options: List<T>,
         onValuesChange: (Set<T>) -> Unit,
+        onExcludedValuesChange: ((Set<T>) -> Unit)? = null,
+        onTriStateValuesChange: ((included: Set<T>, excluded: Set<T>) -> Unit)? = null,
+        triState: Boolean = false,
         valueToString: (T) -> String,
         modifier: Modifier = Modifier,
         enabled: Boolean = true,
@@ -264,17 +269,28 @@ fun <T> MultiSelectDropdownField(
         var tempSelectedValues by remember(expanded, selectedValues) {
                 mutableStateOf(selectedValues)
         }
+        var tempExcludedValues by remember(expanded, excludedValues) {
+                mutableStateOf(excludedValues)
+        }
         
         // Réinitialiser les valeurs temporaires quand le menu s'ouvre
         LaunchedEffect(expanded) {
                 if (expanded) {
                         tempSelectedValues = selectedValues
+                        tempExcludedValues = excludedValues
                 }
         }
         
         val displayValue =
-                if (selectedValues.isEmpty()) translate("dropdownField.selectDefault")
-                else translate("dropdownField.selectedCount", selectedValues.size.toString())
+                if (selectedValues.isEmpty() && excludedValues.isEmpty()) {
+                        translate("dropdownField.selectDefault")
+                } else {
+                        buildList {
+                                        addAll(selectedValues.map(valueToString))
+                                        addAll(excludedValues.map { "− ${valueToString(it)}" })
+                                }
+                                .joinToString(", ")
+                }
 
         Column(modifier = modifier) {
                         BasicTextField(
@@ -423,6 +439,7 @@ fun <T> MultiSelectDropdownField(
                         Dialog(onDismissRequest = { 
                                 // Réinitialiser les valeurs temporaires si on ferme sans valider
                                 tempSelectedValues = selectedValues
+                                tempExcludedValues = excludedValues
                                                 expanded = false
                         }) {
                                 Surface(
@@ -449,12 +466,13 @@ fun <T> MultiSelectDropdownField(
                                                                         .fillMaxWidth()
                                                                         .clickable {
                                                                                 tempSelectedValues = emptySet()
+                                                                                tempExcludedValues = emptySet()
                                                                         }
                                                                         .padding(16.dp),
                                                                 verticalAlignment = Alignment.CenterVertically
                                                         ) {
                                                 Icon(
-                                                                        if (tempSelectedValues.isEmpty())
+                                                                        if (tempSelectedValues.isEmpty() && tempExcludedValues.isEmpty())
                                                                 Icons.Default.Check
                                                         else Icons.Default.Clear,
                                                         contentDescription = null,
@@ -476,23 +494,43 @@ fun <T> MultiSelectDropdownField(
                                                                         modifier = Modifier
                                                                                 .fillMaxWidth()
                                                                                 .clickable {
-                                                                                        tempSelectedValues = if (option in tempSelectedValues)
-                                                                                                tempSelectedValues - option
-                                                                                        else tempSelectedValues + option
+                                                                                        if (triState) {
+                                                                                                when {
+                                                                                                        option in tempSelectedValues -> {
+                                                                                                                tempSelectedValues = tempSelectedValues - option
+                                                                                                                tempExcludedValues = tempExcludedValues + option
+                                                                                                        }
+                                                                                                        option in tempExcludedValues -> {
+                                                                                                                tempExcludedValues = tempExcludedValues - option
+                                                                                                        }
+                                                                                                        else -> tempSelectedValues = tempSelectedValues + option
+                                                                                                }
+                                                                                        } else {
+                                                                                                tempSelectedValues = if (option in tempSelectedValues)
+                                                                                                        tempSelectedValues - option
+                                                                                                else tempSelectedValues + option
+                                                                                        }
                                                                                 }
                                                                                 .padding(16.dp),
                                                                         verticalAlignment = Alignment.CenterVertically
                                                                 ) {
-                                                                        Icon(
-                                                                                if (option in tempSelectedValues)
-                                                                                        Icons.Default.Check
-                                                                                else Icons.Default.Clear,
-                                                                                contentDescription = null,
-                                                                                modifier = Modifier.size(20.dp),
-                                                                                tint = if (option in tempSelectedValues)
-                                                                                        VetNutriColors.Primary
-                                                                                else MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                                                                        )
+                                                                        if (triState && option in tempExcludedValues) {
+                                                                                Text(
+                                                                                        text = "−",
+                                                                                        fontSize = 20.sp,
+                                                                                        color = MaterialTheme.colors.error,
+                                                                                        modifier = Modifier.width(20.dp)
+                                                                                )
+                                                                        } else {
+                                                                                Icon(
+                                                                                        if (option in tempSelectedValues) Icons.Default.Check else Icons.Default.Clear,
+                                                                                        contentDescription = null,
+                                                                                        modifier = Modifier.size(20.dp),
+                                                                                        tint = if (option in tempSelectedValues)
+                                                                                                VetNutriColors.Primary
+                                                                                        else MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                                                                )
+                                                                        }
                                                                         Spacer(modifier = Modifier.width(12.dp))
                                                                         Text(
                                                                                 valueToString(option),
@@ -516,6 +554,7 @@ fun <T> MultiSelectDropdownField(
                                                                 OutlinedButton(
                                                                         onClick = {
                                                                                 tempSelectedValues = selectedValues
+                                                                                tempExcludedValues = excludedValues
                                                                                 expanded = false
                                                                         },
                                                                         modifier = Modifier.padding(end = 8.dp)
@@ -524,7 +563,15 @@ fun <T> MultiSelectDropdownField(
                                                                 }
                                                                 FloatingActionButton(
                                                                         onClick = {
-                                                                                onValuesChange(tempSelectedValues)
+                                                                                if (triState) {
+                                                                                        onTriStateValuesChange?.invoke(
+                                                                                                tempSelectedValues,
+                                                                                                tempExcludedValues
+                                                                                        )
+                                                                                } else {
+                                                                                        onValuesChange(tempSelectedValues)
+                                                                                        onExcludedValuesChange?.invoke(tempExcludedValues)
+                                                                                }
                                                                                 expanded = false
                                                                         },
                                                                         backgroundColor = VetNutriColors.Primary,

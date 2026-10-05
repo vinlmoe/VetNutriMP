@@ -1693,8 +1693,7 @@
         "CHAT"
       ],
       "indications": [
-        "CROISSANCE",
-        "GI"
+        "CROISSANCE"
       ],
       "nutrients": {
         "HUMIDITE": 6.0,
@@ -2524,8 +2523,7 @@
         "CHIEN"
       ],
       "indications": [
-        "CROISSANCE",
-        "DERM"
+        "CROISSANCE"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -2726,8 +2724,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 6.0,
@@ -2797,8 +2794,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 6.0,
@@ -4307,8 +4303,7 @@
         "CHIEN"
       ],
       "indications": [
-        "CROISSANCE",
-        "GI"
+        "CROISSANCE"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -4626,8 +4621,7 @@
         "CHIEN"
       ],
       "indications": [
-        "CROISSANCE",
-        "DERM"
+        "CROISSANCE"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -4885,8 +4879,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS",
-        "MRC"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 6.0,
@@ -5552,8 +5545,7 @@
         "CHIEN"
       ],
       "indications": [
-        "CROISSANCE",
-        "GI"
+        "CROISSANCE"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -5883,8 +5875,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -6160,8 +6151,7 @@
         "CHIEN"
       ],
       "indications": [
-        "CROISSANCE",
-        "GI"
+        "CROISSANCE"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -6231,8 +6221,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -6458,8 +6447,7 @@
         "CHIEN"
       ],
       "indications": [
-        "CROISSANCE",
-        "GI"
+        "CROISSANCE"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -7510,8 +7498,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -7749,8 +7736,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -8342,8 +8328,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -9874,8 +9859,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -10365,8 +10349,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -11304,8 +11287,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -11376,8 +11358,7 @@
       ],
       "indications": [
         "PHYS",
-        "CROISSANCE",
-        "GI"
+        "CROISSANCE"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -12076,8 +12057,7 @@
       ],
       "indications": [
         "SEN",
-        "PHYS",
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -12086,7 +12066,7 @@
         "ENA": 40.0,
         "CELLULOSE": 2.5,
         "CENDRE": 7.5,
-        "ENERGIE": 37700.0,
+        "ENERGIE": 377.0,
         "VITA": 2698.6,
         "VITC": 8.3,
         "VITD": 156.9,
@@ -12361,8 +12341,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -12808,8 +12787,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS",
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 6.0,
@@ -13680,8 +13658,7 @@
       ],
       "indications": [
         "NEUT",
-        "PHYS",
-        "MRC"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 6.0,
@@ -13752,8 +13729,7 @@
       ],
       "indications": [
         "NEUT",
-        "PHYS",
-        "MRC"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 6.0,
@@ -14176,8 +14152,7 @@
       ],
       "indications": [
         "NEUT",
-        "PHYS",
-        "MRC"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 6.0,
@@ -14248,8 +14223,7 @@
       ],
       "indications": [
         "NEUT",
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 6.0,
@@ -14717,8 +14691,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -18374,8 +18347,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 5.9,
@@ -19338,8 +19310,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -19375,8 +19346,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -242123,7 +242093,7 @@
       "name": "Gigot d'agneau (avec os)",
       "group": "ALL",
       "kind": "BARF",
-      "brand": "Aides culinaires",
+      "brand": "Osseux",
       "price": 0.0,
       "categoryPrice": "null",
       "ingredients": "",
@@ -242317,7 +242287,7 @@
       "name": "Carcasse de poulet",
       "group": "ALL",
       "kind": "BARF",
-      "brand": "Aides culinaires",
+      "brand": "Osseux",
       "price": 0.0,
       "categoryPrice": "null",
       "ingredients": "",
@@ -242414,7 +242384,7 @@
       "name": "Chicken Leg Quarter, meat and bone with skin, raw",
       "group": "ALL",
       "kind": "BARF",
-      "brand": "Aides culinaires",
+      "brand": "Osseux",
       "price": 0.0,
       "categoryPrice": "null",
       "ingredients": "",
@@ -244272,7 +244242,7 @@
       "name": "Chicken neck, meat and bone, skinless, raw",
       "group": "ALL",
       "kind": "BARF",
-      "brand": "Aides culinaires",
+      "brand": "Osseux",
       "price": 0.0,
       "categoryPrice": "",
       "ingredients": "",
@@ -244343,7 +244313,7 @@
       "name": "Chicken wing, meat and bone with skin, raw",
       "group": "ALL",
       "kind": "BARF",
-      "brand": "Aides culinaires",
+      "brand": "Osseux",
       "price": 0.0,
       "categoryPrice": "",
       "ingredients": "",
@@ -715040,8 +715010,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS",
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -722132,8 +722101,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -722922,8 +722890,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -727169,8 +727136,7 @@
       ],
       "indications": [
         "PHYS",
-        "NEUT",
-        "URO"
+        "NEUT"
       ],
       "nutrients": {
         "HUMIDITE": 5.5,
@@ -742928,8 +742894,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS",
-        "URO"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -788903,8 +788868,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -794641,9 +794605,7 @@
       "species": [
         "CHIEN"
       ],
-      "indications": [
-        "DERM"
-      ],
+      "indications": [],
       "nutrients": {
         "HUMIDITE": 0.1,
         "PROTEINE": 0.0,
@@ -794724,8 +794686,7 @@
         "CHIEN"
       ],
       "indications": [
-        "CROISSANCE",
-        "DERM"
+        "CROISSANCE"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -794796,8 +794757,7 @@
         "CHIEN"
       ],
       "indications": [
-        "CROISSANCE",
-        "DERM"
+        "CROISSANCE"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -795375,9 +795335,7 @@
       "species": [
         "CHAT"
       ],
-      "indications": [
-        "DERM"
-      ],
+      "indications": [],
       "nutrients": {
         "HUMIDITE": 0.1,
         "PROTEINE": 0.0,

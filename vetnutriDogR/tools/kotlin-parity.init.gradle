@@ -1,0 +1,11 @@
+// Attach the module-owned oracle to the existing Kotlin build for this run only.
+gradle.projectsEvaluated {
+    def app = gradle.rootProject.project(':composeApp')
+    def modulePath = System.getProperty('vetnutri.dog.module')
+    if (!modulePath) throw new GradleException('Missing -Dvetnutri.dog.module')
+    app.extensions.getByName('kotlin').sourceSets.getByName('desktopTest').kotlin.srcDir(new File(modulePath, 'tools/kotlin'))
+    app.tasks.named('desktopTest') {
+        systemProperty 'vetnutri.dog.module', modulePath
+        outputs.file(new File(modulePath, 'build/kotlin-parity.json'))
+    }
+}

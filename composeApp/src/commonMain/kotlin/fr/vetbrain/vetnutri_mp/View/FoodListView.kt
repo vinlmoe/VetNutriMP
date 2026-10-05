@@ -77,7 +77,14 @@ fun FoodListView(
                         selectedFoodType = selectedFoodType,
                         selectedFoodGroup = null, // Pas de filtre par groupe
                         selectedEspece = selectedEspece,
-                        selectedIndications = if (selectedIndication != null) setOf(selectedIndication) else emptySet(),
+                        selectedIndications =
+                                if (advancedFilters.selectedIndications.isNotEmpty() ||
+                                                advancedFilters.excludedIndications.isNotEmpty()) {
+                                        advancedFilters.selectedIndications
+                                } else if (selectedIndication != null) {
+                                        setOf(selectedIndication)
+                                } else emptySet(),
+                        excludedIndications = advancedFilters.excludedIndications,
                         dataB = selectedDataB,
                         includeDeprecated = advancedFilters.includeDeprecated,
                         aminoOnly = advancedFilters.aminoOnly,
