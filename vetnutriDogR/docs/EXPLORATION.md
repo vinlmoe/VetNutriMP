@@ -37,6 +37,22 @@ profils. Aucune valeur physiologique n'est déduite du poids. Toutes les référ
 sélectionnées sont croisées avec tous les poids : le logiciel ne décide pas
 qu'un référentiel adulte ou de croissance est approprié à un profil.
 
+### Interface
+
+- Le panneau de gauche est découpé en onglets **Chiens**, **Ingrédients**,
+  **Options** et **Sélection** (mémoriser, restaurer, importer ou exporter les
+  référentiels et listes ; chemin du catalogue INIT).
+- Le bloc en haut du panneau reste visible : nombre de scénarios, problèmes
+  bloquants (référentiel absent, liste vide, intervalle ou JSON invalide, limite
+  dépassée) et bouton de calcul. Chaque liste d'ingrédients affiche son effectif
+  dans son titre, en rouge si elle est vide.
+- Après un calcul, l'onglet **Résultats** s'ouvre. Un bandeau signale toute
+  modification des paramètres depuis le dernier calcul. Une erreur de calcul est
+  affichée en notification au lieu d'interrompre l'application.
+- Les scénarios sont paginés par 50 (« page x sur N ») et le filtre de statut
+  revient à la page 1. L'onglet **Détail d'une ration** permet de passer au
+  scénario précédent ou suivant.
+
 ## Cibles et unités
 
 - Le besoin total vaut **BEE standard × K**. K représente le produit global des

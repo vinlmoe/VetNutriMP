@@ -97,7 +97,7 @@ vn_plot_balance_map <- function(balance, labels = NULL) {
   on.exit(graphics::par(old))
   graphics::layout(rbind(matrix(seq_len(cols * ceiling(nrow(refs) / cols)), ncol = cols, byrow = TRUE),
                          rep(cols * ceiling(nrow(refs) / cols) + 1L, cols)),
-                   heights = c(rep(1, ceiling(nrow(refs) / cols)), 0.22))
+                   heights = c(rep(1, ceiling(nrow(refs) / cols)), graphics::lcm(4.4)))
   graphics::par(mar = c(4.2, 4.2, 2.6, 1), mgp = c(2.6, 0.7, 0), las = 1, col.axis = "#555550", fg = "#8a8a85")
   for (r in seq_len(nrow(refs))) {
     b <- balance[balance$reference_id == refs$reference_id[r], ]
@@ -132,9 +132,9 @@ vn_plot_balance_map <- function(balance, labels = NULL) {
   zones$label[zones$zone == "SEUILS_NON_RESPECTES"] <- paste(zones$label[zones$zone == "SEUILS_NON_RESPECTES"],
     "(clair = 1 seuil, foncé = 5 et plus)")
   graphics::legend("center", legend = zones$label, fill = zones$colour, border = "white", bty = "n",
-    ncol = 2, density = NA, cex = 0.9, text.col = "#1f1f1e",
+    ncol = 1, density = NA, cex = 0.9, text.col = "#1f1f1e",
     title = "Libellé : n/N combinaisons qui y parviennent ; sinon nombre minimal de seuils renseignés non respectés", title.col = "#555550")
-  graphics::legend("center", legend = zones$label, fill = "#ffffff99", border = NA, bty = "n", ncol = 2,
+  graphics::legend("center", legend = zones$label, fill = "#ffffff99", border = NA, bty = "n", ncol = 1,
     density = ifelse(is.na(zones$angle), 0, 12), angle = ifelse(is.na(zones$angle), 0, zones$angle), cex = 0.9,
     text.col = NA, title = " ", title.col = NA)
   invisible(balance)

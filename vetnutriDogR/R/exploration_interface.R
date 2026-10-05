@@ -4,7 +4,33 @@ vn_exploration_ui <- function(root = vn_find_root()) {
   defaults <- vn_exploration_targets()
   shiny::fluidPage(
     shiny::titlePanel("Exploration de rations canines"),
+    shiny::tags$style(shiny::HTML("
+      .vn-run { position: sticky; top: 0; z-index: 10; background: #f5f5f5; padding: 8px 0 10px; border-bottom: 1px solid #ddd; margin-bottom: 10px; }
+      .vn-run .btn-primary { width: 100%; font-weight: bold; }
+      .vn-check { margin: 6px 0; padding-left: 18px; }
+      .vn-check li.vn-ko { color: #a94442; }
+      .vn-check li.vn-ok { color: #3c763d; list-style: none; margin-left: -18px; }
+      .vn-role { border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px; margin-bottom: 6px; background: #fff; }
+      .vn-role > summary { cursor: pointer; padding: 2px 0; }
+      .vn-role-count { color: #777; font-weight: normal; }
+      .vn-role-count.vn-empty { color: #a94442; }
+      .vn-sidebar-tabs { margin-top: 4px; }
+      .vn-sidebar-tabs .tab-content { padding-top: 10px; }
+      .vn-section { margin-top: 14px; }
+      .vn-stale { margin-bottom: 8px; }
+      .vn-muted { color: #777; }
+      .vn-table { overflow-x: auto; font-size: 12px; }
+      .vn-table td { max-width: 280px; }
+      details.vn-fold { margin: 8px 0; }
+      details.vn-fold > summary { cursor: pointer; font-weight: bold; display: list-item; }
+      .vn-role > summary { display: list-item; }
+      .vn-table-compact td { white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+    ")),
     shiny::tags$script(shiny::HTML("(function () {
+      // Outputs inside <details> are hidden while closed; tell Shiny when they become visible.
+      document.addEventListener('toggle', function (e) {
+        if (e.target.tagName === 'DETAILS') $(e.target).trigger(e.target.open ? 'shown' : 'hidden');
+      }, true);
       var key = 'vetnutriDogR.exploration.selection.v1';
       function notify(id, value) {
         Shiny.setInputValue(id, value, {priority: 'event'});
@@ -27,125 +53,176 @@ vn_exploration_ui <- function(root = vn_find_root()) {
         }
       });
       Shiny.addCustomMessageHandler('vetnutri-clear-selection', function () {
-        localStorage.removeItem(key);
+        try { localStorage.removeItem(key); } catch (e) {}
         notify('explore_saved_selection_status', {ok: true, cleared: true});
       });
     }());")),
-    shiny::p("Une combinaison = un ingrédient de chaque liste. Toutes les combinaisons sont croisées avec les poids, K et référentiels sélectionnés."),
     shiny::sidebarLayout(shiny::sidebarPanel(width = 4,
-      shiny::textInput("explore_root", "Dépôt VetNutri MP", root),
-      shiny::actionButton("explore_reload", "Charger / actualiser INIT"),
-      shiny::selectizeInput("explore_refs", "Référentiels canins", choices = NULL, multiple = TRUE),
-      shiny::h4("Sélection réutilisable"),
-      shiny::fluidRow(
-        shiny::column(6, shiny::actionButton("explore_save_selection", "Mémoriser", width = "100%")),
-        shiny::column(6, shiny::actionButton("explore_load_selection", "Restaurer", width = "100%"))),
-      shiny::fluidRow(
-        shiny::column(6, shiny::downloadButton("explore_export_selection", "Exporter JSON", width = "100%")),
-        shiny::column(6, shiny::actionButton("explore_clear_selection", "Oublier", width = "100%"))),
-      shiny::fileInput("explore_import_selection", "Importer une sélection (JSON)", accept = ".json", buttonLabel = "Choisir un fichier"),
-      shiny::textOutput("explore_selection_summary"),
-      shiny::h4("Grille de chiens"),
-      shiny::fluidRow(shiny::column(4, shiny::numericInput("weight_from", "Poids min (kg)", 5, min = 0.01)),
-        shiny::column(4, shiny::numericInput("weight_to", "Poids max (kg)", 30, min = 0.01)),
-        shiny::column(4, shiny::numericInput("weight_by", "Pas (kg)", 5, min = 0.01))),
-      shiny::fluidRow(shiny::column(4, shiny::numericInput("k_from", "K min", 0.8, min = 0.01)),
-        shiny::column(4, shiny::numericInput("k_to", "K max", 1.2, min = 0.01)),
-        shiny::column(4, shiny::numericInput("k_by", "Pas de K", 0.1, min = 0.01))),
-      shiny::helpText("Besoin énergétique total = besoin standard × K. Les seuils nutritionnels conservent leur base Kotlin : besoin standard, poids ou poids métabolique."),
-      shiny::textInput("explore_variables", "Variables communes aux profils (JSON : AW, wG, L, wL…)", "{}"),
-      shiny::helpText("Les référentiels sont croisés avec tous les poids choisis ; aucun profil physiologique n'est déduit du poids."),
-      shiny::h4("Listes d'ingrédients et cibles"),
-      shiny::tagList(lapply(seq_len(nrow(roles)), function(i) {
-        role <- roles$role[i]
-        shiny::tags$details(open = TRUE,
-          shiny::tags$summary(shiny::strong(roles$label[i])),
-          shiny::selectizeInput(paste0("ingredients_", role), "Ingrédients possibles", choices = NULL, multiple = TRUE),
-          shiny::conditionalPanel("input.explore_rounding",
-            shiny::numericInput(paste0("min_dose_", role), "Dose minimale si utilisé (g)", 5, min = 0, step = 0.5)),
-          if (role == "fibre") shiny::selectInput("fibre_nutrient", "Nutriment utilisé pour les fibres", choices = NULL),
-          if (role != "energy") shiny::tagList(
-            shiny::selectInput(paste0("target_source_", role), "Cible", c("Référentiel" = "reference", "Personnalisée" = "custom")),
-            shiny::conditionalPanel(sprintf("input.target_source_%s == 'reference'", role),
-              shiny::selectInput(paste0("target_level_", role), "Niveau du référentiel",
-                c("Optimum minimum" = "OPTIMIN", "Minimum" = "MIN", "Optimum maximum" = "OPTIMAX", "Maximum" = "MAX"))),
-            shiny::conditionalPanel(sprintf("input.target_source_%s == 'custom'", role),
-              shiny::numericInput(paste0("target_value_", role), "Valeur (unité physique du nutriment)", NA, min = 0),
-              shiny::selectInput(paste0("target_unit_", role), "Base de la cible personnalisée", choices = NULL)),
-            shiny::numericInput(paste0("target_factor_", role), "Facteur appliqué à la cible", defaults$multiplier[i], min = 0, step = 0.1),
-            if (role == "fibre") shiny::helpText("Pour CELLULOSE, Kotlin applique ×5 au seuil lors de l'ajustement. Ce facteur est modifiable ; les seuils de conformité restent ceux d'INIT.")
-          ) else shiny::helpText("Quantité calculée en dernier pour compléter l'énergie déjà apportée. Un excédent énergétique est signalé, sans quantité négative.")
-        )
-      })),
-      shiny::checkboxInput("explore_missing_zero", "Valeur absente = 0 (comme Kotlin)", FALSE),
-      shiny::helpText("Décoché : une composition absente bloque l'ajustement et rend le seuil non évaluable. Coché : elle compte pour 0, comme dans VetNutri MP ; les nutriments concernés sont listés et un scénario sinon conforme reçoit CONFORME_ABSENTS_A_ZERO."),
-      shiny::checkboxInput("explore_rounding", "Arrondir les quantités comme VetNutri MP", TRUE),
-      shiny::conditionalPanel("input.explore_rounding",
-        shiny::helpText("Arrondi après chaque ajustement : dosette, sachet ou boîte au ½ contenant ; sinon 1 g sous 20 g, 5 g sous 200 g, 25 g au-delà. Sous la dose minimale de son type (réglable dans chaque liste ci-dessous), l'ingrédient n'est pas utilisé (moins de la moitié) ou est porté à cette dose. L'énergie est acceptée à ± ½ pas de l'ingrédient énergétique.")),
-      shiny::checkboxInput("explore_adjust_cap", "Ajuster Ca/P en dernier avec l'ingrédient calcium", FALSE),
-      shiny::conditionalPanel("input.explore_adjust_cap",
-        shiny::numericInput("cap_increment_g", "Incrément calcium pour Ca/P (g)", 1, min = 0.01, step = 0.5),
-        shiny::helpText("Après l'énergie, l'ingrédient calcium est augmenté par ce pas jusqu'à atteindre le seuil inférieur Ca/P. Les autres doses ne sont pas recalculées ; un dépassement énergétique reste donc signalé.")),
-      shiny::checkboxInput("explore_ignore_optimax", "Ignorer les OPTIMAX : seuls les MAX limitent les apports", TRUE),
-      shiny::h4("Nutriments évalués"),
-      shiny::checkboxInput("explore_all_nutrients", "Évaluer tous les nutriments du référentiel", TRUE),
-      shiny::conditionalPanel("!input.explore_all_nutrients",
-        shiny::selectizeInput("explore_nutrients", "Nutriments retenus (croix pour retirer)", choices = NULL, multiple = TRUE,
-          options = list(plugins = list("remove_button"))),
-        shiny::actionButton("explore_nutrients_all", "Tout cocher"),
-        shiny::actionButton("explore_nutrients_none", "Tout décocher"),
-        shiny::helpText("Seuls les seuils des nutriments retenus entrent dans la conformité, la carte et la liste des nutriments non couverts. Les six ajustements de quantité restent calculés. Aucun nutriment retenu : aucun seuil n'est évalué.")),
-      shiny::numericInput("scenario_limit", "Nombre maximal de scénarios autorisé", 5000, min = 1, step = 1000),
-      shiny::textOutput("explore_count"),
-      shiny::actionButton("explore_run", "Calculer toutes les rations", class = "btn-primary")
+      # Always visible: what will be calculated, what blocks it, and the run button.
+      shiny::div(class = "vn-run",
+        shiny::uiOutput("explore_count"),
+        shiny::actionButton("explore_run", "Calculer toutes les rations", class = "btn-primary", icon = shiny::icon("play"))),
+      shiny::tabsetPanel(id = "explore_setup", type = "pills", selected = "Chiens",
+        shiny::tabPanel("Chiens",
+          shiny::div(class = "vn-sidebar-tabs",
+            shiny::selectizeInput("explore_refs", "Référentiels canins", choices = NULL, multiple = TRUE,
+              options = list(plugins = list("remove_button"), placeholder = "Choisir un ou plusieurs référentiels")),
+            shiny::helpText("Chaque référentiel est croisé avec tous les poids : aucun profil physiologique n'est déduit du poids."),
+            shiny::strong("Poids (kg)"),
+            shiny::fluidRow(shiny::column(4, shiny::numericInput("weight_from", "de", 5, min = 0.01)),
+              shiny::column(4, shiny::numericInput("weight_to", "à", 30, min = 0.01)),
+              shiny::column(4, shiny::numericInput("weight_by", "pas", 5, min = 0.01))),
+            shiny::strong("Coefficient K"),
+            shiny::fluidRow(shiny::column(4, shiny::numericInput("k_from", "de", 0.8, min = 0.01)),
+              shiny::column(4, shiny::numericInput("k_to", "à", 1.2, min = 0.01)),
+              shiny::column(4, shiny::numericInput("k_by", "pas", 0.1, min = 0.01))),
+            shiny::textOutput("explore_grid"),
+            shiny::helpText("Besoin énergétique total = besoin standard × K. Les seuils nutritionnels conservent leur base Kotlin : besoin standard, poids ou poids métabolique."),
+            shiny::tags$details(
+              class = "vn-fold", shiny::tags$summary("Variables communes aux profils (avancé)"),
+              shiny::textInput("explore_variables", "JSON : AW, wG, L, wL…", "{}", placeholder = '{"AW": 30}')))),
+        shiny::tabPanel("Ingrédients",
+          shiny::div(class = "vn-sidebar-tabs",
+            shiny::helpText("Une combinaison = un ingrédient de chaque liste. Ajustements successifs dans cet ordre ; l'énergie est complétée en dernier."),
+            shiny::tagList(lapply(seq_len(nrow(roles)), function(i) {
+              role <- roles$role[i]
+              shiny::tags$details(class = "vn-role", open = if (i == 1L) NA else NULL,
+                shiny::tags$summary(shiny::strong(paste0(i, ". ", roles$label[i])), " ",
+                  shiny::uiOutput(paste0("role_count_", role), inline = TRUE)),
+                shiny::selectizeInput(paste0("ingredients_", role), "Ingrédients possibles", choices = NULL, multiple = TRUE,
+                  options = list(plugins = list("remove_button"), placeholder = "Rechercher un aliment…")),
+                if (role == "fibre") shiny::selectInput("fibre_nutrient", "Nutriment utilisé pour les fibres", choices = NULL),
+                if (role != "energy") shiny::tagList(
+                  shiny::fluidRow(
+                    shiny::column(6, shiny::selectInput(paste0("target_source_", role), "Cible", c("Référentiel" = "reference", "Personnalisée" = "custom"))),
+                    shiny::column(6, shiny::conditionalPanel(sprintf("input.target_source_%s == 'reference'", role),
+                      shiny::selectInput(paste0("target_level_", role), "Niveau",
+                        c("Optimum minimum" = "OPTIMIN", "Minimum" = "MIN", "Optimum maximum" = "OPTIMAX", "Maximum" = "MAX"))))),
+                  shiny::conditionalPanel(sprintf("input.target_source_%s == 'custom'", role),
+                    shiny::fluidRow(
+                      shiny::column(6, shiny::numericInput(paste0("target_value_", role), "Valeur (unité du nutriment)", NA, min = 0)),
+                      shiny::column(6, shiny::selectInput(paste0("target_unit_", role), "Base", choices = NULL)))),
+                  shiny::fluidRow(
+                    shiny::column(6, shiny::numericInput(paste0("target_factor_", role), "Facteur × cible", defaults$multiplier[i], min = 0, step = 0.1)),
+                    shiny::column(6, shiny::conditionalPanel("input.explore_rounding",
+                      shiny::numericInput(paste0("min_dose_", role), "Dose min. (g)", 5, min = 0, step = 0.5)))),
+                  if (role == "fibre") shiny::helpText("Pour CELLULOSE, Kotlin applique ×5 au seuil lors de l'ajustement. Ce facteur est modifiable ; les seuils de conformité restent ceux d'INIT.")
+                ) else shiny::tagList(
+                  shiny::conditionalPanel("input.explore_rounding",
+                    shiny::numericInput(paste0("min_dose_", role), "Dose min. (g)", 5, min = 0, step = 0.5)),
+                  shiny::helpText("Quantité calculée en dernier pour compléter l'énergie déjà apportée. Un excédent énergétique est signalé, sans quantité négative."))
+              )
+            })),
+            shiny::helpText("Les cibles calculées par référentiel sont visibles dans l'onglet « Cibles » à droite."))),
+        shiny::tabPanel("Options",
+          shiny::div(class = "vn-sidebar-tabs",
+            shiny::checkboxInput("explore_rounding", "Arrondir les quantités comme VetNutri MP", TRUE),
+            shiny::conditionalPanel("input.explore_rounding",
+              shiny::helpText("Arrondi après chaque ajustement : dosette, sachet ou boîte au ½ contenant ; sinon 1 g sous 20 g, 5 g sous 200 g, 25 g au-delà. Sous la dose minimale de son type (réglable dans chaque liste d'ingrédients), l'ingrédient n'est pas utilisé (moins de la moitié) ou est porté à cette dose. L'énergie est acceptée à ± ½ pas de l'ingrédient énergétique.")),
+            shiny::checkboxInput("explore_missing_zero", "Valeur absente = 0 (comme Kotlin)", FALSE),
+            shiny::helpText("Décoché : une composition absente bloque l'ajustement et rend le seuil non évaluable. Coché : elle compte pour 0, comme dans VetNutri MP ; les nutriments concernés sont listés et un scénario sinon conforme reçoit CONFORME_ABSENTS_A_ZERO."),
+            shiny::checkboxInput("explore_adjust_cap", "Ajuster Ca/P en dernier avec l'ingrédient calcium", FALSE),
+            shiny::conditionalPanel("input.explore_adjust_cap",
+              shiny::numericInput("cap_increment_g", "Incrément calcium pour Ca/P (g)", 1, min = 0.01, step = 0.5),
+              shiny::helpText("Après l'énergie, l'ingrédient calcium est augmenté par ce pas jusqu'à atteindre le seuil inférieur Ca/P. Les autres doses ne sont pas recalculées ; un dépassement énergétique reste donc signalé.")),
+            shiny::checkboxInput("explore_ignore_optimax", "Ignorer les OPTIMAX : seuls les MAX limitent les apports", TRUE),
+            shiny::div(class = "vn-section", shiny::h4("Nutriments évalués")),
+            shiny::checkboxInput("explore_all_nutrients", "Évaluer tous les nutriments du référentiel", TRUE),
+            shiny::conditionalPanel("!input.explore_all_nutrients",
+              shiny::selectizeInput("explore_nutrients", "Nutriments retenus (croix pour retirer)", choices = NULL, multiple = TRUE,
+                options = list(plugins = list("remove_button"))),
+              shiny::actionButton("explore_nutrients_all", "Tout cocher", class = "btn-sm"),
+              shiny::actionButton("explore_nutrients_none", "Tout décocher", class = "btn-sm"),
+              shiny::helpText("Seuls les seuils des nutriments retenus entrent dans la conformité, la carte et la liste des nutriments non couverts. Les six ajustements de quantité restent calculés. Aucun nutriment retenu : aucun seuil n'est évalué.")),
+            shiny::div(class = "vn-section",
+              shiny::numericInput("scenario_limit", "Nombre maximal de scénarios autorisé", 5000, min = 1, step = 1000)))),
+        shiny::tabPanel("Sélection",
+          shiny::div(class = "vn-sidebar-tabs",
+            shiny::helpText("Référentiels et listes d'ingrédients, réutilisables d'une session à l'autre."),
+            shiny::fluidRow(
+              shiny::column(6, shiny::actionButton("explore_save_selection", "Mémoriser", icon = shiny::icon("bookmark"), width = "100%")),
+              shiny::column(6, shiny::actionButton("explore_load_selection", "Restaurer", icon = shiny::icon("rotate-left"), width = "100%"))),
+            shiny::br(),
+            shiny::fluidRow(
+              shiny::column(6, shiny::downloadButton("explore_export_selection", "Exporter JSON", style = "width: 100%")),
+              shiny::column(6, shiny::actionButton("explore_clear_selection", "Oublier", icon = shiny::icon("trash"), width = "100%"))),
+            shiny::br(),
+            shiny::fileInput("explore_import_selection", "Importer une sélection (JSON)", accept = ".json", buttonLabel = "Choisir un fichier"),
+            shiny::p(class = "vn-muted", shiny::textOutput("explore_selection_summary", inline = TRUE)),
+            shiny::div(class = "vn-section", shiny::h4("Catalogue INIT")),
+            shiny::textInput("explore_root", "Dépôt VetNutri MP", root),
+            shiny::actionButton("explore_reload", "Charger / actualiser INIT", icon = shiny::icon("database")),
+            shiny::p(class = "vn-muted", shiny::textOutput("explore_catalogue", inline = TRUE)))))
     ), shiny::mainPanel(width = 8,
-      shiny::textOutput("explore_catalogue"),
-      shiny::tabsetPanel(
-        shiny::tabPanel("Cibles", shiny::tableOutput("explore_target_preview")),
+      shiny::uiOutput("explore_stale"),
+      shiny::tabsetPanel(id = "explore_tabs",
+        shiny::tabPanel("Cibles",
+          shiny::helpText("Cibles d'ajustement par référentiel, avant calcul. Elles se mettent à jour à chaque modification."),
+          shiny::tableOutput("explore_target_preview")),
         shiny::tabPanel("Résultats",
-          shiny::textOutput("explore_summary"),
-          shiny::helpText("Les résultats correspondent au dernier clic sur Calculer. Relancer après une modification des listes, cibles ou intervalles."),
+          shiny::h4(shiny::textOutput("explore_summary")),
           shiny::plotOutput("explore_balance_map", height = "auto"),
           shiny::helpText("Une case est équilibrable si au moins une combinaison respecte tous les seuils. « Sous réserve » : seuls des nutriments non renseignés (comptés à 0) échouent. L'ajustement est séquentiel : une case rouge signifie qu'aucune combinaison testée ne convient avec cette méthode, pas qu'aucune ration n'existe."),
-          shiny::checkboxInput("explore_balance_all", "Afficher aussi les cases équilibrables dans le tableau", FALSE),
-          shiny::tableOutput("explore_balance_table"),
-          shiny::selectInput("explore_status", "Filtrer les scénarios", choices = c("Tous" = "ALL")),
-          shiny::numericInput("explore_page", "Page (50 scénarios)", 1, min = 1, step = 1),
-          shiny::tableOutput("explore_results")),
+          shiny::tags$details(class = "vn-fold",
+            shiny::tags$summary("Détail des cases poids × K"),
+            shiny::checkboxInput("explore_balance_all", "Afficher aussi les cases équilibrables", FALSE),
+            shiny::div(class = "vn-table", shiny::tableOutput("explore_balance_table"))),
+          shiny::h4("Scénarios"),
+          shiny::fluidRow(
+            shiny::column(5, shiny::selectInput("explore_status", "Statut", choices = c("Tous" = "ALL"))),
+            shiny::column(3, shiny::numericInput("explore_page", "Page", 1, min = 1, step = 1)),
+            shiny::column(4, shiny::div(style = "padding-top: 30px;", class = "vn-muted", shiny::textOutput("explore_page_info")))),
+          shiny::helpText("Une ligne par scénario ; les textes longs sont tronqués. Détail complet dans l'onglet « Détail d'une ration » ou dans l'export CSV."),
+          shiny::div(class = "vn-table vn-table-compact", shiny::tableOutput("explore_results"))),
         shiny::tabPanel("Nutriments non couverts",
           shiny::helpText("Nutriments dont au moins un seuil n'est pas atteint (insuffisance) ou est dépassé (excès), parmi les scénarios évalués. « Jamais couvert » : cases poids × K où toutes les combinaisons échouent sur ce seuil. « Données absentes seulement » : échecs dus uniquement à des valeurs absentes comptées à 0."),
           shiny::checkboxInput("explore_uncovered_never", "Seulement les nutriments jamais couverts dans au moins une case", FALSE),
-          shiny::tableOutput("explore_uncovered")),
+          shiny::div(class = "vn-table", shiny::tableOutput("explore_uncovered"))),
         shiny::tabPanel("Détail d'une ration",
-          shiny::selectizeInput("explore_scenario", "Scénario", choices = NULL),
+          shiny::fluidRow(
+            shiny::column(8, shiny::selectizeInput("explore_scenario", "Scénario", choices = NULL, width = "100%",
+              options = list(placeholder = "Rechercher : identifiant, référentiel, poids, statut…"))),
+            shiny::column(4, shiny::div(style = "padding-top: 25px;",
+              shiny::actionButton("explore_scenario_prev", "Précédent", icon = shiny::icon("chevron-left")),
+              shiny::actionButton("explore_scenario_next", "Suivant", icon = shiny::icon("chevron-right"))))),
           shiny::tableOutput("explore_scenario_summary"),
+          shiny::h4("Quantités"),
           shiny::tableOutput("explore_quantities"),
+          shiny::h4("Cibles d'ajustement atteintes"),
           shiny::tableOutput("explore_targets_result"),
           shiny::h4("Écarts aux seuils non conformes"),
           shiny::helpText("Écart = apport observé − seuil attendu. Valeur négative : manque pour un seuil bas ; valeur positive : dépassement pour un seuil haut."),
           shiny::tableOutput("explore_nonconformities"),
-          shiny::tableOutput("explore_comparison")),
+          shiny::tags$details(class = "vn-fold",
+            shiny::tags$summary("Comparaison complète aux seuils du référentiel"),
+            shiny::div(class = "vn-table", shiny::tableOutput("explore_comparison")))),
         shiny::tabPanel("Courbes de doses",
           shiny::helpText("Les courbes utilisent une combinaison d'aliments et un référentiel parmi les scénarios déjà calculés."),
-          shiny::selectInput("explore_curve_reference", "Référentiel", choices = NULL),
-          shiny::selectInput("explore_curve_combination", "Combinaison d'aliments", choices = NULL),
-          shiny::selectInput("explore_curve_weight", "Poids fixé (kg) — doses selon K", choices = NULL),
-          shiny::plotOutput("explore_dose_by_k", height = 360),
-          shiny::selectInput("explore_curve_k", "K fixé — doses selon le poids", choices = NULL),
-          shiny::plotOutput("explore_dose_by_weight", height = 360),
+          shiny::fluidRow(
+            shiny::column(6, shiny::selectInput("explore_curve_reference", "Référentiel", choices = NULL, width = "100%")),
+            shiny::column(6, shiny::selectInput("explore_curve_combination", "Combinaison d'aliments", choices = NULL, width = "100%"))),
+          shiny::fluidRow(
+            shiny::column(6, shiny::selectInput("explore_curve_weight", "Poids fixé (kg) — doses selon K", choices = NULL)),
+            shiny::column(6, shiny::selectInput("explore_curve_k", "K fixé — doses selon le poids", choices = NULL))),
+          shiny::fluidRow(
+            shiny::column(6, shiny::plotOutput("explore_dose_by_k", height = 360)),
+            shiny::column(6, shiny::plotOutput("explore_dose_by_weight", height = 360))),
           shiny::h4("Apports nutritionnels et normes"),
-          shiny::selectizeInput("explore_curve_nutrients", "Nutriments à tracer", choices = NULL, multiple = TRUE,
+          shiny::selectizeInput("explore_curve_nutrients", "Nutriments à tracer (4 au plus)", choices = NULL, multiple = TRUE,
             options = list(plugins = list("remove_button"), maxItems = 4)),
           shiny::helpText("Chaque panneau montre l'apport de la ration (trait noir) et les seuils applicables du référentiel. Les ratios, dont Ca/P, sont recalculés sur les totaux de la ration."),
-          shiny::plotOutput("explore_nutrients_by_k", height = 600),
-          shiny::plotOutput("explore_nutrients_by_weight", height = 600)),
+          shiny::fluidRow(
+            shiny::column(6, shiny::plotOutput("explore_nutrients_by_k", height = 600)),
+            shiny::column(6, shiny::plotOutput("explore_nutrients_by_weight", height = 600)))),
         shiny::tabPanel("Exports",
-          shiny::downloadButton("explore_export_summary", "Tous les scénarios (CSV)"), shiny::br(),
-          shiny::downloadButton("explore_export_quantities", "Quantités des ingrédients (CSV)"), shiny::br(),
-          shiny::downloadButton("explore_export_targets", "Cibles et apports (CSV)"), shiny::br(),
-          shiny::downloadButton("explore_export_balance", "Carte poids × K : zones (CSV)"), shiny::br(),
-          shiny::downloadButton("explore_export_uncovered", "Nutriments non couverts (CSV)"), shiny::br(),
-          shiny::downloadButton("explore_export_config", "Configuration et provenance (JSON)")),
+          shiny::helpText("Exports du dernier calcul."),
+          shiny::tags$ul(class = "list-unstyled",
+            shiny::tags$li(shiny::downloadButton("explore_export_summary", "Tous les scénarios (CSV)")), shiny::br(),
+            shiny::tags$li(shiny::downloadButton("explore_export_quantities", "Quantités des ingrédients (CSV)")), shiny::br(),
+            shiny::tags$li(shiny::downloadButton("explore_export_targets", "Cibles et apports (CSV)")), shiny::br(),
+            shiny::tags$li(shiny::downloadButton("explore_export_balance", "Carte poids × K : zones (CSV)")), shiny::br(),
+            shiny::tags$li(shiny::downloadButton("explore_export_uncovered", "Nutriments non couverts (CSV)")), shiny::br(),
+            shiny::tags$li(shiny::downloadButton("explore_export_config", "Configuration et provenance (JSON)")))),
         shiny::tabPanel("Diagnostics INIT", shiny::tableOutput("explore_diagnostics"))
       )
     ))
@@ -159,12 +236,16 @@ vn_exploration_server <- function(input, output, session) {
   model <- shiny::eventReactive(input$explore_reload, {
     vn_load_init(root = input$explore_root)
   }, ignoreNULL = FALSE)
+  # Server-side selectize needs its choices again whenever a selection is pushed from the server.
+  reference_choices <- shiny::reactive({
+    refs <- model()$references[model()$references$maladie == "FALSE", ]
+    setNames(refs$reference_id, paste(refs$nom, refs$stadePhysio, sep = " — "))
+  })
+  food_choices <- shiny::reactive(setNames(model()$foods$food_id, paste(model()$foods$name, model()$foods$food_id, sep = " — ")))
   shiny::observeEvent(model(), {
     m <- model()
-    refs <- m$references[m$references$maladie == "FALSE", ]
-    shiny::updateSelectizeInput(session, "explore_refs",
-      choices = setNames(refs$reference_id, paste(refs$nom, refs$stadePhysio, sep = " — ")), server = TRUE)
-    choices <- setNames(m$foods$food_id, paste(m$foods$name, m$foods$food_id, sep = " — "))
+    shiny::updateSelectizeInput(session, "explore_refs", choices = reference_choices(), server = TRUE)
+    choices <- food_choices()
     units <- m$dictionaries$requirement_units
     units <- units[units$uniteReqId %in% c(0, 1, 2, 4, 6), ]
     for (role in roles$role) {
@@ -190,6 +271,49 @@ vn_exploration_server <- function(input, output, session) {
   weights <- shiny::reactive(vn_exploration_interval(input$weight_from, input$weight_to, input$weight_by))
   ks <- shiny::reactive(vn_exploration_interval(input$k_from, input$k_to, input$k_by))
   lists <- shiny::reactive(setNames(lapply(roles$role, function(role) input[[paste0("ingredients_", role)]]), roles$role))
+  # Friendly checks shown next to the run button, so the user knows what blocks the calculation.
+  interval_error <- function(f) tryCatch({ f(); NULL }, error = conditionMessage)
+  variables <- shiny::reactive({
+    text <- if (is.null(input$explore_variables) || !nzchar(trimws(input$explore_variables))) "{}" else input$explore_variables
+    tryCatch(jsonlite::fromJSON(text, simplifyVector = FALSE), error = function(e) structure(list(), invalid = conditionMessage(e)))
+  })
+  variables_problem <- function(vars) {
+    if (!is.null(attr(vars, "invalid"))) "Variables communes : JSON invalide (onglet Chiens)."
+    else if (!is.list(vars) || (length(vars) && is.null(names(vars)))) "Variables communes : un objet JSON {\"nom\": valeur} est attendu (onglet Chiens)."
+  }
+  scenario_count <- shiny::reactive({
+    w <- tryCatch(length(weights()), error = function(e) NA_integer_)
+    k <- tryCatch(length(ks()), error = function(e) NA_integer_)
+    prod(lengths(lists())) * w * k * length(input$explore_refs)
+  })
+  run_problems <- shiny::reactive({
+    problems <- character()
+    if (!length(input$explore_refs)) problems <- c(problems, "Choisir au moins un référentiel (onglet Chiens).")
+    if (!is.null(interval_error(weights))) problems <- c(problems, "Poids : bornes positives, maximum ≥ minimum, pas positif (onglet Chiens).")
+    if (!is.null(interval_error(ks))) problems <- c(problems, "K : bornes positives, maximum ≥ minimum, pas positif (onglet Chiens).")
+    problems <- c(problems, variables_problem(variables()))
+    empty <- roles$label[lengths(lists()) == 0L]
+    if (length(empty)) problems <- c(problems, paste0("Listes vides : ", paste(empty, collapse = ", "), " (onglet Ingrédients)."))
+    n <- scenario_count(); limit <- input$scenario_limit
+    if (is.finite(n) && n > 0 && !is.null(limit) && is.finite(limit) && n > limit)
+      problems <- c(problems, paste0(format(n, big.mark = " ", scientific = FALSE), " scénarios dépassent la limite de ",
+        format(limit, big.mark = " ", scientific = FALSE), " : réduire les listes ou la grille, ou relever la limite (onglet Options)."))
+    problems
+  })
+  for (role in roles$role) local({
+    role <- role
+    output[[paste0("role_count_", role)]] <- shiny::renderUI({
+      n <- length(input[[paste0("ingredients_", role)]])
+      shiny::span(class = if (n) "vn-role-count" else "vn-role-count vn-empty",
+        if (n) paste0("(", n, " aliment", if (n > 1) "s", ")") else "(vide)")
+    })
+  })
+  output$explore_grid <- shiny::renderText({
+    w <- tryCatch(weights(), error = function(e) NULL); k <- tryCatch(ks(), error = function(e) NULL)
+    shiny::req(length(w), length(k))
+    paste0(length(w), " poids (", paste(utils::head(format(w), 6), collapse = ", "), if (length(w) > 6) ", …", ") × ",
+      length(k), " valeurs de K (", paste(utils::head(format(k), 6), collapse = ", "), if (length(k) > 6) ", …", ").")
+  })
   selection_payload <- shiny::reactive({
     selected <- lists()
     selected <- lapply(selected, function(x) if (is.null(x)) character() else as.character(x))
@@ -206,14 +330,14 @@ vn_exploration_server <- function(input, output, session) {
     ref_ids <- m$references$reference_id[m$references$maladie == "FALSE"]
     refs <- unique(as.character(unlist(selection$reference_ids, use.names = FALSE)))
     refs <- refs[refs %in% ref_ids]
-    shiny::updateSelectizeInput(session, "explore_refs", selected = refs, server = TRUE)
+    shiny::updateSelectizeInput(session, "explore_refs", choices = reference_choices(), selected = refs, server = TRUE)
     restored <- integer(length(roles$role))
     names(restored) <- roles$role
     for (role in roles$role) {
       ids <- unique(as.character(unlist(selection$ingredient_lists[[role]], use.names = FALSE)))
       ids <- ids[ids %in% food_ids]
       restored[[role]] <- length(ids)
-      shiny::updateSelectizeInput(session, paste0("ingredients_", role), selected = ids, server = TRUE)
+      shiny::updateSelectizeInput(session, paste0("ingredients_", role), choices = food_choices(), selected = ids, server = TRUE)
     }
     selection_message(paste0(source, " : ", length(refs), " référentiel(s), ", sum(restored), " aliment(s) restauré(s)."))
   }
@@ -247,11 +371,7 @@ vn_exploration_server <- function(input, output, session) {
       shiny::showNotification(paste("Import impossible :", conditionMessage(selection)), type = "error")
     } else restore_selection(selection, paste("Sélection importée (", upload$name, ")", sep = ""))
   })
-  output$explore_selection_summary <- shiny::renderText({
-    counts <- vapply(lists(), function(x) length(x), 0L)
-    labels <- roles$label[match(names(counts), roles$role)]
-    paste(c(selection_message(), paste(paste0(labels, " : ", counts), collapse = " · ")), collapse = "\n")
-  })
+  output$explore_selection_summary <- shiny::renderText(selection_message())
   targets <- shiny::reactive({
     t <- vn_exploration_targets()
     shiny::req(input$fibre_nutrient)
@@ -271,12 +391,18 @@ vn_exploration_server <- function(input, output, session) {
   })
   output$explore_catalogue <- shiny::renderText(paste("INIT", model()$provenance$version, "—", nrow(model()$foods), "aliments compatibles chien"))
   output$explore_diagnostics <- shiny::renderTable(model()$diagnostics)
-  output$explore_count <- shiny::renderText({
-    n <- prod(lengths(lists())) * length(weights()) * length(ks()) * length(input$explore_refs)
-    paste(format(n, scientific = FALSE), "scénarios = combinaisons × poids × K × référentiels")
+  output$explore_count <- shiny::renderUI({
+    problems <- run_problems()
+    n <- scenario_count()
+    count <- if (is.finite(n)) paste(format(n, big.mark = " ", scientific = FALSE), "scénarios") else "Nombre de scénarios indéterminé"
+    shiny::tagList(
+      shiny::strong(count), shiny::span(class = "vn-muted", " = combinaisons × poids × K × référentiels"),
+      shiny::tags$ul(class = "vn-check",
+        if (length(problems)) lapply(problems, function(p) shiny::tags$li(class = "vn-ko", p))
+        else shiny::tags$li(class = "vn-ok", shiny::icon("check"), " Prêt à calculer.")))
   })
   output$explore_target_preview <- shiny::renderTable({
-    shiny::req(input$explore_refs)
+    shiny::validate(shiny::need(length(input$explore_refs) > 0, "Choisir au moins un référentiel (onglet Chiens) pour afficher les cibles."))
     m <- model(); t <- targets()
     rows <- list()
     for (ref in input$explore_refs) for (i in seq_len(nrow(t))) {
@@ -296,14 +422,31 @@ vn_exploration_server <- function(input, output, session) {
     }
     do.call(rbind, rows)
   })
+  # Inputs that change the calculation; used to flag results computed with older settings.
+  run_input_pattern <- paste0("^(explore_(refs|variables|missing_zero|rounding|adjust_cap|ignore_optimax|all_nutrients|nutrients|reload)$|",
+    "(weight|k)_(from|to|by)$|ingredients_|min_dose_|fibre_nutrient$|target_|cap_increment_g$)")
+  run_inputs <- function() {
+    values <- shiny::reactiveValuesToList(input)
+    values <- values[grepl(run_input_pattern, names(values))]
+    values[order(names(values))]
+  }
+  last_run_inputs <- shiny::reactiveVal(NULL)
+  scenario_choices <- function(s) setNames(s$scenario_id,
+    paste(s$scenario_id, s$reference_name, s$weight_kg, "kg — K", s$K, s$status))
   exploration <- shiny::eventReactive(input$explore_run, {
     m <- model()
-    vars <- jsonlite::fromJSON(input$explore_variables, simplifyVector = FALSE)
-    shiny::validate(shiny::need(is.list(vars), "Variables : objet JSON requis"))
-    shiny::withProgress(message = "Exploration de toutes les combinaisons", value = 0, {
+    problems <- run_problems()
+    if (length(problems)) {
+      shiny::showNotification(shiny::tagList(shiny::strong("Calcul impossible"), shiny::tags$ul(lapply(problems, shiny::tags$li))),
+        type = "error", duration = 8)
+      shiny::validate(shiny::need(FALSE, paste("Calcul impossible :", paste(problems, collapse = " "))))
+    }
+    vars <- variables()
+    snapshot <- run_inputs()
+    out <- tryCatch(shiny::withProgress(message = "Exploration de toutes les combinaisons", value = 0, {
       cap_increment <- input$cap_increment_g
       if (is.null(cap_increment) || is.na(cap_increment)) cap_increment <- 1
-      out <- vn_explore_rations(m, input$explore_refs, lists(), weights(), ks(), targets(), vars,
+      vn_explore_rations(m, input$explore_refs, lists(), weights(), ks(), targets(), vars,
         max_scenarios = input$scenario_limit, missing_as_zero = isTRUE(input$explore_missing_zero),
         ignore_levels = if (isFALSE(input$explore_ignore_optimax)) character() else "OPTIMAX",
         rounding = !isFALSE(input$explore_rounding), nutrients = evaluated_nutrients(),
@@ -313,16 +456,28 @@ vn_exploration_server <- function(input, output, session) {
           if (is.null(v) || is.na(v)) 5 else v
         }, 0),
         progress = function(i, total) shiny::setProgress(value = i / total, detail = paste(i, "/", total)))
+    }), error = function(e) {
+      shiny::showNotification(paste("Calcul impossible :", conditionMessage(e)), type = "error", duration = 8)
+      shiny::validate(shiny::need(FALSE, paste("Calcul impossible :", conditionMessage(e))))
     })
     out$model <- m # Snapshot: later catalogue reloads must not change existing results.
+    last_run_inputs(snapshot)
     out
+  })
+  output$explore_stale <- shiny::renderUI({
+    if (is.null(input$explore_run) || input$explore_run == 0)
+      return(shiny::div(class = "alert alert-info vn-stale", shiny::icon("circle-info"),
+        " Choisir les référentiels, la grille et les listes d'ingrédients à gauche, puis « Calculer toutes les rations »."))
+    shiny::req(!is.null(last_run_inputs()))
+    if (!identical(run_inputs(), last_run_inputs()))
+      shiny::div(class = "alert alert-warning vn-stale", shiny::icon("triangle-exclamation"),
+        " Paramètres modifiés depuis le dernier calcul : les résultats affichés ne les prennent pas encore en compte. Relancer le calcul.")
   })
   shiny::observeEvent(exploration(), {
     out <- exploration()
     s <- out$summary
     shiny::updateSelectInput(session, "explore_status", choices = c("Tous" = "ALL", setNames(unique(s$status), unique(s$status))))
-    shiny::updateSelectizeInput(session, "explore_scenario", choices = setNames(s$scenario_id,
-      paste(s$scenario_id, s$reference_name, s$weight_kg, "kg — K", s$K, s$status)), server = TRUE)
+    shiny::updateSelectizeInput(session, "explore_scenario", choices = scenario_choices(s), server = TRUE)
     refs <- unique(s[, c("reference_id", "reference_name")])
     shiny::updateSelectInput(session, "explore_curve_reference",
       choices = setNames(refs$reference_id, refs$reference_name), selected = refs$reference_id[1])
@@ -336,26 +491,48 @@ vn_exploration_server <- function(input, output, session) {
     preferred <- if ("CAP" %in% unname(choices)) "CAP" else unname(choices)[1]
     shiny::updateSelectizeInput(session, "explore_curve_nutrients", choices = choices, selected = preferred, server = FALSE)
     shiny::updateNumericInput(session, "explore_page", value = 1)
+    shiny::updateTabsetPanel(session, "explore_tabs", selected = "Résultats")
   })
   output$explore_summary <- shiny::renderText({
+    shiny::validate(shiny::need(!is.null(input$explore_run) && input$explore_run > 0, "Aucun calcul lancé."))
     s <- exploration()$summary
     text <- paste(nrow(s), "scénarios ;", sum(s$status == "CONFORME"), "entièrement conformes aux seuils connus, sans données manquantes ni avertissement.")
     if (isTRUE(exploration()$configuration$missing_as_zero))
       text <- paste(text, sum(s$status == "CONFORME_ABSENTS_A_ZERO"), "conformes en comptant les valeurs absentes à 0.")
     text
   })
-  output$explore_results <- shiny::renderTable({
+  page_size <- 50
+  filtered_results <- shiny::reactive({
     s <- exploration()$summary
     if (!is.null(input$explore_status) && input$explore_status != "ALL") s <- s[s$status == input$explore_status, ]
-    shiny::req(input$explore_page >= 1)
-    page <- as.integer(input$explore_page)
-    s <- s[seq_len(nrow(s)) > (page - 1) * 50 & seq_len(nrow(s)) <= page * 50, ]
-    s[, c("scenario_id", "combination_id", "reference_name", "weight_kg", "K", "need_kcal", "energy_kcal", "energy_gap_kcal", "cap_adjustment_g", "status", "composition", "not_covered", "in_excess", "zero_filled", "message")]
+    s
+  })
+  page_count <- shiny::reactive(max(1L, ceiling(nrow(filtered_results()) / page_size)))
+  current_page <- shiny::reactive({
+    page <- suppressWarnings(as.integer(input$explore_page))
+    if (!length(page) || is.na(page)) page <- 1L
+    min(max(1L, page), page_count())
+  })
+  shiny::observeEvent(input$explore_status, shiny::updateNumericInput(session, "explore_page", value = 1), ignoreInit = TRUE)
+  output$explore_page_info <- shiny::renderText({
+    n <- nrow(filtered_results())
+    paste0("sur ", page_count(), " — ", n, " scénario", if (n > 1) "s")
+  })
+  output$explore_results <- shiny::renderTable({
+    s <- filtered_results()
+    shiny::validate(shiny::need(nrow(s) > 0, "Aucun scénario pour ce statut."))
+    page <- current_page()
+    s <- s[seq_len(nrow(s)) > (page - 1) * page_size & seq_len(nrow(s)) <= page * page_size, ]
+    data.frame(`Scénario` = s$scenario_id, `Combinaison` = s$combination_id, `Référentiel` = s$reference_name,
+      `Poids (kg)` = s$weight_kg, K = s$K, `Besoin (kcal)` = s$need_kcal, `Énergie (kcal)` = s$energy_kcal,
+      `Écart énergie (kcal)` = s$energy_gap_kcal, `Ajout Ca/P (g)` = s$cap_adjustment_g, Statut = s$status,
+      Composition = s$composition, `Non couverts` = s$not_covered, `En excès` = s$in_excess,
+      `Absents = 0` = s$zero_filled, Message = s$message, check.names = FALSE)
   }, digits = 3)
   balance <- shiny::reactive(vn_exploration_balance(exploration()))
   output$explore_balance_map <- shiny::renderPlot(vn_plot_balance_map(balance()), height = function() {
     n <- tryCatch(length(unique(balance()$reference_id)), error = function(e) 1L)
-    120 + 380 * ceiling(n / 2)
+    190 + 380 * ceiling(n / 2)
   })
   output$explore_balance_table <- shiny::renderTable({
     b <- balance()
@@ -374,17 +551,33 @@ vn_exploration_server <- function(input, output, session) {
     shiny::req(nrow(s) == 1L)
     s
   })
-  output$explore_scenario_summary <- shiny::renderTable(selected()[, c("scenario_id", "reference_id", "reference_name", "stage", "weight_kg", "K", "status", "not_covered", "in_excess", "zero_filled_nutrients", "message", "warnings")])
+  step_scenario <- function(step) {
+    s <- exploration()$summary
+    i <- match(input$explore_scenario, s$scenario_id)
+    i <- if (is.na(i)) 1L else min(max(1L, i + step), nrow(s))
+    shiny::updateSelectizeInput(session, "explore_scenario", choices = scenario_choices(s), selected = s$scenario_id[i], server = TRUE)
+  }
+  shiny::observeEvent(input$explore_scenario_prev, step_scenario(-1L))
+  shiny::observeEvent(input$explore_scenario_next, step_scenario(1L))
+  output$explore_scenario_summary <- shiny::renderTable({
+    s <- selected()
+    data.frame(`Scénario` = s$scenario_id, `Référentiel` = s$reference_name, Stade = s$stage, `Poids (kg)` = s$weight_kg,
+      K = s$K, Statut = s$status, `Non couverts` = s$not_covered, `En excès` = s$in_excess,
+      `Absents = 0` = s$zero_filled_nutrients, Message = s$message, Avertissements = s$warnings, check.names = FALSE)
+  })
   output$explore_quantities <- shiny::renderTable({
     out <- exploration(); s <- selected(); q <- out$quantities
     shiny::req(nrow(q) > 0)
     q <- q[q$scenario_id == s$scenario_id, ]
     q$food_name <- out$model$foods$name[match(q$food_id, out$model$foods$food_id)]
-    q[, c("role", "food_id", "food_name", "quantity_g")]
-  }, digits = 4)
+    data.frame(`Rôle` = roles$label[match(q$role, roles$role)], Code = q$food_id, Aliment = q$food_name,
+      `Quantité (g)` = q$quantity_g, check.names = FALSE)
+  }, digits = 1)
   output$explore_targets_result <- shiny::renderTable({
     t <- exploration()$targets; shiny::req(nrow(t) > 0)
-    t[t$scenario_id == selected()$scenario_id, c("nutrient_id", "unit", "source", "reflevel", "multiplier", "absolute_target", "final_intake", "gap")]
+    t <- t[t$scenario_id == selected()$scenario_id, , drop = FALSE]
+    data.frame(Nutriment = t$nutrient_id, `Unité` = t$unit, Source = t$source, Niveau = t$reflevel, Facteur = t$multiplier,
+      Cible = t$absolute_target, `Apport final` = t$final_intake, `Écart` = t$gap, check.names = FALSE)
   }, digits = 4)
   detail <- shiny::reactive({
     out <- exploration(); s <- selected(); q <- out$quantities

@@ -51,13 +51,17 @@ if (file.exists(file.path(source_dir, "init_json_loader.R"))) {
 }
 ```
 
-Définissez une liste d'ingrédients pour chacun des six ajustements : protéines,
-fibres, calcium, oméga-6, sel/sodium et énergie restante. Le document explore
-**toutes les combinaisons**, pour chaque poids, coefficient K et référentiel canin
-choisi. Les cibles viennent du référentiel et peuvent être modifiées.
+Le panneau de gauche se remplit dans l'ordre de ses onglets : **Chiens**
+(référentiels, grilles de poids et de K), **Ingrédients** (une liste par
+ajustement : protéines, fibres, calcium, oméga-6, sel/sodium, énergie restante,
+avec leur cible), **Options**, puis **Sélection** pour réutiliser ou partager les
+listes. Le bloc en haut du panneau indique le nombre de scénarios et ce qui
+manque avant de pouvoir lancer le calcul.
 
-Les ajustements sont successifs ; l'énergie est complétée en dernier. Les
-incompatibilités, excédents et données manquantes sont conservés dans les résultats.
+Le document explore **toutes les combinaisons** ; les ajustements sont
+successifs et l'énergie est complétée en dernier. Les incompatibilités,
+excédents et données manquantes sont conservés dans les résultats. Un bandeau
+signale quand les paramètres ont changé depuis le dernier calcul.
 
 ```{r}
 #| label: interface

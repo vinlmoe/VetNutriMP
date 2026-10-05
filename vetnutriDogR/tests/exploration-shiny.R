@@ -10,6 +10,8 @@ if (nzchar(module_root) && nzchar(root) && requireNamespace("shiny", quietly = T
       explore_variables = "{}", scenario_limit = 20, fibre_nutrient = "CELLULOSE",
       explore_status = "ALL", explore_page = 1)
     m <- model()
+    # Before selection, the run block lists what is missing instead of failing later.
+    stopifnot(any(grepl("au moins un référentiel", run_problems())), any(grepl("^Listes vides", run_problems())))
     ref <- m$references$reference_id[m$references$nom == "Adulte >25kg"]
     labels <- setdiff(vn_exploration_roles()$nutrient_id, "ENERGIE")
     candidates <- Filter(function(f) f$uuid %in% m$foods$food_id && all(labels %in% names(f$nutrients)) &&
@@ -26,9 +28,21 @@ if (nzchar(module_root) && nzchar(root) && requireNamespace("shiny", quietly = T
     }
     inputs$ingredients_protein <- vapply(candidates[1:2], `[[`, "", "uuid")
     do.call(session$setInputs, inputs)
+    stopifnot(length(run_problems()) == 0L, scenario_count() == 8L)
     session$setInputs(explore_run = 1)
     out <- exploration()
     stopifnot(nrow(out$summary) == 8L, nrow(out$quantities) == 48L)
+    stopifnot(page_count() == 1L, grepl("8 scénarios", output$explore_page_info), is.null(output$explore_stale$html) ||
+      !grepl("Paramètres modifiés", output$explore_stale$html))
+    session$setInputs(explore_scenario = out$summary$scenario_id[1], explore_scenario_next = 1)
+    session$setInputs(weight_by = 2.5)
+    stopifnot(grepl("Paramètres modifiés", output$explore_stale$html))
+    session$setInputs(weight_by = 5)
+    stopifnot(!grepl("Paramètres modifiés", paste(output$explore_stale$html)))
+    # Over the limit or invalid JSON: listed before the run, and the run reports it instead of crashing.
+    session$setInputs(scenario_limit = 4, explore_variables = "{AW")
+    stopifnot(any(grepl("dépassent la limite", run_problems())), any(grepl("JSON invalide", run_problems())))
+    session$setInputs(scenario_limit = 20, explore_variables = "{}")
     stopifnot(nzchar(output$explore_target_preview), nzchar(output$explore_results))
     session$setInputs(explore_scenario = out$summary$scenario_id[1])
     stopifnot(is.finite(detail()$energy_kcal), nzchar(output$explore_quantities))
@@ -65,6 +79,8 @@ if (nzchar(module_root) && nzchar(root) && requireNamespace("shiny", quietly = T
       "cap_adjustment_g" %in% names(exploration()$summary))
     session$setInputs(explore_balance_all = TRUE)
     stopifnot(nrow(balance()) == 4L, !is.null(output$explore_balance_map), nzchar(output$explore_balance_table))
+    session$setInputs(scenario_limit = 4, explore_run = 6)
+    stopifnot(grepl("Calcul impossible", tryCatch({ exploration(); "" }, error = conditionMessage)))
   })
   cat("QMD exploration : listes, grille, cibles, calcul, détail et conservation des résultats validés\n")
 } else message("Exploration Shiny integration skipped: source checkout and shiny required")
