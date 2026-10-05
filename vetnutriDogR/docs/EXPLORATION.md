@@ -150,6 +150,15 @@ de les réintégrer ; le choix est enregistré (`ignore_levels`) dans la configu
 exportée et appliqué au détail d'une ration. L'application Shiny de ration manuelle
 évalue toujours tous les niveaux.
 
+## Ajustement terminal Ca/P
+
+L'option **Ajuster Ca/P en dernier avec l'ingrédient calcium** effectue, après
+l'ajustement énergétique, des incréments de l'aliment choisi pour le rôle calcium
+jusqu'à atteindre le seuil inférieur Ca/P actif (`MIN` ou `OPTIMIN`). Les autres
+doses ne sont pas recalculées : un dépassement énergétique éventuel reste donc
+visible. La quantité ajoutée est conservée dans `cap_adjustment_g`, les messages
+du scénario et la configuration exportée.
+
 ## Nutriments évalués
 
 Par défaut, tous les nutriments ayant un seuil dans le référentiel sont évalués.
@@ -226,7 +235,14 @@ Points de lecture :
 - **Résultats** : carte poids × K des zones équilibrables (voir ci-dessus),
   tableau des zones, tableau paginé des scénarios et filtre par statut.
 - **Détail d'une ration** : scénario, quantités par rôle, cibles, apports finaux,
-  écarts et comparaison à tous les seuils du référentiel.
+  écarts et comparaison à tous les seuils du référentiel. Les seuils non
+  conformes affichent la valeur attendue, la valeur observée et l'écart ; les
+  ratios tels que Ca/P sont recalculés sur les totaux de la ration.
+- **Courbes de doses** : pour une combinaison et un référentiel, une courbe de
+  chaque ingrédient selon K à poids fixé, et selon le poids à K fixé.
+- **Apports nutritionnels et normes** : jusqu'à quatre nutriments au choix,
+  dont les ratios comme Ca/P, sont affichés avec leurs apports et leurs seuils
+  MIN, OPTIMIN, OPTIMAX ou MAX selon K à poids fixé et selon le poids à K fixé.
 - **Exports** : tous les scénarios, quantités, cibles et zones de la carte en CSV ; configuration
   et provenance en JSON. Les exports ne sont pas limités à la page affichée.
 

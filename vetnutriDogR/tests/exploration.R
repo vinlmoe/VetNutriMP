@@ -100,6 +100,24 @@ if (nzchar(root)) {
       s$excess == sum(manual$comparison$status == "EXCES"),
       s$missing == sum(manual$comparison$status == "DONNEES_ABSENTES"))
   }
+  # Ca/P is a ration-level ratio: it must be recalculated from total calcium
+  # and phosphorus, never added from individual food ratios.
+  cap <- manual$comparison[manual$comparison$nutrient_id == "CAP", , drop = FALSE]
+  stopifnot(nrow(cap) == 1L,
+    isTRUE(all.equal(cap$intake, unname(manual$nutrient_totals["CAL"] / manual$nutrient_totals["PHOS"]), tolerance = 1e-10)))
+  # Optional terminal correction raises only the calcium-role ingredient until
+  # the active lower Ca/P threshold is reached.
+  terminal_selection <- vapply(lists, `[[`, "", 1L)
+  terminal_needs <- vn_init_needs(m, ref, 10)
+  terminal_targets <- vn_resolve_exploration_targets(m, ref, vn_exploration_targets(), terminal_needs)
+  terminal_profiles <- vn_exploration_profiles(m, ref, unique(terminal_selection))
+  terminal_fit <- vn_adjust_combination(terminal_profiles, terminal_selection, terminal_targets, rounding = TRUE, min_dose_g = 5)
+  terminal_fit$totals["CAL"] <- 0; terminal_fit$quantities["calcium"] <- 0
+  terminal_fit <- vn_adjust_cap_terminal(m, ref, terminal_profiles, terminal_selection, terminal_fit, terminal_needs,
+    "OPTIMAX", NULL, increment_g = 1, missing_as_zero = FALSE)
+  terminal_cap <- vn_compare_totals(m, ref, terminal_fit$totals, terminal_needs, "OPTIMAX")$comparison
+  terminal_cap <- terminal_cap[terminal_cap$nutrient_id == "CAP" & terminal_cap$reflevel %in% c("MIN", "OPTIMIN"), , drop = FALSE]
+  stopifnot(terminal_fit$cap_adjustment_g > 0, all(terminal_cap$status != "INSUFFISANT"))
   # Quantities per ingredient in each computed ration, and the nutrients not covered.
   for (i in seq_len(nrow(out$summary))) {
     s <- out$summary[i, ]; q <- out$quantities[out$quantities$scenario_id == s$scenario_id, ]
