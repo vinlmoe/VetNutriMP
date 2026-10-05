@@ -18,6 +18,8 @@ internal class AppNavController {
     var selectedCalculationTab by mutableStateOf(0)
     var selectedReferenceIdsForBulk by mutableStateOf<List<String>>(emptyList())
     var selectedSpecies by mutableStateOf<Espece?>(null)
+    /** Écran de retour de la fiche animal (liste, ou exploration multiration). */
+    var detailReturnScreen by mutableStateOf<Screen>(Screen.List)
 
     fun navigate(target: Screen) { screen = target }
 }

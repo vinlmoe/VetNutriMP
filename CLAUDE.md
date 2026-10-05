@@ -120,6 +120,14 @@ Trois caches utilisent le pattern `LinkedHashMap` LRU (eviction automatique de l
 ### Résolveur de nutriments
 `NutrientResolver.AllNutrientResolver(label)` est le point d'entrée unique pour résoudre un label textuel vers un `Nutrient`. Ne pas appeler `getByLabel()` directement sur les enums individuels depuis les couches Repository/Service — passer par `NutrientResolver`.
 
+### Exploration multiration
+Écran `Screen.MultiRation` (bouton « Exploration multiration » de la liste des animaux) : moteur pur dans
+`Data/ExplorationMultiration.kt` (ajustement successif protéines → fibres → calcium → oméga-6 → sodium →
+énergie, arrondis `arrondirQuantiteSelonRegles`, conformité `calculerConformite` comme l'analyse de ration),
+BEE et poids métabolique via `Data/CalculMetabolique.kt` (partagé avec `AnimalDetailViewModel`). Une ration
+explorée est ouverte dans une consultation de l'animal de travail « Exploration multiration » (poids,
+référentiel, K = `coefficientAjustement`) pour réutiliser analyse, édition et export existants.
+
 ### Threads
 - `AppDispatchers.IO` → opérations DB et réseau
 - `AppDispatchers.Main` → mise à jour UI (StateFlow)

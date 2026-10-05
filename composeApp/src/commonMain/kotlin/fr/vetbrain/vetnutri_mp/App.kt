@@ -208,6 +208,15 @@ fun App(appDatabase: AppDatabase) {
             platformDispatcher = platformDispatcher
         )
     }
+    val multiRationViewModel = remember {
+        MultiRationViewModel(
+            foodRepository = foodRepository,
+            referenceEvRepository = databaseReferenceEvRepository,
+            equationRepository = equationRepository,
+            animalRepository = animalRepository,
+            consultationRepository = consultationRepository
+        )
+    }
     val crossAnalysisViewModel = remember {
         CrossConsultationAnalysisViewModel(
             animalRepository = animalRepository,
@@ -286,7 +295,8 @@ fun App(appDatabase: AppDatabase) {
         bulkReferenceEditorViewModel = bulkReferenceEditorViewModel,
         backupRestoreViewModel = backupRestoreViewModel,
         legacyMigrationViewModel = legacyMigrationViewModel,
-        bulkAddBiblioToFoodsViewModel = bulkAddBiblioToFoodsViewModel
+        bulkAddBiblioToFoodsViewModel = bulkAddBiblioToFoodsViewModel,
+        multiRationViewModel = multiRationViewModel
     )
     val repos = AppNavRepositories(
         equationRepository = equationRepository,
