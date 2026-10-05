@@ -49,6 +49,7 @@ internal fun AppNavHost(
                     },
                     onSelectAnimal = { animal: AnimalEv ->
                         nav.selectedAnimal = animal
+                        nav.detailReturnScreen = Screen.List
                         models.animalDetailViewModel.setAnimal(animal)
                         nav.navigate(Screen.Detail)
                     },
@@ -60,6 +61,7 @@ internal fun AppNavHost(
                     },
                     onShowFoodList = { nav.navigate(Screen.FoodList) },
                     onShowCalculationTabs = { nav.navigate(Screen.CalculationTabs) },
+                    onShowMultiRation = { nav.navigate(Screen.MultiRation) },
                     examSession = examSession,
                     modifier = Modifier.fillMaxWidth().weight(1f)
                 )
@@ -87,6 +89,7 @@ internal fun AppNavHost(
                     onAnimalCreated = { animal ->
                         nav.isEditing = false
                         nav.selectedAnimal = animal
+                        nav.detailReturnScreen = Screen.List
                         models.animalDetailViewModel.setAnimal(animal)
                         nav.navigate(Screen.Detail)
                     },
@@ -102,7 +105,11 @@ internal fun AppNavHost(
                 AnimalDetailView(
                     viewModel = models.animalDetailViewModel,
                     settingsViewModel = models.settingsViewModel,
-                    onNavigateBack = { nav.navigate(Screen.List) },
+                    onNavigateBack = {
+                        val retour = nav.detailReturnScreen
+                        nav.detailReturnScreen = Screen.List
+                        nav.navigate(retour)
+                    },
                     onOpenSettings = { nav.navigate(Screen.Settings) },
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     equationRepository = repos.equationRepository,
@@ -379,6 +386,21 @@ internal fun AppNavHost(
             } else {
                 nav.navigate(Screen.Settings)
             }
+        }
+
+        Screen.MultiRation -> {
+            MultiRationExplorerView(
+                viewModel = models.multiRationViewModel,
+                onNavigateBack = { nav.navigate(Screen.List) },
+                onOuvrirAnalyse = { animal, consultationId ->
+                    // Analyse, édition et export de la ration avec les écrans habituels
+                    nav.selectedAnimal = animal
+                    nav.detailReturnScreen = Screen.MultiRation
+                    models.animalDetailViewModel.setAnimal(animal, consultationId)
+                    nav.navigate(Screen.Detail)
+                },
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
         Screen.CrossAnalysis -> {

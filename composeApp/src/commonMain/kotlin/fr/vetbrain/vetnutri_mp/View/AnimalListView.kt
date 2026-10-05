@@ -58,6 +58,7 @@ fun AnimalListView(
         onEditAnimal: (AnimalEv) -> Unit,
         onShowFoodList: () -> Unit,
         onShowCalculationTabs: () -> Unit,
+        onShowMultiRation: (() -> Unit)? = null,
         examSession: ExamSession? = null,
         modifier: Modifier = Modifier
 ) {
@@ -146,6 +147,19 @@ fun AnimalListView(
                                                         contentColor = VetNutriColors.OnPrimary
                                                 )
                                 ) { Text(translate(AnimalList.CALCULATION_DATA)) }
+
+                                // Exploration multiration (hors mode examen)
+                                if (onShowMultiRation != null && examSession == null) {
+                                        Button(
+                                                onClick = onShowMultiRation,
+                                                modifier = Modifier.weight(1f),
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor = VetNutriColors.Primary,
+                                                                contentColor = VetNutriColors.OnPrimary
+                                                        )
+                                        ) { Text("Exploration multiration") }
+                                }
 
                                 if (examSession == null) {
                                         Button(

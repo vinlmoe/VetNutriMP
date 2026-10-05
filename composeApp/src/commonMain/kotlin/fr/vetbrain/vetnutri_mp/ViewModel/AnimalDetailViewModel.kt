@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.ViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import fr.vetbrain.vetnutri_mp.Data.CalculMetabolique
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Data.AnalyseResultat
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
@@ -366,7 +367,11 @@ class AnimalDetailViewModel(
         }
     }
 
-    fun setAnimal(animal: AnimalEv) {
+    /**
+     * @param consultationASelectionner consultation à ouvrir (ex. ration issue de l'exploration
+     * multiration) ; par défaut, la plus récente
+     */
+    fun setAnimal(animal: AnimalEv, consultationASelectionner: String? = null) {
         viewModelScope.launch {
 
             // Réinitialiser les états immédiatement pour éviter toute rémanence
@@ -427,10 +432,14 @@ class AnimalDetailViewModel(
                         currentAnimal?.copy(consultations = consultations.toMutableList())
                     }
 
-                    // Sélectionner automatiquement la consultation la plus récente
+                    // Sélectionner la consultation demandée, sinon la plus récente
+                    val consultationDemandee =
+                            consultations.firstOrNull { it.uuid == consultationASelectionner }
                     val mostRecentConsultation =
                             consultations.filter { it.date != null }.maxByOrNull { it.date!! }
-                    if (mostRecentConsultation != null) {
+                    if (consultationDemandee != null) {
+                        selectConsultation(consultationDemandee)
+                    } else if (mostRecentConsultation != null) {
                         selectConsultation(mostRecentConsultation)
                     } else if (consultations.isNotEmpty()) {
                         // Si aucune consultation n'a de date, prendre la première
@@ -2025,31 +2034,8 @@ class AnimalDetailViewModel(
             consultation: ConsultationEv,
             reference: ReferenceEv
     ): Double? {
-        try {
-            val poids = consultation.effectiveWeight ?: return null
-            val equationBW = reference.equationBW
-
-            if (equationBW == null || equationBW.equationScript.isEmpty()) {
-                return null
-            }
-
-            // Créer la map des variables incluant BW et les variables supplémentaires
-            val variables = mutableMapOf<String, Double>()
-            variables["BW"] = poids.toDouble()
-
-            // Ajouter les variables supplémentaires (nom défini dans les équations : AW, wG, D...)
-            VariablesEtape.injecterVariables(variables, consultation.suppVarp)
-
-            // Ajouter des valeurs par défaut pour les variables manquantes courantes
-            val variablesManquantes =
-                    ajouterVariablesParDefaut(variables, equationBW.equationScript)
-
-            val resultat = ExpressionEvaluator.evaluer(equationBW.equationScript, variables)
-
-            return resultat
-        } catch (e: Exception) {
-            return null
-        }
+        val poids = consultation.effectiveWeight ?: return null
+        return CalculMetabolique.poidsMetabolique(poids, reference, consultation.suppVarp)
     }
 
     /** Calcule le besoin énergétique standard en utilisant l'équation BEE de la référence */
@@ -2057,47 +2043,8 @@ class AnimalDetailViewModel(
             consultation: ConsultationEv,
             reference: ReferenceEv
     ): Double? {
-        try {
-            val poids = consultation.effectiveWeight ?: return null
-            val equationBEE = reference.equationBEE
-
-            if (equationBEE == null || equationBEE.equationScript.isEmpty()) {
-                return null
-            }
-
-            // Validation du type de poids et conversion sécurisée
-            val poidsDouble: Double =
-                    try {
-                        poids.toString().toDouble()
-                    } catch (e: Exception) {
-                        return null
-                    }
-
-            // Créer la map des variables incluant BW et les variables supplémentaires
-            val variables = mutableMapOf<String, Double>()
-            variables["BW"] = poidsDouble
-
-            // Ajouter les variables supplémentaires (nom défini dans les équations : AW, wG, D...)
-            VariablesEtape.injecterVariables(variables, consultation.suppVarp)
-
-            // Ajouter des valeurs par défaut pour les variables manquantes courantes
-            val variablesManquantes =
-                    ajouterVariablesParDefaut(variables, equationBEE.equationScript)
-            if (variablesManquantes.isNotEmpty()) {
-                // Ne pas arrêter l'exécution, mais logger pour le debugging
-            }
-
-            val resultat = ExpressionEvaluator.evaluer(equationBEE.equationScript, variables)
-
-            if (resultat == null) {
-                return null
-            }
-
-            return resultat
-        } catch (e: Exception) {
-            e.printStackTrace() // Ajout pour debugging
-            return null
-        }
+        val poids = consultation.effectiveWeight ?: return null
+        return CalculMetabolique.besoinEnergetiqueStandard(poids, reference, consultation.suppVarp)
     }
 
     /**
@@ -2146,45 +2093,6 @@ class AnimalDetailViewModel(
         } catch (e: Exception) {
             null
         }
-    }
-
-    /** Ajoute des valeurs par défaut pour les variables manquantes dans une équation */
-    private fun ajouterVariablesParDefaut(
-            variables: MutableMap<String, Double>,
-            equationScript: String
-    ): List<String> {
-        // Extraire toutes les variables utilisées dans l'équation
-        val variablesUtilisees = ExpressionEvaluator.extraireVariables(equationScript)
-
-        // Valeurs par défaut pour les variables courantes
-        val valeursParDefaut =
-                mapOf(
-                        "wG" to 0.0, // Weight gain (gain de poids)
-                        "AW" to 0.0, // Adult weight (poids adulte)
-                        "L" to 0.0, // Lactation
-                        "wL" to 0.0, // Weight loss (perte de poids)
-                        "BCS" to 5.0, // Body condition score
-                        "REI" to 1.0, // Reproductive efficiency index
-                        "AF" to 1.0, // Activity factor
-                        "TE" to 1.0, // Thermic effect
-                        "GE" to 1.0, // Growth efficiency
-                        "ME" to 1.0 // Metabolizable energy
-                )
-
-        val variablesManquantes = mutableListOf<String>()
-
-        // Ajouter les valeurs par défaut pour les variables manquantes
-        variablesUtilisees.forEach { variable ->
-            if (!variables.containsKey(variable)) {
-                if (valeursParDefaut.containsKey(variable)) {
-                    variables[variable] = valeursParDefaut[variable]!!
-                } else {
-                    variablesManquantes.add(variable)
-                }
-            } else {}
-        }
-
-        return variablesManquantes
     }
 
     /** Remet à zéro tous les calculs métaboliques */
