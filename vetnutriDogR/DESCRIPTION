@@ -1,0 +1,16 @@
+Package: vetnutriDogR
+Type: Package
+Title: Canine Nutrition from VetNutri MP INIT Data
+Version: 0.1.0
+Authors@R: person(given = "VetNutri", family = "Team", role = c("aut", "cre"), email = "noreply@example.com")
+Description: Loads the original VetNutri MP INIT JSON catalogue and Kotlin
+    nutrient metadata, calculates canine energy needs and ration intakes, and
+    compares them with nutritional reference thresholds. Includes a Shiny
+    interface, a Quarto report and independent Kotlin parity tests.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports:
+    jsonlite
+Suggests:
+    shiny,
+    knitr

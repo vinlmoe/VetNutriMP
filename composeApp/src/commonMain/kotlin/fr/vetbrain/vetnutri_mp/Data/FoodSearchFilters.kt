@@ -40,6 +40,8 @@ data class FoodSearchFilters(
         val selectedFoodGroup: GroupAlim? = null,
         val selectedEspece: Espece? = null,
         val selectedIndications: Set<AlimIndic> = emptySet(),
+        /** Indications que l'aliment ne doit pas porter. */
+        val excludedIndications: Set<AlimIndic> = emptySet(),
         val dataB: String? = null,
         val includeDeprecated: Boolean = false,
         val aminoOnly: Boolean = false,
