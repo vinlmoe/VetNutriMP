@@ -15,7 +15,7 @@ import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.withContext
 
 /** Version du schéma Room ; à incrémenter avec chaque nouvelle migration. */
-const val DATABASE_SCHEMA_VERSION = 39
+const val DATABASE_SCHEMA_VERSION = 40
 
 /**
  * Base de données Room pour KMP. Cette classe définit la structure de la base de données et ses
@@ -50,7 +50,8 @@ const val DATABASE_SCHEMA_VERSION = 39
                         HtmlSectionLibraryEntity::class,
                         CustomNutrientEntity::class,
                         EnergyPerSpeciesEntity::class,
-                        RationSupplementalVariableEntity::class],
+                        RationSupplementalVariableEntity::class,
+                        MultiRationExplorationEntity::class],
         version = DATABASE_SCHEMA_VERSION,
         exportSchema = true
 )
@@ -70,6 +71,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun htmlSectionDao(): HtmlSectionDao
     abstract fun examGradingDao(): ExamGradingDao
     abstract fun energyPerSpeciesDao(): EnergyPerSpeciesDao
+    abstract fun multiRationExplorationDao(): MultiRationExplorationDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
@@ -157,7 +159,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
                         // Migration 37→38 : plan évolutif rangé sous une ration (ration parente)
                         createMigration37to38(),
                         // Migration 38→39 : nom libre des étapes de plan évolutif
-                        createMigration38to39()
+                        createMigration38to39(),
+                        // Migration 39→40 : configurations d'exploration multiration enregistrées
+                        createMigration39to40()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -819,6 +823,24 @@ fun createMigration38to39(): Migration {
                     connection,
                     "ALTER TABLE RATIONS ADD COLUMN nomLibre TEXT"
             )
+        }
+    }
+}
+
+/** Migration 39→40 : table des configurations d'exploration multiration. */
+fun createMigration39to40(): Migration {
+    return object : Migration(39, 40) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS `MULTI_RATION_EXPLORATIONS` (
+                    `uuid` TEXT NOT NULL,
+                    `nom` TEXT NOT NULL,
+                    `espece` TEXT NOT NULL,
+                    `configurationJson` TEXT NOT NULL,
+                    `updatedAt` INTEGER NOT NULL,
+                    PRIMARY KEY(`uuid`)
+                )
+            """.trimIndent()).use { it.step() }
         }
     }
 }

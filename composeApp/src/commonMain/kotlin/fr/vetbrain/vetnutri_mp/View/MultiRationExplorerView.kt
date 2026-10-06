@@ -33,6 +33,7 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.CaseEquilibre
 import fr.vetbrain.vetnutri_mp.Data.CibleExploration
 import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.Data.ParametresExploration
 import fr.vetbrain.vetnutri_mp.Data.ResultatExploration
 import fr.vetbrain.vetnutri_mp.Data.RoleExploration
 import fr.vetbrain.vetnutri_mp.Data.ScenarioExploration
@@ -40,7 +41,9 @@ import fr.vetbrain.vetnutri_mp.Data.StatutScenario
 import fr.vetbrain.vetnutri_mp.Data.ZoneEquilibre
 import fr.vetbrain.vetnutri_mp.Data.formaterQuantite
 import fr.vetbrain.vetnutri_mp.Data.nomTraduitNutriment
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.ExcelPlatform.isCsvFileOperationsSupported
 import fr.vetbrain.vetnutri_mp.ExcelPlatform.saveCsvFileForExport
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -96,7 +99,11 @@ fun MultiRationExplorerView(
     LaunchedEffect(Unit) { viewModel.chargerReferences() }
 
     Column(modifier = modifier.fillMaxSize()) {
-        TopBarSimple(title = "Exploration multiration", onNavigateBack = onNavigateBack)
+        val courante by viewModel.explorationCourante.collectAsState()
+        TopBarSimple(
+                title = "Exploration multiration" + (courante?.let { " — ${it.nom}" } ?: ""),
+                onNavigateBack = onNavigateBack
+        )
         Row(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp)) {
             PanneauConfiguration(viewModel, Modifier.width(420.dp).fillMaxHeight())
             Spacer(Modifier.width(12.dp))
@@ -158,15 +165,16 @@ private fun PanneauConfiguration(viewModel: MultiRationViewModel, modifier: Modi
                 }
             }
             TabRow(selectedTabIndex = onglet, backgroundColor = Color.White) {
-                listOf("Chiens", "Ingrédients", "Options").forEachIndexed { i, titre ->
+                listOf("Animaux", "Ingrédients", "Options", "Enregistrées").forEachIndexed { i, titre ->
                     Tab(selected = onglet == i, onClick = { onglet = i }, text = { Text(titre, fontSize = 13.sp) })
                 }
             }
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
                 when (onglet) {
-                    0 -> OngletChiens(viewModel, p)
+                    0 -> OngletAnimaux(viewModel, p)
                     1 -> OngletIngredients(viewModel, p)
-                    else -> OngletOptions(viewModel, p)
+                    2 -> OngletOptions(viewModel, p)
+                    else -> OngletEnregistrees(viewModel)
                 }
             }
         }
@@ -206,11 +214,22 @@ private fun ChampDecimal(label: String, valeur: Double, cle: Any?, onValide: (Do
 }
 
 @Composable
-private fun OngletChiens(viewModel: MultiRationViewModel, p: MultiRationViewModel.Parametres) {
-    val references by viewModel.references.collectAsState()
+private fun OngletAnimaux(viewModel: MultiRationViewModel, p: ParametresExploration) {
+    val toutes by viewModel.references.collectAsState()
     var filtre by remember { mutableStateOf("") }
+    val especes = remember(toutes) { viewModel.especesDisponibles() }
+    val references = toutes.filter { it.espece == p.espece }
 
-    Text("Référentiels généraux", fontWeight = FontWeight.Bold)
+    DropdownField(
+            label = "Espèce",
+            selectedValue = p.espece,
+            options = especes.ifEmpty { listOf(p.espece) },
+            onValueChange = { viewModel.choisirEspece(it) },
+            valueToString = { it.translateEnum() },
+            modifier = Modifier.fillMaxWidth()
+    )
+    Spacer(Modifier.height(8.dp))
+    Text("Référentiels généraux — ${p.espece.translateEnum()}", fontWeight = FontWeight.Bold)
     Text(
             "Chaque référentiel est croisé avec tous les poids : aucun profil physiologique n'est déduit du poids.",
             fontSize = 11.sp,
@@ -231,10 +250,11 @@ private fun OngletChiens(viewModel: MultiRationViewModel, p: MultiRationViewMode
                     modifier = Modifier.fillMaxWidth().clickable { viewModel.basculerReference(ref.uuid) }
             ) {
                 Checkbox(checked = ref.uuid in p.referenceIds, onCheckedChange = { viewModel.basculerReference(ref.uuid) })
-                Text("${ref.nom} — ${ref.stadePhysio.label} (${ref.espece.name.lowercase()})", fontSize = 13.sp)
+                Text("${ref.nom} — ${ref.stadePhysio.label}", fontSize = 13.sp)
             }
         }
-        if (references.isEmpty()) Text("Chargement des référentiels…", fontSize = 12.sp, color = Color.Gray)
+        if (toutes.isEmpty()) Text("Chargement des référentiels…", fontSize = 12.sp, color = Color.Gray)
+        else if (references.isEmpty()) Text("Aucun référentiel général pour cette espèce.", fontSize = 12.sp, color = Color.Gray)
     }
 
     Spacer(Modifier.height(12.dp))
@@ -268,7 +288,7 @@ private fun OngletChiens(viewModel: MultiRationViewModel, p: MultiRationViewMode
 }
 
 @Composable
-private fun OngletIngredients(viewModel: MultiRationViewModel, p: MultiRationViewModel.Parametres) {
+private fun OngletIngredients(viewModel: MultiRationViewModel, p: ParametresExploration) {
     var roleAjout by remember { mutableStateOf<RoleExploration?>(null) }
     var ouvert by remember { mutableStateOf(RoleExploration.PROTEINES) }
 
@@ -372,7 +392,8 @@ private fun OngletIngredients(viewModel: MultiRationViewModel, p: MultiRationVie
 private fun DialogueAjoutAliments(viewModel: MultiRationViewModel, role: RoleExploration, onDismiss: () -> Unit) {
     val aliments by viewModel.aliments.collectAsState(initial = emptyList())
     val p by viewModel.parametres.collectAsState()
-    var filtres by remember { mutableStateOf(FoodSearchFilters()) }
+    // Aliments de l'espèce explorée par défaut (modifiable dans les filtres du composant)
+    var filtres by remember { mutableStateOf(FoodSearchFilters(selectedEspece = p.espece)) }
     val dejaChoisis = p.listes[role].orEmpty()
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -413,7 +434,7 @@ private fun DialogueAjoutAliments(viewModel: MultiRationViewModel, role: RoleExp
 }
 
 @Composable
-private fun OngletOptions(viewModel: MultiRationViewModel, p: MultiRationViewModel.Parametres) {
+private fun OngletOptions(viewModel: MultiRationViewModel, p: ParametresExploration) {
     @Composable
     fun Option(texte: String, coche: Boolean, onChange: (Boolean) -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onChange(!coche) }) {
@@ -442,6 +463,82 @@ private fun OngletOptions(viewModel: MultiRationViewModel, p: MultiRationViewMod
     ChampNombre("Nombre maximal de scénarios", p.maxScenarios, { v -> viewModel.modifierParametres { it.copy(maxScenarios = v) } }, Modifier.fillMaxWidth())
 }
 
+/** Configurations enregistrées en base : enregistrer, recharger, supprimer. */
+@Composable
+private fun OngletEnregistrees(viewModel: MultiRationViewModel) {
+    val explorations by viewModel.explorations.collectAsState()
+    val courante by viewModel.explorationCourante.collectAsState()
+    var nom by remember(courante?.uuid) { mutableStateOf(courante?.nom ?: "") }
+    var aSupprimer by remember { mutableStateOf<String?>(null) }
+
+    Text("Enregistrer la configuration", fontWeight = FontWeight.Bold)
+    Text(
+            "Sont enregistrés : espèce, référentiels, grilles poids × K, listes d'ingrédients, cibles et options. " +
+                    "Les résultats se recalculent après chargement.",
+            fontSize = 11.sp,
+            color = Color.Gray
+    )
+    OutlinedTextField(
+            value = nom,
+            onValueChange = { nom = it },
+            label = { Text("Nom", fontSize = 11.sp) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
+        Button(
+                onClick = { viewModel.enregistrerExploration(nom) },
+                enabled = nom.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary, contentColor = VetNutriColors.OnPrimary)
+        ) { Text(if (courante != null) "Mettre à jour" else "Enregistrer", fontSize = 12.sp) }
+        if (courante != null) {
+            OutlinedButton(onClick = { viewModel.enregistrerExploration(nom, commeNouvelle = true) }, enabled = nom.isNotBlank()) {
+                Text("Enregistrer comme nouvelle", fontSize = 12.sp)
+            }
+        }
+    }
+    TextButton(onClick = { viewModel.nouvelleExploration() }) { Text("Nouvelle exploration (configuration vide)", fontSize = 12.sp) }
+
+    Divider(Modifier.padding(vertical = 8.dp))
+    Text("Explorations enregistrées", fontWeight = FontWeight.Bold)
+    if (explorations.isEmpty()) Text("Aucune exploration enregistrée.", fontSize = 12.sp, color = Color.Gray)
+    explorations.forEach { e ->
+        val espece = Espece.entries.firstOrNull { it.name == e.espece }
+        Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier =
+                        Modifier.fillMaxWidth()
+                                .background(if (e.uuid == courante?.uuid) Color(0xFFE0F2F1) else Color.Transparent)
+                                .padding(vertical = 2.dp)
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(e.nom, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(espece?.translateEnum() ?: e.espece, fontSize = 11.sp, color = Color.Gray)
+            }
+            TextButton(onClick = { viewModel.chargerExploration(e.uuid) }) { Text("Charger", fontSize = 12.sp) }
+            IconButton(onClick = { aSupprimer = e.uuid }, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Close, contentDescription = "Supprimer", modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+
+    aSupprimer?.let { uuid ->
+        val e = explorations.firstOrNull { it.uuid == uuid }
+        AlertDialog(
+                onDismissRequest = { aSupprimer = null },
+                title = { Text("Supprimer l'exploration ?") },
+                text = { Text("« ${e?.nom ?: ""} » sera supprimée. Les consultations déjà ouvertes depuis cette exploration sont conservées.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.supprimerExploration(uuid)
+                        aSupprimer = null
+                    }) { Text("Supprimer") }
+                },
+                dismissButton = { TextButton(onClick = { aSupprimer = null }) { Text("Annuler") } }
+        )
+    }
+}
+
 // --- Résultats --------------------------------------------------------------------------------
 
 @Composable
@@ -454,12 +551,16 @@ private fun PanneauResultats(
     val p by viewModel.parametres.collectAsState()
     val parametresDuResultat by viewModel.parametresDuResultat.collectAsState()
     val erreur by viewModel.erreur.collectAsState()
+    val message by viewModel.message.collectAsState()
     val caseSelectionnee by viewModel.caseSelectionnee.collectAsState()
     val scope = rememberCoroutineScope()
 
     Column(modifier.verticalScroll(rememberScrollState())) {
         erreur?.let {
             Bandeau(it, Color(0xFFF2DEDE), Color(0xFFA94442)) { viewModel.effacerErreur() }
+        }
+        message?.let {
+            Bandeau(it, Color(0xFFDFF0D8), Color(0xFF3C763D)) { viewModel.effacerMessage() }
         }
         val r = resultat
         if (r == null) {

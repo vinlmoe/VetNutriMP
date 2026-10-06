@@ -92,6 +92,7 @@ fun App(appDatabase: AppDatabase) {
     val fileService = appContainer.fileService
     val startupService = appContainer.startupService
     val preferencesRepository = appContainer.preferencesRepository
+    val multiRationExplorationRepository = appContainer.multiRationExplorationRepository
 
     val platformDispatcher = remember { PlatformDispatcher() }
     val nav = remember { AppNavController() }
@@ -214,7 +215,8 @@ fun App(appDatabase: AppDatabase) {
             referenceEvRepository = databaseReferenceEvRepository,
             equationRepository = equationRepository,
             animalRepository = animalRepository,
-            consultationRepository = consultationRepository
+            consultationRepository = consultationRepository,
+            explorationRepository = multiRationExplorationRepository
         )
     }
     val crossAnalysisViewModel = remember {
