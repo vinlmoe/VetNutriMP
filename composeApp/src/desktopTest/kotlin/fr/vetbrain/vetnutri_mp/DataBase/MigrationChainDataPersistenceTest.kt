@@ -155,4 +155,25 @@ class MigrationChainDataPersistenceTest {
 
         db.close()
     }
+
+    @Test
+    fun getRoomDatabase_migratingFromV17_createsMultiRationExplorationsTable() = runTest {
+        // La migration 39->40 crée la table des configurations d'exploration multiration
+        seedV17Database()
+
+        val db = getRoomDatabase(Room.databaseBuilder<AppDatabase>(name = dbPath), dbPath)
+        val dao = db.multiRationExplorationDao()
+        dao.upsert(MultiRationExplorationEntity("expl-1", "Chats adultes", "CHAT", "{}", 1L))
+        dao.upsert(MultiRationExplorationEntity("expl-1", "Chats adultes v2", "CHAT", "{\"version\":1}", 2L))
+
+        val enregistree = dao.getById("expl-1")
+        assertNotNull(enregistree)
+        assertEquals("Chats adultes v2", enregistree.nom)
+        assertEquals(1, dao.getAll().size)
+        dao.deleteById("expl-1")
+        assertTrue(dao.getAll().isEmpty())
+        assertTrue(db.checkIntegrity())
+
+        db.close()
+    }
 }

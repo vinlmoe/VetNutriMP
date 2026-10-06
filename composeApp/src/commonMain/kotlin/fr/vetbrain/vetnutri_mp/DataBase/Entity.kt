@@ -801,3 +801,17 @@ data class HtmlSectionLibraryEntity(
         val createdAt: Long,
         val updatedAt: Long
 )
+
+/**
+ * Configuration nommée d'une exploration multiration (référentiels, grilles poids × K, listes
+ * d'ingrédients, cibles, options), sérialisée en JSON. Les résultats ne sont pas stockés : ils se
+ * recalculent à partir de la configuration.
+ */
+@Entity(tableName = "MULTI_RATION_EXPLORATIONS")
+data class MultiRationExplorationEntity(
+        @PrimaryKey val uuid: String,
+        val nom: String,
+        val espece: String,
+        val configurationJson: String,
+        val updatedAt: Long
+)

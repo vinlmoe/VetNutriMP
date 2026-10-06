@@ -731,3 +731,19 @@ interface HtmlSectionDao {
         )
         suspend fun getConseilsCount(): Int
 }
+
+/** DAO des configurations d'exploration multiration enregistrées */
+@Dao
+interface MultiRationExplorationDao {
+        @Query("SELECT * FROM MULTI_RATION_EXPLORATIONS ORDER BY updatedAt DESC")
+        suspend fun getAll(): List<MultiRationExplorationEntity>
+
+        @Query("SELECT * FROM MULTI_RATION_EXPLORATIONS WHERE uuid = :uuid")
+        suspend fun getById(uuid: String): MultiRationExplorationEntity?
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsert(exploration: MultiRationExplorationEntity)
+
+        @Query("DELETE FROM MULTI_RATION_EXPLORATIONS WHERE uuid = :uuid")
+        suspend fun deleteById(uuid: String)
+}

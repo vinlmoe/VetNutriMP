@@ -9,6 +9,11 @@ import fr.vetbrain.vetnutri_mp.Data.CibleExploration
 import fr.vetbrain.vetnutri_mp.Data.ConfigurationExploration
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.ExplorateurMultiration
+import fr.vetbrain.vetnutri_mp.Data.ConfigurationExplorationJson
+import fr.vetbrain.vetnutri_mp.Data.ExplorationEnregistree
+import fr.vetbrain.vetnutri_mp.Data.ParametresExploration
+import fr.vetbrain.vetnutri_mp.Data.versJson
+import fr.vetbrain.vetnutri_mp.Data.versParametres
 import fr.vetbrain.vetnutri_mp.Data.ExplorationException
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
@@ -19,12 +24,15 @@ import fr.vetbrain.vetnutri_mp.Data.formaterQuantite
 import fr.vetbrain.vetnutri_mp.Data.intervalleExploration
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
+import fr.vetbrain.vetnutri_mp.Repository.MultiRationExplorationRepository
+import fr.vetbrain.vetnutri_mp.Utils.instantNow
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import fr.vetbrain.vetnutri_mp.Utils.today
@@ -48,28 +56,9 @@ class MultiRationViewModel(
         private val referenceEvRepository: DatabaseReferenceEvRepository,
         private val equationRepository: EquationRepository,
         private val animalRepository: AnimalRepository,
-        private val consultationRepository: ConsultationRepository
+        private val consultationRepository: ConsultationRepository,
+        private val explorationRepository: MultiRationExplorationRepository
 ) : ViewModel() {
-
-    /** Paramètres saisis par l'utilisateur (texte pour les champs numériques). */
-    data class Parametres(
-            val referenceIds: Set<String> = emptySet(),
-            val poidsDe: String = "5",
-            val poidsA: String = "30",
-            val poidsPas: String = "5",
-            val kDe: String = "0.8",
-            val kA: String = "1.2",
-            val kPas: String = "0.1",
-            val listes: Map<RoleExploration, List<AlimentEv>> = RoleExploration.entries.associateWith { emptyList() },
-            val cibles: Map<RoleExploration, CibleExploration> =
-                    RoleExploration.entries.filter { !it.estEnergie }.associateWith {
-                        CibleExploration(it.nutrimentParDefaut)
-                    },
-            val doseMinimale: Map<RoleExploration, Double> = RoleExploration.entries.associateWith { 5.0 },
-            val arrondir: Boolean = true,
-            val ignorerOptimax: Boolean = true,
-            val maxScenarios: String = "2000"
-    )
 
     data class Progression(val faits: Int, val total: Int)
 
@@ -77,15 +66,15 @@ class MultiRationViewModel(
     /** Référentiels généraux (hors maladies). */
     val references: StateFlow<List<ReferenceEv>> = _references.asStateFlow()
 
-    private val _parametres = MutableStateFlow(Parametres())
-    val parametres: StateFlow<Parametres> = _parametres.asStateFlow()
+    private val _parametres = MutableStateFlow(ParametresExploration())
+    val parametres: StateFlow<ParametresExploration> = _parametres.asStateFlow()
 
     private val _resultat = MutableStateFlow<ResultatExploration?>(null)
     val resultat: StateFlow<ResultatExploration?> = _resultat.asStateFlow()
 
     /** Paramètres ayant produit le résultat affiché (pour signaler un résultat périmé). */
-    private val _parametresDuResultat = MutableStateFlow<Parametres?>(null)
-    val parametresDuResultat: StateFlow<Parametres?> = _parametresDuResultat.asStateFlow()
+    private val _parametresDuResultat = MutableStateFlow<ParametresExploration?>(null)
+    val parametresDuResultat: StateFlow<ParametresExploration?> = _parametresDuResultat.asStateFlow()
 
     private val _progression = MutableStateFlow<Progression?>(null)
     val progression: StateFlow<Progression?> = _progression.asStateFlow()
@@ -102,6 +91,18 @@ class MultiRationViewModel(
     private val _ouvertureEnCours = MutableStateFlow(false)
     val ouvertureEnCours: StateFlow<Boolean> = _ouvertureEnCours.asStateFlow()
 
+    private val _explorations = MutableStateFlow<List<ExplorationEnregistree>>(emptyList())
+    /** Configurations enregistrées en base, la plus récente d'abord. */
+    val explorations: StateFlow<List<ExplorationEnregistree>> = _explorations.asStateFlow()
+
+    private val _explorationCourante = MutableStateFlow<ExplorationEnregistree?>(null)
+    /** Configuration enregistrée en cours d'édition (null = nouvelle). */
+    val explorationCourante: StateFlow<ExplorationEnregistree?> = _explorationCourante.asStateFlow()
+
+    private val _message = MutableStateFlow<String?>(null)
+    /** Information non bloquante (enregistrement, chargement). */
+    val message: StateFlow<String?> = _message.asStateFlow()
+
     /** Aliments du catalogue (version observée par le repository). */
     val aliments = foodRepository.observeAllFoods()
 
@@ -114,11 +115,26 @@ class MultiRationViewModel(
             val toutes = referenceEvRepository.getAllReferenceEv()
             _references.value = toutes.filter { !it.maladie }.sortedWith(compareBy({ it.espece.name }, { it.nom }))
         }
+        chargerExplorations()
+    }
+
+    /** Espèces ayant au moins un référentiel général. */
+    fun especesDisponibles(): List<Espece> =
+            _references.value.map { it.espece }.distinct().sortedBy { it.categorie }
+
+    /** Référentiels généraux de l'espèce choisie. */
+    fun referencesEspece(p: ParametresExploration = _parametres.value): List<ReferenceEv> =
+            _references.value.filter { it.espece == p.espece }
+
+    /** Changer d'espèce retire les référentiels d'une autre espèce de la sélection. */
+    fun choisirEspece(espece: Espece) = modifierParametres { p ->
+        val autorises = _references.value.filter { it.espece == espece }.map { it.uuid }.toSet()
+        p.copy(espece = espece, referenceIds = p.referenceIds.intersect(autorises))
     }
 
     // --- Paramètres -------------------------------------------------------------------------
 
-    fun modifierParametres(transformation: (Parametres) -> Parametres) {
+    fun modifierParametres(transformation: (ParametresExploration) -> ParametresExploration) {
         _parametres.update(transformation)
     }
 
@@ -163,7 +179,7 @@ class MultiRationViewModel(
     // --- Contrôles avant calcul ------------------------------------------------------------
 
     /** Grilles de poids et de K, ou message d'erreur. */
-    fun grille(p: Parametres = _parametres.value): Pair<List<Double>?, List<Double>?> {
+    fun grille(p: ParametresExploration = _parametres.value): Pair<List<Double>?, List<Double>?> {
         fun intervalle(a: String, b: String, c: String) =
                 try {
                     intervalleExploration(nombre(a), nombre(b), nombre(c))
@@ -173,16 +189,16 @@ class MultiRationViewModel(
         return intervalle(p.poidsDe, p.poidsA, p.poidsPas) to intervalle(p.kDe, p.kA, p.kPas)
     }
 
-    fun nombreScenarios(p: Parametres = _parametres.value): Long {
+    fun nombreScenarios(p: ParametresExploration = _parametres.value): Long {
         val (poids, k) = grille(p)
         val combinaisons = RoleExploration.entries.fold(1L) { acc, role -> acc * p.listes[role].orEmpty().size }
         return combinaisons * (poids?.size ?: 0) * (k?.size ?: 0) * p.referenceIds.size
     }
 
     /** Ce qui empêche de lancer le calcul (vide = prêt). */
-    fun problemes(p: Parametres = _parametres.value): List<String> {
+    fun problemes(p: ParametresExploration = _parametres.value): List<String> {
         val liste = mutableListOf<String>()
-        if (p.referenceIds.isEmpty()) liste += "Choisir au moins un référentiel."
+        if (p.referenceIds.isEmpty()) liste += "Choisir au moins un référentiel (${p.espece.name.lowercase()})."
         val (poids, k) = grille(p)
         if (poids == null) liste += "Poids : bornes positives, maximum ≥ minimum, pas positif."
         if (k == null) liste += "K : bornes positives, maximum ≥ minimum, pas positif."
@@ -218,7 +234,7 @@ class MultiRationViewModel(
                                     val (poids, k) = grille(p)
                                     val config =
                                             ConfigurationExploration(
-                                                    references = _references.value.filter { it.uuid in p.referenceIds },
+                                                    references = referencesEspece(p).filter { it.uuid in p.referenceIds },
                                                     poids = poids.orEmpty(),
                                                     coefficientsK = k.orEmpty(),
                                                     listes = p.listes.mapValues { (_, liste) -> liste.map { complets[it.uuid] ?: it } },
@@ -342,6 +358,110 @@ class MultiRationViewModel(
                                 .map { it.copy(uuid = genUUID(), refRation = rationId) }
                                 .toMutableList()
         )
+    }
+
+    // --- Configurations enregistrées --------------------------------------------------------------
+
+    fun chargerExplorations() {
+        viewModelScope.launch {
+            _explorations.value =
+                    try {
+                        explorationRepository.getAllExplorations()
+                    } catch (e: Exception) {
+                        _erreur.value = "Lecture des explorations enregistrées impossible : ${e.message}"
+                        emptyList()
+                    }
+        }
+    }
+
+    /**
+     * Enregistre la configuration courante sous [nom]. Si une configuration enregistrée est en
+     * cours d'édition et que [commeNouvelle] est faux, elle est mise à jour ; sinon une nouvelle
+     * est créée.
+     */
+    fun enregistrerExploration(nom: String, commeNouvelle: Boolean = false) {
+        val nomPropre = nom.trim()
+        if (nomPropre.isEmpty()) {
+            _erreur.value = "Donner un nom à l'exploration avant de l'enregistrer."
+            return
+        }
+        val p = _parametres.value
+        val courante = _explorationCourante.value
+        val exploration =
+                ExplorationEnregistree(
+                        uuid = if (courante != null && !commeNouvelle) courante.uuid else genUUID(),
+                        nom = nomPropre,
+                        espece = p.espece.name,
+                        configurationJson = p.versJson().versJson(),
+                        updatedAt = instantNow().toEpochMilliseconds()
+                )
+        viewModelScope.launch {
+            try {
+                explorationRepository.saveExploration(exploration)
+                _explorationCourante.value = exploration
+                _message.value = "Exploration « $nomPropre » enregistrée."
+                _explorations.value = explorationRepository.getAllExplorations()
+            } catch (e: Exception) {
+                _erreur.value = "Enregistrement impossible : ${e.message}"
+            }
+        }
+    }
+
+    /** Recharge une configuration : référentiels et aliments retrouvés par identifiant. */
+    fun chargerExploration(uuid: String) {
+        viewModelScope.launch {
+            try {
+                val exploration = explorationRepository.getExplorationById(uuid) ?: return@launch
+                val json = ConfigurationExplorationJson.depuisJson(exploration.configurationJson)
+                if (_references.value.isEmpty()) {
+                    _references.value =
+                            referenceEvRepository.getAllReferenceEv().filter { !it.maladie }
+                                    .sortedWith(compareBy({ it.espece.name }, { it.nom }))
+                }
+                val ids = json.listes.values.flatten().distinct()
+                val aliments = foodRepository.getFoodsByUuids(ids)
+                val (parametres, manquants) = json.versParametres( aliments, _references.value.map { it.uuid }.toSet())
+                annulerCalcul()
+                _parametres.value = parametres
+                _resultat.value = null
+                _parametresDuResultat.value = null
+                _caseSelectionnee.value = null
+                _scenarioSelectionne.value = null
+                _explorationCourante.value = exploration
+                _message.value =
+                        "Exploration « ${exploration.nom} » chargée." +
+                                if (manquants.isEmpty()) "" else " Introuvables (ignorés) : ${manquants.joinToString()}."
+            } catch (e: Exception) {
+                _erreur.value = "Chargement impossible : ${e.message}"
+            }
+        }
+    }
+
+    fun supprimerExploration(uuid: String) {
+        viewModelScope.launch {
+            try {
+                explorationRepository.deleteExploration(uuid)
+                if (_explorationCourante.value?.uuid == uuid) _explorationCourante.value = null
+                _explorations.value = explorationRepository.getAllExplorations()
+            } catch (e: Exception) {
+                _erreur.value = "Suppression impossible : ${e.message}"
+            }
+        }
+    }
+
+    /** Repart d'une configuration vide (nouvelle exploration). */
+    fun nouvelleExploration() {
+        annulerCalcul()
+        _parametres.value = ParametresExploration(espece = _parametres.value.espece)
+        _resultat.value = null
+        _parametresDuResultat.value = null
+        _caseSelectionnee.value = null
+        _scenarioSelectionne.value = null
+        _explorationCourante.value = null
+    }
+
+    fun effacerMessage() {
+        _message.value = null
     }
 
     // --- Exports CSV ----------------------------------------------------------------------------

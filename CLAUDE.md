@@ -31,7 +31,7 @@ Repository/    ← Interfaces + implémentations Room (19 fichiers)
   ↓
 DataBase/      ← DAO Room, Entity, Mappers (8 fichiers)
   ↓
-Room/SQLite    ← ~27 tables, 22 migrations, schéma v39
+Room/SQLite    ← ~28 tables, 23 migrations, schéma v40
 ```
 
 Règles à respecter :
@@ -115,7 +115,7 @@ Trois caches utilisent le pattern `LinkedHashMap` LRU (eviction automatique de l
 - `AnimalDetailViewModel.rationAnalysisCache` — 50 entrées + TTL 2 minutes
 
 ### AppContainer (DI manuel)
-`AppContainer` est un data class avec 13 dépendances construit dans `rememberAppContainer(appDatabase)`. Il n'est pas lazy. Pour ajouter une dépendance, l'ajouter dans `AppContainer.kt` **et** dans `rememberAppContainer`.
+`AppContainer` est un data class avec 14 dépendances construit dans `rememberAppContainer(appDatabase)`. Il n'est pas lazy. Pour ajouter une dépendance, l'ajouter dans `AppContainer.kt` **et** dans `rememberAppContainer`.
 
 ### Résolveur de nutriments
 `NutrientResolver.AllNutrientResolver(label)` est le point d'entrée unique pour résoudre un label textuel vers un `Nutrient`. Ne pas appeler `getByLabel()` directement sur les enums individuels depuis les couches Repository/Service — passer par `NutrientResolver`.
@@ -126,7 +126,10 @@ Trois caches utilisent le pattern `LinkedHashMap` LRU (eviction automatique de l
 énergie, arrondis `arrondirQuantiteSelonRegles`, conformité `calculerConformite` comme l'analyse de ration),
 BEE et poids métabolique via `Data/CalculMetabolique.kt` (partagé avec `AnimalDetailViewModel`). Une ration
 explorée est ouverte dans une consultation de l'animal de travail « Exploration multiration » (poids,
-référentiel, K = `coefficientAjustement`) pour réutiliser analyse, édition et export existants.
+référentiel, K = `coefficientAjustement`) pour réutiliser analyse, édition et export existants. Toutes
+espèces : l'espèce choisie filtre les référentiels généraux et les aliments proposés. Les configurations
+nommées sont enregistrées dans `MULTI_RATION_EXPLORATIONS` (JSON d'identifiants, `Data/ExplorationEnregistree.kt`,
+`MultiRationExplorationRepository`) ; les résultats ne sont pas stockés, ils se recalculent.
 
 ### Threads
 - `AppDispatchers.IO` → opérations DB et réseau
