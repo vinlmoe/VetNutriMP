@@ -618,6 +618,17 @@ class ExportImportRepository(
                 // 4) Aliments (aucune dépendance)
                 if (envelope.foods.isNotEmpty() && foodRepository != null) {
                         listener?.onLog?.invoke("Import des aliments (${envelope.foods.size})…")
+                        // Certaines anciennes sauvegardes contiennent exceptionnellement un
+                        // aliment sans UUID. On lui attribue un identifiant stable dérivé de sa
+                        // position et de son nom : l'aliment est conservé et une restauration ne
+                        // doit pas échouer pour cette seule donnée incomplète.
+                        val foodsToImport = envelope.foods.mapIndexed { index, food ->
+                                if (food.uuid.isBlank()) {
+                                        val generatedUuid =
+                                                "legacy-food-${index + 1}-${food.name.orEmpty().hashCode().toString(16)}"
+                                        food.copy(uuid = generatedUuid)
+                                } else food
+                        }
                         // Cache des biblioRefs (déjà importées à l'étape 1) pour résoudre les
                         // placeholders uuid-only posés par FoodApi.toDomain()
                         val foodBiblioCache: Map<String, BiblioRef> =
@@ -637,7 +648,7 @@ class ExportImportRepository(
                                 )
                         if (foodRepository is DatabaseFoodRepository) {
                                 try {
-                                        val aliments = envelope.foods.map { resolveBiblioRefs(it, it.toDomain()) }
+                                        val aliments = foodsToImport.map { resolveBiblioRefs(it, it.toDomain()) }
                                         val res = foodRepository.importFoodsDomain(aliments)
                                         foodsImported += res.importedCount + res.updatedCount
                                         errorCount += res.errorCount
@@ -654,7 +665,7 @@ class ExportImportRepository(
                                 }
                         } else {
                                 // Fallback: insertion/MAJ unitaire si repo non-DB
-                                for (api in envelope.foods) {
+                                for (api in foodsToImport) {
                                         try {
                                                 val aliment = resolveBiblioRefs(api, api.toDomain())
                                                 foodRepository.insertFood(aliment)
@@ -918,6 +929,21 @@ class ExportImportRepository(
                 // 6) Animaux + consultations/rations (dépendent des aliments et références)
                 if (envelope.animals.isNotEmpty()) {
                         listener?.onLog?.invoke("Import des animaux (${envelope.animals.size})…")
+                        // `DatabaseAnimalRepository.saveAnimal` réalise un INSERT. Une
+                        // restauration se fait souvent au-dessus d'une base contenant déjà les
+                        // mêmes UUID : il faut alors utiliser UPDATE, sans quoi Room refuse tous
+                        // les animaux sur la contrainte d'unicité.
+                        val existingAnimalIds: MutableSet<String> = try {
+                                animalRepository.getAllAnimals().map { it.uuid }.toMutableSet()
+                        } catch (e: Exception) {
+                                if (e is kotlinx.coroutines.CancellationException) throw e
+                                errorCount++
+                                listener?.onLog?.invoke(
+                                        "Erreur lecture des animaux existants: ${e.message}"
+                                )
+                                mutableSetOf()
+                        }
+                        var updatedAnimals = 0
                         // rations
                         var existingFoodIdsForRations: MutableSet<String> = mutableSetOf()
                         if (foodRepository != null) {
@@ -927,7 +953,21 @@ class ExportImportRepository(
                         for (animalApi in envelope.animals) {
                                 try {
                                         val animal = animalApi.toDomain()
-                                        animalRepository.saveAnimal(animal)
+                                        // La représentation JSON des consultations ne porte pas
+                                        // l'UUID de l'animal parent. `saveAnimal` le renseigne
+                                        // implicitement pour les nouveaux animaux, mais pas
+                                        // `updateAnimal`; sans cette affectation, la sauvegarde
+                                        // suivante des consultations viole leur clé étrangère.
+                                        animal.consultations.forEach { consultation ->
+                                                consultation.idAnim = animal.uuid
+                                        }
+                                        if (animal.uuid in existingAnimalIds) {
+                                                animalRepository.updateAnimal(animal)
+                                                updatedAnimals++
+                                        } else {
+                                                animalRepository.saveAnimal(animal)
+                                                existingAnimalIds.add(animal.uuid)
+                                        }
                                         // Sauvegarder les consultations avec rations si possible
                                         if (consultationRepository != null) {
                                                 // Créer les aliments manquants référencés par les
@@ -1007,7 +1047,7 @@ class ExportImportRepository(
                                 }
                         }
                         listener?.onLog?.invoke(
-                                "Animaux importés=$animalsImported, rations liées=$rationsImported"
+                                "Animaux importés=$animalsImported, mis à jour=$updatedAnimals, rations liées=$rationsImported"
                         )
                 }
 

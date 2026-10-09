@@ -314,7 +314,7 @@ class DatabaseFoodRepository(
                             } else {
                                 updateIds.add(aliment.uuid)
                             }
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
                             errorCount++
                         }
                     }
@@ -357,7 +357,7 @@ class DatabaseFoodRepository(
                                     aliment.biblioRefs.forEach { ref ->
                                         batchBiblioJunctions.add(AlimentBiblioRefEntity(alimentUuid = aliment.uuid, biblioRefUuid = ref.uuid))
                                     }
-                                } catch (_: Exception) {
+                                } catch (e: Exception) {
                                     errorCount++
                                 }
                             }
@@ -370,12 +370,12 @@ class DatabaseFoodRepository(
                             try {
                                 foodDao.insertFoods(part)
                                 importCount += part.size
-                            } catch (_: Exception) {
+                            } catch (e: Exception) {
                                 part.forEach { entity ->
                                     try {
                                         foodDao.insertFoods(listOf(entity))
                                         importCount++
-                                    } catch (_: Exception) {
+                                    } catch (itemError: Exception) {
                                         errorCount++
                                     }
                                 }
@@ -387,12 +387,12 @@ class DatabaseFoodRepository(
                             try {
                                 foodDao.updateFoods(part)
                                 updateCount += part.size
-                            } catch (_: Exception) {
+                            } catch (e: Exception) {
                                 part.forEach { entity ->
                                     try {
                                         foodDao.updateFoods(listOf(entity))
                                         updateCount++
-                                    } catch (_: Exception) {
+                                    } catch (itemError: Exception) {
                                         errorCount++
                                     }
                                 }
