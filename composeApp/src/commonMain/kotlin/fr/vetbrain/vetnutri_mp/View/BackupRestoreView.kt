@@ -342,6 +342,14 @@ private fun BackupItem(
             ) {
                 Column {
                     Text(viewModel.formatDate(backup.createdAt), style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.Bold)
+                    if (backup.isLongTerm) {
+                        Text(
+                            text = translate("backup.long_term_label"),
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     Text(
                         text = backup.fileName,
                         style = MaterialTheme.typography.body2,

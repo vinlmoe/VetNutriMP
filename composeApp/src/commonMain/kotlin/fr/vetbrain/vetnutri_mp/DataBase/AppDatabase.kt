@@ -12,6 +12,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import fr.vetbrain.vetnutri_mp.DataBase.*
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
+import fr.vetbrain.vetnutri_mp.Utils.runBlockingOnPlatform
 import kotlinx.coroutines.withContext
 
 /** Version du schéma Room ; à incrémenter avec chaque nouvelle migration. */
@@ -114,9 +115,10 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
         )
     }
 
+    var opened: AppDatabase? = null
     return try {
         // ✅ Configuration sécurisée avec migrations explicites
-        builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+        val database = builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 .addMigrations(
                         // Migration 17→18 : Test de montée de version sécurisée
                         createMigration17to18(),
@@ -170,9 +172,22 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
                 // est mise de côté par protectDatabaseAgainstVersionChange ; si elle arrivait
                 // quand même ici, l'échec est traité par rotation (jamais d'effacement).
                 .build()
+        opened = database
+        // Room n'ouvre la base (et ne lance les migrations) qu'à la première requête : l'ouvrir ici
+        // pour qu'un échec de migration soit traité par ce catch, et non par l'écran de démarrage
+        // qui proposait alors une réinitialisation.
+        runBlockingOnPlatform {
+            database.useReaderConnection { connection ->
+                connection.usePrepared("PRAGMA user_version") { it.step() }
+            }
+        }
+        database
     } catch (e: Exception) {
-        // ⚠️ Migration ou initialisation échouée : rotation du fichier corrompu, jamais d'effacement
-        rotateCorruptDatabaseFiles(dbPath)
+        // ⚠️ Migration ou initialisation échouée : la base est mise de côté, jamais effacée
+        try {
+            opened?.close()
+        } catch (_: Exception) {}
+        setAsideDatabaseFiles(dbPath, "migration-failed")
         DatabaseChangeNotifier.notifyChange(
             DatabaseChangeNotifier.ChangeType.DATABASE_MIGRATION_FAILED,
             e.message
