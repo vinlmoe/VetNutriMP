@@ -64,10 +64,8 @@ fun ConsultationsView(
                 availableKeywords = availableKeywords,
                 onBackPressed = { consultation -> viewModel.saveFromFullScreen(consultation) },
                 onCancel = {
-                    // Annuler la création si la consultation venait d'être créée (uuid vide)
-                    if (selectedConsultation?.uuid?.isEmpty() == true) {
-                        viewModel.stopEditingConsultation()
-                    }
+                    // Abandonne un éventuel brouillon et garde une consultation sélectionnée
+                    viewModel.cancelConsultationEditing()
                     viewModel.closeFullScreenEdit()
                 },
                 onLoadReferences = { viewModel.chargerReferencesDisponibles() },
@@ -258,9 +256,10 @@ private fun ConsultationsMainView(
                                 consultation = consultation,
                                 availableReferences = availableReferences,
                                 onDismiss = {
-                                    if (isEditingConsultation && consultation.uuid.isEmpty()) {
-                                        // Si on annule l'ajout d'une nouvelle consultation
-                                        viewModel.stopEditingConsultation()
+                                    if (isEditingConsultation) {
+                                        // Abandonne un éventuel brouillon et garde une
+                                        // consultation sélectionnée
+                                        viewModel.cancelConsultationEditing()
                                     }
                                     onShowConsultationDetail(false)
                                 },
