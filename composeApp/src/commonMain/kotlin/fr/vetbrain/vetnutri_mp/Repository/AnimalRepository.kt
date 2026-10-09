@@ -17,6 +17,10 @@ data class AnimalImportResult(
 interface AnimalRepository {
     suspend fun saveAnimal(animal: AnimalEv)
     suspend fun getAllAnimals(): List<AnimalEv>
+
+    /** Nombre d'animaux en base (sans charger les objets agrégés) */
+    suspend fun getAnimalsCount(): Int = getAllAnimals().size
+
     suspend fun deleteAnimal(animal: AnimalEv)
 
     /**

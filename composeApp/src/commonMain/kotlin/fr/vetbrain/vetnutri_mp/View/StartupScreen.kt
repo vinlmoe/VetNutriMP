@@ -19,6 +19,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
+import fr.vetbrain.vetnutri_mp.Service.BackupService
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
@@ -37,6 +39,7 @@ import fr.vetbrain.vetnutri_mp.getPlatform
 import fr.vetbrain.vetnutri_mp.performDatabaseFactoryReset
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.ConfirmationDialog
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /** État de la base de données */
@@ -67,6 +70,9 @@ fun StartupScreen(
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null,
         onShowBackupDialog: () -> Unit = {},
         onStartExam: (ExamSession) -> Unit = {},
+        findRecoveryBackup: suspend () -> BackupService.BackupMetadata? = { null },
+        restoreRecoveryBackup: suspend (BackupService.BackupMetadata) -> Result<ExportImportRepository.ImportCounts> =
+                { Result.failure(IllegalStateException("Restauration indisponible")) },
         modifier: Modifier = Modifier
 ) {
         var showStartupScreen by remember { mutableStateOf(true) }
@@ -112,8 +118,19 @@ fun StartupScreen(
         // Flag pour empêcher le réaffichage du dialogue après un import récent
         var hasJustImported by remember { mutableStateOf(false) }
 
+        // Base sans animaux alors qu'une sauvegarde JSON en contient : proposer de la régénérer
+        var recoveryBackup by remember { mutableStateOf<BackupService.BackupMetadata?>(null) }
+        var isRestoringBackup by remember { mutableStateOf(false) }
+        var recoveryResultMessage by remember { mutableStateOf<String?>(null) }
+        // Import automatique Windows différé tant que la proposition de restauration est en cours
+        var pendingAutoUpdate by remember { mutableStateOf(false) }
+
         val coroutineScope = rememberCoroutineScope()
         fun launchDatabaseUpdateAutomatically() {
+                if (recoveryBackup != null || isRestoringBackup) {
+                        pendingAutoUpdate = true
+                        return
+                }
                 if (isUpdatingDatabase || hasJustImported) return
                 showJsonUpdateDialog = false
                 showUpdateDialog = false
@@ -190,6 +207,14 @@ fun StartupScreen(
                                         conseilsCount = conseilsCount,
                                         needsUpdate = foodCount == 0 || referenceCount == 0
                                 )
+
+                        // Base sans animaux : proposer la sauvegarde JSON la plus récente qui en
+                        // contient, avant tout import automatique
+                        try {
+                                if (settingsViewModel.animalRepository.getAnimalsCount() == 0) {
+                                        recoveryBackup = findRecoveryBackup()
+                                }
+                        } catch (_: Exception) {}
 
                         // Vérifier si les CGU ont déjà été acceptées
                         hasAcceptedTerms = termsStorage.checkTermsAcceptance()
@@ -1585,6 +1610,81 @@ fun StartupScreen(
                         )
                 }
 
+                recoveryBackup?.let { backup ->
+                        if (!isRestoringBackup) {
+                                fun closeRecovery() {
+                                        recoveryBackup = null
+                                        isRestoringBackup = false
+                                        if (pendingAutoUpdate) {
+                                                pendingAutoUpdate = false
+                                                launchDatabaseUpdateAutomatically()
+                                        }
+                                }
+                                ConfirmationDialog(
+                                        title = translate("startup.empty_db_restore_title"),
+                                        message = translate(
+                                                "startup.empty_db_restore_message",
+                                                formatBackupDate(backup.createdAt),
+                                                backup.animalCount.toString(),
+                                                backup.rationCount.toString(),
+                                                backup.foodCount.toString()
+                                        ),
+                                        confirmText = translate("startup.empty_db_restore_confirm"),
+                                        dismissText = translate("startup.empty_db_restore_later"),
+                                        isDestructive = false,
+                                        onConfirm = {
+                                                isRestoringBackup = true
+                                                isUpdatingDatabase = true
+                                                coroutineScope.launch {
+                                                        val result = restoreRecoveryBackup(backup)
+                                                        recoveryResultMessage =
+                                                                result.fold(
+                                                                        onSuccess = { counts ->
+                                                                                translate(
+                                                                                        "startup.empty_db_restore_success",
+                                                                                        counts.animals.toString(),
+                                                                                        counts.rations.toString(),
+                                                                                        counts.foods.toString()
+                                                                                )
+                                                                        },
+                                                                        onFailure = { e ->
+                                                                                translate(
+                                                                                        "startup.empty_db_restore_error",
+                                                                                        e.message ?: ""
+                                                                                )
+                                                                        }
+                                                                )
+                                                        try {
+                                                                val foodCount = settingsViewModel.foodRepository.getFoodsCount()
+                                                                val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
+                                                                databaseStatus = databaseStatus?.copy(
+                                                                        foodCount = foodCount,
+                                                                        referenceCount = referenceCount,
+                                                                        needsUpdate = foodCount == 0 || referenceCount == 0
+                                                                )
+                                                        } catch (_: Exception) {}
+                                                        isUpdatingDatabase = false
+                                                        closeRecovery()
+                                                }
+                                        },
+                                        onDismiss = { closeRecovery() }
+                                )
+                        }
+                }
+
+                recoveryResultMessage?.let { message ->
+                        AlertDialog(
+                                onDismissRequest = { recoveryResultMessage = null },
+                                title = { Text(translate("startup.empty_db_restore_title")) },
+                                text = { Text(message) },
+                                confirmButton = {
+                                        TextButton(onClick = { recoveryResultMessage = null }) {
+                                                Text(translate(LocalizationKeys.General.OK))
+                                        }
+                                }
+                        )
+                }
+
                 if (showExamDialog) {
                         AlertDialog(
                                 onDismissRequest = { showExamDialog = false },
@@ -2116,3 +2216,16 @@ private fun TestersDialog(onDismiss: () -> Unit) {
                 }
         )
 }
+
+/** Date d'une sauvegarde au format jj/mm/aaaa hh:mm (fuseau local) */
+private fun formatBackupDate(timestamp: Long): String =
+        try {
+                val dateTime =
+                        kotlinx.datetime.Instant.fromEpochMilliseconds(timestamp)
+                                .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+                "${dateTime.dayOfMonth.toString().padStart(2, '0')}/" +
+                        "${dateTime.monthNumber.toString().padStart(2, '0')}/${dateTime.year} " +
+                        "${dateTime.hour.toString().padStart(2, '0')}:${dateTime.minute.toString().padStart(2, '0')}"
+        } catch (_: Exception) {
+                "?"
+        }

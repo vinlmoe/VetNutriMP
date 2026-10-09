@@ -49,6 +49,9 @@ class DatabaseAnimalRepository(
                 }
         }
 
+        override suspend fun getAnimalsCount(): Int =
+                withContext(AppDispatchers.IO) { animalDao.getAnimalsCount() }
+
         override suspend fun getAllAnimals(): List<AnimalEv> {
                 return withContext(AppDispatchers.IO) {
                         val entities = animalDao.getAllAnimals()

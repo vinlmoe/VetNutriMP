@@ -60,10 +60,10 @@ class BackupService(
         stopAutomaticBackup() // Arrêter toute sauvegarde existante
 
         backupJob = scope.launch {
-            createBackup()
+            createAutomaticBackup()
             while (isActive) {
                 delay(BACKUP_INTERVAL_MINUTES * 60 * 1000)
-                createBackup()
+                createAutomaticBackup()
             }
         }
     }
@@ -84,10 +84,29 @@ class BackupService(
         createBackupLocked()
     }
 
-    private suspend fun createBackupLocked(rotate: Boolean = true): Result<BackupMetadata> {
+    /**
+     * Sauvegarde automatique. Une base sans animaux n'est pas sauvegardée tant qu'une sauvegarde
+     * plus ancienne en contient : après une perte de base, la rotation effacerait sinon les
+     * dernières sauvegardes utiles en moins de deux heures.
+     */
+    internal suspend fun createAutomaticBackup(): Result<BackupMetadata> = operationMutex.withLock {
+        createBackupLocked(skipIfNoAnimals = true)
+    }
+
+    /** Sauvegarde la plus récente contenant des animaux, candidate à une restauration. */
+    suspend fun findLatestBackupWithAnimals(): BackupMetadata? =
+            getAvailableBackups().firstOrNull { it.animalCount > 0 }
+
+    private suspend fun createBackupLocked(
+            rotate: Boolean = true,
+            skipIfNoAnimals: Boolean = false
+    ): Result<BackupMetadata> {
         return try {
             // Exporter toutes les données
             val envelope = exportImportRepository.exportAllEnvelope()
+            if (skipIfNoAnimals && envelope.animals.isEmpty() && findLatestBackupWithAnimals() != null) {
+                return Result.failure(IllegalStateException("Base sans animaux : sauvegarde automatique ignorée"))
+            }
 
             // Créer le nom de fichier avec timestamp
             var timestamp = Clock.System.now().toEpochMilliseconds()

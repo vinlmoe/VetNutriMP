@@ -307,7 +307,9 @@ fun App(appDatabase: AppDatabase) {
                     onDatabaseReady = { showStartupScreen = false },
                     conseilRepository = settingsViewModel.conseilRepository,
                     onShowBackupDialog = { showStartupBackupDialog = true },
-                    onStartExam = { session -> examSession = session }
+                    onStartExam = { session -> examSession = session },
+                    findRecoveryBackup = { startupService.findRecoveryBackup() },
+                    restoreRecoveryBackup = { backup -> startupService.restoreBackup(backup) }
                 )
                 else -> Column(modifier = Modifier.fillMaxSize()) {
                     AppNavHost(nav, models, repos, examSession)

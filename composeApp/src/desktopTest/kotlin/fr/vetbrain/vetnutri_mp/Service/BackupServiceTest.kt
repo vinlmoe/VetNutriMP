@@ -184,6 +184,34 @@ class BackupServiceTest {
     }
 
     @Test
+    fun automaticBackupOfEmptyDatabaseKeepsBackupWithAnimals() = runTest {
+        val source = InMemoryAnimalRepository()
+        source.saveAnimal(AnimalEv(uuid = "a", nom = "Rex"))
+        val sourceService = newBackupService(source)
+        val withAnimals = sourceService.createBackup().getOrThrow()
+
+        // Base vidée (perte de base) qui lit le même répertoire de sauvegardes
+        val emptyService = newBackupService(InMemoryAnimalRepository())
+        assertEquals(withAnimals.fileName, emptyService.findLatestBackupWithAnimals()?.fileName)
+        repeat(12) { assertTrue(emptyService.createAutomaticBackup().isFailure) }
+        assertEquals(1, emptyService.getAvailableBackups().size)
+        assertEquals(withAnimals.fileName, emptyService.findLatestBackupWithAnimals()?.fileName)
+
+        // Une sauvegarde manuelle reste possible
+        assertTrue(emptyService.createBackup().isSuccess)
+        emptyService.cleanup()
+        sourceService.cleanup()
+    }
+
+    @Test
+    fun automaticBackupOfEmptyDatabaseWithoutPreviousAnimalsIsCreated() = runTest {
+        val service = newBackupService(InMemoryAnimalRepository())
+        assertTrue(service.createAutomaticBackup().isSuccess)
+        assertEquals(null, service.findLatestBackupWithAnimals())
+        service.cleanup()
+    }
+
+    @Test
     fun missingSourceMoveIsFailure() = runTest {
         val missing = fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile(File(tempDir, "missing").path)
         val destination = fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile(File(tempDir, "destination").path)
