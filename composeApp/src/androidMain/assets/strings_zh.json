@@ -1302,6 +1302,7 @@
         "startup.db_unreadable_message": "数据库无法正确读取。\\n\\n错误:%1$s\\n\\n是否要重置本地数据库并从内置数据重新创建?未导出的本地数据可能会丢失。",
         "startup.empty_db_restore_title": "数据库中没有动物",
         "startup.empty_db_restore_message": "数据库中没有任何动物,但 %1$s 的自动备份中包含:\n\n• %2$s 只动物\n• %3$s 份日粮\n• %4$s 种食物\n\n是否要从该备份重建数据库?其他备份仍可在 设置 > 备份 中找到。",
+        "backup.long_term_label": "长期备份(保留)",
         "startup.empty_db_restore_confirm": "恢复",
         "startup.empty_db_restore_later": "稍后",
         "startup.empty_db_restore_success": "恢复完成:已导入 %1$s 只动物、%2$s 份日粮和 %3$s 种食物。",
