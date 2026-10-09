@@ -212,6 +212,29 @@ class BackupServiceTest {
     }
 
     @Test
+    fun everyHundredthAutomaticBackupIsKeptLongTermDespiteRotation() = runTest {
+        val repo = InMemoryAnimalRepository()
+        repo.saveAnimal(AnimalEv(uuid = "a", nom = "Rex"))
+        val service = newBackupService(repo)
+
+        repeat(BackupService.LONG_TERM_EVERY - 1) { assertTrue(service.createAutomaticBackup().isSuccess) }
+        assertTrue(service.getAvailableBackups().none { it.isLongTerm })
+
+        assertTrue(service.createAutomaticBackup().isSuccess)
+        val longTerm = service.getAvailableBackups().filter { it.isLongTerm }
+        assertEquals(1, longTerm.size)
+        assertEquals(1, longTerm.single().animalCount)
+
+        // La rotation continue sur les sauvegardes ordinaires sans toucher à la long terme
+        repeat(15) { assertTrue(service.createAutomaticBackup().isSuccess) }
+        val backups = service.getAvailableBackups()
+        assertEquals(longTerm.single().fileName, backups.single { it.isLongTerm }.fileName)
+        assertEquals(10, backups.count { !it.isLongTerm })
+        assertTrue(service.restoreBackup(longTerm.single()).isSuccess)
+        service.cleanup()
+    }
+
+    @Test
     fun missingSourceMoveIsFailure() = runTest {
         val missing = fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile(File(tempDir, "missing").path)
         val destination = fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile(File(tempDir, "destination").path)
