@@ -122,6 +122,8 @@ fun StartupScreen(
         var recoveryBackup by remember { mutableStateOf<BackupService.BackupMetadata?>(null) }
         var isRestoringBackup by remember { mutableStateOf(false) }
         var recoveryResultMessage by remember { mutableStateOf<String?>(null) }
+        // Sauvegarde JSON annoncée dans le dialogue « base illisible » (proposée après redémarrage)
+        var unreadableRecoveryBackup by remember { mutableStateOf<BackupService.BackupMetadata?>(null) }
         // Import automatique Windows différé tant que la proposition de restauration est en cours
         var pendingAutoUpdate by remember { mutableStateOf(false) }
 
@@ -386,6 +388,12 @@ fun StartupScreen(
                                         needsUpdate = true,
                                         error = e.message
                                 )
+                        unreadableRecoveryBackup =
+                                try {
+                                        findRecoveryBackup()
+                                } catch (_: Exception) {
+                                        null
+                                }
                         showRecoveryDialog = true
                 } finally {
                         isCheckingDatabase = false
@@ -1566,9 +1574,18 @@ fun StartupScreen(
 
                 if (showRecoveryDialog) {
                         val databaseError = databaseStatus?.error ?: translate("error.unknown")
+                        val backupHint =
+                                unreadableRecoveryBackup?.let { backup ->
+                                        translate(
+                                                "startup.db_unreadable_backup_hint",
+                                                formatBackupDate(backup.createdAt),
+                                                backup.animalCount.toString()
+                                        )
+                                } ?: translate("startup.db_unreadable_no_backup_hint")
                         ConfirmationDialog(
                                 title = translate("startup.db_unreadable_title"),
-                                message = translate("startup.db_unreadable_message", databaseError),
+                                message = translate("startup.db_unreadable_message", databaseError) +
+                                        "\n\n" + backupHint,
                                 confirmText = translate(LocalizationKeys.General.RESET),
                                 dismissText = translate(LocalizationKeys.General.CANCEL),
                                 isDestructive = true,
