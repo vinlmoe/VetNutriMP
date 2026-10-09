@@ -1,34 +1,59 @@
+@file:OptIn(ExperimentalForeignApi::class)
+
 package fr.vetbrain.vetnutri_mp.Export
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.ObjCSignatureOverride
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSData
 import platform.Foundation.NSMutableData
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
+import platform.Foundation.NSValue
+import platform.Foundation.setValue
 import platform.Foundation.writeToFile
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
-import platform.UIKit.UIPopoverPresentationController
-import platform.UIKit.UIModalPresentationPopover
 import platform.UIKit.UIGraphicsBeginPDFContextToData
 import platform.UIKit.UIGraphicsBeginPDFPage
 import platform.UIKit.UIGraphicsEndPDFContext
 import platform.UIKit.UIGraphicsGetPDFContextBounds
-import platform.UIKit.UIMarkupTextPrintFormatter
-import platform.UIKit.UIPrintInfoOrientation
 import platform.UIKit.UIPrintPageRenderer
 import platform.UIKit.UIViewController
+import platform.UIKit.UIWindow
 import platform.UIKit.popoverPresentationController
-import platform.darwin.dispatch_async
-import platform.darwin.dispatch_get_main_queue
+import platform.UIKit.valueWithCGRect
+import platform.UIKit.viewPrintFormatter
+import platform.Foundation.NSError
+import platform.WebKit.WKNavigation
+import platform.WebKit.WKNavigationDelegateProtocol
+import platform.WebKit.WKWebView
+import platform.WebKit.WKWebViewConfiguration
+import platform.darwin.NSObject
+import kotlin.coroutines.resume
 
-@OptIn(ExperimentalForeignApi::class)
+/**
+ * Export PDF iOS.
+ *
+ * Le HTML est rendu par un `WKWebView` (seul moteur iOS qui dessine les SVG des courbes de poids),
+ * puis paginé en A4 via `viewPrintFormatter()` + `UIPrintPageRenderer`. Le PDF obtenu est proposé
+ * dans la feuille de partage iOS (Fichiers, Mail, AirDrop, impression…).
+ */
 actual object PdfExporter {
-        // A4 paysage (largeur > hauteur)
-        private const val a4Width: Double = 842.0
-        private const val a4Height: Double = 595.0
-        private const val margin: Double = 20.0
+        // A4 en points
+        private const val a4Largeur: Double = 595.0
+        private const val a4Hauteur: Double = 842.0
+        private const val marge: Double = 28.0
+
+        /** Délai max d'attente du chargement HTML dans le WKWebView. */
+        private const val delaiChargementMs: Long = 20_000
+
+        // navigationDelegate est weak : on garde les délégués vivants pendant le chargement.
+        private val deleguesActifs = mutableSetOf<DelegueChargement>()
 
         actual suspend fun exportDocument(
                 documentType: DocumentType,
@@ -36,334 +61,179 @@ actual object PdfExporter {
                 defaultFileName: String
         ): Boolean {
                 val html: String = HtmlDocumentBuilder.buildHtml(documentType, data)
-                return imprimerDocument(html)
+                return exporterHtml(html, defaultFileName, data.isLandscape)
         }
 
         actual suspend fun exportHtmlDocument(
                 html: String,
                 defaultFileName: String
         ): Boolean {
-                return imprimerDocument(html)
+                val paysage = html.contains("A4 landscape", ignoreCase = true)
+                return exporterHtml(html, defaultFileName, paysage)
         }
-        
-        private fun imprimerDocument(html: String): Boolean {
-                return try {
-                        // Nettoyer le HTML
-                        val cleanHtml = nettoyerHtml(html)
-                        if (cleanHtml.isBlank()) {
-                                return false
+
+        private suspend fun exporterHtml(
+                html: String,
+                nomFichier: String,
+                paysage: Boolean
+        ): Boolean {
+                val cleanHtml = nettoyerHtml(html)
+                if (cleanHtml.isBlank()) return false
+
+                return withContext(Dispatchers.Main) {
+                        val controleur = obtenirTopViewController() ?: return@withContext false
+                        val largeur = if (paysage) a4Hauteur else a4Largeur
+                        val hauteur = if (paysage) a4Largeur else a4Hauteur
+
+                        // Hors écran mais dans la hiérarchie de vues : certaines versions d'iOS
+                        // ne dessinent pas un WKWebView détaché.
+                        val webView = WKWebView(
+                                frame = CGRectMake(-largeur * 2, 0.0, largeur, hauteur),
+                                configuration = WKWebViewConfiguration()
+                        )
+                        controleur.view.addSubview(webView)
+
+                        try {
+                                val charge = withTimeoutOrNull(delaiChargementMs) {
+                                        chargerHtml(webView, cleanHtml)
+                                } ?: false
+                                if (!charge) return@withContext false
+
+                                val pdfData = genererPdf(webView, largeur, hauteur)
+                                        ?: return@withContext false
+                                partagerPdf(pdfData, nomFichier, controleur)
+                        } catch (t: Throwable) {
+                                t.printStackTrace()
+                                false
+                        } finally {
+                                webView.navigationDelegate = null
+                                webView.removeFromSuperview()
                         }
-                        
-                        // Détecter si le HTML contient des SVG (graphiques complexes)
-                        val contientSvg = cleanHtml.contains("<svg", ignoreCase = true)
-                        
-                        // Exécuter toute la logique d'impression sur le thread principal
-                        dispatch_async(dispatch_get_main_queue()) {
-                                try {
-                                        val controleur: UIViewController? = obtenirTopViewController()
-                                        if (controleur == null) {
-                                                return@dispatch_async
-                                        }
-                                        
-                                        // Si le document contient des SVG, essayer la génération directe de PDF
-                                        // mais seulement si le HTML n'est pas trop volumineux
-                                        if (contientSvg && cleanHtml.length <= 1_500_000) {
-                                                val pdfData = genererPdfDepuisHtml(cleanHtml)
-                                                if (pdfData != null) {
-                                                        partagerPdfDirect(pdfData, controleur)
-                                                        return@dispatch_async
-                                                }
-                                                // Si la génération échoue, continuer avec le dialogue d'impression
-                                        }
-                                        
-                                        // Sinon, essayer d'abord avec UIMarkupTextPrintFormatter
-                                        val success = imprimerAvecMarkupFormatter(cleanHtml, controleur)
-                                        if (success) {
-                                                return@dispatch_async
-                                        }
-                                        
-                                        // Si échec, essayer avec UISimpleTextPrintFormatter
-                                        imprimerAvecSimpleTextFormatter(cleanHtml, controleur)
-                                        
-                                } catch (t: Throwable) {
-                                        t.printStackTrace()
-                                }
-                        }
-                        
-                        true
-                } catch (t: Throwable) {
-                        t.printStackTrace()
-                        false
-                }
-        }
-        
-        private fun imprimerAvecMarkupFormatter(html: String, controleur: UIViewController): Boolean {
-                return try {
-                        
-                        // Créer le formatteur d'impression
-                        val printFormatter = UIMarkupTextPrintFormatter(markupText = html)
-                        
-                        // Configurer les marges
-                        printFormatter.perPageContentInsets = platform.UIKit.UIEdgeInsetsMake(
-                                margin, margin, margin, margin
-                        )
-                        
-                        // Créer le contrôleur d'impression
-                        val printController = platform.UIKit.UIPrintInteractionController.sharedPrintController()
-                        printController.printFormatter = printFormatter
-                        
-                        // Configurer les options d'impression
-                        val printInfo = platform.UIKit.UIPrintInfo.printInfo()
-                        printInfo.outputType = platform.UIKit.UIPrintInfoOutputType.UIPrintInfoOutputGeneral
-                        printInfo.jobName = "Document VetNutri"
-                        printInfo.orientation = UIPrintInfoOrientation.UIPrintInfoOrientationLandscape
-                        printController.printInfo = printInfo
-                        
-                        // Présenter le dialogue d'impression
-                        printController.presentAnimated(
-                                animated = true,
-                                completionHandler = { controller, completed, error ->
-                                        if (completed) {
-                                        } else if (error != null) {
-                                        } else {
-                                        }
-                                }
-                        )
-                        
-                        true
-                } catch (t: Throwable) {
-                        false
-                }
-        }
-        
-        private fun imprimerAvecSimpleTextFormatter(html: String, controleur: UIViewController): Boolean {
-                return try {
-                        
-                        // Extraire le texte du HTML (supprimer les balises)
-                        val textContent = extraireTexteDuHtml(html)
-                        
-                        // Créer le formatteur d'impression simple
-                        val printFormatter = platform.UIKit.UISimpleTextPrintFormatter(textContent)
-                        
-                        // Configurer les marges
-                        printFormatter.perPageContentInsets = platform.UIKit.UIEdgeInsetsMake(
-                                margin, margin, margin, margin
-                        )
-                        
-                        // Créer le contrôleur d'impression
-                        val printController = platform.UIKit.UIPrintInteractionController.sharedPrintController()
-                        printController.printFormatter = printFormatter
-                        
-                        // Configurer les options d'impression
-                        val printInfo = platform.UIKit.UIPrintInfo.printInfo()
-                        printInfo.outputType = platform.UIKit.UIPrintInfoOutputType.UIPrintInfoOutputGeneral
-                        printInfo.jobName = "Document VetNutri"
-                        printInfo.orientation = UIPrintInfoOrientation.UIPrintInfoOrientationLandscape
-                        printController.printInfo = printInfo
-                        
-                        // Présenter le dialogue d'impression
-                        printController.presentAnimated(
-                                animated = true,
-                                completionHandler = { controller, completed, error ->
-                                        if (completed) {
-                                        } else if (error != null) {
-                                        } else {
-                                        }
-                                }
-                        )
-                        
-                        true
-                } catch (t: Throwable) {
-                        false
-                }
-        }
-        
-        private fun extraireTexteDuHtml(html: String): String {
-                return try {
-                        // Supprimer les balises HTML et extraire le texte
-                        var text = html
-                                .replace(Regex("<[^>]*>"), " ") // Supprimer les balises HTML
-                                .replace(Regex("\\s+"), " ") // Remplacer les espaces multiples par un seul
-                                .trim()
-                        
-                        // Si le texte est trop court, utiliser le HTML original
-                        if (text.length < 50) {
-                                text = html
-                        }
-                        
-                        text
-                } catch (e: Exception) {
-                        html
                 }
         }
 
-        private fun genererPdfDepuisHtml(html: String): NSData? {
-                return try {
-                        // Validation et nettoyage du HTML
-                        val cleanHtml = nettoyerHtml(html)
-                        if (cleanHtml.isBlank()) {
-                                return null
+        /** Charge le HTML et suspend jusqu'à la fin du rendu (didFinishNavigation). */
+        private suspend fun chargerHtml(webView: WKWebView, html: String): Boolean =
+                suspendCancellableCoroutine { continuation ->
+                        lateinit var delegue: DelegueChargement
+                        delegue = DelegueChargement { succes ->
+                                deleguesActifs.remove(delegue)
+                                if (continuation.isActive) continuation.resume(succes)
                         }
-                        
-                        // Vérification de la taille du HTML (limite réduite pour éviter OOM)
-                        // Les SVG complexes peuvent consommer beaucoup de mémoire
-                        // Si le HTML est trop volumineux, ne pas essayer de générer le PDF directement
-                        if (cleanHtml.length > 1_500_000) { // 1.5MB max pour éviter OOM
-                                return null
+                        deleguesActifs.add(delegue)
+                        webView.navigationDelegate = delegue
+                        continuation.invokeOnCancellation {
+                                // Le WKWebView est nettoyé dans le finally de exporterHtml.
+                                deleguesActifs.remove(delegue)
                         }
-                        
-                        // Essayer d'abord avec UIMarkupTextPrintFormatter
-                        val result = genererPdfAvecMarkupFormatter(cleanHtml)
-                        if (result != null) {
-                                return result
-                        }
-                        
-                        // Laisser le parcours appelant ouvrir le dialogue d’impression.
-                        // Ne jamais remplacer le rapport par un PDF vide.
-                        return null
-                        
-                } catch (t: Throwable) {
-                        t.printStackTrace()
-                        null
+                        webView.loadHTMLString(html, baseURL = null)
                 }
-        }
-        
-        private fun genererPdfAvecMarkupFormatter(html: String): NSData? {
-                return try {
-                        val formatteur: UIMarkupTextPrintFormatter =
-                                UIMarkupTextPrintFormatter(markupText = html)
-                        
-                        val pageRect = CGRectMake(0.0, 0.0, a4Width, a4Height)
-                        val printableRect =
-                                CGRectMake(
-                                        margin,
-                                        margin,
-                                        a4Width - 2.toDouble() * margin,
-                                        a4Height - 2.toDouble() * margin
-                                )
-                        
-                        val renderer: UIPrintPageRenderer =
-                                object : UIPrintPageRenderer() {
-                                        override fun paperRect() = pageRect
-                                        override fun printableRect() = printableRect
-                                }
-                        
-                        renderer.addPrintFormatter(formatteur, startingAtPageAtIndex = 0)
-                        
-                        // Limiter le nombre de pages pour éviter la surconsommation mémoire
-                        val maxPages = 5
-                        val estimatedPages = renderer.numberOfPages.toInt()
-                        if (estimatedPages <= 0 || estimatedPages > maxPages) {
-                                // Trop de pages, risque d'OOM
-                                return null
-                        }
-                        
-                        val data: NSMutableData = NSMutableData()
-                        UIGraphicsBeginPDFContextToData(data, pageRect, null)
-                        
-                        // Générer les pages une par une
-                        var i: Int = 0
-                        while (i < estimatedPages) {
-                                UIGraphicsBeginPDFPage()
-                                renderer.drawPageAtIndex(
-                                        pageIndex = i.toLong(),
-                                        inRect = UIGraphicsGetPDFContextBounds()
-                                )
-                                i += 1
-                        }
-                        UIGraphicsEndPDFContext()
-                        
-                        data
-                } catch (t: Throwable) {
-                        t.printStackTrace()
-                        null
+
+        private fun genererPdf(webView: WKWebView, largeur: Double, hauteur: Double): NSData? {
+                val pageRect = CGRectMake(0.0, 0.0, largeur, hauteur)
+                val zoneImprimable = CGRectMake(marge, marge, largeur - 2 * marge, hauteur - 2 * marge)
+
+                val renderer = UIPrintPageRenderer()
+                // paperRect / printableRect sont en lecture seule : on passe par KVC.
+                renderer.setValue(NSValue.valueWithCGRect(pageRect), forKey = "paperRect")
+                renderer.setValue(NSValue.valueWithCGRect(zoneImprimable), forKey = "printableRect")
+                renderer.addPrintFormatter(webView.viewPrintFormatter(), startingAtPageAtIndex = 0)
+
+                val data = NSMutableData()
+                UIGraphicsBeginPDFContextToData(data, pageRect, null)
+                // Le nombre de pages n'est fiable qu'une fois le contexte PDF ouvert.
+                val nbPages = renderer.numberOfPages
+                val limites = UIGraphicsGetPDFContextBounds()
+                var i = 0L
+                while (i < nbPages) {
+                        UIGraphicsBeginPDFPage()
+                        renderer.drawPageAtIndex(pageIndex = i, inRect = limites)
+                        i++
                 }
+                UIGraphicsEndPDFContext()
+
+                return if (nbPages > 0L && data.length > 0UL) data else null
         }
-        
+
+        private fun partagerPdf(
+                pdfData: NSData,
+                nomFichier: String,
+                controleur: UIViewController
+        ): Boolean {
+                val cheminFichier = "${NSTemporaryDirectory()}${nomFichierSur(nomFichier)}"
+                if (!pdfData.writeToFile(cheminFichier, atomically = true)) return false
+
+                val activityController = UIActivityViewController(
+                        activityItems = listOf(NSURL.fileURLWithPath(cheminFichier)),
+                        applicationActivities = null
+                )
+                // iPad : la feuille de partage s'affiche en popover
+                activityController.popoverPresentationController?.let { popover ->
+                        popover.sourceView = controleur.view
+                        popover.sourceRect = controleur.view.bounds
+                }
+                controleur.presentViewController(
+                        viewControllerToPresent = activityController,
+                        animated = true,
+                        completion = null
+                )
+                return true
+        }
+
+        private fun nomFichierSur(nomFichier: String): String {
+                val base = nomFichier
+                        .replace(Regex("[/\\\\:*?\"<>|]"), "_")
+                        .trim()
+                        .ifBlank { "document_vetnutri.pdf" }
+                return if (base.endsWith(".pdf", ignoreCase = true)) base else "$base.pdf"
+        }
+
         private fun nettoyerHtml(html: String): String {
-                return try {
-                        // Supprimer les caractères de contrôle problématiques
-                        var cleanHtml = html
-                                .replace("\u0000", "") // Null bytes
-                                .replace("\u0001", "") // SOH
-                                .replace("\u0002", "") // STX
-                                .replace("\u0003", "") // ETX
-                                .replace("\u0004", "") // EOT
-                                .replace("\u0005", "") // ENQ
-                                .replace("\u0006", "") // ACK
-                                .replace("\u0007", "") // BEL
-                                .replace("\u0008", "") // BS
-                                .replace("\u000B", "") // VT
-                                .replace("\u000C", "") // FF
-                                .replace("\u000E", "") // SO
-                                .replace("\u000F", "") // SI
-                                .replace("\u0010", "") // DLE
-                                .replace("\u0011", "") // DC1
-                                .replace("\u0012", "") // DC2
-                                .replace("\u0013", "") // DC3
-                                .replace("\u0014", "") // DC4
-                                .replace("\u0015", "") // NAK
-                                .replace("\u0016", "") // SYN
-                                .replace("\u0017", "") // ETB
-                                .replace("\u0018", "") // CAN
-                                .replace("\u0019", "") // EM
-                                .replace("\u001A", "") // SUB
-                                .replace("\u001B", "") // ESC
-                                .replace("\u001C", "") // FS
-                                .replace("\u001D", "") // GS
-                                .replace("\u001E", "") // RS
-                                .replace("\u001F", "") // US
-                        
-                        // S'assurer que le HTML est bien formé
-                        if (!cleanHtml.trimStart().startsWith("<!DOCTYPE html>") && 
-                            !cleanHtml.trimStart().startsWith("<html")) {
-                                cleanHtml = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body>$cleanHtml</body></html>"
-                        }
-                        
-                        cleanHtml
-                } catch (e: Exception) {
-                        html // Retourner l'original en cas d'erreur
+                // Supprimer les caractères de contrôle (hors \t, \n, \r)
+                var cleanHtml = html.replace(Regex("[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]"), "")
+                if (!cleanHtml.trimStart().startsWith("<!DOCTYPE html>", ignoreCase = true) &&
+                        !cleanHtml.trimStart().startsWith("<html", ignoreCase = true)
+                ) {
+                        cleanHtml =
+                                "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body>$cleanHtml</body></html>"
                 }
+                return cleanHtml
         }
 
         private fun obtenirTopViewController(): UIViewController? {
-                var controleur: UIViewController? =
-                        UIApplication.sharedApplication.keyWindow?.rootViewController
-                while (controleur?.presentedViewController != null) controleur =
-                        controleur?.presentedViewController
+                val window = UIApplication.sharedApplication.keyWindow
+                        ?: UIApplication.sharedApplication.windows.firstOrNull() as? UIWindow
+                var controleur: UIViewController = window?.rootViewController ?: return null
+                while (controleur.presentedViewController != null) {
+                        controleur = controleur.presentedViewController!!
+                }
                 return controleur
         }
-        
-        private fun partagerPdfDirect(pdfData: NSData, controleur: UIViewController) {
-                try {
-                        // Sauvegarder temporairement le PDF
-                        val tempDir = NSTemporaryDirectory()
-                        val tempFile = "${tempDir}document_vetnutri.pdf"
-                        pdfData.writeToFile(tempFile, atomically = true)
-                        
-                        val fileUrl = NSURL.fileURLWithPath(tempFile)
-                        
-                        // Créer un UIActivityViewController pour partager le PDF
-                        val activityController = UIActivityViewController(
-                                activityItems = listOf(fileUrl),
-                                applicationActivities = null
-                        )
-                        
-                        // Configurer pour iPad (popover)
-                        val popover = activityController.popoverPresentationController
-                        if (popover != null) {
-                                popover.sourceView = controleur.view
-                                popover.sourceRect = controleur.view.bounds ?: CGRectMake(0.0, 0.0, 0.0, 0.0)
-                        }
-                        
-                        // Présenter le contrôleur de partage
-                        controleur.presentViewController(
-                                viewControllerToPresent = activityController,
-                                animated = true,
-                                completion = null
-                        )
-                } catch (t: Throwable) {
-                        t.printStackTrace()
-                }
+}
+
+private class DelegueChargement(
+        private val onTermine: (Boolean) -> Unit
+) : NSObject(), WKNavigationDelegateProtocol {
+        @ObjCSignatureOverride
+        override fun webView(webView: WKWebView, didFinishNavigation: WKNavigation?) {
+                onTermine(true)
+        }
+
+        @ObjCSignatureOverride
+        override fun webView(
+                webView: WKWebView,
+                didFailNavigation: WKNavigation?,
+                withError: NSError
+        ) {
+                onTermine(false)
+        }
+
+        @ObjCSignatureOverride
+        override fun webView(
+                webView: WKWebView,
+                didFailProvisionalNavigation: WKNavigation?,
+                withError: NSError
+        ) {
+                onTermine(false)
         }
 }

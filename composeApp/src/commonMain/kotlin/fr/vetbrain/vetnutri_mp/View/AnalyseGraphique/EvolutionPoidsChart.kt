@@ -990,11 +990,6 @@ fun ConeZoomView(
             
             Button(
                 onClick = {
-                    if (isIosPlatform) {
-                        // iOS : désactiver l'export graphique pour éviter les problèmes mémoire
-                        return@Button
-                    }
-
                     val svgGraph = generateConeGraphSvg(
                         realPoints, slowLine, fastLine, targetW, xRange, yRange
                     )
@@ -1350,11 +1345,6 @@ fun GrowthZoomView(
 
                 Button(
                         onClick = {
-                                if (isIosPlatform) {
-                                        // iOS : désactiver l'export graphique pour éviter les problèmes mémoire
-                                        return@Button
-                                }
-
                                 val svgGraph =
                                         generateGrowthGraphSvg(
                                                 realPoints = realPoints,
