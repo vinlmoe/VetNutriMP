@@ -42,6 +42,8 @@ import fr.vetbrain.vetnutri_mp.View.Components.QRCodeScannerView
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Utils.copyToClipboardComposable
+import fr.vetbrain.vetnutri_mp.Utils.FeaturePreferences
+import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
@@ -71,6 +73,15 @@ fun AnimalListView(
         val keywordExcludeIds = viewModel.keywordExcludeIds.collectAsState().value
         val showExamDossiers = viewModel.showExamDossiers.collectAsState().value
         val coroutineScope = rememberCoroutineScope()
+        val preferencesStorage = remember { createPreferencesStorage() }
+        var isMultiRationEnabled by remember { mutableStateOf(false) }
+
+        LaunchedEffect(Unit) {
+                isMultiRationEnabled = preferencesStorage.getString(
+                        FeaturePreferences.MULTI_RATION_EXPLORATION_ENABLED,
+                        "false"
+                ).toBoolean()
+        }
 
         // États pour l'export examen
         var isExporting by remember { mutableStateOf(false) }
@@ -149,7 +160,7 @@ fun AnimalListView(
                                 ) { Text(translate(AnimalList.CALCULATION_DATA)) }
 
                                 // Exploration multiration (hors mode examen)
-                                if (onShowMultiRation != null && examSession == null) {
+                                if (isMultiRationEnabled && onShowMultiRation != null && examSession == null) {
                                         Button(
                                                 onClick = onShowMultiRation,
                                                 modifier = Modifier.weight(1f),
