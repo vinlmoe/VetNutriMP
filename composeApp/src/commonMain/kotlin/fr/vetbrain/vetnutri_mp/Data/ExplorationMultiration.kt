@@ -25,18 +25,24 @@ import kotlinx.coroutines.yield
  * Besoin total = BEE standard × K ; les seuils exprimés par 1000 kcal restent basés sur le BEE
  * standard, comme dans l'analyse d'une consultation.
  */
-enum class RoleExploration(val libelle: String, val nutrimentParDefaut: Nutrient) {
-    PROTEINES("Protéines", NutrientMain.PROTEINE),
-    FIBRES("Fibres", NutrientMain.CELLULOSE),
-    CALCIUM("Calcium", NutrientMacro.CAL),
-    OMEGA6("Oméga-6", NutrientLipid.O6),
-    SODIUM("Sel / sodium", NutrientMacro.NA),
-    ENERGIE("Énergie restante", NutrientMain.ENERGIE);
-
-    val estEnergie: Boolean
-        get() = this == ENERGIE
+data class RoleExploration(val name: String, val libelle: String, val nutrimentParDefaut: Nutrient) {
+    val estEnergie: Boolean get() = this == ENERGIE
+    val supplementaire: Boolean get() = name.startsWith("SUPPLEMENT_")
+    val doseParDefaut: Double get() = if (this == SODIUM || supplementaire) 0.1 else 5.0
 
     companion object {
+        val PROTEINES = RoleExploration("PROTEINES", "Protéines", NutrientMain.PROTEINE)
+        val FIBRES = RoleExploration("FIBRES", "Fibres", NutrientMain.CELLULOSE)
+        val CALCIUM = RoleExploration("CALCIUM", "Calcium", NutrientMacro.CAL)
+        val OMEGA6 = RoleExploration("OMEGA6", "Oméga-6", NutrientLipid.O6)
+        val SODIUM = RoleExploration("SODIUM", "Sel / sodium", NutrientMacro.NA)
+        val ENERGIE = RoleExploration("ENERGIE", "Énergie restante", NutrientMain.ENERGIE)
+        val entries = listOf(PROTEINES, FIBRES, CALCIUM, OMEGA6, SODIUM, ENERGIE)
+        fun supplement(name: String = "SUPPLEMENT_" + genUUID()) =
+                RoleExploration(name, "Ingrédient supplémentaire", NutrientLipid.EPADHA)
+        fun ordonner(listes: Map<RoleExploration, List<AlimentEv>>): List<RoleExploration> =
+                entries.filterNot { it.estEnergie } + listes.keys.filter { it.supplementaire } + ENERGIE
+
         /** Nutriments proposés pour l'ajustement des fibres. */
         val nutrimentsFibres: List<Nutrient> =
                 listOf(
@@ -69,13 +75,21 @@ data class ConfigurationExploration(
         val arrondir: Boolean = true,
         /** Dose minimale d'un ingrédient utilisé, par rôle (g). */
         val doseMinimale: Map<RoleExploration, Double> =
-                RoleExploration.entries.associateWith { 5.0 },
+                RoleExploration.entries.associateWith { it.doseParDefaut },
+        /** Pas d'arrondi manuel par liste (g) ; le conditionnement garde toujours la priorité. */
+        val pasArrondiManuel: Map<RoleExploration, Double> =
+                RoleExploration.entries.filter { it == RoleExploration.SODIUM }
+                        .associateWith { 0.1 },
         /** Seuls les MAX limitent les apports ; les dépassements d'OPTIMAX sont tolérés. */
         val ignorerOptimax: Boolean = true,
-        val maxScenarios: Int = 2000
+        val maxScenarios: Int = 2000,
+        val besoinsIgnores: Set<String> = emptySet(),
+        val arrondirAuSuperieur: Boolean = false
 ) {
+    val roles: List<RoleExploration> get() = rolesExplorationActifs(listes, cibles, besoinsIgnores)
+
     val nombreCombinaisons: Long
-        get() = RoleExploration.entries.fold(1L) { acc, role -> acc * (listes[role]?.size ?: 0) }
+        get() = roles.fold(1L) { acc, role -> acc * (listes[role]?.size ?: 0) }
 
     val nombreScenarios: Long
         get() = nombreCombinaisons * poids.size * coefficientsK.size * references.size
@@ -108,7 +122,8 @@ data class ScenarioExploration(
         val seuilsManques: List<String> = emptyList(),
         /** Seuils non respectés uniquement à cause de valeurs absentes. */
         val seuilsNonRenseignes: List<String> = emptyList(),
-        val message: String = ""
+        val message: String = "",
+        val valeursNutritionnelles: Map<String, ValeurNutritionnelle> = emptyMap()
 ) {
     val ecartEnergie: Double?
         get() = if (energie != null && besoinTotal != null) energie - besoinTotal else null
@@ -185,10 +200,26 @@ fun doseMinimaleEffective(aliment: AlimentEv, doseMinimale: Double): Double {
  * Arrondit comme l'application (arrondirQuantiteSelonRegles), avec une dose minimale : sous cette
  * dose, l'ingrédient n'est pas utilisé (moins de la moitié) ou est porté à cette dose.
  */
-fun arrondirAvecDoseMinimale(aliment: AlimentEv, quantite: Double, doseMinimale: Double): Double {
+fun arrondirAvecDoseMinimale(
+        aliment: AlimentEv,
+        quantite: Double,
+        doseMinimale: Double,
+        fin: Boolean = false,
+        auSuperieur: Boolean = false,
+        pasManuel: Double? = null
+): Double {
     if (quantite <= 0.0) return 0.0
     val minimum = doseMinimaleEffective(aliment, doseMinimale)
+    if (auSuperieur) {
+        val cible = maxOf(quantite, minimum)
+        val pas = pasConditionnement(aliment) ?: pasManuel?.takeIf { it > 0.0 }
+                ?: if (fin) 0.1 else pasArrondi(aliment, cible)
+        return ceil(cible / pas - 1e-9) * pas
+    }
     if (quantite < minimum) return if (quantite >= minimum / 2.0) minimum else 0.0
+    val pas = pasConditionnement(aliment) ?: pasManuel?.takeIf { it > 0.0 }
+            ?: if (fin) 0.1 else null
+    if (pas != null) return maxOf(minimum, kotlin.math.round(quantite / pas) * pas)
     return arrondirQuantiteSelonRegles(AlimentRation(aliment = aliment), quantite)
 }
 
@@ -245,7 +276,7 @@ class ExplorateurMultiration(private val equationRepository: EquationRepository)
         if (config.references.isEmpty()) throw ExplorationException("Choisir au moins un référentiel")
         if (config.poids.isEmpty() || config.coefficientsK.isEmpty())
             throw ExplorationException("Grille de poids ou de K vide")
-        val vides = RoleExploration.entries.filter { config.listes[it].isNullOrEmpty() }
+        val vides = config.roles.filter { config.listes[it].isNullOrEmpty() }
         if (vides.isNotEmpty())
             throw ExplorationException("Listes vides : ${vides.joinToString { it.libelle }}")
         val total = config.nombreScenarios
@@ -254,7 +285,7 @@ class ExplorateurMultiration(private val equationRepository: EquationRepository)
                     "$total scénarios dépassent la limite de ${config.maxScenarios} : réduire les listes ou la grille"
             )
 
-        val roles = RoleExploration.entries
+        val roles = config.roles
         val tailles = roles.map { config.listes.getValue(it).size }
         val combinaisons = config.nombreCombinaisons.toInt()
         val scenarios = mutableListOf<ScenarioExploration>()
@@ -308,7 +339,7 @@ class ExplorateurMultiration(private val equationRepository: EquationRepository)
             config: ConfigurationExploration,
             nutrimentsEvalues: List<Nutrient>
     ): ScenarioExploration {
-        val roles = RoleExploration.entries
+        val roles = config.roles
         val quantites = DoubleArray(roles.size)
         val rationId = genUUID()
         fun ration() =
@@ -381,11 +412,50 @@ class ExplorateurMultiration(private val equationRepository: EquationRepository)
                         )
                 quantites[i] = manque * 100.0 / densite
                 if (config.arrondir)
-                        quantites[i] = arrondirAvecDoseMinimale(aliment, quantites[i], config.doseMinimale[role] ?: 0.0)
+                        quantites[i] = arrondirAvecDoseMinimale(
+                                aliment, quantites[i], config.doseMinimale[role] ?: role.doseParDefaut,
+                                fin = role == RoleExploration.SODIUM || role.supplementaire,
+                                auSuperieur = config.arrondirAuSuperieur,
+                                pasManuel = config.pasArrondiManuel[role]
+                        )
             }
         }
 
-        val rationFinale = ration()
+        return reevaluerScenario(
+                resultat(StatutScenario.NON_CALCULABLE, ""), ration(), config
+        )
+    }
+
+    /** Réévalue les quantités éditées sans les réajuster. */
+    suspend fun reevaluerScenario(
+            scenario: ScenarioExploration,
+            rationFinale: Ration,
+            config: ConfigurationExploration
+    ): ScenarioExploration {
+        val reference = scenario.reference
+        val poids = scenario.poids
+        val k = scenario.k
+        val besoinStandard = scenario.besoinStandard
+        val besoinTotal = scenario.besoinTotal
+        val poidsMetabolique = scenario.poidsMetabolique
+        if (besoinStandard == null || besoinTotal == null || besoinStandard <= 0.0) {
+            return scenario.copy(ration = rationFinale, statut = StatutScenario.NON_CALCULABLE)
+        }
+        val nutrimentsEvalues = nutrimentsReference(reference)
+        // Repartir de la combinaison calculée : une suppression puis un réajout ne doit
+        // pas changer le rôle d'un ingrédient entre l'enregistrement et le rechargement.
+        var combinaisonRestante = scenario.combinaison - 1
+        val rolesRestants = config.roles.map { role ->
+            val liste = config.listes.getValue(role)
+            val aliment = liste[combinaisonRestante % liste.size]
+            combinaisonRestante /= liste.size
+            role to aliment.uuid
+        }.toMutableList()
+        val roles = rationFinale.alimentMutableList.mapIndexed { i, ligne ->
+            val index = rolesRestants.indexOfFirst { it.second == ligne.aliment?.uuid }
+            if (index >= 0) rolesRestants.removeAt(index).first
+            else RoleExploration.supplement("SUPPLEMENT_EDIT_" + (ligne.aliment?.uuid ?: "inconnu") + "_" + i)
+        }
         val labels = nutrimentsEvalues.map { it.label } + NutrientMain.ENERGIE.label
         // Seuls les aliments utilisés entrent dans l'analyse : un aliment à 0 g ne doit pas
         // rendre un nutriment « incomplet »
@@ -396,20 +466,25 @@ class ExplorateurMultiration(private val equationRepository: EquationRepository)
 
         // Énergie acceptée à ± ½ pas d'arrondi de l'ingrédient énergétique
         val iEnergie = roles.indexOf(RoleExploration.ENERGIE)
-        val alimentEnergie = selection[iEnergie]
+        val ligneEnergie = rationFinale.alimentMutableList.getOrNull(iEnergie)
+        val alimentEnergie = ligneEnergie?.aliment
         val tolerance =
-                if (!config.arrondir) 1e-8 * maxOf(1.0, besoinTotal)
+                if (!config.arrondir || alimentEnergie == null) 1e-8 * maxOf(1.0, besoinTotal)
                 else {
-                    val q = quantites[iEnergie]
+                    val q = ligneEnergie.quantite
                     val minimum = doseMinimaleEffective(alimentEnergie, config.doseMinimale[RoleExploration.ENERGIE] ?: 0.0)
-                    val pas = maxOf(pasArrondi(alimentEnergie, q), if (q <= minimum) minimum else 0.0)
-                    0.5 * pas * teneur(alimentEnergie, reference, NutrientMain.ENERGIE) / 100.0
+                    val pasNormal = pasConditionnement(alimentEnergie)
+                            ?: config.pasArrondiManuel[RoleExploration.ENERGIE]?.takeIf { it > 0.0 }
+                            ?: pasArrondi(alimentEnergie, q)
+                    val pas = maxOf(pasNormal, if (q <= minimum) minimum else 0.0)
+                    (if (config.arrondirAuSuperieur) 1.0 else 0.5) * pas * teneur(alimentEnergie, reference, NutrientMain.ENERGIE) / 100.0
                 }
 
         // Conformité : mêmes règles que l'écran d'analyse (maladie exclue)
         val manques = mutableListOf<String>()
         val nonRenseignes = mutableListOf<String>()
         for (nutriment in nutrimentsEvalues) {
+            if (nutriment.label in config.besoinsIgnores) continue
             val valeur = valeurs[nutriment.label] ?: continue
             val conformite =
                     calculerConformite(
@@ -436,12 +511,12 @@ class ExplorateurMultiration(private val equationRepository: EquationRepository)
                 }
         val message =
                 if (statut == StatutScenario.ENERGIE_DEPASSEE) {
-                    if (quantites[iEnergie] > 0.0) "Énergie au-dessus du besoin au-delà de la tolérance d'arrondi."
+                    if ((ligneEnergie?.quantite ?: 0.0) > 0.0) "Énergie au-dessus du besoin au-delà de la tolérance d'arrondi."
                     else "Les ingrédients des autres ajustements dépassent déjà le besoin énergétique."
                 } else ""
         return ScenarioExploration(
-                id, combinaison, reference, poids, k, besoinStandard, besoinTotal, poidsMetabolique,
-                rationFinale, roles, energie, statut, manques, nonRenseignes, message
+                scenario.id, scenario.combinaison, reference, poids, k, besoinStandard, besoinTotal, poidsMetabolique,
+                rationFinale, roles, energie, statut, manques, nonRenseignes, message, valeurs
         )
     }
 
@@ -467,8 +542,10 @@ class ExplorateurMultiration(private val equationRepository: EquationRepository)
                             // Sans ration conforme, l'échec dominant nomme la zone (égalité : seuils, énergie)
                             val zone =
                                     when {
-                                        conformes > 0 -> ZoneEquilibre.EQUILIBRABLE
-                                        sousReserve > 0 -> ZoneEquilibre.SOUS_RESERVE
+                                        // Une ration dont tous les seuils renseignés sont respectés est
+                                        // équilibrée. Des valeurs inconnues restent signalées au détail,
+                                        // mais ne doivent pas faire passer la case au jaune.
+                                        conformes + sousReserve > 0 -> ZoneEquilibre.EQUILIBRABLE
                                         seuils >= energie && seuils >= nonEvaluables -> ZoneEquilibre.SEUILS_NON_RESPECTES
                                         energie >= nonEvaluables -> ZoneEquilibre.ENERGIE_DEPASSEE
                                         else -> ZoneEquilibre.NON_EVALUABLE
@@ -501,4 +578,39 @@ class ExplorateurMultiration(private val equationRepository: EquationRepository)
                         }
                         .sortedWith(compareBy({ it.reference.nom }, { it.poids }, { it.k }))
     }
+}
+
+/** Seuil dans la même unité absolue que l'apport ; les ratios restent sans conversion. */
+fun seuilCourbeExploration(scenario: ScenarioExploration, nutriment: Nutrient, niveau: Reflevel): Double? {
+    val reference = scenario.reference
+    if (!reference.contientNutriment(nutriment, niveau)) return null
+    val valeur = reference.obtenirNutriment(nutriment, niveau)
+    val unite = UnitReqEnum.getById(reference.obtenirUniteNutriment(nutriment, niveau))
+    return (if (unite == UnitReqEnum.RATIO) valeur else calculerBesoinAbsolu(
+            valeur, unite, scenario.besoinStandard, scenario.poids, scenario.poidsMetabolique
+    ))?.takeIf { it.isFinite() }
+}
+
+/** Valeur tracée dans les courbes : l'apport connu est utile même si incomplet. */
+fun apportCourbeExploration(scenario: ScenarioExploration, nutriment: Nutrient): Double? =
+        scenario.valeursNutritionnelles[nutriment.label]?.valeur
+
+/** Un besoin ignoré ne déclenche ni ajustement ni obligation de remplir sa liste. */
+fun rolesExplorationActifs(
+        listes: Map<RoleExploration, List<AlimentEv>>,
+        cibles: Map<RoleExploration, CibleExploration>,
+        besoinsIgnores: Set<String>
+): List<RoleExploration> = RoleExploration.ordonner(listes).filter {
+    it.estEnergie || (cibles[it]?.nutriment ?: it.nutrimentParDefaut).label !in besoinsIgnores
+}
+
+/** Copie éditable indépendante du résultat, sans lien vers une consultation. */
+fun copierRationExploration(ration: Ration): Ration {
+    val id = genUUID()
+    return ration.copy(
+            uuid = id, idConsult = "", refRationParente = null,
+            suppVarp = ration.suppVarp.toMutableList(),
+            alimentMutableList = ration.alimentMutableList.filter { it.quantite > 0.0 }
+                    .map { it.copy(uuid = genUUID(), refRation = id) }.toMutableList()
+    )
 }

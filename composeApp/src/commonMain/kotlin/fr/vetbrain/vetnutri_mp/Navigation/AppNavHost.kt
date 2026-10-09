@@ -392,13 +392,6 @@ internal fun AppNavHost(
             MultiRationExplorerView(
                 viewModel = models.multiRationViewModel,
                 onNavigateBack = { nav.navigate(Screen.List) },
-                onOuvrirAnalyse = { animal, consultationId ->
-                    // Analyse, édition et export de la ration avec les écrans habituels
-                    nav.selectedAnimal = animal
-                    nav.detailReturnScreen = Screen.MultiRation
-                    models.animalDetailViewModel.setAnimal(animal, consultationId)
-                    nav.navigate(Screen.Detail)
-                },
                 modifier = Modifier.fillMaxSize()
             )
         }

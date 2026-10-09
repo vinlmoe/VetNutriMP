@@ -54,7 +54,7 @@ fun SectionAlimentsRation(
         referenceUtilisee: ReferenceEv?,
         besoinEnergetiqueTotal: Double?,
         besoinEnergetiqueStandard: Double?,
-        viewModel: AnimalDetailViewModel,
+        viewModel: AnimalDetailViewModel? = null,
         equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?,
         onAddAliment: () -> Unit,
         onMultiNutrientAdjustment: () -> Unit,
@@ -64,7 +64,14 @@ fun SectionAlimentsRation(
         showSnackbar: (String) -> Unit,
         isCompact: Boolean = false,
         isReadOnly: Boolean = false,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        autoriserRecettes: Boolean = true,
+        onUpdateAliments: (fr.vetbrain.vetnutri_mp.Data.Ration, List<AlimentRation>) -> Unit =
+                { ration, aliments -> requireNotNull(viewModel).updateRationAliments(ration, aliments) },
+        onUpdateQuantite: (String, Double) -> Unit =
+                { id, quantite -> requireNotNull(viewModel).updateAlimentQuantity(id, quantite) },
+        onRemoveAliment: (String) -> Unit =
+                { id -> requireNotNull(viewModel).removeAlimentFromRation(id) }
 ) {
         var editingAlimentId by remember { mutableStateOf<String?>(null) }
         val coroutineScope = rememberCoroutineScope()
@@ -95,7 +102,7 @@ fun SectionAlimentsRation(
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingXSmall)
                                 ) {
-                                        if (!isExamMode && !isReadOnly) {
+                                        if (!isExamMode && !isReadOnly && autoriserRecettes) {
                                                 // Sauvegarder la ration comme recette
                                                 IconWithTooltip(
                                                         imageVector = Icons.Filled.Save,
@@ -254,8 +261,7 @@ fun SectionAlimentsRation(
                                                                                                                                         ?.let {
                                                                                                                                                 adjustedAliments
                                                                                                                                                 ->
-                                                                                                                                                viewModel
-                                                                                                                                                        .updateRationAliments(
+                                                                                                                                                onUpdateAliments(
                                                                                                                                                                 selectedRation,
                                                                                                                                                                 adjustedAliments
                                                                                                                                                         )
@@ -280,7 +286,7 @@ fun SectionAlimentsRation(
                                                                                 }
                                                 )
 
-                                                if (!isExamMode) {
+                                                if (!isExamMode && autoriserRecettes) {
                                                         // Ouvrir le gestionnaire de recettes
                                                         IconWithTooltip(
                                                                 imageVector = Icons.AutoMirrored.Filled.MenuBook,
@@ -357,8 +363,7 @@ fun SectionAlimentsRation(
                                                                                         aliment.uuid
                                                                         },
                                                                         onQuantityChange = { newQuantity ->
-                                                                                viewModel
-                                                                                        .updateAlimentQuantity(
+                                                                                onUpdateQuantite(
                                                                                                 aliment.uuid,
                                                                                                 newQuantity
                                                                                         )
@@ -367,8 +372,7 @@ fun SectionAlimentsRation(
                                                                                 editingAlimentId = null
                                                                         },
                                                                         onDelete = {
-                                                                                viewModel
-                                                                                        .removeAlimentFromRation(
+                                                                                onRemoveAliment(
                                                                                                 aliment.uuid
                                                                                         )
                                                                         }
@@ -408,8 +412,7 @@ fun SectionAlimentsRation(
                                                                                 aliment.uuid
                                                                 },
                                                                 onQuantityChange = { newQuantity ->
-                                                                        viewModel
-                                                                                .updateAlimentQuantity(
+                                                                        onUpdateQuantite(
                                                                                         aliment.uuid,
                                                                                         newQuantity
                                                                                 )
@@ -418,8 +421,7 @@ fun SectionAlimentsRation(
                                                                         editingAlimentId = null
                                                                 },
                                                                 onDelete = {
-                                                                        viewModel
-                                                                                .removeAlimentFromRation(
+                                                                        onRemoveAliment(
                                                                                         aliment.uuid
                                                                                 )
                                                                 }
