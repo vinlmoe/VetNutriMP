@@ -29,7 +29,6 @@ import androidx.compose.ui.window.DialogProperties
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
-import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.CaseEquilibre
 import fr.vetbrain.vetnutri_mp.Data.CibleExploration
 import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
@@ -67,7 +66,7 @@ private val niveauxCible =
 internal fun couleurZone(case: CaseEquilibre): Color =
         when (case.zone) {
             ZoneEquilibre.EQUILIBRABLE -> Color(0xFF0CA30C)
-            ZoneEquilibre.SOUS_RESERVE -> Color(0xFFFAB219)
+            ZoneEquilibre.SOUS_RESERVE -> Color(0xFF0CA30C)
             // Clair = 1 seuil manqué, foncé = 5 et plus
             ZoneEquilibre.SEUILS_NON_RESPECTES ->
                     listOf(Color(0xFFF4A6A0), Color(0xFFE77B72), Color(0xFFD03B3B), Color(0xFFA52626), Color(0xFF7A1717))[
@@ -79,7 +78,7 @@ internal fun couleurZone(case: CaseEquilibre): Color =
 private fun couleurStatut(statut: StatutScenario): Color =
         when (statut) {
             StatutScenario.CONFORME -> Color(0xFF0CA30C)
-            StatutScenario.CONFORME_SOUS_RESERVE -> Color(0xFFB07A00)
+            StatutScenario.CONFORME_SOUS_RESERVE -> Color(0xFF0CA30C)
             StatutScenario.SEUILS_NON_RESPECTES -> Color(0xFFD03B3B)
             StatutScenario.ENERGIE_DEPASSEE -> Color(0xFFC0582E)
             else -> Color.Gray
@@ -93,10 +92,14 @@ private fun couleurStatut(statut: StatutScenario): Color =
 fun MultiRationExplorerView(
         viewModel: MultiRationViewModel,
         onNavigateBack: () -> Unit,
-        onOuvrirAnalyse: (AnimalEv, String) -> Unit,
         modifier: Modifier = Modifier
 ) {
     LaunchedEffect(Unit) { viewModel.chargerReferences() }
+    val rationsOuvertes by viewModel.rationsOuvertes.collectAsState()
+    if (rationsOuvertes.isNotEmpty()) {
+        RationsExplorationView(viewModel, rationsOuvertes, modifier)
+        return
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         val courante by viewModel.explorationCourante.collectAsState()
@@ -107,7 +110,7 @@ fun MultiRationExplorerView(
         Row(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp)) {
             PanneauConfiguration(viewModel, Modifier.width(420.dp).fillMaxHeight())
             Spacer(Modifier.width(12.dp))
-            PanneauResultats(viewModel, onOuvrirAnalyse, Modifier.weight(1f).fillMaxHeight())
+            PanneauResultats(viewModel, Modifier.weight(1f).fillMaxHeight())
         }
     }
 }
@@ -298,18 +301,19 @@ private fun OngletIngredients(viewModel: MultiRationViewModel, p: ParametresExpl
             color = Color.Gray
     )
     Spacer(Modifier.height(6.dp))
-    RoleExploration.entries.forEachIndexed { i, role ->
+    RoleExploration.ordonner(p.listes).forEachIndexed { i, role ->
         val liste = p.listes[role].orEmpty()
+        val ignore = !role.estEnergie && (p.cibles[role]?.nutriment ?: role.nutrimentParDefaut).label in p.besoinsIgnores
         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), elevation = 1.dp) {
             Column(Modifier.padding(8.dp)) {
                 Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().clickable { ouvert = role }
                 ) {
-                    Text("${i + 1}. ${role.libelle}", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text("${i + 1}. ${if (role.supplementaire) nomTraduitNutriment((p.cibles[role] ?: CibleExploration(role.nutrimentParDefaut)).nutriment) else role.libelle}", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Text(
-                            if (liste.isEmpty()) "(vide)" else "(${liste.size} aliment${if (liste.size > 1) "s" else ""})",
-                            color = if (liste.isEmpty()) Color(0xFFA94442) else Color.Gray,
+                            if (ignore) "(besoin ignoré)" else if (liste.isEmpty()) "(vide)" else "(${liste.size} aliment${if (liste.size > 1) "s" else ""})",
+                            color = if (liste.isEmpty() && !ignore) Color(0xFFA94442) else Color.Gray,
                             fontSize = 12.sp
                     )
                     Icon(if (ouvert == role) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
@@ -329,11 +333,15 @@ private fun OngletIngredients(viewModel: MultiRationViewModel, p: ParametresExpl
                     }
                     if (!role.estEnergie) {
                         val cible = p.cibles[role] ?: CibleExploration(role.nutrimentParDefaut)
-                        if (role == RoleExploration.FIBRES) {
+                        if (role == RoleExploration.FIBRES || role.supplementaire) {
                             DropdownField(
-                                    label = "Nutriment des fibres",
+                                    label = "Nutriment cible",
                                     selectedValue = cible.nutriment,
-                                    options = RoleExploration.nutrimentsFibres,
+                                    options = if (role == RoleExploration.FIBRES) RoleExploration.nutrimentsFibres else
+                                            fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.getAllNutrientLabels()
+                                                    .mapNotNull { fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(it) }
+                                                    .filter { it != fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE }
+                                                    .sortedBy { nomTraduitNutriment(it) },
                                     onValueChange = { viewModel.modifierNutrimentCible(role, it) },
                                     valueToString = { nomTraduitNutriment(it) },
                                     modifier = Modifier.fillMaxWidth()
@@ -370,10 +378,28 @@ private fun OngletIngredients(viewModel: MultiRationViewModel, p: ParametresExpl
                                 color = Color.Gray
                         )
                     }
+                    if (role == RoleExploration.SODIUM || role.supplementaire) {
+                        Text("Arrondi au dixième de gramme, sauf conditionnement. La quantité couvre le manque après les ingrédients précédents.", fontSize = 11.sp, color = Color.Gray)
+                    }
+                    if (role.supplementaire) {
+                        TextButton(onClick = { viewModel.retirerListe(role) }) { Text("Supprimer cette liste") }
+                    }
                     if (p.arrondir) {
                         ChampDecimal(
+                                "Pas d’arrondi manuel (g)",
+                                p.pasArrondiManuel[role] ?: 0.0,
+                                cle = "pas-${role.name}",
+                                onValide = { pas -> viewModel.modifierPasArrondi(role, pas) },
+                                modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                                "Le pas manuel remplace les règles 1 / 5 / 25 g ; un conditionnement garde la priorité. 0 = règles automatiques.",
+                                fontSize = 11.sp,
+                                color = Color.Gray
+                        )
+                        ChampDecimal(
                                 "Dose minimale si utilisé (g)",
-                                p.doseMinimale[role] ?: 5.0,
+                                p.doseMinimale[role] ?: role.doseParDefaut,
                                 cle = role,
                                 onValide = { d -> viewModel.modifierDoseMinimale(role, d) },
                                 modifier = Modifier.fillMaxWidth()
@@ -384,6 +410,10 @@ private fun OngletIngredients(viewModel: MultiRationViewModel, p: ParametresExpl
         }
     }
 
+    TextButton(onClick = { ouvert = viewModel.ajouterListe() }) {
+        Icon(Icons.Default.Add, contentDescription = null)
+        Text("Ajouter une liste d’ingrédients (EPA/DHA, autre nutriment)")
+    }
     roleAjout?.let { role -> DialogueAjoutAliments(viewModel, role, onDismiss = { roleAjout = null }) }
 }
 
@@ -443,10 +473,15 @@ private fun OngletOptions(viewModel: MultiRationViewModel, p: ParametresExplorat
         }
     }
     Option("Arrondir les quantités comme l'application", p.arrondir) { v -> viewModel.modifierParametres { it.copy(arrondir = v) } }
+    if (p.arrondir) {
+        Option("Toujours arrondir au supérieur", p.arrondirAuSuperieur) { v ->
+            viewModel.modifierParametres { it.copy(arrondirAuSuperieur = v) }
+        }
+    }
     Text(
-            "Arrondi après chaque ajustement : ½ contenant (dosette, sachet, boîte), sinon 1 g sous 20 g, 5 g sous 200 g, 25 g au-delà. " +
-                    "Sous la dose minimale de sa liste, un aliment n'est pas utilisé (moins de la moitié) ou est porté à cette dose. " +
-                    "L'énergie est acceptée à ± ½ pas de l'aliment énergétique.",
+            "Arrondi après chaque ajustement : ½ contenant (dosette, sachet, boîte), sinon 0,1 g pour le sel et les listes supplémentaires ; pour les autres listes, 1 g sous 20 g, 5 g sous 200 g, 25 g au-delà. " +
+                    (if (p.arrondirAuSuperieur) "Toute quantité positive atteint au moins la dose minimale. L’excédent énergétique dû à l’arrondi est accepté jusqu’à un pas de l’aliment énergétique."
+                    else "Sous la dose minimale, un aliment est omis (moins de la moitié) ou porté à cette dose. L’énergie est acceptée à ± ½ pas de l’aliment énergétique."),
             fontSize = 11.sp,
             color = Color.Gray
     )
@@ -459,6 +494,23 @@ private fun OngletOptions(viewModel: MultiRationViewModel, p: ParametresExplorat
             fontSize = 11.sp,
             color = Color.Gray
     )
+    Spacer(Modifier.height(8.dp))
+    Text("Besoins à prendre en compte", fontWeight = FontWeight.Bold)
+    Text("Décochez un nutriment pour ignorer tous ses seuils et son ajustement. Sa liste d’ingrédients devient facultative. L’énergie reste prise en compte.", fontSize = 11.sp, color = Color.Gray)
+    val references by viewModel.references.collectAsState()
+    val besoins = (references.filter { it.uuid in p.referenceIds }.flatMap {
+        (it.getRefMapMin().keys + it.getRefMapOMin().keys + it.getRefMapMax().keys + it.getRefMapOMax().keys).toList()
+    } + p.cibles.values.map { it.nutriment } +
+            p.besoinsIgnores.mapNotNull { fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(it) })
+            .filter { it != fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE }
+            .distinctBy { it.label }.sortedBy { nomTraduitNutriment(it) }
+    besoins.forEach { n ->
+        Option(nomTraduitNutriment(n), n.label !in p.besoinsIgnores) { actif ->
+            viewModel.modifierParametres {
+                it.copy(besoinsIgnores = if (actif) it.besoinsIgnores - n.label else it.besoinsIgnores + n.label)
+            }
+        }
+    }
     Spacer(Modifier.height(8.dp))
     ChampNombre("Nombre maximal de scénarios", p.maxScenarios, { v -> viewModel.modifierParametres { it.copy(maxScenarios = v) } }, Modifier.fillMaxWidth())
 }
@@ -544,7 +596,6 @@ private fun OngletEnregistrees(viewModel: MultiRationViewModel) {
 @Composable
 private fun PanneauResultats(
         viewModel: MultiRationViewModel,
-        onOuvrirAnalyse: (AnimalEv, String) -> Unit,
         modifier: Modifier
 ) {
     val resultat by viewModel.resultat.collectAsState()
@@ -565,7 +616,7 @@ private fun PanneauResultats(
         val r = resultat
         if (r == null) {
             Bandeau(
-                    "Choisir les référentiels, la grille et les six listes d'ingrédients à gauche, puis « Calculer toutes les rations ». " +
+                    "Choisir les référentiels, la grille et les listes d'ingrédients à gauche, puis « Calculer toutes les rations ». " +
                             "Un clic sur une case de la carte affiche ses rations ; elles peuvent ensuite être ouvertes dans l'analyse de ration pour être analysées, éditées et exportées.",
                     Color(0xFFD9EDF7),
                     Color(0xFF31708F)
@@ -579,13 +630,21 @@ private fun PanneauResultats(
                     Color(0xFF8A6D3B)
             )
         }
-        val conformes = r.scenarios.count { it.statut == StatutScenario.CONFORME }
+        if (r.configuration.besoinsIgnores.isNotEmpty()) {
+            val noms = r.configuration.besoinsIgnores.map { label ->
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(label)?.let { nomTraduitNutriment(it) } ?: label
+            }
+            Text("Besoins ignorés : ${noms.joinToString()}. La conformité porte uniquement sur les besoins retenus.", fontSize = 12.sp)
+        }
+        val conformes = r.scenarios.count {
+            it.statut == StatutScenario.CONFORME || it.statut == StatutScenario.CONFORME_SOUS_RESERVE
+        }
         Text(
-                "${r.scenarios.size} scénarios ; $conformes conformes à tous les seuils renseignés.",
+                "${r.scenarios.size} scénarios ; $conformes conformes aux seuils renseignés retenus (valeurs inconnues incluses).",
                 style = MaterialTheme.typography.h6
         )
         Text(
-                "Cliquer sur une case pour voir ses rations. Libellé : n/N combinaisons conformes ; sinon nombre minimal de seuils renseignés non respectés.",
+                "Cliquer sur une case pour voir ses rations. Libellé : n/N combinaisons conformes aux seuils renseignés ; les valeurs inconnues restent signalées dans le détail.",
                 fontSize = 12.sp,
                 color = Color.Gray
         )
@@ -610,7 +669,8 @@ private fun PanneauResultats(
                 }
             }
         }
-        caseSelectionnee?.let { case -> DetailCase(viewModel, case, onOuvrirAnalyse) }
+        CourbesMultiration(r)
+        caseSelectionnee?.let { case -> DetailCase(viewModel, case) }
     }
 }
 
@@ -633,7 +693,7 @@ private fun LegendeZones() {
     val exemples =
             listOf(
                     ZoneEquilibre.EQUILIBRABLE to Color(0xFF0CA30C),
-                    ZoneEquilibre.SOUS_RESERVE to Color(0xFFFAB219),
+                    ZoneEquilibre.SOUS_RESERVE to Color(0xFF0CA30C),
                     ZoneEquilibre.SEUILS_NON_RESPECTES to Color(0xFFD03B3B),
                     ZoneEquilibre.ENERGIE_DEPASSEE to Color(0xFFEC835A),
                     ZoneEquilibre.NON_EVALUABLE to Color(0xFFB5B5B0)
@@ -643,7 +703,7 @@ private fun LegendeZones() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(12.dp).background(couleur))
                 Text(
-                        " ${zone.libelle}${if (zone == ZoneEquilibre.SEUILS_NON_RESPECTES) " (clair = 1 seuil, foncé = 5 et plus)" else ""}",
+                        " ${if (zone == ZoneEquilibre.SOUS_RESERVE) "Équilibrable avec données inconnues" else zone.libelle}${if (zone == ZoneEquilibre.SEUILS_NON_RESPECTES) " (clair = 1 seuil, foncé = 5 et plus)" else ""}",
                         fontSize = 11.sp
                 )
             }
@@ -679,7 +739,7 @@ private fun CarteReference(cases: List<CaseEquilibre>, selection: CaseEquilibre?
                             if (case != null) {
                                 val texte =
                                         when (case.zone) {
-                                            ZoneEquilibre.EQUILIBRABLE -> "${case.conformes}/${case.combinaisons}"
+                                            ZoneEquilibre.EQUILIBRABLE -> "${case.conformes + case.sousReserve}/${case.combinaisons}"
                                             ZoneEquilibre.SOUS_RESERVE -> "${case.sousReserve}/${case.combinaisons}"
                                             else -> case.minSeuilsManques?.toString() ?: "–"
                                         }
@@ -700,9 +760,8 @@ private fun CarteReference(cases: List<CaseEquilibre>, selection: CaseEquilibre?
 }
 
 @Composable
-private fun DetailCase(viewModel: MultiRationViewModel, case: CaseEquilibre, onOuvrirAnalyse: (AnimalEv, String) -> Unit) {
+private fun DetailCase(viewModel: MultiRationViewModel, case: CaseEquilibre) {
     val scenario by viewModel.scenarioSelectionne.collectAsState()
-    val ouverture by viewModel.ouvertureEnCours.collectAsState()
 
     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), elevation = 2.dp) {
         Column(Modifier.padding(12.dp)) {
@@ -710,26 +769,25 @@ private fun DetailCase(viewModel: MultiRationViewModel, case: CaseEquilibre, onO
                     "${case.reference.nom} — ${formaterQuantite(case.poids)} kg — K ${formaterQuantite(case.k)}",
                     style = MaterialTheme.typography.h6
             )
-            Text("${case.zone.libelle} — ${case.conformes}/${case.combinaisons} combinaisons conformes", fontSize = 13.sp)
+            Text("${case.zone.libelle} — ${case.conformes + case.sousReserve}/${case.combinaisons} combinaisons conformes aux seuils renseignés", fontSize = 13.sp)
             if (case.seuilsLimitants.isNotEmpty()) Text("Seuils limitants : ${case.seuilsLimitants}", fontSize = 12.sp)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
-                        onClick = { scenario?.let { viewModel.ouvrirDansAnalyse(case, listOf(it), onOuvrirAnalyse) } },
-                        enabled = scenario != null && !ouverture,
+                        onClick = { scenario?.let { viewModel.ouvrirDansAnalyse(listOf(it)) } },
+                        enabled = scenario != null,
                         colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary, contentColor = VetNutriColors.OnPrimary)
                 ) { Text("Analyser et éditer cette ration") }
                 OutlinedButton(
-                        onClick = { viewModel.ouvrirDansAnalyse(case, case.scenarios.take(MAX_RATIONS_PAR_CASE), onOuvrirAnalyse) },
-                        enabled = !ouverture
+                        onClick = { viewModel.ouvrirDansAnalyse(case.scenarios.take(MAX_RATIONS_PAR_CASE)) },
+                        enabled = case.scenarios.isNotEmpty()
                 ) {
                     Text("Ouvrir la case (${minOf(case.scenarios.size, MAX_RATIONS_PAR_CASE)} rations)")
                 }
             }
             Text(
-                    "Les rations sont enregistrées dans une consultation de l'animal de travail « Exploration multiration » " +
-                            "(référentiel, poids et K de la case), puis ouvertes dans l'analyse de ration : analyse détaillée, " +
-                            "ajustement multi-nutriments, édition et export habituels.",
+                    "Les rations s’ouvrent dans une vue autonome avec le référentiel, le poids et K de la case. " +
+                            "Les corrections peuvent être enregistrées dans l’exploration ; aucun animal ni consultation n’est créé.",
                     fontSize = 11.sp,
                     color = Color.Gray
             )

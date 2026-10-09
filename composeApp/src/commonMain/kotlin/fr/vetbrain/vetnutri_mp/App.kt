@@ -214,8 +214,6 @@ fun App(appDatabase: AppDatabase) {
             foodRepository = foodRepository,
             referenceEvRepository = databaseReferenceEvRepository,
             equationRepository = equationRepository,
-            animalRepository = animalRepository,
-            consultationRepository = consultationRepository,
             explorationRepository = multiRationExplorationRepository
         )
     }

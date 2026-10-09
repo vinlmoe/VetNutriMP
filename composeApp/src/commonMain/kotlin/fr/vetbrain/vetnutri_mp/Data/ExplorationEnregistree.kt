@@ -38,9 +38,13 @@ data class ConfigurationExplorationJson(
         val listes: Map<String, List<String>> = emptyMap(),
         val cibles: Map<String, CibleExplorationJson> = emptyMap(),
         val doseMinimale: Map<String, Double> = emptyMap(),
+        val pasArrondiManuel: Map<String, Double> = emptyMap(),
         val arrondir: Boolean = true,
         val ignorerOptimax: Boolean = true,
-        val maxScenarios: String = "2000"
+        val maxScenarios: String = "2000",
+        val besoinsIgnores: Set<String> = emptySet(),
+        val arrondirAuSuperieur: Boolean = false,
+        val corrections: List<CorrectionRationExploration> = emptyList()
 ) {
     fun versJson(): String = format.encodeToString(serializer(), this)
 
@@ -70,10 +74,14 @@ data class ParametresExploration(
                 RoleExploration.entries.filter { !it.estEnergie }.associateWith {
                     CibleExploration(it.nutrimentParDefaut)
                 },
-        val doseMinimale: Map<RoleExploration, Double> = RoleExploration.entries.associateWith { 5.0 },
+        val doseMinimale: Map<RoleExploration, Double> = RoleExploration.entries.associateWith { it.doseParDefaut },
+        val pasArrondiManuel: Map<RoleExploration, Double> =
+                RoleExploration.entries.filter { it == RoleExploration.SODIUM }.associateWith { 0.1 },
         val arrondir: Boolean = true,
         val ignorerOptimax: Boolean = true,
-        val maxScenarios: String = "2000"
+        val maxScenarios: String = "2000",
+        val besoinsIgnores: Set<String> = emptySet(),
+        val arrondirAuSuperieur: Boolean = false
 )
 
 /** Paramètres → JSON enregistré (identifiants seulement). */
@@ -93,9 +101,12 @@ fun ParametresExploration.versJson(): ConfigurationExplorationJson =
                             role.name to CibleExplorationJson(cible.nutriment.label, cible.niveau.name, cible.facteur)
                         },
                 doseMinimale = doseMinimale.entries.associate { (role, dose) -> role.name to dose },
+                pasArrondiManuel = pasArrondiManuel.entries.associate { (role, pas) -> role.name to pas },
                 arrondir = arrondir,
                 ignorerOptimax = ignorerOptimax,
-                maxScenarios = maxScenarios
+                maxScenarios = maxScenarios,
+                besoinsIgnores = besoinsIgnores,
+                arrondirAuSuperieur = arrondirAuSuperieur
         )
 
 /**
@@ -108,12 +119,18 @@ fun ConfigurationExplorationJson.versParametres(
 ): Pair<ParametresExploration, List<String>> {
     val json = this
     val manquants = mutableListOf<String>()
-    val defaut = ParametresExploration()
+    val roles = RoleExploration.entries + json.listes.keys.filter { it.startsWith("SUPPLEMENT_") }.map { RoleExploration.supplement(it) }
+    val defaut = ParametresExploration(
+            cibles = roles.filterNot { it.estEnergie }.associateWith { CibleExploration(it.nutrimentParDefaut) },
+            doseMinimale = roles.associateWith { it.doseParDefaut },
+            pasArrondiManuel = roles.filter { it == RoleExploration.SODIUM || it.supplementaire }
+                    .associateWith { 0.1 }
+    )
     val espece = Espece.entries.firstOrNull { it.name == json.espece } ?: Espece.CHIEN
     val references = json.referenceIds.filter { it in referencesConnues }
     if (references.size < json.referenceIds.size) manquants += "${json.referenceIds.size - references.size} référentiel(s)"
     val listes =
-            RoleExploration.entries.associateWith { role ->
+            roles.associateWith { role ->
                 val ids = json.listes[role.name].orEmpty()
                 val trouves = ids.mapNotNull { aliments[it] }
                 if (trouves.size < ids.size) manquants += "${ids.size - trouves.size} aliment(s) ${role.libelle}"
@@ -129,6 +146,9 @@ fun ConfigurationExplorationJson.versParametres(
                 )
             }
     val doses = defaut.doseMinimale.mapValues { (role, d) -> json.doseMinimale[role.name] ?: d }
+    val pas = roles.mapNotNull { role ->
+        (json.pasArrondiManuel[role.name] ?: defaut.pasArrondiManuel[role])?.let { role to it }
+    }.toMap()
     return ParametresExploration(
             espece = espece,
             referenceIds = references.toSet(),
@@ -141,8 +161,48 @@ fun ConfigurationExplorationJson.versParametres(
             listes = listes,
             cibles = cibles,
             doseMinimale = doses,
+            pasArrondiManuel = pas,
             arrondir = json.arrondir,
             ignorerOptimax = json.ignorerOptimax,
-            maxScenarios = json.maxScenarios
+            maxScenarios = json.maxScenarios,
+            besoinsIgnores = json.besoinsIgnores,
+            arrondirAuSuperieur = json.arrondirAuSuperieur
     ) to manquants
+}
+
+/** Corrections propres à une configuration et un profil, jamais à un animal/une consultation. */
+@Serializable
+data class LigneCorrectionExploration(val alimentId: String, val quantite: Double)
+
+@Serializable
+data class CorrectionRationExploration(
+        val configuration: String,
+        val cleScenario: String,
+        val aliments: List<LigneCorrectionExploration>
+)
+
+fun cleScenarioExploration(s: ScenarioExploration): String =
+        listOf(s.reference.uuid, s.poids.toString(), s.k.toString(), s.combinaison.toString()).joinToString("|")
+
+suspend fun appliquerCorrectionsExploration(
+        resultat: ResultatExploration,
+        configuration: String,
+        corrections: List<CorrectionRationExploration>,
+        aliments: Map<String, AlimentEv>,
+        explorateur: ExplorateurMultiration
+): ResultatExploration {
+    val parCle = corrections.filter { it.configuration == configuration }.associateBy { it.cleScenario }
+    val scenarios = resultat.scenarios.map { scenario ->
+        val correction = parCle[cleScenarioExploration(scenario)] ?: return@map scenario
+        val ration = scenario.ration.copy(alimentMutableList = correction.aliments.map { ligne ->
+            val aliment = aliments[ligne.alimentId]
+                    ?: throw ExplorationException("Aliment corrigé introuvable : ${ligne.alimentId}")
+            if (!ligne.quantite.isFinite() || ligne.quantite < 0.0)
+                throw ExplorationException("Quantité corrigée invalide pour ${aliment.nom}")
+            AlimentRation(aliment = aliment, quantite = ligne.quantite,
+                    refRation = scenario.ration.uuid, refAlimUnif = aliment.uuid)
+        }.toMutableList())
+        explorateur.reevaluerScenario(scenario, ration, resultat.configuration)
+    }
+    return resultat.copy(scenarios = scenarios, cases = ExplorateurMultiration.construireCases(scenarios))
 }

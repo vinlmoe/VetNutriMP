@@ -2,12 +2,11 @@ package fr.vetbrain.vetnutri_mp.ViewModel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
-import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.CaseEquilibre
 import fr.vetbrain.vetnutri_mp.Data.CibleExploration
 import fr.vetbrain.vetnutri_mp.Data.ConfigurationExploration
-import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.ExplorateurMultiration
 import fr.vetbrain.vetnutri_mp.Data.ConfigurationExplorationJson
 import fr.vetbrain.vetnutri_mp.Data.ExplorationEnregistree
@@ -21,13 +20,13 @@ import fr.vetbrain.vetnutri_mp.Data.ResultatExploration
 import fr.vetbrain.vetnutri_mp.Data.RoleExploration
 import fr.vetbrain.vetnutri_mp.Data.ScenarioExploration
 import fr.vetbrain.vetnutri_mp.Data.formaterQuantite
+import fr.vetbrain.vetnutri_mp.Data.copierRationExploration
+import fr.vetbrain.vetnutri_mp.Data.rolesExplorationActifs
 import fr.vetbrain.vetnutri_mp.Data.intervalleExploration
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
-import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
-import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
@@ -35,7 +34,6 @@ import fr.vetbrain.vetnutri_mp.Repository.MultiRationExplorationRepository
 import fr.vetbrain.vetnutri_mp.Utils.instantNow
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
-import fr.vetbrain.vetnutri_mp.Utils.today
 import fr.vetbrain.vetnutri_mp.View.AnalNut.adjustmentNeedMultiplier
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -49,14 +47,12 @@ import kotlinx.coroutines.withContext
 /**
  * Exploration multiration : configuration de la grille (référentiels × poids × K), des six listes
  * d'ingrédients et des cibles, calcul de toutes les rations et ouverture d'une ration (ou d'une
- * case entière) dans l'analyse de ration d'une consultation de travail.
+ * case entière) dans une vue ration autonome en mémoire.
  */
 class MultiRationViewModel(
         private val foodRepository: FoodRepository,
         private val referenceEvRepository: DatabaseReferenceEvRepository,
-        private val equationRepository: EquationRepository,
-        private val animalRepository: AnimalRepository,
-        private val consultationRepository: ConsultationRepository,
+        val equationRepository: EquationRepository,
         private val explorationRepository: MultiRationExplorationRepository
 ) : ViewModel() {
 
@@ -88,8 +84,12 @@ class MultiRationViewModel(
     private val _scenarioSelectionne = MutableStateFlow<ScenarioExploration?>(null)
     val scenarioSelectionne: StateFlow<ScenarioExploration?> = _scenarioSelectionne.asStateFlow()
 
-    private val _ouvertureEnCours = MutableStateFlow(false)
-    val ouvertureEnCours: StateFlow<Boolean> = _ouvertureEnCours.asStateFlow()
+    private var corrections = emptyList<CorrectionRationExploration>()
+    private val _enregistrementCorrections = MutableStateFlow(false)
+    val enregistrementCorrections = _enregistrementCorrections.asStateFlow()
+
+    private val _rationsOuvertes = MutableStateFlow<List<ScenarioExploration>>(emptyList())
+    val rationsOuvertes = _rationsOuvertes.asStateFlow()
 
     private val _explorations = MutableStateFlow<List<ExplorationEnregistree>>(emptyList())
     /** Configurations enregistrées en base, la plus récente d'abord. */
@@ -106,8 +106,6 @@ class MultiRationViewModel(
     /** Aliments du catalogue (version observée par le repository). */
     val aliments = foodRepository.observeAllFoods()
 
-    /** Animal de travail regroupant les rations ouvertes pendant cette session d'exploration. */
-    private var animalDeTravail: AnimalEv? = null
     private var calcul: Job? = null
 
     fun chargerReferences() {
@@ -140,6 +138,25 @@ class MultiRationViewModel(
 
     fun basculerReference(id: String) = modifierParametres {
         it.copy(referenceIds = if (id in it.referenceIds) it.referenceIds - id else it.referenceIds + id)
+    }
+
+    fun ajouterListe(): RoleExploration {
+        val role = RoleExploration.supplement()
+        modifierParametres { p -> p.copy(
+                listes = p.listes + (role to emptyList()),
+                cibles = p.cibles + (role to CibleExploration(role.nutrimentParDefaut)),
+                doseMinimale = p.doseMinimale + (role to role.doseParDefaut),
+                pasArrondiManuel = p.pasArrondiManuel + (role to 0.1)
+        ) }
+        return role
+    }
+
+    fun retirerListe(role: RoleExploration) {
+        if (!role.supplementaire) return
+        modifierParametres { p -> p.copy(
+                listes = p.listes - role, cibles = p.cibles - role,
+                doseMinimale = p.doseMinimale - role, pasArrondiManuel = p.pasArrondiManuel - role
+        ) }
     }
 
     fun ajouterAliment(role: RoleExploration, aliment: AlimentEv) = modifierParametres { p ->
@@ -176,6 +193,10 @@ class MultiRationViewModel(
         p.copy(doseMinimale = p.doseMinimale + (role to dose))
     }
 
+    fun modifierPasArrondi(role: RoleExploration, pas: Double) = modifierParametres { p ->
+        p.copy(pasArrondiManuel = p.pasArrondiManuel + (role to pas))
+    }
+
     // --- Contrôles avant calcul ------------------------------------------------------------
 
     /** Grilles de poids et de K, ou message d'erreur. */
@@ -191,7 +212,7 @@ class MultiRationViewModel(
 
     fun nombreScenarios(p: ParametresExploration = _parametres.value): Long {
         val (poids, k) = grille(p)
-        val combinaisons = RoleExploration.entries.fold(1L) { acc, role -> acc * p.listes[role].orEmpty().size }
+        val combinaisons = rolesExplorationActifs(p.listes, p.cibles, p.besoinsIgnores).fold(1L) { acc, role -> acc * p.listes[role].orEmpty().size }
         return combinaisons * (poids?.size ?: 0) * (k?.size ?: 0) * p.referenceIds.size
     }
 
@@ -202,7 +223,7 @@ class MultiRationViewModel(
         val (poids, k) = grille(p)
         if (poids == null) liste += "Poids : bornes positives, maximum ≥ minimum, pas positif."
         if (k == null) liste += "K : bornes positives, maximum ≥ minimum, pas positif."
-        val vides = RoleExploration.entries.filter { p.listes[it].isNullOrEmpty() }
+        val vides = rolesExplorationActifs(p.listes, p.cibles, p.besoinsIgnores).filter { p.listes[it].isNullOrEmpty() }
         if (vides.isNotEmpty()) liste += "Listes vides : ${vides.joinToString { it.libelle }}."
         val limite = p.maxScenarios.toIntOrNull()
         if (limite == null || limite <= 0) liste += "Limite de scénarios invalide."
@@ -215,6 +236,7 @@ class MultiRationViewModel(
 
     fun lancerCalcul() {
         val p = _parametres.value
+        val correctionsDuCalcul = corrections
         val problemes = problemes(p)
         if (problemes.isNotEmpty()) {
             _erreur.value = problemes.joinToString(" ")
@@ -241,12 +263,20 @@ class MultiRationViewModel(
                                                     cibles = p.cibles,
                                                     arrondir = p.arrondir,
                                                     doseMinimale = p.doseMinimale,
+                                                    pasArrondiManuel = p.pasArrondiManuel,
                                                     ignorerOptimax = p.ignorerOptimax,
-                                                    maxScenarios = p.maxScenarios.toInt()
+                                                    maxScenarios = p.maxScenarios.toInt(),
+                                                    besoinsIgnores = p.besoinsIgnores,
+                                                    arrondirAuSuperieur = p.arrondirAuSuperieur
                                             )
-                                    ExplorateurMultiration(equationRepository).explorer(config) { faits, total ->
+                                    val explorateur = ExplorateurMultiration(equationRepository)
+                                    val initial = explorateur.explorer(config) { faits, total ->
                                         if (faits % 10 == 0 || faits == total) _progression.value = Progression(faits, total)
                                     }
+                                    val signature = p.versJson().versJson()
+                                    val actives = correctionsDuCalcul.filter { it.configuration == signature }
+                                    val alimentsCorriges = foodRepository.getFoodsByUuids(actives.flatMap { it.aliments.map { a -> a.alimentId } }.distinct())
+                                    appliquerCorrectionsExploration(initial, signature, actives, alimentsCorriges, explorateur)
                                 }
                         _resultat.value = resultat
                         _parametresDuResultat.value = p
@@ -282,83 +312,80 @@ class MultiRationViewModel(
         _scenarioSelectionne.value = scenario
     }
 
-    // --- Ouverture dans l'analyse de ration ---------------------------------------------------
+    /** Copies en mémoire uniquement : aucun animal, aucune consultation, aucune écriture en base. */
+    fun ouvrirDansAnalyse(scenarios: List<ScenarioExploration>) {
+        _rationsOuvertes.value = scenarios.map { it.copy(ration = copierRationExploration(it.ration)) }
+    }
 
-    /**
-     * Enregistre le scénario (ou toutes les combinaisons de la case, la meilleure d'abord) comme
-     * consultation de travail — référentiel, poids et K (coefficient d'ajustement) de la case — puis
-     * appelle [ouvrir] avec l'animal et la consultation, pour les analyser et les éditer avec les
-     * écrans habituels (analyse détaillée, ajustement multi-nutriments, export PDF).
-     */
-    fun ouvrirDansAnalyse(
-            case: CaseEquilibre,
-            scenarios: List<ScenarioExploration>,
-            ouvrir: (AnimalEv, String) -> Unit
-    ) {
-        if (scenarios.isEmpty() || _ouvertureEnCours.value) return
-        viewModelScope.launch {
-            _ouvertureEnCours.value = true
-            try {
-                val animal = obtenirAnimalDeTravail(case.reference.espece)
-                val consultationId = genUUID()
-                val rations =
-                        scenarios.mapIndexed { i, s -> copierRation(s, consultationId, i + 1, actuelle = i == 0) }
-                val consultation =
-                        ConsultationEv(
-                                uuid = consultationId,
-                                idAnim = animal.uuid,
-                                date = today().date,
-                                objectConsult =
-                                        "Exploration multiration — ${case.reference.nom} — ${formaterQuantite(case.poids)} kg — K ${formaterQuantite(case.k)}",
-                                observation =
-                                        scenarios.joinToString("\n") { "${it.id} : ${it.statut.libelle}${if (it.seuilsManques.isNotEmpty()) " — " + it.seuilsManques.joinToString() else ""}" },
-                                weight = case.poids,
-                                referenceGeneraleId = case.reference.uuid,
-                                // Besoin total = BEE standard × K, comme dans l'exploration
-                                coefficientAjustement = case.k,
-                                rations = rations.toMutableList()
-                        )
-                consultationRepository.saveConsultation(consultation)
-                ouvrir(animal, consultation.uuid)
-            } catch (e: Exception) {
-                _erreur.value = "Ouverture impossible : ${e.message}"
-            } finally {
-                _ouvertureEnCours.value = false
+    fun fermerRations() {
+        _rationsOuvertes.value = emptyList()
+    }
+
+    fun modifierRationExploration(id: String, aliments: List<fr.vetbrain.vetnutri_mp.Data.AlimentRation>) {
+        _rationsOuvertes.update { scenarios ->
+            scenarios.map { s ->
+                if (s.id != id) s else s.copy(ration = s.ration.copy(alimentMutableList = aliments.toMutableList()))
             }
         }
     }
 
-    private suspend fun obtenirAnimalDeTravail(espece: Espece): AnimalEv {
-        animalDeTravail?.let { existant ->
-            if (existant.getEspece() == espece && animalRepository.getAnimalById(existant.uuid) != null) return existant
+    /** Sauvegarde d'abord, puis publication atomique des résultats recalculés. */
+    fun enregistrerCorrections() {
+        if (_enregistrementCorrections.value) return
+        val resultat = _resultat.value ?: return
+        val p = _parametresDuResultat.value ?: return
+        if (p != _parametres.value) {
+            _erreur.value = "Recalculer l’exploration avec les paramètres actuels avant d’enregistrer les corrections."
+            return
         }
-        val animal =
-                AnimalEv(
-                        nom = "Exploration multiration ${today().date}",
-                        specieId = espece.label,
-                        summary = "Animal de travail créé par l'exploration multiration : chaque consultation regroupe les rations d'une case référentiel × poids × K."
+        val editions = _rationsOuvertes.value
+        if (editions.isEmpty()) return
+        val signature = p.versJson().versJson()
+        val nouvelles = editions.map { s ->
+            CorrectionRationExploration(signature, cleScenarioExploration(s),
+                    s.ration.alimentMutableList.map { LigneCorrectionExploration(it.aliment?.uuid ?: it.refAlimUnif.orEmpty(), it.quantite) })
+        }
+        val cles = nouvelles.map { it.cleScenario }.toSet()
+        val toutes = corrections.filterNot { it.configuration == signature && it.cleScenario in cles } + nouvelles
+        _erreur.value = null
+        _enregistrementCorrections.value = true
+        viewModelScope.launch {
+            try {
+                val aliments = foodRepository.getFoodsByUuids(nouvelles.flatMap { it.aliments.map { a -> a.alimentId } }.distinct())
+                val actualise = withContext(AppDispatchers.Default) {
+                    appliquerCorrectionsExploration(resultat, signature, nouvelles, aliments, ExplorateurMultiration(equationRepository))
+                }
+                val courante = _explorationCourante.value
+                val exploration = ExplorationEnregistree(
+                        uuid = courante?.uuid ?: genUUID(),
+                        nom = courante?.nom ?: "Exploration corrigée — ${instantNow()}",
+                        espece = p.espece.name,
+                        configurationJson = p.versJson().copy(corrections = toutes).versJson(),
+                        updatedAt = instantNow().toEpochMilliseconds()
                 )
-        animalRepository.saveAnimal(animal)
-        animalDeTravail = animal
-        return animal
+                explorationRepository.saveExploration(exploration)
+                corrections = toutes
+                _explorationCourante.value = exploration
+                _resultat.value = actualise
+                val ancienneCase = _caseSelectionnee.value
+                _caseSelectionnee.value = actualise.cases.firstOrNull {
+                    ancienneCase != null && it.reference.uuid == ancienneCase.reference.uuid && it.poids == ancienneCase.poids && it.k == ancienneCase.k
+                }
+                _scenarioSelectionne.value = actualise.scenarios.firstOrNull { it.id == _scenarioSelectionne.value?.id }
+                _rationsOuvertes.value = emptyList()
+                _message.value = "Corrections enregistrées ; tableaux, carte et courbes mis à jour."
+                chargerExplorations()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _erreur.value = "Enregistrement des corrections impossible : ${e.message}"
+            } finally {
+                _enregistrementCorrections.value = false
+            }
+        }
     }
 
-    private fun copierRation(s: ScenarioExploration, consultationId: String, numero: Int, actuelle: Boolean): Ration {
-        val rationId = genUUID()
-        return s.ration.copy(
-                uuid = rationId,
-                idConsult = consultationId,
-                name = "${s.id} — ${s.statut.libelle}",
-                number = numero,
-                actual = actuelle,
-                description = s.composition,
-                alimentMutableList =
-                        s.ration.alimentMutableList
-                                .filter { it.quantite > 0.0 }
-                                .map { it.copy(uuid = genUUID(), refRation = rationId) }
-                                .toMutableList()
-        )
-    }
+    suspend fun alimentComplet(id: String): AlimentEv? = foodRepository.getFoodsByUuids(listOf(id))[id]
 
     // --- Configurations enregistrées --------------------------------------------------------------
 
@@ -392,7 +419,7 @@ class MultiRationViewModel(
                         uuid = if (courante != null && !commeNouvelle) courante.uuid else genUUID(),
                         nom = nomPropre,
                         espece = p.espece.name,
-                        configurationJson = p.versJson().versJson(),
+                        configurationJson = p.versJson().copy(corrections = corrections).versJson(),
                         updatedAt = instantNow().toEpochMilliseconds()
                 )
         viewModelScope.launch {
@@ -422,6 +449,7 @@ class MultiRationViewModel(
                 val aliments = foodRepository.getFoodsByUuids(ids)
                 val (parametres, manquants) = json.versParametres( aliments, _references.value.map { it.uuid }.toSet())
                 annulerCalcul()
+                corrections = json.corrections
                 _parametres.value = parametres
                 _resultat.value = null
                 _parametresDuResultat.value = null
@@ -431,6 +459,7 @@ class MultiRationViewModel(
                 _message.value =
                         "Exploration « ${exploration.nom} » chargée." +
                                 if (manquants.isEmpty()) "" else " Introuvables (ignorés) : ${manquants.joinToString()}."
+                if (corrections.isNotEmpty() && manquants.isEmpty()) lancerCalcul()
             } catch (e: Exception) {
                 _erreur.value = "Chargement impossible : ${e.message}"
             }
@@ -452,6 +481,8 @@ class MultiRationViewModel(
     /** Repart d'une configuration vide (nouvelle exploration). */
     fun nouvelleExploration() {
         annulerCalcul()
+        corrections = emptyList()
+        fermerRations()
         _parametres.value = ParametresExploration(espece = _parametres.value.espece)
         _resultat.value = null
         _parametresDuResultat.value = null
@@ -468,9 +499,10 @@ class MultiRationViewModel(
 
     fun csvScenarios(): String {
         val r = _resultat.value ?: return ""
+        val rolesExport = r.scenarios.flatMap { it.roles }.distinct()
         val entete =
                 listOf("scenario", "combinaison", "referentiel", "poids_kg", "K", "besoin_standard_kcal", "besoin_total_kcal", "energie_kcal", "ecart_energie_kcal", "statut", "composition") +
-                        RoleExploration.entries.flatMap { listOf("aliment_${it.name.lowercase()}", "quantite_${it.name.lowercase()}_g") } +
+                        rolesExport.flatMap { listOf("aliment_${it.name.lowercase()}", "quantite_${it.name.lowercase()}_g") } +
                         listOf("seuils_non_respectes", "seuils_non_renseignes", "message")
         val lignes =
                 r.scenarios.map { s ->
@@ -479,7 +511,10 @@ class MultiRationViewModel(
                             nombreCsv(s.besoinStandard), nombreCsv(s.besoinTotal), nombreCsv(s.energie), nombreCsv(s.ecartEnergie),
                             s.statut.name, s.composition
                     ) +
-                            s.ration.alimentMutableList.flatMap { listOf(it.aliment?.nom ?: "", nombreCsv(it.quantite)) } +
+                            rolesExport.flatMap { role ->
+                                val ligne = s.ration.alimentMutableList.getOrNull(s.roles.indexOf(role))
+                                listOf(ligne?.aliment?.nom ?: "", nombreCsv(ligne?.quantite))
+                            } +
                             listOf(s.seuilsManques.joinToString("; "), s.seuilsNonRenseignes.joinToString("; "), s.message)
                 }
         return csv(entete, lignes)
