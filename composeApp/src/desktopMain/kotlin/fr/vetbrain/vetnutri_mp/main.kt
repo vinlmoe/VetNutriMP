@@ -10,6 +10,7 @@ import androidx.compose.ui.window.rememberWindowState
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabaseBuilder
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabasePath
 import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
+import fr.vetbrain.vetnutri_mp.DataBase.setAsideDatabaseFiles
 import fr.vetbrain.vetnutri_mp.ExcelPlatform.runSwingDialog
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseAnimalRepository
@@ -45,17 +46,6 @@ private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
 
 private var appScope: CoroutineScope? = null
 private var desktopAppDatabase: fr.vetbrain.vetnutri_mp.DataBase.AppDatabase? = null
-
-private fun desktopDatabaseFiles(): List<File> {
-    val userHome = System.getProperty("user.home")
-    val dataDir = File(userHome, ".vetnutri_mp/data")
-    val dbFile = File(dataDir, fr.vetbrain.vetnutri_mp.DataBase.AppDatabase.DATABASE_NAME)
-    return listOf(
-        dbFile,
-        File(dbFile.absolutePath + "-wal"),
-        File(dbFile.absolutePath + "-shm")
-    )
-}
 
 private fun restartCurrentDesktopProcess(): Result<Unit> {
     return runCatching {
@@ -237,13 +227,12 @@ actual fun performDatabaseFactoryReset(): String? {
         desktopAppDatabase?.close()
         desktopAppDatabase = null
 
-        val failures =
-            desktopDatabaseFiles()
-                .filter { it.exists() && !it.delete() }
-                .map { it.absolutePath }
+        // La base n'est jamais supprimée : elle est mise de côté (<db>.reset.<epoch>) pour rester
+        // récupérable, et le .bak n'est pas remplacé par la base vide qui la suivra.
+        val failures = setAsideDatabaseFiles(getDatabasePath(), "reset")
 
         if (failures.isNotEmpty()) {
-            return "Impossible de supprimer: ${failures.joinToString(", ")}"
+            return "Impossible de mettre la base de côté: ${failures.joinToString(", ")}"
         }
 
         val restartResult = restartCurrentDesktopProcess()

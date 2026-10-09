@@ -92,6 +92,29 @@ class AppDatabasePersistenceTest {
     }
 
     @Test
+    fun getRoomDatabase_failedMigration_setsDatabaseAsideInsteadOfLosingIt() = runTest {
+        // Base en version 16 : aucune migration 16 -> courante n'existe, Room doit échouer à
+        // l'ouverture. L'échec doit être traité dans getRoomDatabase (et non à la première requête).
+        androidx.sqlite.driver.bundled.BundledSQLiteDriver().open(dbPath).use { connection ->
+            connection.prepare("CREATE TABLE MARQUE (valeur TEXT)").use { it.step() }
+            connection.prepare("INSERT INTO MARQUE VALUES ('donnees-v16')").use { it.step() }
+            connection.prepare("PRAGMA user_version = 16").use { it.step() }
+        }
+
+        val db = getRoomDatabase(freshBuilder(), dbPath)
+        assertEquals(0, db.animalDao().getAllAnimals().size)
+        db.close()
+
+        val aside = tempDir.listFiles { f -> f.name.startsWith("vetnutri.db.migration-failed.") }
+        assertEquals(1, aside?.size, "la base dont la migration échoue doit être mise de côté")
+        val marque =
+                androidx.sqlite.driver.bundled.BundledSQLiteDriver().open(aside!!.single().absolutePath).use { connection ->
+                    connection.prepare("SELECT valeur FROM MARQUE").use { if (it.step()) it.getText(0) else null }
+                }
+        assertEquals("donnees-v16", marque)
+    }
+
+    @Test
     fun getRoomDatabase_corruptedFile_rotatesItInsteadOfDeletingAndOpensCleanDatabase() = runTest {
         // Fichier non-SQLite : l'ouverture Room doit échouer et déclencher la rotation,
         // jamais une suppression silencieuse des données existantes.

@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.DataBase
 
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.execSQL
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.AfterTest
@@ -58,16 +60,58 @@ class DatabaseGuardTest {
         assertEquals("shm-data", File("$dbPath-shm.bak").readText())
     }
 
+    /** Base SQLite minimale avec une table ANIMALS contenant [animals] lignes. */
+    private fun creerBaseAvecAnimaux(path: String, animals: Int) {
+        File(path).delete()
+        BundledSQLiteDriver().open(path).use { connection ->
+            connection.execSQL("CREATE TABLE ANIMALS (uuid TEXT NOT NULL PRIMARY KEY)")
+            repeat(animals) { connection.execSQL("INSERT INTO ANIMALS (uuid) VALUES ('a$it')") }
+        }
+    }
+
+    private fun animauxDuBak(): Int? = readAnimalCount("$dbPath.bak")
+
     @Test
     fun backupDatabaseFiles_overwritesPreviousBakWithLatestData() {
-        File(dbPath).writeText("first-run")
+        creerBaseAvecAnimaux(dbPath, 1)
         backupDatabaseFiles(dbPath)
-        assertEquals("first-run", File("$dbPath.bak").readText())
+        assertEquals(1, animauxDuBak())
 
-        File(dbPath).writeText("second-run")
+        creerBaseAvecAnimaux(dbPath, 2)
         backupDatabaseFiles(dbPath)
 
-        assertEquals("second-run", File("$dbPath.bak").readText())
+        assertEquals(2, animauxDuBak())
+    }
+
+    @Test
+    fun backupDatabaseFiles_neverReplacesBakWithDatabaseWithoutAnimals() {
+        creerBaseAvecAnimaux(dbPath, 3)
+        backupDatabaseFiles(dbPath)
+
+        // Perte de base : la base courante est vide au démarrage suivant
+        creerBaseAvecAnimaux(dbPath, 0)
+        backupDatabaseFiles(dbPath)
+        assertEquals(3, animauxDuBak(), "le .bak contenant des animaux doit être conservé")
+
+        // Base illisible : idem
+        File(dbPath).writeText("not a real sqlite database file")
+        backupDatabaseFiles(dbPath)
+        assertEquals(3, animauxDuBak())
+    }
+
+    @Test
+    fun setAsideDatabaseFiles_movesFilesWithTag_andNeverDeletes() {
+        File(dbPath).writeText("main")
+        File("$dbPath-wal").writeText("wal")
+
+        val failures = setAsideDatabaseFiles(dbPath, "reset")
+
+        assertTrue(failures.isEmpty())
+        assertFalse(File(dbPath).exists())
+        val main = tempDir.listFiles { f -> f.name.startsWith("vetnutri.db.reset.") }
+        val wal = tempDir.listFiles { f -> f.name.startsWith("vetnutri.db-wal.reset.") }
+        assertEquals("main", main?.single()?.readText())
+        assertEquals("wal", wal?.single()?.readText())
     }
 
     @Test
