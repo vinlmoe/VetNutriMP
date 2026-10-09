@@ -25,6 +25,11 @@ class BackupService(
     companion object {
         private const val MAX_BACKUP_FILES = 10
         private const val BACKUP_PREFIX = "vetnutri_backup_"
+        /** Sauvegardes long terme : préfixe distinct, donc jamais touchées par la rotation */
+        private const val LONG_TERM_PREFIX = "vetnutri_longterm_"
+        /** Une sauvegarde long terme toutes les N sauvegardes automatiques réussies */
+        internal const val LONG_TERM_EVERY = 100
+        private const val AUTO_BACKUP_COUNTER_FILE = "vetnutri_auto_backup_counter.txt"
         private const val BACKUP_EXTENSION = ".json"
         private const val BACKUP_INTERVAL_MINUTES = 10L
     }
@@ -52,7 +57,8 @@ class BackupService(
             val equationCount: Int,
             val conseilCount: Int,
             val recipeCount: Int,
-            val rationCount: Int
+            val rationCount: Int,
+            val isLongTerm: Boolean = false
     )
 
     /** Démarrer le service de sauvegarde automatique */
@@ -60,10 +66,10 @@ class BackupService(
         stopAutomaticBackup() // Arrêter toute sauvegarde existante
 
         backupJob = scope.launch {
-            createBackup()
+            createAutomaticBackup()
             while (isActive) {
                 delay(BACKUP_INTERVAL_MINUTES * 60 * 1000)
-                createBackup()
+                createAutomaticBackup()
             }
         }
     }
@@ -84,10 +90,66 @@ class BackupService(
         createBackupLocked()
     }
 
-    private suspend fun createBackupLocked(rotate: Boolean = true): Result<BackupMetadata> {
+    /**
+     * Sauvegarde automatique. Une base sans animaux n'est pas sauvegardée tant qu'une sauvegarde
+     * plus ancienne en contient : après une perte de base, la rotation effacerait sinon les
+     * dernières sauvegardes utiles en moins de deux heures.
+     */
+    internal suspend fun createAutomaticBackup(): Result<BackupMetadata> = operationMutex.withLock {
+        createBackupLocked(skipIfNoAnimals = true).onSuccess { metadata ->
+            val count = readAutomaticBackupCount() + 1
+            writeAutomaticBackupCount(count)
+            if (count % LONG_TERM_EVERY == 0) createLongTermCopy(metadata)
+        }
+    }
+
+    private suspend fun automaticBackupCounterFile(): PlatformFile =
+            PlatformFile.create("${fileService.getBackupDirectory().absolutePath}/$AUTO_BACKUP_COUNTER_FILE")
+
+    private suspend fun readAutomaticBackupCount(): Int =
+            fileService.readText(automaticBackupCounterFile()).getOrNull()?.trim()?.toIntOrNull() ?: 0
+
+    private suspend fun writeAutomaticBackupCount(count: Int) {
+        fileService.writeText(automaticBackupCounterFile(), count.toString())
+    }
+
+    /**
+     * Copie une sauvegarde automatique sous le préfixe long terme : la rotation ne la supprime
+     * jamais (seule une suppression manuelle depuis l'écran des sauvegardes le peut).
+     */
+    private suspend fun createLongTermCopy(source: BackupMetadata) {
+        try {
+            val fileName = source.fileName.replaceFirst(BACKUP_PREFIX, LONG_TERM_PREFIX)
+            val destination = PlatformFile.create(buildBackupFilePath(fileName))
+            val temporary = PlatformFile.create("${destination.absolutePath}.tmp")
+            try {
+                fileService.copyFile(PlatformFile.create(source.filePath), temporary).getOrThrow()
+                fileService.moveFile(temporary, destination).getOrThrow()
+            } finally {
+                if (temporary.exists()) fileService.deleteFile(temporary)
+            }
+            saveBackupMetadata(
+                    source.copy(fileName = fileName, filePath = destination.absolutePath, isLongTerm = true)
+            )
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+        }
+    }
+
+    /** Sauvegarde la plus récente contenant des animaux, candidate à une restauration. */
+    suspend fun findLatestBackupWithAnimals(): BackupMetadata? =
+            getAvailableBackups().firstOrNull { it.animalCount > 0 }
+
+    private suspend fun createBackupLocked(
+            rotate: Boolean = true,
+            skipIfNoAnimals: Boolean = false
+    ): Result<BackupMetadata> {
         return try {
             // Exporter toutes les données
             val envelope = exportImportRepository.exportAllEnvelope()
+            if (skipIfNoAnimals && envelope.animals.isEmpty() && findLatestBackupWithAnimals() != null) {
+                return Result.failure(IllegalStateException("Base sans animaux : sauvegarde automatique ignorée"))
+            }
 
             // Créer le nom de fichier avec timestamp
             var timestamp = Clock.System.now().toEpochMilliseconds()
@@ -198,7 +260,8 @@ class BackupService(
             val backupFiles =
                     fileService.listFiles(backupDirectory).filter { file ->
                         file.isFile() &&
-                                file.name.startsWith(BACKUP_PREFIX) &&
+                                (file.name.startsWith(BACKUP_PREFIX) ||
+                                        file.name.startsWith(LONG_TERM_PREFIX)) &&
                                 file.name.endsWith(BACKUP_EXTENSION) &&
                                 !file.name.contains(
                                         "_metadata"
@@ -207,6 +270,7 @@ class BackupService(
 
             backupFiles
                     .mapNotNull { file ->
+                        val isLongTerm = file.name.startsWith(LONG_TERM_PREFIX)
                         try {
                             val metadataFile =
                                     PlatformFile.create(
@@ -219,7 +283,7 @@ class BackupService(
                                 val metadataJson =
                                         fileService.readText(metadataFile).getOrNull() ?: ""
                                 val loaded = json.decodeFromString<BackupMetadata>(metadataJson)
-                                loaded.copy(filePath = buildBackupFilePath(loaded.fileName))
+                                loaded.copy(filePath = buildBackupFilePath(loaded.fileName), isLongTerm = isLongTerm)
                             } else {
                                 val envelope = json.decodeFromString<ApiEnvelope>(fileService.readText(file).getOrThrow())
                                 val metadata = BackupMetadata(
@@ -232,7 +296,8 @@ class BackupService(
                                     equationCount = envelope.equations.size,
                                     conseilCount = envelope.conseils.size,
                                     recipeCount = envelope.recipes.size,
-                                    rationCount = envelope.rations.size
+                                    rationCount = envelope.rations.size,
+                                    isLongTerm = isLongTerm
                                 )
 
                                 // Sauvegarder les métadonnées pour éviter de les recréer à chaque

@@ -11,9 +11,13 @@ private val DB_EXTENSIONS = listOf("", "-wal", "-shm")
 /**
  * Copie les fichiers DB (+ WAL/SHM) en .bak avant toute migration.
  * Appelé systématiquement au démarrage, avant que Room n'ouvre la base.
+ *
+ * Un .bak existant n'est jamais remplacé par une base sans animaux (vide, ou illisible) : après une
+ * perte de base, le démarrage suivant écraserait sinon la dernière copie utile.
  */
 fun backupDatabaseFiles(dbPath: String) {
     val fs = FileSystem.SYSTEM
+    if (fs.exists("$dbPath.bak".toPath()) && (readAnimalCount(dbPath) ?: 0) == 0) return
     for (ext in DB_EXTENSIONS) {
         try {
             val src = "$dbPath$ext".toPath()
@@ -51,15 +55,46 @@ fun isDatabaseReadable(dbPath: String): Boolean {
  * Room crée ensuite une base vide propre. Le .bak reste disponible pour restauration manuelle.
  */
 fun rotateCorruptDatabaseFiles(dbPath: String) {
+    setAsideDatabaseFiles(dbPath, "corrupt")
+}
+
+/**
+ * Déplace les fichiers DB (+ WAL/SHM) vers `<fichier>.<tag>.<epoch>` sans jamais les supprimer.
+ *
+ * @return les chemins qui n'ont pas pu être déplacés (vide si tout a réussi)
+ */
+fun setAsideDatabaseFiles(dbPath: String, tag: String): List<String> {
     val fs = FileSystem.SYSTEM
     val ts = Clock.System.now().epochSeconds
+    val failures = mutableListOf<String>()
     for (ext in DB_EXTENSIONS) {
+        val src = "$dbPath$ext".toPath()
         try {
-            val src = "$dbPath$ext".toPath()
             if (fs.exists(src)) {
-                fs.atomicMove(src, "$dbPath$ext.corrupt.$ts".toPath())
+                fs.atomicMove(src, "$dbPath$ext.$tag.$ts".toPath())
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+            failures += src.toString()
+        }
+    }
+    return failures
+}
+
+/**
+ * Nombre d'animaux d'un fichier de base existant, lu directement en SQLite (avant Room).
+ *
+ * @return null si le fichier n'existe pas, est illisible ou n'a pas de table ANIMALS
+ */
+fun readAnimalCount(dbPath: String): Int? {
+    if (!FileSystem.SYSTEM.exists(dbPath.toPath())) return null
+    return try {
+        BundledSQLiteDriver().open(dbPath).use { connection ->
+            connection.prepare("SELECT COUNT(*) FROM ANIMALS").use { statement ->
+                if (statement.step()) statement.getLong(0).toInt() else null
+            }
+        }
+    } catch (_: Exception) {
+        null
     }
 }
 
