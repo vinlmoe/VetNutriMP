@@ -140,6 +140,8 @@ class AnimalDetailViewModel(
     // coup (ex. éditions rapides d'un plan évolutif) peuvent se terminer dans le désordre et la
     // plus ancienne écraser la plus récente.
     private val consultationSaveMutex = Mutex()
+    // Consultation sélectionnée avant la création d'un brouillon : on y revient en cas d'annulation
+    private var consultationAvantBrouillon: String? = null
     private val analysisCacheTime = mutableMapOf<String, Long>()
     private val rationAnalysisCache = LruMap<String, AnalyseResultat>(50) { evictedKey ->
         analysisCacheTime.remove(evictedKey)
@@ -367,6 +369,11 @@ class AnimalDetailViewModel(
     }
 
     fun setAnimal(animal: AnimalEv) {
+        // Rechargement du même animal (ex. après un partage) : garder la consultation et la ration
+        // choisies au lieu de revenir à la consultation la plus récente
+        val memeAnimal = _animal.value?.uuid == animal.uuid
+        val consultationPrecedente = _selectedConsultation.value?.uuid?.takeIf { memeAnimal }
+        val rationPrecedente = _selectedRation.value?.uuid?.takeIf { memeAnimal }
         viewModelScope.launch {
 
             // Réinitialiser les états immédiatement pour éviter toute rémanence
@@ -427,32 +434,18 @@ class AnimalDetailViewModel(
                         currentAnimal?.copy(consultations = consultations.toMutableList())
                     }
 
-                    // Sélectionner automatiquement la consultation la plus récente
-                    val mostRecentConsultation =
-                            consultations.filter { it.date != null }.maxByOrNull { it.date!! }
-                    if (mostRecentConsultation != null) {
-                        selectConsultation(mostRecentConsultation)
-                    } else if (consultations.isNotEmpty()) {
-                        // Si aucune consultation n'a de date, prendre la première
-                        selectConsultation(consultations.first())
-                    }
+                    // Reprendre la consultation précédemment choisie, sinon la plus récente
+                    val aSelectionner =
+                            consultations.firstOrNull { it.uuid == consultationPrecedente }
+                                    ?: consultationParDefaut(consultations)
+                    aSelectionner?.let { selectConsultation(it, rationPrecedente) }
                 } else {
                     // Si aucune consultation n'est chargée, conservons celles qui étaient déjà dans
                     // l'animal
-
-                    // Si l'animal a des consultations existantes, sélectionner la plus récente
-                    if (animal.consultations.isNotEmpty()) {
-                        val mostRecentConsultation =
-                                animal.consultations.filter { it.date != null }.maxByOrNull {
-                                    it.date!!
-                                }
-                        if (mostRecentConsultation != null) {
-                            selectConsultation(mostRecentConsultation)
-                        } else {
-                            // Si aucune consultation n'a de date, prendre la première
-                            selectConsultation(animal.consultations.first())
-                        }
-                    }
+                    val aSelectionner =
+                            animal.consultations.firstOrNull { it.uuid == consultationPrecedente }
+                                    ?: consultationParDefaut(animal.consultations)
+                    aSelectionner?.let { selectConsultation(it, rationPrecedente) }
                 }
             } catch (e: Exception) {
                 // Gérer les erreurs potentielles lors du chargement des consultations
@@ -485,7 +478,33 @@ class AnimalDetailViewModel(
         _currentSection.value = section
     }
 
-    fun selectConsultation(consultation: ConsultationEv) {
+    /** Consultation sélectionnée par défaut : la plus récente datée, sinon la première. */
+    private fun consultationParDefaut(consultations: List<ConsultationEv>): ConsultationEv? =
+            consultations.filter { it.date != null }.maxByOrNull { it.date!! }
+                    ?: consultations.firstOrNull()
+
+    /**
+     * Invariant : dès que l'animal a des consultations, l'une d'elles est sélectionnée. Corrige
+     * une sélection vide ou pointant vers une consultation absente (brouillon annulé, suppression).
+     */
+    private fun assurerConsultationSelectionnee() {
+        val consultations = _animal.value?.consultations.orEmpty()
+        val selection = _selectedConsultation.value
+        if (selection != null && consultations.any { it.uuid == selection.uuid }) return
+        val parDefaut =
+                consultations.firstOrNull { it.uuid == consultationAvantBrouillon }
+                        ?: consultationParDefaut(consultations)
+        if (parDefaut != null) {
+            selectConsultation(parDefaut)
+        } else {
+            _selectedConsultation.value = null
+            _selectedRation.value = null
+            _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+            rationAvantGroupe = null
+        }
+    }
+
+    fun selectConsultation(consultation: ConsultationEv, rationPreferee: String? = null) {
         viewModelScope.launch {
             // Assurer que les références sont disponibles avant d'effectuer des calculs dépendants
             if (_availableReferences.value.isEmpty()) {
@@ -516,6 +535,11 @@ class AnimalDetailViewModel(
                 } else if (currentRation != null && !rationBelongsToConsultation) {
                     // Si la ration sélectionnée n'appartient pas à la nouvelle consultation, la réinitialiser
                     _selectedRation.value = null
+                }
+
+                // Ration demandée (rechargement de l'animal) si elle appartient à la consultation
+                fullConsultation?.rations?.firstOrNull { it.uuid == rationPreferee }?.let {
+                    if (_selectedRation.value?.uuid != it.uuid) selectRation(it)
                 }
 
                 // Si aucune ration n'est sélectionnée mais qu'il y en a dans la consultation, en
@@ -861,9 +885,21 @@ class AnimalDetailViewModel(
         isEditingConsultation = true
     }
 
+    /**
+     * Fin d'édition après enregistrement. La sélection n'est pas vidée : addConsultation /
+     * updateConsultation la mettent à jour avec la consultation enregistrée.
+     */
     fun stopEditingConsultation() {
         isEditingConsultation = false
-        _selectedConsultation.value = null
+    }
+
+    /**
+     * Annulation de l'édition : un brouillon jamais enregistré est abandonné et la sélection revient
+     * sur une consultation existante de l'animal.
+     */
+    fun cancelConsultationEditing() {
+        isEditingConsultation = false
+        assurerConsultationSelectionnee()
     }
 
     fun startEditingRation() {
@@ -916,8 +952,10 @@ class AnimalDetailViewModel(
                 val savedConsultation =
                         consultationRepository.getConsultationById(consultationToSave.uuid)
                 if (savedConsultation != null) {
-                    _selectedConsultation.value = savedConsultation
-                } else {}
+                    selectConsultation(savedConsultation)
+                } else {
+                    assurerConsultationSelectionnee()
+                }
 
                 // Arrêter le mode édition
                 isEditingConsultation = false
@@ -955,7 +993,9 @@ class AnimalDetailViewModel(
                 }
 
                 // Mettre à jour la consultation sélectionnée (sauf modification plus récente)
-                if (_selectedConsultation.value === selectionAuLancement) {
+                if (_selectedConsultation.value === selectionAuLancement ||
+                                _selectedConsultation.value == null
+                ) {
                     _selectedConsultation.value = consultation
                 }
             } catch (e: Exception) {
@@ -1138,6 +1178,7 @@ class AnimalDetailViewModel(
 
     @OptIn(ExperimentalUuidApi::class)
     fun prepareNewConsultation(date: LocalDate) {
+        consultationAvantBrouillon = _selectedConsultation.value?.uuid
         val newConsultation =
                 ConsultationEv(
                         uuid = Uuid.random().toString(),

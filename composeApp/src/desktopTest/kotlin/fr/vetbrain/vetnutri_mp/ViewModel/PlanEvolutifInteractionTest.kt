@@ -165,6 +165,46 @@ class PlanEvolutifInteractionTest {
         assertTrue(obtenu != null && kotlin.math.abs(attendu - obtenu) < 1e-6, "$msg : attendu $attendu, obtenu $obtenu")
 
     @Test
+    fun selectionConsultation_jamaisPerdueApresEditionAnnulationOuRechargement() = run {
+        fun c(id: String, mois: Int) = ConsultationEv(
+            uuid = id, idAnim = "a", date = kotlinx.datetime.LocalDate(2026, mois, 1),
+            rations = mutableListOf(Ration(uuid = "r-$id", idConsult = id, name = "Actuelle", actual = true)))
+        repo.saveConsultation(c("c1", 1)); repo.saveConsultation(c("c2", 6))
+        vm.setAnimal(AnimalEv(uuid = "a", nom = "Rex")); idle()
+        assertEquals("c2", vm.selectedConsultation.value?.uuid, "la plus récente par défaut")
+
+        // Choix de l'utilisateur, puis édition plein écran et enregistrement
+        vm.selectConsultation(c("c1", 1)); idle()
+        vm.editConsultationFullScreen(consultation()); idle()
+        vm.saveFromFullScreen(consultation().copy(weight = 7.0)); idle()
+        assertEquals("c1", vm.selectedConsultation.value?.uuid, "sélection conservée après enregistrement")
+        assertEquals("r-c1", vm.selectedRation.value?.uuid)
+
+        // Édition depuis le panneau de détail (updateConsultation puis stopEditingConsultation)
+        vm.startEditingConsultation()
+        vm.updateConsultation(consultation().copy(weight = 8.0)); vm.stopEditingConsultation(); idle()
+        assertEquals("c1", vm.selectedConsultation.value?.uuid, "sélection conservée après mise à jour")
+
+        // Nouveau brouillon annulé : retour sur la consultation d'avant, pas sur le brouillon
+        vm.createNewConsultationFullScreen(); idle()
+        val brouillon = vm.selectedConsultation.value?.uuid
+        assertTrue(brouillon != null && brouillon !in setOf("c1", "c2"))
+        vm.cancelConsultationEditing(); vm.closeFullScreenEdit(); idle()
+        assertEquals("c1", vm.selectedConsultation.value?.uuid, "brouillon annulé")
+
+        // Nouveau brouillon enregistré : il devient la sélection
+        vm.createNewConsultationFullScreen(); idle()
+        val nouvelle = consultation()
+        vm.saveFromFullScreen(nouvelle); idle()
+        assertEquals(nouvelle.uuid, vm.selectedConsultation.value?.uuid, "nouvelle consultation sélectionnée")
+
+        // Rechargement du même animal (ex. après partage) : la sélection est conservée
+        vm.selectConsultation(c("c1", 1)); idle()
+        vm.setAnimal(AnimalEv(uuid = "a", nom = "Rex")); idle()
+        assertEquals("c1", vm.selectedConsultation.value?.uuid, "sélection conservée au rechargement")
+    }
+
+    @Test
     fun rationSansPlan_inchangee() = run {
         consultationEnBase(idealWeight = 6.0)
         assertEquals("actuelle", vm.selectedRation.value?.uuid)
