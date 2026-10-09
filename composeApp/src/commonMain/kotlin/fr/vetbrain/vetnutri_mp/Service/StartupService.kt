@@ -16,7 +16,7 @@ class StartupService(
 ) {
 
     private val scope = CoroutineScope(AppDispatchers.IO + SupervisorJob())
-    private var backupService: BackupService? = null
+    private val backupService: BackupService = BackupService(exportImportRepository, fileService)
 
     /** Initialiser les services au démarrage de l'application */
     suspend fun initialize() {
@@ -26,11 +26,8 @@ class StartupService(
             val backupDirectory = fileService.getBackupDirectory()
             fileService.createDirectoryIfNotExists(backupDirectory)
 
-            // Initialiser le service de sauvegarde
-            backupService = BackupService(exportImportRepository, fileService)
-
             // Démarrer la sauvegarde automatique
-            backupService?.startAutomaticBackup()
+            backupService.startAutomaticBackup()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -43,18 +40,26 @@ class StartupService(
 
     /** Arrêter les services */
     fun shutdown() {
-        backupService?.cleanup()
+        backupService.cleanup()
         scope.cancel()
     }
 
     /** Créer une sauvegarde manuelle */
     suspend fun createManualBackup(): Result<BackupService.BackupMetadata> {
-        return backupService?.createBackup()
-                ?: Result.failure(Exception("Service de sauvegarde non initialisé"))
+        return backupService.createBackup()
     }
 
     /** Obtenir la liste des sauvegardes disponibles */
     suspend fun getAvailableBackups(): List<BackupService.BackupMetadata> {
-        return backupService?.getAvailableBackups() ?: emptyList()
+        return backupService.getAvailableBackups()
     }
+
+    /** Sauvegarde JSON à proposer quand la base démarre sans animaux (null si aucune) */
+    suspend fun findRecoveryBackup(): BackupService.BackupMetadata? =
+            backupService.findLatestBackupWithAnimals()
+
+    /** Régénère la base depuis une sauvegarde JSON */
+    suspend fun restoreBackup(
+            metadata: BackupService.BackupMetadata
+    ): Result<ExportImportRepository.ImportCounts> = backupService.restoreBackup(metadata)
 }

@@ -18,6 +18,8 @@ interface AnimalDao {
 
         @Query("SELECT * FROM animals") suspend fun getAllAnimals(): List<AnimalEntity>
 
+        @Query("SELECT COUNT(*) FROM animals") suspend fun getAnimalsCount(): Int
+
         @Query("SELECT * FROM animals WHERE uuid = :id")
         suspend fun getAnimalById(id: String): AnimalEntity?
 
