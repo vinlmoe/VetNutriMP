@@ -61,7 +61,6 @@ fun AnimalListView(
         onShowFoodList: () -> Unit,
         onShowCalculationTabs: () -> Unit,
         onShowMultiRation: (() -> Unit)? = null,
-        onShowHerds: (() -> Unit)? = null,
         examSession: ExamSession? = null,
         modifier: Modifier = Modifier
 ) {
@@ -171,19 +170,6 @@ fun AnimalListView(
                                                                 contentColor = VetNutriColors.OnPrimary
                                                         )
                                         ) { Text("Exploration multiration") }
-                                }
-
-                                // Mode troupeau : groupes d'animaux (hors mode examen)
-                                if (onShowHerds != null && examSession == null) {
-                                        Button(
-                                                onClick = onShowHerds,
-                                                modifier = Modifier.weight(1f),
-                                                colors =
-                                                        ButtonDefaults.buttonColors(
-                                                                backgroundColor = VetNutriColors.Primary,
-                                                                contentColor = VetNutriColors.OnPrimary
-                                                        )
-                                        ) { Text("Troupeaux / groupes") }
                                 }
 
                                 if (examSession == null) {
@@ -804,6 +790,13 @@ private fun AnimalCard(
                         ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                         Text(text = animal.nom, style = MaterialTheme.typography.h6)
+                                        if (animal.estTroupeau) {
+                                                Text(
+                                                        text = "Troupeau — ${animal.effectifTroupeau} animaux, ${animal.typesTroupeau.orEmpty().size} type(s)",
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = VetNutriColors.Primary
+                                                )
+                                        }
                                         if (!animal.id.isNullOrBlank()) {
                                                 Text(
                                                         text = translate(AnimalList.ID_VALUE, animal.id ?: ""),

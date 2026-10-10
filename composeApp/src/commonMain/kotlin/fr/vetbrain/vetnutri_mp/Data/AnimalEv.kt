@@ -28,8 +28,18 @@ data class AnimalEv(
         var examStudentNumber: String? = null, // Numéro de l'étudiant (mode examen)
         var examExerciseId: String? = null, // ID de l'exercice (mode examen)
         var consultations: MutableList<ConsultationEv> = mutableListOf(),
-        var weightHistory: MutableList<WeightDate> = mutableListOf()
+        var weightHistory: MutableList<WeightDate> = mutableListOf(),
+        // Troupeau : types d'animaux (effectif, poids) ; null = individu
+        var typesTroupeau: MutableList<TypeAnimalTroupeau>? = null
 ) {
+    /** Vrai si l'animal représente un troupeau / groupe d'animaux. */
+    val estTroupeau: Boolean
+        get() = typesTroupeau != null
+
+    /** Nombre d'animaux du troupeau (définition par défaut des types). */
+    val effectifTroupeau: Int
+        get() = typesTroupeau.orEmpty().sumOf { it.nombre.coerceAtLeast(0) }
+
     fun getSex(): Sex {
         return Sex.values().firstOrNull { it.id == sexId } ?: Sex.MALE_ENTIER
     }

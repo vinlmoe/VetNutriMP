@@ -52,8 +52,7 @@ const val DATABASE_SCHEMA_VERSION = 41
                         CustomNutrientEntity::class,
                         EnergyPerSpeciesEntity::class,
                         RationSupplementalVariableEntity::class,
-                        MultiRationExplorationEntity::class,
-                        HerdEntity::class],
+                        MultiRationExplorationEntity::class],
         version = DATABASE_SCHEMA_VERSION,
         exportSchema = true
 )
@@ -74,7 +73,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun examGradingDao(): ExamGradingDao
     abstract fun energyPerSpeciesDao(): EnergyPerSpeciesDao
     abstract fun multiRationExplorationDao(): MultiRationExplorationDao
-    abstract fun herdDao(): HerdDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
@@ -166,7 +164,7 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
                         createMigration38to39(),
                         // Migration 39→40 : configurations d'exploration multiration enregistrées
                         createMigration39to40(),
-                        // Migration 40→41 : troupeaux / groupes d'animaux
+                        // Migration 40→41 : troupeaux (types d'animaux, paramètres par consultation)
                         createMigration40to41()
                 )
                 .setDriver(BundledSQLiteDriver())
@@ -864,20 +862,15 @@ fun createMigration39to40(): Migration {
     }
 }
 
-/** Migration 40→41 : table des troupeaux / groupes d'animaux. */
+/**
+ * Migration 40→41 : un animal peut être un troupeau (types d'animaux en JSON, null = individu) ;
+ * chaque consultation porte les paramètres de chaque type (effectif, poids, référentiel, K).
+ */
 fun createMigration40to41(): Migration {
     return object : Migration(40, 41) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
-            connection.prepare("""
-                CREATE TABLE IF NOT EXISTS `HERDS` (
-                    `uuid` TEXT NOT NULL,
-                    `nom` TEXT NOT NULL,
-                    `espece` TEXT NOT NULL,
-                    `contenuJson` TEXT NOT NULL,
-                    `updatedAt` INTEGER NOT NULL,
-                    PRIMARY KEY(`uuid`)
-                )
-            """.trimIndent()).use { it.step() }
+            runStatementIgnoreIfExists(connection, "ALTER TABLE ANIMALS ADD COLUMN herdTypesJson TEXT")
+            runStatementIgnoreIfExists(connection, "ALTER TABLE CONSULTATIONS ADD COLUMN herdParamsJson TEXT")
         }
     }
 }

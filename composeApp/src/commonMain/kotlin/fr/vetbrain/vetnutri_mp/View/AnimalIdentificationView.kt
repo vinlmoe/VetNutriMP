@@ -71,10 +71,19 @@ fun AnimalIdentificationView(
         ) {
             // Nom et race
             InfoRow(label = Animal.NAME.translate(), value = animal.nom)
+            animal.typesTroupeau?.let { types ->
+                InfoRow(label = "Troupeau", value = "${animal.effectifTroupeau} animaux")
+                types.forEach { type ->
+                    InfoRow(
+                            label = "  ${type.nom.ifBlank { "Type sans nom" }}",
+                            value = "${type.nombre} × ${formaterNombreTroupeau(type.poids)} kg"
+                    )
+                }
+            }
             InfoRow(label = Animal.BREED.translate(), value = animal.race)
 
-            // Sexe
-            InfoRow(
+            // Sexe (sans objet pour un troupeau)
+            if (!animal.estTroupeau) InfoRow(
                     label = Animal.SEX.translate(),
                     value = Sex.fromId(animal.sexId).translateEnum()
             )

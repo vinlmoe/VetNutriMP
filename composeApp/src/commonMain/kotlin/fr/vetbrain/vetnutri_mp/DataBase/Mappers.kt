@@ -38,7 +38,8 @@ object Mappers {
                                 exam = this.exam,
                                 examStudentId = this.examStudentId,
                                 examStudentNumber = this.examStudentNumber,
-                                examExerciseId = this.examExerciseId
+                                examExerciseId = this.examExerciseId,
+                                herdTypesJson = TroupeauJson.typesVersJson(this.typesTroupeau)
                         )
 
                 if (includeRelations) {
@@ -82,7 +83,8 @@ object Mappers {
                         examStudentNumber = this.examStudentNumber,
                         examExerciseId = this.examExerciseId,
                         consultations = consultations.map { it.toData() }.toMutableList(),
-                        weightHistory = weights.map { it.toData() }.toMutableList()
+                        weightHistory = weights.map { it.toData() }.toMutableList(),
+                        typesTroupeau = TroupeauJson.typesDepuisJson(this.herdTypesJson)
                 )
         }
 
@@ -141,7 +143,8 @@ object Mappers {
                                                 this.prescriptionSelectedRationIds
                                         ),
                                 typeConsultation = this.typeConsultation.name,
-                                profilEvolutif = this.profilEvolutif?.name
+                                profilEvolutif = this.profilEvolutif?.name,
+                                herdParamsJson = TroupeauJson.parametresVersJson(this.parametresTroupeau)
                         )
                         .apply {
                                 if (includeRelations) {
@@ -274,7 +277,8 @@ object Mappers {
                         prescriptionLocalHtmlSections = prescriptionLocalHtmlSections,
                         prescriptionSelectedRationIds = prescriptionSelectedRationIds,
                         typeConsultation = TypeConsultation.fromName(this.typeConsultation),
-                        profilEvolutif = ProfilEvolutif.fromName(this.profilEvolutif)
+                        profilEvolutif = ProfilEvolutif.fromName(this.profilEvolutif),
+                        parametresTroupeau = TroupeauJson.parametresDepuisJson(this.herdParamsJson)
                 )
         }
 

@@ -54,6 +54,8 @@ fun AnimalEditView(
         var isDateValid by remember { mutableStateOf(true) }
         var isDead by remember { mutableStateOf(animal.dead) }
         var isDatePickerVisible by remember { mutableStateOf(false) }
+        // Troupeau : types d'animaux (null = individu)
+        var typesTroupeau by remember { mutableStateOf(animal.typesTroupeau?.toList()) }
 
         val scrollState = rememberScrollState()
 
@@ -79,6 +81,22 @@ fun AnimalEditView(
                         Divider(color = Color.LightGray, thickness = AppSizes.dividerHeight)
 
                         Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+
+                        SelecteurIndividuTroupeau(
+                                estTroupeau = typesTroupeau != null,
+                                onChange = { troupeau ->
+                                        typesTroupeau =
+                                                if (troupeau) typesTroupeau ?: typesTroupeauParDefaut() else null
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                        )
+                        typesTroupeau?.let { types ->
+                                EditeurTypesTroupeau(
+                                        types = types,
+                                        onChange = { typesTroupeau = it },
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                        }
 
                         // Nom de l'animal
                         OutlinedTextField(
@@ -322,7 +340,8 @@ fun AnimalEditView(
                                                                 sexId = selectedSex.id,
                                                                 birthdate = birthdate,
                                                                 dead = isDead,
-                                                                specieId = selectedEspece.label
+                                                                specieId = selectedEspece.label,
+                                                                typesTroupeau = typesTroupeau?.toMutableList()
                                                         )
 
                                                 // Log de débogage pour vérifier les informations de

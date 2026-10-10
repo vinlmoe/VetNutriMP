@@ -24,7 +24,6 @@ import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.LegacyMigrationViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.MultiRationViewModel
-import fr.vetbrain.vetnutri_mp.ViewModel.HerdViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 
 internal data class AppNavModels(
@@ -45,8 +44,7 @@ internal data class AppNavModels(
     val backupRestoreViewModel: BackupRestoreViewModel?,
     val legacyMigrationViewModel: LegacyMigrationViewModel,
     val bulkAddBiblioToFoodsViewModel: BulkAddBiblioToFoodsViewModel,
-    val multiRationViewModel: MultiRationViewModel,
-    val herdViewModel: HerdViewModel
+    val multiRationViewModel: MultiRationViewModel
 )
 
 internal data class AppNavRepositories(

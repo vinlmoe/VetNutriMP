@@ -749,19 +749,3 @@ interface MultiRationExplorationDao {
         @Query("DELETE FROM MULTI_RATION_EXPLORATIONS WHERE uuid = :uuid")
         suspend fun deleteById(uuid: String)
 }
-
-/** DAO des troupeaux / groupes d'animaux */
-@Dao
-interface HerdDao {
-        @Query("SELECT * FROM HERDS ORDER BY updatedAt DESC")
-        suspend fun getAll(): List<HerdEntity>
-
-        @Query("SELECT * FROM HERDS WHERE uuid = :uuid")
-        suspend fun getById(uuid: String): HerdEntity?
-
-        @Insert(onConflict = OnConflictStrategy.REPLACE)
-        suspend fun upsert(herd: HerdEntity)
-
-        @Query("DELETE FROM HERDS WHERE uuid = :uuid")
-        suspend fun deleteById(uuid: String)
-}

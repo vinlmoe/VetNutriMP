@@ -89,7 +89,9 @@ data class AnimalEntity(
         val exam: Boolean = false, // Indique si l'animal est lié à un examen
         val examStudentId: String? = null, // Identifiant de l'étudiant
         val examStudentNumber: String? = null, // Numéro de l'étudiant
-        val examExerciseId: String? = null // ID de l'exercice
+        val examExerciseId: String? = null, // ID de l'exercice
+        // Troupeau (v41) : types d'animaux en JSON ; null = individu
+        val herdTypesJson: String? = null
 )
 
 @Serializable
@@ -172,7 +174,9 @@ data class ConsultationEntity(
         val prescriptionSelectedRationIdsJson: String? = null,
         // Consultation évolutive (v37) : nom de TypeConsultation / ProfilEvolutif
         val typeConsultation: String = "STANDARD",
-        val profilEvolutif: String? = null
+        val profilEvolutif: String? = null,
+        // Troupeau (v41) : paramètres de chaque type d'animaux (effectif, poids, référentiel, K)
+        val herdParamsJson: String? = null
 )
 
 @Serializable
@@ -813,19 +817,5 @@ data class MultiRationExplorationEntity(
         val nom: String,
         val espece: String,
         val configurationJson: String,
-        val updatedAt: Long
-)
-
-/**
- * Troupeau ou groupe d'animaux : types d'animaux (effectif, poids) et consultations de groupe
- * (référentiel par type, ration du groupe), sérialisés en JSON (`Data/Troupeau.kt`). Les
- * analyses ne sont pas stockées : elles se recalculent.
- */
-@Entity(tableName = "HERDS")
-data class HerdEntity(
-        @PrimaryKey val uuid: String,
-        val nom: String,
-        val espece: String,
-        val contenuJson: String,
         val updatedAt: Long
 )

@@ -52,7 +52,9 @@ data class AnimalEvJson(
         val examExerciseId: String? = null, // ID de l'exercice
         val listWeight: List<WeightDateJson> = listOf(),
         val list: ListConsultEvJson? = null,
-        val consultations: List<ConsultationEvJson>? = null
+        val consultations: List<ConsultationEvJson>? = null,
+        // Troupeau : types d'animaux (absent = individu)
+        val herdTypes: List<TypeAnimalTroupeau>? = null
 )
 
 /** Structure JSON pour ConsultationEv */
@@ -100,7 +102,9 @@ data class ConsultationEvJson(
         val prescriptionAdditionalText: String = "",
         val prescriptionSelectedConseilIds: List<String> = listOf(),
         val prescriptionLocalHtmlSections: List<HtmlSection> = listOf(),
-        val prescriptionSelectedRationIds: List<String> = listOf()
+        val prescriptionSelectedRationIds: List<String> = listOf(),
+        // Troupeau : paramètres de chaque type d'animaux
+        val herdParameters: List<ParametresTypeTroupeau> = listOf()
 )
 
 /** Structure JSON pour BiblioRef */

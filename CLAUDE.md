@@ -132,14 +132,18 @@ nommées sont enregistrées dans `MULTI_RATION_EXPLORATIONS` (JSON d'identifiant
 `MultiRationExplorationRepository`) ; les résultats ne sont pas stockés, ils se recalculent.
 
 ### Mode troupeau
-Écran `Screen.Herd` (bouton « Troupeaux / groupes » de la liste des animaux) : un troupeau = des types
-d'animaux (nom, effectif, poids moyen) et des consultations de groupe. Chaque consultation reprend par type
-l'effectif, le poids, le référentiel, K et les variables des équations (AW, L…), et une ration saisie en
-quantités pour tout le groupe. Moteur pur `AnalyseurTroupeau` (`Data/Troupeau.kt`) : besoin d'un animal
-Bᵢ = BEE standard × K (`CalculMetabolique`), un animal du type i reçoit quantité du groupe × Bᵢ / Σ nⱼBⱼ,
-puis ses apports sont évalués avec son référentiel (`analyserValeursNutritionnellesRationSelective`,
-`calculerConformite`). Stockage JSON dans la table `HERDS` (`HerdRepository`, enregistrement automatique
-différé dans `HerdViewModel`) ; les analyses ne sont pas stockées.
+Un animal peut être un **troupeau** : à la création (ou modification), choix « Individu / Troupeau » ;
+un troupeau a des types d'animaux (`AnimalEv.typesTroupeau`, nom/effectif/poids moyen, colonne
+`ANIMALS.herdTypesJson`, null = individu). Il réutilise toute la fiche animal (consultations, rations,
+analyse, graphiques, export). Chaque consultation porte, par type, effectif, poids, référentiel, K et
+variables (`ConsultationEv.parametresTroupeau`, colonne `CONSULTATIONS.herdParamsJson`) ; ses rations
+sont en quantités pour tout le groupe. Onglet Rations : `PanneauTroupeauConsultation`
+(`View/TroupeauComponents.kt`). Dans `AnimalDetailViewModel`, choisir un type (`selectTypeTroupeau`)
+remplace la ration affichée par la ration d'un animal du type (quantités × Bᵢ / Σ nⱼBⱼ,
+`rationParAnimalTroupeau`, virtuelle et en lecture seule comme les rations groupées) et la consultation
+d'analyse par `consultationAnalysee` (`pourTypeTroupeau` : poids, référentiel, K du type ; K1…K5
+communs). En mode type, modifier poids ou K dans l'analyse modifie les paramètres du type. Moteur pur
+dans `Data/Troupeau.kt` (`facteursRepartitionTroupeau`, `AnalyseurTroupeau` pour la synthèse par type).
 
 ### Threads
 - `AppDispatchers.IO` → opérations DB et réseau

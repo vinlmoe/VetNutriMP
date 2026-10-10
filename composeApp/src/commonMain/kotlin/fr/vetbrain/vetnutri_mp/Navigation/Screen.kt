@@ -27,5 +27,4 @@ internal sealed class Screen {
     object LegacyMigration : Screen()
     object BulkAddBiblioToFoods : Screen()
     object MultiRation : Screen()
-    object Herd : Screen()
 }

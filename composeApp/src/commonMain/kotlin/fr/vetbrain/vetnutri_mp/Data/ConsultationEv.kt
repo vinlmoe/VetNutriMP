@@ -59,7 +59,10 @@ data class ConsultationEv(
         // Champs historiques, conservés pour relire les sauvegardes antérieures. Les plans de
         // rations ne dépendent plus d'un type de consultation.
         var typeConsultation: TypeConsultation = TypeConsultation.STANDARD,
-        var profilEvolutif: ProfilEvolutif? = null
+        var profilEvolutif: ProfilEvolutif? = null,
+        // Troupeau : effectif, poids, référentiel et K de chaque type d'animaux (vide = individu,
+        // ou valeurs par défaut du troupeau)
+        var parametresTroupeau: MutableList<ParametresTypeTroupeau> = mutableListOf()
 ) {
 
         val isEvolutive: Boolean

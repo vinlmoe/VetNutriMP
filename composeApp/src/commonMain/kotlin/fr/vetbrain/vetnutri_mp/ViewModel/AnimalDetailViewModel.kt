@@ -33,7 +33,9 @@ import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +43,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -98,6 +101,35 @@ class AnimalDetailViewModel(
 
     // Ration individuelle à restaurer quand on quitte un périmètre groupé
     private var rationAvantGroupe: Ration? = null
+
+    // --- Troupeau ---------------------------------------------------------------------------
+    // Pour un troupeau, les rations sont saisies en quantités pour tout le groupe. Choisir un type
+    // d'animaux fait analyser la ration d'un animal de ce type (quantités × Bᵢ / Σ nⱼ·Bⱼ) avec son
+    // poids, son référentiel et son K : toute l'analyse de ration existante est ainsi réutilisée.
+    // Cette ration par animal est virtuelle (jamais enregistrée) et en lecture seule.
+
+    private val _typeTroupeauAnalyse = MutableStateFlow<String?>(null)
+    /** Type d'animaux analysé (null = ration du groupe). */
+    val typeTroupeauAnalyse: StateFlow<String?> = _typeTroupeauAnalyse.asStateFlow()
+
+    private val _analyseTroupeau = MutableStateFlow<AnalyseTroupeau?>(null)
+    /** Répartition de la ration du groupe et synthèse des apports de chaque type. */
+    val analyseTroupeau: StateFlow<AnalyseTroupeau?> = _analyseTroupeau.asStateFlow()
+
+    /**
+     * Consultation utilisée par l'analyse : la consultation sélectionnée, ou pour un troupeau
+     * dont un type est analysé, cette consultation vue depuis un animal du type (poids,
+     * référentiel, K et variables du type).
+     */
+    val consultationAnalysee: StateFlow<ConsultationEv?> =
+            combine(_selectedConsultation, _typeTroupeauAnalyse, _animal) { c, typeId, a ->
+                        consultationPourAnalyse(c, typeId, a)
+                    }
+                    .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Dernière ration par animal publiée (pour la distinguer d'une ration réelle). */
+    private var rationProjeteeTroupeau: Ration? = null
+    private var calculTroupeau: Job? = null
 
     // Section actuellement sélectionnée dans la vue détaillée
     private val _currentSection = MutableStateFlow(AnimalDetailSection.IDENTIFICATION)
@@ -387,6 +419,9 @@ class AnimalDetailViewModel(
             _selectedConsultation.value = null
             _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
             rationAvantGroupe = null
+            if (!memeAnimal) _typeTroupeauAnalyse.value = null
+            rationProjeteeTroupeau = null
+            _analyseTroupeau.value = null
             isEditingConsultation = false
             isEditingRation = false
             isEditingAnimal = false
@@ -576,6 +611,8 @@ class AnimalDetailViewModel(
             fullConsultation?.let { consultation -> calculerValeursMetaboliques(consultation) }
             // Plan évolutif : bilan énergétique de chaque étape
             recalculerBilansEtapes()
+            // Troupeau : ration par animal recalculée avec les paramètres de cette consultation
+            rafraichirTroupeau()
         }
     }
 
@@ -678,6 +715,7 @@ class AnimalDetailViewModel(
      */
     private fun estAnalyseGroupee(): Boolean =
             _rationAnalysisScope.value.estGroupe ||
+                    _typeTroupeauAnalyse.value != null ||
                     RationAggregator.estRationGroupee(_selectedRation.value?.uuid)
 
     /** Copie profonde d'une ration (ration + liste d'aliments). */
@@ -694,8 +732,14 @@ class AnimalDetailViewModel(
      * modifications.
      */
     fun analyserRationSelectionnee() {
+        // Troupeau : une ration réelle (ou un agrégat) vient d'être sélectionnée en mode type →
+        // la remplacer par la ration d'un animal du type
+        if (_typeTroupeauAnalyse.value != null && _selectedRation.value !== rationProjeteeTroupeau) {
+            projeterRationTroupeau()
+        }
+        recalculerAnalyseTroupeau()
         val rationActuelle = _selectedRation.value ?: return
-        val consultationActuelle = _selectedConsultation.value
+        val consultationActuelle = _selectedConsultation.value?.let { projeterPourTypeTroupeau(it) }
 
         viewModelScope.launch {
             try {
@@ -945,6 +989,10 @@ class AnimalDetailViewModel(
     }
 
     fun addConsultation(consultation: ConsultationEv) {
+        // Troupeau : une nouvelle consultation reprend les référentiels et K de la précédente
+        if (consultation.parametresTroupeau.isEmpty()) {
+            consultation.parametresTroupeau = parametresTroupeauNouvelleConsultation()
+        }
         viewModelScope.launch {
             try {
                 // Assigner l'ID de l'animal à la consultation
@@ -1059,8 +1107,11 @@ class AnimalDetailViewModel(
     }
 
     fun updateRationInConsultation(ration: Ration) {
-        // Une ration virtuelle (agrégat du mode groupé) ne doit jamais être persistée
-        if (RationAggregator.estRationGroupee(ration.uuid)) return
+        // Une ration virtuelle (agrégat du mode groupé, ration par animal d'un troupeau) ne doit
+        // jamais être persistée
+        if (RationAggregator.estRationGroupee(ration.uuid) ||
+                        (_typeTroupeauAnalyse.value != null && ration.uuid == rationProjeteeTroupeau?.uuid)
+        ) return
 
         ration.alimentMutableList.forEachIndexed { k, a -> }
 
@@ -1196,6 +1247,8 @@ class AnimalDetailViewModel(
 
             // Arrêter le mode édition
             isEditingAnimal = false
+            // Troupeau : types modifiés (ou passage individu ↔ troupeau)
+            rafraichirTroupeau()
         }
     }
 
@@ -1206,7 +1259,8 @@ class AnimalDetailViewModel(
                 ConsultationEv(
                         uuid = Uuid.random().toString(),
                         date = date,
-                        idAnim = _animal.value?.uuid ?: ""
+                        idAnim = _animal.value?.uuid ?: "",
+                        parametresTroupeau = parametresTroupeauNouvelleConsultation()
                 )
         val currentRation =
                 Ration(
@@ -1366,7 +1420,7 @@ class AnimalDetailViewModel(
      * @param ration Ration à mettre à jour
      */
     fun updateRation(ration: Ration) {
-        if (RationAggregator.estRationGroupee(ration.uuid)) return
+        if (RationAggregator.estRationGroupee(ration.uuid) || _typeTroupeauAnalyse.value != null) return
 
         // Mettre à jour la ration sélectionnée
         _selectedRation.value = ration
@@ -2051,7 +2105,10 @@ class AnimalDetailViewModel(
                 _selectedRation.value?.uuid?.let { uuid ->
                     consultation.rations.firstOrNull { it.uuid == uuid }
                 }
-        val consultationEtape = VariablesEtape.consultationPourEtape(consultation, rationSelectionnee)
+        val consultationEtape =
+                projeterPourTypeTroupeau(VariablesEtape.consultationPourEtape(consultation, rationSelectionnee))
+        // Troupeau : la synthèse dépend aussi des K1…K5 et des paramètres de la consultation
+        recalculerAnalyseTroupeau(consultation)
 
         viewModelScope.launch {
             try {
@@ -2164,6 +2221,11 @@ class AnimalDetailViewModel(
 
     /** Met à jour le coefficient d'ajustement et recalcule les valeurs métaboliques */
     fun updateCoefficientAjustement(consultationId: String, nouveauCoefficient: Double) {
+        // Troupeau : le K affiché est celui du type analysé
+        parametresTypeAnalyse()?.let { p ->
+            updateParametresTroupeau(p.copy(k = nouveauCoefficient))
+            return
+        }
         viewModelScope.launch {
             try {
                 val animalActuel = _animal.value
@@ -2188,6 +2250,11 @@ class AnimalDetailViewModel(
             currentWeight: Double,
             idealWeight: Double
     ) {
+        // Troupeau : le poids affiché est le poids moyen du type analysé
+        parametresTypeAnalyse()?.let { p ->
+            updateParametresTroupeau(p.copy(poids = currentWeight))
+            return
+        }
         viewModelScope.launch {
             try {
                 val animalActuel = _animal.value
@@ -2419,6 +2486,190 @@ class AnimalDetailViewModel(
             } else {
                     emptyMap()
             }
+    }
+
+    // --- Troupeau ---------------------------------------------------------------------------
+
+    private fun consultationPourAnalyse(c: ConsultationEv?, typeId: String?, a: AnimalEv?): ConsultationEv? {
+        if (c == null || typeId == null) return c
+        val type = a?.typesTroupeau?.firstOrNull { it.id == typeId } ?: return c
+        return c.pourTypeTroupeau(c.parametresType(type))
+    }
+
+    /** Consultation vue depuis un animal du type analysé (inchangée hors mode type). */
+    private fun projeterPourTypeTroupeau(consultation: ConsultationEv): ConsultationEv =
+            consultationPourAnalyse(consultation, _typeTroupeauAnalyse.value, _animal.value) ?: consultation
+
+    /** Paramètres du type analysé dans la consultation sélectionnée, null hors mode type. */
+    private fun parametresTypeAnalyse(): ParametresTypeTroupeau? {
+        val typeId = _typeTroupeauAnalyse.value ?: return null
+        val type = _animal.value?.typesTroupeau?.firstOrNull { it.id == typeId } ?: return null
+        return _selectedConsultation.value?.parametresType(type)
+    }
+
+    /** Ration réelle du groupe correspondant à la ration affichée (ou agrégat du mode groupé). */
+    private fun rationGroupeTroupeau(): Ration? {
+        val consultation = _selectedConsultation.value
+        val scope = _rationAnalysisScope.value
+        if (scope.estGroupe) return RationAggregator.agreger(consultation, scope)
+        val courante = _selectedRation.value ?: return null
+        if (courante !== rationProjeteeTroupeau) return courante
+        return consultation?.rations?.firstOrNull { it.uuid == courante.uuid }
+    }
+
+    private fun referencesParId(): Map<String, ReferenceEv> = _availableReferences.value.associateBy { it.uuid }
+
+    /**
+     * Remplace la ration affichée par la ration d'un animal du type analysé. Si la répartition
+     * n'est pas calculable (référentiel ou poids manquant), revient à la ration du groupe.
+     */
+    private fun projeterRationTroupeau() {
+        val typeId = _typeTroupeauAnalyse.value ?: return
+        val source = rationGroupeTroupeau() ?: return
+        val types = _animal.value?.typesTroupeau
+        val consultation = _selectedConsultation.value
+        val facteur =
+                if (types != null && consultation != null)
+                        facteursRepartitionTroupeau(types, consultation, referencesParId())?.get(typeId)
+                else null
+        val type = types?.firstOrNull { it.id == typeId }
+        if (facteur == null || type == null) {
+            quitterTypeTroupeau(source)
+            return
+        }
+        val projetee = rationParAnimalTroupeau(source, facteur, type.nom.ifBlank { "type" })
+        rationProjeteeTroupeau = projetee
+        _selectedRation.value = projetee
+    }
+
+    private fun quitterTypeTroupeau(source: Ration?) {
+        _typeTroupeauAnalyse.value = null
+        rationProjeteeTroupeau = null
+        _selectedRation.value =
+                if (source == null || _rationAnalysisScope.value.estGroupe) source else copieProfonde(source)
+    }
+
+    /**
+     * Choisit le type d'animaux analysé (null = ration du groupe). L'analyse de ration, les
+     * besoins et les graphiques sont alors ceux d'un animal de ce type.
+     */
+    fun selectTypeTroupeau(typeId: String?) {
+        if (_typeTroupeauAnalyse.value == typeId) return
+        val types = _animal.value?.typesTroupeau ?: return
+        if (typeId != null && types.none { it.id == typeId }) return
+        val source = rationGroupeTroupeau()
+        if (typeId == null) {
+            quitterTypeTroupeau(source)
+        } else {
+            _typeTroupeauAnalyse.value = typeId
+            rationProjeteeTroupeau = null
+            // La ration du groupe est projetée par analyserRationSelectionnee
+            _selectedRation.value = source
+        }
+        _selectedConsultation.value?.let { calculerValeursMetaboliques(it) }
+        if (_selectedRation.value != null) analyserRationSelectionnee() else recalculerAnalyseTroupeau()
+    }
+
+    /** Après un changement de consultation ou de paramètres : reprojeter et réanalyser. */
+    private fun rafraichirTroupeau() {
+        val typeId = _typeTroupeauAnalyse.value
+        if (_animal.value?.estTroupeau != true) {
+            if (typeId != null) quitterTypeTroupeau(rationGroupeTroupeau())
+            _analyseTroupeau.value = null
+            return
+        }
+        if (typeId != null) {
+            if (_animal.value?.typesTroupeau?.none { it.id == typeId } != false) {
+                selectTypeTroupeau(null)
+                return
+            }
+            projeterRationTroupeau()
+        }
+        _selectedConsultation.value?.let { calculerValeursMetaboliques(it) }
+        if (_selectedRation.value != null) analyserRationSelectionnee() else recalculerAnalyseTroupeau()
+    }
+
+    /**
+     * Paramètres de troupeau d'une nouvelle consultation : effectif et poids de la définition du
+     * troupeau, référentiel, K et variables de la consultation la plus récente.
+     */
+    private fun parametresTroupeauNouvelleConsultation(): MutableList<ParametresTypeTroupeau> {
+        val animal = _animal.value ?: return mutableListOf()
+        val types = animal.typesTroupeau ?: return mutableListOf()
+        val precedente = animal.consultations.filter { it.date != null }.maxByOrNull { it.date!! }
+                ?: animal.consultations.lastOrNull()
+        return types.map { type ->
+            val avant = precedente?.parametresTroupeau?.firstOrNull { it.typeId == type.id }
+            ParametresTypeTroupeau(
+                    typeId = type.id,
+                    nombre = type.nombre,
+                    poids = type.poids,
+                    referenceId = avant?.referenceId,
+                    k = avant?.k ?: 1.0,
+                    variables = avant?.variables ?: emptyMap()
+            )
+        }.toMutableList()
+    }
+
+    /** Recalcule la répartition et la synthèse par type de la ration du groupe affichée. */
+    private fun recalculerAnalyseTroupeau(consultation: ConsultationEv? = _selectedConsultation.value) {
+        val types = _animal.value?.typesTroupeau
+        calculTroupeau?.cancel()
+        if (types == null || consultation == null) {
+            _analyseTroupeau.value = null
+            return
+        }
+        val rationGroupe = rationGroupeTroupeau()
+        calculTroupeau =
+                viewModelScope.launch {
+                    try {
+                        val dispo = referencesParId()
+                        val references =
+                                types.mapNotNull { consultation.parametresType(it).referenceId }
+                                        .distinct()
+                                        .mapNotNull { id ->
+                                            (dispo[id] ?: databaseReferenceEvRepository.getReferenceEvById(id))?.let { id to it }
+                                        }
+                                        .toMap()
+                        _analyseTroupeau.value =
+                                withContext(AppDispatchers.Default) {
+                                    AnalyseurTroupeau(equationRepository).analyser(types, consultation, rationGroupe, references)
+                                }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+    }
+
+    /** Modifie l'effectif, le poids, le référentiel, K ou les variables d'un type pour la consultation. */
+    fun updateParametresTroupeau(parametres: ParametresTypeTroupeau) {
+        val consultation = _selectedConsultation.value ?: return
+        val miseAJour = consultation.avecParametresType(parametres)
+        _selectedConsultation.value = miseAJour
+        updateConsultation(miseAJour)
+        rafraichirTroupeau()
+    }
+
+    /**
+     * Multiplie toutes les quantités de la ration du groupe pour couvrir exactement le besoin
+     * énergétique du groupe (proportions entre aliments conservées).
+     */
+    fun ajusterRationTroupeauEnergie(): Boolean {
+        if (_typeTroupeauAnalyse.value != null || _rationAnalysisScope.value.estGroupe) return false
+        val facteur = _analyseTroupeau.value?.facteurAjustementEnergie ?: return false
+        if (!facteur.isFinite() || facteur <= 0.0) return false
+        val ration = _selectedRation.value ?: return false
+        val ajustee =
+                ration.copy(
+                        alimentMutableList =
+                                ration.alimentMutableList
+                                        .map { it.copy(quantite = kotlin.math.round(it.quantite * facteur * 10.0) / 10.0) }
+                                        .toMutableList()
+                )
+        updateRation(ajustee)
+        return true
     }
 
     fun clear() {

@@ -178,21 +178,28 @@ class MigrationChainDataPersistenceTest {
     }
 
     @Test
-    fun getRoomDatabase_migratingFromV17_createsHerdsTable() = runTest {
-        // La migration 40->41 crée la table des troupeaux / groupes d'animaux
+    fun getRoomDatabase_migratingFromV17_storesHerdTypesAndParameters() = runTest {
+        // La migration 40->41 ajoute les types d'un troupeau (ANIMALS) et leurs paramètres par
+        // consultation (CONSULTATIONS) ; un animal existant reste un individu
         seedV17Database()
 
         val db = getRoomDatabase(Room.databaseBuilder<AppDatabase>(name = dbPath), dbPath)
-        val dao = db.herdDao()
-        dao.upsert(HerdEntity("herd-1", "Vaches laitières", "BOVIN", "{}", 1L))
-        dao.upsert(HerdEntity("herd-1", "Vaches laitières v2", "BOVIN", "{\"version\":1}", 2L))
+        val existant = db.animalDao().getAllAnimals().single { it.uuid == "animal-1" }
+        assertEquals(null, existant.herdTypesJson)
 
-        val enregistre = dao.getById("herd-1")
-        assertNotNull(enregistre)
-        assertEquals("Vaches laitières v2", enregistre.nom)
-        assertEquals(1, dao.getAll().size)
-        dao.deleteById("herd-1")
-        assertTrue(dao.getAll().isEmpty())
+        val typesJson = "[{\"id\":\"t1\",\"nom\":\"Vaches\",\"nombre\":40,\"poids\":650.0}]"
+        db.animalDao().update(existant.copy(herdTypesJson = typesJson))
+        assertEquals(typesJson, db.animalDao().getAllAnimals().single { it.uuid == "animal-1" }.herdTypesJson)
+
+        val paramsJson = "[{\"typeId\":\"t1\",\"nombre\":38,\"poids\":640.0,\"referenceId\":null,\"k\":1.1,\"variables\":{}}]"
+        db.consultationDao().insert(
+                ConsultationEntity(
+                        uuid = "consult-herd", idAnim = "animal-1", date = "2026-10-10", objectConsult = null,
+                        observation = null, cRendu = null, methodAnalysis = null, k1Id = null, k2Id = null,
+                        k3Id = null, k4Id = null, k5Id = null, herdParamsJson = paramsJson
+                )
+        )
+        assertEquals(paramsJson, db.consultationDao().getConsultationById("consult-herd")?.herdParamsJson)
         assertTrue(db.checkIntegrity())
 
         db.close()

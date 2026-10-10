@@ -145,6 +145,21 @@ fun CreateAnimalView(
                                 modifier = Modifier.padding(bottom = AppSizes.paddingSmall)
                         )
 
+                        // Individu ou troupeau : un troupeau est décrit par types d'animaux
+                        SelecteurIndividuTroupeau(
+                                estTroupeau = animal.estTroupeau,
+                                onChange = { troupeau ->
+                                        viewModel.updateAnimal(
+                                                animal.copy(
+                                                        typesTroupeau =
+                                                                if (troupeau) animal.typesTroupeau ?: typesTroupeauParDefaut()
+                                                                else null
+                                                )
+                                        )
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                        )
+
                         OutlinedTextField(
                                 value = animal.id ?: "",
                                 onValueChange = { newId: String ->
@@ -236,6 +251,16 @@ fun CreateAnimalView(
                                 modifier = Modifier.fillMaxWidth()
                         )
 
+                        val typesTroupeau = animal.typesTroupeau
+                        if (typesTroupeau != null) {
+                                EditeurTypesTroupeau(
+                                        types = typesTroupeau,
+                                        onChange = { types ->
+                                                viewModel.updateAnimal(animal.copy(typesTroupeau = types.toMutableList()))
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                        } else {
                         OutlinedTextField(
                                 value = dateText,
                                 onValueChange = { newDate: String ->
@@ -346,6 +371,7 @@ fun CreateAnimalView(
                                 modifier = Modifier.fillMaxWidth(),
                                 itemLabelProvider = { it.translateEnum() }
                         )
+                        }
 
                         OutlinedTextField(
                                 value = animal.summary,

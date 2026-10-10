@@ -273,7 +273,8 @@ fun AnimalEv.toJson(): AnimalEvJson {
             examStudentNumber = this.examStudentNumber,
             examExerciseId = this.examExerciseId,
             listWeight = this.weightHistory.map { it.toJson() },
-            list = ListConsultEvJson(consultations = this.consultations.map { it.toJson() })
+            list = ListConsultEvJson(consultations = this.consultations.map { it.toJson() }),
+            herdTypes = this.typesTroupeau
     )
 }
 
@@ -350,7 +351,8 @@ fun AnimalEvJson.toData(): AnimalEv {
                     } catch (e: Exception) {
                         mutableListOf()
                     },
-            consultations = consultationsList.toMutableList()
+            consultations = consultationsList.toMutableList(),
+            typesTroupeau = this.herdTypes?.toMutableList()
     )
 }
 
@@ -400,7 +402,8 @@ fun ConsultationEv.toJson(): ConsultationEvJson {
             prescriptionAdditionalText = this.prescriptionAdditionalText,
             prescriptionSelectedConseilIds = this.prescriptionSelectedConseilIds,
             prescriptionLocalHtmlSections = this.prescriptionLocalHtmlSections,
-            prescriptionSelectedRationIds = this.prescriptionSelectedRationIds
+            prescriptionSelectedRationIds = this.prescriptionSelectedRationIds,
+            herdParameters = this.parametresTroupeau
     )
 }
 
@@ -432,7 +435,8 @@ fun ConsultationEvJson.toData(): ConsultationEv {
             prescriptionAdditionalText = this.prescriptionAdditionalText,
             prescriptionSelectedConseilIds = this.prescriptionSelectedConseilIds.toMutableList(),
             prescriptionLocalHtmlSections = this.prescriptionLocalHtmlSections.toMutableList(),
-            prescriptionSelectedRationIds = this.prescriptionSelectedRationIds.toMutableList()
+            prescriptionSelectedRationIds = this.prescriptionSelectedRationIds.toMutableList(),
+            parametresTroupeau = this.herdParameters.toMutableList()
     )
 }
 

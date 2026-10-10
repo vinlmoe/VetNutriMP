@@ -41,7 +41,9 @@ data class AnimalApi(
         val examStudentNumber: String? = null,
         val examExerciseId: String? = null,
         val weights: List<WeightEntryApi> = emptyList(),
-        val consultations: List<ConsultationApi> = emptyList()
+        val consultations: List<ConsultationApi> = emptyList(),
+        // Troupeau : types d'animaux (absent = individu)
+        val herdTypes: List<TypeAnimalTroupeau>? = null
 )
 
 @Serializable
@@ -95,7 +97,9 @@ data class ConsultationApi(
         val rations: List<RationApi> = emptyList(),
         // Consultation évolutive (absents des anciens exports → STANDARD)
         val consultationType: String = "STANDARD",
-        val evolutiveProfile: String? = null
+        val evolutiveProfile: String? = null,
+        // Troupeau : paramètres de chaque type d'animaux
+        val herdParameters: List<ParametresTypeTroupeau> = emptyList()
 )
 
 @Serializable
@@ -374,7 +378,8 @@ fun AnimalEv.toApi(): AnimalApi {
                 examStudentNumber = examStudentNumber,
                 examExerciseId = examExerciseId,
                 weights = weightHistory.map { it.toApi() },
-                consultations = consultations.map { it.toApi() }
+                consultations = consultations.map { it.toApi() },
+                herdTypes = typesTroupeau
         )
 }
 
@@ -429,7 +434,8 @@ fun ConsultationEv.toApi(): ConsultationApi {
                         },
                 rations = rations.map { it.toApi() },
                 consultationType = typeConsultation.name,
-                evolutiveProfile = profilEvolutif?.name
+                evolutiveProfile = profilEvolutif?.name,
+                herdParameters = parametresTroupeau
         )
 }
 
@@ -472,7 +478,8 @@ fun AnimalApi.toDomain(): AnimalEv {
                 examStudentNumber = examStudentNumber,
                 examExerciseId = examExerciseId,
                 consultations = consultations.map { it.toDomain() }.toMutableList(),
-                weightHistory = weights.map { it.toDomain() }.toMutableList()
+                weightHistory = weights.map { it.toDomain() }.toMutableList(),
+                typesTroupeau = herdTypes?.toMutableList()
         )
 }
 
@@ -874,7 +881,8 @@ fun ConsultationApi.toDomain(): ConsultationEv {
                 typeConsultation =
                         fr.vetbrain.vetnutri_mp.Enumer.TypeConsultation.fromName(consultationType),
                 profilEvolutif =
-                        fr.vetbrain.vetnutri_mp.Enumer.ProfilEvolutif.fromName(evolutiveProfile)
+                        fr.vetbrain.vetnutri_mp.Enumer.ProfilEvolutif.fromName(evolutiveProfile),
+                parametresTroupeau = herdParameters.toMutableList()
         )
 }
 

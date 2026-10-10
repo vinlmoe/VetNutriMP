@@ -156,6 +156,10 @@ fun RationsView(
 ) {
         val animal by viewModel.animal.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
+        // Troupeau : consultation vue depuis un animal du type analysé (poids, référentiel, K du
+        // type), utilisée pour les besoins et l'analyse ; identique à selectedConsultation sinon
+        val consultationAnalysee by viewModel.consultationAnalysee.collectAsState()
+        val typeTroupeauAnalyse by viewModel.typeTroupeauAnalyse.collectAsState()
         var showCopyRationDialog by remember { mutableStateOf(false) }
         if (showCopyRationDialog && !isExamMode) {
                 CopyRationDialog(
@@ -180,7 +184,8 @@ fun RationsView(
         // Mode d'analyse groupée : la ration analysée n'est plus une ration de la consultation mais
         // la moyenne de toutes les rations actuelles (ou de toutes les proposées), pondérée par le
         // coefficient de chaque ration. Sa composition est donc en lecture seule.
-        val analyseGroupee = rationAnalysisScope.estGroupe
+        // Troupeau : la ration d'un animal d'un type est elle aussi virtuelle (lecture seule)
+        val analyseGroupee = rationAnalysisScope.estGroupe || typeTroupeauAnalyse != null
         val rationsActuelles =
                 remember(selectedConsultation) {
                         RationAggregator.rationsDuGroupe(
@@ -259,8 +264,8 @@ fun RationsView(
 
         // Calcul du K calculé (produit de tous les coefficients K + coefficient d'ajustement)
         val kCalcule =
-                remember(selectedConsultation) {
-                        RationAnalysisCalculations.calculerCoefficientGlobal(selectedConsultation)
+                remember(consultationAnalysee) {
+                        RationAnalysisCalculations.calculerCoefficientGlobal(consultationAnalysee)
                 }
 
         // Système de préférences pour le filtrage des nutriments
@@ -291,7 +296,7 @@ fun RationsView(
 
         // Délégue le calcul d'énergie additionnelle au ViewModel quand les dépendances changent
         LaunchedEffect(
-                selectedConsultation,
+                consultationAnalysee,
                 referencesMaladiesResolues,
                 referenceUtilisee,
                 selectedRation,
@@ -299,7 +304,7 @@ fun RationsView(
                 besoinEnergetiqueStandard,
                 poidsMetabolique
         ) {
-                val consultation = selectedConsultation
+                val consultation = consultationAnalysee
                 val ration = selectedRation
                 if (consultation != null && ration != null) {
                         viewModel.updateEnergieAdditionnelle(
@@ -570,7 +575,7 @@ fun RationsView(
                                                                                         rationAExporter
                                                                                 )
                                                                         ) poidsEffectif
-                                                                        else selectedConsultation?.weight,
+                                                                        else consultationAnalysee?.weight,
                                                                 poidsMetabolique =
                                                                         poidsMetabolique,
                                                                 besoinEnergetiqueEntretien =
@@ -851,6 +856,16 @@ fun RationsView(
                                         }
                                 }
                                 Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                                // Troupeau : paramètres de chaque type, répartition de la ration
+                                // du groupe et choix du type analysé
+                                if (animal?.estTroupeau == true) {
+                                        PanneauTroupeauConsultation(
+                                                viewModel = viewModel,
+                                                showSnackbar = showSnackbar,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                                }
                                 // Section responsive dans une Card
                                 BoxWithConstraints(
                                         modifier =
@@ -870,7 +885,7 @@ fun RationsView(
                                                         // Section 1: Valeurs métaboliques
                                                         SectionValeursMetaboliques(
                                                                 selectedConsultation =
-                                                                        selectedConsultation,
+                                                                        consultationAnalysee,
                                                                 poidsMetabolique = poidsMetabolique,
                                                                 besoinEnergetiqueStandard =
                                                                         besoinEnergetiqueStandard,
@@ -908,7 +923,7 @@ fun RationsView(
                                                         // Section 2: Coefficients
                                                         SectionCoefficients(
                                                                 selectedConsultation =
-                                                                        selectedConsultation,
+                                                                        consultationAnalysee,
                                                                 showCoefficientsDialog = {
                                                                         showCoefficientsDialog =
                                                                                 true
@@ -1187,7 +1202,7 @@ fun RationsView(
                                                                                 besoinEnergetiqueCible =
                                                                                         besoinEnergetiqueTotal,
                                                                                 poidsAnimal =
-                                                                                        selectedConsultation
+                                                                                        consultationAnalysee
                                                                                                 ?.weight
                                                                                                 ?.toDouble(),
                                                                                 modifier =
@@ -1281,7 +1296,7 @@ fun RationsView(
                                                         ) {
                                                                 SectionValeursMetaboliques(
                                                                         selectedConsultation =
-                                                                                selectedConsultation,
+                                                                                consultationAnalysee,
                                                                         poidsMetabolique = poidsMetabolique,
                                                                         besoinEnergetiqueStandard =
                                                                                 besoinEnergetiqueStandard,
@@ -1321,7 +1336,7 @@ fun RationsView(
                                                                 )
                                                                 SectionCoefficients(
                                                                         selectedConsultation =
-                                                                                selectedConsultation,
+                                                                                consultationAnalysee,
                                                                         showCoefficientsDialog = {
                                                                                 showCoefficientsDialog =
                                                                                         true
@@ -1856,7 +1871,7 @@ fun RationsView(
                         // Dialogues d'agrandissement des sections
                         if (showMetabolicValuesDialog) {
                                 MetabolicValuesDialog(
-                                        selectedConsultation = selectedConsultation,
+                                        selectedConsultation = consultationAnalysee,
                                         poidsCalcul = poidsEffectif,
                                         poidsMetabolique = poidsMetabolique,
                                         besoinEnergetiqueStandard = besoinEnergetiqueStandard,
@@ -1870,7 +1885,7 @@ fun RationsView(
 
                         if (showCoefficientsDialog) {
                                 CoefficientsDialog(
-                                        selectedConsultation = selectedConsultation,
+                                        selectedConsultation = consultationAnalysee,
                                         viewModel = viewModel,
                                         onDismiss = { showCoefficientsDialog = false }
                                 )
