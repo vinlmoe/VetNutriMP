@@ -169,4 +169,117 @@ class TroupeauTest {
         assertEquals(3, AnimalEv(typesTroupeau = types.toMutableList()).effectifTroupeau)
         assertTrue(!AnimalEv().estTroupeau)
     }
+
+    @Test
+    fun besoinAnimal_kCommunsEtKDuType() {
+        val c = consultation().copy(k1Value = 1.5, k3Value = 2.0)
+        assertEquals(3.0, c.kCommunTroupeau(), 1e-12)
+        assertEquals(1.0, ConsultationEv().kCommunTroupeau(), 1e-12)
+        // 800 kcal (16 kg) × 3 (K1·K3) × 2 (K du type)
+        assertEquals(4800.0, besoinAnimalTroupeau(c.parametresType(actifs), reference, c.kCommunTroupeau())!!, 1e-6)
+        // Incalculable : sans référentiel, poids nul ou K nul
+        assertNull(besoinAnimalTroupeau(c.parametresType(actifs), null, 1.0))
+        assertNull(besoinAnimalTroupeau(c.parametresType(actifs).copy(poids = 0.0), reference, 1.0))
+        assertNull(besoinAnimalTroupeau(c.parametresType(actifs).copy(k = 0.0), reference, 1.0))
+    }
+
+    @Test
+    fun variablesDuType_entrentDansLeBesoinStandard() {
+        // BEE dépendant du poids adulte (AW) : chaque type a ses propres variables
+        val refCroissance =
+                ReferenceEv(uuid = "ref-croissance", nom = "Croissance", espece = Espece.CHIEN).apply {
+                    equationBW = Equation(equationScript = "BW ^ 0.75")
+                    equationBEE = Equation(equationScript = "100 * BW ^ 0.75 * AW / 10")
+                }
+        assertEquals(listOf("AW"), variablesEquationsTroupeau(refCroissance))
+        assertTrue(variablesEquationsTroupeau(reference).isEmpty())
+        assertTrue(variablesEquationsTroupeau(null).isEmpty())
+        val p = ParametresTypeTroupeau("A", nombre = 1, poids = 16.0, referenceId = refCroissance.uuid, variables = mapOf("AW" to 20.0))
+        assertEquals(1600.0, besoinAnimalTroupeau(p, refCroissance, 1.0)!!, 1e-6)
+        // Variable inconnue ignorée
+        assertTrue(p.copy(variables = mapOf("XYZ" to 3.0)).variablesSupplementaires().isEmpty())
+    }
+
+    @Test
+    fun avecParametresType_remplaceSansDupliquer() {
+        val c = consultation()
+        val maj = c.avecParametresType(c.parametresType(adultes).copy(nombre = 12))
+        assertEquals(2, maj.parametresTroupeau.size)
+        assertEquals(12, maj.parametresType(adultes).nombre)
+        // La consultation d'origine n'est pas modifiée
+        assertEquals(2, c.parametresType(adultes).nombre)
+        // Type sans paramètres : ajouté
+        val vide = ConsultationEv().avecParametresType(ParametresTypeTroupeau("A", nombre = 4))
+        assertEquals(listOf("A"), vide.parametresTroupeau.map { it.typeId })
+    }
+
+    @Test
+    fun pourTypeTroupeau_conserveLesVariablesDeLaConsultationNonRedefinies() {
+        val c =
+                consultation().copy(
+                        suppVarp =
+                                mutableListOf(
+                                        SupplementalvariableP(VariableKind.AdultWeight, 10.0),
+                                        SupplementalvariableP(VariableKind.LitterSize, 4.0)
+                                )
+                )
+        val vue = c.pourTypeTroupeau(c.parametresType(actifs).copy(variables = mapOf("AW" to 30.0)))
+        assertEquals(2, vue.suppVarp.size)
+        assertEquals(30.0, vue.suppVarp.single { it.variable == VariableKind.AdultWeight }.varue)
+        assertEquals(4.0, vue.suppVarp.single { it.variable == VariableKind.LitterSize }.varue)
+        // Poids nul : pas de poids (besoins non calculés plutôt que faux)
+        assertNull(c.pourTypeTroupeau(c.parametresType(actifs).copy(poids = 0.0)).weight)
+    }
+
+    @Test
+    fun repartition_effectifNulEtTousNuls() = runTest {
+        val c = consultation().let { it.avecParametresType(it.parametresType(actifs).copy(nombre = 0)) }
+        val facteurs = facteursRepartitionTroupeau(types, c, mapOf(reference.uuid to reference))!!
+        assertEquals(1.0 / 2.0, facteurs.getValue("A"), 1e-12) // 2 adultes se partagent tout
+        assertEquals(0.0, facteurs.getValue("B"))
+        // Effectif nul : son référentiel manquant ne bloque pas la répartition
+        val sansRef = c.avecParametresType(c.parametresType(actifs).copy(referenceId = null))
+        assertEquals(facteurs, facteursRepartitionTroupeau(types, sansRef, mapOf(reference.uuid to reference)))
+        // Aucun animal
+        val aucun = c.avecParametresType(c.parametresType(adultes).copy(nombre = 0))
+        assertNull(facteursRepartitionTroupeau(types, aucun, mapOf(reference.uuid to reference)))
+        assertTrue(analyser(aucun).problemes.any { it.contains("Aucun animal") })
+    }
+
+    @Test
+    fun repartition_sommeDesQuantitesParAnimalEgaleLaRationDuGroupe() = runTest {
+        val analyse = analyser(consultation(quantite = 1234.5))
+        val total = analyse.types.sumOf { t -> t.parametres.nombre * t.rationParAnimal!!.alimentMutableList.sumOf { it.quantite } }
+        assertEquals(1234.5, total, 1e-9)
+        assertEquals(1.0, analyse.types.sumOf { it.part!! }, 1e-12)
+    }
+
+    @Test
+    fun analyse_sansRationOuRationVide() = runTest {
+        val sansRation = analyser(consultation(), null)
+        assertTrue(sansRation.problemes.any { it.contains("Sélectionner une ration") })
+        assertTrue(sansRation.types.all { it.rationParAnimal == null })
+        val vide = analyser(consultation(quantite = 0.0))
+        assertEquals(0.0, vide.energieGroupe!!, 1e-12)
+        assertNull(vide.facteurAjustementEnergie)
+        assertEquals("Ration vide.", vide.type("A")!!.message)
+    }
+
+    @Test
+    fun analyse_troupeauSansType() = runTest {
+        val analyse = AnalyseurTroupeau(InMemoryEquationRepository()).analyser(emptyList(), consultation(), ration(100.0), emptyMap())
+        assertEquals(0, analyse.effectif)
+        assertNull(analyse.besoinGroupe)
+        assertTrue(analyse.problemes.any { it.contains("au moins un type") })
+    }
+
+    @Test
+    fun seuils_convertisEnValeursAbsoluesParAnimal() {
+        // 50 g / 1000 kcal de BEE standard (800 kcal) = 40 g ; absents : pas de seuil
+        val seuils = seuilsTroupeau(reference, NutrientMain.PROTEINE, 800.0, 16.0, 8.0)
+        assertEquals(mapOf(Reflevel.OPTIMIN to 40.0), seuils)
+        assertTrue(seuilsTroupeau(reference, NutrientMain.CELLULOSE, 800.0, 16.0, 8.0).isEmpty())
+        // BEE inconnu : seuil par kcal non convertible
+        assertTrue(seuilsTroupeau(reference, NutrientMain.PROTEINE, null, 16.0, 8.0).isEmpty())
+    }
 }
