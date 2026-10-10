@@ -31,7 +31,7 @@ Repository/    ← Interfaces + implémentations Room (19 fichiers)
   ↓
 DataBase/      ← DAO Room, Entity, Mappers (8 fichiers)
   ↓
-Room/SQLite    ← ~28 tables, 23 migrations, schéma v40
+Room/SQLite    ← ~29 tables, 24 migrations, schéma v41
 ```
 
 Règles à respecter :
@@ -130,6 +130,16 @@ référentiel, K = `coefficientAjustement`) pour réutiliser analyse, édition e
 espèces : l'espèce choisie filtre les référentiels généraux et les aliments proposés. Les configurations
 nommées sont enregistrées dans `MULTI_RATION_EXPLORATIONS` (JSON d'identifiants, `Data/ExplorationEnregistree.kt`,
 `MultiRationExplorationRepository`) ; les résultats ne sont pas stockés, ils se recalculent.
+
+### Mode troupeau
+Écran `Screen.Herd` (bouton « Troupeaux / groupes » de la liste des animaux) : un troupeau = des types
+d'animaux (nom, effectif, poids moyen) et des consultations de groupe. Chaque consultation reprend par type
+l'effectif, le poids, le référentiel, K et les variables des équations (AW, L…), et une ration saisie en
+quantités pour tout le groupe. Moteur pur `AnalyseurTroupeau` (`Data/Troupeau.kt`) : besoin d'un animal
+Bᵢ = BEE standard × K (`CalculMetabolique`), un animal du type i reçoit quantité du groupe × Bᵢ / Σ nⱼBⱼ,
+puis ses apports sont évalués avec son référentiel (`analyserValeursNutritionnellesRationSelective`,
+`calculerConformite`). Stockage JSON dans la table `HERDS` (`HerdRepository`, enregistrement automatique
+différé dans `HerdViewModel`) ; les analyses ne sont pas stockées.
 
 ### Threads
 - `AppDispatchers.IO` → opérations DB et réseau

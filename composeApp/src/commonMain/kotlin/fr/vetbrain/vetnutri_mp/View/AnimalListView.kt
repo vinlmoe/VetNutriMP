@@ -61,6 +61,7 @@ fun AnimalListView(
         onShowFoodList: () -> Unit,
         onShowCalculationTabs: () -> Unit,
         onShowMultiRation: (() -> Unit)? = null,
+        onShowHerds: (() -> Unit)? = null,
         examSession: ExamSession? = null,
         modifier: Modifier = Modifier
 ) {
@@ -170,6 +171,19 @@ fun AnimalListView(
                                                                 contentColor = VetNutriColors.OnPrimary
                                                         )
                                         ) { Text("Exploration multiration") }
+                                }
+
+                                // Mode troupeau : groupes d'animaux (hors mode examen)
+                                if (onShowHerds != null && examSession == null) {
+                                        Button(
+                                                onClick = onShowHerds,
+                                                modifier = Modifier.weight(1f),
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor = VetNutriColors.Primary,
+                                                                contentColor = VetNutriColors.OnPrimary
+                                                        )
+                                        ) { Text("Troupeaux / groupes") }
                                 }
 
                                 if (examSession == null) {

@@ -19,6 +19,8 @@ import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Repository.ExamGradingRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseMultiRationExplorationRepository
 import fr.vetbrain.vetnutri_mp.Repository.MultiRationExplorationRepository
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseHerdRepository
+import fr.vetbrain.vetnutri_mp.Repository.HerdRepository
 import fr.vetbrain.vetnutri_mp.Service.FileService
 import fr.vetbrain.vetnutri_mp.Service.StartupService
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
@@ -37,7 +39,8 @@ data class AppContainer(
     val fileService: FileService,
     val startupService: StartupService,
     val preferencesRepository: PreferencesRepository,
-    val multiRationExplorationRepository: MultiRationExplorationRepository
+    val multiRationExplorationRepository: MultiRationExplorationRepository,
+    val herdRepository: HerdRepository
 )
 
 @Composable
@@ -93,6 +96,7 @@ fun rememberAppContainer(appDatabase: AppDatabase): AppContainer {
     val preferencesRepository = remember { PreferencesRepository(createPreferencesStorage()) }
     val multiRationExplorationRepository =
         remember { DatabaseMultiRationExplorationRepository(appDatabase.multiRationExplorationDao()) }
+    val herdRepository = remember { DatabaseHerdRepository(appDatabase.herdDao()) }
 
     return AppContainer(
         animalRepository = animalRepository,
@@ -108,6 +112,7 @@ fun rememberAppContainer(appDatabase: AppDatabase): AppContainer {
         fileService = fileService,
         startupService = startupService,
         preferencesRepository = preferencesRepository,
-        multiRationExplorationRepository = multiRationExplorationRepository
+        multiRationExplorationRepository = multiRationExplorationRepository,
+        herdRepository = herdRepository
     )
 }

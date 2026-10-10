@@ -176,4 +176,25 @@ class MigrationChainDataPersistenceTest {
 
         db.close()
     }
+
+    @Test
+    fun getRoomDatabase_migratingFromV17_createsHerdsTable() = runTest {
+        // La migration 40->41 crée la table des troupeaux / groupes d'animaux
+        seedV17Database()
+
+        val db = getRoomDatabase(Room.databaseBuilder<AppDatabase>(name = dbPath), dbPath)
+        val dao = db.herdDao()
+        dao.upsert(HerdEntity("herd-1", "Vaches laitières", "BOVIN", "{}", 1L))
+        dao.upsert(HerdEntity("herd-1", "Vaches laitières v2", "BOVIN", "{\"version\":1}", 2L))
+
+        val enregistre = dao.getById("herd-1")
+        assertNotNull(enregistre)
+        assertEquals("Vaches laitières v2", enregistre.nom)
+        assertEquals(1, dao.getAll().size)
+        dao.deleteById("herd-1")
+        assertTrue(dao.getAll().isEmpty())
+        assertTrue(db.checkIntegrity())
+
+        db.close()
+    }
 }

@@ -815,3 +815,17 @@ data class MultiRationExplorationEntity(
         val configurationJson: String,
         val updatedAt: Long
 )
+
+/**
+ * Troupeau ou groupe d'animaux : types d'animaux (effectif, poids) et consultations de groupe
+ * (référentiel par type, ration du groupe), sérialisés en JSON (`Data/Troupeau.kt`). Les
+ * analyses ne sont pas stockées : elles se recalculent.
+ */
+@Entity(tableName = "HERDS")
+data class HerdEntity(
+        @PrimaryKey val uuid: String,
+        val nom: String,
+        val espece: String,
+        val contenuJson: String,
+        val updatedAt: Long
+)

@@ -93,6 +93,7 @@ fun App(appDatabase: AppDatabase) {
     val startupService = appContainer.startupService
     val preferencesRepository = appContainer.preferencesRepository
     val multiRationExplorationRepository = appContainer.multiRationExplorationRepository
+    val herdRepository = appContainer.herdRepository
 
     val platformDispatcher = remember { PlatformDispatcher() }
     val nav = remember { AppNavController() }
@@ -217,6 +218,14 @@ fun App(appDatabase: AppDatabase) {
             explorationRepository = multiRationExplorationRepository
         )
     }
+    val herdViewModel = remember {
+        HerdViewModel(
+            foodRepository = foodRepository,
+            referenceEvRepository = databaseReferenceEvRepository,
+            equationRepository = equationRepository,
+            herdRepository = herdRepository
+        )
+    }
     val crossAnalysisViewModel = remember {
         CrossConsultationAnalysisViewModel(
             animalRepository = animalRepository,
@@ -296,7 +305,8 @@ fun App(appDatabase: AppDatabase) {
         backupRestoreViewModel = backupRestoreViewModel,
         legacyMigrationViewModel = legacyMigrationViewModel,
         bulkAddBiblioToFoodsViewModel = bulkAddBiblioToFoodsViewModel,
-        multiRationViewModel = multiRationViewModel
+        multiRationViewModel = multiRationViewModel,
+        herdViewModel = herdViewModel
     )
     val repos = AppNavRepositories(
         equationRepository = equationRepository,

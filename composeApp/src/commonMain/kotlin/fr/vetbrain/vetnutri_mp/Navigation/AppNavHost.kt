@@ -62,6 +62,7 @@ internal fun AppNavHost(
                     onShowFoodList = { nav.navigate(Screen.FoodList) },
                     onShowCalculationTabs = { nav.navigate(Screen.CalculationTabs) },
                     onShowMultiRation = { nav.navigate(Screen.MultiRation) },
+                    onShowHerds = { nav.navigate(Screen.Herd) },
                     examSession = examSession,
                     modifier = Modifier.fillMaxWidth().weight(1f)
                 )
@@ -391,6 +392,14 @@ internal fun AppNavHost(
         Screen.MultiRation -> {
             MultiRationExplorerView(
                 viewModel = models.multiRationViewModel,
+                onNavigateBack = { nav.navigate(Screen.List) },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        Screen.Herd -> {
+            HerdView(
+                viewModel = models.herdViewModel,
                 onNavigateBack = { nav.navigate(Screen.List) },
                 modifier = Modifier.fillMaxSize()
             )

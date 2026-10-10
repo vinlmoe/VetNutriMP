@@ -16,7 +16,7 @@ import fr.vetbrain.vetnutri_mp.Utils.runBlockingOnPlatform
 import kotlinx.coroutines.withContext
 
 /** Version du schéma Room ; à incrémenter avec chaque nouvelle migration. */
-const val DATABASE_SCHEMA_VERSION = 40
+const val DATABASE_SCHEMA_VERSION = 41
 
 /**
  * Base de données Room pour KMP. Cette classe définit la structure de la base de données et ses
@@ -52,7 +52,8 @@ const val DATABASE_SCHEMA_VERSION = 40
                         CustomNutrientEntity::class,
                         EnergyPerSpeciesEntity::class,
                         RationSupplementalVariableEntity::class,
-                        MultiRationExplorationEntity::class],
+                        MultiRationExplorationEntity::class,
+                        HerdEntity::class],
         version = DATABASE_SCHEMA_VERSION,
         exportSchema = true
 )
@@ -73,6 +74,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun examGradingDao(): ExamGradingDao
     abstract fun energyPerSpeciesDao(): EnergyPerSpeciesDao
     abstract fun multiRationExplorationDao(): MultiRationExplorationDao
+    abstract fun herdDao(): HerdDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
@@ -163,7 +165,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
                         // Migration 38→39 : nom libre des étapes de plan évolutif
                         createMigration38to39(),
                         // Migration 39→40 : configurations d'exploration multiration enregistrées
-                        createMigration39to40()
+                        createMigration39to40(),
+                        // Migration 40→41 : troupeaux / groupes d'animaux
+                        createMigration40to41()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -852,6 +856,24 @@ fun createMigration39to40(): Migration {
                     `nom` TEXT NOT NULL,
                     `espece` TEXT NOT NULL,
                     `configurationJson` TEXT NOT NULL,
+                    `updatedAt` INTEGER NOT NULL,
+                    PRIMARY KEY(`uuid`)
+                )
+            """.trimIndent()).use { it.step() }
+        }
+    }
+}
+
+/** Migration 40→41 : table des troupeaux / groupes d'animaux. */
+fun createMigration40to41(): Migration {
+    return object : Migration(40, 41) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS `HERDS` (
+                    `uuid` TEXT NOT NULL,
+                    `nom` TEXT NOT NULL,
+                    `espece` TEXT NOT NULL,
+                    `contenuJson` TEXT NOT NULL,
                     `updatedAt` INTEGER NOT NULL,
                     PRIMARY KEY(`uuid`)
                 )
