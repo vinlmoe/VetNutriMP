@@ -145,14 +145,15 @@ fun CreateAnimalView(
                                 modifier = Modifier.padding(bottom = AppSizes.paddingSmall)
                         )
 
-                        // Individu ou troupeau : un troupeau est décrit par types d'animaux
+                        // Individu ou troupeau : le troupeau n'a ni espèce, ni race, ni sexe ; ses
+                        // individus sont décrits par groupe
                         SelecteurIndividuTroupeau(
                                 estTroupeau = animal.estTroupeau,
                                 onChange = { troupeau ->
                                         viewModel.updateAnimal(
                                                 animal.copy(
                                                         typesTroupeau =
-                                                                if (troupeau) animal.typesTroupeau ?: typesTroupeauParDefaut()
+                                                                if (troupeau) animal.typesTroupeau ?: typesTroupeauParDefaut(animal.getEspece())
                                                                 else null
                                                 )
                                         )
@@ -224,6 +225,17 @@ fun CreateAnimalView(
                                 modifier = Modifier.fillMaxWidth().focusRequester(focusProprietaire)
                         )
 
+                        // Troupeau : groupes d'individus (espèce, race, sexe) à la place des champs de l'individu
+                        val typesTroupeau = animal.typesTroupeau
+                        if (typesTroupeau != null) {
+                                EditeurTypesTroupeau(
+                                        types = typesTroupeau,
+                                        onChange = { types ->
+                                                viewModel.updateAnimal(animal.copy(typesTroupeau = types.toMutableList()))
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                        } else {
                         ComboBox(
                                 items = Espece.valuesExcept(Espece.CH).toList(),
                                 init = animal.getEspece(),
@@ -251,16 +263,6 @@ fun CreateAnimalView(
                                 modifier = Modifier.fillMaxWidth()
                         )
 
-                        val typesTroupeau = animal.typesTroupeau
-                        if (typesTroupeau != null) {
-                                EditeurTypesTroupeau(
-                                        types = typesTroupeau,
-                                        onChange = { types ->
-                                                viewModel.updateAnimal(animal.copy(typesTroupeau = types.toMutableList()))
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                )
-                        } else {
                         OutlinedTextField(
                                 value = dateText,
                                 onValueChange = { newDate: String ->

@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import fr.vetbrain.vetnutri_mp.Components.ComboBox
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.avecEspeceDuTroupeau
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
@@ -86,7 +87,7 @@ fun AnimalEditView(
                                 estTroupeau = typesTroupeau != null,
                                 onChange = { troupeau ->
                                         typesTroupeau =
-                                                if (troupeau) typesTroupeau ?: typesTroupeauParDefaut() else null
+                                                if (troupeau) typesTroupeau ?: typesTroupeauParDefaut(selectedEspece) else null
                                 },
                                 modifier = Modifier.fillMaxWidth()
                         )
@@ -114,14 +115,16 @@ fun AnimalEditView(
                                 }
                         )
 
-                        // Race
-                        OutlinedTextField(
-                                value = race,
-                                onValueChange = { race = it },
-                                label = { Text(Animal.BREED.translate()) },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                        )
+                        // Race (pour un troupeau : celle de chaque groupe d'individus)
+                        if (typesTroupeau == null) {
+                                OutlinedTextField(
+                                        value = race,
+                                        onValueChange = { race = it },
+                                        label = { Text(Animal.BREED.translate()) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true
+                                )
+                        }
 
                         // Propriétaire
                         OutlinedTextField(
@@ -139,6 +142,9 @@ fun AnimalEditView(
                                 }
                         )
 
+                        // Date de naissance, sexe et espèce : ceux de l'individu (pour un troupeau,
+                        // décrits par groupe d'individus)
+                        if (typesTroupeau == null) {
                         // Date de naissance
                         OutlinedTextField(
                                 value = birthDateText,
@@ -254,6 +260,8 @@ fun AnimalEditView(
                                 itemLabelProvider = { it.translateEnum() }
                         )
 
+                        }
+
                         // Animal décédé
                         Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -342,7 +350,7 @@ fun AnimalEditView(
                                                                 dead = isDead,
                                                                 specieId = selectedEspece.label,
                                                                 typesTroupeau = typesTroupeau?.toMutableList()
-                                                        )
+                                                        ).avecEspeceDuTroupeau()
 
                                                 // Log de débogage pour vérifier les informations de
                                                 // l'animal

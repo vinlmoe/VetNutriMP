@@ -270,7 +270,7 @@ class TroupeauTest {
         val analyse = AnalyseurTroupeau(InMemoryEquationRepository()).analyser(emptyList(), consultation(), ration(100.0), emptyMap())
         assertEquals(0, analyse.effectif)
         assertNull(analyse.besoinGroupe)
-        assertTrue(analyse.problemes.any { it.contains("au moins un type") })
+        assertTrue(analyse.problemes.any { it.contains("au moins un groupe") })
     }
 
     @Test

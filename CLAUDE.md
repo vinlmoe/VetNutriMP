@@ -133,8 +133,11 @@ nommées sont enregistrées dans `MULTI_RATION_EXPLORATIONS` (JSON d'identifiant
 
 ### Mode troupeau
 Un animal peut être un **troupeau** : à la création (ou modification), choix « Individu / Troupeau » ;
-un troupeau a des types d'animaux (`AnimalEv.typesTroupeau`, nom/effectif/poids moyen, colonne
-`ANIMALS.herdTypesJson`, null = individu). Il réutilise toute la fiche animal (consultations, rations,
+un troupeau n'a ni espèce, ni race, ni sexe propres : il a des groupes d'individus
+(`AnimalEv.typesTroupeau` : nom, effectif, poids moyen, espèce, race, sexe ; colonne
+`ANIMALS.herdTypesJson`, null = individu), éventuellement d'espèces différentes. La fiche garde l'espèce
+du premier groupe (`avecEspeceDuTroupeau`) pour les écrans communs ; les référentiels proposés à chaque
+groupe suivent son espèce (`especeDuGroupe`). Il réutilise toute la fiche animal (consultations, rations,
 analyse, graphiques, export). Chaque consultation porte, par type, effectif, poids, référentiel, K et
 variables (`ConsultationEv.parametresTroupeau`, colonne `CONSULTATIONS.herdParamsJson`) ; ses rations
 sont en quantités pour tout le groupe. Onglet Rations : `PanneauTroupeauConsultation`

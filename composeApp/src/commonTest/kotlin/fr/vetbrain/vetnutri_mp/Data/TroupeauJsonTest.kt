@@ -2,6 +2,8 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toData
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -22,8 +24,11 @@ class TroupeauJsonTest {
 
     private val types =
             mutableListOf(
-                    TypeAnimalTroupeau(id = "t-lait", nom = "Vaches en lactation", nombre = 40, poids = 650.0),
-                    TypeAnimalTroupeau(id = "t-tar", nom = "Taries", nombre = 8, poids = 700.0)
+                    TypeAnimalTroupeau(
+                            id = "t-lait", nom = "Juments suitées", nombre = 40, poids = 650.0,
+                            espece = Espece.CHEVAL.name, race = "Percheron", sexId = Sex.FEMELLE_ENTIERE.id
+                    ),
+                    TypeAnimalTroupeau(id = "t-tar", nom = "Juments taries", nombre = 8, poids = 700.0, espece = Espece.CHEVAL.name)
             )
 
     private val parametres =
@@ -176,5 +181,58 @@ class TroupeauJsonTest {
         val relu = json.decodeFromString(AnimalEvJson.serializer(), ancien).toData()
         assertFalse(relu.estTroupeau)
         assertTrue(relu.consultations.single().parametresTroupeau.isEmpty())
+    }
+
+    // --- Espèce, race et sexe des individus (le troupeau n'en a pas) --------------------------
+
+    @Test
+    fun groupes_especeRaceSexeSurviventAuxFormats() {
+        val animal = troupeau()
+        val viaEntite = animal.toEntity().toData().typesTroupeau!!.first()
+        val viaApi = json.decodeFromString(AnimalApi.serializer(), json.encodeToString(AnimalApi.serializer(), animal.toApi()))
+                .toDomain().typesTroupeau!!.first()
+        val viaHistorique = json.decodeFromString(AnimalEvJson.serializer(), json.encodeToString(AnimalEvJson.serializer(), animal.toJson()))
+                .toData().typesTroupeau!!.first()
+        listOf(viaEntite, viaApi, viaHistorique).forEach { groupe ->
+            assertEquals(Espece.CHEVAL, groupe.especeEnum())
+            assertEquals("Percheron", groupe.race)
+            assertEquals(Sex.FEMELLE_ENTIERE, groupe.sexe())
+        }
+    }
+
+    @Test
+    fun groupes_ancienJsonSansEspece_prendLEspeceDeLaFiche() {
+        val groupe = TroupeauJson.typesDepuisJson("""[{"id":"t1","nom":"Adultes","nombre":3,"poids":60.0}]""")!!.single()
+        assertNull(groupe.espece)
+        assertNull(groupe.especeEnum())
+        assertEquals("", groupe.race)
+        assertNull(groupe.sexe())
+        val fiche = AnimalEv(specieId = Espece.CHAT.label, typesTroupeau = mutableListOf(groupe))
+        assertEquals(Espece.CHAT, fiche.especeDuGroupe(groupe))
+        // Espèce ou sexe inconnus : ignorés plutôt que de faire planter
+        assertNull(groupe.copy(espece = "INCONNUE").especeEnum())
+        assertNull(groupe.copy(sexId = 999).sexe())
+    }
+
+    @Test
+    fun troupeauMixte_especesDesGroupesEtEspeceDeLaFiche() {
+        val mixte =
+                AnimalEv(
+                        specieId = Espece.CHIEN.label,
+                        typesTroupeau =
+                                mutableListOf(
+                                        TypeAnimalTroupeau(id = "o", nom = "Lapines", espece = Espece.LAPIN.name),
+                                        TypeAnimalTroupeau(id = "c", nom = "Furets", espece = Espece.FURET.name),
+                                        TypeAnimalTroupeau(id = "o2", nom = "Lapereaux", espece = Espece.LAPIN.name)
+                                )
+                )
+        assertEquals(listOf(Espece.LAPIN, Espece.FURET), mixte.especesTroupeau())
+        // La fiche garde l'espèce du premier groupe (écrans communs)
+        assertEquals(Espece.LAPIN, mixte.avecEspeceDuTroupeau().getEspece())
+        // Individu, ou groupes sans espèce : fiche inchangée
+        assertEquals(Espece.CHIEN, AnimalEv(specieId = Espece.CHIEN.label).avecEspeceDuTroupeau().getEspece())
+        val sansEspece = AnimalEv(specieId = Espece.CHIEN.label, typesTroupeau = mutableListOf(TypeAnimalTroupeau(nom = "A")))
+        assertEquals(Espece.CHIEN, sansEspece.avecEspeceDuTroupeau().getEspece())
+        assertEquals(listOf(Espece.CHIEN), sansEspece.especesTroupeau())
     }
 }

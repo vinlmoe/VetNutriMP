@@ -1,8 +1,10 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
+import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -20,15 +22,43 @@ import kotlinx.serialization.json.Json
  * analysée avec son référentiel, par l'analyse de ration habituelle de la fiche animal.
  */
 
-/** Type d'animaux du troupeau ; effectif et poids servent de valeurs par défaut aux consultations. */
+/**
+ * Groupe d'individus du troupeau. Le troupeau n'a ni espèce, ni race, ni sexe : ce sont ceux de
+ * ses individus, décrits par groupe (un troupeau peut mêler plusieurs espèces). Effectif et poids
+ * servent de valeurs par défaut aux consultations.
+ */
 @Serializable
 data class TypeAnimalTroupeau(
         val id: String = genUUID(),
         val nom: String = "",
         val nombre: Int = 1,
-        /** Poids moyen d'un animal (kg). */
-        val poids: Double = 0.0
-)
+        /** Poids moyen d'un individu (kg). */
+        val poids: Double = 0.0,
+        /** Espèce des individus (nom de l'enum Espece) ; null = non précisée (anciens dossiers). */
+        val espece: String? = null,
+        val race: String = "",
+        /** Sexe des individus (Sex.id) ; null = non précisé ou mixte. */
+        val sexId: Int? = null
+) {
+    fun especeEnum(): Espece? = espece?.let { nom -> Espece.entries.firstOrNull { it.name == nom } }
+
+    fun sexe(): Sex? = sexId?.let { id -> Sex.entries.firstOrNull { it.id == id } }
+}
+
+/** Espèce d'un groupe : la sienne, sinon celle enregistrée sur la fiche (anciens dossiers). */
+fun AnimalEv.especeDuGroupe(type: TypeAnimalTroupeau): Espece = type.especeEnum() ?: getEspece()
+
+/** Espèces présentes dans le troupeau, dans l'ordre des groupes. */
+fun AnimalEv.especesTroupeau(): List<Espece> = typesTroupeau.orEmpty().map { especeDuGroupe(it) }.distinct()
+
+/**
+ * Le troupeau n'a pas d'espèce propre : la fiche garde celle du premier groupe, utilisée par les
+ * écrans communs (filtres de la liste, aliments proposés).
+ */
+fun AnimalEv.avecEspeceDuTroupeau(): AnimalEv {
+    val premiere = typesTroupeau?.firstNotNullOfOrNull { it.especeEnum() } ?: return this
+    return copy(specieId = premiere.label)
+}
 
 /** Paramètres d'un type pour une consultation (les effectifs et poids peuvent évoluer). */
 @Serializable
@@ -109,7 +139,7 @@ fun ConsultationEv.pourTypeTroupeau(parametres: ParametresTypeTroupeau): Consult
  */
 fun rationParAnimalTroupeau(rationGroupe: Ration, facteur: Double, nomType: String): Ration =
         rationGroupe.copy(
-                name = "${rationGroupe.name} — par animal ($nomType)",
+                name = "${rationGroupe.name} — par individu ($nomType)",
                 alimentMutableList =
                         rationGroupe.alimentMutableList
                                 .map { it.copy(quantite = it.quantite.coerceAtLeast(0.0) * facteur) }
@@ -285,9 +315,9 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
                 types.map { type ->
                     val p = consultation.parametresType(type)
                     val reference = p.referenceId?.let { references[it] }
-                    val nom = type.nom.ifBlank { "Type sans nom" }
+                    val nom = type.nom.ifBlank { "Groupe sans nom" }
                     when {
-                        p.nombre <= 0 -> Besoin(type, p, reference, null, null, "Effectif nul : ce type ne reçoit rien.")
+                        p.nombre <= 0 -> Besoin(type, p, reference, null, null, "Effectif nul : ce groupe ne reçoit rien.")
                         p.referenceId == null -> Besoin(type, p, null, null, null, "Choisir un référentiel pour « $nom ».")
                         reference == null -> Besoin(type, p, null, null, null, "Référentiel de « $nom » introuvable.")
                         p.poids <= 0.0 -> Besoin(type, p, reference, null, null, "Poids de « $nom » à renseigner.")
@@ -307,7 +337,7 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
         val besoinGroupe =
                 if (actifs.isNotEmpty() && actifs.all { it.besoin != null }) actifs.sumOf { it.parametres.nombre * it.besoin!! }
                 else null
-        if (types.isEmpty()) problemes += "Ajouter au moins un type d'animaux au troupeau (modifier l'animal)."
+        if (types.isEmpty()) problemes += "Ajouter au moins un groupe d'individus au troupeau (modifier la fiche)."
         else if (actifs.isEmpty()) problemes += "Aucun animal : tous les effectifs sont nuls."
         if (rationGroupe == null) problemes += "Sélectionner une ration."
 
@@ -321,7 +351,7 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
                                 facteur = if (b.parametres.nombre <= 0) 0.0 else null,
                                 rationParAnimal = null,
                                 energieParAnimal = null,
-                                message = b.message ?: "Répartition impossible tant que les besoins de tous les types ne sont pas calculables."
+                                message = b.message ?: "Répartition impossible tant que les besoins de tous les groupes ne sont pas calculables."
                         )
                     } else {
                         val facteur = besoin / besoinGroupe

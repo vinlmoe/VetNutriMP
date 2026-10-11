@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.ViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.avecEspeceDuTroupeau
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import kotlin.uuid.ExperimentalUuidApi
@@ -36,7 +37,8 @@ class CreateAnimalViewModel(private val animalRepository: AnimalRepository) : Vi
         viewModelScope.launch {
             try {
                 _isSaving.value = true
-                animalRepository.saveAnimal(_animal.value)
+                // Troupeau : la fiche garde l'espèce du premier groupe (filtres, aliments proposés)
+                animalRepository.saveAnimal(_animal.value.avecEspeceDuTroupeau())
                 _saveSuccess.value = true
             } catch (e: Exception) {
                 // Gérer l'erreur ici

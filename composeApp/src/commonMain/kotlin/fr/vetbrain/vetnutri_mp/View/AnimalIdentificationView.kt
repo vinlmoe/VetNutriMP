@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.especeDuGroupe
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
@@ -71,16 +72,23 @@ fun AnimalIdentificationView(
         ) {
             // Nom et race
             InfoRow(label = Animal.NAME.translate(), value = animal.nom)
+            // Troupeau : pas d'espèce, race ni sexe propres ; ceux de chaque groupe d'individus
             animal.typesTroupeau?.let { types ->
                 InfoRow(label = "Troupeau", value = "${animal.effectifTroupeau} animaux")
                 types.forEach { type ->
+                    val details =
+                            listOfNotNull(
+                                    animal.especeDuGroupe(type).translateEnum(),
+                                    type.race.takeIf { it.isNotBlank() },
+                                    type.sexe()?.translateEnum()
+                            ).joinToString(", ")
                     InfoRow(
-                            label = "  ${type.nom.ifBlank { "Type sans nom" }}",
-                            value = "${type.nombre} × ${formaterNombreTroupeau(type.poids)} kg"
+                            label = "  ${type.nom.ifBlank { "Groupe sans nom" }}",
+                            value = "${type.nombre} × ${formaterNombreTroupeau(type.poids)} kg — $details"
                     )
                 }
             }
-            InfoRow(label = Animal.BREED.translate(), value = animal.race)
+            if (!animal.estTroupeau) InfoRow(label = Animal.BREED.translate(), value = animal.race)
 
             // Sexe (sans objet pour un troupeau)
             if (!animal.estTroupeau) InfoRow(

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.especesTroupeau
 import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Data.ExamSession
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
@@ -792,7 +793,7 @@ private fun AnimalCard(
                                         Text(text = animal.nom, style = MaterialTheme.typography.h6)
                                         if (animal.estTroupeau) {
                                                 Text(
-                                                        text = "Troupeau — ${animal.effectifTroupeau} animaux, ${animal.typesTroupeau.orEmpty().size} type(s)",
+                                                        text = "Troupeau — ${animal.effectifTroupeau} animaux, ${animal.typesTroupeau.orEmpty().size} groupe(s)",
                                                         style = MaterialTheme.typography.body2,
                                                         color = VetNutriColors.Primary
                                                 )
@@ -805,7 +806,10 @@ private fun AnimalCard(
                                         }
                                         Text(
                                                 text =
-                                                        "${Animal.SPECIES.translate()}: ${animal.getEspece().translateEnum()}",
+                                                        // Troupeau : espèces de ses individus
+                                                        if (animal.estTroupeau)
+                                                                "${Animal.SPECIES.translate()}: ${animal.especesTroupeau().joinToString(", ") { it.translateEnum() }}"
+                                                        else "${Animal.SPECIES.translate()}: ${animal.getEspece().translateEnum()}",
                                                 style = MaterialTheme.typography.body1
                                         )
                                         if (animal.race.isNotEmpty()) {
