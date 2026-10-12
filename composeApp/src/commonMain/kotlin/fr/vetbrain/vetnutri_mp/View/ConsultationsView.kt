@@ -70,7 +70,8 @@ fun ConsultationsView(
                 },
                 onLoadReferences = { viewModel.chargerReferencesDisponibles() },
                 onLoadKeywords = { viewModel.chargerMotsClesConsultation() },
-                onCreateKeyword = { keyword -> viewModel.ajouterMotCleConsultation(keyword) }
+                onCreateKeyword = { keyword -> viewModel.ajouterMotCleConsultation(keyword) },
+                typesTroupeau = animal?.typesTroupeau
         )
 
         // Dialog uniquement après clic sur Valider: on le pilote ici via la sélection
@@ -252,6 +253,18 @@ private fun ConsultationsMainView(
                         // Charger les références au démarrage
                         LaunchedEffect(Unit) { viewModel.chargerReferencesDisponibles() }
 
+                        // Troupeau : état du troupeau par groupe à la place du poids et de la
+                        // NEC d'un individu
+                        val typesTroupeau = animal?.typesTroupeau
+                        if (typesTroupeau != null && consultation.uuid.isNotEmpty()) {
+                            DetailConsultationTroupeau(
+                                    consultation = consultation,
+                                    types = typesTroupeau,
+                                    references = availableReferences,
+                                    onEdit = { viewModel.editConsultationFullScreen(consultation) },
+                                    onDismiss = { onShowConsultationDetail(false) }
+                            )
+                        } else
                         AppConsultationDetailView(
                                 consultation = consultation,
                                 availableReferences = availableReferences,

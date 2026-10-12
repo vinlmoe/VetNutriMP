@@ -282,4 +282,65 @@ class TroupeauTest {
         // BEE inconnu : seuil par kcal non convertible
         assertTrue(seuilsTroupeau(reference, NutrientMain.PROTEINE, null, 16.0, 8.0).isEmpty())
     }
+
+    // --- Troupeau entier ------------------------------------------------------------------------
+
+    @Test
+    fun troupeauEntier_sommeLesApportsEtLesBesoinsDesIndividus() = runTest {
+        val lignes = analyser(consultation()).apportsTroupeauEntier()
+        val proteines = lignes.first { it.nutriment == NutrientMain.PROTEINE }
+        // Apport : 2 × 20 g + 1 × 40 g = 80 g = 800 g de riz à 10 %
+        assertEquals(80.0, proteines.apport, 1e-9)
+        // Besoin : 3 individus × 40 g (même BEE standard) = 120 g → sous l'optimum
+        assertEquals(120.0, proteines.seuils.getValue(Reflevel.OPTIMIN), 1e-9)
+        assertEquals(ConformiteStatus.CARENCE, proteines.statutTroupeau)
+        assertTrue(!proteines.critique)
+        // Seuls les adultes sont hors normes individuellement
+        assertEquals(listOf("Adultes"), proteines.groupesHorsNormes.map { it.first })
+
+        val energie = lignes.first { it.nutriment == NutrientMain.ENERGIE }
+        assertEquals(3200.0, energie.apport, 1e-6)
+        assertEquals(0.9 * 3200.0, energie.seuils.getValue(Reflevel.MIN), 1e-6)
+        assertEquals(1.1 * 3200.0, energie.seuils.getValue(Reflevel.MAX), 1e-6)
+        assertNull(energie.statutTroupeau)
+    }
+
+    @Test
+    fun troupeauEntier_seuilAbsentDansUnReferentiel_pasDeSomme() = runTest {
+        // Les actifs ont un référentiel sans OPTIMIN protéines mais avec un MAX
+        val refActifs =
+                ReferenceEv(uuid = "ref-actifs", nom = "Actifs", espece = Espece.CHIEN).apply {
+                    equationBW = Equation(equationScript = "BW ^ 0.75")
+                    equationBEE = Equation(equationScript = "100 * BW ^ 0.75")
+                    definirNutriment(100.0, NutrientMain.PROTEINE, Reflevel.MAX, UnitReqEnum.PERKCAL, BiblioRef())
+                }
+        val c = consultation().let { it.avecParametresType(it.parametresType(actifs).copy(referenceId = refActifs.uuid)) }
+        val analyse =
+                AnalyseurTroupeau(InMemoryEquationRepository())
+                        .analyser(types, c, c.rations.first(), mapOf(reference.uuid to reference, refActifs.uuid to refActifs))
+        val proteines = analyse.apportsTroupeauEntier().first { it.nutriment == NutrientMain.PROTEINE }
+        // L'apport compte tous les groupes ; aucun niveau n'est commun aux deux référentiels
+        assertEquals(80.0, proteines.apport, 1e-9)
+        assertTrue(proteines.seuils.isEmpty())
+        assertNull(proteines.statutTroupeau)
+        assertEquals(listOf("Adultes"), proteines.groupesHorsNormes.map { it.first })
+    }
+
+    @Test
+    fun troupeauEntier_videTantQueLaRepartitionEstImpossible() = runTest {
+        val c = consultation().let { it.avecParametresType(it.parametresType(actifs).copy(referenceId = null)) }
+        assertTrue(analyser(c).apportsTroupeauEntier().isEmpty())
+        assertTrue(analyser(consultation(), null).apportsTroupeauEntier().isEmpty())
+    }
+
+    @Test
+    fun troupeauEntier_groupeSansIndividuIgnore() = runTest {
+        val c = consultation().let { it.avecParametresType(it.parametresType(actifs).copy(nombre = 0, referenceId = null)) }
+        val proteines = analyser(c).apportsTroupeauEntier().first { it.nutriment == NutrientMain.PROTEINE }
+        // Toute la ration pour les 2 adultes : 80 g pour un besoin de 2 × 40 g
+        assertEquals(80.0, proteines.apport, 1e-9)
+        assertEquals(80.0, proteines.seuils.getValue(Reflevel.OPTIMIN), 1e-9)
+        assertNull(proteines.statutTroupeau)
+        assertTrue(proteines.groupesHorsNormes.isEmpty())
+    }
 }

@@ -138,15 +138,18 @@ un troupeau n'a ni espèce, ni race, ni sexe propres : il a des groupes d'indivi
 `ANIMALS.herdTypesJson`, null = individu), éventuellement d'espèces différentes. La fiche garde l'espèce
 du premier groupe (`avecEspeceDuTroupeau`) pour les écrans communs ; les référentiels proposés à chaque
 groupe suivent son espèce (`especeDuGroupe`). Il réutilise toute la fiche animal (consultations, rations,
-analyse, graphiques, export). Chaque consultation porte, par type, effectif, poids, référentiel, K et
-variables (`ConsultationEv.parametresTroupeau`, colonne `CONSULTATIONS.herdParamsJson`) ; ses rations
-sont en quantités pour tout le groupe. Onglet Rations : `PanneauTroupeauConsultation`
-(`View/TroupeauComponents.kt`). Dans `AnimalDetailViewModel`, choisir un type (`selectTypeTroupeau`)
-remplace la ration affichée par la ration d'un animal du type (quantités × Bᵢ / Σ nⱼBⱼ,
-`rationParAnimalTroupeau`, virtuelle et en lecture seule comme les rations groupées) et la consultation
-d'analyse par `consultationAnalysee` (`pourTypeTroupeau` : poids, référentiel, K du type ; K1…K5
-communs). En mode type, modifier poids ou K dans l'analyse modifie les paramètres du type. Moteur pur
-dans `Data/Troupeau.kt` (`facteursRepartitionTroupeau`, `AnalyseurTroupeau` pour la synthèse par type).
+analyse, graphiques, export). Consultation d'un troupeau : « État du troupeau » par groupe (effectif,
+poids moyen, NEC, référentiel de l'espèce du groupe, K, variables ; `ConsultationEv.parametresTroupeau`,
+colonne `CONSULTATIONS.herdParamsJson`) à la place du poids, de la NEC, du référentiel, des variables et
+des K de l'individu (`EditeurEtatTroupeau`, `DetailConsultationTroupeau`) ; ses rations sont en quantités
+pour tout le troupeau. Onglet Rations : `PanneauTroupeauConsultation` (`View/TroupeauComponents.kt`) choisit
+ce qui est analysé, sans saisie de référentiel ni de variable. « Troupeau entier » : sections de
+l'individu masquées, `AnalyseApportsTroupeau` compare l'apport total aux besoins sommés
+(`apportsTroupeauEntier` : Σ nᵢ × seuil, groupes hors normes). Un groupe (`selectTypeTroupeau`) : la
+ration affichée devient celle d'un individu (quantités × Bᵢ / Σ nⱼBⱼ, `rationParAnimalTroupeau`,
+virtuelle et en lecture seule) et la consultation d'analyse `consultationAnalysee` (`pourTypeTroupeau` :
+poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existante. Moteur pur dans
+`Data/Troupeau.kt` (`facteursRepartitionTroupeau`, `AnalyseurTroupeau`).
 
 ### Threads
 - `AppDispatchers.IO` → opérations DB et réseau

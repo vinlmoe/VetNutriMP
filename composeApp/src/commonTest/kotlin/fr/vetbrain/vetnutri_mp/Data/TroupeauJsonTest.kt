@@ -35,7 +35,7 @@ class TroupeauJsonTest {
             mutableListOf(
                     ParametresTypeTroupeau(
                             typeId = "t-lait", nombre = 38, poids = 640.0, referenceId = "ref-lait", k = 1.15,
-                            variables = mapOf("L" to 30.0)
+                            variables = mapOf("L" to 30.0), bcs = 3.25
                     ),
                     ParametresTypeTroupeau(typeId = "t-tar", nombre = 9, poids = 710.0, referenceId = "ref-entretien")
             )
@@ -234,5 +234,16 @@ class TroupeauJsonTest {
         val sansEspece = AnimalEv(specieId = Espece.CHIEN.label, typesTroupeau = mutableListOf(TypeAnimalTroupeau(nom = "A")))
         assertEquals(Espece.CHIEN, sansEspece.avecEspeceDuTroupeau().getEspece())
         assertEquals(listOf(Espece.CHIEN), sansEspece.especesTroupeau())
+    }
+
+    @Test
+    fun etatDuTroupeau_necConserveeEtAbsenteDesAnciensJson() {
+        val relus = TroupeauJson.parametresDepuisJson(TroupeauJson.parametresVersJson(parametres))
+        assertEquals(3.25, relus.first().bcs)
+        assertNull(relus.last().bcs)
+        assertNull(TroupeauJson.parametresDepuisJson("""[{"typeId":"t1","nombre":5}]""").single().bcs)
+        val viaApi = json.decodeFromString(AnimalApi.serializer(), json.encodeToString(AnimalApi.serializer(), troupeau().toApi()))
+                .toDomain().consultations.single().parametresTroupeau.first()
+        assertEquals(3.25, viaApi.bcs)
     }
 }

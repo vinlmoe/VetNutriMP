@@ -160,6 +160,10 @@ fun RationsView(
         // type), utilisée pour les besoins et l'analyse ; identique à selectedConsultation sinon
         val consultationAnalysee by viewModel.consultationAnalysee.collectAsState()
         val typeTroupeauAnalyse by viewModel.typeTroupeauAnalyse.collectAsState()
+        val analyseTroupeau by viewModel.analyseTroupeau.collectAsState()
+        // Troupeau analysé dans son ensemble : pas de besoins d'un individu (poids, référentiel,
+        // K), mais l'analyse des apports au troupeau entier
+        val troupeauEntier = animal?.estTroupeau == true && typeTroupeauAnalyse == null
         var showCopyRationDialog by remember { mutableStateOf(false) }
         if (showCopyRationDialog && !isExamMode) {
                 CopyRationDialog(
@@ -882,6 +886,7 @@ fun RationsView(
                                                                         AppSizes.paddingSmall
                                                                 )
                                                 ) {
+                                                        if (!troupeauEntier) {
                                                         // Section 1: Valeurs métaboliques
                                                         SectionValeursMetaboliques(
                                                                 selectedConsultation =
@@ -895,7 +900,7 @@ fun RationsView(
                                                                 kCalcule = kCalcule,
                                                                energieAdditionnelle = energieAdditionnelle,
                                                                 referenceUtilisee = referenceUtilisee,
-                                                                onUpdateWeights = { currentWeight, idealWeight ->
+                                                                onUpdateWeights = if (typeTroupeauAnalyse != null) null else { currentWeight: Double, idealWeight: Double ->
                                                                         selectedConsultation?.let { consultation ->
                                                                                 viewModel.updateConsultationWeights(
                                                                                         consultation.uuid,
@@ -945,6 +950,7 @@ fun RationsView(
                                                                 modifier = Modifier.fillMaxWidth()
                                                         )
                                                         Divider()
+                                                        }
 
                                                         // Section 4: Liste des rations
                                                         Card(
@@ -1188,7 +1194,12 @@ fun RationsView(
                                                         // ration est sélectionnée)
                                                         if (selectedRation != null && !showRationNutrientInspector) {
                                                                 Divider()
-                                                                if (referenceUtilisee != null) {
+                                                                if (troupeauEntier) {
+                                                                        AnalyseApportsTroupeau(
+                                                                                analyse = analyseTroupeau,
+                                                                                modifier = Modifier.fillMaxWidth()
+                                                                        )
+                                                                } else if (referenceUtilisee != null) {
                                                                         // Utiliser la version existante de
                                                                         // AnalyseNutritionnelleCard
                                                                         AnalyseNutritionnelleCard(
@@ -1286,7 +1297,7 @@ fun RationsView(
                                                         ) { 
                                                                 Text(translate(Consultation.SELECT_HINT))
                                                         }
-                                                } else {
+                                                } else if (!troupeauEntier) {
                                                         Row(
                                                                 modifier = Modifier.fillMaxWidth(),
                                                                 horizontalArrangement =
@@ -1306,7 +1317,7 @@ fun RationsView(
                                                                         kCalcule = kCalcule,
                                                                          energieAdditionnelle = energieAdditionnelle,
                                                                         referenceUtilisee = referenceUtilisee,
-                                                                        onUpdateWeights = { currentWeight, idealWeight ->
+                                                                        onUpdateWeights = if (typeTroupeauAnalyse != null) null else { currentWeight: Double, idealWeight: Double ->
                                                                                 selectedConsultation?.let { consultation ->
                                                                                         viewModel.updateConsultationWeights(
                                                                                                 consultation.uuid,
@@ -1637,6 +1648,12 @@ fun RationsView(
                                                                                         false
                                                                         },
                                                                         modifier = Modifier.fillMaxSize()
+                                                                )
+                                                        } else if (troupeauEntier) {
+                                                                AnalyseApportsTroupeau(
+                                                                        analyse = analyseTroupeau,
+                                                                        modifier = Modifier.fillMaxSize(),
+                                                                        defilementVertical = true
                                                                 )
                                                         } else if (referenceUtilisee != null) {
                                                                 AnalyseNutritionnelleCard(

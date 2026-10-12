@@ -22,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.Components.AppTextField
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
+import fr.vetbrain.vetnutri_mp.Data.avecParametresType
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
@@ -46,7 +47,10 @@ fun ConsultationFullScreenEditView(
         onCancel: () -> Unit,
         onLoadReferences: () -> Unit = {},
         onLoadKeywords: () -> Unit = {},
-        onCreateKeyword: (ConsultationKeyword) -> Unit = {}
+        onCreateKeyword: (ConsultationKeyword) -> Unit = {},
+        // Troupeau : groupes d'individus (null = individu). L'état du troupeau (effectif, poids,
+        // NEC, référentiel, K de chaque groupe) remplace les champs de l'individu.
+        typesTroupeau: List<fr.vetbrain.vetnutri_mp.Data.TypeAnimalTroupeau>? = null
 ) {
         var editedConsultation by
                 remember(consultation) {
@@ -265,6 +269,19 @@ fun ConsultationFullScreenEditView(
                 floatingActionButton = {
                         FloatingActionButton(
                                 onClick = {
+                                        // Troupeau : chaque groupe nourri doit avoir un référentiel et un poids
+                                        if (typesTroupeau != null) {
+                                                val incomplets = fr.vetbrain.vetnutri_mp.View.groupesIncompletsTroupeau(typesTroupeau, editedConsultation)
+                                                if (incomplets.isNotEmpty()) {
+                                                        missingDataMessage =
+                                                                "Compléter le référentiel et le poids moyen de : ${incomplets.joinToString()}."
+                                                        showMissingDataDialog = true
+                                                        return@FloatingActionButton
+                                                }
+                                                shouldAutoSave = false
+                                                saveAndGoBack()
+                                                return@FloatingActionButton
+                                        }
                                         // Empêcher la sauvegarde si aucune référence générale n'est
                                         // sélectionnée et si aucun poids n'est saisi
                                         val hasGeneralRef =
@@ -321,6 +338,23 @@ fun ConsultationFullScreenEditView(
                                 modifier = Modifier.fillMaxWidth()
                         )
 
+                        // Troupeau : état du troupeau par groupe d'individus, à la place du poids,
+                        // de la NEC et du poids idéal d'un individu
+                        if (typesTroupeau != null) {
+                                EditeurEtatTroupeau(
+                                        types = typesTroupeau,
+                                        consultation = editedConsultation,
+                                        referencesDuGroupe = { type ->
+                                                val espece = type.especeEnum() ?: animalEspece
+                                                val generales = availableReferences.filter { !it.maladie }
+                                                generales.filter { it.espece == espece }.ifEmpty { generales }.sortedBy { it.nom }
+                                        },
+                                        onChange = { parametres ->
+                                                editedConsultation = editedConsultation.avecParametresType(parametres)
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                        } else {
                         // Poids (grand clavier numérique via OutlinedTextField)
                         Column(modifier = Modifier.fillMaxWidth()) {
                                 OutlinedTextField(
@@ -614,6 +648,8 @@ fun ConsultationFullScreenEditView(
                                 }
                         }
 
+                        }
+
                         // Objectif
                         AppTextField(
                                 value = editedConsultation.objectConsult,
@@ -773,6 +809,9 @@ fun ConsultationFullScreenEditView(
                                 singleLine = false
                         )
 
+                        // Référentiel, variables et coefficients : ceux de l'individu (pour un
+                        // troupeau, définis par groupe dans l'état du troupeau)
+                        if (typesTroupeau == null) {
                         // Section Références Nutritionnelles
                         Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1247,6 +1286,8 @@ fun ConsultationFullScreenEditView(
                                                 }
                                         }
                                 }
+                        }
+
                         }
 
                         // Espacement final

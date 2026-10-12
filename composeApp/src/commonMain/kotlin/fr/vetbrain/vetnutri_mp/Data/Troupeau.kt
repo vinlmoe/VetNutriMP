@@ -70,7 +70,9 @@ data class ParametresTypeTroupeau(
         /** K propre au type (coefficient d'ajustement) ; les K1…K5 de la consultation s'appliquent à tous. */
         val k: Double = 1.0,
         /** Variables des équations du référentiel (AW, L, wG...), par label de VariableKind. */
-        val variables: Map<String, Double> = emptyMap()
+        val variables: Map<String, Double> = emptyMap(),
+        /** Note d'état corporel moyenne du groupe (échelle de l'espèce) ; null = non évaluée. */
+        val bcs: Double? = null
 )
 
 object TroupeauJson {
@@ -251,6 +253,85 @@ data class AnalyseTroupeau(
     fun type(id: String?): AnalyseTypeTroupeau? = types.firstOrNull { it.type.id == id }
 }
 
+/**
+ * Apport d'un nutriment à l'ensemble du troupeau, comparé à la somme des besoins de ses individus.
+ * [seuils] = Σ nᵢ × seuil d'un individu du groupe i, pour les niveaux présents dans les
+ * référentiels de tous les groupes nourris (sinon absents). Les ratios (Ca/P...) sont identiques
+ * pour tous les groupes : pas de somme, seuls les groupes hors normes sont signalés.
+ */
+data class LigneApportTroupeau(
+        val nutriment: Nutrient,
+        val unite: fr.vetbrain.vetnutri_mp.Enumer.UnitEnum,
+        /** Apport total au troupeau (valeur commune pour un ratio). */
+        val apport: Double,
+        val complet: Boolean,
+        val seuils: Map<Reflevel, Double>,
+        /** Groupes dont les individus sont hors normes pour ce nutriment, avec le niveau manqué. */
+        val groupesHorsNormes: List<Pair<String, ConformiteResult>>,
+        val ratio: Boolean
+) {
+    /** Position de l'apport total par rapport aux seuils sommés, null si dans les normes. */
+    val statutTroupeau: ConformiteStatus?
+        get() =
+                when {
+                    ratio -> null
+                    seuils[Reflevel.MIN]?.let { apport < it } == true || seuils[Reflevel.OPTIMIN]?.let { apport < it } == true ->
+                            ConformiteStatus.CARENCE
+                    seuils[Reflevel.MAX]?.let { apport > it } == true || seuils[Reflevel.OPTIMAX]?.let { apport > it } == true ->
+                            ConformiteStatus.EXCES
+                    else -> null
+                }
+
+    /** Vrai si un seuil critique (MIN/MAX) du troupeau n'est pas respecté. */
+    val critique: Boolean
+        get() =
+                !ratio &&
+                        (seuils[Reflevel.MIN]?.let { apport < it } == true || seuils[Reflevel.MAX]?.let { apport > it } == true)
+}
+
+/**
+ * Apports de l'ensemble du troupeau : pour chaque nutriment ayant un seuil dans le référentiel
+ * d'au moins un groupe, apport total (Σ effectif × apport d'un individu) et besoins sommés. Les
+ * groupes hors normes sont listés : un total conforme peut masquer la carence d'un groupe.
+ * Vide tant que la répartition n'est pas calculable.
+ */
+fun AnalyseTroupeau.apportsTroupeauEntier(): List<LigneApportTroupeau> {
+    val nourris = types.filter { it.parametres.nombre > 0 }
+    if (nourris.isEmpty() || nourris.any { it.rationParAnimal == null }) return emptyList()
+    val nutriments = nourris.flatMap { t -> t.lignes.map { it.nutriment } }.distinctBy { it.label }
+    return nutriments.mapNotNull { nutriment ->
+        val parGroupe = nourris.map { t -> t to t.lignes.firstOrNull { it.nutriment.label == nutriment.label } }
+        val connues = parGroupe.mapNotNull { (t, l) -> l?.let { t to it } }
+        val premiere = connues.firstOrNull()?.second ?: return@mapNotNull null
+        val ratio = estNutrimentAnalysisRatio(nutriment)
+        val apport =
+                if (ratio) premiere.valeur.valeur
+                else connues.sumOf { (t, l) -> t.parametres.nombre * l.valeur.valeur }
+        val seuils =
+                if (ratio) emptyMap()
+                else
+                        listOf(Reflevel.MIN, Reflevel.OPTIMIN, Reflevel.OPTIMAX, Reflevel.MAX)
+                                .mapNotNull { niveau ->
+                                    // Somme seulement si chaque groupe nourri a ce seuil
+                                    if (parGroupe.any { (_, l) -> l?.seuils?.get(niveau) == null }) null
+                                    else niveau to parGroupe.sumOf { (t, l) -> t.parametres.nombre * l!!.seuils.getValue(niveau) }
+                                }
+                                .toMap()
+        LigneApportTroupeau(
+                nutriment = nutriment,
+                unite = premiere.valeur.unite,
+                apport = apport,
+                complet = connues.all { (_, l) -> l.valeur.complete },
+                seuils = seuils,
+                groupesHorsNormes =
+                        connues.mapNotNull { (t, l) ->
+                            l.conformite?.let { c -> t.type.nom.ifBlank { "Groupe sans nom" } to c }
+                        },
+                ratio = ratio
+        )
+    }
+}
+
 /** Seuils absolus d'un nutriment dans le référentiel (même unité que l'apport). */
 fun seuilsTroupeau(
         reference: ReferenceEv,
@@ -341,6 +422,11 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
         else if (actifs.isEmpty()) problemes += "Aucun animal : tous les effectifs sont nuls."
         if (rationGroupe == null) problemes += "Sélectionner une ration."
 
+        // Nutriments évalués : ceux des référentiels de tous les groupes, pour que l'apport au
+        // troupeau entier compte chaque groupe même si son référentiel n'a pas ce seuil
+        val nutrimentsTroupeau =
+                besoins.filter { it.parametres.nombre > 0 }.mapNotNull { it.reference }.flatMap { nutrimentsAvecSeuil(it) }
+                        .distinctBy { it.label }
         val analyses =
                 besoins.map { b ->
                     val besoin = b.besoin
@@ -356,7 +442,7 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
                     } else {
                         val facteur = besoin / besoinGroupe
                         val ration = rationGroupe?.let { rationParAnimalTroupeau(it, facteur, b.type.nom) }
-                        analyserType(b.type, b.parametres, reference, b.poidsMetabolique, b.besoinStandard, besoin, facteur, ration)
+                        analyserType(b.type, b.parametres, reference, b.poidsMetabolique, b.besoinStandard, besoin, facteur, ration, nutrimentsTroupeau)
                     }
                 }
 
@@ -384,7 +470,8 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
             besoinStandard: Double?,
             besoin: Double,
             facteur: Double,
-            ration: Ration?
+            ration: Ration?,
+            nutrimentsTroupeau: List<Nutrient>
     ): AnalyseTypeTroupeau {
         val distribues = ration?.alimentMutableList.orEmpty().filter { it.quantite > 0.0 && it.aliment != null }
         if (ration == null || distribues.isEmpty()) {
@@ -393,7 +480,7 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
                     energieParAnimal = 0.0, message = "Ration vide."
             )
         }
-        val nutriments = nutrimentsAvecSeuil(reference)
+        val nutriments = (nutrimentsAvecSeuil(reference) + nutrimentsTroupeau).distinctBy { it.label }
         val labels = nutriments.map { it.label } + NutrientMain.ENERGIE.label
         // Seuls les aliments distribués entrent dans l'analyse (un aliment à 0 g ne rend pas un
         // nutriment « incomplet »)
