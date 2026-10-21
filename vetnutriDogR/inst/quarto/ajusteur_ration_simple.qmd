@@ -1,0 +1,684 @@
+---
+title: "Ajuster une ration maison"
+lang: fr
+format:
+  html:
+    toc: true
+    embed-resources: true
+execute:
+  echo: false
+  warning: false
+params:
+  # Profil courant : poids de 5 à 25 kg ; K de 0.5 à 1.5.
+  poids_kg: 17
+  k: 0.5
+
+  
+  fibres_cible_g_mcal: 5
+
+  proteines_cible_g_mcal: 60
+  omega6_cible_g_mcal: 2.8
+
+  # Grille de sensibilité affichée dans le rapport.
+  variation:
+    value:
+      poids_de_kg: 5
+      poids_a_kg: 25
+      pas_poids_kg: 1
+      k: [0.5, 1, 1.5]
+
+  # Choisir un ingrédient dans chacune des listes proposées dans le rapport.
+  # L'huile est volontairement fixée à l'huile de colza.
+  choix:
+    value:
+      proteine: "Steak de boeuf 15 % MG cru"
+      fibre: "Courgette crue"
+      glucide: "Riz blanc cru (poids sec)"
+---
+
+<style>
+.ration-alerte-glucide { background: #fee2e2; color: #991b1b; font-weight: 700; }
+.table-rations tr.ration-alerte-glucide > td { background: #fee2e2; color: #991b1b; font-weight: 700; }
+.table-rations { font-size: 0.9em; white-space: nowrap; }
+.table-rations-scroll { overflow-x: auto; }
+</style>
+
+```{r}
+#| label: calculs
+
+# Document Quarto classique : uniquement R de base, sans serveur ni interface interactive.
+stopifnot(
+    is.numeric(params$poids_kg), params$poids_kg >= 5, params$poids_kg <= 25,
+    is.numeric(params$k), params$k >= 0.5, params$k <= 1.5
+)
+
+besoin_energie_standard <- function(poids_kg) 130 * poids_kg^0.75
+besoin_energie_total <- function(poids_kg, k) besoin_energie_standard(poids_kg) * k
+
+
+catalogue_ingredients <- data.frame(
+    role = c(
+        rep("proteine", 6), rep("fibre", 6), "huile", rep("glucide", 6)
+    ),
+    ingredient = c(
+        "Poulet, filet cru", "Dinde, filet cru", "Boeuf haché 5 % MG cru", "Cabillaud cru",
+        "Saumon cru", "Steak de boeuf 15 % MG cru",
+        "Courgette crue", "Haricot vert cru", "Carotte crue", "Courge butternut crue",
+        "Chou-fleur cru", "Chou de Bruxelles cru",
+        "Huile de colza",
+        "Riz blanc cru (poids sec)", "Flocons d'avoine crus",
+        "Pomme de terre crue", "Patate douce crue", "Semoule de blé sèche",
+        "Blé précuit type Ebly, sec"
+    ),
+    proteines_g_100g = c(23.5, 24.1, 21.9, 18.1, 20.5, 20.2, 1.22, 1.85, 0.77, 1, 1.77, 3.98, 0, 7.04, 13.3, 1.9, 1.51, 10.9, 12.1),
+    fibres_g_100g = c(0, 0, 0, 0.13, 0.17, 0, 1.05, 2.85, 2.7, 2, 2.22, 3.95, 0, 1.04, 10.2, 1.8, 2.87, 3.37, 5.74),
+    lipides_g_100g = c(1.34, 1.22, 4.59, 0.56, 12.2, 14.1, 0.26, 0.21, 0.26, 0.1, 0.31, 0.4, 100, 0.91, 6.51, 0.16, 0.15, 1.36, 1.66),
+    omega6_g_100g = c(0.31, 0.2079, 0.15, 0.0079, 1.168, 0.279, 0.03, 0.051, 0.12, 0.019, 0.029, 0.054, 19.3, 0.295, 2.4, 0.041, 0.044, 0.4917, 0.1111),
+    ena_g_100g = c(0.45, 0.51, 0.3, 0, 0, 0.47, 1.8, 3.63, 6.45, 4.03, 2.8, 5.67, 0, 78.2, 57.9, 16.7, 18.3, 71.4, 70.4),
+    source_uuid = c(
+        "d574eae6-f154-4fa7-9c9b-843efa52268f",
+        "8be1c9bc-20f3-4997-995e-923aa0123f8b",
+        "8ff0b4a8-d4ee-4bf7-b609-047e705f6bd6",
+        "07fa85e3-ea78-4d3e-90a8-f21f2dc69461",
+        "13c5c360-56ff-441e-acdc-f999f040dfd1",
+        "0edbdd07-c4c6-4216-b13d-c4bab7102374",
+        "c30f67bf-8724-474e-ba83-baf9e66471b6",
+        "c430ae39-b803-424d-8e49-9bd4529170b2",
+        "1a18a89c-e18b-4287-91bd-e585e5cff468",
+        "825956c5-4c0f-4288-840d-a4236ad988a4",
+        "22db7467-6c66-4ee9-9b6d-e3765841bd13",
+        "0772210e-740d-4104-b295-1aeadf9ba5ad",
+        "2deafdd8-c18d-45ce-8e73-f5b76db05151",
+        "2fb7deae-e18d-4bab-901b-3422a93ae058",
+        "c202fcb4-bbd0-478b-b045-7a3078755133",
+        "474395fc-9991-4533-8f0a-f5a3aad9afad",
+        "fa724250-2ff1-498d-badb-1a37ce5aa566",
+        "20925bd8-9da8-4fd9-9160-8b3eb56cfe10",
+        "58d95f06-820c-4692-a4d1-0bc6c3d66413"
+    ),
+    source_nom = c(
+        "Poulet, blanc, sans peau, cru",
+        "Dinde, escalope, crue",
+        "Bœuf, steak haché 5% MG, cru",
+        "Cabillaud, cru",
+        "Saumon, cru, élevage",
+        "Bœuf, steak haché 15% MG, cru",
+        "Courgette, pulpe et peau, crue",
+        "Haricot vert, cru",
+        "Carotte, crue",
+        "Courge doubeurre (butternut), pulpe, crue",
+        "Chou-fleur, cru",
+        "Chou de Bruxelles, cru",
+        "Huile de colza",
+        "Riz blanc, cru",
+        "Flocon d'avoine",
+        "Pomme de terre, sans peau, crue",
+        "Patate douce, crue",
+        "Semoule de blé dur, crue",
+        "Blé dur précuit, entier, cru"
+    ),
+    stringsAsFactors = FALSE
+)
+
+# Densité énergétique calculée par la formule d'Atwater modifiée, pour 100 g.
+# ENA : extractif non azoté (fraction glucidique disponible).
+catalogue_ingredients$energie_kcal_100g <-
+    3.5 * catalogue_ingredients$proteines_g_100g +
+    3.5 * catalogue_ingredients$ena_g_100g +
+    8.5 * catalogue_ingredients$lipides_g_100g
+
+choisir_ingredient <- function(role, nom) {
+    x <- catalogue_ingredients[catalogue_ingredients$role == role &
+        catalogue_ingredients$ingredient == nom, ]
+    if (nrow(x) != 1) stop(sprintf("Choix d'ingrédient invalide pour %s : %s", role, nom))
+    x
+}
+
+ingredients <- rbind(
+    choisir_ingredient("proteine", params$choix$proteine),
+    choisir_ingredient("fibre", params$choix$fibre),
+    choisir_ingredient("huile", "Huile de colza"),
+    choisir_ingredient("glucide", params$choix$glucide)
+)
+
+if (!identical(ingredients$role, c("proteine", "fibre", "huile", "glucide"))) {
+    stop("Les ingrédients doivent être dans l'ordre : proteine, fibre, huile, glucide.")
+}
+colonnes_nutritionnelles <- grep("_100g$", names(ingredients), value = TRUE)
+if (any(!is.finite(as.matrix(ingredients[, colonnes_nutritionnelles]))) ||
+    any(as.matrix(ingredients[, colonnes_nutritionnelles]) < 0)) {
+    stop("Toutes les teneurs doivent être des nombres positifs ou nuls.")
+}
+
+# Même règle d'arrondi que l'exploration multiration : 1 g, puis 5 g, puis 25 g.
+arrondir_quantite <- function(quantite_g) {
+    if (quantite_g <= 0) {
+        return(0)
+    }
+    pas <- if (quantite_g < 10) 1 else if (quantite_g < 100) 5 else 25
+    round(quantite_g / pas) * pas
+}
+
+# Reprise du principe de l'exploration multiration :
+# quantité ajoutée = déficit du besoin / densité de l'ingrédient choisi.
+# L'ajustement est successif : protéine -> fibre -> lipide -> énergie restante.
+ajuster_ration <- function(poids_kg, k, fibres_g_mcal, ingredients,
+                           proteines_g_mcal, omega6_g_mcal,
+                           minimum_glucide_g = 5) {
+    energie_standard <- besoin_energie_standard(poids_kg)
+    energie_cible <- energie_standard * k
+    besoins <- c(
+        proteines_g = proteines_g_mcal * energie_standard / 1000,
+        fibres_g = fibres_g_mcal * energie_standard / 1000,
+        omega6_g = omega6_g_mcal * energie_standard / 1000,
+        energie_kcal = energie_cible
+    )
+    colonnes <- c("proteines_g", "fibres_g", "omega6_g", "energie_kcal")
+    densites <- as.matrix(ingredients[, paste0(colonnes, "_100g")]) / 100
+    colnames(densites) <- colonnes
+    quantites_g <- setNames(rep(0, 4), ingredients$role)
+    energie_avant_glucide <- NA_real_
+    glucide_non_ajoute <- FALSE
+
+    for (i in seq_len(nrow(ingredients))) {
+        nutriment <- colonnes[i]
+        apport_deja <- sum(quantites_g[seq_len(i - 1)] * densites[seq_len(i - 1), nutriment])
+        deficit <- besoins[nutriment] - apport_deja
+        densite <- densites[i, nutriment]
+        if (deficit > 1e-9) {
+            if (densite <= 0) {
+                stop(sprintf(
+                    "%s ne peut pas ajuster %s : teneur nulle.",
+                    ingredients$ingredient[i], nutriment
+                ))
+            }
+            quantite_brute <- deficit / densite
+            if (i == nrow(ingredients)) {
+                energie_avant_glucide <- apport_deja
+                # Le glucide est le dernier ajustement : ne pas créer une ligne
+                # inférieure à la dose minimale de 5 g.
+                if (quantite_brute < minimum_glucide_g) {
+                    glucide_non_ajoute <- TRUE
+                    quantites_g[i] <- 0
+                } else {
+                    quantites_g[i] <- arrondir_quantite(quantite_brute)
+                }
+            } else {
+                quantites_g[i] <- arrondir_quantite(quantite_brute)
+            }
+        } else if (i == nrow(ingredients)) {
+            energie_avant_glucide <- apport_deja
+            glucide_non_ajoute <- TRUE
+        }
+    }
+
+    apports <- colSums(densites * quantites_g)
+    composition <- ingredients
+    composition$quantite_g_j <- unname(quantites_g[composition$role])
+    composition$energie_kcal_j <- composition$quantite_g_j * composition$energie_kcal_100g / 100
+    composition$proteines_g_j <- composition$quantite_g_j * composition$proteines_g_100g / 100
+    composition$fibres_g_j <- composition$quantite_g_j * composition$fibres_g_100g / 100
+    composition$lipides_g_j <- composition$quantite_g_j * composition$lipides_g_100g / 100
+    composition$omega6_g_j <- composition$quantite_g_j * composition$omega6_g_100g / 100
+    composition$ena_g_j <- composition$quantite_g_j * composition$ena_g_100g / 100
+    list(
+        energie_standard_kcal = energie_standard, besoins = besoins,
+        apports = apports, composition = composition,
+        energie_avant_glucide_kcal = energie_avant_glucide,
+        alerte_glucide = isTRUE(glucide_non_ajoute) &&
+            energie_avant_glucide > 1.05 * energie_cible
+    )
+}
+
+resultat <- ajuster_ration(
+    poids_kg = params$poids_kg, k = params$k,
+    fibres_g_mcal = params$fibres_cible_g_mcal, ingredients = ingredients,
+    proteines_g_mcal = params$proteines_cible_g_mcal,
+    omega6_g_mcal = params$omega6_cible_g_mcal
+)
+```
+
+Pour un chien de 5 à 25 kg. Les quantités sont pesées **crues ou sèches**,
+avant préparation. Ce calcul ne couvre pas le CMV ni l'équilibre vitaminique
+et minéral.
+
+## La ration du jour
+
+**`r params$poids_kg` kg · K = `r params$k` · `r round(resultat$besoins["energie_kcal"])` kcal/j à couvrir**
+
+Énergie standard, avant K : `r round(resultat$energie_standard_kcal)` kcal/j.
+Apport réel de la ration : **`r round(resultat$apports["energie_kcal"])` kcal/j**
+(écart au besoin : `r sprintf("%+.1f", 100 * (resultat$apports["energie_kcal"] / resultat$besoins["energie_kcal"] - 1))` %).
+
+```{r}
+#| label: ration
+#| results: asis
+
+table_ration <- resultat$composition[, c(
+    "role", "ingredient", "quantite_g_j", "energie_kcal_j",
+    "proteines_g_j", "fibres_g_j", "lipides_g_j", "omega6_g_j", "ena_g_j"
+)]
+names(table_ration) <- c(
+    "Rôle", "Ingrédient", "Quantité (g/j)",
+    "Énergie (kcal/j)", "Protéines (g/j)",
+    "Fibres (g/j)", "Lipides (g/j)", "Oméga-6 (g/j)", "ENA (g/j)"
+)
+
+html_escape <- function(x) {
+    x <- gsub("&", "&amp;", as.character(x), fixed = TRUE)
+    x <- gsub("<", "&lt;", x, fixed = TRUE)
+    gsub(">", "&gt;", x, fixed = TRUE)
+}
+format_cell <- function(x) if (is.numeric(x)) format(round(x, 1), nsmall = 1, trim = TRUE) else x
+entete <- paste0("<th>", html_escape(names(table_ration)), "</th>", collapse = "")
+lignes <- vapply(seq_len(nrow(table_ration)), function(i) {
+    cellules <- paste0("<td>", html_escape(vapply(table_ration[i, ], format_cell, character(1))), "</td>", collapse = "")
+    classe <- if (i == nrow(table_ration) && resultat$alerte_glucide) " class=\"ration-alerte-glucide\"" else ""
+    paste0("<tr", classe, ">", cellules, "</tr>")
+}, character(1))
+cat(paste0(
+    "<table><thead><tr>", entete, "</tr></thead><tbody>",
+    paste(lignes, collapse = ""), "</tbody></table>\n"
+))
+
+if (resultat$alerte_glucide) {
+    cat(sprintf(
+        "<p class=\"ration-alerte-glucide\">Énergie déjà dépassée de plus de 5 %% : %.0f kcal/j pour un besoin de %.0f. Aucun féculent ajouté.</p>\n",
+        resultat$energie_avant_glucide_kcal, resultat$besoins["energie_kcal"]
+    ))
+}
+```
+
+### Les besoins sont-ils couverts ?
+
+```{r}
+#| label: bilan
+
+bilan <- data.frame(
+    Nutriment = c("Protéines", "Fibres", "Oméga-6", "Énergie"),
+    Besoin = unname(resultat$besoins[c("proteines_g", "fibres_g", "omega6_g", "energie_kcal")]),
+    Apport = unname(resultat$apports[c("proteines_g", "fibres_g", "omega6_g", "energie_kcal")]),
+    Ecart = unname(resultat$apports[c("proteines_g", "fibres_g", "omega6_g", "energie_kcal")] -
+        resultat$besoins[c("proteines_g", "fibres_g", "omega6_g", "energie_kcal")]),
+    Unite = c("g/j", "g/j", "g/j", "kcal/j")
+)
+bilan$Couverture_pct <- 100 * bilan$Apport / bilan$Besoin
+knitr::kable(bilan, digits = 1, align = "lrrrrl")
+```
+
+```{r}
+#| label: graphiques
+#| fig-cap: "À gauche : contribution énergétique des quatre ingrédients et besoin. À droite : couverture des besoins définis."
+
+par(mfrow = c(1, 2), mar = c(5, 4, 3, 1))
+barplot(resultat$composition$energie_kcal_j,
+    names.arg = c("Protéine", "Fibre", "Huile", "Glucide"),
+    col = c("#0f766e", "#65a30d", "#d97706", "#2563eb"),
+    ylab = "kcal / jour", main = "Énergie par ingrédient"
+)
+abline(h = resultat$besoins["energie_kcal"], col = "#b91c1c", lty = 2, lwd = 2)
+legend("topright", "besoin", col = "#b91c1c", lty = 2, bty = "n")
+
+barplot(bilan$Couverture_pct,
+    names.arg = bilan$Nutriment,
+    col = "#155e75", ylim = c(0, max(120, max(bilan$Couverture_pct) * 1.1)),
+    ylab = "% du besoin", main = "Couverture des besoins"
+)
+abline(h = 100, col = "#b91c1c", lty = 2, lwd = 2)
+```
+
+## Quels aliments pour ce chien ?
+
+Pour **`r params$poids_kg` kg et K = `r params$k`**, on teste toutes les associations
+du catalogue. « Compatible » signifie que la ration obtenue reste à **±5 % du
+besoin énergétique**, avec les arrondis actuels. Les éventuels manques en
+protéines, fibres ou oméga-6 sont indiqués dans le détail.
+
+```{r}
+#| label: choix-possibles
+#| results: asis
+
+explorer_aliments <- function(poids, k) {
+    groupes <- split(seq_len(nrow(catalogue_ingredients)), catalogue_ingredients$role)
+    stopifnot(length(groupes$huile) == 1L)
+    colonnes <- c("proteines_g", "fibres_g", "omega6_g", "energie_kcal")
+    densites <- as.matrix(catalogue_ingredients[, paste0(colonnes, "_100g")]) / 100
+    besoins <- besoin_energie_standard(poids) * c(
+        params$proteines_cible_g_mcal / 1000, params$fibres_cible_g_mcal / 1000,
+        params$omega6_cible_g_mcal / 1000, k
+    )
+    dose <- function(deficit, densite, minimum = 0) {
+        stopifnot(all(densite > 0))
+        brute <- pmax(0, deficit) / densite
+        vapply(ifelse(deficit > 1e-9 & brute >= minimum, brute, 0),
+               arrondir_quantite, numeric(1))
+    }
+
+    # Les 36 bases sont calculées une fois, puis partagées entre les féculents.
+    bases <- expand.grid(proteine = groupes$proteine, fibre = groupes$fibre)
+    p <- bases$proteine
+    f <- bases$fibre
+    h <- groupes$huile
+    qp <- dose(besoins[1], densites[p, 1])
+    ap <- densites[p, , drop = FALSE] * qp
+    qf <- dose(besoins[2] - ap[, 2], densites[f, 2])
+    af <- densites[f, , drop = FALSE] * qf
+    qh <- dose(besoins[3] - (ap[, 3] + af[, 3]), densites[h, 3])
+    ah <- outer(qh, densites[h, ])
+    avant <- ap + af + ah
+
+    essais <- expand.grid(base = seq_len(nrow(bases)), glucide = groupes$glucide)
+    b <- essais$base
+    g <- essais$glucide
+    qg <- dose(besoins[4] - avant[b, 4], densites[g, 4], minimum = 5)
+    apports <- avant[b, , drop = FALSE] + densites[g, , drop = FALSE] * qg
+    ecart <- 100 * (apports[, 4] / besoins[4] - 1)
+    manques <- sweep(apports[, 1:3, drop = FALSE], 2, besoins[1:3] - 1e-8, "<")
+    data.frame(
+        proteine_id = p[b], fibre_id = f[b], huile_id = h, glucide_id = g,
+        proteine_g = qp[b], fibre_g = qf[b], huile_g = qh[b], glucide_g = qg,
+        besoin = besoins[4], apport = apports[, 4], ecart = ecart,
+        compatible = abs(ecart) <= 5 + 1e-8,
+        nb_manques = rowSums(manques),
+        statut = ifelse(qg == 0 & avant[b, 4] > 1.05 * besoins[4],
+            "Non équilibrable : énergie déjà dépassée",
+            ifelse(ecart > 5, "Énergie dépassée après arrondi",
+                ifelse(ecart < -5, "Énergie insuffisante", "Compatible en énergie"))),
+        cibles = apply(manques, 1, function(x) {
+            if (any(x)) paste("Sous la cible :", paste(c("protéines", "fibres", "oméga-6")[x], collapse = ", "))
+            else "Trois cibles atteintes"
+        }), row.names = NULL
+    )
+}
+
+associations <- explorer_aliments(params$poids_kg, params$k)
+# Un ingrédient à 0 g ne distingue pas deux rations.
+regrouper_rations <- function(x) {
+    roles <- c("proteine", "fibre", "huile", "glucide")
+    cle <- do.call(paste, lapply(roles, function(role) {
+        q <- x[[paste0(role, "_g")]]
+        paste(ifelse(q > 0, x[[paste0(role, "_id")]], 0), q, sep = ":")
+    }))
+    x$associations <- as.integer(table(cle)[cle])
+    x[!duplicated(cle), ]
+}
+rations <- regrouper_rations(associations)
+possibles <- rations[rations$compatible, ]
+cat(sprintf(
+    "<p><strong>%d rations distinctes compatibles en énergie, dont %d atteignent les trois cibles.</strong> %d associations testées ; besoin : %.0f kcal/j.</p>\n",
+    nrow(possibles), sum(possibles$nb_manques == 0), nrow(associations), resultat$besoins["energie_kcal"]
+))
+
+# Une présence à 0 g ne suffit pas à rendre l'aliment utilisable.
+aliments_possibles <- do.call(rbind, lapply(seq_len(nrow(catalogue_ingredients)), function(i) {
+    aliment <- catalogue_ingredients[i, ]
+    role <- aliment$role
+    quantites <- possibles[[paste0(role, "_g")]]
+    utilise <- possibles[[paste0(role, "_id")]] == i & quantites > 0
+    doses <- quantites[utilise]
+    present <- any(associations$compatible & associations[[paste0(role, "_id")]] == i)
+    data.frame(
+        Famille = c(
+            proteine = "Protéine", fibre = "Légume", huile = "Huile",
+            glucide = "Féculent"
+        )[[role]],
+        Aliment = aliment$ingredient, `kcal/100 g` = aliment$energie_kcal_100g,
+        Rations = sum(utilise),
+        `Quantité (g/j)` = if (!length(doses)) {
+            "—"
+        } else if (min(doses) == max(doses)) {
+            sprintf("%.0f", min(doses))
+        } else {
+            sprintf("%.0f à %.0f", min(doses), max(doses))
+        },
+        Disponibilite = if (length(doses)) "Compatible" else if (present) "Non utilisé (0 g)" else "Aucune association compatible",
+        check.names = FALSE
+    )
+}))
+print(knitr::kable(aliments_possibles, digits = 1, row.names = FALSE))
+
+# Priorité à l'énergie, puis aux trois cibles, puis à la proximité énergétique.
+ordre <- order(!rations$compatible, rations$nb_manques > 0, abs(rations$ecart))
+details_associations <- rations[ordre, ]
+portion <- function(role) {
+    q <- details_associations[[paste0(role, "_g")]]
+    noms <- catalogue_ingredients$ingredient[details_associations[[paste0(role, "_id")]]]
+    ifelse(q > 0, paste0(noms, " : ", q, " g"), "Aucun (0 g)")
+}
+table_associations <- data.frame(
+    Protéine = portion("proteine"), Légume = portion("fibre"),
+    `Colza (g)` = details_associations$huile_g, Féculent = portion("glucide"),
+    `Besoin (kcal/j)` = details_associations$besoin,
+    `Apport (kcal/j)` = details_associations$apport,
+    `Écart (%)` = sprintf("%+.1f", details_associations$ecart),
+    Statut = details_associations$statut, Cibles = details_associations$cibles,
+    `Associations regroupées` = details_associations$associations,
+    check.names = FALSE
+)
+entete_associations <- paste0("<th scope=\"col\">", html_escape(names(table_associations)), "</th>", collapse = "")
+lignes_associations <- vapply(seq_len(nrow(table_associations)), function(i) {
+    cellules <- paste0("<td>", html_escape(vapply(table_associations[i, ], format_cell, character(1))), "</td>", collapse = "")
+    classe <- if (details_associations$ecart[i] > 5) " class=\"ration-alerte-glucide\"" else ""
+    paste0("<tr", classe, ">", cellules, "</tr>")
+}, character(1))
+afficher_associations <- function(indices) cat(paste0(
+    "<div class=\"table-rations-scroll\"><table class=\"table table-rations\"><thead><tr>",
+    entete_associations, "</tr></thead><tbody>", paste(lignes_associations[indices], collapse = ""),
+    "</tbody></table></div>\n"
+))
+if (nrow(possibles)) {
+    cat("<p><strong>Les 10 premières rations compatibles au maximum.</strong> Les trois cibles atteintes passent en premier, puis l'écart énergétique le plus faible.</p>")
+    afficher_associations(head(which(details_associations$compatible), 10))
+} else {
+    cat("<p>Aucune ration ne respecte la marge énergétique avec ces règles et ce profil.</p>")
+}
+cat("\n<details><summary>Toutes les rations distinctes et les rejets</summary>")
+afficher_associations(seq_len(nrow(table_associations)))
+cat("</details>\n")
+```
+
+Les quantités dépendent des autres aliments choisis : les plages ne sont pas
+interchangeables. Chaque ligne donne les doses à utiliser ensemble. Les doublons
+à 0 g sont regroupés ; les dépassements énergétiques restent en rouge.
+Atteindre ces trois cibles ne rend pas la ration complète : le CMV est exclu.
+
+## Quand le poids ou K change
+
+Chaque barre montre l'énergie apportée par les quatre ingrédients.
+Le pointillé rouge indique le besoin à atteindre.
+
+```{r}
+#| label: variation
+
+poids_variation <- seq(as.numeric(params$variation$poids_de_kg),
+    as.numeric(params$variation$poids_a_kg),
+    by = as.numeric(params$variation$pas_poids_kg)
+)
+k_variation <- as.numeric(unlist(params$variation$k))
+grille <- expand.grid(poids_kg = poids_variation, k = k_variation)
+variations <- do.call(rbind, lapply(seq_len(nrow(grille)), function(i) {
+    x <- ajuster_ration(
+        grille$poids_kg[i], grille$k[i], params$fibres_cible_g_mcal,
+        ingredients, params$proteines_cible_g_mcal,
+        params$omega6_cible_g_mcal
+    )
+    data.frame(
+        Poids_kg = grille$poids_kg[i], K = grille$k[i],
+        Energie_kcal_j = x$besoins["energie_kcal"],
+        Apport_kcal_j = x$apports["energie_kcal"],
+        Non_equilibrable = x$alerte_glucide,
+        Proteine_g_j = x$composition$quantite_g_j[1],
+        Fibre_g_j = x$composition$quantite_g_j[2],
+        Huile_g_j = x$composition$quantite_g_j[3],
+        Glucide_g_j = x$composition$quantite_g_j[4],
+        Energie_proteine_kcal_j = x$composition$energie_kcal_j[1],
+        Energie_fibre_kcal_j = x$composition$energie_kcal_j[2],
+        Energie_MG_kcal_j = x$composition$energie_kcal_j[3],
+        Energie_ENA_kcal_j = x$composition$energie_kcal_j[4]
+    )
+}))
+
+variations$Ecart_kcal_j <- variations$Apport_kcal_j - variations$Energie_kcal_j
+variations$Ecart_pct <- 100 * variations$Ecart_kcal_j / variations$Energie_kcal_j
+variations$Depassement <- variations$Apport_kcal_j > 1.05 * variations$Energie_kcal_j
+variations$Statut <- ifelse(variations$Non_equilibrable,
+    "Non équilibrable : énergie déjà dépassée",
+    ifelse(variations$Depassement, "Énergie dépassée après arrondi",
+        ifelse(variations$Ecart_pct < -5, "Énergie insuffisante", "Énergie dans la marge ±5 %")
+    )
+)
+
+couleurs <- c("#0f766e", "#65a30d", "#d97706", "#2563eb")
+par(mfrow = c(1, length(k_variation)), mar = c(6, 4, 4, 1))
+for (i in seq_along(k_variation)) {
+    x <- variations[variations$K == k_variation[i], ]
+    energie_sources <- rbind(
+        x$Energie_proteine_kcal_j, x$Energie_fibre_kcal_j,
+        x$Energie_MG_kcal_j, x$Energie_ENA_kcal_j
+    )
+    milieux <- barplot(energie_sources,
+        names.arg = x$Poids_kg,
+        col = couleurs, ylim = c(0, max(c(colSums(energie_sources), x$Energie_kcal_j)) * 1.1),
+        ylab = "kcal / jour", xlab = "Poids (kg)",
+        main = paste("K =", k_variation[i])
+    )
+    lines(milieux, x$Energie_kcal_j, col = "#b91c1c", lty = 2, lwd = 2)
+}
+legend("top",
+    inset = c(0, -0.18), xpd = NA,
+    legend = c("Source protéique", "Source fibre", "Huile (MG / oméga-6)", "ENA", "Besoin"),
+    fill = c(couleurs, NA), border = c(couleurs, NA),
+    lty = c(NA, NA, NA, NA, 2), col = c(couleurs, "#b91c1c"), bty = "n", cex = 0.75
+)
+```
+
+### Quantités et apport énergétique
+
+En rouge : apport supérieur au besoin de plus de 5 %.
+« Non équilibrable » signifie que le dépassement existe déjà avant les féculents.
+
+```{r}
+#| label: tableau-variation
+#| results: asis
+
+table_variation <- variations[, c(
+    "Poids_kg", "K", "Energie_kcal_j", "Apport_kcal_j", "Ecart_kcal_j", "Ecart_pct",
+    "Proteine_g_j", "Fibre_g_j", "Huile_g_j", "Glucide_g_j", "Statut"
+)]
+names(table_variation) <- c(
+    "Poids (kg)", "K", "Besoin (kcal/j)", "Apport (kcal/j)", "Écart (kcal/j)", "Écart (%)",
+    "Source protéique (g/j)", "Légume (g/j)", "Colza (g/j)", "Féculent (g/j)", "Bilan énergétique"
+)
+table_variation[["Écart (kcal/j)"]] <- sprintf("%+.1f", variations$Ecart_kcal_j)
+table_variation[["Écart (%)"]] <- sprintf("%+.1f", variations$Ecart_pct)
+entete_variation <- paste0("<th scope=\"col\">", html_escape(names(table_variation)), "</th>", collapse = "")
+lignes_variation <- vapply(seq_len(nrow(table_variation)), function(i) {
+    cellules <- paste0("<td>", html_escape(vapply(table_variation[i, ], format_cell, character(1))), "</td>", collapse = "")
+    classe <- if (variations$Depassement[i]) " class=\"ration-alerte-glucide\"" else ""
+    paste0("<tr", classe, ">", cellules, "</tr>")
+}, character(1))
+cat(paste0(
+    "<div class=\"table-rations-scroll\"><table class=\"table table-rations\"><thead><tr>",
+    entete_variation, "</tr></thead><tbody>", paste(lignes_variation, collapse = ""),
+    "</tbody></table></div>\n"
+))
+```
+
+## Les repères du calcul
+
+L'énergie standard vaut `130 × poids^0,75`. **K ajuste seulement l'énergie
+à couvrir** ; les autres cibles restent calculées sans K.
+
+| Cible | Par Mcal d'énergie standard |
+|---|---:|
+| Protéines | `r params$proteines_cible_g_mcal` g |
+| Fibres | `r params$fibres_cible_g_mcal` g |
+| Oméga-6 | `r params$omega6_cible_g_mcal` g |
+
+Les protéines et oméga-6 reprennent le référentiel « Adulte 9–25 kg »,
+appliqué ici dès 5 kg. La cible fibre est celle que vous avez fixée.
+
+<details>
+<summary>Comment les quantités sont calculées</summary>
+
+On ajuste la source protéique, puis les fibres, puis le colza pour les
+oméga-6. À chaque étape, on déduit ce que les ingrédients précédents apportent
+déjà. Le féculent complète l'énergie restante.
+
+Quantité (g) = besoin restant ÷ teneur pour 100 g × 100.
+
+Les doses sont arrondies à chaque étape : 1 g sous 10 g, 5 g de 10 à moins de
+100 g, puis 25 g. Le féculent n'est ajouté que s'il reste assez d'énergie pour
+au moins 5 g. Si la ration dépasse déjà le besoin de plus de 5 %, sa ligne
+passe en rouge.
+
+L'énergie est calculée par Atwater modifiée, avec les teneurs en g/100 g :
+**3,5 × protéines + 3,5 × ENA + 8,5 × lipides**.
+ENA signifie « extractif non azoté », la fraction glucidique utilisée ici.
+
+</details>
+
+<details>
+<summary>Voir les aliments disponibles et leurs sources</summary>
+
+Compositions copiées du JSON INIT de VetNutri MP, pour 100 g.
+L'huile utilisée est toujours le colza.
+
+```{r}
+#| label: catalogue
+
+catalogue_affiche <- catalogue_ingredients[, c(
+    "role", "ingredient", "energie_kcal_100g", "proteines_g_100g",
+    "fibres_g_100g", "lipides_g_100g", "omega6_g_100g", "ena_g_100g"
+)]
+catalogue_affiche$role <- c(
+    rep("Protéine", 6), rep("Fibre", 6), "Huile", rep("Glucide", 6)
+)
+names(catalogue_affiche) <- c(
+    "Famille", "Ingrédient cru", "kcal/100 g",
+    "Protéines (g/100 g)", "Fibres (g/100 g)",
+    "Lipides (g/100 g)", "Oméga-6 (g/100 g)",
+    "ENA (g/100 g)"
+)
+knitr::kable(catalogue_affiche, digits = 1)
+```
+
+#### Origine des données
+
+Source : `composeApp/src/commonMain/resources/data/vetnutri_export_init.json`.
+Empreinte SHA-256 de la version copiée :
+`84e590fc06af9d5a36678f0434069e06cef35cc960b45b6fbd266ec02318fb4e`.
+Les 19 fiches citent ANSES/Ciqual. La référence annonce 2025, mais son champ
+`year` indique 2020 : l'édition d'origine reste donc incertaine.
+UUID bibliographique : `49d2bc6b-73a9-4cfa-bebd-559fd9e17819`.
+
+Champs copiés : `PROTEINE`, `LIPIDE`, `O6`, `ENA` et `CELLULOSE` pour
+les fibres. Aucune valeur n'a été arrondie à la copie.
+`FIBRETOT` est absent ; les valeurs de cellulose du cabillaud (0,13) et du
+saumon (0,17 g/100 g) sont celles de l'INIT.
+
+Le saumon est d'élevage. Le blé « type Ebly » correspond au blé précuit
+générique de la base.
+
+```{r}
+#| label: provenance-aliments
+knitr::kable(catalogue_ingredients[, c("ingredient", "source_nom", "source_uuid")],
+    col.names = c("Choix dans le rapport", "Nom exact dans INIT", "UUID INIT")
+)
+```
+
+Contrôle de copie : 95 valeurs et 19 densités Atwater vérifiées par
+`vetnutriDogR/tests/ajusteur-init.R`.
+
+Pour la manipulation des aliments crus : [conseils WSAVA](https://wsava.org/wp-content/uploads/2021/04/Raw-Meat-Based-Diets-for-Pets_WSAVA-Global-Nutrition-Toolkit.pdf).
+
+</details>
+
+## Changer la ration
+
+Dans l'en-tête du fichier Quarto, modifiez le poids, K et les trois aliments
+dans `choix`, puis relancez :
+
+```sh
+quarto render vetnutriDogR/inst/quarto/ajusteur_ration_simple.qmd
+```
