@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Repository
 import fr.vetbrain.vetnutri_mp.DataBase.HtmlSectionDao
 import fr.vetbrain.vetnutri_mp.DataBase.HtmlSectionEntity
 import fr.vetbrain.vetnutri_mp.Export.*
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import fr.vetbrain.vetnutri_mp.Utils.isDebugBuild
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -52,6 +53,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             val conseilMisAJour =
                     conseil.copy(usageCount = conseil.usageCount + 1, lastUsed = Clock.System.now())
             dao.updateSection(conseilMisAJour.toEntity())
+            DatabaseChangeNotifier.notifyDataWritten("Conseil modifié ${conseilMisAJour.id}")
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -128,6 +130,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             val conseilFinal = appliquerModifications(nouveauConseil, modifications)
 
             dao.insertSection(conseilFinal.toEntity())
+            DatabaseChangeNotifier.notifyDataWritten("Conseil créé ${conseilFinal.id}")
             Result.success(conseilFinal)
         } catch (e: Exception) {
             Result.failure(e)
@@ -148,6 +151,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     suspend fun saveConseil(conseil: fr.vetbrain.vetnutri_mp.Export.HtmlSection): Result<Unit> {
         return try {
             dao.insertSection(conseil.toEntity())
+            DatabaseChangeNotifier.notifyDataWritten("Conseil enregistré ${conseil.id}")
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -186,6 +190,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
                     )
 
             dao.insertSection(template.toEntity())
+            DatabaseChangeNotifier.notifyDataWritten("Modèle de conseil ${template.id}")
             Result.success(template)
         } catch (e: Exception) {
             Result.failure(e)
@@ -196,6 +201,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     suspend fun sauvegarderConseil(conseil: HtmlSection): Result<Unit> {
         return try {
             dao.insertSection(conseil.toEntity())
+            DatabaseChangeNotifier.notifyDataWritten("Conseil enregistré ${conseil.id}")
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -207,6 +213,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
         return try {
             val conseilMisAJour = conseil.copy(updatedAt = Clock.System.now())
             dao.updateSection(conseilMisAJour.toEntity())
+            DatabaseChangeNotifier.notifyDataWritten("Conseil modifié ${conseilMisAJour.id}")
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -220,6 +227,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
                     dao.getSectionById(conseilId)
                             ?: return Result.failure(Exception("Conseil non trouvé"))
             dao.deleteSection(entity)
+            DatabaseChangeNotifier.notifyDataWritten("Conseil supprimé $conseilId")
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

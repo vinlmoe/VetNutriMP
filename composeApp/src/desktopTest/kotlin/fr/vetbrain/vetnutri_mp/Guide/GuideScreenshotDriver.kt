@@ -23,7 +23,9 @@ import kotlin.test.Test
  *
  * Inactif par défaut : ne s'exécute que si VETNUTRI_GUIDE_SCRIPT pointe vers un script de pas.
  * Lancer avec VETNUTRI_TEST_DATABASE_DIR et VETNUTRI_GUIDE_HOME pointant vers des dossiers
- * jetables pour ne jamais toucher à la base ni aux préférences de l'utilisateur.
+ * jetables pour ne jamais toucher à la base ni aux préférences de l'utilisateur
+ * (VETNUTRI_TEST_DATABASE_DIR est honorée ici grâce à la propriété système
+ * `vetnutri.testMode=true` posée par build.gradle.kts sur les tâches de test).
  *
  * Commandes du script (une par ligne, `#` = commentaire) :
  *   wait <texte>        attend qu'un nœud contienne ce texte (120 s max)

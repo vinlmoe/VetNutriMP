@@ -4,7 +4,14 @@ import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.okio.decodeFromBufferedSource
+import okio.FileSystem
+import okio.Path.Companion.toPath
+import okio.SYSTEM
+import okio.buffer
+import okio.use
 import platform.Foundation.NSBundle
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -53,20 +60,24 @@ actual open class ResourceReader actual constructor() {
     }
     
     /**
-     * Lit une ressource de manière optimisée pour les gros fichiers.
-     * Pour iOS, utilise la même méthode que readResource car NSString.stringWithContentsOfFile
-     * est déjà optimisé.
+     * Décode l'ApiEnvelope directement depuis le fichier du bundle (okio BufferedSource),
+     * sans matérialiser les ~20 Mo de JSON en String intermédiaire.
      */
-    actual open fun readResourceOptimized(name: String): String {
-        return readResource(name)
-    }
-
+    @OptIn(ExperimentalSerializationApi::class)
     actual open fun readApiEnvelopeOptimized(name: String): ApiEnvelope {
         val json = Json {
             ignoreUnknownKeys = true
             explicitNulls = false
         }
-        return json.decodeFromString(ApiEnvelope.serializer(), readResource(name))
+        val bundle = NSBundle.mainBundle
+        val resourceName = name.removeSuffix(".json")
+        val path = bundle.pathForResource(resourceName, "json")
+                ?: bundle.pathForResource(name, null)
+                ?: throw IllegalStateException("Resource $name not found")
+        println("ResourceReader: Streaming ApiEnvelope from $path")
+        return FileSystem.SYSTEM.source(path.toPath()).buffer().use { source ->
+            json.decodeFromBufferedSource(ApiEnvelope.serializer(), source)
+        }
     }
     
     /**

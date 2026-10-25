@@ -33,7 +33,45 @@ object EquationEvaluator {
     var toutesLesVariables: Set<String>? = null
 
     private const val MAX_CACHE_SIZE = 1000
+
+    /**
+     * Cache des évaluations (clé = expression + variables). [LruMap] n'est pas thread-safe et
+     * l'évaluateur est appelé depuis Main et Default : tout accès passe par [cacheLock].
+     */
     private val expressionCache = LruMap<String, Double?>(MAX_CACHE_SIZE)
+    private val cacheLock = SynchronizedLock()
+
+    /**
+     * Clé de cache déterministe : les entrées triées par nom sont sérialisées en clair.
+     * (Un `hashCode()` de map pouvait produire des collisions entre jeux de variables différents.)
+     */
+    private fun cleDeCache(expression: String, variables: Map<String, Double>): String {
+        val sb = StringBuilder(expression).append('|')
+        variables.entries.sortedBy { it.key }.forEach { (k, v) ->
+            sb.append(k).append('=').append(v).append(';')
+        }
+        return sb.toString()
+    }
+
+    /** Évalue [expression] avec cache ; l'évaluation elle-même se fait hors verrou. */
+    private fun evaluerAvecCache(expression: String, variables: Map<String, Double>): Double? {
+        val cacheKey = cleDeCache(expression, variables)
+        var present = false
+        val enCache = cacheLock.withLock {
+            val v = expressionCache[cacheKey]
+            if (v != null) {
+                present = true
+            } else {
+                // Un résultat null (expression invalide) est aussi mis en cache
+                present = expressionCache.containsKey(cacheKey)
+            }
+            v
+        }
+        if (present) return enCache
+        val resultat = ExpressionMathematique.evaluer(expression, variables)
+        cacheLock.withLock { expressionCache[cacheKey] = resultat }
+        return resultat
+    }
 
     /**
      * Injecte dans la map de variables certains nutriments calculés à partir des équations
@@ -168,10 +206,7 @@ object EquationEvaluator {
             }
         }
 
-        val cacheKey = "${expression}:${variables.hashCode()}"
-        return expressionCache.getOrPut(cacheKey) {
-            ExpressionMathematique.evaluer(expression, variables)
-        }
+        return evaluerAvecCache(expression, variables)
     }
 
     /** Version avec cache optimisée pour les évaluations répétées */
@@ -196,10 +231,7 @@ object EquationEvaluator {
             }
         }
 
-        val cacheKey = "${expression}:${variables.hashCode()}"
-        return expressionCache.getOrPut(cacheKey) {
-            ExpressionMathematique.evaluer(expression, variables)
-        }
+        return evaluerAvecCache(expression, variables)
     }
 
     /**

@@ -9,6 +9,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.withContext
 
 /** Repository pour la persistance des références évaluées avec Room Multiplatform */
@@ -24,9 +25,20 @@ class DatabaseReferenceEvRepository(
         return withContext(AppDispatchers.IO) {
             try {
                 val entities = referenceEvDao.getAllReferenceEv()
-                entities.map { convertEntityToReferenceEv(it) }
+                convertEntitiesToReferenceEv(entities)
             } catch (e: Exception) {
                 emptyList()
+            }
+        }
+    }
+
+    /** Nombre de références en base, sans charger les objets agrégés. */
+    suspend fun getReferenceCount(): Int {
+        return withContext(AppDispatchers.IO) {
+            try {
+                referenceEvDao.getReferenceCount()
+            } catch (e: Exception) {
+                0
             }
         }
     }
@@ -50,6 +62,11 @@ class DatabaseReferenceEvRepository(
             saveCoefficients(referenceEv)
             saveNutrients(referenceEv)
             referenceEv.uuid
+        }.also {
+            DatabaseChangeNotifier.notifyChange(
+                    DatabaseChangeNotifier.ChangeType.REFERENCE_ADDED,
+                    referenceEv.uuid
+            )
         }
     }
 
@@ -64,18 +81,27 @@ class DatabaseReferenceEvRepository(
             saveCoefficients(referenceEv)
             saveNutrients(referenceEv)
         }
+        DatabaseChangeNotifier.notifyChange(
+                DatabaseChangeNotifier.ChangeType.REFERENCE_UPDATED,
+                referenceEv.uuid
+        )
     }
 
     suspend fun deleteReferenceEv(id: String) {
         withContext(AppDispatchers.IO) {
             referenceEvDao.deleteReferenceEvById(id)
         }
+        DatabaseChangeNotifier.notifyChange(DatabaseChangeNotifier.ChangeType.REFERENCE_DELETED, id)
     }
 
     suspend fun saveCoefficient(coefficient: ReferenceEvCoefficientEntity) {
         withContext(AppDispatchers.IO) {
             referenceEvDao.insertCoefficient(coefficient)
         }
+        DatabaseChangeNotifier.notifyChange(
+                DatabaseChangeNotifier.ChangeType.REFERENCE_UPDATED,
+                coefficient.referenceEvId
+        )
     }
 
     suspend fun saveReferenceEvForImport(referenceEv: ReferenceEv): String {
@@ -86,6 +112,11 @@ class DatabaseReferenceEvRepository(
             saveCoefficientsForImport(referenceEv)
             saveNutrients(referenceEv)
             referenceEv.uuid
+        }.also {
+            DatabaseChangeNotifier.notifyChange(
+                    DatabaseChangeNotifier.ChangeType.REFERENCE_ADDED,
+                    "import ${referenceEv.uuid}"
+            )
         }
     }
 
@@ -183,7 +214,72 @@ class DatabaseReferenceEvRepository(
         )
     }
 
+    /**
+     * Relations (équations, coefficients, nutriments, bibliographie) de plusieurs références,
+     * chargées en quelques requêtes `IN (...)` au lieu d'une requête par relation.
+     */
+    private class RelationsReferences(
+            val equationsParReference: Map<String, List<ReferenceEvEquationEntity>>,
+            val equationsParId: Map<String, EquationEntity>,
+            val coefficientsParReference: Map<String, List<ReferenceEvCoefficientEntity>>,
+            val nutrimentsParReference: Map<String, List<ReferenceEvNutrientEntity>>,
+            val biblioParId: Map<String, BiblioRefEntity>
+    )
+
+    private suspend fun chargerRelations(referenceIds: List<String>): RelationsReferences {
+        val relationsEquations: List<ReferenceEvEquationEntity> =
+                referenceIds.chunked(LOT_IDENTIFIANTS).flatMap {
+                    referenceEvDao.getEquationsForReferences(it)
+                }
+        val equationsParId: Map<String, EquationEntity> =
+                relationsEquations
+                        .map { it.equationId }
+                        .distinct()
+                        .chunked(LOT_IDENTIFIANTS)
+                        .flatMap { equationDao.getEquationsByIds(it) }
+                        .associateBy { it.uuid }
+        val coefficients: List<ReferenceEvCoefficientEntity> =
+                referenceIds.chunked(LOT_IDENTIFIANTS).flatMap {
+                    referenceEvDao.getCoefficientsForReferences(it)
+                }
+        val nutriments: List<ReferenceEvNutrientEntity> =
+                referenceIds.chunked(LOT_IDENTIFIANTS).flatMap {
+                    referenceEvDao.getNutrientsForReferences(it)
+                }
+        val biblioParId: Map<String, BiblioRefEntity> =
+                nutriments
+                        .mapNotNull { it.biblioRefId }
+                        .distinct()
+                        .chunked(LOT_IDENTIFIANTS)
+                        .flatMap { biblioRefDao.getBiblioRefsByIds(it) }
+                        .associateBy { it.uuid }
+        return RelationsReferences(
+                equationsParReference = relationsEquations.groupBy { it.referenceEvId },
+                equationsParId = equationsParId,
+                coefficientsParReference = coefficients.groupBy { it.referenceEvId },
+                nutrimentsParReference = nutriments.groupBy { it.referenceEvId },
+                biblioParId = biblioParId
+        )
+    }
+
+    /** Conversion groupée : les relations de toutes les entités sont chargées par lots. */
+    private suspend fun convertEntitiesToReferenceEv(
+            entities: List<ReferenceEvEntity>
+    ): List<ReferenceEv> {
+        if (entities.isEmpty()) return emptyList()
+        val relations = chargerRelations(entities.map { it.uuid })
+        return entities.map { convertEntityToReferenceEv(it, relations) }
+    }
+
+    /** Conversion d'une seule entité (chemins unitaires : getReferenceEvById, mises à jour). */
     private suspend fun convertEntityToReferenceEv(entity: ReferenceEvEntity): ReferenceEv {
+        return convertEntityToReferenceEv(entity, chargerRelations(listOf(entity.uuid)))
+    }
+
+    private suspend fun convertEntityToReferenceEv(
+            entity: ReferenceEvEntity,
+            relations: RelationsReferences
+    ): ReferenceEv {
         val referenceEv =
                 ReferenceEv(
                         uuid = entity.uuid,
@@ -208,13 +304,24 @@ class DatabaseReferenceEvRepository(
         referenceEv.nomk5 = entity.nomk5
 
         // Charger les équations associées
-        loadEquationsForReference(referenceEv)
+        loadEquationsForReference(
+                referenceEv,
+                relations.equationsParReference[entity.uuid] ?: emptyList(),
+                relations.equationsParId
+        )
 
         // Charger les coefficients
-        loadCoefficientsForReference(referenceEv)
+        loadCoefficientsForReference(
+                referenceEv,
+                relations.coefficientsParReference[entity.uuid] ?: emptyList()
+        )
 
         // Charger les nutriments
-        loadNutrientsForReference(referenceEv)
+        loadNutrientsForReference(
+                referenceEv,
+                relations.nutrimentsParReference[entity.uuid] ?: emptyList(),
+                relations.biblioParId
+        )
 
         return referenceEv
     }
@@ -582,11 +689,13 @@ class DatabaseReferenceEvRepository(
 
     // Méthodes privées pour charger les relations
 
-    private suspend fun loadEquationsForReference(referenceEv: ReferenceEv) {
-        val equationRelations = referenceEvDao.getEquationsForReference(referenceEv.uuid)
-
+    private fun loadEquationsForReference(
+            referenceEv: ReferenceEv,
+            equationRelations: List<ReferenceEvEquationEntity>,
+            equationsParId: Map<String, EquationEntity>
+    ) {
         for (relation in equationRelations) {
-            val equation = equationDao.getEquationById(relation.equationId)
+            val equation = equationsParId[relation.equationId]
             if (equation != null) {
                 val equationObj = convertEquationEntityToEquation(equation)
                 when (relation.equationType) {
@@ -607,9 +716,10 @@ class DatabaseReferenceEvRepository(
         }
     }
 
-    private suspend fun loadCoefficientsForReference(referenceEv: ReferenceEv) {
-        val coefficients = referenceEvDao.getCoefficientsForReference(referenceEv.uuid)
-
+    private fun loadCoefficientsForReference(
+            referenceEv: ReferenceEv,
+            coefficients: List<ReferenceEvCoefficientEntity>
+    ) {
         // Grouper par type de coefficient
         val coefficientsByGroup = coefficients.groupBy { it.groupType }
 
@@ -695,16 +805,11 @@ class DatabaseReferenceEvRepository(
         }
     }
 
-    private suspend fun loadNutrientsForReference(referenceEv: ReferenceEv) {
-        val nutrients = referenceEvDao.getNutrientsForReference(referenceEv.uuid)
-        
-        // 🔍 LOG DIAGNOSTIC : Vérification des nutriments en base
-        
-        
-        nutrients.forEach { nut ->
-            
-        }
-
+    private suspend fun loadNutrientsForReference(
+            referenceEv: ReferenceEv,
+            nutrients: List<ReferenceEvNutrientEntity>,
+            biblioParId: Map<String, BiblioRefEntity>
+    ) {
         // Grouper par niveau de référence
         val nutrientsByLevel = nutrients.groupBy { it.reflevel }
 
@@ -715,7 +820,7 @@ class DatabaseReferenceEvRepository(
                 if (nutrient != null) {
                     val biblio =
                             if (nutEntity.biblioRefId != null) {
-                                convertBiblioRefByIdToBiblioRef(nutEntity.biblioRefId)
+                                convertBiblioRefEntityToBiblioRef(biblioParId[nutEntity.biblioRefId])
                             } else null
 
                     referenceEv.definirNutriment(
@@ -735,7 +840,7 @@ class DatabaseReferenceEvRepository(
                 if (nutrient != null) {
                     val biblio =
                             if (nutEntity.biblioRefId != null) {
-                                convertBiblioRefByIdToBiblioRef(nutEntity.biblioRefId)
+                                convertBiblioRefEntityToBiblioRef(biblioParId[nutEntity.biblioRefId])
                             } else null
 
                     referenceEv.definirNutriment(
@@ -755,7 +860,7 @@ class DatabaseReferenceEvRepository(
                 if (nutrient != null) {
                     val biblio =
                             if (nutEntity.biblioRefId != null) {
-                                convertBiblioRefByIdToBiblioRef(nutEntity.biblioRefId)
+                                convertBiblioRefEntityToBiblioRef(biblioParId[nutEntity.biblioRefId])
                             } else null
 
                     referenceEv.definirNutriment(
@@ -775,7 +880,7 @@ class DatabaseReferenceEvRepository(
                 if (nutrient != null) {
                     val biblio =
                             if (nutEntity.biblioRefId != null) {
-                                convertBiblioRefByIdToBiblioRef(nutEntity.biblioRefId)
+                                convertBiblioRefEntityToBiblioRef(biblioParId[nutEntity.biblioRefId])
                             } else null
 
                     referenceEv.definirNutriment(
@@ -824,15 +929,6 @@ class DatabaseReferenceEvRepository(
         }
     }
 
-    private suspend fun convertBiblioRefByIdToBiblioRef(biblioRefId: String?): BiblioRef {
-        return if (biblioRefId != null) {
-            val entity = biblioRefDao.getBiblioRefById(biblioRefId)
-            convertBiblioRefEntityToBiblioRef(entity)
-        } else {
-            BiblioRef()
-        }
-    }
-
     private fun findNutrientByLabel(label: String): Nutrient? {
         // Chercher dans tous les types de nutriments
         return try {
@@ -862,6 +958,11 @@ class DatabaseReferenceEvRepository(
         } catch (e: Exception) {
             null
         }
+    }
+
+    private companion object {
+        /** Taille des lots d'identifiants pour les requêtes `IN (...)` (limite SQLite : 999 paramètres). */
+        const val LOT_IDENTIFIANTS = 500
     }
 
     // Méthode saveAssociatedEquations supprimée - on référence directement les équations existantes

@@ -4,6 +4,7 @@ import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefEntity
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -236,6 +237,7 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                         biblioRefDao.insertBiblioRef(entity)
                     }
                     refreshFromDatabase()
+                    DatabaseChangeNotifier.notifyDataWritten("Référence biblio ${safeRef.uuid}")
                 } catch (e: Exception) {
                     e.printStackTrace()
                     throw e
@@ -250,6 +252,7 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                 try {
                     biblioRefDao.updateBiblioRef(biblioRef.toEntity())
                     refreshFromDatabase()
+                    DatabaseChangeNotifier.notifyDataWritten("Référence biblio modifiée ${biblioRef.uuid}")
                 } catch (e: Exception) {
                     e.printStackTrace()
                     throw e
@@ -264,6 +267,7 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                 try {
                     biblioRefDao.deleteBiblioRef(biblioRef.toEntity())
                     refreshFromDatabase()
+                    DatabaseChangeNotifier.notifyDataWritten("Référence biblio supprimée ${biblioRef.uuid}")
                 } catch (e: Exception) {
                     e.printStackTrace()
                     throw e
@@ -280,6 +284,7 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                     if (count > 0) {
                         biblioRefDao.deleteAllBiblioRefs()
                         refreshFromDatabase()
+                        DatabaseChangeNotifier.notifyDataWritten("Références biblio vidées")
                     }
                     count
                 } catch (e: Exception) {

@@ -11,23 +11,6 @@ actual open class ResourceReader actual constructor() {
         return AndroidContext.appContext.assets.open(name).bufferedReader().use { it.readText() }
     }
     
-    /**
-     * Lit une ressource de manière optimisée pour les gros fichiers.
-     * Utilise un buffer plus petit pour éviter les OutOfMemoryError.
-     */
-    actual open fun readResourceOptimized(name: String): String {
-        return AndroidContext.appContext.assets.open(name).use { inputStream ->
-            val buffer = ByteArray(8192) // Buffer de 8KB
-            val output = StringBuilder()
-            
-            var bytesRead: Int
-            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                output.append(String(buffer, 0, bytesRead))
-            }
-            output.toString()
-        }
-    }
-
     @OptIn(ExperimentalSerializationApi::class)
     actual open fun readApiEnvelopeOptimized(name: String): ApiEnvelope {
         val json = Json {

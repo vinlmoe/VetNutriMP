@@ -463,7 +463,7 @@ class AnimalListViewModel(
             startApiImport()
             appendApiImportLog(translate(LocalizationKeys.AnimalList.IMPORT_LOG_START))
             val preImportIds = try {
-                animalRepository.getAllAnimals().map { it.uuid }.toSet()
+                animalRepository.getAllAnimalIds().toSet()
             } catch (_: Exception) {
                 emptySet()
             }
@@ -555,7 +555,7 @@ class AnimalListViewModel(
                 )
             ).requireComplete()
             val postImportIds = try {
-                animalRepository.getAllAnimals().map { it.uuid }.toSet()
+                animalRepository.getAllAnimalIds().toSet()
             } catch (_: Exception) {
                 emptySet()
             }

@@ -192,8 +192,7 @@ poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existan
 
 | Fichier | Taille | Usage |
 |---------|--------|-------|
-| `food.json` | ~15 MB | Base aliments initiale (racine projet) |
-| `commonMain/resources/data/vetnutri_export_init.json` | ~11 MB | Export init complet (refs + aliments) |
-| `androidMain/assets/data/vetfood.json` | ~1.7 MB | Aliments Android spécifiques |
+| `commonMain/resources/data/vetnutri_export_init.json` | ~20 MB | Export init complet (refs + aliments) — source unique ; Desktop le lit via le classpath, Android via les assets générés par la tâche Gradle `copyCommonDataAssets` (plus de copie dans `androidMain/assets`), iOS via la copie unique `iosApp/iosApp/vetnutri_export_init.json` référencée par Xcode |
+| `commonMain/resources/strings_*.json` | ~50–140 KB | Traductions UI (même mécanisme : source unique, copiées dans les assets Android par `copyCommonDataAssets`) |
 
 Ces fichiers sont chargés via `StartupService` au premier lancement, pas à chaque démarrage.

@@ -44,6 +44,9 @@ class LruMap<K, V>(
         return entries.remove(key)
     }
 
+    /** Présence d'une clé, sans la promouvoir (utile quand la valeur stockée peut être null). */
+    fun containsKey(key: K): Boolean = entries.containsKey(key)
+
     fun clear() {
         entries.clear()
         accessOrder.clear()

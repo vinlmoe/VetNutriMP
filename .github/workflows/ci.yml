@@ -39,6 +39,8 @@ concurrency:
 
 permissions:
   contents: read
+  # dorny/test-reporter publie un check avec le détail des tests JUnit.
+  checks: write
 
 env:
   # AppSecretsTest impose des clés non vides. On utilise les secrets du dépôt
@@ -50,8 +52,14 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Retour rapide : les 40 fichiers de commonTest + les 9 de desktopTest, sans
-  # passer par la chaîne Android (la plus lente).
+  # Retour rapide : les 60 fichiers de commonTest + les 16 de desktopTest, sans
+  # passer par la chaîne Android (la plus lente). C'est le SEUL job qui exécute
+  # les tests communs : build-android ne les rejoue plus (voir plus bas).
+  #
+  # Prochaine étape couverture : brancher Kover (plugin Gradle
+  # `org.jetbrains.kotlinx.kover` dans composeApp/build.gradle.kts, puis
+  # `koverXmlReport`/`koverHtmlReport` ici et un seuil `koverVerify`). Non fait
+  # dans cette itération pour ne pas toucher au build Gradle.
   # ---------------------------------------------------------------------------
   tests-jvm:
     name: Tests JVM (common + desktop)
@@ -70,7 +78,7 @@ jobs:
       - name: Préparer le build
         uses: ./.github/actions/setup-build
         with:
-          cache-read-only: ${{ github.ref_name != 'main' }}
+          cache-read-only: ${{ !contains(fromJSON('["main", "master", "revetBackUp"]'), github.ref_name) }}
 
       - name: Dépendances natives de Skiko
         # AppLogoDecoderTest décode un PNG via Skia : la bibliothèque native
@@ -83,7 +91,8 @@ jobs:
         run: ./gradlew :composeApp:desktopTest --stacktrace
 
       - name: Vérifier que les schémas Room exportés sont à jour
-        # 35 schémas sont versionnés dans composeApp/schemas/. Si une entité
+        # 40 schémas (versions 1 et 3 à 41) sont versionnés dans
+        # composeApp/schemas/. Si une entité
         # change sans que le schéma régénéré soit commité, les migrations
         # divergent du code et Room échoue au démarrage chez l'utilisateur.
         run: |
@@ -110,13 +119,80 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      - name: Résumé des tests (JUnit XML)
+        # Rend les échecs lisibles dans l'onglet Checks / le résumé du job sans
+        # ouvrir l'artefact. `permissions: checks: write` est nécessaire pour
+        # publier un check ; sur une PR venant d'un fork il n'écrit que le résumé.
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Tests JVM — résultats
+          path: composeApp/build/test-results/desktopTest/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
   # ---------------------------------------------------------------------------
-  # Tests unitaires Android + APK debug dans le même job : `testDebugUnitTest`
-  # compile déjà les sources debug, autant réutiliser cette compilation pour
-  # `assembleDebug` plutôt que de la refaire dans un job séparé.
+  # Analyse statique Kotlin (detekt) via le jar CLI, sans plugin Gradle : le
+  # build n'est pas modifié. RAPPORT SEULEMENT pour l'instant (continue-on-error
+  # + maxIssues: -1 dans detekt.yml) : le nombre d'écarts de la base de code
+  # n'est pas encore connu. Une fois le premier rapport lu, fixer le seuil dans
+  # detekt.yml (ou générer une baseline) et retirer `continue-on-error`.
+  # ---------------------------------------------------------------------------
+  detekt:
+    name: Analyse statique (detekt)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DETEKT_VERSION: 1.23.8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installer le JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Télécharger detekt-cli ${{ env.DETEKT_VERSION }}
+        run: |
+          curl -sSL --fail -o detekt-cli.zip \
+            "https://github.com/detekt/detekt/releases/download/v${DETEKT_VERSION}/detekt-cli-${DETEKT_VERSION}.zip"
+          unzip -q detekt-cli.zip -d detekt-dist
+          chmod +x "detekt-dist/detekt-cli-${DETEKT_VERSION}/bin/detekt-cli"
+
+      - name: Exécuter detekt
+        continue-on-error: true
+        run: |
+          mkdir -p build/reports/detekt
+          "detekt-dist/detekt-cli-${DETEKT_VERSION}/bin/detekt-cli" \
+            --config detekt.yml \
+            --build-upon-default-config \
+            --input composeApp/src/commonMain/kotlin,composeApp/src/desktopMain/kotlin,composeApp/src/androidMain/kotlin,composeApp/src/iosMain/kotlin,composeApp/src/windowsMain/kotlin \
+            --excludes '**/build/**' \
+            --report sarif:build/reports/detekt/detekt.sarif \
+            --report txt:build/reports/detekt/detekt.txt \
+            --report html:build/reports/detekt/detekt.html
+          echo "Écarts detekt : $(wc -l < build/reports/detekt/detekt.txt)"
+
+      - name: Archiver le rapport detekt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-detekt
+          path: build/reports/detekt/
+          retention-days: 14
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # APK debug + Android Lint. Les tests ne sont PLUS exécutés ici :
+  # `testDebugUnitTest` rejouait les 723 tests de commonTest déjà couverts par
+  # `desktopTest` dans tests-jvm (même code commun, même JVM) — ~10 min de
+  # runner pour aucune information nouvelle. Les seuls tests propres à Android
+  # seraient des tests instrumentés (androidTest), absents du projet.
   # ---------------------------------------------------------------------------
   build-android:
-    name: Android — tests unitaires + APK debug
+    name: Android — APK debug + Lint
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -130,24 +206,31 @@ jobs:
       - name: Préparer le build
         uses: ./.github/actions/setup-build
         with:
-          cache-read-only: ${{ github.ref_name != 'main' }}
-
-      - name: Tests unitaires Android
-        run: ./gradlew :composeApp:testDebugUnitTest --stacktrace
+          cache-read-only: ${{ !contains(fromJSON('["main", "master", "revetBackUp"]'), github.ref_name) }}
 
       - name: Construire l'APK debug
         run: ./gradlew :composeApp:assembleDebug --stacktrace
 
-      - name: Archiver les rapports de test
+      - name: Android Lint
+        # RAPPORT SEULEMENT pour l'instant : aucune baseline n'existe
+        # (composeApp/build.gradle.kts n'a pas de bloc `lint {}`), le nombre
+        # d'erreurs n'est pas connu. Une fois le premier rapport analysé :
+        # générer `lint-baseline.xml`, ajouter `lint { baseline = file(...);
+        # abortOnError = true }` au build et retirer `continue-on-error`.
+        continue-on-error: true
+        run: ./gradlew :composeApp:lintDebug --continue --stacktrace
+
+      - name: Archiver le rapport Lint
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rapports-tests-android
+          name: rapport-android-lint
           path: |
-            composeApp/build/reports/tests/
-            composeApp/build/test-results/
-          retention-days: 7
-          if-no-files-found: ignore
+            composeApp/build/reports/lint-results-debug.html
+            composeApp/build/reports/lint-results-debug.xml
+            composeApp/build/reports/lint-results-debug.sarif
+          retention-days: 14
+          if-no-files-found: warn
 
       - name: Archiver l'APK debug
         uses: actions/upload-artifact@v4
@@ -178,12 +261,30 @@ jobs:
       - name: Préparer le build
         uses: ./.github/actions/setup-build
         with:
-          cache-read-only: ${{ github.ref_name != 'main' }}
+          cache-read-only: ${{ !contains(fromJSON('["main", "master", "revetBackUp"]'), github.ref_name) }}
 
       - name: Compiler la cible iosSimulatorArm64
         # Compilation seule : le link du framework est nettement plus long et
         # n'apporte rien tant qu'on ne publie pas d'IPA depuis la CI.
         run: ./gradlew :composeApp:compileKotlinIosSimulatorArm64 --stacktrace
+
+      - name: Tests sur simulateur iOS (iosSimulatorArm64Test)
+        # Exécute commonTest + iosTest dans un simulateur : c'est le seul endroit
+        # où les `actual` iOS (PlatformCrypto via CommonCrypto, fichiers, etc.)
+        # sont réellement exercés. Le runner macos-latest est Apple Silicon et
+        # embarque Xcode + simulateurs.
+        run: ./gradlew :composeApp:iosSimulatorArm64Test --stacktrace
+
+      - name: Archiver les rapports de test iOS
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapports-tests-ios
+          path: |
+            composeApp/build/reports/tests/iosSimulatorArm64Test/
+            composeApp/build/test-results/iosSimulatorArm64Test/
+          retention-days: 7
+          if-no-files-found: ignore
 
   # ---------------------------------------------------------------------------
   # Empaquetage Debian — hérité de build-deb.yml, désormais conditionné à des
@@ -208,7 +309,7 @@ jobs:
       - name: Préparer le build
         uses: ./.github/actions/setup-build
         with:
-          cache-read-only: ${{ github.ref_name != 'main' }}
+          cache-read-only: ${{ !contains(fromJSON('["main", "master", "revetBackUp"]'), github.ref_name) }}
 
       - name: Construire le paquet Debian
         run: ./gradlew :composeApp:packageReleaseDeb --stacktrace
@@ -235,7 +336,7 @@ jobs:
     name: Résultat CI
     runs-on: ubuntu-latest
     if: always()
-    needs: [tests-jvm, build-android, build-ios, package-deb]
+    needs: [tests-jvm, build-android, build-ios, package-deb, detekt]
     steps:
       - name: Contrôler le résultat des jobs
         run: |
@@ -245,6 +346,10 @@ jobs:
             [build-ios]="${{ needs.build-ios.result }}"
             [package-deb]="${{ needs.package-deb.result }}"
           )
+          # detekt est en rapport seul (continue-on-error) : il est listé pour
+          # information mais ne conditionne pas le résultat tant que le seuil
+          # n'est pas fixé dans detekt.yml.
+          printf '%-15s %s (informatif)\n' "detekt" "${{ needs.detekt.result }}"
           status=0
           for job in "${!results[@]}"; do
             result="${results[$job]}"

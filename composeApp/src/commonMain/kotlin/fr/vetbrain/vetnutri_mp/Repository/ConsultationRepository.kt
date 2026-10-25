@@ -9,6 +9,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toSupplementalVariableEntities
 import fr.vetbrain.vetnutri_mp.DataBase.SupplementalVariableEntity
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.withContext
 
 interface ConsultationRepository {
@@ -16,7 +17,8 @@ interface ConsultationRepository {
     suspend fun getConsultationsForAnimal(animalId: String): List<ConsultationEv>
     suspend fun getConsultationById(id: String): ConsultationEv?
     suspend fun deleteConsultation(consultation: ConsultationEv)
-    suspend fun applyRecipeToRation(recipe: Ration, rationId: String)
+    /** Ajoute les aliments de [recipe] à la ration [rationId] ; retourne le nombre d'aliments non insérés. */
+    suspend fun applyRecipeToRation(recipe: Ration, rationId: String): Int
     suspend fun getAllKeywords(): List<ConsultationKeyword>
     suspend fun saveKeyword(keyword: ConsultationKeyword)
 }
@@ -25,14 +27,19 @@ class DatabaseConsultationRepository(
         private val consultationDao: ConsultationDao,
         private val foodRepository: FoodRepository
 ) : ConsultationRepository {
-    override suspend fun applyRecipeToRation(recipe: Ration, rationId: String) {
-        withContext(AppDispatchers.IO) {
+    override suspend fun applyRecipeToRation(recipe: Ration, rationId: String): Int {
+        return withContext(AppDispatchers.IO) {
+            var skipped = 0
             recipe.alimentMutableList.forEach { aliment ->
                 try {
                     val entity = aliment.copy(refRation = rationId).toEntity()
                     consultationDao.insertAlimentRation(entity)
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    skipped++
+                }
             }
+            skipped
         }
     }
     override suspend fun saveConsultation(consultation: ConsultationEv) {
@@ -97,25 +104,35 @@ class DatabaseConsultationRepository(
                 throw e
             }
         }
+        DatabaseChangeNotifier.notifyChange(
+            DatabaseChangeNotifier.ChangeType.CONSULTATION_UPDATED,
+            consultation.uuid
+        )
     }
 
     override suspend fun getConsultationsForAnimal(animalId: String): List<ConsultationEv> {
         return withContext(AppDispatchers.IO) {
             val consultations = consultationDao.getConsultationsForAnimal(animalId)
 
-            val consultationEvs = consultations.map { consultationEntity ->
-                val suppVars = consultationDao.getSupplementalVariablesForConsultation(consultationEntity.uuid)
-                val rations = consultationDao.getRationsForConsultation(consultationEntity.uuid)
-                val consultation = consultationEntity.toData(rations = rations, suppVars = suppVars)
+            // Variables et rations de toutes les consultations en une requête par lot
+            // (au lieu d'une requête par consultation)
+            val consultationIds = consultations.map { it.uuid }
+            val suppVarsByConsultation = consultationIds
+                .chunked(LOT_IDENTIFIANTS)
+                .flatMap { consultationDao.getSupplementalVariablesForConsultations(it) }
+                .groupBy { it.idConsult }
+            val rationsByConsultation = consultationIds
+                .chunked(LOT_IDENTIFIANTS)
+                .flatMap { consultationDao.getRationsForConsultations(it) }
+                .groupBy { it.idConsult }
 
-                consultation.rations.forEach { ration ->
-                    val aliments = consultationDao.getAlimentsForRation(ration.uuid)
-                    ration.alimentMutableList.clear()
-                    ration.alimentMutableList.addAll(aliments.map { it.toData() })
-                    chargerVariablesEtape(ration)
-                }
-                consultation
+            val consultationEvs = consultations.map { consultationEntity ->
+                consultationEntity.toData(
+                    rations = rationsByConsultation[consultationEntity.uuid] ?: emptyList(),
+                    suppVars = suppVarsByConsultation[consultationEntity.uuid] ?: emptyList()
+                )
             }
+            chargerAlimentsEtVariablesEtape(consultationEvs.flatMap { it.rations })
 
             // Batch-load tous les aliments référencés en une seule passe
             val allAlimentUuids = consultationEvs
@@ -147,12 +164,7 @@ class DatabaseConsultationRepository(
             val rations = consultationDao.getRationsForConsultation(consultation.uuid)
             val consultationEv = consultation.toData(rations = rations, suppVars = suppVars)
 
-            consultationEv.rations.forEach { ration ->
-                val aliments = consultationDao.getAlimentsForRation(ration.uuid)
-                ration.alimentMutableList.clear()
-                ration.alimentMutableList.addAll(aliments.map { it.toData() })
-                chargerVariablesEtape(ration)
-            }
+            chargerAlimentsEtVariablesEtape(consultationEv.rations)
 
             // Batch-load tous les aliments référencés en une seule passe
             val allAlimentUuids = consultationEv.rations
@@ -174,12 +186,30 @@ class DatabaseConsultationRepository(
         }
     }
 
-    /** Charge les variables d'énergie propres à une étape de plan évolutif. */
-    private suspend fun chargerVariablesEtape(ration: Ration) {
-        ration.suppVarp =
-            consultationDao.getSupplementalVariablesForRation(ration.uuid)
-                .map { it.toData() }
-                .toMutableList()
+    /**
+     * Charge les aliments et les variables d'énergie propres à chaque étape de plan évolutif
+     * pour toutes les rations données, en une requête par lot plutôt qu'une par ration.
+     */
+    private suspend fun chargerAlimentsEtVariablesEtape(rations: List<Ration>) {
+        if (rations.isEmpty()) return
+        val rationIds = rations.map { it.uuid }
+        val alimentsByRation = rationIds
+            .chunked(LOT_IDENTIFIANTS)
+            .flatMap { consultationDao.getAlimentsForRations(it) }
+            .groupBy { it.refRation }
+        val suppVarsByRation = rationIds
+            .chunked(LOT_IDENTIFIANTS)
+            .flatMap { consultationDao.getSupplementalVariablesForRations(it) }
+            .groupBy { it.idRation }
+        rations.forEach { ration ->
+            val aliments = alimentsByRation[ration.uuid] ?: emptyList()
+            ration.alimentMutableList.clear()
+            ration.alimentMutableList.addAll(aliments.map { it.toData() })
+            ration.suppVarp =
+                (suppVarsByRation[ration.uuid] ?: emptyList())
+                    .map { it.toData() }
+                    .toMutableList()
+        }
     }
 
     override suspend fun deleteConsultation(consultation: ConsultationEv) {
@@ -192,6 +222,10 @@ class DatabaseConsultationRepository(
             val entity = consultation.toEntity()
             consultationDao.delete(entity)
         }
+        DatabaseChangeNotifier.notifyChange(
+            DatabaseChangeNotifier.ChangeType.CONSULTATION_DELETED,
+            consultation.uuid
+        )
     }
 
     override suspend fun getAllKeywords(): List<ConsultationKeyword> {
@@ -204,5 +238,11 @@ class DatabaseConsultationRepository(
         withContext(AppDispatchers.IO) {
             consultationDao.insertConsultationKeyword(keyword.toEntity())
         }
+        DatabaseChangeNotifier.notifyDataWritten("Mot-clé de consultation")
+    }
+
+    private companion object {
+        /** Taille des lots d'identifiants pour les requêtes `IN (...)` (limite SQLite : 999 paramètres). */
+        const val LOT_IDENTIFIANTS = 500
     }
 }

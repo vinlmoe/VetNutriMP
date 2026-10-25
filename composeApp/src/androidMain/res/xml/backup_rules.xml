@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Règles de sauvegarde Auto Backup (Android 6 à 11, API 23–30).
+    La base patients Room (databases/vetnutri.db, avec ses fichiers -wal/-shm) et les
+    exports locaux (files/backups) ne doivent jamais partir dans le cloud Google.
+    Les préférences (shared_prefs, DataStore dans files/datastore) restent sauvegardées.
+-->
+<full-backup-content>
+    <!-- Toute la base de données : vetnutri.db, vetnutri.db-wal, vetnutri.db-shm, journaux. -->
+    <exclude domain="database" path="." />
+    <!-- Exports/sauvegardes JSON produits par l'app (FileService.android.kt : filesDir/backups). -->
+    <exclude domain="file" path="backups" />
+    <!-- Données importées localement (FileService.android.kt : filesDir/data). -->
+    <exclude domain="file" path="data" />
+</full-backup-content>

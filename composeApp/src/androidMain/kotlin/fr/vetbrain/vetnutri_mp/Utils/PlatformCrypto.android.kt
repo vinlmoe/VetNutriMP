@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.Utils
 
 import java.security.SecureRandom
 import javax.crypto.Cipher
+import javax.crypto.Mac
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
@@ -25,5 +26,11 @@ internal actual object PlatformCrypto {
         val ivSpec = IvParameterSpec(iv)
         decryptCipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec)
         return decryptCipher.doFinal(cipher)
+    }
+
+    actual fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray {
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(key, "HmacSHA256"))
+        return mac.doFinal(data)
     }
 }

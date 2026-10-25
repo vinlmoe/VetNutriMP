@@ -405,8 +405,13 @@ class CrossConsultationAnalysisViewModel(
                             consultationEtape.effectiveWeight?.toDouble()
                                     ?: consultationEtape.weight?.toDouble()
                                     ?: 0.0
+                    // Équation BW du référentiel de la consultation ; BW^0,75 seulement sans référentiel
                     val metabolicWeight =
-                            if (weightKg > 0.0) weightKg.pow(0.75) else 0.0
+                            fr.vetbrain.vetnutri_mp.Data.CalculMetabolique.poidsMetaboliqueOuDefaut(
+                                    weightKg,
+                                    referenceEv?.equationBW,
+                                    consultationEtape.suppVarp
+                            )
                     val proteinsPerMcal =
                             if (beeKcal != null && beeKcal > 0) proteins / (beeKcal / 1000.0)
                             else if (energyTotalKcal > 0) proteins / energyTotalKcal * 1000.0

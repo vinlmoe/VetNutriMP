@@ -6,9 +6,51 @@ import kotlin.test.assertEquals
 class NumberUtilsTest {
 
     @Test
-    fun format_zeroDigits_truncatesToInteger() {
-        // Implementation uses toLong() which truncates (not rounds)
-        assertEquals("42", NumberUtils.format(42.7, 0))
+    fun format_zeroDigits_arrondiALEntier() {
+        assertEquals("43", NumberUtils.format(42.7, 0))
+        assertEquals("42", NumberUtils.format(42.3, 0))
+        assertEquals("43", NumberUtils.format(42.5, 0))
+    }
+
+    @Test
+    fun format_erreurBinaire_arrondiCorrect() {
+        // 2.3 × 10 = 22.999999999999996 → l'ancienne implémentation donnait "2.2"
+        assertEquals("2.3", NumberUtils.format(2.3, 1))
+        // 4.35 × 100 = 434.99999999999994 → "4.34" auparavant
+        assertEquals("4.35", NumberUtils.format(4.35, 2))
+        assertEquals("1.01", NumberUtils.format(1.005, 2))
+        assertEquals("0.1", NumberUtils.format(0.1, 1))
+    }
+
+    @Test
+    fun format_demiVersLInfini() {
+        assertEquals("2.3", NumberUtils.format(2.25, 1))
+        assertEquals("-2.3", NumberUtils.format(-2.25, 1))
+        assertEquals("0.13", NumberUtils.format(0.125, 2))
+    }
+
+    @Test
+    fun format_negatifs() {
+        // "-1.-25" auparavant
+        assertEquals("-1.25", NumberUtils.format(-1.25, 2))
+        assertEquals("-0.5", NumberUtils.format(-0.5, 1))
+        assertEquals("-3", NumberUtils.format(-3.0, 2))
+        // Un négatif arrondi à zéro ne garde pas de signe
+        assertEquals("0", NumberUtils.format(-0.004, 2))
+    }
+
+    @Test
+    fun format_decimalesCompleteesParDesZeros() {
+        assertEquals("4.05", NumberUtils.format(4.05, 2))
+        assertEquals("10.01", NumberUtils.format(10.01, 2))
+        assertEquals("0.07", NumberUtils.format(0.07, 2))
+    }
+
+    @Test
+    fun format_nonFini_tiret() {
+        assertEquals(NumberUtils.NON_FINI, NumberUtils.format(Double.NaN, 2))
+        assertEquals(NumberUtils.NON_FINI, NumberUtils.format(Double.POSITIVE_INFINITY, 1))
+        assertEquals(NumberUtils.NON_FINI, NumberUtils.format(Double.NEGATIVE_INFINITY, 0))
     }
 
     @Test

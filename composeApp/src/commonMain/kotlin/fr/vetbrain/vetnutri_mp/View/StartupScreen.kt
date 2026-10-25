@@ -142,8 +142,8 @@ fun StartupScreen(
                         coroutineScope.launch {
                                 when (result) {
                                         is SettingsViewModel.ImportResult.Success -> {
-                                                val foodCount = settingsViewModel.foodRepository.getAllFoods().size
-                                                val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
+                                                val foodCount = settingsViewModel.foodRepository.getFoodsCount()
+                                                val referenceCount = referenceRepository?.getReferenceCount() ?: 0
                                                 val conseilsCount = try {
                                                         conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
                                                 } catch (_: Exception) { 0 }
@@ -178,7 +178,7 @@ fun StartupScreen(
         LaunchedEffect(Unit) {
                 try {
                         val foodCount = settingsViewModel.foodRepository.getFoodsCount()
-                        val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
+                        val referenceCount = referenceRepository?.getReferenceCount() ?: 0
 
                         // Assainir les doublons de coefficients K (même nom et même valeur) au démarrage
                         try {
@@ -412,12 +412,10 @@ fun StartupScreen(
                                                 try {
                                                         val newFoodCount =
                                                                 settingsViewModel.foodRepository
-                                                                        .getAllFoods()
-                                                                        .size
+                                                                        .getFoodsCount()
                                                         val newReferenceCount =
                                                                 referenceRepository
-                                                                        ?.getAllReferenceEv()
-                                                                        ?.size
+                                                                        ?.getReferenceCount()
                                                                         ?: 0
 
                                                         databaseStatus =
@@ -1382,12 +1380,10 @@ fun StartupScreen(
                                                                         val refreshedFoodCount =
                                                                                 settingsViewModel
                                                                                         .foodRepository
-                                                                                        .getAllFoods()
-                                                                                        .size
+                                                                                        .getFoodsCount()
                                                                         val refreshedReferenceCount =
                                                                                 referenceRepository
-                                                                                        ?.getAllReferenceEv()
-                                                                                        ?.size
+                                                                                        ?.getReferenceCount()
                                                                                         ?: 0
                                                                         val refreshedConseilsCount =
                                                                                 try {
@@ -1496,12 +1492,10 @@ fun StartupScreen(
                                                                         val refreshedFoodCount =
                                                                                 settingsViewModel
                                                                                         .foodRepository
-                                                                                        .getAllFoods()
-                                                                                        .size
+                                                                                        .getFoodsCount()
                                                                         val refreshedReferenceCount =
                                                                                 referenceRepository
-                                                                                        ?.getAllReferenceEv()
-                                                                                        ?.size
+                                                                                        ?.getReferenceCount()
                                                                                         ?: 0
                                                                         val refreshedConseilsCount =
                                                                                 try {
@@ -1673,7 +1667,7 @@ fun StartupScreen(
                                                                 )
                                                         try {
                                                                 val foodCount = settingsViewModel.foodRepository.getFoodsCount()
-                                                                val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
+                                                                val referenceCount = referenceRepository?.getReferenceCount() ?: 0
                                                                 databaseStatus = databaseStatus?.copy(
                                                                         foodCount = foodCount,
                                                                         referenceCount = referenceCount,

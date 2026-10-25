@@ -79,6 +79,9 @@ interface FoodRepository {
     /** Retourne le nombre d'aliments sans charger leur contenu. */
     suspend fun getFoodsCount(): Int
 
+    /** Retourne les UUID de tous les aliments sans charger leur contenu. */
+    suspend fun getAllFoodIds(): Set<String> = getAllFoods().map { it.uuid }.toSet()
+
     /** Retourne les labels de nutriments distincts présents dans la base (sans charger les valeurs). */
     suspend fun getDistinctNutrientLabels(): List<String>
 

@@ -16,6 +16,7 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
+import fr.vetbrain.vetnutri_mp.Repository.RoomTransactionRunner
 import fr.vetbrain.vetnutri_mp.Repository.ExamGradingRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseMultiRationExplorationRepository
 import fr.vetbrain.vetnutri_mp.Repository.MultiRationExplorationRepository
@@ -57,7 +58,8 @@ fun rememberAppContainer(appDatabase: AppDatabase): AppContainer {
             appDatabase.customNutrientDao(),
             appDatabase.alimentBiblioRefDao(),
             appDatabase.biblioRefDao(),
-            appDatabase.energyPerSpeciesDao()
+            appDatabase.energyPerSpeciesDao(),
+            transactionRunner = RoomTransactionRunner(appDatabase)
         ) }
     val consultationRepository =
         remember { DatabaseConsultationRepository(appDatabase.consultationDao(), foodRepository) }
@@ -85,7 +87,8 @@ fun rememberAppContainer(appDatabase: AppDatabase): AppContainer {
                 biblioRepository = biblioRefRepository,
                 consultationRepository = consultationRepository,
                 recipeRepository = recipeRepository,
-                conseilRepository = conseilRepository
+                conseilRepository = conseilRepository,
+                transactionRunner = RoomTransactionRunner(appDatabase)
             )
         }
     val fileService = remember { createFileService() }

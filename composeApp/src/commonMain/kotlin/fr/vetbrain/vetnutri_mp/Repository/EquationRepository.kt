@@ -6,6 +6,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.EquationDao
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -171,6 +172,7 @@ class DatabaseEquationRepository(
             }
 
             loadEquations()
+            DatabaseChangeNotifier.notifyDataWritten("Équation ${equationToSave.uuid}")
         } catch (e: Exception) {
             e.printStackTrace()
             throw e
@@ -180,10 +182,12 @@ class DatabaseEquationRepository(
     override suspend fun updateEquation(equation: Equation) {
         equationDao.updateEquation(equation.toEntity())
         loadEquations()
+        DatabaseChangeNotifier.notifyDataWritten("Équation modifiée ${equation.uuid}")
     }
 
     override suspend fun deleteEquation(uuid: String) {
         equationDao.deleteEquation(uuid)
+        DatabaseChangeNotifier.notifyDataWritten("Équation supprimée $uuid")
     }
 
     override suspend fun clearAllEquations(): Int {
@@ -197,6 +201,7 @@ class DatabaseEquationRepository(
             if (count > 0) {
                 // Supprimer toutes les équations
                 equationDao.deleteAllEquations()
+                DatabaseChangeNotifier.notifyDataWritten("Équations vidées")
             }
 
             count

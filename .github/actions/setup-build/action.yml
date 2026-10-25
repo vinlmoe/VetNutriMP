@@ -11,8 +11,8 @@ inputs:
   cache-read-only:
     description: >
       Si true, le job lit le cache Gradle sans l'écrire. À laisser à true
-      partout sauf sur la branche par défaut, sinon chaque PR pousse son
-      propre cache et sature le quota du dépôt.
+      partout sauf sur les branches publiables (main, master, revetBackUp),
+      sinon chaque PR pousse son propre cache et sature le quota du dépôt.
     required: false
     default: 'true'
 

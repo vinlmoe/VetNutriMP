@@ -1,5 +1,8 @@
 package fr.vetbrain.vetnutri_mp.Enumer
 
+import fr.vetbrain.vetnutri_mp.Utils.LruMap
+import fr.vetbrain.vetnutri_mp.Utils.SynchronizedLock
+
 // DÉBUT ZONE PROTÉGÉE - NE PAS MODIFIER SANS AUTORISATION EXPRESSE
 // Description: Classe critique pour la résolution des nutriments à partir de leurs labels.
 // Cette classe est utilisée intensivement dans le processus d'import pour associer
@@ -7,8 +10,35 @@ package fr.vetbrain.vetnutri_mp.Enumer
 /** Classe utilitaire permettant de résoudre les nutriments à partir de leur label. */
 object NutrientResolver {
 
-    // Lookup map O(1) construit une seule fois depuis toutes les énumérations
-    private val labelToNutrient: Map<String, Nutrient> by lazy {
+    // Verrou des structures globales ci-dessous (résolveur appelé depuis IO et Main)
+    private val lock = SynchronizedLock()
+
+    // Version de CustomNutrientRegistry pour laquelle labelMap/resolvedCache ont été construits
+    private var versionRegistre: Int = -1
+    private var labelMap: Map<String, Nutrient> = emptyMap()
+
+    /**
+     * Lookup map O(1) depuis toutes les énumérations + nutriments personnalisés. Reconstruite
+     * (et cache de résolution vidé) dès que [CustomNutrientRegistry.version] change, sinon
+     * un nutriment personnalisé enregistré après le premier accès restait invisible.
+     */
+    private val labelToNutrient: Map<String, Nutrient>
+        get() = lock.withLock {
+            synchroniserAvecRegistre()
+            labelMap
+        }
+
+    /** À appeler sous [lock] : reconstruit la map et purge le cache si le registre a changé. */
+    private fun synchroniserAvecRegistre() {
+        val version = CustomNutrientRegistry.version
+        if (version != versionRegistre) {
+            labelMap = construireLabelMap()
+            resolvedCache.clear()
+            versionRegistre = version
+        }
+    }
+
+    private fun construireLabelMap(): Map<String, Nutrient> =
         buildMap {
             NutrientMain.entries.forEach { put(it.label.uppercase(), it) }
             NutrientMacro.entries.forEach { put(it.label.uppercase(), it) }
@@ -29,10 +59,10 @@ object NutrientResolver {
             NutrientAnalysis.entries.forEach { put(it.label.uppercase(), it) }
             CustomNutrientRegistry.all().forEach { put(it.label.uppercase(), it) }
         }
-    }
 
-    // Cache des résultats de résolution (normalizedLabel → Nutrient?) pour éviter les répétitions
-    private val resolvedCache = HashMap<String, Nutrient?>(512)
+    // Cache borné des résultats de résolution (normalizedLabel → Nutrient?) ; accès sous [lock]
+    private const val MAX_RESOLVED_CACHE = 512
+    private val resolvedCache = LruMap<String, Nutrient?>(MAX_RESOLVED_CACHE)
 
     private val nonAlphanumericRegex = Regex("[^A-Za-z0-9]")
 
@@ -46,12 +76,20 @@ object NutrientResolver {
     fun AllNutrientResolver(label: String): Nutrient? {
         val cleanedLabel = normalizeLabel(label)
 
-        // Cache hit — évite tout recalcul pour les labels déjà résolus
-        resolvedCache[cleanedLabel]?.let { return it }
-        if (resolvedCache.containsKey(cleanedLabel)) return null
+        // Cache hit — évite tout recalcul pour les labels déjà résolus (un null est aussi caché)
+        var present = false
+        val enCache = lock.withLock {
+            // Reconstruit la map (et purge le cache) si le registre a changé
+            synchroniserAvecRegistre()
+            val v = resolvedCache[cleanedLabel]
+            present = v != null || resolvedCache.containsKey(cleanedLabel)
+            v
+        }
+        if (present) return enCache
 
+        // Résolution hors verrou (fuzzy matching, enregistrement éventuel d'un nutriment custom)
         val result = resolveNutrient(cleanedLabel)
-        resolvedCache[cleanedLabel] = result
+        lock.withLock { resolvedCache[cleanedLabel] = result }
         return result
     }
 

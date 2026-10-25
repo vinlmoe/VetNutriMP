@@ -8,6 +8,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEv
 import fr.vetbrain.vetnutri_mp.DataBase.RecetteEntity
 import fr.vetbrain.vetnutri_mp.DataBase.RecipeDao
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.withContext
 
 /**
@@ -37,6 +38,7 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
                 }
             )
         }
+        DatabaseChangeNotifier.notifyDataWritten("Recette importée ${recipe.uuid}")
     }
 
     suspend fun createRecipe(name: String, espece: String?, description: String?): Ration {
@@ -51,6 +53,7 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
                             description = description
                     )
             recipeDao.insertRecipe(entity)
+            DatabaseChangeNotifier.notifyDataWritten("Recette créée $uuid")
             Ration(
                     uuid = uuid,
                     idConsult = "",
@@ -83,6 +86,7 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
                             description = description
                     )
             recipeDao.insertRecipe(entity)
+            DatabaseChangeNotifier.notifyDataWritten("Recette créée $uuid")
             Ration(
                     uuid = uuid,
                     idConsult = "",
@@ -189,6 +193,7 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
                         )
                 recipeDao.insertAlimentRecette(entity)
             }
+            DatabaseChangeNotifier.notifyDataWritten("Ingrédients de recette $recipeId")
         }
     }
 
@@ -203,6 +208,7 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
         return withContext(AppDispatchers.IO) {
             val entity: RecetteEntity = recipeDao.getRecipeById(recipeId) ?: return@withContext
             recipeDao.updateRecipe(entity.copy(name = newName))
+            DatabaseChangeNotifier.notifyDataWritten("Recette renommée $recipeId")
         }
     }
 
@@ -218,6 +224,7 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
                         a.copy(uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(), refRecipe = newId)
                 )
             }
+            DatabaseChangeNotifier.notifyDataWritten("Recette dupliquée $newId")
             getRecipeById(newId)
         }
     }
@@ -226,6 +233,7 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
         return withContext(AppDispatchers.IO) {
             val entity: RecetteEntity = recipeDao.getRecipeById(recipeId) ?: return@withContext
             recipeDao.deleteRecipe(entity)
+            DatabaseChangeNotifier.notifyDataWritten("Recette supprimée $recipeId")
         }
     }
 

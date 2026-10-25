@@ -9,6 +9,9 @@ import kotlinx.cinterop.get
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.usePinned
 import platform.CoreCrypto.CCCrypt
+import platform.CoreCrypto.CCHmac
+import platform.CoreCrypto.CC_SHA256_DIGEST_LENGTH
+import platform.CoreCrypto.kCCHmacAlgSHA256
 import platform.CoreCrypto.kCCAlgorithmAES
 import platform.CoreCrypto.kCCBlockSizeAES128
 import platform.CoreCrypto.kCCDecrypt
@@ -95,5 +98,29 @@ internal actual object PlatformCrypto {
             }
             output.copyOf(outMoved[0].toInt())
         }
+    }
+
+    actual fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray {
+        // CCHmac(algorithm, key, keyLength, data, dataLength, macOut) : pas de code retour,
+        // macOut doit faire CC_SHA256_DIGEST_LENGTH (32) octets.
+        val output = ByteArray(CC_SHA256_DIGEST_LENGTH)
+        // Un tableau vide n'a pas d'adresse exploitable : on passe un octet factice avec
+        // une longueur 0, ce que CommonCrypto accepte.
+        val safeData = if (data.isEmpty()) ByteArray(1) else data
+        key.usePinned { keyPinned ->
+            safeData.usePinned { dataPinned ->
+                output.usePinned { outPinned ->
+                    CCHmac(
+                        kCCHmacAlgSHA256.convert(),
+                        keyPinned.addressOf(0),
+                        key.size.convert(),
+                        dataPinned.addressOf(0),
+                        data.size.convert(),
+                        outPinned.addressOf(0)
+                    )
+                }
+            }
+        }
+        return output
     }
 }

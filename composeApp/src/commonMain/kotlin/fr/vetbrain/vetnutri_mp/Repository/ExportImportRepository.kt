@@ -40,8 +40,27 @@ class ExportImportRepository(
         private val biblioRepository: BiblioRefRepository? = null,
         private val consultationRepository: ConsultationRepository? = null,
         private val recipeRepository: RecipeRepository? = null,
-        private val conseilRepository: ConseilRepository? = null
+        private val conseilRepository: ConseilRepository? = null,
+        private val transactionRunner: TransactionRunner = TransactionRunner.None
 ) {
+        companion object {
+                /** Version majeure la plus récente de [ApiEnvelope] que cet import sait lire. */
+                const val SUPPORTED_ENVELOPE_MAJOR = 2
+
+                /**
+                 * Vérifie que la version de l'enveloppe est lisible : une version absente, vide,
+                 * mal formée ou de version majeure inférieure ou égale est acceptée ; une version
+                 * majeure supérieure (format inconnu, produit par une application plus récente)
+                 * lève [UnsupportedEnvelopeVersionException].
+                 */
+                fun requireSupportedVersion(envelope: ApiEnvelope) {
+                        val major = envelope.version.trim().substringBefore('.').toIntOrNull() ?: return
+                        if (major > SUPPORTED_ENVELOPE_MAJOR) {
+                                throw UnsupportedEnvelopeVersionException(envelope.version)
+                        }
+                }
+        }
+
         class ImportProgressListener(val onProgress: (Double) -> Unit, val onLog: (String) -> Unit)
 
         private val jsonPretty: Json = Json {
@@ -97,7 +116,6 @@ class ExportImportRepository(
                                         .getConsultationsForAnimal(animal.uuid).toMutableList())
                         }
                 } else domainAnimals
-                if (foodRepository is DatabaseFoodRepository) foodRepository.forceRefresh()
                 return ApiEnvelope(
                         version = "2.0.0",
                         generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
@@ -495,20 +513,57 @@ class ExportImportRepository(
                 )
         }
 
-        /** Importe les données au format API et les sauvegarde via les repositories. */
+        /**
+         * Importe les données au format API (JSON) et les sauvegarde via les repositories.
+         * Voir [importAll] (enveloppe) pour la sémantique de [strict] et de la transaction.
+         */
         suspend fun importAll(
                 apiJson: String,
-                listener: ImportProgressListener? = null
+                listener: ImportProgressListener? = null,
+                strict: Boolean = false
         ): ImportCounts {
                 listener?.onProgress?.invoke(0.02)
                 listener?.onLog?.invoke("Lecture/Parsing du JSON…")
                 val envelope = jsonPretty.decodeFromString<ApiEnvelope>(apiJson)
-                return importAll(envelope, listener)
+                return importAll(envelope, listener, strict)
         }
 
+        /**
+         * Importe une enveloppe et la sauvegarde via les repositories.
+         *
+         * L'import est une fusion : un enregistrement dont l'identifiant existe déjà est mis à
+         * jour, un enregistrement inconnu est ajouté, rien n'est supprimé.
+         *
+         * Tout l'import s'exécute dans une transaction du [TransactionRunner] fourni au
+         * constructeur ([TransactionRunner.None] par défaut : aucune transaction).
+         * - `strict = false` (imports interactifs) : chaque élément en échec est compté dans
+         *   [ImportCounts.errorCount] et l'import continue ; la transaction est validée avec
+         *   les éléments importés. L'appelant peut appeler [ImportCounts.requireComplete].
+         * - `strict = true` (restauration de sauvegarde) : tout ou rien. Si au moins un élément
+         *   a échoué, [IllegalStateException] est levée à la fin de l'import, ce qui annule la
+         *   transaction : aucune donnée n'est modifiée.
+         *
+         * @throws UnsupportedEnvelopeVersionException si la version majeure de l'enveloppe est
+         *   supérieure à [SUPPORTED_ENVELOPE_MAJOR].
+         */
         suspend fun importAll(
                 envelope: ApiEnvelope,
-                listener: ImportProgressListener? = null
+                listener: ImportProgressListener? = null,
+                strict: Boolean = false
+        ): ImportCounts {
+                requireSupportedVersion(envelope)
+                return transactionRunner.inTransaction {
+                        val counts = importAllInternal(envelope, listener)
+                        check(!strict || counts.errorCount == 0) {
+                                "${counts.errorCount} erreur(s) d'import ; l'import est annulé"
+                        }
+                        counts
+                }
+        }
+
+        private suspend fun importAllInternal(
+                envelope: ApiEnvelope,
+                listener: ImportProgressListener?
         ): ImportCounts {
 
                 listener?.onLog?.invoke(
@@ -607,10 +662,19 @@ class ExportImportRepository(
                                 "Import des équations (${envelope.equations.size})…"
                         )
                         for (eqApi in envelope.equations) {
-                                val eq = eqApi.toDomain()
-                                equationRepository.saveEquation(eq)
-                                equationsImported++
-                                advance()
+                                try {
+                                        val eq = eqApi.toDomain()
+                                        equationRepository.saveEquation(eq)
+                                        equationsImported++
+                                        advance()
+                                } catch (e: Exception) {
+                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                        errorCount++
+                                        listener?.onLog?.invoke(
+                                                "Erreur équation ${eqApi.uuid}: ${e.message}"
+                                        )
+                                        advance()
+                                }
                         }
                         listener?.onLog?.invoke("Équations importées=$equationsImported")
                 }
@@ -948,7 +1012,7 @@ class ExportImportRepository(
                         var existingFoodIdsForRations: MutableSet<String> = mutableSetOf()
                         if (foodRepository != null) {
                                 existingFoodIdsForRations =
-                                        foodRepository.getAllFoods().map { it.uuid }.toMutableSet()
+                                        foodRepository.getAllFoodIds().toMutableSet()
                         }
                         for (animalApi in envelope.animals) {
                                 try {
@@ -1059,7 +1123,7 @@ class ExportImportRepository(
                         val existingFoodIds: Set<String> =
                                 if (foodRepository != null) {
                                         try {
-                                                foodRepository.getAllFoods().map { it.uuid }.toSet()
+                                                foodRepository.getAllFoodIds()
                                         } catch (e: Exception) {
                                                 if (e is kotlinx.coroutines.CancellationException) throw e
                                                 errorCount++
@@ -1172,3 +1236,11 @@ class ExportImportRepository(
                 }
         }
 }
+
+/** Enveloppe d'export produite par une version de l'application plus récente que celle-ci. */
+class UnsupportedEnvelopeVersionException(val version: String) :
+        IllegalArgumentException(
+                "Version de fichier non prise en charge : « $version ». Cette version de l'application " +
+                        "lit les fichiers de version ${ExportImportRepository.SUPPORTED_ENVELOPE_MAJOR}.x au maximum ; " +
+                        "mettez à jour l'application pour importer ce fichier."
+        )

@@ -1,0 +1,223 @@
+name: Release
+
+# Publication d'une version : déclenchée par un tag `vX.Y.Z` (ou à la main).
+# Chaque job produit un livrable, puis `publish` crée la GitHub Release et y
+# attache tout ce qui a été construit. Les tests ne sont pas rejoués ici : la
+# CI (ci.yml) a déjà validé le commit tagué sur sa branche.
+#
+# Secrets attendus (Settings → Secrets → Actions) pour l'AAB signé :
+#   ANDROID_KEYSTORE_BASE64   keystore .jks encodé en base64 (`base64 -w0 release.jks`)
+#   ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+# S'ils sont absents, le job Android est sauté proprement (la Release est
+# publiée sans AAB). La signature passe par les propriétés injectées d'AGP
+# (`android.injected.signing.*`), ce qui évite tout bloc signingConfigs dans
+# build.gradle.kts et garde le keystore hors du dépôt.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  JSONBIN_CREATE_KEY: ${{ secrets.JSONBIN_CREATE_KEY || 'ci-placeholder' }}
+  JSONBIN_READ_KEY: ${{ secrets.JSONBIN_READ_KEY || 'ci-placeholder' }}
+  GRADLE_OPTS: -Dorg.gradle.welcome=never
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # AAB signé pour le Play Store. `if:` au niveau du job ne peut pas lire
+  # `secrets.*` : on passe par un env du job puis un step qui expose une sortie.
+  # ---------------------------------------------------------------------------
+  android-aab:
+    name: Android — AAB release signé
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+    outputs:
+      built: ${{ steps.keystore.outputs.present }}
+    steps:
+      - name: Vérifier la présence du keystore
+        id: keystore
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 absent : AAB non construit, la Release sera publiée sans."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.keystore.outputs.present == 'true'
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Préparer le build
+        if: steps.keystore.outputs.present == 'true'
+        uses: ./.github/actions/setup-build
+        with:
+          cache-read-only: 'true'
+
+      - name: Décoder le keystore
+        if: steps.keystore.outputs.present == 'true'
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          test -s "$RUNNER_TEMP/release.jks"
+
+      - name: Construire l'AAB signé
+        if: steps.keystore.outputs.present == 'true'
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          ./gradlew :composeApp:bundleRelease --stacktrace \
+            -Pandroid.injected.signing.store.file="$RUNNER_TEMP/release.jks" \
+            -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+
+      - name: Supprimer le keystore du runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+
+      - name: Archiver l'AAB
+        if: steps.keystore.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: VetNutriMP-aab
+          path: composeApp/build/outputs/bundle/release/*.aab
+          retention-days: 30
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Paquet Debian — même contrôle du runtime embarqué que dans ci.yml.
+  # ---------------------------------------------------------------------------
+  linux-deb:
+    name: Linux — paquet Debian
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Préparer le build
+        uses: ./.github/actions/setup-build
+        with:
+          cache-read-only: 'true'
+
+      - name: Construire le paquet Debian
+        run: ./gradlew :composeApp:packageReleaseDeb --stacktrace
+
+      - name: Vérifier que le runtime embarqué cible le x86-64 générique
+        run: bash scripts/check_deb_runtime.sh
+
+      - name: Archiver le .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: VetNutriMP-deb
+          path: composeApp/build/compose/binaries/main*/deb/*.deb
+          retention-days: 30
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # DMG macOS NON signé et non notarisé : la signature Developer ID et la
+  # notarisation restent dans compile_and_sign_macos.sh (poste du mainteneur,
+  # certificat dans le trousseau). Ce DMG sert aux tests internes.
+  # ---------------------------------------------------------------------------
+  macos-dmg:
+    name: macOS — DMG (non signé)
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Préparer le build
+        uses: ./.github/actions/setup-build
+        with:
+          cache-read-only: 'true'
+
+      - name: Construire le DMG
+        run: ./gradlew :composeApp:packageReleaseDmg --stacktrace
+
+      - name: Archiver le .dmg
+        uses: actions/upload-artifact@v4
+        with:
+          name: VetNutriMP-dmg
+          path: composeApp/build/compose/binaries/main*/dmg/*.dmg
+          retention-days: 30
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Installeur Windows : targetFormats déclare Exe (pas Msi) dans build.gradle.kts.
+  # ---------------------------------------------------------------------------
+  windows-exe:
+    name: Windows — installeur EXE
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Préparer le build
+        uses: ./.github/actions/setup-build
+        with:
+          cache-read-only: 'true'
+
+      - name: Construire l'installeur EXE
+        run: ./gradlew :composeApp:packageReleaseExe --stacktrace
+
+      - name: Archiver le .exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: VetNutriMP-exe
+          path: composeApp/build/compose/binaries/main*/exe/*.exe
+          retention-days: 30
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # GitHub Release : attend tous les livrables (y compris un job Android sauté)
+  # et attache ce qui existe. Sur workflow_dispatch sans tag, la release est
+  # créée en brouillon sous le nom du commit pour ne rien publier par accident.
+  # ---------------------------------------------------------------------------
+  publish:
+    name: Publier la GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [android-aab, linux-deb, macos-dmg, windows-exe]
+    if: always() && needs.linux-deb.result == 'success' && needs.macos-dmg.result == 'success' && needs.windows-exe.result == 'success' && needs.android-aab.result != 'failure'
+    steps:
+      - name: Récupérer les artefacts
+        uses: actions/download-artifact@v4
+        with:
+          path: livrables
+          merge-multiple: true
+
+      - name: Lister les livrables
+        run: ls -la livrables
+
+      - name: Créer la Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('manual-{0}', github.sha) }}
+          name: ${{ github.ref_type == 'tag' && format('VetNutriMP {0}', github.ref_name) || format('Build manuel {0}', github.sha) }}
+          draft: ${{ github.ref_type != 'tag' }}
+          generate_release_notes: true
+          fail_on_unmatched_files: false
+          files: |
+            livrables/*.aab
+            livrables/*.deb
+            livrables/*.dmg
+            livrables/*.exe

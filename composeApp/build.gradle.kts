@@ -2,6 +2,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.gradle.jvm.tasks.Jar
 import java.util.Properties
+import javax.inject.Inject
 
 // Lecture des secrets depuis local.properties (ignoré par git)
 val localProps = Properties().apply {
@@ -29,16 +30,12 @@ kotlin {
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
-            // Optimisations sélectives pour réduire la complexité sans tout désactiver
+            // Options JVM uniquement (les flags Kotlin/Native restent dans le bloc iOS ci-dessous)
             freeCompilerArgs.addAll(
                     "-Xjvm-default=all",
                     "-Xno-param-assertions",
                     "-Xno-call-assertions",
-                    "-Xno-receiver-assertions",
-                    "-Xoptimization-phase-step=15", // Réduire les étapes d'optimisation
-                    "-Xinline-max-instruction-count=150", // Limiter l'inlining sélectif
-                    "-Xdisable-phases=DevirtualizationAnalysis" // Désactiver seulement l'analyse
-                    // problématique
+                    "-Xno-receiver-assertions"
                     )
         }
     }
@@ -59,52 +56,47 @@ kotlin {
         }
     }
 
-    jvm("desktop")
+    jvm("desktop") {
+        // Aligné sur compileOptions Android (Java 11) pour un bytecode homogène
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
+    }
 
     sourceSets {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.room.runtime)
-            implementation(libs.androidx.room.paging)
-            // implementation(libs.androidx.sqlite.sqlite.ktx)
             implementation(libs.ktor.client.android)
             implementation(libs.qr.kit)
-            
+
             // Forcer la mise à jour de androidx.graphics pour compatibilité 16KB
             // Cette dépendance est transitive de androidx.compose.ui:ui-graphics-android
             // Les versions récentes devraient être compatibles 16KB
-            implementation("androidx.graphics:graphics-path:1.0.1") {
-                // Forcer la résolution pour éviter les conflits
-            }
+            implementation("androidx.graphics:graphics-path:1.0.1")
         }
 
         commonMain.dependencies {
-            implementation("io.github.koalaplot:koalaplot-core:0.8.0")
-            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
+            implementation(libs.koalaPlot.core)
+            implementation(libs.compose.material.icons.extended)
             implementation(libs.androidx.sqlite.bundled)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
             implementation(compose.material3)
             implementation(compose.ui)
-            implementation("org.jetbrains.compose.ui:ui-util:1.7.0")
             implementation(libs.kotlinx.coroutines.core)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.androidx.room.runtime)
-            implementation(libs.androidx.room.paging)
-            implementation(libs.okio)
             implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.core)
-            implementation(libs.androidx.datastore.core.okio)
-            implementation(libs.androidx.datastore.preferences.core)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.serialization.kotlinx.json)
-            implementation(libs.androidx.paging.common)
         }
 
         val desktopMain by getting {
@@ -112,8 +104,6 @@ kotlin {
                 implementation(compose.desktop.currentOs) // ✅ auto-resolve skiko
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.coroutines.swing)
-                //  implementation(libs.junit.jupiter)
-                // implementation(libs.junit.junit)
 
                 implementation(libs.xerial.sqlite.jdbc)
                 implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
@@ -131,6 +121,8 @@ kotlin {
                 implementation(libs.sqliter.driver)
                 implementation(libs.ktor.client.darwin)
                 implementation(libs.qr.kit)
+                // Décodage JSON en flux (okio) pour vetnutri_export_init.json (~20 Mo) sans String intermédiaire
+                implementation(libs.kotlinx.serialization.json.okio)
             }
         }
 
@@ -201,7 +193,8 @@ android {
 
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     sourceSets["main"].res.srcDirs("src/androidMain/res")
-    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
+    // Les JSON de src/commonMain/resources ne sont plus embarqués comme ressources Java Android :
+    // Android les lit via assets (voir copyCommonDataAssets), le Desktop via le classpath.
 
     defaultConfig {
         applicationId = "fr.vetbrain.vetnutri_mp"
@@ -315,18 +308,52 @@ compose.desktop {
 }
 
 dependencies {
-    implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
-
-    implementation(libs.androidx.sqlite.bundled)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
-    implementation("io.github.kevinnzou:compose-webview-multiplatform:1.9.40")
+}
 
-    // Reorderable - Drag and Drop pour Compose
-    implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
+// Source unique des données initiales : src/commonMain/resources (strings_*.json, data/vetnutri_export_init.json).
+// Android les lit via AssetManager (ResourceReader.android.kt) : on les copie dans un dossier d'assets généré
+// au lieu de maintenir des doublons dans src/androidMain/assets.
+abstract class CopyCommonDataAssets @Inject constructor(
+    private val fileSystemOperations: FileSystemOperations
+) : DefaultTask() {
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sourceDir: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        fileSystemOperations.sync {
+            from(sourceDir) {
+                include("strings_*.json")
+                include("data/vetnutri_export_init.json")
+            }
+            into(outputDir)
+        }
+    }
+}
+
+val copyCommonDataAssets by tasks.registering(CopyCommonDataAssets::class) {
+    group = "build"
+    description = "Copie les JSON de src/commonMain/resources dans les assets Android générés."
+    sourceDir.set(layout.projectDirectory.dir("src/commonMain/resources"))
+    outputDir.set(layout.buildDirectory.dir("generated/assets/commonData"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(
+            copyCommonDataAssets,
+            CopyCommonDataAssets::outputDir
+        )
+    }
 }
 
 room { schemaDirectory("$projectDir/schemas") }
@@ -407,3 +434,8 @@ tasks.register<Exec>("buildWindowsNativeImage") {
         commandLine(args)
     }
 }
+
+// Autorise la redirection de la base de données (VETNUTRI_TEST_DATABASE_DIR) uniquement
+// sous les tâches de test : desktopMain/DataBase/Database.kt ignore la variable sans
+// cette propriété système (ou sans VETNUTRI_ALLOW_DATABASE_DIR_OVERRIDE=1 explicite).
+tasks.withType<Test>().configureEach { systemProperty("vetnutri.testMode", "true") }

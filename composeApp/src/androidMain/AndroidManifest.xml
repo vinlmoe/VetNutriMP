@@ -19,8 +19,14 @@
         android:resizeable="true"
         android:anyDensity="true" />
 
+    <!-- Sauvegarde cloud (Google) : les préférences sont sauvegardées, mais la base
+         patients (databases/vetnutri.db) et les exports locaux (files/backups) en sont
+         exclus — cf. res/xml/backup_rules.xml (API ≤ 30) et data_extraction_rules.xml
+         (API ≥ 31). -->
     <application
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"

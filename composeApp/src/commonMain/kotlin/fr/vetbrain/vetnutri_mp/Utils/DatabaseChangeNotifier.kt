@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Utils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Notificateur central des changements de base de données Permet aux ViewModels de s'informer des
@@ -24,6 +25,10 @@ object DatabaseChangeNotifier {
         REFERENCE_UPDATED,
         REFERENCE_DELETED,
         REFERENCE_IMPORTED,
+        CONSULTATION_UPDATED,
+        CONSULTATION_DELETED,
+        /** Écriture d'une autre donnée sauvegardée (équation, biblio, recette, conseil, mot-clé) */
+        DATA_WRITTEN,
         DATABASE_RESET,
         DATABASE_VERSION_UPDATED,
         DATABASE_MIGRATION_FAILED,
@@ -43,11 +48,24 @@ object DatabaseChangeNotifier {
     private val _lastChangeTimestamp = MutableStateFlow(0L)
     val lastChangeTimestamp: StateFlow<Long> = _lastChangeTimestamp.asStateFlow()
 
+    /**
+     * Compteur monotone incrémenté à chaque notification : permet de savoir si la base a changé
+     * depuis un instant donné (sauvegarde automatique) sans dépendre de l'horloge.
+     */
+    private val _changeVersion = MutableStateFlow(0L)
+    val changeVersion: StateFlow<Long> = _changeVersion.asStateFlow()
+
     /** Notifie d'un changement dans la base de données */
     fun notifyChange(type: ChangeType, details: String? = null, count: Int? = null) {
         val event = DatabaseChangeEvent(type, instantNow().toEpochMilliseconds(), details, count)
         _changeEvents.value = event
         _lastChangeTimestamp.value = event.timestamp
+        _changeVersion.update { it + 1 }
+    }
+
+    /** Notifie l'écriture d'une donnée sauvegardée sans type dédié (équation, biblio, recette, conseil…) */
+    fun notifyDataWritten(details: String) {
+        notifyChange(ChangeType.DATA_WRITTEN, details)
     }
 
     /** Notifie d'un import d'aliments */

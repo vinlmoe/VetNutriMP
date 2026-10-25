@@ -5,11 +5,6 @@ import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 expect open class ResourceReader() {
     open fun readResource(name: String): String
 
-    /**
-     * Lit une ressource de manière optimisée pour les gros fichiers.
-     * Utilise un buffer plus petit pour éviter les OutOfMemoryError.
-     */
-    open fun readResourceOptimized(name: String): String
 
     /**
      * Décode une ressource ApiEnvelope sans matérialiser le JSON complet en String

@@ -6,6 +6,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
+import fr.vetbrain.vetnutri_mp.Repository.FoodInUseException
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -274,12 +275,34 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                         .sortedBy { it.nom }
         }
 
-        /** Supprime un aliment */
+        // Message d'erreur à afficher (suppression refusée, erreur base), null si aucun
+        private val _errorMessage = MutableStateFlow<String?>(null)
+        val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+        /** Efface le message d'erreur courant (après affichage). */
+        fun clearError() {
+                _errorMessage.value = null
+        }
+
+        /**
+         * Supprime un aliment. Si l'aliment est utilisé dans une ration, la suppression est refusée
+         * et [errorMessage] est renseigné.
+         */
         fun deleteFood(food: AlimentEv) {
                 viewModelScope.launch {
-                        foodRepository.deleteFood(food.uuid)
-                        // Plus besoin d'appeler loadFoods() car le Flow se met à jour
-                        // automatiquement
+                        try {
+                                foodRepository.deleteFood(food.uuid)
+                                // Plus besoin d'appeler loadFoods() car le Flow se met à jour
+                                // automatiquement
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                        } catch (e: FoodInUseException) {
+                                _errorMessage.value =
+                                        "L'aliment « ${food.nom ?: food.uuid} » est utilisé dans ${e.usageCount} ration(s) et ne peut pas être supprimé."
+                        } catch (e: Exception) {
+                                _errorMessage.value =
+                                        "Impossible de supprimer l'aliment « ${food.nom ?: food.uuid} » : ${e.message ?: e::class.simpleName}"
+                        }
                 }
         }
 

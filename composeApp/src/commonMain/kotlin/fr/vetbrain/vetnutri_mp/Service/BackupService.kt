@@ -4,6 +4,7 @@ import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import fr.vetbrain.vetnutri_mp.Utils.isDebugBuild
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
@@ -43,6 +44,13 @@ class BackupService(
 
     private val operationMutex = Mutex()
     private var backupJob: Job? = null
+
+    /**
+     * Version des changements de base ([DatabaseChangeNotifier.changeVersion]) reflétée par la
+     * dernière sauvegarde réussie (automatique ou manuelle). Null tant qu'aucune sauvegarde n'a
+     * été faite dans ce processus : la première sauvegarde automatique a donc toujours lieu.
+     */
+    private var lastBackedUpChangeVersion: Long? = null
     private val scope = CoroutineScope(AppDispatchers.IO + SupervisorJob())
 
     /** Métadonnées d'un fichier de sauvegarde */
@@ -91,17 +99,29 @@ class BackupService(
     }
 
     /**
-     * Sauvegarde automatique. Une base sans animaux n'est pas sauvegardée tant qu'une sauvegarde
-     * plus ancienne en contient : après une perte de base, la rotation effacerait sinon les
-     * dernières sauvegardes utiles en moins de deux heures.
+     * Sauvegarde automatique. Ignorée (sans export complet) si rien n'a changé en base depuis la
+     * dernière sauvegarde réussie. Une base sans animaux n'est pas sauvegardée tant qu'une
+     * sauvegarde plus ancienne en contient : après une perte de base, la rotation effacerait sinon
+     * les dernières sauvegardes utiles en moins de deux heures. Le compteur de sauvegardes long
+     * terme ne compte que les sauvegardes réellement créées.
      */
     internal suspend fun createAutomaticBackup(): Result<BackupMetadata> = operationMutex.withLock {
-        createBackupLocked(skipIfNoAnimals = true).onSuccess { metadata ->
-            val count = readAutomaticBackupCount() + 1
-            writeAutomaticBackupCount(count)
-            if (count % LONG_TERM_EVERY == 0) createLongTermCopy(metadata)
+        if (!hasDatabaseChangedSinceLastBackup()) {
+            Result.failure<BackupMetadata>(
+                    IllegalStateException("Aucun changement depuis la dernière sauvegarde : sauvegarde automatique ignorée")
+            )
+        } else {
+            createBackupLocked(skipIfNoAnimals = true).onSuccess { metadata ->
+                val count = readAutomaticBackupCount() + 1
+                writeAutomaticBackupCount(count)
+                if (count % LONG_TERM_EVERY == 0) createLongTermCopy(metadata)
+            }
         }
     }
+
+    /** Vrai si aucune sauvegarde n'a encore été faite ou si la base a changé depuis la dernière. */
+    private fun hasDatabaseChangedSinceLastBackup(): Boolean =
+            lastBackedUpChangeVersion != DatabaseChangeNotifier.changeVersion.value
 
     private suspend fun automaticBackupCounterFile(): PlatformFile =
             PlatformFile.create("${fileService.getBackupDirectory().absolutePath}/$AUTO_BACKUP_COUNTER_FILE")
@@ -145,6 +165,9 @@ class BackupService(
             skipIfNoAnimals: Boolean = false
     ): Result<BackupMetadata> {
         return try {
+            // Version lue avant l'export : un changement survenu pendant l'export sera repris à
+            // la sauvegarde suivante
+            val changeVersion = DatabaseChangeNotifier.changeVersion.value
             // Exporter toutes les données
             val envelope = exportImportRepository.exportAllEnvelope()
             if (skipIfNoAnimals && envelope.animals.isEmpty() && findLatestBackupWithAnimals() != null) {
@@ -186,6 +209,7 @@ class BackupService(
             // Sauvegarder les métadonnées
             saveBackupMetadata(metadata)
             if (rotate) manageBackupRotation()
+            lastBackedUpChangeVersion = changeVersion
             Result.success(metadata)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -343,16 +367,18 @@ class BackupService(
 
             // Parse before changing data or creating a recovery backup.
             val envelope = json.decodeFromString<ApiEnvelope>(fileService.readText(file).getOrThrow())
+            ExportImportRepository.requireSupportedVersion(envelope)
             val recovery = createBackupLocked(rotate = false).getOrThrow()
             try {
-                val importCounts = exportImportRepository.importAll(envelope)
-                check(importCounts.errorCount == 0) { "${importCounts.errorCount} erreur(s) d'import" }
+                // Mode strict : tout ou rien. La moindre erreur annule la transaction d'import.
+                val importCounts = exportImportRepository.importAll(envelope, strict = true)
                 Result.success(importCounts)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Result.failure(IllegalStateException(
-                    "Restauration incomplète : ${e.message}. Sauvegarde préalable conservée : ${recovery.fileName}", e
+                    "Restauration annulée : ${e.message}. Aucune donnée n'a été modifiée. " +
+                        "Sauvegarde préalable conservée : ${recovery.fileName}", e
                 ))
             }
         } catch (e: Exception) {

@@ -20,6 +20,14 @@ interface AnimalDao {
 
         @Query("SELECT COUNT(*) FROM animals") suspend fun getAnimalsCount(): Int
 
+        @Query("SELECT uuid FROM animals") suspend fun getAllAnimalIds(): List<String>
+
+        /** Races distinctes (non nulles, non vides) d'une espèce, sans charger les animaux. */
+        @Query(
+                "SELECT DISTINCT race FROM animals WHERE specieId = :specieId AND race IS NOT NULL AND race != ''"
+        )
+        suspend fun getDistinctRacesForSpecie(specieId: String): List<String>
+
         @Query("SELECT * FROM animals WHERE uuid = :id")
         suspend fun getAnimalById(id: String): AnimalEntity?
 
@@ -37,6 +45,9 @@ interface AnimalDao {
 
         @Query("SELECT * FROM WEIGHT WHERE refAnimal = :animalId")
         suspend fun getWeightsForAnimal(animalId: String): List<WeightEntity>
+
+        @Query("SELECT * FROM WEIGHT WHERE refAnimal IN (:animalIds)")
+        suspend fun getWeightsForAnimals(animalIds: List<String>): List<WeightEntity>
 
         @Query("DELETE FROM WEIGHT WHERE refAnimal = :animalId")
         suspend fun deleteWeightsForAnimal(animalId: String)
@@ -147,6 +158,23 @@ interface ConsultationDao {
         @Query("SELECT * FROM RATION_SUPPLEMENTAL_VARIABLES WHERE idRation = :rationId")
         suspend fun getSupplementalVariablesForRation(
                 rationId: String
+        ): List<RationSupplementalVariableEntity>
+
+        // Chargement groupé (évite une requête par consultation / par ration)
+        @Query("SELECT * FROM SUPPLEMENTAL_VARIABLES WHERE idConsult IN (:consultationIds)")
+        suspend fun getSupplementalVariablesForConsultations(
+                consultationIds: List<String>
+        ): List<SupplementalVariableEntity>
+
+        @Query("SELECT * FROM RATIONS WHERE idConsult IN (:consultationIds)")
+        suspend fun getRationsForConsultations(consultationIds: List<String>): List<RationEntity>
+
+        @Query("SELECT * FROM ALIMENTS WHERE refRation IN (:rationIds)")
+        suspend fun getAlimentsForRations(rationIds: List<String>): List<AlimentRationEntity>
+
+        @Query("SELECT * FROM RATION_SUPPLEMENTAL_VARIABLES WHERE idRation IN (:rationIds)")
+        suspend fun getSupplementalVariablesForRations(
+                rationIds: List<String>
         ): List<RationSupplementalVariableEntity>
 
         @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -270,6 +298,14 @@ interface FoodDao {
         @Update suspend fun updateFood(food: FoodEntity)
 
         @Query("DELETE FROM FOOD WHERE uuid = :uuid") suspend fun deleteFood(uuid: String)
+
+        /**
+         * Nombre de lignes de ration (table ALIMENTS) qui référencent cet aliment. Permet de
+         * refuser la suppression d'un aliment encore utilisé : la colonne `refAlimUnif` est NOT
+         * NULL alors que la clé étrangère est ON DELETE SET NULL, la suppression échouerait.
+         */
+        @Query("SELECT COUNT(*) FROM ALIMENTS WHERE refAlimUnif = :foodUuid")
+        suspend fun countRationUsages(foodUuid: String): Int
 
         @Query("SELECT * FROM FOOD WHERE uuid = :uuid")
         suspend fun getFood(uuid: String): FoodEntity?
@@ -397,6 +433,9 @@ interface EnergyPerSpeciesDao {
         @Query("DELETE FROM ENERGY_PER_SPECIES WHERE refAliment = :alimentUuid")
         suspend fun deleteForAliment(alimentUuid: String)
 
+        @Query("DELETE FROM ENERGY_PER_SPECIES WHERE refAliment IN (:alimentUuids)")
+        suspend fun deleteForAliments(alimentUuids: List<String>)
+
         @Transaction
         suspend fun replace(alimentUuid: String, values: List<EnergyPerSpeciesEntity>) {
                 deleteForAliment(alimentUuid)
@@ -437,6 +476,9 @@ interface EquationDao {
 
         @Query("SELECT * FROM EQUATIONS WHERE uuid = :uuid")
         suspend fun getEquationById(uuid: String): EquationEntity?
+
+        @Query("SELECT * FROM EQUATIONS WHERE uuid IN (:uuids)")
+        suspend fun getEquationsByIds(uuids: List<String>): List<EquationEntity>
 
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertEquation(equation: EquationEntity)
@@ -481,6 +523,8 @@ interface ReferenceEvDao {
         @Query("SELECT * FROM REFERENCE_EV")
         suspend fun getAllReferenceEv(): List<ReferenceEvEntity>
 
+        @Query("SELECT COUNT(*) FROM REFERENCE_EV") suspend fun getReferenceCount(): Int
+
         @Query("SELECT * FROM REFERENCE_EV WHERE uuid = :uuid")
         suspend fun getReferenceEvById(uuid: String): ReferenceEvEntity?
 
@@ -502,6 +546,11 @@ interface ReferenceEvDao {
         // Relations avec les équations
         @Query("SELECT * FROM REFERENCE_EV_EQUATIONS WHERE referenceEvId = :referenceEvId")
         suspend fun getEquationsForReference(referenceEvId: String): List<ReferenceEvEquationEntity>
+
+        @Query("SELECT * FROM REFERENCE_EV_EQUATIONS WHERE referenceEvId IN (:referenceEvIds)")
+        suspend fun getEquationsForReferences(
+                referenceEvIds: List<String>
+        ): List<ReferenceEvEquationEntity>
 
         @Query(
                 "SELECT * FROM REFERENCE_EV_EQUATIONS WHERE referenceEvId = :referenceEvId AND equationType = :equationType"
@@ -531,6 +580,11 @@ interface ReferenceEvDao {
                 referenceEvId: String
         ): List<ReferenceEvCoefficientEntity>
 
+        @Query("SELECT * FROM REFERENCE_EV_COEFFICIENTS WHERE referenceEvId IN (:referenceEvIds)")
+        suspend fun getCoefficientsForReferences(
+                referenceEvIds: List<String>
+        ): List<ReferenceEvCoefficientEntity>
+
         @Query(
                 "SELECT * FROM REFERENCE_EV_COEFFICIENTS WHERE referenceEvId = :referenceEvId AND groupType = :groupType"
         )
@@ -556,6 +610,11 @@ interface ReferenceEvDao {
         // Relations avec les nutriments
         @Query("SELECT * FROM REFERENCE_EV_NUTRIENTS WHERE referenceEvId = :referenceEvId")
         suspend fun getNutrientsForReference(referenceEvId: String): List<ReferenceEvNutrientEntity>
+
+        @Query("SELECT * FROM REFERENCE_EV_NUTRIENTS WHERE referenceEvId IN (:referenceEvIds)")
+        suspend fun getNutrientsForReferences(
+                referenceEvIds: List<String>
+        ): List<ReferenceEvNutrientEntity>
 
         @Query(
                 "SELECT * FROM REFERENCE_EV_NUTRIENTS WHERE referenceEvId = :referenceEvId AND reflevel = :reflevel"
@@ -613,6 +672,9 @@ interface AlimentBiblioRefDao {
 
     @Query("DELETE FROM ALIMENT_BIBLIO_REFS WHERE alimentUuid = :alimentUuid")
     suspend fun deleteForAliment(alimentUuid: String)
+
+    @Query("DELETE FROM ALIMENT_BIBLIO_REFS WHERE alimentUuid IN (:alimentUuids)")
+    suspend fun deleteForAliments(alimentUuids: List<String>)
 
     @Query("SELECT biblioRefUuid FROM ALIMENT_BIBLIO_REFS WHERE alimentUuid = :alimentUuid")
     suspend fun getBiblioRefUuids(alimentUuid: String): List<String>

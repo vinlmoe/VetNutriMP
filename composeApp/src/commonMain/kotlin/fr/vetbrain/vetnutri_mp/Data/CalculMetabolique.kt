@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
+import kotlin.math.pow
 
 /**
  * Poids métabolique et besoin énergétique standard (BEE) à partir des équations BW et BEE d'un
@@ -8,6 +9,13 @@ import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
  * l'exploration multiration, pour que les deux calculent exactement les mêmes besoins.
  */
 object CalculMetabolique {
+
+    /**
+     * Exposant allométrique utilisé en dernier recours (BW^0,75, Kleiber) lorsqu'aucun référentiel
+     * ou aucune équation BW n'est disponible. Dès qu'un référentiel est connu, c'est son équation
+     * BW qui fait foi (ex. BW^0,67 chez le chat).
+     */
+    const val EXPOSANT_PAR_DEFAUT: Double = 0.75
 
     /** Valeurs par défaut des variables courantes absentes de la consultation. */
     private val valeursParDefaut =
@@ -47,14 +55,55 @@ object CalculMetabolique {
             poids: Double,
             reference: ReferenceEv,
             variablesSupp: List<SupplementalvariableP> = emptyList()
-    ): Double? = evaluer(reference.equationBW, poids, variablesSupp)
+    ): Double? = poidsMetabolique(poids, reference.equationBW, variablesSupp)
+
+    /** Poids métabolique par une équation BW donnée ; null si l'équation est absente ou invalide. */
+    fun poidsMetabolique(
+            poids: Double,
+            equationBW: Equation?,
+            variablesSupp: List<SupplementalvariableP> = emptyList()
+    ): Double? = evaluer(equationBW, poids, variablesSupp)
+
+    /**
+     * Poids métabolique par l'équation BW si elle est disponible et évaluable, sinon
+     * BW^[EXPOSANT_PAR_DEFAUT]. À utiliser dans les contextes où le référentiel peut manquer
+     * (consultation sans référentiel, calculateur générique) ; le poids nul ou négatif donne 0.
+     */
+    fun poidsMetaboliqueOuDefaut(
+            poids: Double,
+            equationBW: Equation?,
+            variablesSupp: List<SupplementalvariableP> = emptyList()
+    ): Double {
+        if (poids <= 0.0 || poids.isNaN()) return 0.0
+        val parEquation = poidsMetabolique(poids, equationBW, variablesSupp)
+        return if (parEquation != null && parEquation.isFinite() && parEquation > 0.0) parEquation
+        else poids.pow(EXPOSANT_PAR_DEFAUT)
+    }
 
     /** Besoin énergétique standard par l'équation BEE du référentiel ; null si absente. */
     fun besoinEnergetiqueStandard(
             poids: Double,
             reference: ReferenceEv,
             variablesSupp: List<SupplementalvariableP> = emptyList()
-    ): Double? = evaluer(reference.equationBEE, poids, variablesSupp)
+    ): Double? = besoinEnergetiqueStandard(poids, reference.equationBEE, variablesSupp)
+
+    /** Besoin énergétique standard par une équation BEE donnée ; null si absente ou invalide. */
+    fun besoinEnergetiqueStandard(
+            poids: Double,
+            equationBEE: Equation?,
+            variablesSupp: List<SupplementalvariableP> = emptyList()
+    ): Double? = evaluer(equationBEE, poids, variablesSupp)
+
+    /**
+     * Besoin énergétique après application du coefficient d'ajustement K (besoin standard × K) ;
+     * null si le besoin standard ne peut pas être calculé.
+     */
+    fun besoinEnergetiqueAjuste(
+            poids: Double,
+            equationBEE: Equation?,
+            coefficientK: Double,
+            variablesSupp: List<SupplementalvariableP> = emptyList()
+    ): Double? = besoinEnergetiqueStandard(poids, equationBEE, variablesSupp)?.let { it * coefficientK }
 
     /**
      * Poids idéal estimé (kg) à partir du poids et de la note d'état corporel sur 9 : chaque point

@@ -1070,6 +1070,14 @@ private fun WideScreenLayout(
         
         // État pour les messages Snackbar
         val snackbarHostState = remember { SnackbarHostState() }
+
+        // Affiche les erreurs d'enregistrement remontées par le ViewModel
+        val viewModelErrorMessage by viewModel.errorMessage.collectAsState()
+        LaunchedEffect(viewModelErrorMessage) {
+                val message = viewModelErrorMessage ?: return@LaunchedEffect
+                snackbarHostState.showSnackbar(message)
+                viewModel.clearError()
+        }
         
         // État pour le partage en ligne
         var shareLink by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Service.ShareLink?>(null) }
@@ -2139,6 +2147,14 @@ private fun NarrowScreenLayout(
 ) {
         // État pour les messages Snackbar
         val snackbarHostState = remember { SnackbarHostState() }
+
+        // Affiche les erreurs d'enregistrement remontées par le ViewModel
+        val viewModelErrorMessage by viewModel.errorMessage.collectAsState()
+        LaunchedEffect(viewModelErrorMessage) {
+                val message = viewModelErrorMessage ?: return@LaunchedEffect
+                snackbarHostState.showSnackbar(message)
+                viewModel.clearError()
+        }
         
         // État pour le partage en ligne
         var shareLink by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Service.ShareLink?>(null) }

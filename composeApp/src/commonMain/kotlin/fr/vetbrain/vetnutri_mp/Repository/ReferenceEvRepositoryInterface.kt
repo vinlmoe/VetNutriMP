@@ -6,6 +6,9 @@ import kotlinx.coroutines.flow.Flow
 /** Interface pour le repository des références évaluées */
 interface ReferenceEvRepositoryInterface {
     suspend fun getAllReferenceEv(): List<ReferenceEv>
+
+    /** Nombre de références en base (sans charger les objets agrégés) */
+    suspend fun getReferenceCount(): Int = getAllReferenceEv().size
     suspend fun getReferenceEvById(uuid: String): ReferenceEv?
     suspend fun saveReferenceEv(referenceEv: ReferenceEv): String
     suspend fun updateReferenceEv(referenceEv: ReferenceEv)

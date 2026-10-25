@@ -32,9 +32,16 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
 
     private fun log(@Suppress("UNUSED_PARAMETER") message: String) = Unit
 
+    /**
+     * Charge stockée dans le bin lorsque le partage est chiffré.
+     * `version`/`tag` sont absents des bins partagés avant l'authentification (format v1) :
+     * les valeurs par défaut gardent ces anciens bins lisibles.
+     */
     @Serializable
     private data class EncryptedPayload(
-        val cipherText: String
+        val cipherText: String,
+        val version: Int = CryptoUtils.FORMAT_VERSION_LEGACY,
+        val tag: String? = null
     )
     
     suspend fun uploadJson(
@@ -53,7 +60,11 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
             val bodyJsonContent = if (options.encryptJson && encryptionResult != null) {
                 json.encodeToString(
                     EncryptedPayload.serializer(),
-                    EncryptedPayload(cipherText = encryptionResult.cipherTextBase64)
+                    EncryptedPayload(
+                        cipherText = encryptionResult.cipherTextBase64,
+                        version = CryptoUtils.FORMAT_VERSION_AUTHENTICATED,
+                        tag = encryptionResult.tagBase64
+                    )
                 )
             } else {
                 jsonContent
@@ -276,9 +287,14 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                             ivBytes == null || ivBytes.size != 16 ->
                                 Result.failure(Exception("IV de déchiffrement invalide (doit être 16 octets, reçu ${ivBytes?.size ?: "null"})"))
                             else -> try {
-                                val cipherTextBase64 = extractCipherText(content)
-                                log("Decrypting content (cipherBase64Size=${cipherTextBase64.length})")
-                                val decrypted = CryptoUtils.decryptJson(cipherTextBase64, keyBase64, ivBase64)
+                                val payload = extractEncryptedPayload(content)
+                                log("Decrypting content (cipherBase64Size=${payload.cipherText.length}, version=${payload.version})")
+                                // Un bin v2 sans étiquette est refusé : l'absence de `tag`
+                                // n'est tolérée que pour le format hérité v1.
+                                if (payload.version >= CryptoUtils.FORMAT_VERSION_AUTHENTICATED && payload.tag == null) {
+                                    throw IllegalArgumentException("Étiquette d'authentification absente pour un bin au format v${payload.version}")
+                                }
+                                val decrypted = CryptoUtils.decryptJson(payload.cipherText, keyBase64, ivBase64, payload.tag)
                                 log("Decrypt success (plainSize=${decrypted.length})")
                                 Result.success(decrypted)
                             } catch (e: Exception) {
@@ -354,16 +370,17 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
         }
     }
 
-    private fun extractCipherText(content: String): String {
+    private fun extractEncryptedPayload(content: String): EncryptedPayload {
         val trimmed = content.trim()
         if (!trimmed.startsWith("{")) {
-            return trimmed
+            // Texte chiffré brut (tout premier format) : pas d'étiquette possible.
+            return EncryptedPayload(cipherText = trimmed)
         }
         return try {
             val json = Json { ignoreUnknownKeys = true; isLenient = true }
-            json.decodeFromString(EncryptedPayload.serializer(), trimmed).cipherText
+            json.decodeFromString(EncryptedPayload.serializer(), trimmed)
         } catch (e: Exception) {
-            trimmed
+            EncryptedPayload(cipherText = trimmed)
         }
     }
 }

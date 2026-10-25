@@ -1,0 +1,72 @@
+# Configuration detekt pour VetNutriMP (exécutée en CI via detekt-cli, cf. .github/workflows/ci.yml).
+# Appliquée par-dessus la configuration par défaut (--build-upon-default-config) :
+# seules les différences sont listées ici.
+#
+# ÉTAT : rapport uniquement. Tant que le nombre d'écarts de la base de code n'a pas été
+# mesuré, `maxIssues: -1` ne fait jamais échouer l'analyse ; le job CI est en
+# `continue-on-error`. Une fois la baseline connue (premier rapport archivé en CI) :
+#   1. fixer `maxIssues` au nombre mesuré (puis le faire décroître),
+#   2. ou générer une baseline avec `--create-baseline --baseline detekt-baseline.xml`,
+#   3. retirer `continue-on-error` dans ci.yml.
+
+build:
+  maxIssues: -1
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+# Le dépôt mélange volontairement français et anglais (cf. CLAUDE.md) et n'applique pas
+# ktlint : les règles purement stylistiques feraient du bruit sans valeur.
+style:
+  MaxLineLength:
+    active: false
+  MagicNumber:
+    active: false
+  ReturnCount:
+    active: false
+  WildcardImport:
+    active: false
+  UnusedPrivateMember:
+    active: true
+  ForbiddenComment:
+    active: false
+
+naming:
+  # Les noms de fonctions/variables en français avec accents et les packages en PascalCase
+  # (View/, ViewModel/…) sont des conventions historiques du projet.
+  PackageNaming:
+    active: false
+  FunctionNaming:
+    active: false
+  VariableNaming:
+    active: false
+  MatchingDeclarationName:
+    active: false
+
+complexity:
+  # Les écrans Compose et le moteur de calcul nutritionnel sont longs par nature ;
+  # on garde les règles mais avec des seuils réalistes pour un rapport exploitable.
+  LongMethod:
+    threshold: 120
+  LongParameterList:
+    functionThreshold: 10
+    constructorThreshold: 12
+    ignoreDefaultParameters: true
+  TooManyFunctions:
+    thresholdInFiles: 30
+    thresholdInClasses: 30
+    thresholdInObjects: 30
+  ComplexCondition:
+    threshold: 6
+  CyclomaticComplexMethod:
+    threshold: 20
+  LargeClass:
+    threshold: 1000
+
+exceptions:
+  # Le code réseau/import attrape volontairement Exception pour renvoyer un Result.
+  TooGenericExceptionCaught:
+    active: false
+  SwallowedException:
+    active: true

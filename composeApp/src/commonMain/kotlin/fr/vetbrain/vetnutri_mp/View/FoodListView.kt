@@ -59,6 +59,7 @@ fun FoodListView(
         val availableFoodTypes = viewModel.availableFoodTypes.collectAsState().value
         val availableIndications = viewModel.availableIndications.collectAsState().value
         val availableEspeces = viewModel.availableEspeces
+        val errorMessage = viewModel.errorMessage.collectAsState().value
         val coroutineScope = rememberCoroutineScope()
         var advancedFilters by remember { mutableStateOf(FoodSearchFilters()) }
 
@@ -115,6 +116,19 @@ fun FoodListView(
         }
 
         LaunchedEffect(Unit) { viewModel.loadFoods() }
+
+        // Erreur de suppression (aliment utilisé dans une ration, erreur base)
+        if (errorMessage != null) {
+                AlertDialog(
+                        onDismissRequest = { viewModel.clearError() },
+                        title = { Text(text = "Suppression impossible", style = MaterialTheme.typography.h6) },
+                        text = { Text(text = errorMessage, style = MaterialTheme.typography.body2) },
+                        confirmButton = {
+                                TextButton(onClick = { viewModel.clearError() }) { Text("OK") }
+                        },
+                        backgroundColor = MaterialTheme.colors.surface
+                )
+        }
 
         Scaffold(
                 modifier = modifier,

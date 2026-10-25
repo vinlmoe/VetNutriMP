@@ -15,6 +15,7 @@ import fr.vetbrain.vetnutri_mp.ExcelPlatform.runSwingDialog
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseAnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
+import fr.vetbrain.vetnutri_mp.Repository.RoomTransactionRunner
 import fr.vetbrain.vetnutri_mp.Utils.FileUtils
 import fr.vetbrain.vetnutri_mp.Utils.ImportUtils
 import fr.vetbrain.vetnutri_mp.Service.LegacyV2Detector
@@ -99,19 +100,21 @@ suspend fun main(args: Array<String> = emptyArray()) {
     val appDatabase = getRoomDatabase(getDatabaseBuilder(), getDatabasePath())
     desktopAppDatabase = appDatabase
 
-    // Création du repository des animaux
-    val animalRepository = DatabaseAnimalRepository(appDatabase.animalDao(), appDatabase.foodDao())
-    val foodRepository =
-            DatabaseFoodRepository(
-                appDatabase.foodDao(),
-                appDatabase.nutrientValueDao(),
-                appDatabase.customNutrientDao(),
-                appDatabase.alimentBiblioRefDao(),
-                appDatabase.biblioRefDao()
-            )
-
     // Vérifier si nous avons des arguments en ligne de commande
     if (args.isNotEmpty()) {
+        // Repositories réservés à la ligne de commande : en mode graphique, App() construit les
+        // siens via AppContainer (évite une seconde instance de DatabaseFoodRepository, qui charge
+        // les aliments et les nutriments personnalisés dès sa création).
+        val animalRepository = DatabaseAnimalRepository(appDatabase.animalDao(), appDatabase.foodDao())
+        val foodRepository =
+                DatabaseFoodRepository(
+                    appDatabase.foodDao(),
+                    appDatabase.nutrientValueDao(),
+                    appDatabase.customNutrientDao(),
+                    appDatabase.alimentBiblioRefDao(),
+                    appDatabase.biblioRefDao(),
+                    transactionRunner = RoomTransactionRunner(appDatabase)
+                )
         when (args[0]) {
             "import-ani" -> {
                 if (args.size <= 1) {
@@ -203,7 +206,9 @@ suspend fun main(args: Array<String> = emptyArray()) {
                     val jsonContent = withContext(Dispatchers.IO) { defaultImportFile.readText() }
                     val importResult = ImportUtils.importAnimalsFromJson(jsonContent)
                     if (importResult.animals.isNotEmpty()) {
-                        animalRepository.importAnimals(importResult.animals)
+                        // Repository léger créé uniquement si le fichier d'import par défaut existe
+                        DatabaseAnimalRepository(appDatabase.animalDao(), appDatabase.foodDao())
+                                .importAnimals(importResult.animals)
                     }
                 }
             }
@@ -371,7 +376,11 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
                             biblioRepository = viewModel.biblioRefRepository,
                             consultationRepository = viewModel.consultationRepository,
                             recipeRepository = viewModel.recipeRepository,
-                            conseilRepository = viewModel.conseilRepository
+                            conseilRepository = viewModel.conseilRepository,
+                            transactionRunner =
+                                    desktopAppDatabase?.let {
+                                        fr.vetbrain.vetnutri_mp.Repository.RoomTransactionRunner(it)
+                                    } ?: fr.vetbrain.vetnutri_mp.Repository.TransactionRunner.None
                     )
             // Découper l'import en étapes et mettre à jour la progression/logs via callbacks
             // simples

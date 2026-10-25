@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Service
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Repository.InMemoryAnimalRepository
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.AfterTest
@@ -38,6 +39,14 @@ class BackupServiceTest {
     fun tearDown() {
         System.setProperty("user.home", originalUserHome)
         tempDir.deleteRecursively()
+    }
+
+    /**
+     * Simule une écriture en base : la sauvegarde automatique n'a lieu que si la base a changé
+     * depuis la précédente (le repository en mémoire ne notifie pas de lui-même).
+     */
+    private fun marquerChangementBase() {
+        DatabaseChangeNotifier.notifyChange(DatabaseChangeNotifier.ChangeType.ANIMAL_UPDATED, "test")
     }
 
     private fun newBackupService(animalRepository: InMemoryAnimalRepository): BackupService {
@@ -217,20 +226,54 @@ class BackupServiceTest {
         repo.saveAnimal(AnimalEv(uuid = "a", nom = "Rex"))
         val service = newBackupService(repo)
 
-        repeat(BackupService.LONG_TERM_EVERY - 1) { assertTrue(service.createAutomaticBackup().isSuccess) }
+        repeat(BackupService.LONG_TERM_EVERY - 1) {
+            marquerChangementBase()
+            assertTrue(service.createAutomaticBackup().isSuccess)
+        }
         assertTrue(service.getAvailableBackups().none { it.isLongTerm })
 
+        marquerChangementBase()
         assertTrue(service.createAutomaticBackup().isSuccess)
         val longTerm = service.getAvailableBackups().filter { it.isLongTerm }
         assertEquals(1, longTerm.size)
         assertEquals(1, longTerm.single().animalCount)
 
         // La rotation continue sur les sauvegardes ordinaires sans toucher à la long terme
-        repeat(15) { assertTrue(service.createAutomaticBackup().isSuccess) }
+        repeat(15) {
+            marquerChangementBase()
+            assertTrue(service.createAutomaticBackup().isSuccess)
+        }
         val backups = service.getAvailableBackups()
         assertEquals(longTerm.single().fileName, backups.single { it.isLongTerm }.fileName)
         assertEquals(10, backups.count { !it.isLongTerm })
         assertTrue(service.restoreBackup(longTerm.single()).isSuccess)
+        service.cleanup()
+    }
+
+    @Test
+    fun automaticBackupIsSkippedWhenNothingChangedSinceLastBackup() = runTest {
+        val repo = InMemoryAnimalRepository()
+        repo.saveAnimal(AnimalEv(uuid = "a", nom = "Rex"))
+        val service = newBackupService(repo)
+
+        // Première sauvegarde automatique du processus : toujours effectuée
+        assertTrue(service.createAutomaticBackup().isSuccess)
+        // Rien n'a changé : ignorée, aucun fichier supplémentaire
+        repeat(3) { assertTrue(service.createAutomaticBackup().isFailure) }
+        assertEquals(1, service.getAvailableBackups().size)
+
+        // Un changement notifié déclenche la sauvegarde suivante, puis elle est de nouveau ignorée
+        marquerChangementBase()
+        assertTrue(service.createAutomaticBackup().isSuccess)
+        assertEquals(2, service.getAvailableBackups().size)
+        assertTrue(service.createAutomaticBackup().isFailure)
+        assertEquals(2, service.getAvailableBackups().size)
+
+        // Une sauvegarde manuelle reflète aussi l'état courant : l'automatique suivante est ignorée
+        marquerChangementBase()
+        assertTrue(service.createBackup().isSuccess)
+        assertTrue(service.createAutomaticBackup().isFailure)
+        assertEquals(3, service.getAvailableBackups().size)
         service.cleanup()
     }
 

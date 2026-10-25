@@ -23,6 +23,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.WeightEntity
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 
@@ -47,21 +48,35 @@ class DatabaseAnimalRepository(
                                 weightEntities
                         )
                 }
+                DatabaseChangeNotifier.notifyChange(
+                        DatabaseChangeNotifier.ChangeType.ANIMAL_ADDED,
+                        animal.uuid
+                )
         }
 
         override suspend fun getAnimalsCount(): Int =
                 withContext(AppDispatchers.IO) { animalDao.getAnimalsCount() }
 
+        override suspend fun getAllAnimalIds(): List<String> =
+                withContext(AppDispatchers.IO) { animalDao.getAllAnimalIds() }
+
         override suspend fun getAllAnimals(): List<AnimalEv> {
                 return withContext(AppDispatchers.IO) {
                         val entities = animalDao.getAllAnimals()
 
+                        // Charger les poids de tous les animaux en une requête par lot de 500
+                        // (limite SQLite sur le nombre de paramètres) plutôt qu'une par animal
+                        val weightsByAnimal: Map<String, List<WeightEntity>> =
+                                entities
+                                        .map { it.uuid }
+                                        .chunked(500)
+                                        .flatMap { ids -> animalDao.getWeightsForAnimals(ids) }
+                                        .groupBy { it.refAnimal }
+
                         entities.map { entity ->
-                                // Charger les poids pour chaque animal
-                                val weightEntities = animalDao.getWeightsForAnimal(entity.uuid)
                                 entity.toData(
                                         consultations = emptyList(),
-                                        weights = weightEntities
+                                        weights = weightsByAnimal[entity.uuid] ?: emptyList()
                                 )
                         }
                 }
@@ -71,6 +86,10 @@ class DatabaseAnimalRepository(
                 withContext(AppDispatchers.IO) {
                         animalDao.delete(animal.toEntity(includeRelations = false))
                 }
+                DatabaseChangeNotifier.notifyChange(
+                        DatabaseChangeNotifier.ChangeType.ANIMAL_DELETED,
+                        animal.uuid
+                )
         }
 
         override suspend fun updateAnimal(animal: AnimalEv) {
@@ -85,6 +104,10 @@ class DatabaseAnimalRepository(
                         // supprimerait définitivement les poids existants
                         animalDao.updateWeightsTransactional(animal.uuid, weightEntities)
                 }
+                DatabaseChangeNotifier.notifyChange(
+                        DatabaseChangeNotifier.ChangeType.ANIMAL_UPDATED,
+                        animal.uuid
+                )
         }
 
         override suspend fun getAnimalById(id: String): AnimalEv? {
@@ -631,7 +654,11 @@ class DatabaseAnimalRepository(
                                 }
                         }
 
-                        val totalCount = getAllAnimals().size
+                        val totalCount = animalDao.getAnimalsCount()
+
+                        if (importedCount > 0 || importedFoodsCount > 0) {
+                                DatabaseChangeNotifier.notifyAnimalImport(importedCount, "importAnimals")
+                        }
 
                         return@withContext AnimalImportResult(
                                 importedCount = importedCount,
@@ -646,10 +673,9 @@ class DatabaseAnimalRepository(
 
         override suspend fun getRacesBySpecies(specieId: String): List<String> {
                 return withContext(AppDispatchers.IO) {
-                        val allAnimals = animalDao.getAllAnimals()
-                        allAnimals
-                                .filter { it.specieId == specieId && !it.race.isNullOrBlank() }
-                                .mapNotNull { it.race }
+                        // SELECT DISTINCT en base : évite de charger tous les animaux
+                        animalDao.getDistinctRacesForSpecie(specieId)
+                                .filter { it.isNotBlank() }
                                 .distinct()
                                 .sorted()
                 }

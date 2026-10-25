@@ -585,8 +585,8 @@ class SettingsViewModel(
 
             // 🔧 CORRECTION : Vérifier spécifiquement si les aliments sont manquants
             log("Vérification de l'état actuel de la base de données...")
-            val currentFoodCount = foodRepository.getAllFoodsLight().size
-            val currentReferenceCount = referenceEvRepository?.getAllReferenceEv()?.size ?: 0
+            val currentFoodCount = foodRepository.getFoodsCount()
+            val currentReferenceCount = referenceEvRepository?.getReferenceCount() ?: 0
             val foodsAreMissing = currentFoodCount == 0
             val databaseIsEmpty = currentFoodCount == 0 && currentReferenceCount == 0
             

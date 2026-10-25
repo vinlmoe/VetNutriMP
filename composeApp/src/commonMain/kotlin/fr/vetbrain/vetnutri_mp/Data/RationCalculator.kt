@@ -2,7 +2,6 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
-import kotlin.math.pow
 import kotlinx.serialization.Serializable
 
 /**
@@ -40,32 +39,25 @@ class RationCalculator {
     }
 
     /**
-     * Calcule le besoin énergétique et le poids métabolique
+     * Calcule le besoin énergétique et le poids métabolique.
+     *
+     * Le poids métabolique passe par [CalculMetabolique] (même moteur que l'analyse de
+     * consultation) : l'équation BW fournie via [setEquationPM] est utilisée si elle existe,
+     * sinon BW^0,75 ([CalculMetabolique.EXPOSANT_PAR_DEFAUT]). Le besoin énergétique suit la
+     * même logique avec l'équation BEE ([setEquationBEE]) ; sans équation, 70 × PM (valeur
+     * historique de ce calculateur).
      *
      * @param svp Les variables supplémentaires
      */
     fun calculer(svp: List<SupplementalvariableP>) {
-        // Calcul du poids métabolique
-        if (equationPM != null) {
-            // TODO: Implémenter l'évaluation des équations personnalisées
-            // Pour l'instant, utiliser le calcul par défaut
-            poidsMetabolique = poids.pow(0.75)
-            poidsMetaboliqueOptimal = poidsOptimal.pow(0.75)
-        } else {
-            // Calcul par défaut si pas d'équation
-            poidsMetabolique = poids.pow(0.75)
-            poidsMetaboliqueOptimal = poidsOptimal.pow(0.75)
-        }
+        // Calcul du poids métabolique (équation BW du référentiel, sinon BW^0,75)
+        poidsMetabolique = CalculMetabolique.poidsMetaboliqueOuDefaut(poids, equationPM, svp)
+        poidsMetaboliqueOptimal = CalculMetabolique.poidsMetaboliqueOuDefaut(poidsOptimal, equationPM, svp)
 
-        // Calcul du besoin énergétique
-        if (equationBEE != null) {
-            // TODO: Implémenter l'évaluation des équations personnalisées
-            // Pour l'instant, utiliser le calcul par défaut
-            bee = 70.0 * poidsMetabolique
-        } else {
-            // Calcul par défaut si pas d'équation
-            bee = 70.0 * poidsMetabolique
-        }
+        // Calcul du besoin énergétique (équation BEE si disponible, sinon 70 × PM)
+        val beeEquation = CalculMetabolique.besoinEnergetiqueStandard(poids, equationBEE, svp)
+        bee = if (beeEquation != null && beeEquation.isFinite() && beeEquation > 0.0) beeEquation
+              else 70.0 * poidsMetabolique
     }
 
     /**

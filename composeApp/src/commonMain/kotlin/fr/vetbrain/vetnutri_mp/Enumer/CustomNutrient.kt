@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Enumer
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
+import fr.vetbrain.vetnutri_mp.Utils.SynchronizedLock
 
 /**
  * Nutriment personnalisable créé par l'utilisateur et réutilisable.
@@ -73,11 +74,27 @@ data class CustomNutrient(
     }
 }
 
+/**
+ * Registre global des nutriments personnalisés. Écrit depuis le dispatcher IO (préchargement,
+ * import) et lu depuis Main : tous les accès sont protégés par [lock].
+ */
 object CustomNutrientRegistry {
+    private val lock = SynchronizedLock()
     private val nutrientsByLabel = linkedMapOf<String, CustomNutrient>()
+    private var versionCourante: Int = 0
+
+    /**
+     * Compteur incrémenté à chaque modification du registre. Permet aux caches dérivés
+     * (ex. `NutrientResolver.labelToNutrient`) de se reconstruire quand le registre change.
+     */
+    val version: Int
+        get() = lock.withLock { versionCourante }
 
     fun register(nutrient: CustomNutrient): CustomNutrient {
-        nutrientsByLabel[nutrient.label] = nutrient
+        lock.withLock {
+            val precedent = nutrientsByLabel.put(nutrient.label, nutrient)
+            if (precedent != nutrient) versionCourante++
+        }
         return nutrient
     }
 
@@ -86,11 +103,16 @@ object CustomNutrientRegistry {
         return register(nutrient)
     }
 
-    fun getByLabel(label: String): CustomNutrient? = nutrientsByLabel[label.uppercase().trim()]
+    fun getByLabel(label: String): CustomNutrient? =
+        lock.withLock { nutrientsByLabel[label.uppercase().trim()] }
 
-    fun all(): List<CustomNutrient> = nutrientsByLabel.values.toList()
+    fun all(): List<CustomNutrient> = lock.withLock { nutrientsByLabel.values.toList() }
 
     fun removeByLabel(label: String): Boolean {
-        return nutrientsByLabel.remove(label.uppercase().trim()) != null
+        return lock.withLock {
+            val supprime = nutrientsByLabel.remove(label.uppercase().trim()) != null
+            if (supprime) versionCourante++
+            supprime
+        }
     }
 }

@@ -47,34 +47,6 @@ actual open class ResourceReader actual constructor() {
         }
     }
     
-    /**
-     * Lit une ressource de manière optimisée pour les gros fichiers.
-     * Pour Desktop, utilise un buffer plus petit pour éviter les OutOfMemoryError.
-     */
-    actual open fun readResourceOptimized(name: String): String {
-        return try {
-            val classLoader = this::class.java.classLoader
-            val resourceStream = classLoader.getResourceAsStream(name)
-            if (resourceStream != null) {
-                return resourceStream.use { inputStream ->
-                    val buffer = ByteArray(8192) // Buffer de 8KB
-                    val output = StringBuilder()
-                    
-                    var bytesRead: Int
-                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                        output.append(String(buffer, 0, bytesRead))
-                    }
-                    output.toString()
-                }
-            }
-            
-            // Fallback vers readResource pour les autres méthodes
-            readResource(name)
-        } catch (e: Exception) {
-            throw IllegalStateException("Failed to read resource $name: ${e.message}", e)
-        }
-    }
-
     @OptIn(ExperimentalSerializationApi::class)
     actual open fun readApiEnvelopeOptimized(name: String): ApiEnvelope {
         val json = Json {

@@ -21,6 +21,9 @@ interface AnimalRepository {
     /** Nombre d'animaux en base (sans charger les objets agrégés) */
     suspend fun getAnimalsCount(): Int = getAllAnimals().size
 
+    /** Identifiants de tous les animaux (sans charger les objets agrégés ni les poids) */
+    suspend fun getAllAnimalIds(): List<String> = getAllAnimals().map { it.uuid }
+
     suspend fun deleteAnimal(animal: AnimalEv)
 
     /**

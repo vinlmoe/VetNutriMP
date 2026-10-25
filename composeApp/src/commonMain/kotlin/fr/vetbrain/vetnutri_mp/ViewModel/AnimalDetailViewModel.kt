@@ -94,6 +94,21 @@ class AnimalDetailViewModel(
     private val _selectedRation = MutableStateFlow<Ration?>(null)
     val selectedRation: StateFlow<Ration?> = _selectedRation.asStateFlow()
 
+    /** Message d'erreur à afficher à l'utilisateur (échec d'enregistrement) ; null si aucun. */
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    /** Efface le message d'erreur courant (après affichage). */
+    fun clearError() {
+        _errorMessage.value = null
+    }
+
+    private fun signalerErreur(message: String, e: Throwable? = null) {
+        e?.printStackTrace()
+        val detail = e?.message?.takeIf { it.isNotBlank() }
+        _errorMessage.value = if (detail != null) "$message : $detail" else message
+    }
+
     // Périmètre d'analyse : ration unique (défaut) ou agrégat de toutes les rations actuelles /
     // proposées de la consultation, en moyenne pondérée par le coefficient de chaque ration.
     private val _rationAnalysisScope = MutableStateFlow(RationAnalysisScope.RATION_UNIQUE)
@@ -831,7 +846,13 @@ class AnimalDetailViewModel(
         viewModelScope.launch {
             try {
 
-                consultationRepository.applyRecipeToRation(recipe, rationActuelle.uuid)
+                val alimentsIgnores =
+                        consultationRepository.applyRecipeToRation(recipe, rationActuelle.uuid)
+                if (alimentsIgnores > 0) {
+                    signalerErreur(
+                            "$alimentsIgnores aliment(s) de la recette n'ont pas pu être ajoutés à la ration"
+                    )
+                }
 
                 // Recharger la consultation pour refléter les nouveaux aliments
 
@@ -851,8 +872,8 @@ class AnimalDetailViewModel(
                     } else {}
                 } else {}
             } catch (e: Exception) {
-
-                e.printStackTrace()
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'application de la recette à la ration", e)
             }
         }
     }
@@ -1049,10 +1070,15 @@ class AnimalDetailViewModel(
         viewModelScope.launch {
             try {
                 // Vérifier que l'animal existe dans la base de données
-                val animalId = consultation.idAnim ?: return@launch
+                val animalId = consultation.idAnim
+                if (animalId == null) {
+                    signalerErreur("Consultation non enregistrée : aucun animal associé")
+                    return@launch
+                }
                 val animalExists = animalRepository.getAnimalById(animalId) != null
 
                 if (!animalExists) {
+                    signalerErreur("Consultation non enregistrée : l'animal n'existe plus dans la base")
                     return@launch
                 }
 
@@ -1076,7 +1102,8 @@ class AnimalDetailViewModel(
                     _selectedConsultation.value = consultation
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'enregistrement de la consultation", e)
             }
         }
     }
@@ -1682,7 +1709,10 @@ class AnimalDetailViewModel(
                         updateConsultation(consultation)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'enregistrement des modifications", e)
+            }
         }
     }
 
@@ -1703,7 +1733,10 @@ class AnimalDetailViewModel(
                         updateConsultation(consultation)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'enregistrement des modifications", e)
+            }
         }
     }
 
@@ -1724,7 +1757,10 @@ class AnimalDetailViewModel(
                         updateConsultation(consultation)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'enregistrement des modifications", e)
+            }
         }
     }
 
@@ -1762,7 +1798,10 @@ class AnimalDetailViewModel(
                     val updatedConsultation = it.copy(referenceGeneraleId = referenceId)
                     updateConsultation(updatedConsultation)
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'enregistrement des modifications", e)
+            }
         }
     }
 
@@ -1779,7 +1818,10 @@ class AnimalDetailViewModel(
                         updateConsultation(updatedConsultation)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'enregistrement des modifications", e)
+            }
         }
     }
 
@@ -1794,7 +1836,10 @@ class AnimalDetailViewModel(
                     val updatedConsultation = it.copy(referencesMaladies = newReferences)
                     updateConsultation(updatedConsultation)
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'enregistrement des modifications", e)
+            }
         }
     }
 
@@ -2246,7 +2291,10 @@ class AnimalDetailViewModel(
                         calculerValeursMetaboliques(consultationMiseAJour)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'enregistrement des modifications", e)
+            }
         }
     }
 
@@ -2276,7 +2324,10 @@ class AnimalDetailViewModel(
                         calculerValeursMetaboliques(consultationMiseAJour)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'enregistrement des modifications", e)
+            }
         }
     }
 
@@ -2331,7 +2382,10 @@ class AnimalDetailViewModel(
                         calculerValeursMetaboliques(consultationMiseAJour)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'enregistrement des modifications", e)
+            }
         }
     }
 
@@ -2397,7 +2451,10 @@ class AnimalDetailViewModel(
                     // Désactiver le mode d'ajout
                     isAddingWeight = false
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'enregistrement des modifications", e)
+            }
         }
     }
 
@@ -2434,7 +2491,10 @@ class AnimalDetailViewModel(
                         }
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                signalerErreur("Échec de l'enregistrement des modifications", e)
+            }
         }
     }
 

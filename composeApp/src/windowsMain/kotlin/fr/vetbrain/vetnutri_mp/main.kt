@@ -12,6 +12,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseAnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
+import fr.vetbrain.vetnutri_mp.Repository.RoomTransactionRunner
 import java.io.File
 import kotlinx.coroutines.runBlocking
 
@@ -31,7 +32,8 @@ fun main(args: Array<String> = emptyArray()) {
                 appDatabase.nutrientValueDao(),
                 appDatabase.customNutrientDao(),
                 appDatabase.alimentBiblioRefDao(),
-                appDatabase.biblioRefDao()
+                appDatabase.biblioRefDao(),
+                transactionRunner = RoomTransactionRunner(appDatabase)
             )
 
     // Vérifier si nous avons des arguments en ligne de commande
