@@ -13,7 +13,7 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
 /**
- * Vérifie que la chaîne complète de migrations Room (17 -> 36, cf. `getRoomDatabase` dans
+ * Vérifie que la chaîne complète de migrations Room (17 -> 41, cf. `getRoomDatabase` dans
  * AppDatabase.kt) ne perd aucune donnée existante lors de l'ouverture d'une base réelle et
  * ancienne, comme le vivrait un utilisateur qui met à jour l'application après plusieurs
  * versions sans jamais l'avoir relancée entre-temps.
@@ -121,12 +121,12 @@ class MigrationChainDataPersistenceTest {
         val db = getRoomDatabase(Room.databaseBuilder<AppDatabase>(name = dbPath), dbPath)
 
         val animal = db.animalDao().getAnimalById("animal-1")
-        assertNotNull(animal, "l'animal existant avant migration doit survivre à la chaîne 17 -> 36")
+        assertNotNull(animal, "l'animal existant avant migration doit survivre à la chaîne 17 -> 41")
         assertEquals("Rex", animal.nom)
         assertEquals("Jean Dupont", animal.ownerName)
 
         val food = db.foodDao().getFoodById("food-1")
-        assertNotNull(food, "l'aliment existant avant migration doit survivre à la chaîne 17 -> 36")
+        assertNotNull(food, "l'aliment existant avant migration doit survivre à la chaîne 17 -> 41")
         assertEquals("Croquettes historiques", food.nameDef)
         assertEquals("MarqueTest", food.brand)
 
@@ -203,5 +203,97 @@ class MigrationChainDataPersistenceTest {
         assertTrue(db.checkIntegrity())
 
         db.close()
+    }
+
+    /** Colonnes d'une table, lues en SQL brut (JDBC) dans le fichier migré, hors de Room. */
+    private fun colonnes(table: String): Set<String> {
+        Class.forName("org.sqlite.JDBC")
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery("PRAGMA table_info(`$table`)")
+                val noms = mutableSetOf<String>()
+                while (rs.next()) noms += rs.getString("name")
+                return noms
+            }
+        }
+    }
+
+    private fun objetsSqlite(type: String): Set<String> {
+        Class.forName("org.sqlite.JDBC")
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery("SELECT name FROM sqlite_master WHERE type = '$type'")
+                val noms = mutableSetOf<String>()
+                while (rs.next()) noms += rs.getString("name")
+                return noms
+            }
+        }
+    }
+
+    private fun scalaire(sql: String): String? {
+        Class.forName("org.sqlite.JDBC")
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery(sql)
+                return if (rs.next()) rs.getString(1) else null
+            }
+        }
+    }
+
+    @Test
+    fun getRoomDatabase_migratingFromV17_appliesMigrations37to41Explicitly() = runTest {
+        // Les cinq dernières migrations (36→37 … 40→41) : colonnes et tables introduites, valeurs
+        // par défaut des lignes préexistantes, version finale du fichier.
+        seedV17Database()
+        Class.forName("org.sqlite.JDBC")
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.execute(
+                    "INSERT INTO CONSULTATIONS (uuid, idAnim, date, objectConsult, observation, cRendu, weight, idealWeight, water, bodyFat, methodAnalysis, BCS, k1Id, k1Value, k2Id, k2Value, k3Id, k3Value, k4Id, k4Value, k5Id, k5Value, nLittle, pAdult, coefGes, coefLact, MCS, referenceGeneraleId, referencesMaladiesJson, coefficientAjustement) " +
+                        "VALUES ('consult-17', 'animal-1', '2021-05-05', 'Bilan', NULL, NULL, 30.0, 0.0, 0.0, 0.0, NULL, 5, NULL, 0.0, NULL, 0.0, NULL, 0.0, NULL, 0.0, NULL, 0.0, 0, 0.0, 0, 0, 0, NULL, NULL, 1.0)"
+                )
+                stmt.execute(
+                    "INSERT INTO RATIONS (uuid, idConsult, name, coef, actual, number, espece, recette, description) " +
+                        "VALUES ('ration-17', 'consult-17', 'Actuelle', 1.0, 1, 1, 'CHIEN', 0, '')"
+                )
+            }
+        }
+
+        val db = getRoomDatabase(Room.databaseBuilder<AppDatabase>(name = dbPath), dbPath)
+        // Les lignes d'avant migration restent lisibles par Room avec les valeurs par défaut
+        val consultation = db.consultationDao().getConsultationById("consult-17")
+        assertNotNull(consultation, "la consultation v17 doit survivre aux migrations 36→41")
+        assertEquals("STANDARD", consultation.typeConsultation, "36→37 : type de consultation par défaut")
+        assertEquals(null, consultation.profilEvolutif, "36→37 : pas de profil évolutif")
+        assertEquals(null, consultation.herdParamsJson, "40→41 : pas de paramètres de troupeau")
+        val ration = db.consultationDao().getRationsForConsultation("consult-17").single()
+        assertEquals(false, ration.etapeEvolutive, "36→37 : une ration existante n'est pas une étape")
+        assertEquals(null, ration.poids, "36→37 : pas de poids d'étape")
+        assertEquals(null, ration.refRationParente, "37→38 : pas de ration parente")
+        assertEquals(null, ration.nomLibre, "38→39 : pas de nom libre")
+        assertTrue(db.checkIntegrity())
+        db.close()
+
+        // Schéma du fichier migré, vérifié hors de Room
+        assertEquals("41", scalaire("PRAGMA user_version"), "version finale du schéma")
+        val consultations = colonnes("CONSULTATIONS")
+        assertTrue(consultations.containsAll(listOf("typeConsultation", "profilEvolutif")), "36→37 : $consultations")
+        assertTrue("herdParamsJson" in consultations, "40→41 : $consultations")
+        val rations = colonnes("RATIONS")
+        assertTrue(rations.containsAll(listOf("etapeEvolutive", "poids")), "36→37 : $rations")
+        assertTrue("refRationParente" in rations, "37→38 : $rations")
+        assertTrue("nomLibre" in rations, "38→39 : $rations")
+        assertTrue("herdTypesJson" in colonnes("ANIMALS"), "40→41 : ${colonnes("ANIMALS")}")
+        assertEquals(setOf("idRation", "variableKind", "value"), colonnes("RATION_SUPPLEMENTAL_VARIABLES"), "36→37 : table des variables d'étape")
+        assertEquals(
+            setOf("uuid", "nom", "espece", "configurationJson", "updatedAt"),
+            colonnes("MULTI_RATION_EXPLORATIONS"),
+            "39→40 : table des explorations multiration"
+        )
+        val tables = objetsSqlite("table")
+        assertTrue(tables.containsAll(listOf("RATION_SUPPLEMENTAL_VARIABLES", "MULTI_RATION_EXPLORATIONS")), "tables : $tables")
+        assertTrue("index_RATION_SUPPLEMENTAL_VARIABLES_idRation" in objetsSqlite("index"), "36→37 : index des variables d'étape")
+        assertEquals("STANDARD", scalaire("SELECT typeConsultation FROM CONSULTATIONS WHERE uuid = 'consult-17'"))
+        assertEquals("0", scalaire("SELECT etapeEvolutive FROM RATIONS WHERE uuid = 'ration-17'"))
     }
 }

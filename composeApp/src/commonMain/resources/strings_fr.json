@@ -1966,6 +1966,18 @@
         "evolutive.addStepTo": "Ajouter une étape au plan",
         "evolutive.newStepTitleFormat": "Nouvelle étape — %1$s",
         "evolutive.editStepTitle": "Étape du plan",
-        "evolutive.stepSubtitle": "Étape du plan évolutif"
+        "evolutive.stepSubtitle": "Étape du plan évolutif",
+        "general.analyse": "Analyser",
+        "general.compare": "Comparer",
+        "terms.title": "Conditions d'utilisation",
+        "terms.credits": "Crédits",
+        "terms.condition_info": "Les informations fournies le sont à titre indicatif et ne remplacent pas un avis vétérinaire.",
+        "terms.condition_privacy": "Les données saisies restent stockées localement sur votre appareil.",
+        "terms.condition_pro": "Cette application est destinée aux professionnels de la santé animale.",
+        "terms.condition_responsibility": "L'utilisateur reste seul responsable des décisions prises à partir des résultats.",
+        "update.json_title": "Mise à jour des données",
+        "update.json_msg": "Une nouvelle version des données de référence est disponible.",
+        "update.json_current": "Version actuelle : %1$s",
+        "update.json_new": "Nouvelle version : %1$s"
     }
 }
