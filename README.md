@@ -156,11 +156,11 @@ Priorité actuelle:
 | Fichier | Contenu |
 |---------|---------|
 | `CHANGELOG.md` | Historique des versions |
-| `PERFORMANCE_IMPROVEMENTS.md` | Optimisations runtime et build |
-| `GUIDE_BUILD_MACOS_UNIVERSEL.md` | Build universel macOS |
-| `GUIDE_SIGNATURE_MACOS.md` | Signature et notarisation |
-| `README_APPSTORE_DEPLOYMENT.md` | Déploiement App Store iOS |
-| `GUIDE_COMPATIBILITE_16KB.md` | Compatibilité Android 15+ (16 KB pages) |
+| `docs/qualite/` | Analyses qualité et efficacité du projet |
+| `docs/plateformes/GUIDE_BUILD_MACOS_UNIVERSEL.md` | Build universel macOS |
+| `docs/plateformes/GUIDE_SIGNATURE_MACOS.md` | Signature et notarisation |
+| `docs/plateformes/README_APPSTORE_DEPLOYMENT.md` | Déploiement App Store iOS |
+| `docs/plateformes/GUIDE_COMPATIBILITE_16KB.md` | Compatibilité Android 15+ (16 KB pages) |
 
 ---
 

@@ -6,7 +6,7 @@ Google Play rejette l'application avec le message : "Votre appli ne prend pas en
 ## Solutions appliquées
 
 ### 1. Configuration NDK
-- NDK version 27.0.12077987 (compatible 16KB)
+- NDK version 28.0.12674087 (`android.ndkVersion` dans `gradle.properties`, aligné 16 Ko par défaut)
 - Configuration dans `gradle.properties`
 
 ### 2. Configuration du packaging
@@ -17,13 +17,13 @@ Google Play rejette l'application avec le message : "Votre appli ne prend pas en
 - `androidx.sqlite:sqlite-bundled` mis à jour vers la version stable 2.5.0
 
 ### 4. Filtrage des ABI
-- ABI compatibles configurés : `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`
+- ABI configurés : `arm64-v8a`, `armeabi-v7a`, `x86_64` (`x86` 32 bits exclu)
 
 ## Vérification de l'alignement
 
 ### Méthode 1 : Script automatique
 ```bash
-./check_16kb_alignment.sh
+unzip -o app-release.apk -d /tmp/apk && find /tmp/apk/lib -name '*.so' -exec sh -c 'readelf -lW "$1" | grep -q "LOAD.*0x4000$" && echo "OK  $1" || echo "KO  $1"' _ {} \;
 ```
 
 Le script va :
@@ -51,7 +51,7 @@ Si `armeabi-v7a` cause des problèmes, modifiez `composeApp/build.gradle.kts` :
 ```kotlin
 ndk {
     // Exclure armeabi-v7a si les bibliothèques ne sont pas alignées
-    abiFilters += listOf("arm64-v8a", "x86", "x86_64")
+    abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
     // Retirer "armeabi-v7a" de la liste
 }
 ```
@@ -59,7 +59,7 @@ ndk {
 **Note** : Cela réduira la compatibilité avec les anciens appareils 32-bit ARM, mais la plupart des appareils modernes utilisent `arm64-v8a`.
 
 ### Option 2 : Identifier et mettre à jour les dépendances problématiques
-1. Exécutez `./check_16kb_alignment.sh` pour identifier les bibliothèques problématiques
+1. Exécutez la commande `readelf` de la section 2 pour identifier les bibliothèques dont l'alignement n'est pas 16 Ko
 2. Vérifiez si des versions plus récentes sont disponibles
 3. Contactez les mainteneurs si nécessaire
 
