@@ -103,6 +103,7 @@
         "units.kcal": "kcal",
         "consultation.date": "Date",
         "consultation.objective": "Objectif",
+        "consultation.observation": "Observation",
         "consultation.delete": "Supprimer la consultation",
         "consultation.deleteConfirm": "Êtes-vous sûr de vouloir supprimer cette consultation ?",
         "consultation.title": "Consultations",

@@ -42,6 +42,21 @@ class TroupeauComponentsTest {
     }
 
     @Test
+    fun groupesIncomplets_referentielIntrouvableOuKNonPositif() {
+        val consultation =
+                ConsultationEv(
+                        parametresTroupeau =
+                                mutableListOf(
+                                        ParametresTypeTroupeau("b", nombre = 30, poids = 60.0, referenceId = "supprime"),
+                                        ParametresTypeTroupeau("a", nombre = 40, poids = 15.0, referenceId = "ref", k = 0.0)
+                                )
+                )
+        assertEquals(listOf("Brebis", "Agneaux"), groupesIncompletsTroupeau(listOf(brebis, agneaux), consultation, setOf("ref")))
+        // Référentiels non chargés : l'existence n'est pas vérifiée, seul K reste bloquant
+        assertEquals(listOf("Agneaux"), groupesIncompletsTroupeau(listOf(brebis, agneaux), consultation))
+    }
+
+    @Test
     fun typesParDefaut_especeDeLaFiche() {
         val types = typesTroupeauParDefaut(Espece.CHEVAL)
         assertEquals(Espece.CHEVAL, types.single().especeEnum())

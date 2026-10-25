@@ -103,6 +103,7 @@
         "units.kcal": "千卡",
         "consultation.date": "日期",
         "consultation.objective": "目标",
+        "consultation.observation": "观察",
         "consultation.delete": "删除咨询",
         "consultation.deleteConfirm": "您确定要删除此咨询吗？",
         "consultation.title": "咨询",

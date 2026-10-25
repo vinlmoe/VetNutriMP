@@ -149,6 +149,35 @@ fun rationParAnimalTroupeau(rationGroupe: Ration, facteur: Double, nomType: Stri
                 suppVarp = rationGroupe.suppVarp.toMutableList()
         )
 
+/**
+ * Paramètres de troupeau d'une nouvelle consultation : effectif et poids de la définition du
+ * troupeau, référentiel, K et variables de la consultation la plus récente (vide = individu).
+ */
+fun AnimalEv.parametresTroupeauNouvelleConsultation(): MutableList<ParametresTypeTroupeau> {
+    val types = typesTroupeau ?: return mutableListOf()
+    val precedente = consultations.filter { it.date != null }.maxByOrNull { it.date!! } ?: consultations.lastOrNull()
+    return types.map { type ->
+        val avant = precedente?.parametresTroupeau?.firstOrNull { it.typeId == type.id }
+        ParametresTypeTroupeau(
+                typeId = type.id,
+                nombre = type.nombre,
+                poids = type.poids,
+                referenceId = avant?.referenceId,
+                k = avant?.k ?: 1.0,
+                variables = avant?.variables ?: emptyMap()
+        )
+    }.toMutableList()
+}
+
+/** Ration du groupe dont toutes les quantités sont multipliées par [facteur] (arrondi à 0,1 g). */
+fun rationAjusteeTroupeau(ration: Ration, facteur: Double): Ration =
+        ration.copy(
+                alimentMutableList =
+                        ration.alimentMutableList
+                                .map { it.copy(quantite = kotlin.math.round(it.quantite * facteur * 10.0) / 10.0) }
+                                .toMutableList()
+        )
+
 /** Besoin énergétique d'un animal du type : BEE standard × K1…K5 × K du type ; null si incalculable. */
 fun besoinAnimalTroupeau(parametres: ParametresTypeTroupeau, reference: ReferenceEv?, kCommun: Double): Double? {
     if (reference == null || parametres.poids <= 0.0 || parametres.k <= 0.0) return null
@@ -242,7 +271,9 @@ data class AnalyseTroupeau(
         /** Quantité totale de la ration du groupe (g). */
         val quantiteTotale: Double,
         /** Ce qui empêche la répartition (référentiel manquant, BEE incalculable...). */
-        val problemes: List<String>
+        val problemes: List<String>,
+        /** UUID de la ration du groupe analysée (pour ne pas appliquer un résultat à une autre ration). */
+        val rationId: String? = null
 ) {
     /** Facteur à appliquer aux quantités pour couvrir exactement le besoin énergétique du groupe. */
     val facteurAjustementEnergie: Double?
@@ -374,7 +405,9 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
             types: List<TypeAnimalTroupeau>,
             consultation: ConsultationEv,
             rationGroupe: Ration?,
-            references: Map<String, ReferenceEv>
+            references: Map<String, ReferenceEv>,
+            /** Référentiels maladies de la consultation, prioritaires comme dans l'analyse de ration. */
+            referencesMaladies: List<ReferenceEv> = emptyList()
     ): AnalyseTroupeau {
         val problemes = mutableListOf<String>()
         val lignesRation = rationGroupe?.alimentMutableList.orEmpty()
@@ -422,10 +455,11 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
         else if (actifs.isEmpty()) problemes += "Aucun animal : tous les effectifs sont nuls."
         if (rationGroupe == null) problemes += "Sélectionner une ration."
 
-        // Nutriments évalués : ceux des référentiels de tous les groupes, pour que l'apport au
-        // troupeau entier compte chaque groupe même si son référentiel n'a pas ce seuil
+        // Nutriments évalués : ceux des référentiels de tous les groupes (et des maladies), pour que
+        // l'apport au troupeau entier compte chaque groupe même si son référentiel n'a pas ce seuil
         val nutrimentsTroupeau =
-                besoins.filter { it.parametres.nombre > 0 }.mapNotNull { it.reference }.flatMap { nutrimentsAvecSeuil(it) }
+                (besoins.filter { it.parametres.nombre > 0 }.mapNotNull { it.reference } + referencesMaladies)
+                        .flatMap { nutrimentsAvecSeuil(it) }
                         .distinctBy { it.label }
         val analyses =
                 besoins.map { b ->
@@ -442,7 +476,10 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
                     } else {
                         val facteur = besoin / besoinGroupe
                         val ration = rationGroupe?.let { rationParAnimalTroupeau(it, facteur, b.type.nom) }
-                        analyserType(b.type, b.parametres, reference, b.poidsMetabolique, b.besoinStandard, besoin, facteur, ration, nutrimentsTroupeau)
+                        analyserType(
+                                b.type, b.parametres, reference, b.poidsMetabolique, b.besoinStandard, besoin, facteur, ration,
+                                nutrimentsTroupeau, referencesMaladies
+                        )
                     }
                 }
 
@@ -458,7 +495,8 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
                 besoinGroupe = besoinGroupe,
                 energieGroupe = energieGroupe,
                 quantiteTotale = quantiteTotale,
-                problemes = problemes.distinct()
+                problemes = problemes.distinct(),
+                rationId = rationGroupe?.uuid
         )
     }
 
@@ -471,7 +509,8 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
             besoin: Double,
             facteur: Double,
             ration: Ration?,
-            nutrimentsTroupeau: List<Nutrient>
+            nutrimentsTroupeau: List<Nutrient>,
+            referencesMaladies: List<ReferenceEv>
     ): AnalyseTypeTroupeau {
         val distribues = ration?.alimentMutableList.orEmpty().filter { it.quantite > 0.0 && it.aliment != null }
         if (ration == null || distribues.isEmpty()) {
@@ -500,6 +539,7 @@ class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
                             seuils,
                             calculerConformite(
                                     valeur, reference, besoinStandard, parametres.poids, poidsMetabolique,
+                                    referencesMaladies = referencesMaladies,
                                     besoinEnergetiqueCible = besoin
                             )
                     )

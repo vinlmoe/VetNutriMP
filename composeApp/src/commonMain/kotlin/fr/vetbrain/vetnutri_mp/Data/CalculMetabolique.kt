@@ -56,6 +56,12 @@ object CalculMetabolique {
             variablesSupp: List<SupplementalvariableP> = emptyList()
     ): Double? = evaluer(reference.equationBEE, poids, variablesSupp)
 
+    /**
+     * Poids idéal estimé (kg) à partir du poids et de la note d'état corporel sur 9 : chaque point
+     * au-dessus (au-dessous) de 5 correspond à 10 % de poids en plus (en moins).
+     */
+    fun estimerPoidsIdeal(poids: Double, nec: Int): Double = poids * 100 / (100 + (nec - 5) * 10)
+
     private fun evaluer(
             equation: Equation?,
             poids: Double,

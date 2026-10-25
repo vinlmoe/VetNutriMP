@@ -77,7 +77,7 @@ class ExplorationMultirationTest {
         val cases = ExplorateurMultiration.construireCases(listOf(sousReserve))
         assertEquals(ZoneEquilibre.EQUILIBRABLE, cases.single().zone)
         assertEquals(1, cases.single().sousReserve)
-        assertEquals(1.6, apportCourbeExploration(sousReserve, NutrientLipid.O6), 1e-9)
+        assertEquals(1.6, apportCourbeExploration(sousReserve, NutrientLipid.O6)!!, 1e-9)
     }
 
     @Test

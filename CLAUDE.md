@@ -145,7 +145,8 @@ des K de l'individu (`EditeurEtatTroupeau`, `DetailConsultationTroupeau`) ; ses 
 pour tout le troupeau. Onglet Rations : `PanneauTroupeauConsultation` (`View/TroupeauComponents.kt`) choisit
 ce qui est analysé, sans saisie de référentiel ni de variable. « Troupeau entier » : sections de
 l'individu masquées, `AnalyseApportsTroupeau` compare l'apport total aux besoins sommés
-(`apportsTroupeauEntier` : Σ nᵢ × seuil, groupes hors normes). Un groupe (`selectTypeTroupeau`) : la
+(`apportsTroupeauEntier`, exposé par le ViewModel : Σ nᵢ × seuil, groupes hors normes ; les référentiels
+maladies de la consultation s'appliquent à chaque groupe, comme dans l'analyse d'un groupe). Un groupe (`selectTypeTroupeau`) : la
 ration affichée devient celle d'un individu (quantités × Bᵢ / Σ nⱼBⱼ, `rationParAnimalTroupeau`,
 virtuelle et en lecture seule) et la consultation d'analyse `consultationAnalysee` (`pourTypeTroupeau` :
 poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existante. Moteur pur dans

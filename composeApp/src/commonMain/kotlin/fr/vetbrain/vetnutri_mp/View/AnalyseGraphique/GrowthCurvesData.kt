@@ -1,5 +1,9 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Data.CalculMetabolique
+import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Enumer.Sex
+import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 
 // Données des courbes de croissance pour chiens
@@ -228,3 +232,71 @@ val courbesCroissanceChat =
                 )
         )
 
+/**
+ * Poids (kg) qui fixe la classe de poids de la courbe de croissance, pris chaque fois dans la
+ * consultation la plus récente qui le renseigne : le poids adulte attendu (variable AW, pour
+ * un chiot), puis le poids idéal saisi, puis le poids idéal estimé d'après le poids et la NEC,
+ * enfin le poids. Le poids idéal évite de classer trop haut un animal en surpoids. À défaut de
+ * consultation pesée, [poidsDernierConnu].
+ */
+fun poidsReferenceCourbeCroissance(consultations: List<ConsultationEv>, poidsDernierConnu: Double?): Double? {
+        val recentes = consultations.sortedByDescending { it.date }
+        fun premier(valeur: (ConsultationEv) -> Double?): Double? =
+                recentes.firstNotNullOfOrNull { consultation -> valeur(consultation)?.takeIf { it > 0.0 } }
+        return premier { consultation ->
+                consultation.suppVarp.firstOrNull { it.variable == VariableKind.AdultWeight }?.varue
+                        ?: consultation.pAdult
+        }
+                ?: premier { it.idealWeight }
+                ?: premier { consultation ->
+                        val poids = consultation.weight
+                        val nec = consultation.BCS
+                        if (poids != null && nec != null) CalculMetabolique.estimerPoidsIdeal(poids, nec) else null
+                }
+                ?: premier { it.weight }
+                ?: poidsDernierConnu
+}
+
+/**
+ * Index, dans [courbes], de la courbe de croissance proposée par défaut : celle du sexe de
+ * l'animal et, pour le chien, de sa classe de poids, fixée par [poidsReference] (en kg, voir
+ * [poidsReferenceCourbeCroissance] ; au-delà de 40 kg, la classe [30-40] kg). Sans poids, la
+ * plus petite classe du sexe. 0 si aucune courbe ne correspond.
+ */
+fun indexCourbeCroissanceParDefaut(courbes: List<CurveP>, sexe: Sex, poidsReference: Double?): Int {
+        val femelle = sexe == Sex.FEMELLE_ENTIERE || sexe == Sex.FEMELLE_STERILISEE
+        val cle =
+                if (courbes.any { it.description == LocalizationKeys.Graph.CURVE_CAT_MALE }) {
+                        if (femelle) LocalizationKeys.Graph.CURVE_CAT_FEMALE
+                        else LocalizationKeys.Graph.CURVE_CAT_MALE
+                } else {
+                        val classes =
+                                if (femelle) {
+                                        listOf(
+                                                LocalizationKeys.Graph.CURVE_DOG_FEMALE_LT_6_5,
+                                                LocalizationKeys.Graph.CURVE_DOG_FEMALE_6_5_9,
+                                                LocalizationKeys.Graph.CURVE_DOG_FEMALE_9_15,
+                                                LocalizationKeys.Graph.CURVE_DOG_FEMALE_15_30,
+                                                LocalizationKeys.Graph.CURVE_DOG_FEMALE_30_40
+                                        )
+                                } else {
+                                        listOf(
+                                                LocalizationKeys.Graph.CURVE_DOG_MALE_LT_6_5,
+                                                LocalizationKeys.Graph.CURVE_DOG_MALE_6_5_9,
+                                                LocalizationKeys.Graph.CURVE_DOG_MALE_9_15,
+                                                LocalizationKeys.Graph.CURVE_DOG_MALE_15_30,
+                                                LocalizationKeys.Graph.CURVE_DOG_MALE_30_40
+                                        )
+                                }
+                        val classe =
+                                when {
+                                        poidsReference == null || poidsReference < 6.5 -> 0
+                                        poidsReference < 9.0 -> 1
+                                        poidsReference < 15.0 -> 2
+                                        poidsReference < 30.0 -> 3
+                                        else -> 4
+                                }
+                        classes[classe]
+                }
+        return courbes.indexOfFirst { it.description == cle }.coerceAtLeast(0)
+}

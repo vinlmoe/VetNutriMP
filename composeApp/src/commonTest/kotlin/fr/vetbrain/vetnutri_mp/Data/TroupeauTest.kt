@@ -11,6 +11,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 
 class TroupeauTest {
 
@@ -158,7 +159,7 @@ class TroupeauTest {
     @Test
     fun json_allerRetour() {
         val json = TroupeauJson.typesVersJson(types)
-        assertEquals(types, TroupeauJson.typesDepuisJson(json))
+        assertEquals<List<TypeAnimalTroupeau>?>(types, TroupeauJson.typesDepuisJson(json))
         assertNull(TroupeauJson.typesVersJson(null))
         assertNull(TroupeauJson.typesDepuisJson(null))
         val parametres = consultation().parametresTroupeau
@@ -342,5 +343,95 @@ class TroupeauTest {
         assertEquals(80.0, proteines.seuils.getValue(Reflevel.OPTIMIN), 1e-9)
         assertNull(proteines.statutTroupeau)
         assertTrue(proteines.groupesHorsNormes.isEmpty())
+    }
+
+    // --- Référentiels maladies, ration analysée, nouvelle consultation, ajustement -------------
+
+    @Test
+    fun referencesMaladies_prioritairesDansLaSyntheseDuTroupeau() = runTest {
+        // Maladie : protéines MIN 100 g / 1000 kcal (80 g par animal) et fibres MAX absentes du
+        // référentiel général
+        val maladie =
+                ReferenceEv(uuid = "ref-maladie", nom = "Maladie test", espece = Espece.CHIEN, maladie = true).apply {
+                    definirNutriment(100.0, NutrientMain.PROTEINE, Reflevel.MIN, UnitReqEnum.PERKCAL, BiblioRef())
+                    definirNutriment(1.0, NutrientMain.CELLULOSE, Reflevel.MAX, UnitReqEnum.ABSOLUTE, BiblioRef())
+                }
+        aliment.setNutrient(NutrientMain.CELLULOSE, 1.0)
+        val c = consultation()
+        val analyse =
+                AnalyseurTroupeau(InMemoryEquationRepository())
+                        .analyser(types, c, c.rations.first(), mapOf(reference.uuid to reference), listOf(maladie))
+        // Les actifs (40 g, conformes au référentiel général) sont carencés au regard de la maladie
+        val proteinesB = analyse.type("B")!!.lignes.first { it.nutriment == NutrientMain.PROTEINE }
+        assertEquals(ConformiteStatus.CARENCE_MALADIE, proteinesB.conformite?.status)
+        // Nutriment présent seulement dans le référentiel maladie : évalué (4 g de fibres > 1 g)
+        val fibresB = analyse.type("B")!!.lignes.first { it.nutriment == NutrientMain.CELLULOSE }
+        assertEquals(ConformiteStatus.EXCES_MALADIE, fibresB.conformite?.status)
+        val proteines = analyse.apportsTroupeauEntier().first { it.nutriment == NutrientMain.PROTEINE }
+        assertEquals(listOf("Adultes", "Actifs"), proteines.groupesHorsNormes.map { it.first })
+        // Sans maladie : comportement inchangé
+        assertNull(analyser(c).type("B")!!.lignes.first { it.nutriment == NutrientMain.PROTEINE }.conformite)
+    }
+
+    @Test
+    fun analyse_retientLaRationAnalysee() = runTest {
+        assertEquals("r1", analyser(consultation()).rationId)
+        assertNull(analyser(consultation(), null).rationId)
+    }
+
+    @Test
+    fun analyse_quantitesNegativesIgnorees() = runTest {
+        val c = consultation()
+        val avecNegatif =
+                c.rations.first().let { r ->
+                    r.copy(alimentMutableList = (r.alimentMutableList + AlimentRation(uuid = "l2", aliment = aliment, quantite = -50.0)).toMutableList())
+                }
+        val analyse = analyser(c, avecNegatif)
+        assertEquals(800.0, analyse.quantiteTotale, 1e-9)
+        assertEquals(3200.0, analyse.energieGroupe!!, 1e-6)
+        assertEquals(0.0, analyse.type("A")!!.rationParAnimal!!.alimentMutableList.first { it.uuid == "l2" }.quantite)
+    }
+
+    @Test
+    fun nouvelleConsultation_reprendReferentielKEtVariablesDeLaPlusRecente() {
+        val ancienne =
+                ConsultationEv(
+                        uuid = "c-ancienne", date = LocalDate(2026, 1, 1),
+                        parametresTroupeau = mutableListOf(ParametresTypeTroupeau("A", referenceId = "ref-ancienne", k = 0.8))
+                )
+        val recente =
+                ConsultationEv(
+                        uuid = "c-recente", date = LocalDate(2026, 6, 1),
+                        parametresTroupeau =
+                                mutableListOf(
+                                        ParametresTypeTroupeau(
+                                                "A", nombre = 9, poids = 99.0, referenceId = reference.uuid, k = 1.3,
+                                                variables = mapOf("AW" to 20.0), bcs = 3.0
+                                        )
+                                )
+                )
+        val animal = AnimalEv(typesTroupeau = types.toMutableList(), consultations = mutableListOf(recente, ancienne))
+        val parametres = animal.parametresTroupeauNouvelleConsultation()
+        val a = parametres.single { it.typeId == "A" }
+        // Effectif et poids : ceux de la fiche ; référentiel, K, variables : consultation la plus récente
+        assertEquals(2, a.nombre)
+        assertEquals(16.0, a.poids)
+        assertEquals(reference.uuid, a.referenceId)
+        assertEquals(1.3, a.k)
+        assertEquals(mapOf("AW" to 20.0), a.variables)
+        assertNull(a.bcs)
+        // Groupe absent de la consultation précédente : valeurs par défaut
+        assertEquals(ParametresTypeTroupeau("B", nombre = 1, poids = 16.0), parametres.single { it.typeId == "B" })
+        // Individu : aucun paramètre
+        assertTrue(AnimalEv().parametresTroupeauNouvelleConsultation().isEmpty())
+    }
+
+    @Test
+    fun rationAjustee_multiplieEtArrondiAuDixiemeDeGramme() {
+        val groupe = ration(123.45)
+        val ajustee = rationAjusteeTroupeau(groupe, 1.5)
+        assertEquals(185.2, ajustee.alimentMutableList.single().quantite, 1e-9)
+        assertEquals(groupe.uuid, ajustee.uuid)
+        assertEquals(123.45, groupe.alimentMutableList.single().quantite, 1e-9)
     }
 }

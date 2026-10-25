@@ -70,7 +70,7 @@ class TroupeauJsonTest {
         assertNull(TroupeauJson.typesVersJson(null))
         assertNull(TroupeauJson.typesDepuisJson(null))
         assertNull(TroupeauJson.typesDepuisJson(""))
-        assertEquals(emptyList<TypeAnimalTroupeau>(), TroupeauJson.typesDepuisJson(TroupeauJson.typesVersJson(emptyList())))
+        assertEquals<List<TypeAnimalTroupeau>?>(emptyList(), TroupeauJson.typesDepuisJson(TroupeauJson.typesVersJson(emptyList())))
         // Aucun paramètre : colonne NULL, relue en liste vide
         assertNull(TroupeauJson.parametresVersJson(emptyList()))
         assertTrue(TroupeauJson.parametresDepuisJson(null).isEmpty())
@@ -92,7 +92,7 @@ class TroupeauJsonTest {
     @Test
     fun troupeauJson_contenuIllisible_neFaitPasPlanter() {
         // Un troupeau dont le JSON est abîmé reste un troupeau (sans type) plutôt qu'un individu
-        assertEquals(emptyList<TypeAnimalTroupeau>(), TroupeauJson.typesDepuisJson("{pas du json"))
+        assertEquals<List<TypeAnimalTroupeau>?>(emptyList(), TroupeauJson.typesDepuisJson("{pas du json"))
         assertTrue(TroupeauJson.parametresDepuisJson("[{\"nombre\":2}]").isEmpty())
     }
 

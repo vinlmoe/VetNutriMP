@@ -1,0 +1,986 @@
+% Guide utilisateur VetNutri MP — version desktop
+% Compilation : latexmk -pdf guide_utilisateur.tex
+% Les captures (dossier captures/) sont produites par le pilote
+% composeApp/src/desktopTest/.../Guide/GuideScreenshotDriver.kt (voir README.md).
+% Les repères numérotés sont placés en pixels de capture (1400 x 900) : \repere{x}{y}{n}.
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage[most]{tcolorbox}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{vetprimaire}{HTML}{00897B}
+\definecolor{vetfond}{HTML}{E0F2F1}
+\definecolor{vetalerte}{HTML}{B00020}
+\definecolor{vetrepere}{HTML}{E65100}
+\definecolor{vetinfo}{HTML}{1565C0}
+
+\titleformat{\section}{\Large\bfseries\color{vetprimaire}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{vetprimaire}}{\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries}{}{0em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small VetNutri MP — Guide utilisateur}
+\fancyhead[R]{\small Version desktop 3.3.18}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\setlist{itemsep=2pt,topsep=4pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+
+% ------------------------------------------------------------------ Encadrés
+\newtcolorbox{aretenir}{colback=vetfond,colframe=vetprimaire,boxrule=0.6pt,arc=2pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,fontupper=\small,title=À retenir,fonttitle=\small\bfseries}
+\newtcolorbox{pourquoi}{colback=blue!3,colframe=vetinfo,boxrule=0.6pt,arc=2pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,fontupper=\small,title=Pourquoi ?,fonttitle=\small\bfseries}
+\newtcolorbox{attention}{colback=red!4,colframe=vetalerte,boxrule=0.6pt,arc=2pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,fontupper=\small,title=Attention,fonttitle=\small\bfseries}
+\newtcolorbox{verifiez}{colback=green!4,colframe=green!45!black,boxrule=0.6pt,arc=2pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,fontupper=\small,title=Ce que vous devez voir,fonttitle=\small\bfseries}
+
+% Étape du cas pratique : \etape{titre}{objectif}
+\newcommand{\etape}[2]{%
+  \subsection{#1}
+  \begin{tcolorbox}[colback=white,colframe=vetprimaire!60,boxrule=0.4pt,arc=2pt,left=6pt,
+    right=6pt,top=3pt,bottom=3pt,fontupper=\small]
+  \textbf{Objectif :} #2
+  \end{tcolorbox}}
+
+% Repère numéroté sur une capture (coordonnées en pixels de l'image 1400 x 900)
+\tikzset{repere/.style={circle,fill=vetrepere,draw=white,line width=0.8pt,text=white,
+  font=\sffamily\bfseries\footnotesize,inner sep=0pt,minimum size=15pt}}
+\newcommand{\repere}[3]{\node[repere] at ({#1/1400},{1-#2/900}) {#3};}
+% Rappel d'un repère dans le texte
+\newcommand{\rep}[1]{\tikz[baseline=(n.base)]\node[repere,minimum size=12pt,font=\sffamily\bfseries\scriptsize] (n) {#1};}
+
+% Capture simple : \capture{fichier}{légende}{label}
+\newcommand{\capture}[3]{%
+  \begin{figure}[H]
+    \centering
+    \fbox{\includegraphics[width=0.92\linewidth]{captures/#1}}
+    \caption{#2}
+    \label{fig:#3}
+  \end{figure}}
+
+% Capture annotée : \captureannotee{fichier}{légende}{label}{repères}
+\newcommand{\captureannotee}[4]{%
+  \begin{figure}[H]
+    \centering
+    \fbox{\begin{tikzpicture}
+      \node[anchor=south west,inner sep=0] (img)
+        {\includegraphics[width=0.92\linewidth]{captures/#1}};
+      \begin{scope}[x={(img.south east)},y={(img.north west)}]
+        #4
+      \end{scope}
+    \end{tikzpicture}}
+    \caption{#2}
+    \label{fig:#3}
+  \end{figure}}
+
+% Libellé d'un bouton ou d'un élément de l'interface
+\newcommand{\ui}[1]{\textsf{\textbf{#1}}}
+
+\begin{document}
+
+% ================================================================== Titre
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+  \includegraphics[width=4cm]{logo.png}\par\vspace{1cm}
+  {\Huge\bfseries\color{vetprimaire} VetNutri MP\par}
+  \vspace{0.4cm}
+  {\Large Gestionnaire de nutrition vétérinaire\par}
+  \vspace{1.5cm}
+  {\LARGE Guide utilisateur — version desktop\par}
+  \vspace{0.3cm}
+  {\large De la prise en main à la première ordonnance\par}
+  \vspace{0.4cm}
+  {\large Version de l'application : 3.3.18\par}
+  \vfill
+  {\small Les captures d'écran ont été réalisées sur une base de démonstration.
+  Les animaux, propriétaires et valeurs saisies sont fictifs.\par}
+  \vspace{0.5cm}
+  {\large Octobre 2026\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ================================================================== 1
+\section{Avant de commencer}
+
+\subsection{Ce que vous saurez faire}
+
+À la fin de ce guide, vous saurez :
+\begin{itemize}
+  \item créer le dossier d'un animal et enregistrer une consultation ;
+  \item choisir le référentiel nutritionnel adapté à l'animal ;
+  \item composer une ration, lire son analyse et l'ajuster ;
+  \item préparer une ordonnance et un compte rendu pour le propriétaire.
+\end{itemize}
+Le cœur du guide est un cas pratique suivi du début à la fin (section~\ref{sec:cas}) : Filou,
+un Labrador en surpoids. Reproduisez-le une première fois sur votre poste : c'est le moyen le
+plus rapide de prendre l'application en main.
+
+\subsection{La démarche en un coup d'œil}
+
+Toute formulation de ration suit les mêmes six étapes. Chacune s'appuie sur la précédente : la
+ration est rattachée à une consultation, et l'analyse compare la ration aux besoins calculés
+pour cette consultation.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  etape/.style={rectangle,rounded corners=3pt,draw=vetprimaire,fill=vetfond,
+    text width=2.25cm,align=center,minimum height=1.35cm,font=\footnotesize},
+  fleche/.style={-{Stealth[length=2.5mm]},thick,vetprimaire}]
+  \node[etape] (a) {\textbf{1. Dossier}\\animal ou troupeau};
+  \node[etape,right=0.2cm of a] (b) {\textbf{2. Consultation}\\poids, NEC};
+  \node[etape,right=0.2cm of b] (c) {\textbf{3. Référentiel}\\besoins};
+  \node[etape,right=0.2cm of c] (d) {\textbf{4. Ration}\\aliments, quantités};
+  \node[etape,right=0.2cm of d] (e) {\textbf{5. Analyse}\\et ajustement};
+  \node[etape,right=0.2cm of e] (f) {\textbf{6. Ordonnance}\\compte rendu};
+  \draw[fleche] (a) -- (b);
+  \draw[fleche] (b) -- (c);
+  \draw[fleche] (c) -- (d);
+  \draw[fleche] (d) -- (e);
+  \draw[fleche] (e) -- (f);
+  \draw[fleche,dashed] (e.south) to[bend left=35] node[below,font=\scriptsize,text=black]
+    {on recommence jusqu'à une ration satisfaisante} (d.south);
+\end{tikzpicture}
+\caption{La démarche de formulation dans VetNutri MP.}
+\label{fig:demarche}
+\end{figure}
+
+\subsection{Comment lire ce guide}
+
+\begin{itemize}
+  \item Les libellés de l'interface sont écrits \ui{comme ceci}.
+  \item Sur les captures, les repères \rep{1} \rep{2} \rep{3} renvoient aux explications qui
+        suivent la figure.
+  \item Quatre types d'encadrés vous aident à comprendre et à vérifier :
+\end{itemize}
+
+\begin{aretenir}
+L'essentiel à mémoriser.
+\end{aretenir}
+\begin{pourquoi}
+Le raisonnement nutritionnel derrière ce que fait l'application.
+\end{pourquoi}
+\begin{verifiez}
+Le résultat attendu à l'écran. Si vous voyez autre chose, relisez l'étape.
+\end{verifiez}
+\begin{attention}
+Une action irréversible ou une erreur fréquente.
+\end{attention}
+
+VetNutri MP est une aide à la décision. Il ne remplace ni l'examen clinique ni le jugement du
+vétérinaire, qui reste responsable des données saisies et des rations prescrites. Les données
+sont enregistrées sur votre ordinateur et ne sont transmises que si vous les exportez ou les
+partagez.
+
+% ================================================================== 2
+\section{Installation et premier lancement}
+\label{sec:lancement}
+
+Au tout premier démarrage, la base de l'application est vide. Trois actions, à ne faire
+qu'une fois, la rendent utilisable.
+
+\subsection{Installer les données}
+
+\begin{enumerate}
+  \item Lancez VetNutri MP. Une fenêtre \ui{Mise à jour des données} s'ouvre.
+  \item Cliquez sur \ui{Installer la mise à jour}. L'installation dure environ une minute.
+\end{enumerate}
+
+\capture{01_mise_a_jour_donnees.png}{Proposition d'installation des données au premier lancement.}{maj}
+
+\begin{pourquoi}
+Les données intégrées contiennent la base d'aliments, les référentiels de besoins et les
+conseils. Sans elles, vous ne pourriez ni choisir de référentiel ni composer de ration. La même
+fenêtre réapparaît quand une nouvelle version apporte des données plus récentes ;
+\ui{Plus tard} reporte l'installation.
+\end{pourquoi}
+
+\subsection{Accepter les conditions d'utilisation}
+
+\begin{enumerate}[resume]
+  \item En bas de l'écran d'accueil, cliquez sur \ui{Lire et accepter les conditions}.
+  \item Lisez les conditions, puis cliquez sur \ui{J'accepte les conditions}.
+\end{enumerate}
+
+\capture{03_cgu.png}{Conditions générales d'utilisation.}{cgu}
+
+\subsection{Entrer dans l'application}
+
+\begin{enumerate}[resume]
+  \item Cliquez sur \ui{Continuer}.
+\end{enumerate}
+
+\captureannotee{04_accueil_continuer.png}{Écran d'accueil prêt à l'emploi.}{accueil}{%
+  \repere{55}{484}{1}
+  \repere{560}{756}{2}
+  \repere{560}{816}{3}
+  \repere{560}{872}{4}}
+
+\rep{1} L'état de la base : nombre d'aliments, de référentiels et de conseils.
+\rep{2} \ui{Continuer} ouvre l'application.
+\rep{3} \ui{Restaurer une sauvegarde} recharge une sauvegarde (section~\ref{sec:sauvegardes}).
+\rep{4} \ui{Mode examen} sert aux sessions d'examen encadrées.
+
+\begin{verifiez}
+L'encadré indique \ui{Base de données complète}, avec plus de 11\,000 aliments. Aux lancements
+suivants, il suffira de cliquer sur \ui{Continuer}.
+\end{verifiez}
+
+% ================================================================== 3
+\section{Découvrir l'écran principal}
+\label{sec:liste}
+
+L'écran principal est la liste des animaux. Tout part de là.
+
+\captureannotee{05_liste_animaux.png}{La liste des animaux et ses commandes.}{liste}{%
+  \repere{184}{84}{1}
+  \repere{528}{84}{2}
+  \repere{872}{84}{3}
+  \repere{1215}{84}{4}
+  \repere{40}{150}{5}
+  \repere{1000}{150}{6}
+  \repere{1358}{145}{7}
+  \repere{1296}{258}{8}
+  \repere{1356}{815}{9}
+  \repere{1325}{32}{10}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Liste des aliments} : consulter et modifier la base d'aliments (section~\ref{sec:aliments}). \\
+\rep{2} & \ui{Données de calcul} : équations, bibliographie, référentiels, conseils (section~\ref{sec:donnees}). \\
+\rep{3} & \ui{Exploration multiration} : calculer des rations en série (section~\ref{sec:multiration}). Ce bouton n'apparaît que si la fonction est activée. \\
+\rep{4} & \ui{Import Rapide} : importer des dossiers d'animaux. \\
+\rep{5} & Recherche par identifiant, nom, propriétaire ou race. \\
+\rep{6} & Filtre par espèce. \\
+\rep{7} & Tri et filtres avancés. \\
+\rep{8} & La flèche ouvre la fiche de l'animal ; la corbeille rouge le supprime. \\
+\rep{9} & \ui{+} crée un nouveau dossier. \\
+\rep{10} & Paramètres de l'application (section~\ref{sec:parametres}). \\
+\end{tabularx}
+
+% ================================================================== 4
+\section{Cas pratique : la ration de Filou, pas à pas}
+\label{sec:cas}
+
+\begin{tcolorbox}[colback=vetfond,colframe=vetprimaire,boxrule=0.6pt,arc=2pt,
+  title=Le cas,fonttitle=\bfseries]
+Filou est un Labrador retriever mâle entier de 7 ans. Il pèse 32~kg et sa note d'état
+corporel (NEC) est de 7/9 : il est en surpoids. L'objectif est une perte de poids progressive
+avec un aliment hypocalorique du commerce.
+
+Nous allons créer son dossier, enregistrer la consultation, composer la ration, la corriger
+grâce à l'analyse, puis préparer l'ordonnance.
+\end{tcolorbox}
+
+% ------------------------------------------------------------------
+\etape{Étape 1 — Créer le dossier}{enregistrer l'identité de Filou.}
+
+\begin{enumerate}
+  \item Dans la liste des animaux, cliquez sur \ui{+} en bas à droite.
+  \item Laissez \ui{Dossier : Individu} coché.
+  \item Saisissez l'\ui{ID} (par exemple le numéro de dossier de la clinique), le \ui{Nom} et le
+        \ui{Propriétaire}.
+  \item Choisissez l'\ui{Espèce} (\emph{Chien}), puis saisissez la \ui{Race}, la
+        \ui{Date de naissance} et le \ui{Sexe}.
+  \item Validez avec le bouton coché en bas à droite.
+\end{enumerate}
+
+\capture{06_creation_individu.png}{Le formulaire de création d'un individu.}{creation-individu}
+
+\begin{pourquoi}
+L'espèce est déterminante : elle filtre les référentiels et les courbes de croissance
+proposés. Le sexe et la date de naissance servent aux courbes de croissance et au calcul de
+l'âge. Pour un groupe d'animaux, choisissez plutôt \ui{Troupeau} (section~\ref{sec:troupeau}).
+\end{pourquoi}
+
+% ------------------------------------------------------------------
+\etape{Étape 2 — Ouvrir la fiche de l'animal}{repérer les onglets de travail.}
+
+Dans la liste, cliquez sur la flèche de la ligne de Filou. La fiche s'ouvre sur l'onglet
+\ui{Identification}.
+
+\captureannotee{08_fiche_identification.png}{La fiche de l'animal.}{fiche}{%
+  \repere{150}{40}{1}
+  \repere{222}{116}{2}
+  \repere{222}{172}{3}
+  \repere{222}{228}{4}
+  \repere{222}{312}{5}
+  \repere{222}{396}{6}
+  \repere{222}{649}{7}
+  \repere{222}{781}{8}
+  \repere{1336}{72}{9}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & Nom, espèce et identifiant de l'animal ouvert. \\
+\rep{2} & \ui{Identification} : les informations saisies à l'étape 1. \\
+\rep{3} & \ui{Consultations} : l'historique des consultations (étape 3). \\
+\rep{4} & \ui{Rations} : composition et analyse des rations (étapes 5 à 7). \\
+\rep{5} & \ui{Graphique} et \ui{Graphique Aliments} : suivi du poids et comparaisons (section~\ref{sec:graphiques}). \\
+\rep{6} & \ui{Ordonnance} : documents pour le propriétaire (étape 8). \\
+\rep{7} & \ui{Exporter animal} et \ui{Partager en ligne} : transmettre le dossier. \\
+\rep{8} & \ui{Retour} à la liste des animaux. \\
+\rep{9} & Modifier ou supprimer le dossier. \\
+\end{tabularx}
+
+% ------------------------------------------------------------------
+\etape{Étape 3 — Saisir la consultation}{décrire l'état de Filou aujourd'hui.}
+
+\begin{enumerate}
+  \item Ouvrez l'onglet \ui{Consultations}, puis cliquez sur \ui{+} en bas à droite.
+  \item Vérifiez la \ui{Date} \rep{1} et saisissez le \ui{Poids} \rep{2} : 32.
+  \item Cliquez sur les trois points de la \ui{Note d'état corporel} \rep{3} et choisissez
+        \emph{7/9 — Surpoids} (figure~\ref{fig:nec}).
+  \item Lisez l'\ui{Estimation} du poids idéal \rep{5} : 26,67~kg. Si vous la retenez,
+        saisissez-la dans \ui{Poids idéal (kg)} \rep{4}.
+  \item Saisissez l'\ui{Objectif} \rep{6} : \emph{Perte de poids progressive}. Ajoutez si besoin
+        des \ui{Mots-clés} \rep{7} (pathologies, contexte) et une observation.
+\end{enumerate}
+Ne validez pas encore : il reste à choisir le référentiel (étape 4).
+
+\captureannotee{10_consultation_edition.png}{Saisie de la consultation.}{consultation}{%
+  \repere{262}{100}{1}
+  \repere{262}{180}{2}
+  \repere{1328}{335}{3}
+  \repere{262}{464}{4}
+  \repere{1104}{447}{5}
+  \repere{262}{551}{6}
+  \repere{430}{649}{7}
+  \repere{1356}{805}{8}}
+
+\rep{8} Le bouton coché enregistre la consultation (étape 4).
+
+\capture{11_consultation_nec.png}{Choix de la note d'état corporel sur 9.}{nec}
+
+\begin{pourquoi}
+Le poids idéal est le poids sur lequel les besoins sont calculés. Pour un animal en surpoids,
+calculer les besoins sur le poids actuel reviendrait à entretenir l'excès de poids.
+\begin{itemize}
+  \item L'\ui{Estimation} est une suggestion calculée d'après le poids et la NEC
+        (section~\ref{sec:calculs}).
+  \item Elle n'est utilisée que si vous la recopiez dans \ui{Poids idéal (kg)}. Sinon, les
+        calculs portent sur le poids actuel.
+\end{itemize}
+\end{pourquoi}
+
+% ------------------------------------------------------------------
+\etape{Étape 4 — Choisir le référentiel}{dire à l'application à quels besoins comparer la ration.}
+
+\begin{enumerate}
+  \item Faites défiler le formulaire jusqu'à \ui{Références nutritionnelles}.
+  \item Dans \ui{Référence générale}, cliquez sur les trois points : la liste des référentiels
+        de l'espèce s'ouvre.
+  \item Tapez quelques lettres dans la recherche \rep{1} si la liste est longue, puis cliquez
+        sur la ligne voulue \rep{3} : ici \emph{Adulte >25kg}.
+  \item Si l'animal a une maladie à prendre en compte, ajoutez-la dans
+        \ui{Références complémentaires}.
+  \item Validez la consultation avec le bouton coché.
+\end{enumerate}
+
+\captureannotee{13_choix_referentiel.png}{Choix du référentiel général.}{referentiel}{%
+  \repere{418}{263}{1}
+  \repere{418}{306}{2}
+  \repere{418}{462}{3}}
+
+\rep{2} Le nombre de référentiels qui correspondent à la recherche.
+
+\begin{pourquoi}
+Le référentiel contient les besoins (minimum, optimum, maximum) de chaque nutriment pour un type
+d'animal, ainsi que l'équation du besoin énergétique. C'est la règle à laquelle la ration sera
+comparée : un mauvais référentiel donne une analyse fausse, même avec une bonne ration.
+Les \ui{Coefficients d'ajustement énergétique} K1 à K5, plus bas dans le formulaire, modulent
+le besoin énergétique (activité, stérilisation, environnement\ldots).
+\end{pourquoi}
+
+\begin{attention}
+Une consultation sans référence générale ne peut pas être enregistrée : l'application affiche
+\ui{Informations manquantes}.
+\end{attention}
+
+\begin{verifiez}
+La consultation apparaît dans la liste avec la date, le poids et \ui{Rations: 1}.
+L'application a créé une première ration vide, la \og Ration actuelle\fg.
+\end{verifiez}
+
+% ------------------------------------------------------------------
+\etape{Étape 5 — Composer la ration}{mettre un aliment dans la ration et fixer sa quantité.}
+
+\begin{enumerate}
+  \item Ouvrez l'onglet \ui{Rations}. Dans le cadre \ui{Aliments de la ration}, cliquez sur
+        \ui{+}.
+  \item Tapez un nom, une marque ou un ingrédient \rep{1} : ici \emph{satiety}. Affinez si
+        besoin avec les filtres \rep{2} (type, indications, espèce, base de données).
+  \item Cliquez sur un aliment de la liste \rep{3} : sa fiche s'affiche à droite \rep{4}
+        (marque, espèces, indications, ingrédients, composition). Vérifiez qu'il s'agit bien
+        d'un aliment pour chien.
+  \item Cliquez sur le bouton \ui{+} rond \rep{5} : l'aliment est ajouté avec une quantité de
+        100~g. Le bouton \ui{+R} \rep{6} l'ajoute plutôt dans une nouvelle ration.
+  \item Revenez à la ration avec la flèche en haut à gauche.
+\end{enumerate}
+
+\captureannotee{14_ajout_aliment.png}{Recherche et ajout d'un aliment.}{ajout-aliment}{%
+  \repere{270}{122}{1}
+  \repere{270}{212}{2}
+  \repere{258}{605}{3}
+  \repere{940}{124}{4}
+  \repere{1295}{768}{5}
+  \repere{1295}{848}{6}}
+
+Pour régler la quantité, cliquez sur le crayon de la ligne de l'aliment, saisissez la quantité
+en grammes (ici 380) et validez par \ui{OK}.
+
+% ------------------------------------------------------------------
+\etape{Étape 6 — Lire l'analyse}{savoir si la ration couvre les besoins de Filou.}
+
+Avec 380~g de l'aliment, l'onglet \ui{Rations} se présente ainsi.
+
+\captureannotee{15_ration_avant_ajustement.png}{Analyse de la ration de 380~g.}{ration-avant}{%
+  \repere{252}{103}{1}
+  \repere{636}{103}{2}
+  \repere{1020}{101}{3}
+  \repere{252}{212}{4}
+  \repere{252}{576}{5}
+  \repere{836}{212}{6}
+  \repere{1180}{185}{7}
+  \repere{836}{248}{8}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Valeurs métaboliques} : poids, poids idéal, poids métabolique, besoin énergétique
+          standard (BEE) et besoin énergétique (BE). \\
+\rep{2} & \ui{Coefficients} K1 à K5 et coefficient d'ajustement. Le crayon les modifie. \\
+\rep{3} & \ui{Bilan énergétique} : énergie apportée, couverture du besoin, K observé et K
+          calculé. \textbf{C'est le premier chiffre à regarder.} \\
+\rep{4} & Les rations de la consultation. \\
+\rep{5} & Les aliments de la ration sélectionnée et les outils d'ajustement. \\
+\rep{6} & \ui{Apports} : chaque nutriment, exprimé dans l'unité du référentiel (ici \og par
+          1000 kcal\fg). \\
+\rep{7} & Unité d'expression, nutriments affichés, export PDF, vue en cartes ou en graphique. \\
+\rep{8} & Les nutriments par famille. Une icône d'alerte signale un écart au référentiel. \\
+\end{tabularx}
+
+\subsubsection{Interpréter le résultat}
+
+La couverture énergétique n'est que de 56~\% : 380~g apportent 971~kcal/j pour un besoin de
+1749~kcal/j. Presque tous les nutriments sont signalés en carence.
+
+\begin{pourquoi}
+Les apports sont rapportés au besoin énergétique de l'animal, et non à l'énergie de la ration
+(section~\ref{sec:calculs}). Tant que la ration ne couvre pas le besoin énergétique, tous les
+apports paraissent bas. \textbf{Corrigez donc toujours l'énergie en premier}, puis regardez les
+autres nutriments.
+\end{pourquoi}
+
+% ------------------------------------------------------------------
+\etape{Étape 7 — Ajuster la ration}{obtenir une couverture énergétique proche de 100~\%.}
+
+\subsubsection{L'ajustement rapide}
+
+Dans le cadre \ui{Aliments de la ration}, cliquez sur l'icône \ui{Ajustement rapide
+multi-nutriments} (la balance, à gauche du livre et du \ui{+}). Les quantités sont recalculées
+pour couvrir le besoin énergétique.
+
+\captureannotee{17_ration_apres_ajustement.png}{La même ration après ajustement rapide.}{ration-apres}{%
+  \repere{1160}{150}{1}
+  \repere{252}{646}{2}
+  \repere{1000}{406}{3}}
+
+\begin{verifiez}
+\rep{1} La couverture passe à 99~\% et le K observé à 0,99. \rep{2} La quantité passe à
+675~g. \rep{3} Les alertes de carence disparaissent ; de petites flèches rouges signalent
+désormais quelques apports au-dessus de l'optimum maximum (calcium, phosphore, vitamine~A).
+\end{verifiez}
+
+\begin{pourquoi}
+Un dépassement de l'optimum n'est pas forcément un problème : survolez l'icône pour lire le
+seuil concerné et jugez-en cliniquement. Pour une perte de poids, l'énergie se règle par le
+poids idéal et les coefficients K, pas en donnant moins que la ration calculée : sinon, les
+autres nutriments deviennent insuffisants.
+\end{pourquoi}
+
+\subsubsection{L'ajustement multi-nutriments}
+
+L'icône voisine ouvre l'outil complet, utile quand la ration associe plusieurs aliments.
+
+\captureannotee{16_ajustement_multinutriments.png}{L'ajustement multi-nutriments.}{ajustement}{%
+  \repere{268}{147}{1}
+  \repere{268}{320}{2}
+  \repere{1385}{240}{3}
+  \repere{1220}{448}{4}
+  \repere{268}{552}{5}
+  \repere{268}{719}{6}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & Actions rapides : verrouiller ou déverrouiller toutes les quantités, ajustement
+          automatique, réinitialisation. \\
+\rep{2} & Pour chaque aliment, le \ui{Nutriment cible} qu'il doit couvrir. \\
+\rep{3} & Le cadenas fige la quantité d'un aliment. \\
+\rep{4} & Le niveau visé pour chaque nutriment cible (minimum, optimum\ldots). \\
+\rep{5} & La part du besoin énergétique couverte par les aliments complets, quand la ration
+          associe aliment complet et compléments. \\
+\rep{6} & \ui{Prévisualiser} sans modifier, \ui{Ajuster}, \ui{Quantité égale (Sanalio)}, ou
+          \ui{Ajustement par contraintes (min/max)}, qui cherche à respecter toutes les bornes
+          du référentiel à la fois. \\
+\end{tabularx}
+
+\subsubsection{Voir la ration en graphique}
+
+L'interrupteur \ui{Cartes} / \ui{Bullet} du panneau \ui{Apports} affiche la composition de la
+ration, l'origine de l'énergie et, pour chaque nutriment, une barre comparée aux seuils du
+référentiel. \ui{Cliquer pour plus de détails} ouvre le détail d'un nutriment.
+
+\capture{18_analyse_graphique.png}{Analyse de la ration en vue graphique.}{analyse-graphique}
+
+% ------------------------------------------------------------------
+\etape{Étape 8 — Préparer l'ordonnance}{remettre au propriétaire une ration claire et des conseils.}
+
+\begin{enumerate}
+  \item Ouvrez l'onglet \ui{Ordonnance}.
+  \item Cochez la ou les rations à prescrire \rep{1}.
+  \item Ajoutez des conseils de la bibliothèque ou rédigez une \ui{Nouvelle section} \rep{2}.
+  \item Complétez le compte rendu \rep{3} : anamnèse, examen clinique, facteur nutritionnel
+        clé, texte additionnel.
+  \item Utilisez les boutons du bas \rep{4} : \ui{Copier le compte rendu} (pour le coller dans
+        votre logiciel), \ui{Aperçu du compte rendu}, \ui{Prévisualiser l'ordonnance}.
+\end{enumerate}
+
+\captureannotee{21_ordonnance.png}{Préparation de l'ordonnance et du compte rendu.}{ordonnance}{%
+  \repere{278}{160}{1}
+  \repere{268}{325}{2}
+  \repere{830}{175}{3}
+  \repere{585}{861}{4}}
+
+\begin{aretenir}
+Les coordonnées du praticien qui figurent sur l'ordonnance se saisissent une fois pour toutes
+dans \ui{Paramètres} > \ui{Préférences} (section~\ref{sec:parametres}).
+\end{aretenir}
+
+% ------------------------------------------------------------------
+\subsection{Récapitulatif du cas}
+
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+\textbf{Étape} & \textbf{Où} & \textbf{Résultat pour Filou} \\
+\midrule
+1. Dossier & Liste, \ui{+} & Labrador mâle, né en 2019 \\
+3. Consultation & \ui{Consultations} & 32 kg, NEC 7/9, poids idéal estimé 26,67 kg \\
+4. Référentiel & formulaire de consultation & \emph{Adulte >25kg} \\
+5. Ration & \ui{Rations}, \ui{+} & un aliment hypocalorique, 380 g \\
+6. Analyse & \ui{Rations} & couverture 56 \%, carences apparentes \\
+7. Ajustement & ajustement rapide & 675 g, couverture 99 \% \\
+8. Ordonnance & \ui{Ordonnance} & ration cochée, compte rendu, impression \\
+\bottomrule
+\end{tabularx}
+
+\begin{aretenir}
+Lors d'un suivi, ne modifiez pas l'ancienne consultation : créez-en une nouvelle, ou dupliquez
+la précédente avec l'icône de copie. L'historique des poids et des rations reste ainsi lisible
+dans les graphiques.
+\end{aretenir}
+
+% ================================================================== 5
+\section{Comprendre les calculs}
+\label{sec:calculs}
+
+Cette section explique les chiffres affichés dans l'onglet \ui{Rations}, avec les valeurs de
+Filou.
+
+\subsection{Le poids de calcul}
+
+Les besoins sont calculés sur le \textbf{poids idéal} s'il est saisi, sinon sur le poids
+actuel. L'estimation proposée dans la consultation considère que chaque point de NEC au-dessus
+de 5 correspond à 10~\% de poids en trop :
+\[
+  \text{poids idéal estimé} = \frac{\text{poids} \times 100}{100 + (\text{NEC} - 5) \times 10}
+  \qquad\text{Filou : } \frac{32 \times 100}{120} = 26{,}67\ \text{kg}
+\]
+
+\subsection{Du poids au besoin énergétique}
+
+\begin{enumerate}
+  \item Le \textbf{poids métabolique} tient compte du fait que les besoins n'augmentent pas
+        proportionnellement au poids :
+        \[ P_{\text{mét}} = P^{0{,}75} \qquad\text{Filou : } 32^{0{,}75} = 13{,}45\ \text{kg}^{0{,}75} \]
+  \item Le \textbf{besoin énergétique standard} (BEE) applique l'équation du référentiel. Pour
+        le référentiel de l'exemple :
+        \[ \text{BEE} = 130 \times P^{0{,}75} = 130 \times 13{,}45 = 1749\ \text{kcal/j} \]
+  \item Le \textbf{K calculé} est le produit des coefficients K1 à K5 et du coefficient
+        d'ajustement. Le \textbf{besoin énergétique} (BE) en découle, augmenté le cas échéant de
+        l'énergie demandée par les références de maladie :
+        \[ \text{BE} = \text{BEE} \times K \;(+\ \text{énergie des références complémentaires}) \]
+\end{enumerate}
+
+\begin{aretenir}
+Dans l'exemple, le poids idéal n'a pas été recopié : les calculs portent sur 32~kg. Avec
+26,67~kg, le BEE tomberait à $130 \times 26{,}67^{0{,}75} \approx 1525$~kcal/j.
+\end{aretenir}
+
+\subsection{Le bilan énergétique}
+
+\[
+  \text{Couverture} = \frac{\text{énergie apportée}}{\text{BE}}
+  \qquad\qquad
+  K_{\text{observé}} = \frac{\text{énergie apportée}}{\text{BEE}}
+\]
+Avec 675~g : $1725 / 1749 = 99~\%$ et $K_{\text{observé}} = 0{,}99$. Le K observé indique quel
+coefficient la ration applique réellement ; comparez-le au K calculé.
+
+\subsection{Les apports}
+
+Les apports sont exprimés dans l'unité du référentiel. En \og par 1000 kcal\fg, l'apport
+journalier est rapporté au besoin énergétique :
+\[
+  \text{apport (g/1000 kcal)} = \frac{\text{apport journalier (g/j)}}{\text{BE (kcal/j)}} \times 1000
+\]
+Filou, avec 675~g d'un aliment à 30~\% de protéines : $202{,}5 / 1749 \times 1000 = 116$~g/1000~kcal.
+
+\begin{aretenir}
+Si la ration ne couvre que la moitié du besoin énergétique, chaque apport est divisé par deux
+par rapport à ce qu'il serait avec la bonne quantité. D'où la règle : \textbf{l'énergie
+d'abord}.
+\end{aretenir}
+
+\subsection{Les alertes}
+
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{6.2cm} X@{}}
+\toprule
+\textbf{Message (au survol de l'icône)} & \textbf{Signification} \\
+\midrule
+Carence : apport inférieur au minimum & sous le seuil minimal du référentiel. \\
+Carence : apport inférieur au optimal minimum & au-dessus du minimum, mais sous l'optimum. \\
+Excès : apport supérieur au optimal maximum & au-dessus de l'optimum (flèche rouge). \\
+Informations incomplètes & la composition d'au moins un aliment ne renseigne pas ce
+nutriment : l'apport réel peut être plus élevé. \\
+\bottomrule
+\end{tabularx}
+
+La section \ui{Analyses et ratios} donne les rapports K/Na, Ca/P, oméga-6/oméga-3 et Zn/Cu.
+
+% ================================================================== 6
+\section{Aller plus loin avec les rations}
+
+\subsection{Plusieurs rations dans une consultation}
+
+Une consultation peut réunir la ration actuelle du propriétaire et une ou plusieurs
+propositions, pour les comparer.
+\begin{itemize}
+  \item \ui{+} du cadre \ui{Rations de la consultation} ajoute une ration ; l'icône voisine
+        reprend une ration d'une consultation précédente.
+  \item Sur chaque ration : ajouter une étape au plan évolutif (transition alimentaire),
+        dupliquer, modifier, supprimer.
+  \item Dans \ui{Aliments de la ration} : enregistrer la ration comme recette, la copier, ouvrir
+        les recettes enregistrées.
+\end{itemize}
+
+\subsection{Graphiques de suivi}
+\label{sec:graphiques}
+
+L'onglet \ui{Graphique} propose quatre vues : \ui{Évolution du poids}, \ui{Répartition
+énergétique}, \ui{Densité énergétique des rations} et \ui{Nutriments des rations}.
+
+\capture{19_graphique_poids.png}{Évolution du poids et courbes de référence.}{graphique-poids}
+
+La vue du poids place chaque pesée en fonction de l'âge. Sous le graphique, l'\ui{Historique
+des poids} permet d'ajouter une pesée et de fixer un objectif de perte de poids (perte minimale
+et maximale en \% par semaine).
+
+\begin{pourquoi}
+La courbe de référence proposée par défaut correspond au sexe de l'animal et à sa classe de
+poids. Cette classe est fixée, dans l'ordre :
+\begin{enumerate}
+  \item par le poids adulte attendu, pour un chiot (variable AW de la consultation) ;
+  \item sinon par le poids idéal, saisi ou estimé d'après la NEC ;
+  \item sinon par le dernier poids.
+\end{enumerate}
+Un animal en surpoids n'est ainsi pas classé trop haut. Le bouton au-dessus du graphique permet
+de choisir une autre courbe.
+\end{pourquoi}
+
+L'onglet \ui{Graphique Aliments} compare des aliments entre eux : ajoutez-les avec \ui{+} dans
+la liste de gauche, puis cliquez sur \ui{Voir l'analyse graphique}.
+
+\capture{20_graphique_aliments.png}{Sélection d'aliments à comparer.}{graphique-aliments}
+
+\subsection{Transmettre un dossier}
+
+Depuis le menu de gauche de la fiche :
+\begin{itemize}
+  \item \ui{Exporter animal} enregistre le dossier complet (consultations, rations, aliments
+        utilisés) dans un fichier, réimportable sur un autre poste ;
+  \item \ui{Partager en ligne} transmet le dossier par un service en ligne.
+\end{itemize}
+
+% ================================================================== 7
+\section{Cas particuliers}
+
+\subsection{Un troupeau}
+\label{sec:troupeau}
+
+\textbf{Quand l'utiliser ?} Pour raisonner une ration à l'échelle d'un élevage ou d'un groupe :
+un chenil, une chatterie, un lot d'animaux de rente.
+
+À la création du dossier, choisissez \ui{Troupeau / groupe d'animaux}. Le troupeau n'a pas
+d'espèce, de race ni de sexe propres : il est décrit par des groupes d'individus (nom,
+effectif, poids moyen, espèce, race, sexe). Il peut mêler plusieurs espèces.
+
+\capture{07_creation_troupeau.png}{Création d'un troupeau de douze individus.}{creation-troupeau}
+
+Le dossier d'un troupeau fonctionne comme celui d'un individu, avec trois différences.
+\begin{itemize}
+  \item Dans la consultation, l'\ui{État du troupeau} remplace le poids, la NEC, le référentiel
+        et les K : pour chaque groupe, on saisit effectif, poids moyen, NEC, référentiel (de
+        l'espèce du groupe) et K.
+  \item Les rations sont saisies en quantités pour tout le troupeau.
+  \item Dans l'onglet \ui{Rations}, un panneau choisit ce qui est analysé.
+        \ui{Troupeau entier} compare l'apport total à la somme des besoins. La sélection d'un
+        groupe affiche la ration d'un individu de ce groupe, au prorata des besoins, analysée
+        avec le référentiel du groupe.
+\end{itemize}
+
+\subsection{L'exploration multiration}
+\label{sec:multiration}
+
+\textbf{Quand l'utiliser ?} Pour préparer des rations types, par exemple pour toute une gamme
+de poids, plutôt qu'une ration pour un animal précis.
+
+Activez-la d'abord dans \ui{Paramètres} > \ui{Administration} > \ui{Activer l'analyse
+multiration} ; le bouton \ui{Exploration multiration} apparaît dans la liste des animaux.
+
+\capture{28_multiration.png}{Configuration d'une exploration multiration.}{multiration}
+
+\begin{enumerate}
+  \item Choisissez l'espèce et cochez un ou plusieurs référentiels généraux.
+  \item Définissez la grille : poids (de, à, pas) et coefficient K (de, à, pas). Le nombre de
+        scénarios s'affiche.
+  \item Dans l'onglet \ui{Ingrédients}, composez les listes d'aliments sources de protéines, de
+        fibres, de calcium, d'oméga-6, de sel et d'énergie. L'ajustement suit cet ordre.
+  \item Cliquez sur \ui{Calculer toutes les rations}. Un clic sur une case de la carte affiche
+        ses rations, que l'on peut ouvrir dans l'analyse habituelle pour les modifier et les
+        exporter.
+\end{enumerate}
+L'onglet \ui{Enregistrées} conserve les configurations nommées ; les résultats sont recalculés à
+chaque ouverture.
+
+% ================================================================== 8
+\section{Gérer les données}
+
+\subsection{La base d'aliments}
+\label{sec:aliments}
+
+\ui{Liste des aliments} (écran principal) affiche toute la base, avec les mêmes filtres que la
+recherche d'aliments d'une ration. Le crayon modifie un aliment, la corbeille le supprime,
+\ui{+} en crée un.
+
+\capture{22_liste_aliments.png}{Liste des aliments.}{aliments}
+
+La fiche d'un aliment a trois onglets : \ui{Informations générales} (nom, marque, gamme, base
+de données, prix, conditionnement, type), \ui{Composition nutritionnelle} et
+\ui{Bibliographie}. Enregistrez avec \ui{Sauvegarder}.
+
+\capture{23_aliment_edition.png}{Modification d'un aliment.}{aliment-edition}
+
+\begin{aretenir}
+Une composition incomplète produit des alertes \og Informations incomplètes\fg{} dans l'analyse.
+Pour un aliment que vous créez, renseignez au moins l'énergie, les macronutriments, le calcium
+et le phosphore.
+\end{aretenir}
+
+\subsection{Les données de calcul}
+\label{sec:donnees}
+
+Le bouton \ui{Données de calcul} donne accès aux éléments sur lesquels reposent les calculs.
+Ils sont livrés avec l'application. Modifiez-les avec prudence : toute modification change les
+analyses de toutes les consultations qui les utilisent.
+
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Onglet} & \textbf{Contenu} \\
+\midrule
+\ui{Équations} & formules du besoin énergétique, du poids métabolique et de la densité
+énergétique (par exemple \texttt{130*BW\^{}0.75}) \\
+\ui{Bibliographie} & références qui justifient les référentiels et les valeurs des aliments \\
+\ui{Systèmes de calcul} & les référentiels : besoins par espèce, stade ou maladie \\
+\ui{Conseils personnalisés} & bibliothèque de conseils reprise dans l'ordonnance \\
+\bottomrule
+\end{tabularx}
+
+\capture{26_referentiels.png}{Les référentiels nutritionnels (onglet Systèmes de calcul).}{referentiels}
+\capture{24_equations.png}{Les équations.}{equations}
+\capture{25_bibliographie.png}{La bibliographie.}{bibliographie}
+\capture{27_conseils.png}{La bibliothèque de conseils.}{conseils}
+
+% ================================================================== 9
+\section{Paramètres}
+\label{sec:parametres}
+
+La roue dentée de l'écran principal ouvre les paramètres, en six onglets.
+
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Onglet} & \textbf{À quoi il sert} \\
+\midrule
+\ui{Interface} & taille de l'interface (50 à 200~\%) ; accès aux \ui{Analyses croisées} \\
+\ui{Préférences} & coordonnées du praticien pour l'ordonnance ; unité d'expression des
+besoins par espèce \\
+\ui{Import/Export} & échanges de données (animaux, aliments, recettes, équations, références,
+conseils) \\
+\ui{Excel} & export et import des aliments en CSV compatible Excel \\
+\ui{Recettes} & recettes enregistrées depuis les rations \\
+\ui{Administration} & multiration, réimport des données initiales, sauvegardes, import
+VetNutri~2, maintenance \\
+\bottomrule
+\end{tabularx}
+
+\subsection{Préférences : à faire dès l'installation}
+
+Saisissez vos informations (nom, numéro d'ordre, adresse, téléphone, e-mail), reprises sur
+l'ordonnance, puis cliquez sur \ui{Enregistrer}. La section \ui{Expression des besoins par
+espèce} fixe l'unité d'expression des besoins (par exemple \og par 1000 kcal\fg).
+
+\capture{30_param_preferences.png}{Préférences.}{param-preferences}
+
+\subsection{Interface}
+
+\capture{29_param_interface.png}{Taille de l'interface.}{param-interface}
+
+\subsection{Import, export et Excel}
+
+L'onglet \ui{Import/Export} exporte et importe des données au format API, avec une sélection
+avancée, et importe des aliments, des animaux ou des références nutritionnelles
+(\texttt{.vbnr.json}).
+
+\capture{31_param_import_export.png}{Import et export de données.}{param-import}
+
+L'onglet \ui{Excel} exporte et importe les aliments en CSV : séparateur point-virgule,
+encodage UTF-8, une ligne d'en-têtes, une colonne par nutriment avec l'unité dans l'en-tête.
+Une prévisualisation permet de vérifier les données avant de confirmer l'import.
+
+\capture{32_param_excel.png}{Import et export Excel des aliments.}{param-excel}
+
+\subsection{Recettes}
+
+\capture{33_param_recettes.png}{Recettes enregistrées.}{param-recettes}
+
+\subsection{Administration}
+
+\capture{34_param_administration.png}{Administration de la base.}{param-admin}
+
+\begin{attention}
+Les boutons rouges \ui{Vider la base de données\ldots} suppriment définitivement les aliments,
+les animaux, les référentiels, les équations ou les bibliographies. Faites une sauvegarde avant
+de les utiliser.
+\end{attention}
+
+\subsection{Sauvegardes}
+\label{sec:sauvegardes}
+
+\ui{Administration} > \ui{Gérer les sauvegardes} liste les sauvegardes avec leur date, leur
+contenu et leur taille. \ui{Nouvelle sauvegarde} en crée une ; sur chaque ligne, une icône la
+restaure et une autre la supprime.
+
+\capture{35_sauvegardes.png}{Gestion des sauvegardes.}{sauvegardes}
+
+\begin{aretenir}
+Faites une sauvegarde avant toute opération importante : import massif, vidage d'une base,
+changement d'ordinateur. Copiez de temps en temps une sauvegarde hors de l'ordinateur.
+\end{aretenir}
+
+\subsection{Analyses croisées}
+\label{sec:analyses-croisees}
+
+\textbf{Quand l'utiliser ?} Pour comparer de nombreuses consultations : travaux dirigés, séries
+de cas, examens.
+
+Filtrez par espèce, mots-clés, identifiant d'examen ou d'exercice, sélectionnez les
+consultations, puis ouvrez l'analyse ou la notation.
+
+\capture{36_analyses_croisees.png}{Analyses croisées.}{analyses-croisees}
+
+% ================================================================== Annexes
+\appendix
+
+\section{Questions fréquentes}
+
+\begin{description}[style=nextline,leftmargin=0pt,itemsep=6pt]
+  \item[Je ne peux pas enregistrer la consultation.]
+    Il manque la \ui{Référence générale}. Choisissez un référentiel dans la section
+    \ui{Références nutritionnelles} du formulaire.
+  \item[Aucun référentiel ne s'affiche dans la liste.]
+    Vérifiez l'espèce de l'animal : seuls les référentiels de son espèce sont proposés. Vérifiez
+    aussi que les données ont été installées (écran d'accueil).
+  \item[Tous les nutriments sont en carence.]
+    Regardez la couverture énergétique : si elle est loin de 100~\%, ajustez d'abord la
+    quantité (section~\ref{sec:calculs}).
+  \item[Le besoin énergétique me paraît trop élevé pour un animal en surpoids.]
+    Les calculs utilisent le poids actuel tant que le poids idéal n'est pas saisi. Recopiez
+    l'estimation, ou votre propre valeur, dans \ui{Poids idéal (kg)}.
+  \item[La courbe de croissance ne correspond pas à mon chiot.]
+    Saisissez son poids adulte attendu (variable AW) dans la consultation, ou choisissez une
+    autre courbe avec le bouton au-dessus du graphique.
+  \item[Le bouton \ui{Exploration multiration} n'apparaît pas.]
+    Activez-le dans \ui{Paramètres} > \ui{Administration}.
+  \item[Un aliment manque dans la base.]
+    Créez-le depuis la \ui{Liste des aliments}, ou directement depuis la recherche d'aliments
+    d'une ration (\ui{+} en haut à droite).
+\end{description}
+
+\section{Glossaire}
+
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Terme} & \textbf{Définition} \\
+\midrule
+BEE & Besoin énergétique standard, calculé par l'équation du référentiel (kcal/j). \\
+BE & Besoin énergétique de l'animal : BEE × K, plus l'énergie liée aux maladies. \\
+Couverture & Part du BE apportée par la ration (\%). \\
+K, K1 à K5 & Coefficients qui modulent le besoin énergétique (activité, stérilisation\ldots). \\
+K observé & Énergie apportée divisée par le BEE : le coefficient réellement appliqué. \\
+NEC & Note d'état corporel, de 1 (très maigre) à 9 (très obèse) ; 4 et 5 correspondent à l'état idéal. \\
+Poids idéal & Poids sur lequel les besoins sont calculés ; à défaut, le poids actuel. \\
+Poids métabolique & Poids élevé à la puissance 0,75 (kg$^{0,75}$). \\
+Référentiel & Ensemble des besoins (minimum, optimum, maximum) d'un type d'animal. \\
+Ration actuelle & Première ration d'une consultation, souvent ce que mange déjà l'animal. \\
+Troupeau & Dossier qui décrit un groupe d'animaux par groupes d'individus. \\
+\bottomrule
+\end{tabularx}
+
+\section{Mémo : une consultation en dix gestes}
+
+\begin{enumerate}
+  \item Liste des animaux : \ui{+}, ou flèche d'un animal existant.
+  \item \ui{Consultations} : \ui{+}, ou copie de la consultation précédente.
+  \item Poids et NEC.
+  \item Poids idéal : recopier l'estimation ou saisir sa valeur.
+  \item Référence générale, et complémentaires en cas de maladie ; valider.
+  \item \ui{Rations} : \ui{+} dans \ui{Aliments de la ration}, rechercher, ajouter.
+  \item Lire le bilan énergétique.
+  \item Ajustement rapide, ou ajustement multi-nutriments.
+  \item Relire les alertes nutriment par nutriment.
+  \item \ui{Ordonnance} : cocher la ration, ajouter conseils et compte rendu, imprimer.
+\end{enumerate}
+
+\end{document}

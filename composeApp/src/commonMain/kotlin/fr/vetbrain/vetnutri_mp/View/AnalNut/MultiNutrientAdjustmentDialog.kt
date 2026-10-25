@@ -2217,7 +2217,7 @@ fun arrondirQuantiteSelonRegles(alimentRation: AlimentRation, quantite: Double):
                 // Règle contenant: si contenant défini et quantInt > 0, arrondir au multiple de quantInt/2
                 if (cont != null && cont != ContEnum.NO && quantInt != null && quantInt > 0.0) {
                         val step = quantInt / 2.0
-                        return (kotlin.math.round(quantite / step) * step).coerceAtLeast(0.0)
+                        return fr.vetbrain.vetnutri_mp.Utils.NumberUtils.arrondirAuPas(quantite, step).coerceAtLeast(0.0)
                 }
         }
         

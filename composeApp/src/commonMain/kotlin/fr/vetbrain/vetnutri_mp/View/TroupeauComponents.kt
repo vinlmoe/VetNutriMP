@@ -305,6 +305,7 @@ fun PanneauTroupeauConsultation(
                         OutlinedButton(
                                 onClick = {
                                     if (viewModel.ajusterRationTroupeauEnergie()) showSnackbar("Quantités ajustées au besoin énergétique du troupeau")
+                                    else showSnackbar("Analyse en cours de mise à jour : réessayer dans un instant")
                                 },
                                 enabled = facteur != null && a.quantiteTotale > 0.0
                         ) { Text("Ajuster la ration au besoin énergétique du troupeau", fontSize = 12.sp) }
@@ -423,14 +424,23 @@ private fun LigneEtatGroupe(
     }
 }
 
-/** Groupes de l'état du troupeau incomplets (référentiel ou poids manquant), pour la validation. */
+/**
+ * Groupes de l'état du troupeau incomplets (référentiel manquant ou introuvable, poids nul, K non
+ * positif), pour la validation : mêmes conditions que celles qui bloquent la répartition.
+ * [referencesConnues] null = référentiels pas encore chargés, existence non vérifiée.
+ */
 fun groupesIncompletsTroupeau(
         types: List<TypeAnimalTroupeau>,
-        consultation: fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+        consultation: fr.vetbrain.vetnutri_mp.Data.ConsultationEv,
+        referencesConnues: Set<String>? = null
 ): List<String> =
         types.filter { type ->
             val p = consultation.parametresType(type)
-            p.nombre > 0 && (p.referenceId == null || p.poids <= 0.0)
+            p.nombre > 0 &&
+                    (p.referenceId == null ||
+                            (referencesConnues != null && p.referenceId !in referencesConnues) ||
+                            p.poids <= 0.0 ||
+                            p.k <= 0.0)
         }.map { it.nom.ifBlank { "Groupe sans nom" } }
 
 /**
@@ -440,6 +450,8 @@ fun groupesIncompletsTroupeau(
 @Composable
 fun AnalyseApportsTroupeau(
         analyse: fr.vetbrain.vetnutri_mp.Data.AnalyseTroupeau?,
+        /** Apports au troupeau entier, calculés par le ViewModel (apportsTroupeauEntier). */
+        lignes: List<fr.vetbrain.vetnutri_mp.Data.LigneApportTroupeau>,
         modifier: Modifier = Modifier,
         // Défilement propre seulement si la hauteur est bornée (grande vue) : dans une colonne
         // déjà défilante, un second défilement vertical n'est pas mesurable
@@ -452,7 +464,6 @@ fun AnalyseApportsTroupeau(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text("Apports au troupeau entier", fontWeight = FontWeight.Bold, color = VetNutriColors.Primary)
-            val lignes = analyse?.apportsTroupeauEntier().orEmpty()
             if (analyse == null || lignes.isEmpty()) {
                 Text(
                         "Analyse indisponible : compléter l'état du troupeau dans la consultation (référentiel et poids de chaque groupe) " +

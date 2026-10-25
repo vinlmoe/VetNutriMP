@@ -271,10 +271,15 @@ fun ConsultationFullScreenEditView(
                                 onClick = {
                                         // Troupeau : chaque groupe nourri doit avoir un référentiel et un poids
                                         if (typesTroupeau != null) {
-                                                val incomplets = fr.vetbrain.vetnutri_mp.View.groupesIncompletsTroupeau(typesTroupeau, editedConsultation)
+                                                val referencesConnues =
+                                                        availableReferences.takeIf { it.isNotEmpty() }?.map { it.uuid }?.toSet()
+                                                val incomplets =
+                                                        fr.vetbrain.vetnutri_mp.View.groupesIncompletsTroupeau(
+                                                                typesTroupeau, editedConsultation, referencesConnues
+                                                        )
                                                 if (incomplets.isNotEmpty()) {
                                                         missingDataMessage =
-                                                                "Compléter le référentiel et le poids moyen de : ${incomplets.joinToString()}."
+                                                                "Compléter le référentiel (existant), le poids moyen et un K positif de : ${incomplets.joinToString()}."
                                                         showMissingDataDialog = true
                                                         return@FloatingActionButton
                                                 }
@@ -496,11 +501,10 @@ fun ConsultationFullScreenEditView(
                                         if (editedConsultation.weight != null &&
                                                         editedConsultation.BCS != null
                                         ) {
-                                                val poids = editedConsultation.weight!!
-                                                val nec = editedConsultation.BCS!!
-                                                val estimation =
-                                                        poids * 100 / (100 + (nec - 5) * 10)
-                                                estimation
+                                                fr.vetbrain.vetnutri_mp.Data.CalculMetabolique.estimerPoidsIdeal(
+                                                        editedConsultation.weight!!,
+                                                        editedConsultation.BCS!!
+                                                )
                                         } else {
                                                 null
                                         }
@@ -1732,6 +1736,7 @@ private fun ReferenceGeneraleDialog(
                                                 Row(
                                                         modifier =
                                                                 Modifier.fillMaxWidth()
+                                                                        .clickable { onValueChange("") }
                                                                         .padding(4.dp),
                                                         verticalAlignment =
                                                                 Alignment.CenterVertically
@@ -1756,6 +1761,7 @@ private fun ReferenceGeneraleDialog(
                                                 Row(
                                                         modifier =
                                                                 Modifier.fillMaxWidth()
+                                                                        .clickable { onValueChange(reference.uuid) }
                                                                         .padding(4.dp),
                                                         verticalAlignment =
                                                                 Alignment.CenterVertically
@@ -1884,31 +1890,27 @@ private fun ReferenceMaladieDialog(
                                 LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
                                         items(filteredReferences) { reference ->
                                                 val isSelected = references.contains(reference.uuid)
+                                                val onCheckedChange = { checked: Boolean ->
+                                                        val updatedReferences =
+                                                                if (checked) {
+                                                                        references + reference.uuid
+                                                                } else {
+                                                                        references - reference.uuid
+                                                                }
+                                                        onReferenceSelected(updatedReferences)
+                                                }
 
                                                 Row(
                                                         modifier =
                                                                 Modifier.fillMaxWidth()
+                                                                        .clickable { onCheckedChange(!isSelected) }
                                                                         .padding(4.dp),
                                                         verticalAlignment =
                                                                 Alignment.CenterVertically
                                                 ) {
                                                         Checkbox(
                                                                 checked = isSelected,
-                                                                onCheckedChange = { checked ->
-                                                                        val updatedReferences =
-                                                                                if (checked) {
-                                                                                        references +
-                                                                                                reference
-                                                                                                        .uuid
-                                                                                } else {
-                                                                                        references -
-                                                                                                reference
-                                                                                                        .uuid
-                                                                                }
-                                                                        onReferenceSelected(
-                                                                                updatedReferences
-                                                                        )
-                                                                }
+                                                                onCheckedChange = onCheckedChange
                                                         )
                                                         Spacer(modifier = Modifier.width(8.dp))
                                                         Column(modifier = Modifier.weight(1f)) {

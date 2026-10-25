@@ -12,7 +12,7 @@ import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import fr.vetbrain.vetnutri_mp.View.AnalNut.adjustmentNeedMultiplier
 import fr.vetbrain.vetnutri_mp.View.AnalNut.arrondirQuantiteSelonRegles
 import kotlin.math.abs
-import kotlin.math.ceil
+import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import kotlinx.coroutines.yield
 
 /**
@@ -193,7 +193,7 @@ fun pasArrondi(aliment: AlimentEv, quantite: Double): Double =
 fun doseMinimaleEffective(aliment: AlimentEv, doseMinimale: Double): Double {
     if (doseMinimale <= 0.0) return 0.0
     val pas = pasConditionnement(aliment) ?: return doseMinimale
-    return ceil(doseMinimale / pas - 1e-9) * pas
+    return NumberUtils.arrondirAuPasSuperieur(doseMinimale, pas)
 }
 
 /**
@@ -214,12 +214,12 @@ fun arrondirAvecDoseMinimale(
         val cible = maxOf(quantite, minimum)
         val pas = pasConditionnement(aliment) ?: pasManuel?.takeIf { it > 0.0 }
                 ?: if (fin) 0.1 else pasArrondi(aliment, cible)
-        return ceil(cible / pas - 1e-9) * pas
+        return NumberUtils.arrondirAuPasSuperieur(cible, pas)
     }
     if (quantite < minimum) return if (quantite >= minimum / 2.0) minimum else 0.0
     val pas = pasConditionnement(aliment) ?: pasManuel?.takeIf { it > 0.0 }
             ?: if (fin) 0.1 else null
-    if (pas != null) return maxOf(minimum, kotlin.math.round(quantite / pas) * pas)
+    if (pas != null) return maxOf(minimum, NumberUtils.arrondirAuPas(quantite, pas))
     return arrondirQuantiteSelonRegles(AlimentRation(aliment = aliment), quantite)
 }
 

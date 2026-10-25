@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.rotate
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
@@ -241,8 +242,17 @@ fun EvolutionPoidsChart(
                                 Espece.CHAT -> courbesCroissanceChat
                                 else -> courbesCroissanceChien
                         }
-                var selectedCurveIndex by remember(especeAnimal, courbesDisponibles.size) {
-                        mutableStateOf(0)
+                val indexCourbeParDefaut =
+                        indexCourbeCroissanceParDefaut(
+                                courbesDisponibles,
+                                animal?.getSex() ?: Sex.MALE_ENTIER,
+                                poidsReferenceCourbeCroissance(
+                                        animal?.consultations.orEmpty(),
+                                        consultationsWithAge.lastOrNull()?.weight
+                                )
+                        )
+                var selectedCurveIndex by remember(especeAnimal, courbesDisponibles.size, indexCourbeParDefaut) {
+                        mutableStateOf(indexCourbeParDefaut)
                 }
                 var showReferenceCurves by remember { mutableStateOf(true) }
                 val selectedCurve = courbesDisponibles.getOrNull(selectedCurveIndex)

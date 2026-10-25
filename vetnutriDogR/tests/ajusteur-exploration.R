@@ -58,3 +58,26 @@ stopifnot(nrow(regrouper_rations(explorer_aliments(5, 0.5))) < 216L)
 stopifnot(identical(vapply(c(0, 4.9, 9.5, 10, 99, 100, 112.5), arrondir_quantite, numeric(1)),
                     c(0, 5, 10, 10, 100, 100, 100)))
 cat(sprintf("OK : %d associations comparées au calcul individuel ; arrondis, statuts et regroupements vérifiés.\n", total))
+
+# Le filtrage énergétique doit retrouver exactement les ingrédients utilisables
+# de l'exploration exhaustive, y compris les présences à dose nulle.
+filtrage <- chunk("exclusions-grille")
+fin <- which(grepl("^exclusions <- do.call", filtrage)) - 1L
+eval(parse(text = filtrage[seq_len(fin)]))
+economies <- 0L
+for (poids in unique(profils$poids)) {
+    ks <- c(0.01, seq(0.5, 1.5, by = 0.1))
+    rapides <- exclusions_aliments(poids, ks)
+    for (j in seq_along(ks)) {
+        exhaustif <- explorer_aliments(poids, ks[j])
+        attendu <- vapply(seq_len(nrow(catalogue_ingredients)), function(id) {
+            role <- catalogue_ingredients$role[id]
+            any(exhaustif$compatible & exhaustif[[paste0(role, "_id")]] == id &
+                exhaustif[[paste0(role, "_g")]] > 0)
+        }, FALSE)
+        stopifnot(identical(rapides[[j]]$utilisable, attendu))
+        economies <- economies + 216L - rapides[[j]]$associations_testees[1]
+    }
+}
+stopifnot(economies > 0)
+cat(sprintf("OK : exclusions identiques à l'exhaustif ; %d associations évitées.\n", economies))

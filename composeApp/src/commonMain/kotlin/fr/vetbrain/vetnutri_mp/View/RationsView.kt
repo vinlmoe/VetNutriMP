@@ -161,6 +161,7 @@ fun RationsView(
         val consultationAnalysee by viewModel.consultationAnalysee.collectAsState()
         val typeTroupeauAnalyse by viewModel.typeTroupeauAnalyse.collectAsState()
         val analyseTroupeau by viewModel.analyseTroupeau.collectAsState()
+        val apportsTroupeauEntier by viewModel.apportsTroupeauEntier.collectAsState()
         // Troupeau analysé dans son ensemble : pas de besoins d'un individu (poids, référentiel,
         // K), mais l'analyse des apports au troupeau entier
         val troupeauEntier = animal?.estTroupeau == true && typeTroupeauAnalyse == null
@@ -1197,6 +1198,7 @@ fun RationsView(
                                                                 if (troupeauEntier) {
                                                                         AnalyseApportsTroupeau(
                                                                                 analyse = analyseTroupeau,
+                                                                                lignes = apportsTroupeauEntier,
                                                                                 modifier = Modifier.fillMaxWidth()
                                                                         )
                                                                 } else if (referenceUtilisee != null) {
@@ -1652,6 +1654,7 @@ fun RationsView(
                                                         } else if (troupeauEntier) {
                                                                 AnalyseApportsTroupeau(
                                                                         analyse = analyseTroupeau,
+                                                                        lignes = apportsTroupeauEntier,
                                                                         modifier = Modifier.fillMaxSize(),
                                                                         defilementVertical = true
                                                                 )
