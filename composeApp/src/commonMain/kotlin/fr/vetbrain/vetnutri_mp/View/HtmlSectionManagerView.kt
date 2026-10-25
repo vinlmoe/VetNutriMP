@@ -226,7 +226,7 @@ private fun SectionList(
                 )
             }
 
-            items(categorySections) { section ->
+            items(categorySections, key = { it.id }) { section ->
                 SectionListItem(
                         section = section,
                         isSelected = section.id == selectedSection?.id,

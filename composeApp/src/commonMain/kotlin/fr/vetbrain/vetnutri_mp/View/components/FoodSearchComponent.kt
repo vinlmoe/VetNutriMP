@@ -49,6 +49,9 @@ import fr.vetbrain.vetnutri_mp.Utils.DataB
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 /** Configuration du composant de recherche d'aliments */
 data class FoodSearchConfig(
@@ -99,7 +102,7 @@ fun FoodSearchComponent(
         }
         
         // Charger les nutriments nécessaires depuis la base de données si on a des filtres par nutriments, un tri par nutriment ou le filtre AA
-        LaunchedEffect(filters.nutrientFilters, filters.sortCriteria, filters.aminoOnly, foods.map { it.uuid }) {
+        LaunchedEffect(filters.nutrientFilters, filters.sortCriteria, filters.aminoOnly, foods) {
                 val nutrientsForFilters = filters.nutrientFilters.mapNotNull { it.nutrient }
                 val nutrientForSort = when (filters.sortCriteria) {
                         SortCriteria.PROTEIN -> listOf(NutrientMain.PROTEINE)
@@ -144,23 +147,83 @@ fun FoodSearchComponent(
         }
 
         // Filtrer les aliments selon les critères
-        val filteredFoods =
-                remember(
-                        enrichedFoods,
-                        filters.searchQuery,
-                        filters.selectedFoodType,
-                        filters.selectedFoodGroup,
-                        filters.selectedEspece,
-                        filters.selectedIndications,
-                        filters.excludedIndications,
-                        filters.dataB,
-                        filters.includeDeprecated,
-                        filters.aminoOnly,
-                        filters.nutrientFilters,
-                        filters.sortCriteria,
-                        filters.sortOrder,
-                        config.referenceEv
-                ) {
+        // Filtrer et trier les aliments hors du thread UI (avec anti-rebond sur la recherche textuelle)
+        var filteredFoods by remember { mutableStateOf<List<AlimentEv>>(emptyList()) }
+        val derniereRequeteFiltree = remember { mutableStateOf(filters.searchQuery) }
+        LaunchedEffect(
+                enrichedFoods,
+                filters.searchQuery,
+                filters.selectedFoodType,
+                filters.selectedFoodGroup,
+                filters.selectedEspece,
+                filters.selectedIndications,
+                filters.excludedIndications,
+                filters.dataB,
+                filters.includeDeprecated,
+                filters.aminoOnly,
+                filters.nutrientFilters,
+                filters.sortCriteria,
+                filters.sortOrder,
+                config.referenceEv
+        ) {
+                // Anti-rebond uniquement quand la requête textuelle change : l'effet est relancé
+                // (et le précédent annulé) à chaque frappe, le délai absorbe les frappes rapides
+                if (filters.searchQuery != derniereRequeteFiltree.value) {
+                        delay(250)
+                        derniereRequeteFiltree.value = filters.searchQuery
+                }
+                val resultat =
+                        withContext(AppDispatchers.Default) {
+                                filtrerEtTrierAliments(enrichedFoods, filters, config.referenceEv)
+                        }
+                filteredFoods = resultat
+        }
+
+        val foodsForFilters = allFoods ?: foods
+        when (config.layout) {
+                FoodSearchLayout.VERTICAL ->
+                        VerticalLayout(
+                                allFoods = foodsForFilters,
+                                filteredFoods = filteredFoods,
+                                filters = filters,
+                                onFiltersChange = onFiltersChange,
+                                onSearchSubmit = onSearchSubmit,
+                                config = config,
+                                modifier = modifier
+                        )
+                FoodSearchLayout.HORIZONTAL ->
+                        HorizontalLayout(
+                                allFoods = foodsForFilters,
+                                filteredFoods = filteredFoods,
+                                filters = filters,
+                                onFiltersChange = onFiltersChange,
+                                onSearchSubmit = onSearchSubmit,
+                                config = config,
+                                modifier = modifier
+                        )
+                FoodSearchLayout.COMPACT ->
+                        CompactLayout(
+                                allFoods = foodsForFilters,
+                                filteredFoods = filteredFoods,
+                                filters = filters,
+                                onFiltersChange = onFiltersChange,
+                                onSearchSubmit = onSearchSubmit,
+                                config = config,
+                                modifier = modifier
+                        )
+        }
+}
+
+
+/**
+ * Filtre puis trie les aliments selon les critères de recherche (fonction pure, sans appel
+ * Composable) : appelée hors du thread UI depuis [FoodSearchComponent].
+ */
+private fun filtrerEtTrierAliments(
+        enrichedFoods: List<AlimentEv>,
+        filters: FoodSearchFilters,
+        referenceEv: ReferenceEv?
+): List<AlimentEv> {
                         var result =
                                 enrichedFoods.filter { aliment ->
                                         // Filtre par recherche textuelle avec recherche multi-mots
@@ -273,7 +336,7 @@ fun FoodSearchComponent(
                                                         filters.nutrientFilters.all { nutrientFilter ->
                                                                 if (nutrientFilter.nutrient == null || nutrientFilter.value == null) true
                                                                 else {
-                                                                        val nutrientValue = aliment.getNutrient(nutrientFilter.nutrient, config.referenceEv)
+                                                                        val nutrientValue = aliment.getNutrient(nutrientFilter.nutrient, referenceEv)
                                                                         // Si le nutriment n'est pas disponible, on accepte l'aliment
                                                                         // (car c'est peut-être une version légère)
                                                                         if (nutrientValue == null) true
@@ -290,8 +353,8 @@ fun FoodSearchComponent(
                                         val matchesAmino =
                                                 if (!filters.aminoOnly) true
                                                 else {
-                                                        val lysine = aliment.getNutrient(AAEnum.LYSINE, config.referenceEv)
-                                                        val methionine = aliment.getNutrient(AAEnum.METHIONINE, config.referenceEv)
+                                                        val lysine = aliment.getNutrient(AAEnum.LYSINE, referenceEv)
+                                                        val methionine = aliment.getNutrient(AAEnum.METHIONINE, referenceEv)
                                                         lysine != null && lysine > 0.0 && methionine != null && methionine > 0.0
                                                 }
 
@@ -310,7 +373,7 @@ fun FoodSearchComponent(
                                 }
 
                         // Trier les résultats
-                        result = if (filters.sortCriteria != null) {
+                        return result = if (filters.sortCriteria != null) {
                                 val sortedList = when (filters.sortCriteria) {
                                         SortCriteria.NAME -> {
                                                 if (filters.sortOrder == SortOrder.ASCENDING) {
@@ -321,51 +384,51 @@ fun FoodSearchComponent(
                                         }
                                         SortCriteria.PROTEIN -> {
                                                 if (filters.sortOrder == SortOrder.ASCENDING) {
-                                                        result.sortedBy { it.getNutrient(NutrientMain.PROTEINE, config.referenceEv) ?: 0.0 }
+                                                        result.sortedBy { it.getNutrient(NutrientMain.PROTEINE, referenceEv) ?: 0.0 }
                                                 } else {
-                                                        result.sortedByDescending { it.getNutrient(NutrientMain.PROTEINE, config.referenceEv) ?: 0.0 }
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.PROTEINE, referenceEv) ?: 0.0 }
                                                 }
                                         }
                                         SortCriteria.FAT -> {
                                                 if (filters.sortOrder == SortOrder.ASCENDING) {
-                                                        result.sortedBy { it.getNutrient(NutrientMain.LIPIDE, config.referenceEv) ?: 0.0 }
+                                                        result.sortedBy { it.getNutrient(NutrientMain.LIPIDE, referenceEv) ?: 0.0 }
                                                 } else {
-                                                        result.sortedByDescending { it.getNutrient(NutrientMain.LIPIDE, config.referenceEv) ?: 0.0 }
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.LIPIDE, referenceEv) ?: 0.0 }
                                                 }
                                         }
                                         SortCriteria.CARBOHYDRATE -> {
                                                 if (filters.sortOrder == SortOrder.ASCENDING) {
-                                                        result.sortedBy { it.getNutrient(NutrientMain.GLUCIDE, config.referenceEv) ?: 0.0 }
+                                                        result.sortedBy { it.getNutrient(NutrientMain.GLUCIDE, referenceEv) ?: 0.0 }
                                                 } else {
-                                                        result.sortedByDescending { it.getNutrient(NutrientMain.GLUCIDE, config.referenceEv) ?: 0.0 }
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.GLUCIDE, referenceEv) ?: 0.0 }
                                                 }
                                         }
                                         SortCriteria.FIBER -> {
                                                 if (filters.sortOrder == SortOrder.ASCENDING) {
-                                                        result.sortedBy { it.getNutrient(NutrientMain.CELLULOSE, config.referenceEv) ?: 0.0 }
+                                                        result.sortedBy { it.getNutrient(NutrientMain.CELLULOSE, referenceEv) ?: 0.0 }
                                                 } else {
-                                                        result.sortedByDescending { it.getNutrient(NutrientMain.CELLULOSE, config.referenceEv) ?: 0.0 }
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.CELLULOSE, referenceEv) ?: 0.0 }
                                                 }
                                         }
                                         SortCriteria.ENERGY -> {
                                                 if (filters.sortOrder == SortOrder.ASCENDING) {
-                                                        result.sortedBy { it.getNutrient(NutrientMain.ENERGIE, config.referenceEv) ?: 0.0 }
+                                                        result.sortedBy { it.getNutrient(NutrientMain.ENERGIE, referenceEv) ?: 0.0 }
                                                 } else {
-                                                        result.sortedByDescending { it.getNutrient(NutrientMain.ENERGIE, config.referenceEv) ?: 0.0 }
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.ENERGIE, referenceEv) ?: 0.0 }
                                                 }
                                         }
                                         SortCriteria.CALCIUM -> {
                                                 if (filters.sortOrder == SortOrder.ASCENDING) {
-                                                        result.sortedBy { it.getNutrient(NutrientMacro.CAL, config.referenceEv) ?: 0.0 }
+                                                        result.sortedBy { it.getNutrient(NutrientMacro.CAL, referenceEv) ?: 0.0 }
                                                 } else {
-                                                        result.sortedByDescending { it.getNutrient(NutrientMacro.CAL, config.referenceEv) ?: 0.0 }
+                                                        result.sortedByDescending { it.getNutrient(NutrientMacro.CAL, referenceEv) ?: 0.0 }
                                                 }
                                         }
                                         SortCriteria.PHOSPHORUS -> {
                                                 if (filters.sortOrder == SortOrder.ASCENDING) {
-                                                        result.sortedBy { it.getNutrient(NutrientMacro.PHOS, config.referenceEv) ?: 0.0 }
+                                                        result.sortedBy { it.getNutrient(NutrientMacro.PHOS, referenceEv) ?: 0.0 }
                                                 } else {
-                                                        result.sortedByDescending { it.getNutrient(NutrientMacro.PHOS, config.referenceEv) ?: 0.0 }
+                                                        result.sortedByDescending { it.getNutrient(NutrientMacro.PHOS, referenceEv) ?: 0.0 }
                                                 }
                                         }
                                 }
@@ -374,44 +437,8 @@ fun FoodSearchComponent(
                                 result
                         }
 
-                        result
-                }
-
-        val foodsForFilters = allFoods ?: foods
-        when (config.layout) {
-                FoodSearchLayout.VERTICAL ->
-                        VerticalLayout(
-                                allFoods = foodsForFilters,
-                                filteredFoods = filteredFoods,
-                                filters = filters,
-                                onFiltersChange = onFiltersChange,
-                                onSearchSubmit = onSearchSubmit,
-                                config = config,
-                                modifier = modifier
-                        )
-                FoodSearchLayout.HORIZONTAL ->
-                        HorizontalLayout(
-                                allFoods = foodsForFilters,
-                                filteredFoods = filteredFoods,
-                                filters = filters,
-                                onFiltersChange = onFiltersChange,
-                                onSearchSubmit = onSearchSubmit,
-                                config = config,
-                                modifier = modifier
-                        )
-                FoodSearchLayout.COMPACT ->
-                        CompactLayout(
-                                allFoods = foodsForFilters,
-                                filteredFoods = filteredFoods,
-                                filters = filters,
-                                onFiltersChange = onFiltersChange,
-                                onSearchSubmit = onSearchSubmit,
-                                config = config,
-                                modifier = modifier
-                        )
-        }
+                        return result
 }
-
 
 /** Layout vertical simple (comme FoodListView) */
 @Composable
@@ -915,7 +942,7 @@ private fun FoodSearchResults(
                         modifier = modifier,
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
-                        items(foods) { aliment ->
+                        items(foods, key = { it.uuid }) { aliment ->
                                 FoodListItem(
                                         aliment = aliment,
                                         config = config,

@@ -576,7 +576,7 @@ fun ReferenceEvEquationView(
                                                 }
 
                                                 // Liste des équations disponibles
-                                                items(combinedEquations) { equation ->
+                                                items(combinedEquations, key = { it.uuid }) { equation ->
                                                         val isEnercomp =
                                                                 equation.kind ==
                                                                         fr.vetbrain.vetnutri_mp.Enumer

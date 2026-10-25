@@ -77,7 +77,7 @@ fun ReferenceSelector(
                             }
 
                             // Liste des références
-                            items(references) { reference ->
+                            items(references, key = { it.uuid }) { reference ->
                                 ReferenceItem(
                                         reference = reference,
                                         isSelected = selectedReferenceId == reference.uuid,

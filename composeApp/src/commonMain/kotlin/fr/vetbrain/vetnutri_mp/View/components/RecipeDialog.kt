@@ -96,7 +96,7 @@ fun RecipeDialog(
                         }
 
                         LazyColumn(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                            items(recipes) { r ->
+                            items(recipes, key = { it.uuid }) { r ->
                                 Card(modifier = Modifier.fillMaxWidth().padding(4.dp)) {
                                     Column(
                                             modifier = Modifier.fillMaxWidth().padding(8.dp),

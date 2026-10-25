@@ -129,7 +129,7 @@ fun AnalyseDetailleeAlimentsView(
                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
                     modifier = Modifier.fillMaxSize()
             ) {
-                items(alimentsAnalyses) { data ->
+                items(alimentsAnalyses, key = { it.aliment.uuid }) { data ->
                     AlimentDetailCard(
                             data = data,
                             isExpanded = alimentExpanded == data.aliment.uuid,

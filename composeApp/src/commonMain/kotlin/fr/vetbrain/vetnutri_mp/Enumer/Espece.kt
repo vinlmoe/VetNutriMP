@@ -33,6 +33,12 @@ enum class Espece(override val label: String, val categorie: Int, val id: String
     }
 
     companion object {
+        // Regex et maps pré-calculées une seule fois (évite recompilation/reconstruction à chaque appel)
+        private val NETTOYAGE_REGEX: Regex by lazy { "[\\[\\]\"]".toRegex() }
+        private val LABEL_MAP: Map<String, Espece> by lazy { entries.associateBy { it.label.lowercase() } }
+        private val ID_MAP: Map<String, Espece> by lazy { entries.associateBy { it.id } }
+        private val CATEGORY_MAP: Map<Int, Espece> by lazy { entries.associateBy { it.categorie } }
+
         /**
          * Récupère une espèce à partir d'une chaîne, en essayant plusieurs formats possibles.
          * Version optimisée avec maps pré-calculées pour accès O(1).
@@ -44,14 +50,11 @@ enum class Espece(override val label: String, val categorie: Int, val id: String
             if (value.isBlank()) return null
 
             // Nettoyer la chaîne d'entrée
-            val cleanedValue = value.trim().replace("[\\[\\]\"]".toRegex(), "")
+            val cleanedValue = value.trim().replace(NETTOYAGE_REGEX, "")
 
-            // Maps optimisées pour accès O(1)
-            val labelMap = entries.associateBy { it.label.lowercase() }
-            val idMap = entries.associateBy { it.id }
-
-            return labelMap[cleanedValue.lowercase()]
-                    ?: idMap[cleanedValue] ?: cleanedValue.toIntOrNull()?.let { getEnumFromInt(it) }
+            // Maps pré-calculées pour accès O(1)
+            return LABEL_MAP[cleanedValue.lowercase()]
+                    ?: ID_MAP[cleanedValue] ?: cleanedValue.toIntOrNull()?.let { getEnumFromInt(it) }
                             ?: run {
                         // Fallback : essayer de matcher par nom d'énumération
                         try {
@@ -69,8 +72,7 @@ enum class Espece(override val label: String, val categorie: Int, val id: String
          * @return Le nom de l'espèce
          */
         fun getStringFromInt(id: Int): String {
-            val categoryMap = entries.associateBy { it.categorie }
-            return categoryMap[id]?.label ?: CHIEN.label
+            return CATEGORY_MAP[id]?.label ?: CHIEN.label
         }
 
         /**
@@ -79,8 +81,7 @@ enum class Espece(override val label: String, val categorie: Int, val id: String
          * @return Le nom de l'espèce
          */
         fun getStringFromId(id: String): String {
-            val idMap = entries.associateBy { it.id }
-            return idMap[id]?.label ?: CHIEN.label
+            return ID_MAP[id]?.label ?: CHIEN.label
         }
 
         /**
@@ -90,9 +91,7 @@ enum class Espece(override val label: String, val categorie: Int, val id: String
          * @return L'énumération correspondante
          */
         fun getEnumFromInt(id: Int): Espece {
-            val categoryMap = entries.associateBy { it.categorie }
-            val idMap = entries.associateBy { it.id }
-            return categoryMap[id] ?: idMap[id.toString()] ?: CHIEN
+            return CATEGORY_MAP[id] ?: ID_MAP[id.toString()] ?: CHIEN
         }
 
         /**

@@ -272,7 +272,7 @@ fun NutrientRequirementView(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(filteredReferences) { reference ->
+                    items(filteredReferences, key = { it.uuid }) { reference ->
                         ReferenceNutrientCard(
                                 reference = reference,
                                 isSelectionMode = isSelectionMode,

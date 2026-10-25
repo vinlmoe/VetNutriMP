@@ -990,7 +990,7 @@ fun ReferenceEvComplementaryTab(viewModel: NewReferenceEvViewModel) {
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxSize()
                         ) {
-                                items(complementary) { eq ->
+                                items(complementary, key = { it.uuid }) { eq ->
                                         Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
                                                 Row(
                                                         modifier =

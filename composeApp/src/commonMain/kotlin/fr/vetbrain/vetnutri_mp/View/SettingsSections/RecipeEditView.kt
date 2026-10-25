@@ -378,6 +378,8 @@ private fun RecipeListSection(
 ) {
     val recipes = viewModel.recipes.toList()
     val searchQuery = viewModel.searchQuery.value
+    // Liste filtrée mémorisée : évite de refiltrer à chaque recomposition
+    val filteredRecipes = remember(recipes, searchQuery) { viewModel.getFilteredRecipes() }
     val isLoading = viewModel.isLoading.value
     
 
@@ -418,7 +420,7 @@ private fun RecipeListSection(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
             ) {
-                items(viewModel.getFilteredRecipes()) { recipe ->
+                items(filteredRecipes, key = { it.uuid }) { recipe ->
                     RecipeListItem(
                         recipe = recipe,
                         onEdit = { viewModel.startEditingRecipe(recipe) },

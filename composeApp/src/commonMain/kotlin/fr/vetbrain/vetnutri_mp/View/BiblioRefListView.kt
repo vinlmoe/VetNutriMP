@@ -129,7 +129,7 @@ fun BiblioRefListView(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(AppSizes.cardSpacing)
                 ) {
-                    items(filteredRefs) { biblioRef ->
+                    items(filteredRefs, key = { it.uuid }) { biblioRef ->
                         BiblioRefCard(
                                 biblioRef = biblioRef,
                                 onDelete = { refToDelete = biblioRef },

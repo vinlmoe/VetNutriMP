@@ -129,7 +129,7 @@ fun EquationListView(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(filteredEquations) { equation ->
+                    items(filteredEquations, key = { it.uuid }) { equation ->
                         EquationCard(
                                 equation = equation,
                                 onEdit = { equation.uuid?.let { id -> onEditEquation(id) } },

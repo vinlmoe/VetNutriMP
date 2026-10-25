@@ -211,7 +211,7 @@ private fun ConsultationsMainView(
                                 modifier = Modifier.fillMaxWidth().weight(1f),
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.cardSpacing)
                         ) {
-                            items(sortedConsultations) { consultation ->
+                            items(sortedConsultations, key = { it.uuid }) { consultation ->
                                 ConsultationCard(
                                         consultation = consultation,
                                         isSelected =

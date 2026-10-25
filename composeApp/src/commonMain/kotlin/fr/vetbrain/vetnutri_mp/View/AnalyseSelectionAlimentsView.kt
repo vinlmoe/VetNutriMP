@@ -560,7 +560,7 @@ fun AnalyseSelectionAlimentsView(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            items(alimentsFiltres) { aliment ->
+                            items(alimentsFiltres, key = { it.uuid }) { aliment ->
                                 AlimentItem(
                                     aliment = aliment,
                                     onAdd = {
@@ -625,7 +625,7 @@ fun AnalyseSelectionAlimentsView(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            items(alimentsSelectionnes) { aliment ->
+                            items(alimentsSelectionnes, key = { it.uuid }) { aliment ->
                                 AlimentItem(
                                     aliment = aliment,
                                     onRemove = {
@@ -750,7 +750,7 @@ private fun AlimentsDisponiblesCompactSection(
                 modifier = Modifier.height(180.dp), // Hauteur fixe compact
                 verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
-                items(alimentsFiltres) { aliment ->
+                items(alimentsFiltres, key = { it.uuid }) { aliment ->
                     AlimentItem(
                         aliment = aliment,
                         onAdd = { onAlimentAdd(aliment) },
@@ -851,7 +851,7 @@ private fun AlimentsSelectionnesCompactSection(
                     modifier = Modifier.height(120.dp), // Hauteur fixe plus petite
                     verticalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
-                    items(alimentsSelectionnes) { aliment ->
+                    items(alimentsSelectionnes, key = { it.uuid }) { aliment ->
                         AlimentItem(
                             aliment = aliment,
                             onRemove = { onAlimentRemove(aliment) },

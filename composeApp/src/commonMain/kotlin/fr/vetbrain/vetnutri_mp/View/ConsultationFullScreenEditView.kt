@@ -1757,7 +1757,7 @@ private fun ReferenceGeneraleDialog(
                                         }
 
                                         // Toutes les références filtrées
-                                        items(filteredReferences) { reference ->
+                                        items(filteredReferences, key = { it.uuid }) { reference ->
                                                 Row(
                                                         modifier =
                                                                 Modifier.fillMaxWidth()
@@ -1888,7 +1888,7 @@ private fun ReferenceMaladieDialog(
 
                                 // Liste scrollable des références
                                 LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                                        items(filteredReferences) { reference ->
+                                        items(filteredReferences, key = { it.uuid }) { reference ->
                                                 val isSelected = references.contains(reference.uuid)
                                                 val onCheckedChange = { checked: Boolean ->
                                                         val updatedReferences =

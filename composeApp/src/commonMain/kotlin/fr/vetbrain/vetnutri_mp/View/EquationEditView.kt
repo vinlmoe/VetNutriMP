@@ -787,9 +787,13 @@ private fun EquationTestTab(
                     modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            // Tableau des variables
+            // Tableau des variables (filtrage mémorisé : pas de refiltre à chaque recomposition)
+            val variablesReconnues =
+                    remember(variablesInExpression, unrecognizedVariables) {
+                        variablesInExpression.filter { it !in unrecognizedVariables }
+                    }
             LazyColumn(modifier = Modifier.weight(1f)) {
-                items(variablesInExpression.filter { it !in unrecognizedVariables }) { variable ->
+                items(variablesReconnues) { variable ->
                     Card(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                             elevation = 2.dp

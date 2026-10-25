@@ -326,10 +326,12 @@ class AnimalDetailViewModel(
                     // Convertir en version légère pour l'affichage (sans valMap pour les
                     // performances)
                     _availableFoods.value =
-                            aliments.map { aliment: AlimentEv ->
-                                aliment.copy(
-                                        valMap = mutableMapOf()
-                                ) // Vider valMap pour les performances
+                            withContext(AppDispatchers.Default) {
+                                aliments.map { aliment: AlimentEv ->
+                                    aliment.copy(
+                                            valMap = mutableMapOf()
+                                    ) // Vider valMap pour les performances
+                                }
                             }
 
                     if (_isLoadingFoods.value) {
@@ -783,7 +785,10 @@ class AnimalDetailViewModel(
                         consultationActuelle?.let {
                             VariablesEtape.consultationPourEtape(it, rationActuelle)
                         }
-                val resultat = rationAnalyzer.analyserRation(rationActuelle, consultationEtape)
+                val resultat =
+                        withContext(AppDispatchers.Default) {
+                            rationAnalyzer.analyserRation(rationActuelle, consultationEtape)
+                        }
                 _rationAnalyseResultat.value = resultat
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -1596,7 +1601,10 @@ class AnimalDetailViewModel(
                 }
 
                 val resultat =
-                        cachedResult ?: rationAnalyzer.analyserRation(ration, consultationEtape)
+                        cachedResult
+                                ?: withContext(AppDispatchers.Default) {
+                                    rationAnalyzer.analyserRation(ration, consultationEtape)
+                                }
 
                 if (cachedResult == null) {
                     analysisCacheMutex.withLock {

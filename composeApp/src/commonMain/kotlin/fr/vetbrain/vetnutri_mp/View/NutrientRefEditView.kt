@@ -87,9 +87,13 @@ fun NutrientRefEditView(
 
             Divider()
 
-            // Liste des nutriments
+            // Liste des nutriments (filtrage mémorisé : pas de refiltre à chaque recomposition)
+            val nutrientRefsDuType =
+                    remember(nutrientRefs, nutrientType) {
+                        nutrientRefs.filter { it.nutrientType == nutrientType }
+                    }
             LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                items(nutrientRefs.filter { it.nutrientType == nutrientType }) { nutrientRef ->
+                items(nutrientRefsDuType) { nutrientRef ->
                     NutrientRefItem(
                             nutrientRef = nutrientRef,
                             onValueChange = { newValue ->

@@ -188,7 +188,7 @@ fun ConseilsPersonnalisesView(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(filteredConseils) { conseil ->
+                    items(filteredConseils, key = { it.id }) { conseil ->
                         ConseilCard(
                                 conseil = conseil,
                                 onClick = {

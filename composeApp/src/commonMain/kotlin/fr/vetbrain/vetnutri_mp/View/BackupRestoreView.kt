@@ -153,7 +153,7 @@ fun BackupRestoreView(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(backups) { backup ->
+                items(backups, key = { it.filePath }) { backup ->
                     BackupItem(
                         backup = backup,
                         onRestore = { showRestoreDialog = backup },

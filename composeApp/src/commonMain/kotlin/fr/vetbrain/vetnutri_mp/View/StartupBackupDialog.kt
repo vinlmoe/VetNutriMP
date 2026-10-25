@@ -155,7 +155,7 @@ fun StartupBackupDialog(
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(backups) { backup ->
+                        items(backups, key = { it.filePath }) { backup ->
                             StartupBackupItem(
                                 backup = backup,
                                 onRestore = { onRestore(backup) },

@@ -3,13 +3,24 @@ package fr.vetbrain.vetnutri_mp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import fr.vetbrain.vetnutri_mp.DataBase.getDatabaseBuilder
-import fr.vetbrain.vetnutri_mp.DataBase.getDatabasePath
-import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import fr.vetbrain.vetnutri_mp.DataBase.AndroidDatabaseHolder
+import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.ExcelPlatform.ExcelFileOperationsBridge
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Utils.FullscreenManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?): Unit {
@@ -35,10 +46,25 @@ class MainActivity : ComponentActivity() {
         
         LocalizationManager.initialize(primaryLanguage)
 
-        // Initialisation de la base de données
-        val appDatabase = getRoomDatabase(getDatabaseBuilder(this), getDatabasePath(this))
-
-        setContent { App(appDatabase) }
+        // Initialisation de la base de données : instance unique par processus, ouverte (avec
+        // ses migrations) hors du thread UI ; l'application s'affiche une fois la base prête.
+        val appContext = applicationContext
+        setContent {
+            var appDatabase by remember { mutableStateOf<AppDatabase?>(AndroidDatabaseHolder.current) }
+            LaunchedEffect(Unit) {
+                if (appDatabase == null) {
+                    appDatabase = withContext(Dispatchers.IO) { AndroidDatabaseHolder.getOrCreate(appContext) }
+                }
+            }
+            val database = appDatabase
+            if (database == null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                App(database)
+            }
+        }
     }
 
     override fun onDestroy() {

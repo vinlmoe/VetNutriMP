@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Liste des aliments avec filtres réactifs.
@@ -94,10 +95,8 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                         .observeAllFoods()
                         .onEach { allFoods ->
                                 _allFoods.value = allFoods
-                                // Construire l'index normalisé une seule fois par chargement
-                                normalizedIndex = buildNormalizedIndex(allFoods)
-                                _foods.value = filterFoods(allFoods)
-                                updateAvailableFilterValues(allFoods)
+                                // Index normalisé, filtrage et valeurs de filtres : hors du thread UI
+                                publierAlimentsCharges(allFoods)
                         }
                         .catch { e ->
                                 e.printStackTrace()
@@ -145,28 +144,58 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                                 )
                         }
                         _allFoods.value = allFoods
-                        normalizedIndex = buildNormalizedIndex(allFoods)
-                        _foods.value = filterFoods(allFoods)
-                        updateAvailableFilterValues(allFoods)
+                        publierAlimentsCharges(allFoods)
                 }
+        }
+
+        /**
+         * Construit l'index normalisé, filtre la liste et calcule les valeurs de filtres
+         * disponibles sur [AppDispatchers.Default], puis publie les résultats dans les StateFlow.
+         */
+        private suspend fun publierAlimentsCharges(allFoods: List<AlimentEv>) {
+                val (filtered, valeursFiltres) =
+                        withContext(AppDispatchers.Default) {
+                                // Construire l'index normalisé une seule fois par chargement
+                                normalizedIndex = buildNormalizedIndex(allFoods)
+                                filterFoods(allFoods) to calculerValeursFiltres(allFoods)
+                        }
+                _foods.value = filtered
+                updateAvailableFilterValues(valeursFiltres)
         }
 
         /** Force le rechargement des données depuis le repository */
         fun forceRefresh() = loadFoods()
 
-        /** Met à jour les listes de valeurs disponibles pour les filtres */
-        private fun updateAvailableFilterValues(allFoods: List<AlimentEv>) {
+        /** Valeurs disponibles pour les filtres (calculées hors du thread UI) */
+        private data class ValeursFiltres(
+                val foodTypes: List<FoodKind?>,
+                val foodGroups: List<GroupAlim?>,
+                val indications: List<AlimIndic?>
+        )
+
+        /** Calcule les listes de valeurs disponibles pour les filtres (fonction pure) */
+        private fun calculerValeursFiltres(allFoods: List<AlimentEv>): ValeursFiltres {
                 // Charger les types d'aliments disponibles
                 val foodTypes = allFoods.mapNotNull { it.typeAliment }.distinct().sorted()
-                _availableFoodTypes.value = listOf(null) + foodTypes
 
                 // Charger les groupes d'aliments disponibles
                 val foodGroups = allFoods.mapNotNull { it.group }.distinct().sorted()
-                _availableFoodGroups.value = listOf(null) + foodGroups
 
                 // Charger les indications disponibles
                 val indications = allFoods.flatMap { it.indicat }.distinct().sorted()
-                _availableIndications.value = listOf(null) + indications
+
+                return ValeursFiltres(
+                        foodTypes = listOf(null) + foodTypes,
+                        foodGroups = listOf(null) + foodGroups,
+                        indications = listOf(null) + indications
+                )
+        }
+
+        /** Met à jour les listes de valeurs disponibles pour les filtres */
+        private fun updateAvailableFilterValues(valeurs: ValeursFiltres) {
+                _availableFoodTypes.value = valeurs.foodTypes
+                _availableFoodGroups.value = valeurs.foodGroups
+                _availableIndications.value = valeurs.indications
         }
 
         /** Définit le filtre de recherche — le debounce gère le refiltre */
@@ -211,8 +240,9 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
 
         /** Rafraîchit la liste filtrée des aliments */
         private suspend fun refreshFilteredFoods() {
-                // Appliquer les filtres sur les données stockées localement
-                _foods.value = filterFoods(_allFoods.value)
+                // Appliquer les filtres sur les données stockées localement, hors du thread UI
+                val allFoods = _allFoods.value
+                _foods.value = withContext(AppDispatchers.Default) { filterFoods(allFoods) }
         }
 
         /** Filtre les aliments selon les critères de recherche — utilise l'index normalisé */
