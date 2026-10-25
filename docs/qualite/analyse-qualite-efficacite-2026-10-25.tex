@@ -1,0 +1,552 @@
+% Analyse qualité et efficacité du dépôt VetNutriMP (Compose Multiplatform).
+% Compilation : pdflatex analyse-qualite-efficacite-2026-10-25.tex (deux passes), paquets TeX Live
+% latex-recommended, latex-extra, lang-french.
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\setlist{nosep}
+\sloppy
+\setlength{\emergencystretch}{3em}
+\newcommand{\fichier}[1]{\texttt{\small #1}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\sev}[1]{\textbf{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\title{VetNutriMP : analyse qualité et efficacité du projet\\
+  \large Version 3.3.18 (318), schéma Room 41, Kotlin 2.2.20, Compose Multiplatform 1.7.0}
+\author{Sébastien Lefebvre}
+\date{25 octobre 2026 --- commit \code{24b85e7}}
+
+\begin{document}
+\maketitle
+
+\section*{Synthèse}
+
+Le projet est fonctionnellement riche (quatre cibles, 29 tables, 24 migrations, exploration
+multiration, mode troupeau, export PDF, partage en ligne) et plusieurs choix structurants sont
+sains : aucune migration destructive, base mise de côté plutôt qu'effacée en cas d'échec,
+sauvegarde atomique par fichier temporaire puis renommage, chaîne de migrations testée sur une
+vraie base SQLite, 789 tests unitaires, intégration continue qui conditionne l'empaquetage aux
+tests et contrôle la dérive des schémas Room exportés, aucune clé en dur dans les sources.
+
+Le revers est net. Les règles d'architecture écrites dans \fichier{CLAUDE.md} ne sont pas
+appliquées : 25 fichiers de vues reçoivent des repositories en paramètre, le mécanisme
+\code{AppNavRepositories} officialise ce contournement, et des règles métier (arrondi des
+quantités) vivent dans un fichier de dialogue importé par la couche \code{Data}. Sept fichiers
+dépassent 2\,500 lignes ; \code{SettingsView} est un composable de 2\,546 lignes. Les accès base
+sont dominés par des schémas N+1 (références, animaux, consultations) et par le chargement du
+catalogue entier (environ 10\,000 aliments avec leurs nutriments) pour obtenir un simple compteur,
+le tout relancé toutes les dix minutes par la sauvegarde automatique.
+
+Quatre défauts méritent une correction immédiate : la suppression d'un aliment utilisé dans une
+ration échoue sur une contrainte \code{NOT NULL} et laisse l'aliment sans ses nutriments ;
+\code{NumberUtils.format} produit des valeurs fausses dans l'export PDF (2,3 affiché « 2.2 »,
+négatifs illisibles) ; deux fichiers JSON à la racine du dépôt contiennent 132 noms de
+propriétaires réels ; le cache global d'évaluation d'équations n'est pas synchronisé et sa clé
+repose sur un \code{hashCode} sujet aux collisions.
+
+Enfin, le dépôt lui-même pèse : deux AAB de release (40 Mo) commités malgré le \fichier{.gitignore},
+cinq copies d'un JSON de 20,7 Mo, 52 Mo de jeux de données bruts à la racine, sept fichiers
+Kotlin orphelins, deux répertoires \fichier{commonMain/} et \fichier{iosMain/} hors de tout source
+set, et 18 fichiers Markdown à la racine dont plusieurs décrivent des optimisations jamais
+réalisées.
+
+\section{Méthode et périmètre}
+
+Lecture statique du dépôt \code{vinlmoe/VetNutriMP} à la révision \code{24b85e7}, sans
+modification du code. Quatre revues indépendantes ont été menées puis recoupées : architecture et
+maintenabilité, performance et efficacité, robustesse, données et sécurité, tests, build, CI et
+hygiène du dépôt. Chaque constat retenu cite un fichier et une ligne ; les trois constats les plus
+lourds (format numérique, contrainte de clé étrangère, données personnelles) ont été revérifiés
+indépendamment.
+
+Limite : la suite de tests n'a pas pu être exécutée dans l'environnement d'analyse, dont la
+politique réseau bloque le dépôt Maven de Google nécessaire au plugin Android. Les affirmations
+sur les tests reposent donc sur leur lecture et sur la configuration CI, pas sur une exécution.
+
+Le dépôt frère ThesisManager dispose de son propre rapport daté du même jour et n'est pas traité
+ici.
+
+\section{Chiffres clés}
+
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+Lignes Kotlin (\fichier{composeApp/src}) & 136\,653 \\
+Fichiers Kotlin \code{commonMain} : View / Data / Utils / ViewModel / Repository & 101 / 56 / 44 / 26 / 19 \\
+Fonctions \code{@Composable} & 392 \\
+Composables de plus de 300 lignes & 46 sur 381 \\
+Fichiers de plus de 2\,000 lignes & 10 \\
+Tests (\code{@Test}) : commonTest / desktopTest / iosTest & 723 / 60 / 6 \\
+ViewModels couverts par un test & 2 sur 26 \\
+Tests d'interface Compose & 0 \\
+Tables Room / migrations / version de schéma & 29 / 24 / 41 \\
+\code{catch} vides en \code{commonMain} & 67 \\
+Opérateurs \code{!!} en \code{commonMain} & 142 \\
+\code{LazyColumn}/\code{LazyRow} sans \code{key} & 48 sur 65 \\
+Fichiers Markdown à la racine & 18 \\
+Taille du clone (partiel) & 59 Mo \\
+Commits & 103 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Les compteurs de \fichier{CLAUDE.md} sont périmés : 51 vues annoncées pour 101 réelles, 23
+ViewModels pour 26, 23 écrans pour 26, JSON initial « ~11 Mo » pour 20,7 Mo, Room « 2.7.0 » pour
+\code{2.7.0-rc01}.
+
+\section{Architecture et maintenabilité}\label{sec:architecture}
+
+\subsection*{Ce qui est fait correctement}
+
+\begin{itemize}
+\item Aucun \code{MutableStateFlow} n'est exposé publiquement : tous passent par \code{asStateFlow()}.
+\item Les 15 fichiers par plateforme dans \fichier{Utils/} sont bien du \code{expect}/\code{actual}
+  (36 \code{expect}, 59 \code{actual}), pas du copier-coller, à deux exceptions près.
+\item La règle « \code{NutrientResolver} seul point d'entrée » est respectée pour les nutriments.
+\item Les moteurs purs \fichier{Data/Troupeau.kt} et \fichier{Data/ExplorationMultiration.kt} sont
+  séparés de l'interface et testés (27 et 17 tests).
+\end{itemize}
+
+\subsection*{Constats}
+
+\begin{description}[style=nextline]
+\item[\sev{Critique} --- Les vues accèdent directement aux repositories.]
+  69 paramètres de type \code{XxxRepository} sur 25 fichiers de \fichier{View/} et
+  \fichier{Components/}, 34 appels effectifs. \code{AppNavRepositories}
+  (\fichier{Navigation/AppNavModels.kt:50-58}) injecte six repositories dans sept écrans.
+  \fichier{View/StartupScreen.kt:180-194} lit et réécrit des référentiels dans un
+  \code{LaunchedEffect}. \fichier{View/AnimalDetailView.kt:433-453} construit un
+  \code{ExportImportRepository} dans la vue et contient 13 \code{withContext(AppDispatchers.IO)}.
+  \fichier{View/SettingsView.kt:2702} instancie un \code{PreferencesRepository} dans un
+  \code{remember}. Cause racine : les ViewModels exposent leurs repositories en \code{internal val}
+  (\fichier{ViewModel/SettingsViewModel.kt:33-46}, \fichier{AnimalListViewModel.kt:45-51}).
+  \emph{Remède} : rendre ces propriétés privées et supprimer \code{AppNavRepositories} ; le
+  compilateur listera les sites à migrer. Les ViewModels \code{ConseilsViewModel} et
+  \code{StartupViewModel} existent déjà et ne sont pas instanciés.
+
+\item[\sev{Majeur} --- Logique métier dans les vues, dépendance inversée Data $\rightarrow$ View.]
+  \code{arrondirQuantiteSelonRegles} (règle d'arrondi des quantités de ration) est définie dans
+  \fichier{View/AnalNut/MultiNutrientAdjustmentDialog.kt:2211} et importée par
+  \fichier{Data/ExplorationMultiration.kt:13} et \fichier{Data/RationConstraintAdjuster.kt:17}.
+  \fichier{View/AnalyseGraphique/AnalyseGraphiqueUtils.kt} et
+  \fichier{View/AnalyseGraphiqueAlimentsView.kt:87-500} contiennent des calculs nutritionnels
+  suspendus prenant des repositories. \emph{Remède} : déplacer vers \fichier{Data/} et tester.
+
+\item[\sev{Majeur} --- Trois implémentations du poids métabolique.]
+  \fichier{Data/CalculMetabolique.kt:46} applique l'équation BW du référentiel ;
+  \fichier{Data/RationCalculator.kt:52-57} et
+  \fichier{ViewModel/CrossConsultationAnalysisViewModel.kt:409} codent \code{pow(0.75)} en dur.
+  Résultats différents selon l'écran pour une espèce à exposant 0,67.
+  \code{CalculMetabolique.kt} n'a par ailleurs aucun test.
+
+\item[\sev{Majeur} --- Fichiers monolithiques.]
+  \code{SettingsView} est un composable de 2\,546 lignes dont l'onglet Importation occupe
+  2\,300 lignes en ligne, alors que \fichier{SettingsSections/} existe. \code{RationsView}
+  (1\,901 lignes, 16 booléens \code{showXxxDialog}), \code{StartupScreen} (1\,724 lignes),
+  \code{AnimalDetailView} (deux layouts large et étroit de 1\,070 et 1\,169 lignes qui dupliquent
+  la même composition), \code{ImportUtils} (objet de 50 méthodes mêlant quatre domaines et du code
+  de test), \code{AnimalDetailViewModel} (33 \code{StateFlow}, 88 fonctions). Fonctions non
+  composables de plus de 300 lignes : \code{ExportImportRepository.importAll} (648),
+  \code{DatabaseAnimalRepository.importAnimals} (465), \code{DatabaseFoodRepository.importFoods} (400).
+
+\item[\sev{Majeur} --- Cycle de vie des ViewModels incohérent.]
+  Huit classes étendent \code{androidx.lifecycle.ViewModel} mais sont créées par \code{remember}
+  dans \fichier{App.kt:108-258} sans \code{ViewModelStore} : \code{onCleared()} n'est jamais
+  appelé. Treize autres créent un \code{CoroutineScope} maison ; cinq n'ont aucune méthode
+  d'annulation. \fichier{ViewModel/RecipeEditViewModel.kt:30} mute de l'état Compose
+  (\code{mutableStateOf}) depuis un scope \code{IO}. \code{EquationViewModel} reçoit un DAO
+  directement (\fichier{App.kt:166}).
+
+\item[\sev{Majeur} --- Règle \code{withContext(AppDispatchers.IO)} non suivie.]
+  Cinq repositories entiers l'ignorent : \code{ConseilRepository} (15 fonctions),
+  \code{HtmlSectionRepository} (10), \code{DatabaseEquationRepository} (6),
+  \code{ExamGradingRepository} (5), \code{PreferencesRepository} (5) ; \code{ExportImportRepository}
+  encode 20 Mo de JSON hors IO. Room exécute ses DAO hors thread principal, le risque réel est
+  faible, mais la règle doit être appliquée ou reformulée.
+
+\item[\sev{Majeur} --- Navigation sans pile.]
+  \fichier{Navigation/AppNavController.kt} porte un seul \code{screen} et onze identifiants
+  sélectionnés ; 65 lambdas de retour codent la destination en dur dans \fichier{AppNavHost.kt}.
+  \code{detailReturnScreen} est un contournement ponctuel. \code{Screen.TestYellowBox} est livré
+  en production.
+
+\item[\sev{Mineur} --- Code mort.]
+  \fichier{Example/} et \fichier{Examples/} (5 fichiers), \fichier{Utils/ImportTester.kt},
+  \fichier{Repository/TestApiEnvelope.kt} (vide), \fichier{Repository/ExportImportRepository.kt.disabled}
+  (59 Ko), \fichier{Repository/ConseilRepositoryExample.kt}, \code{Greeting} et
+  \fichier{View/MainViewModel.kt} (gabarit KMP), \fichier{JsonFileImport.kt}, cinq ViewModels
+  jamais instanciés, \fichier{Enumer/OptimizedEspece.kt} sans appelant, \code{LruCache} (thread-safe,
+  TTL) utilisé uniquement par ses tests. Environ 1\,000 lignes de bruit.
+
+\item[\sev{Mineur} --- Duplications.]
+  \code{arrondirPourAffichage}/\code{calculateAdaptiveRange} copiés verbatim entre
+  \fichier{AnalyseGraphiqueUtils.kt:247-280} et \fichier{AnalyseGraphiqueAlimentsView.kt:516-598} ;
+  deux \code{formatDecimal} aux sémantiques différentes ; résolution d'espèce depuis un label
+  dupliquée en cinq endroits ; \code{PlatformCrypto.desktop.kt} identique à
+  \code{PlatformCrypto.android.kt} (un source set \code{jvmMain} intermédiaire manque).
+\end{description}
+
+\section{Efficacité et performance}\label{sec:performance}
+
+\subsection*{Ce qui est fait correctement}
+
+\begin{itemize}
+\item Caches d'aliments protégés par \code{Mutex} et invalidés à chaque écriture
+  (\fichier{Repository/DatabaseFoodRepository.kt:74-107}).
+\item Import initial idempotent : seule la version du JSON est lue (4 Ko) avant de décider
+  d'importer (\fichier{ViewModel/SettingsViewModel.kt:598-623}).
+\item Export JSON en flux sur desktop et Android ; Ktor avec délais et reprise exponentielle sur
+  les trois plateformes ; R8 activé ; debounce de 300 ms sur la recherche d'aliments.
+\end{itemize}
+
+\subsection*{Constats}
+
+\begin{description}[style=nextline]
+\item[\sev{Critique} --- \code{getAllReferenceEv()} : N+1 à trois niveaux.]
+  \fichier{Repository/DatabaseReferenceEvRepository.kt:186-220, 585-720} : par référence, une
+  requête par équation, par coefficient et par nutriment (puis par biblio). Plusieurs milliers de
+  requêtes par appel ; appelé 14 fois dont cinq uniquement pour \code{.size}
+  (\fichier{View/StartupScreen.kt:146, 418, 1388, 1500}, \fichier{SettingsViewModel.kt:589}).
+  \emph{Remède} : quatre requêtes \code{IN (:ids)} et \code{groupBy}, plus un \code{COUNT(*)}.
+
+\item[\sev{Critique} --- Catalogue entier chargé pour un compteur ou des UUID.]
+  \code{getAllFoods().size} juste après un import qui vient de vider le cache
+  (\fichier{StartupScreen.kt:145, 415, 1385, 1499}), \code{getAllFoods().map \{ it.uuid \}}
+  (\fichier{ExportImportRepository.kt:951, 1062}) alors que \code{getAllFoodIds()} et
+  \code{getFoodsCount()} existent. Chaque appel reconstruit environ 10\,000 \code{AlimentEv} avec
+  leurs valeurs nutritionnelles.
+
+\item[\sev{Majeur} --- Sauvegarde automatique toutes les dix minutes sans détection de changement.]
+  \fichier{Service/BackupService.kt:34, 65-74, 149} exporte toute la base : \code{getAllAnimals()}
+  (N+1), consultations (N+1 imbriqué), \code{forceRefresh()} qui annule le cache de cinq minutes
+  puis \code{getAllFoods()}, \code{getAllReferenceEv()} (N+1), sérialisation d'environ 20 Mo. Sur
+  iOS la chaîne JSON complète est construite en mémoire (\fichier{JsonStreamUtils.ios.kt:10}).
+  \emph{Remède} : indicateur de modification via \code{DatabaseChangeNotifier}, catalogue
+  d'origine exclu ou sauvegardé séparément.
+
+\item[\sev{Majeur} --- Autres N+1.]
+  Poids par animal (\fichier{Repository/DatabaseAnimalRepository.kt:55-67}),
+  \code{getRacesBySpecies} qui charge tous les animaux (\code{:647-655}), variables et rations par
+  consultation puis aliments par ration (\fichier{Repository/ConsultationRepository.kt:102-118}),
+  \code{getFoodById} dans une triple boucle à l'import (\code{:540, 599}).
+
+\item[\sev{Majeur} --- Import d'aliments sans transaction englobante.]
+  \fichier{DatabaseFoodRepository.kt:1083-1140} : insertions par lots mais aucun
+  \code{useWriterConnection}/\code{immediateTransaction} ; suppression de l'énergie par espèce
+  une requête par aliment (\code{:1123-1131}) ; repli à une transaction par valeur nutritionnelle
+  (\code{:1113-1120}).
+
+\item[\sev{Majeur} --- Recherche \code{LIKE '\%…\%'} non indexable.]
+  \fichier{DataBase/CommonDao.kt:336-352} balaye la table FOOD à chaque recherche ; les index sur
+  \code{name}, \code{brand}, \code{especesJson} ne servent pas ; \code{especesJson LIKE} alors
+  que la table de jonction \code{ESPECES\_ALIMENTS} existe. Le \code{searchCache} retient jusqu'à
+  50 listes de 5\,000 \code{AlimentEv}. Index \code{uuid} redondants avec la clé primaire
+  (\fichier{Entity.kt:20, 139, 156}).
+
+\item[\sev{Majeur} --- Travail lourd sur le thread principal.]
+  \code{AnimalDetailViewModel} tourne sur \code{Main} (\code{:87}) et appelle
+  \code{analyserRation} sans \code{withContext(Default)} aux lignes 771 et 1570 (contrairement
+  aux lignes 1987 et 2623). À chaque émission du catalogue, copie de 10\,000 \code{AlimentEv}
+  (\code{:306-316}) et indexation normalisée dans \code{FoodListViewModel} (\code{:92-100}).
+  \code{Espece.getFromString} recompile une \code{Regex} et reconstruit deux maps à chaque appel
+  (\fichier{Enumer/Espece.kt:47-51}), soit environ 20\,000 fois par rafraîchissement.
+  Sur Android, l'ouverture Room avec migrations est bloquante dans \code{onCreate}
+  (\fichier{AppDatabase.kt:181}, \fichier{MainActivity.kt:39}).
+
+\item[\sev{Majeur} --- Filtrage de 10\,000 aliments pendant la composition.]
+  \fichier{View/components/FoodSearchComponent.kt:148-368} filtre et trie dans un
+  \code{remember} à 14 clés, à chaque frappe sans debounce ; \code{:102} alloue
+  \code{foods.map \{ it.uuid \}} à chaque recomposition comme clé de \code{LaunchedEffect} ;
+  \code{:918} \code{items(foods)} sans \code{key}. 48 listes paresseuses sur 65 n'ont pas de clé.
+  223 \code{collectAsState()} et aucun \code{collectAsStateWithLifecycle} malgré la dépendance.
+
+\item[\sev{Majeur} --- Cache d'équations non synchronisé et clé faillible.]
+  \fichier{Utils/EquationEvaluator.kt:36, 171, 199} : \code{LruMap} documentée non thread-safe,
+  accédée depuis \code{Default} et \code{Main} ; clé \code{"\$expression:\$\{variables.hashCode()\}"},
+  une collision renvoie un résultat faux. \code{NutrientResolver.resolvedCache} est un
+  \code{HashMap} global non borné, écrit depuis IO ; \code{labelToNutrient by lazy} fige les
+  nutriments personnalisés enregistrés ensuite.
+
+\item[\sev{Majeur} --- JSON initial de 20,7 Mo embarqué deux fois dans l'APK.]
+  \fichier{build.gradle.kts:204} ajoute \fichier{commonMain/resources} aux ressources Android
+  alors qu'Android lit uniquement l'asset. Assets jamais référencés : \fichier{vetfood.json}
+  (1,7 Mo), \fichier{references.json} (1 Mo). Sur iOS, parsing par chaîne complète
+  (\fichier{ResourceReader.ios.kt:64-70}), soit environ 40 Mo de pic.
+
+\item[\sev{Mineur} --- Divers.]
+  Cache \code{rationAnalysisCache} de fait mort (le chemin utilisé ne passe pas par lui, et
+  \code{analyserRation(ration, consultation)} n'a aucun appelant). Deux
+  \code{DatabaseFoodRepository} instanciés au démarrage desktop (\fichier{main.kt:103-111} et
+  \fichier{AppContainer.kt:55-62}), chacun lisant la table FOOD. \code{HttpClient} créé à chaque
+  partage et jamais fermé (cinq sites). Dépendances \code{androidx.paging} déclarées et jamais
+  utilisées. 14 \code{println} en \code{commonMain}. Scope de \code{DatabaseFoodRepository} sans
+  \code{SupervisorJob} (\code{:67}).
+\end{description}
+
+\subsection*{Documents d'optimisation contredits par le code}
+
+\fichier{RESUME\_OPTIMISATIONS\_PRIORITAIRES.md} affirme « État actuel : implémenté » pour
+\code{OptimizedNutrientResolver.kt}, \code{OptimizedResourceReader.kt}, \code{CacheFactory},
+trois scripts shell et des maps O(1) dans \code{UnitEnum} : aucun n'existe (\code{UnitEnum.byId}
+reste une boucle). \fichier{OPTIMISATION\_MEMOIRE.md} décrit \code{-Xmx16g} et des options
+\code{-Xno-optimize} absentes de \fichier{gradle.properties} (\code{-Xmx8g}).
+\fichier{ANALYSE\_OPTIMISATION\_MEMOIRE.md} propose du SQL PostgreSQL (\code{PARTITION},
+\code{CREATE INDEX CONCURRENTLY}) impossible en SQLite. \fichier{PERFORMANCE\_IMPROVEMENTS.md}
+annonce « 0 println » et des clés sur les listes : partiellement vrai (RationsView et
+AnimalDetailView seulement). Ces documents doivent être archivés ou réécrits.
+
+\section{Robustesse, données et sécurité}\label{sec:robustesse}
+
+\subsection*{Ce qui est fait correctement}
+
+\begin{itemize}
+\item Aucun \code{fallbackToDestructiveMigration} ; chaîne 17 $\rightarrow$ 41 continue ; échec
+  de migration $\Rightarrow$ base mise de côté (\fichier{AppDatabase.kt:183-199}) ; \code{.bak} à
+  chaque démarrage, rotation des bases corrompues, parking d'une base plus récente que
+  l'application (\fichier{DatabaseGuard.kt}).
+\item Sauvegarde : fichier temporaire puis renommage, rotation sur dix fichiers, copie long terme,
+  \code{Mutex}, sauvegarde de secours avant restauration, confirmation utilisateur.
+\item Aucune clé en dur dans l'arbre de travail ; clés jsonbin injectées à la compilation depuis
+  \fichier{local.properties} ou l'environnement ; \fichier{local.properties} ignoré par Git.
+\item Évaluation d'équations : division par zéro levée, NaN et infinis filtrés ; moteurs troupeau
+  et multiration protégés contre les effectifs et densités nuls.
+\end{itemize}
+
+\subsection*{Constats}
+
+\begin{description}[style=nextline]
+\item[\sev{Critique} --- Suppression d'un aliment utilisé : échec et perte partielle.]
+  \fichier{DataBase/Entity.kt:255-270} : \code{ALIMENTS.refAlimUnif} est \code{NOT NULL}
+  (\code{String = ""}) mais la clé étrangère vers FOOD est \code{ON DELETE SET NULL}. SQLite lève
+  \code{NOT NULL constraint failed}. \code{DatabaseFoodRepository.deleteFood} (\code{:1537-1547})
+  supprime d'abord nutriments et indications hors transaction, puis échoue : l'aliment reste sans
+  nutriments. \code{FoodListViewModel.deleteFood} (\code{:278-284}) n'a pas de \code{try/catch}
+  dans son \code{launch} : exception non gérée sur Android.
+  \emph{Remède} : colonne nullable (migration 42) ou \code{RESTRICT} avec message ;
+  \code{@Transaction} ; erreur remontée à l'interface.
+
+\item[\sev{Critique} --- \code{NumberUtils.format} est faux.]
+  \fichier{Utils/NumberUtils.kt:6-22} tronque l'erreur flottante :
+  \code{format(2.3, 1) = "2.2"}, \code{format(4.35, 2) = "4.34"},
+  \code{format(-1.25, 2) = "-1.-25"}, NaN $\Rightarrow$ « 0 ». Vérifié numériquement. 28 usages
+  dont \fichier{Export/HtmlDocumentBuilder.kt:119-124} (export PDF des rations) et
+  \fichier{View/ConsultationDetailView.kt:368-444} (poids, kcal/j).
+  \emph{Remède} : remplacer par \code{TextUtils.formatDecimal}, qui est correct.
+
+\item[\sev{Critique} --- Données personnelles dans le dépôt.]
+  \fichier{ani.json} (18 Mo) et \fichier{animaux.json} (19 Mo) à la racine contiennent 223 animaux
+  et 132 noms distincts de propriétaires (\code{nomProprio}). Dépôt poussé sur GitHub.
+  \emph{Remède} : retirer, purger l'historique, anonymiser (\code{AnonymizationUtils} existe).
+
+\item[\sev{Majeur} --- Restauration et import non transactionnels, et trompeurs.]
+  \code{importAll} (\fichier{ExportImportRepository.kt:509-1160}) insère unitairement sans
+  transaction ; la section Équations (\code{:603-613}) n'a aucun \code{try/catch} et interrompt
+  l'import à mi-chemin ; \code{envelope.version} n'est jamais vérifié ; le dialogue annonce
+  « remplacera toutes les données » (\fichier{View/BackupRestoreView.kt:203}) alors qu'il s'agit
+  d'une fusion sans suppression (\code{:964-970}). À l'import d'aliments, les échecs d'insertion
+  des nutriments sont avalés (\fichier{DatabaseFoodRepository.kt:427, 444, 458, 1119, 1134}) et
+  l'aliment compté comme importé.
+
+\item[\sev{Majeur} --- Erreurs silencieuses sur des enregistrements cliniques.]
+  Dans \code{AnimalDetailViewModel}, neuf fonctions de modification de consultation (référentiel,
+  maladies, coefficients, variables ; lignes 1685 à 2334) entourent \code{updateConsultation}
+  d'un \code{catch} vide, et \code{updateConsultation} lui-même ne fait que \code{printStackTrace}
+  (\code{:1078-1080}) : l'interface affiche une valeur non enregistrée sans retour.
+  \code{applyRecipeToRation} (\fichier{Repository/ConsultationRepository.kt:30-35}) applique une
+  recette partiellement sans erreur. 67 \code{catch} vides au total.
+
+\item[\sev{Majeur} --- Clés jsonbin embarquées dans les binaires.]
+  \code{internal const val} générées dans \code{AppSecretsGenerated.kt} : extractibles par
+  \code{strings} du JAR, de l'APK ou de l'IPA. Elles permettent de créer des bins et de lire tout
+  bin privé du compte (partage de dossiers entre confrères). Chiffrement AES-CBC sans
+  authentification (\fichier{Utils/CryptoUtils.kt:19}). \emph{Remède} : relais serveur, ou
+  chiffrement obligatoire en AES-GCM avec bins éphémères. Android : \code{allowBackup="true"}
+  sans règles d'exclusion, la base patients part dans la sauvegarde cloud.
+
+\item[\sev{Majeur} --- Migrations.]
+  Aucune migration avant la version 17 ; migration 23 $\rightarrow$ 24 avec
+  \code{DROP TABLE IF EXISTS HTML\_SECTIONS} (\fichier{AppDatabase.kt:449-455}) ;
+  \code{RATIONS.refRationParente} sans clé étrangère (étapes de plan évolutif orphelines) ; le test
+  de chaîne annonce « 17 $\rightarrow$ 36 » dans son commentaire. Sur Android,
+  \code{MainActivity.onCreate} rappelle \code{getRoomDatabase} à chaque recréation sans fermer
+  l'instance précédente.
+
+\item[\sev{Majeur} --- \code{!!} sur des entrées externes.]
+  \fichier{Utils/ImportUtils.kt:582, 601, 619} (\code{value["value"]!!} sur JSON importé),
+  \fichier{Utils/LegacyV2Mappings.kt:151-165} (\code{find(line)!!} sur scripts hérités),
+  \fichier{Data/RationAnalyzer.kt:124-132} (clé de ratio codée par libellé).
+
+\item[\sev{Mineur} --- Divers.]
+  Variable d'environnement \code{VETNUTRI\_TEST\_DATABASE\_DIR} honorée en production
+  (\fichier{desktopMain/DataBase/Database.kt:8}) ; \code{createDatabaseBackup()} stub retournant
+  \code{true} ; \code{Json.isLenient} et \code{coerceInputValues} sur les imports utilisateur ;
+  \code{moveFile} sans \code{ATOMIC\_MOVE} ; échec d'écriture de \code{startup\_complete} avalé
+  (écran de démarrage réaffiché en boucle) ; \fichier{GUIDE\_COMPATIBILITE\_16KB.md} cite NDK 27
+  et un script inexistant alors que le build utilise NDK 28 ; exclusion de
+  \code{libimage\_processing\_util\_jni.so} à valider sur appareil.
+\end{description}
+
+\section{Tests}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{lYY}
+\toprule
+Couche & Couvert & Non couvert \\
+\midrule
+ViewModel (26) & \code{AnimalDetailViewModel} (plan évolutif, concurrence), 3 tests sur une fonction pure de \code{CrossConsultation} & 24 autres, dont MultiRation, FoodEdit, Import, Settings, Startup, Backup \\
+Repository (19) & InMemory Animal/Equation, \code{DatabaseFoodRepository} (vrai Room), Consultation évolutive, ExportImport (4 fichiers), recettes & \code{DatabaseAnimalRepository}, Conseil, HtmlSection, ExamGrading, Preferences \\
+Service (9) & Excel aliments (22), Backup (11), File partiel, migration V2 (1) & \code{StartupService}, CrossRef, CSV notes, JsonShare \\
+Data (moteurs) & Troupeau (27 + 15 JSON), Multiration (17), RationAnalyzer (11), RationCalculator (8), PlanEvolutif (9) & \code{CalculMetabolique} (BEE, poids métabolique), RequirementAnalyzer \\
+DataBase & Chaîne de migrations sur base v17 réelle, persistance, garde, rotation (26 tests) & Migrations 37 à 41 à confirmer dans le test de chaîne \\
+Export & Prescription plan évolutif (2) & \code{PdfExporter} \\
+View (101) & 8 fichiers testant des fonctions pures placées dans \fichier{View/} & Aucun test d'interface Compose \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Qualité : assertions significatives (tolérances numériques, messages explicites), aucun
+\code{@Ignore}, desktopTest sur vrai SQLite en fichier temporaire. Fragilités mineures :
+\code{Thread.sleep(5)} (\fichier{BackupServiceTest.kt:89}), latence aléatoire volontaire
+(\fichier{PlanEvolutifInteractionTest.kt:28}), \code{GuideScreenshotDriver} ouvre la vraie base
+utilisateur si une variable d'environnement manque. Les six tests iOS ne sont jamais exécutés en
+CI. Les 723 tests communs tournent deux fois (desktop et Android). Aucune mesure de couverture.
+
+\section{Build, CI et outillage}
+
+\subsection*{Ce qui est fait correctement}
+
+Workflow unique commenté, \code{concurrency}, permissions minimales, \code{paths-ignore} pour la
+documentation, validation des wrappers, contrôle de dérive des schémas Room, iOS conditionnel,
+paquet Debian conditionné aux tests verts avec contrôle AVX2, job agrégateur, Dependabot mensuel,
+versions 3.3.18 et 318 cohérentes entre Android, iOS, desktop et changelog.
+
+\subsection*{Constats}
+
+\begin{itemize}
+\item \sev{Majeur} --- Aucun lint, analyse statique (detekt, ktlint, Android Lint), ni couverture
+  (Kover) ; aucun bloc \code{lint \{\}} ni \code{composeCompiler \{ reports \}}.
+\item \sev{Majeur} --- Aucune publication sur tag : pas de \code{signingConfigs} Android dans Gradle,
+  le \code{.deb} n'est qu'un artefact de 30 jours, signature macOS par script externe.
+\item \sev{Majeur} --- \code{kotlinx-coroutines 1.7.3} (2023) avec Kotlin 2.2.20 ;
+  \code{room 2.7.0-rc01} en production ; \code{jvmTarget} 11 sur Android et non fixé sur desktop
+  (JDK 21 en CI) ; options \code{-X} Kotlin/Native appliquées à la cible Android.
+\item \sev{Mineur} --- Catalogue Gradle encombré : une vingtaine d'alias jamais référencés
+  (navigation, splitpane alpha, testng, jansi, realm, assertk, junit5, datetime 0.4.1,
+  compose-plugin 1.6.11) ; dépendances déclarées sans import (paging, datastore, webview,
+  reorderable, qr-kit, ui-util) ; \code{koalaplot} et \code{material-icons} codés en dur à une
+  version différente du catalogue ; \code{okio} déclaré deux fois.
+\item \sev{Mineur} --- \fichier{proguard-rules.pro} conserve \code{Data.**}, \code{DataBase.**},
+  \code{Enumer.**}, \code{kotlin.**}, \code{io.ktor.**}, \code{okio.**} en entier : le shrinking
+  est largement neutralisé ; ProGuard desktop désactivé.
+\item \sev{Mineur} --- Commentaires CI périmés (« 40 + 9 fichiers de test », « 35 schémas ») ;
+  cache Gradle jamais alimenté pour \code{master} et \code{revetBackUp} ; checkout LFS répété sur
+  quatre jobs.
+\end{itemize}
+
+\section{Hygiène du dépôt, documentation, localisation}
+
+\begin{itemize}
+\item \sev{Critique} --- \fichier{composeApp/release/composeApp-release-000.aab} (22,8 Mo) et
+  \fichier{-1-0-1.aab} (17,1 Mo) commités en blobs bruts bien que le répertoire et \code{*.aab}
+  soient ignorés et suivis par LFS.
+\item \sev{Critique} --- \fichier{vetnutri\_export\_init.json} (20,7 Mo) en cinq exemplaires :
+  quatre identiques (commonMain, androidMain, deux dans iosApp) et une copie datée
+  « 20-06-01-825 » différente et non référencée par Xcode. Neuf versions successives dans
+  l'historique, soit environ 270 Mo pour les quinze plus gros blobs. Les
+  \fichier{strings\_*.json} existent en trois copies déjà divergentes entre commonMain et Android.
+\item \sev{Majeur} --- Jeux de données bruts à la racine : \fichier{food.json} (15 Mo),
+  \fichier{animaux.json}, \fichier{ani.json}, \fichier{oza2.json}, \fichier{test\_vbnr.json},
+  \fichier{docs/Untitled.json} (copie de \fichier{references.json}) ;
+  \fichier{View/vetfood.json} (1,7 Mo) dans le dossier source Kotlin.
+\item \sev{Majeur} --- Répertoires \fichier{commonMain/} et \fichier{iosMain/} à la racine, hors
+  de tout source set (copies de KoalaPlot et d'un générateur QR) ; sept fichiers Kotlin orphelins à
+  la racine dont un fichier d'un octet ; fichier \fichier{Task} vide ; journaux
+  \fichier{ios\_build.log}, \fichier{ios\_build\_final.log}, \fichier{build\_log.txt} ; icônes
+  en cinq copies identiques dont deux « copie » ; \fichier{composeApp/bin/} suivi ; deux paquets R
+  (\fichier{vetnutriDogR}, \fichier{vetnutriExamR}) sans lien de build.
+\item \sev{Mineur} --- 18 fichiers Markdown à la racine, 14 issus du même commit du 1\textsuperscript{er}
+  août 2026, quatre se recouvrant sur la mémoire et les performances ; 27 autres dans
+  \fichier{docs/}. \fichier{CLAUDE.md} périmé sur ses compteurs ; \fichier{.gitignore} sans
+  \code{*.log}.
+\item \sev{Mineur} --- Localisation : 2\,378 appels \code{translate()} mais 11 constantes de
+  \code{LocalizationKeys} absentes de \fichier{strings\_fr.json} (clé brute affichée) ; six
+  langues sur neuf à 617 clés sur 1\,967, dont 450 non traduites ; environ 150 \code{Text("…")} en
+  français dur dans les écrans récents (multiration, troupeau, copie de ration) ; 29 fichiers de
+  vue sans aucun appel de localisation.
+\end{itemize}
+
+\section{Plan d'action proposé}
+
+Par ordre de priorité, avec l'effort estimé.
+
+\begin{enumerate}
+\item \sev{Données personnelles et binaires} (1 h + réécriture d'historique) : retirer
+  \fichier{ani.json}, \fichier{animaux.json}, \fichier{food.json}, les deux AAB, la copie datée
+  du JSON initial ; purger l'historique avec \code{git filter-repo} ; anonymiser tout jeu de
+  données réintroduit.
+\item \sev{Corrections de correction} (½ jour) : remplacer \code{NumberUtils.format} par
+  \code{TextUtils.formatDecimal} ; rendre \code{ALIMENTS.refAlimUnif} nullable ou \code{RESTRICT}
+  avec \code{deleteFood} en transaction et erreur affichée ; synchroniser
+  \code{EquationEvaluator.expressionCache} et remplacer la clé \code{hashCode} ; unifier le poids
+  métabolique sur \code{CalculMetabolique} et le tester.
+\item \sev{Import et restauration} (1 jour) : \code{importAll} et \code{importFoods} dans une
+  transaction Room, \code{try/catch} sur les équations, vérification de \code{envelope.version},
+  erreurs d'insertion de nutriments comptées ; aligner le texte du dialogue de restauration sur le
+  comportement (fusion) ou implémenter un vrai remplacement ; remonter les erreurs des neuf
+  fonctions de \code{AnimalDetailViewModel} qui avalent \code{updateConsultation}.
+\item \sev{Accès base} (1,5 jour) : compteurs et identifiants par \code{COUNT(*)} et
+  \code{getAllFoodIds()} ; \code{getAllReferenceEv()}, poids, consultations et rations en requêtes
+  \code{IN} ; sauvegarde automatique conditionnée à un indicateur de modification sans
+  \code{forceRefresh()} ; suppression de l'énergie par lot.
+\item \sev{Thread principal et composition} (1,5 jour) : \code{withContext(Default)} autour des
+  analyses de ration et de l'indexation ; maps \code{by lazy} dans \code{Espece} ; filtre et tri de
+  \code{FoodSearchComponent} dans le ViewModel avec debounce ; \code{key} sur les 48 listes ;
+  ouverture Room hors \code{onCreate} sur Android.
+\item \sev{Frontière vue / repository} (3 jours) : repositories privés dans les ViewModels,
+  suppression de \code{AppNavRepositories}, ViewModels Conseils, Recettes, Préférences, Startup,
+  Export animal ; règle métier d'arrondi et calculs graphiques déplacés dans \fichier{Data/} ;
+  base commune de ViewModel avec \code{clear()} et abandon de \code{: ViewModel()} sans store.
+\item \sev{Découpage des monolithes} (3 jours, par étapes) : \code{SettingsView} en sections
+  (l'infrastructure existe), \code{RationsView} avec un \code{sealed class} de dialogue,
+  \code{AnimalDetailView} en sections partagées entre layouts, \code{ImportUtils} en quatre
+  objets, \code{AnimalDetailViewModel} en quatre ViewModels autour d'une session animal.
+\item \sev{Secrets et confidentialité} (1 jour + décision) : clés jsonbin derrière un relais ou
+  chiffrement obligatoire AES-GCM avec bins éphémères ; \code{allowBackup} ou règles d'exclusion
+  Android ; variable d'environnement de base désactivée en production.
+\item \sev{Chaîne de build} (1 jour) : coroutines 1.10.x, Room stable, \code{jvmToolchain}
+  commun, retrait des options \code{-X} Kotlin/Native et des dépendances inutilisées, règles R8
+  resserrées, JSON initial en une seule source copiée au build (plus de double embarquement dans
+  l'APK), parsing iOS en flux.
+\item \sev{CI} (1 jour) : detekt ou ktlint, Android Lint, Kover avec seuil, tests iOS exécutés,
+  tests communs exécutés une seule fois, job de release sur tag avec signature par secrets.
+\item \sev{Tests manquants} (2 jours) : \code{CalculMetabolique}, \code{PdfExporter},
+  \code{StartupService}, \code{MultiRationViewModel}, \code{FoodEditViewModel},
+  \code{DatabaseAnimalRepository}, chaîne de migrations jusqu'à 41 vérifiée explicitement, test
+  de cohérence des clés de localisation, quelques tests \code{runComposeUiTest} sur la consultation
+  et la ration.
+\item \sev{Nettoyage et documentation} (½ jour) : code mort listé en section~\ref{sec:architecture},
+  répertoires racine orphelins, journaux, icônes dupliquées ; archiver les quatre documents
+  d'optimisation contredits par le code ; mettre à jour \fichier{CLAUDE.md} (compteurs, Room,
+  règle \code{withContext}) et \fichier{GUIDE\_COMPATIBILITE\_16KB.md}.
+\item \sev{Navigation} (2 jours, optionnel) : pile \code{ArrayDeque<Screen>} avec écrans
+  paramétrés, suppression de \code{detailReturnScreen} et \code{TestYellowBox}.
+\end{enumerate}
+
+Les quatre premiers points tiennent en moins d'une semaine et traitent tout ce qui touche
+l'exactitude des résultats affichés, l'intégrité des données et la confidentialité. Les points
+suivants sont des investissements de maintenabilité qui conditionnent le coût de chaque évolution
+future.
+
+\end{document}
