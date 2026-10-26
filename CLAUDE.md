@@ -11,8 +11,8 @@ Cibles : Android, iOS, Desktop (JVM), Windows.
 |---------|-------------|---------|
 | UI | Compose Multiplatform | 1.7.0 |
 | Langage | Kotlin | 2.2.20 |
-| Base de données | Room + BundledSQLiteDriver | 2.7.0 |
-| Async | kotlinx.coroutines | 1.7.3 |
+| Base de données | Room + BundledSQLiteDriver | 2.7.1 |
+| Async | kotlinx.coroutines | 1.10.2 |
 | State | StateFlow + ViewModel (lifecycle) | 2.8.4 |
 | HTTP | Ktor | 3.0.3 |
 | Sérialisation | Kotlin Serialization JSON | 1.8.0 |
@@ -35,9 +35,15 @@ Room/SQLite    ← ~29 tables, 24 migrations, schéma v41
 ```
 
 Règles à respecter :
-- Toute opération DB se fait dans `withContext(AppDispatchers.IO)`.
-- Les Composables ne touchent jamais les Repository directement.
-- La logique métier (calculs, équations) appartient au ViewModel, jamais au Composable.
+- Tout travail bloquant d'un Repository (encodage JSON, fichiers, calculs lourds) se fait dans
+  `withContext(AppDispatchers.IO)` ; les DAO Room `suspend` s'exécutent déjà hors du thread principal.
+- Les Composables ne touchent jamais les Repository directement : ils reçoivent des ViewModels
+  (ou des lambdas fournies par un ViewModel). Seule exception tolérée : `EquationRepository`,
+  consommé par la couche `Data` (`AlimentRation.getNutrientWithComplementary`, `getEnergie`).
+- La logique métier (calculs, équations, arrondis) appartient à `Data/` ou au ViewModel, jamais au Composable.
+- Les analyses de ration et le filtrage du catalogue s'exécutent sur `AppDispatchers.Default`.
+- Les écritures en lot (imports, restauration) passent par `TransactionRunner.inTransaction` ;
+  chaque écriture notifie `DatabaseChangeNotifier` (la sauvegarde automatique ne tourne que si la base a changé).
 
 ---
 
@@ -47,18 +53,37 @@ La navigation est manuelle (sans Voyager/Decompose). Les écrans sont décrits d
 
 | Fichier | Rôle |
 |---------|------|
-| `Screen.kt` | 23 destinations (sealed objects) |
-| `AppNavController.kt` | État mutable de navigation (`screen`, `selectedXxxId`, etc.) |
+| `Screen.kt` | 25 destinations (sealed objects ; l'écran de test `TestYellowBox` a été supprimé) |
+| `AppNavController.kt` | État de navigation (`screen`, `selectedXxxId`, etc.) + pile de retour (`navigate`, `back`, `backOr`, `replace`, `navigateAndClear`, `canGoBack`) |
+| `PlatformBackHandler.kt` | `expect` Composable : retour système Android (`androidx.activity.compose.BackHandler`) ; no-op Desktop/iOS |
 | `AppNavHost.kt` | `when(nav.screen)` — dispatch vers les Composables d'écran |
 | `AppNavModels.kt` | `AppNavModels` (ViewModels partagés par les écrans ; plus de repositories transmis aux vues, hors `equationRepository` passé à `AppNavHost` pour les calculs nutritionnels) |
 | `AppDialogs.kt` | Dialogues d'overlay transversaux (import résultats, backup) |
 
 `App.kt` est l'orchestrateur : il crée les ViewModels, les repositories, le `AppNavController`, et appelle `AppNavHost`.
 
+### Pile de retour
+
+`AppNavController` garde l'écran courant (`screen`, état Compose en lecture seule depuis l'extérieur) et une
+pile des écrans précédents (`ArrayDeque`, 50 entrées max, pas de doublon consécutif) :
+
+- `navigate(cible)` empile l'écran courant puis affiche la cible (sans effet si la cible est déjà affichée) ;
+- `back(): Boolean` revient à l'écran précédent, `false` si la pile est vide ;
+- `backOr(repli)` = `back()` sinon `navigate(repli)` : c'est la forme à utiliser pour tous les
+  `onNavigateBack`/`onBack` dans `AppNavHost` (le repli reproduit l'ancienne destination codée en dur) ;
+- `replace(cible)` affiche la cible sans empiler (redirections, formulaire remplacé par la fiche créée) ;
+- `navigateAndClear(cible)` vide la pile et affiche une racine ;
+- `clearFoodSelection()` / `clearSelection()` remettent les identifiants sélectionnés à zéro ; les lambdas de
+  retour qui réinitialisent une sélection (`selectedXxxId = null`, onglet) gardent cet effet avant `backOr`.
+
+`AppNavHost` appelle `PlatformBackHandler(enabled = nav.canGoBack || nav.screen != Screen.List) { nav.backOr(Screen.List) }`
+pour brancher le bouton/geste retour Android sur la pile ; sur la liste, pile vide, le retour système
+quitte l'application comme avant.
+
 ### Ajouter un écran
 
 1. Ajouter un `object MonEcran : Screen()` dans `Screen.kt`.
-2. Ajouter un `Screen.MonEcran -> { MonEcranView(...) }` dans `AppNavHost.kt`.
+2. Ajouter un `Screen.MonEcran -> { MonEcranView(...) }` dans `AppNavHost.kt`, avec `onNavigateBack = { nav.backOr(Screen.Parent) }`.
 3. Si l'écran a besoin d'un état sélectionné (ex. un ID), l'ajouter dans `AppNavController`.
 4. Si l'écran a besoin d'un ViewModel, l'ajouter dans `AppNavModels` et l'instancier dans `App.kt`.
 
@@ -109,13 +134,18 @@ composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/
 ## Points d'attention
 
 ### Caches mémoire
-Trois caches utilisent le pattern `LinkedHashMap` LRU (eviction automatique de l'entrée la plus ancienne) :
-- `DatabaseFoodRepository.searchCache` — 50 entrées max
-- `EquationEvaluator.expressionCache` — 1000 entrées max
+Trois caches utilisent `LruMap` (eviction de l'entrée la plus ancienne) :
+- `DatabaseFoodRepository.searchCache` — 50 entrées max, protégé par `Mutex`, vidé à chaque écriture
+- `EquationEvaluator.expressionCache` — 1000 entrées max, clé déterministe (expression + variables triées),
+  protégé par `SynchronizedLock` (verrou non suspendant `expect/actual`, utilisable depuis Main)
 - `AnimalDetailViewModel.rationAnalysisCache` — 50 entrées + TTL 2 minutes
 
+`NutrientResolver` et `CustomNutrientRegistry` sont également protégés par `SynchronizedLock` ; le
+résolveur se resynchronise quand `CustomNutrientRegistry.version` change.
+
 ### AppContainer (DI manuel)
-`AppContainer` est un data class avec 14 dépendances construit dans `rememberAppContainer(appDatabase)`. Il n'est pas lazy. Pour ajouter une dépendance, l'ajouter dans `AppContainer.kt` **et** dans `rememberAppContainer`.
+`AppContainer` est un data class construit dans `rememberAppContainer(appDatabase)` ; il fournit aussi
+`RoomTransactionRunner(appDatabase)` aux repositories qui importent en lot. Il n'est pas lazy. Pour ajouter une dépendance, l'ajouter dans `AppContainer.kt` **et** dans `rememberAppContainer`.
 
 ### Résolveur de nutriments
 `NutrientResolver.AllNutrientResolver(label)` est le point d'entrée unique pour résoudre un label textuel vers un `Nutrient`. Ne pas appeler `getByLabel()` directement sur les enums individuels depuis les couches Repository/Service — passer par `NutrientResolver`.
@@ -176,8 +206,8 @@ poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existan
 # Android
 ./gradlew :composeApp:assembleDebug
 
-# Tests unitaires
-./gradlew :composeApp:testDebugUnitTest
+# Tests unitaires (commonTest + desktopTest, vrai SQLite)
+./gradlew :composeApp:desktopTest
 
 # Nettoyage
 ./gradlew clean
@@ -195,4 +225,16 @@ poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existan
 | `commonMain/resources/data/vetnutri_export_init.json` | ~20 MB | Export init complet (refs + aliments) — source unique ; Desktop le lit via le classpath, Android via les assets générés par la tâche Gradle `copyCommonDataAssets` (plus de copie dans `androidMain/assets`), iOS via la copie unique `iosApp/iosApp/vetnutri_export_init.json` référencée par Xcode |
 | `commonMain/resources/strings_*.json` | ~50–140 KB | Traductions UI (même mécanisme : source unique, copiées dans les assets Android par `copyCommonDataAssets`) |
 
-Ces fichiers sont chargés via `StartupService` au premier lancement, pas à chaque démarrage.
+Ces fichiers sont importés à la demande par `SettingsViewModel` (seule la version du JSON est lue au démarrage ;
+l'import complet n'a lieu que si elle est plus récente ou si le catalogue est vide). `StartupService` ne fait
+que lancer la sauvegarde automatique.
+
+---
+
+## Sécurité et données
+
+- Partage en ligne (`JsonShareService`) : chiffrement AES-CBC + HMAC-SHA256 (format v2, `CryptoUtils`) ;
+  les clés jsonbin restent compilées dans les binaires, voir `docs/qualite/decision-cles-jsonbin.md`.
+- Android : base et sauvegardes exclues de la sauvegarde cloud (`res/xml/backup_rules.xml`).
+- Aucun jeu de données contenant des noms de propriétaires ne doit être commité (`AnonymizationUtils`).
+- Analyse qualité et plan d'action : `docs/qualite/`.

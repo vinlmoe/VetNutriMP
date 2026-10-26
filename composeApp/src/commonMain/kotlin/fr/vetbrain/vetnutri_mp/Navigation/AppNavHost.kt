@@ -1,14 +1,11 @@
 package fr.vetbrain.vetnutri_mp.Navigation
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
@@ -32,6 +29,9 @@ internal fun AppNavHost(
     equationRepository: EquationRepository,
     examSession: ExamSession?
 ) {
+    // Retour système (Android) : dépile, ou revient à la liste depuis un écran racine autre que la liste.
+    PlatformBackHandler(enabled = nav.canGoBack || nav.screen != Screen.List) { nav.backOr(Screen.List) }
+
     when (nav.screen) {
         Screen.List -> {
             val examBorderModifier =
@@ -56,7 +56,6 @@ internal fun AppNavHost(
                     },
                     onSelectAnimal = { animal: AnimalEv ->
                         nav.selectedAnimal = animal
-                        nav.detailReturnScreen = Screen.List
                         models.animalDetailViewModel.setAnimal(animal)
                         nav.navigate(Screen.Detail)
                     },
@@ -82,7 +81,7 @@ internal fun AppNavHost(
                     onBackClick = {
                         nav.isEditing = false
                         nav.selectedAnimal = null
-                        nav.navigate(Screen.List)
+                        nav.backOr(Screen.List)
                     },
                     onSettingsClick = { nav.navigate(Screen.Settings) }
                 )
@@ -91,14 +90,14 @@ internal fun AppNavHost(
                     onNavigateBack = {
                         nav.isEditing = false
                         nav.selectedAnimal = null
-                        nav.navigate(Screen.List)
+                        nav.backOr(Screen.List)
                     },
                     onAnimalCreated = { animal ->
                         nav.isEditing = false
                         nav.selectedAnimal = animal
-                        nav.detailReturnScreen = Screen.List
                         models.animalDetailViewModel.setAnimal(animal)
-                        nav.navigate(Screen.Detail)
+                        // Le formulaire est remplacé par la fiche : « retour » depuis la fiche revient à la liste.
+                        nav.replace(Screen.Detail)
                     },
                     isEditing = nav.isEditing,
                     examSession = examSession,
@@ -113,11 +112,7 @@ internal fun AppNavHost(
                     viewModel = models.animalDetailViewModel,
                     animalExportViewModel = models.animalExportViewModel,
                     recipeDialogViewModel = models.recipeDialogViewModel,
-                    onNavigateBack = {
-                        val retour = nav.detailReturnScreen
-                        nav.detailReturnScreen = Screen.List
-                        nav.navigate(retour)
-                    },
+                    onNavigateBack = { nav.backOr(Screen.List) },
                     onOpenSettings = { nav.navigate(Screen.Settings) },
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     equationRepository = equationRepository,
@@ -129,14 +124,14 @@ internal fun AppNavHost(
         Screen.FoodList -> {
             FoodListView(
                 viewModel = models.foodListViewModel,
-                onNavigateBack = { nav.navigate(Screen.List) },
+                onNavigateBack = { nav.backOr(Screen.List) },
                 onOpenSettings = { nav.navigate(Screen.Settings) },
                 onEditFood = { foodUuid ->
                     nav.selectedFoodUuid = foodUuid
                     nav.navigate(Screen.FoodEdit)
                 },
                 onCreateFood = {
-                    nav.selectedFoodUuid = null
+                    nav.clearFoodSelection()
                     nav.navigate(Screen.FoodEdit)
                 },
                 modifier = Modifier.fillMaxSize()
@@ -147,8 +142,8 @@ internal fun AppNavHost(
             FoodEditView(
                 viewModel = models.foodEditViewModel,
                 onNavigateBack = {
-                    nav.selectedFoodUuid = null
-                    nav.navigate(Screen.FoodList)
+                    nav.clearFoodSelection()
+                    nav.backOr(Screen.FoodList)
                 },
                 onNavigateToSettings = { nav.navigate(Screen.Settings) },
                 modifier = Modifier.fillMaxSize()
@@ -162,7 +157,7 @@ internal fun AppNavHost(
                 referenceEvViewModel = models.referenceEvViewModel,
                 conseilsViewModel = models.conseilsViewModel,
                 newReferenceEvViewModel = models.newReferenceEvViewModel,
-                onNavigateBack = { nav.navigate(Screen.List) },
+                onNavigateBack = { nav.backOr(Screen.List) },
                 onEditReferenceEv = { referenceEvId ->
                     nav.selectedReferenceEvId = referenceEvId
                     nav.navigate(Screen.NewReferenceEvEdit)
@@ -213,7 +208,7 @@ internal fun AppNavHost(
                 biblioRefId = nav.selectedBiblioRefId,
                 onNavigateBack = {
                     nav.selectedBiblioRefId = null
-                    nav.navigate(Screen.BiblioRefList)
+                    nav.backOr(Screen.BiblioRefList)
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -242,7 +237,7 @@ internal fun AppNavHost(
                 equationId = nav.selectedEquationId,
                 onNavigateBack = {
                     nav.selectedEquationId = null
-                    nav.navigate(Screen.EquationList)
+                    nav.backOr(Screen.EquationList)
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -279,7 +274,7 @@ internal fun AppNavHost(
                 referenceEvViewModel = models.referenceEvViewModel,
                 nutrientRefViewModel = models.nutrientRefViewModel,
                 referenceEvId = nav.selectedReferenceEvId ?: "",
-                onNavigateBack = { nav.navigate(Screen.EquationList) },
+                onNavigateBack = { nav.backOr(Screen.EquationList) },
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -289,7 +284,7 @@ internal fun AppNavHost(
                 viewModel = models.bulkReferenceEditorViewModel,
                 onNavigateBack = {
                     nav.selectedCalculationTab = 2
-                    nav.navigate(Screen.CalculationTabs)
+                    nav.backOr(Screen.CalculationTabs)
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -299,7 +294,7 @@ internal fun AppNavHost(
             NewReferenceEvEditView(
                 viewModel = models.newReferenceEvViewModel,
                 referenceId = nav.selectedReferenceEvId,
-                onNavigateBack = { nav.navigate(Screen.ReferenceEvList) },
+                onNavigateBack = { nav.backOr(Screen.ReferenceEvList) },
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -311,7 +306,7 @@ internal fun AppNavHost(
                 onNavigateBack = {
                     nav.selectedReferenceEvId = null
                     nav.selectedCalculationTab = 2
-                    nav.navigate(Screen.CalculationTabs)
+                    nav.backOr(Screen.CalculationTabs)
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -323,7 +318,7 @@ internal fun AppNavHost(
                 conseilId = nav.selectedConseilId,
                 onNavigateBack = {
                     nav.selectedConseilId = null
-                    nav.navigate(Screen.CalculationTabs)
+                    nav.backOr(Screen.CalculationTabs)
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -334,7 +329,7 @@ internal fun AppNavHost(
                 topBar = {
                     TopBarSimple(
                         title = translate("settings.title"),
-                        onNavigateBack = { nav.navigate(Screen.List) }
+                        onNavigateBack = { nav.backOr(Screen.List) }
                     )
                 }
             ) { paddingValues ->
@@ -343,7 +338,7 @@ internal fun AppNavHost(
                     importViewModel = models.importViewModel,
                     preferencesViewModel = models.preferencesViewModel,
                     onImportAnimals = { models.importViewModel.importAnimalsFromFileUI() },
-                    onBack = { nav.navigate(Screen.List) },
+                    onBack = { nav.backOr(Screen.List) },
                     onAnimalListRefresh = { models.animalListViewModel.loadAnimals() },
                     onFoodListRefresh = {},
                     onShowCrossAnalysis = { nav.navigate(Screen.CrossAnalysis) },
@@ -363,7 +358,7 @@ internal fun AppNavHost(
         Screen.BulkAddBiblioToFoods -> {
             BulkAddBiblioToFoodsView(
                 viewModel = models.bulkAddBiblioToFoodsViewModel,
-                onNavigateBack = { nav.navigate(Screen.Settings) },
+                onNavigateBack = { nav.backOr(Screen.Settings) },
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -375,7 +370,7 @@ internal fun AppNavHost(
                     topBar = {
                         TopBarSimple(
                             title = "${"preferences.title".translate()} ${species.translateEnum()}",
-                            onNavigateBack = { nav.navigate(Screen.Settings) }
+                            onNavigateBack = { nav.backOr(Screen.Settings) }
                         )
                     }
                 ) { paddingValues ->
@@ -386,14 +381,14 @@ internal fun AppNavHost(
                     )
                 }
             } else {
-                nav.navigate(Screen.Settings)
+                nav.replace(Screen.Settings)
             }
         }
 
         Screen.MultiRation -> {
             MultiRationExplorerView(
                 viewModel = models.multiRationViewModel,
-                onNavigateBack = { nav.navigate(Screen.List) },
+                onNavigateBack = { nav.backOr(Screen.List) },
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -401,7 +396,7 @@ internal fun AppNavHost(
         Screen.CrossAnalysis -> {
             CrossConsultationAnalysisView(
                 viewModel = models.crossAnalysisViewModel,
-                onNavigateBack = { nav.navigate(Screen.List) },
+                onNavigateBack = { nav.backOr(Screen.List) },
                 onOpenResults = { nav.navigate(Screen.CrossAnalysisResults) },
                 onOpenGrading = { nav.navigate(Screen.CrossAnalysisGrading) },
                 modifier = Modifier.fillMaxSize()
@@ -412,14 +407,14 @@ internal fun AppNavHost(
             CrossConsultationGradingView(
                 analysisViewModel = models.crossAnalysisViewModel,
                 gradingViewModel = models.examGradingViewModel,
-                onNavigateBack = { nav.navigate(Screen.CrossAnalysis) }
+                onNavigateBack = { nav.backOr(Screen.CrossAnalysis) }
             )
         }
 
         Screen.CrossAnalysisResults -> {
             CrossConsultationResultsView(
                 viewModel = models.crossAnalysisViewModel,
-                onNavigateBack = { nav.navigate(Screen.CrossAnalysis) },
+                onNavigateBack = { nav.backOr(Screen.CrossAnalysis) },
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -429,42 +424,19 @@ internal fun AppNavHost(
             if (backupVm != null) {
                 BackupRestoreView(
                     viewModel = backupVm,
-                    onBack = { nav.navigate(Screen.Settings) }
+                    onBack = { nav.backOr(Screen.Settings) }
                 )
             } else {
-                nav.navigate(Screen.Settings)
+                nav.replace(Screen.Settings)
             }
         }
 
         Screen.LegacyMigration -> {
             LegacyMigrationView(
                 viewModel = models.legacyMigrationViewModel,
-                onNavigateBack = { nav.navigate(Screen.Settings) },
+                onNavigateBack = { nav.backOr(Screen.Settings) },
                 modifier = Modifier.fillMaxSize()
             )
-        }
-
-        Screen.TestYellowBox -> {
-            Box(modifier = Modifier.fillMaxSize().background(Color.Yellow)) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        translate("auto.navigation.appnavhost.test_boate_jaune_ceci_est_un_test_de_visibilita"),
-                        style = MaterialTheme.typography.h4,
-                        color = Color.Red,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(24.dp)
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = { nav.navigate(Screen.List) },
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.Blue)
-                    ) { Text(translate("auto.navigation.appnavhost.retour_a_la_liste"), color = Color.White) }
-                }
-            }
         }
     }
 }

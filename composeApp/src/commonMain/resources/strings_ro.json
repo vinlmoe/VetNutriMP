@@ -199,8 +199,6 @@
         "auto.viewmodel.examgradingviewmodel.proteines_ration_g": "Protéines ration (g)",
         "auto.repository.conseilrepositoryexample.conseils_nutritionnels_pour_chiens": "Conseils nutritionnels pour chiens",
         "auto.repository.conseilrepositoryexample.template_conseils_d_hygiene": "Template conseils d'hygiène",
-        "auto.navigation.appnavhost.test_boate_jaune_ceci_est_un_test_de_visibilita": "TEST BOÃTE JAUNE\nCeci est un test de visibilitÃ©",
-        "auto.navigation.appnavhost.retour_a_la_liste": "Retour à la liste",
         "auto.navigation.appdialogs.resultat_de_l_importation_des_aliments": "Résultat de l'importation des aliments",
         "auto.navigation.appdialogs.details_de_l_importation": "Détails de l'importation:",
         "auto.view.importview.importer_des_donnees": "Importer des données",
