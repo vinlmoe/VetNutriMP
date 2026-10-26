@@ -23,13 +23,13 @@ Cibles : Android, iOS, Desktop (JVM), Windows.
 ## Architecture — couches
 
 ```
-View/          ← Composables @Composable (51 fichiers)
+View/          ← Composables @Composable (105 fichiers, sous-dossiers Rations/, AnimalDetail/, SettingsSections/)
   ↓
-ViewModel/     ← StateFlow, coroutineScope, logique présentation (23 fichiers)
+ViewModel/     ← BaseViewModel + StateFlow, logique présentation (30 fichiers)
   ↓
 Repository/    ← Interfaces + implémentations Room (19 fichiers)
   ↓
-DataBase/      ← DAO Room, Entity, Mappers (8 fichiers)
+DataBase/      ← DAO Room, Entity, Mappers (9 fichiers)
   ↓
 Room/SQLite    ← ~29 tables, 24 migrations, schéma v41
 ```
@@ -124,7 +124,8 @@ composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/
 ├── Enumer/                   # Enums (nutriments, espèces, unités...)
 ├── Service/                  # Services applicatifs (backup, import Excel, startup)
 ├── Components/               # Composants UI réutilisables (TopBar, ConfirmDialog...)
-├── Utils/                    # Utilitaires (ImportUtils, EquationEvaluator, AppDispatchers)
+├── Utils/                    # Utilitaires (EquationEvaluator, AppDispatchers, SynchronizedLock)
+│   └── Import/               # Importeurs JSON (animaux, aliments, besoins) ; ImportUtils = façade
 ├── Theme/                    # Couleurs, typographie, tailles
 └── Export/                   # Export PDF/JSON
 ```

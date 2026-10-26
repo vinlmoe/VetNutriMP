@@ -79,7 +79,7 @@ enum class AnimalDetailSection {
 class AnimalDetailViewModel(
         private val consultationRepository: ConsultationRepository,
         private val animalRepository: AnimalRepository,
-        private val databaseReferenceEvRepository: DatabaseReferenceEvRepository,
+        internal val databaseReferenceEvRepository: DatabaseReferenceEvRepository,
         private val preferencesRepository: PreferencesRepository,
         private val foodRepository: FoodRepository,
         private val equationRepository: EquationRepository? = null,
@@ -561,11 +561,6 @@ class AnimalDetailViewModel(
         _currentSection.value = section
     }
 
-    /** Consultation sélectionnée par défaut : la plus récente datée, sinon la première. */
-    private fun consultationParDefaut(consultations: List<ConsultationEv>): ConsultationEv? =
-            consultations.filter { it.date != null }.maxByOrNull { it.date!! }
-                    ?: consultations.firstOrNull()
-
     /**
      * Invariant : dès que l'animal a des consultations, l'une d'elles est sélectionnée. Corrige
      * une sélection vide ou pointant vers une consultation absente (brouillon annulé, suppression).
@@ -742,14 +737,6 @@ class AnimalDetailViewModel(
             _rationAnalysisScope.value.estGroupe ||
                     _typeTroupeauAnalyse.value != null ||
                     RationAggregator.estRationGroupee(_selectedRation.value?.uuid)
-
-    /** Copie profonde d'une ration (ration + liste d'aliments). */
-    private fun copieProfonde(ration: Ration): Ration =
-            ration.copy(
-                    alimentMutableList =
-                            ration.alimentMutableList.map { it.copy() }.toMutableList(),
-                    suppVarp = ration.suppVarp.toMutableList()
-            )
 
     /**
      * Analyse la ration actuellement sélectionnée L'analyse est lancée automatiquement lors de la
@@ -2202,72 +2189,6 @@ class AnimalDetailViewModel(
         }
     }
 
-    /** Calcule le poids métabolique en utilisant l'équation BW de la référence */
-    private fun calculerPoidsMetabolique(
-            consultation: ConsultationEv,
-            reference: ReferenceEv
-    ): Double? {
-        val poids = consultation.effectiveWeight ?: return null
-        return CalculMetabolique.poidsMetabolique(poids, reference, consultation.suppVarp)
-    }
-
-    /** Calcule le besoin énergétique standard en utilisant l'équation BEE de la référence */
-    private fun calculerBesoinEnergetiqueStandard(
-            consultation: ConsultationEv,
-            reference: ReferenceEv
-    ): Double? {
-        val poids = consultation.effectiveWeight ?: return null
-        return CalculMetabolique.besoinEnergetiqueStandard(poids, reference, consultation.suppVarp)
-    }
-
-    /**
-     * Calcule le besoin énergétique total en multipliant le BEE par tous les coefficients K et le
-     * coefficient d'ajustement
-     */
-    private fun calculerBesoinEnergetiqueTotal(consultation: ConsultationEv, bee: Double): Double {
-        // Récupération des coefficients K de la consultation
-        val k1 = consultation.k1Value?.toDouble() ?: 1.0
-        val k2 = consultation.k2Value?.toDouble() ?: 1.0
-        val k3 = consultation.k3Value?.toDouble() ?: 1.0
-        val k4 = consultation.k4Value?.toDouble() ?: 1.0
-        val k5 = consultation.k5Value?.toDouble() ?: 1.0
-        val coefficientAjustement = consultation.coefficientAjustement?.toDouble() ?: 1.0
-
-        // Calcul du besoin total
-        val besoinTotal = bee * k1 * k2 * k3 * k4 * k5 * coefficientAjustement
-
-        return besoinTotal
-    }
-
-    /**
-     * Obtient la référence active pour une consultation (générale ou première référence de maladie)
-     */
-    private suspend fun obtenirReferenceActiveConsultation(
-            consultation: ConsultationEv
-    ): ReferenceEv? {
-        return try {
-            // Priorité 1: Référence générale
-            consultation.referenceGeneraleId?.let { referenceId ->
-                val reference = databaseReferenceEvRepository.getReferenceEvById(referenceId)
-                if (reference != null) {
-                    return reference
-                }
-            }
-
-            // Priorité 2: Première référence de maladie
-            consultation.referencesMaladies.firstOrNull()?.let { referenceId ->
-                val reference = databaseReferenceEvRepository.getReferenceEvById(referenceId)
-                if (reference != null) {
-                    return reference
-                }
-            }
-
-            null
-        } catch (e: Exception) {
-            null
-        }
-    }
-
     /** Remet à zéro tous les calculs métaboliques */
     private fun resetCalculsMetaboliques() {
         _valeursMetaboliques.value = ValeursMetaboliques()
@@ -2565,12 +2486,6 @@ class AnimalDetailViewModel(
     }
 
     // --- Troupeau ---------------------------------------------------------------------------
-
-    private fun consultationPourAnalyse(c: ConsultationEv?, typeId: String?, a: AnimalEv?): ConsultationEv? {
-        if (c == null || typeId == null) return c
-        val type = a?.typesTroupeau?.firstOrNull { it.id == typeId } ?: return c
-        return c.pourTypeTroupeau(c.parametresType(type))
-    }
 
     /** Consultation vue depuis un animal du type analysé (inchangée hors mode type). */
     private fun projeterPourTypeTroupeau(consultation: ConsultationEv): ConsultationEv =
