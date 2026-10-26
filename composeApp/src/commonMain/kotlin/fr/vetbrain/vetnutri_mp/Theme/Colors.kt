@@ -9,6 +9,7 @@ object VetNutriColors {
     val Background = Color(0xFFF5FDFF) // Turquoise extrêmement clair
     val Surface = Color(0xFFF5FDFF) // Turquoise extrêmement clair
     val Error = Color(0xFFB00020) // Rouge erreur
+    val AvertissementCalcul = Color(0xFFEF6C00) // Orange : besoin non calculable par le référentiel
 
     val OnPrimary = Color(0xFFFFFFFF) // Blanc
     val OnSecondary = Color(0xFF000000) // Noir

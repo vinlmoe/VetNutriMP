@@ -106,6 +106,70 @@ object CalculMetabolique {
     ): Double? = besoinEnergetiqueStandard(poids, equationBEE, variablesSupp)?.let { it * coefficientK }
 
     /**
+     * Diagnostic d'une équation de référentiel pour un poids et des variables donnés : `null` si
+     * elle est évaluable, sinon le motif (équation absente, variable sans valeur, expression
+     * invalide, résultat non fini). Sert à avertir l'utilisateur lorsqu'un besoin ne peut pas être
+     * calculé par le référentiel, ou que [poidsMetaboliqueOuDefaut] retombe sur BW^0,75.
+     *
+     * @param libelle nom de l'équation dans le message (« BW », « BEE »)
+     */
+    fun diagnostiquerEquation(
+            libelle: String,
+            equation: Equation?,
+            poids: Double,
+            variablesSupp: List<SupplementalvariableP> = emptyList()
+    ): String? {
+        if (equation == null || equation.equationScript.isBlank()) {
+            return "Équation $libelle absente du référentiel"
+        }
+        val variables = mutableMapOf("BW" to poids)
+        VariablesEtape.injecterVariables(variables, variablesSupp)
+        val manquantes = ajouterVariablesParDefaut(variables, equation.equationScript)
+        if (manquantes.isNotEmpty()) {
+            return "Équation $libelle : variable(s) sans valeur dans la consultation (${manquantes.joinToString(", ")})"
+        }
+        val valeur =
+                try {
+                    ExpressionEvaluator.evaluer(equation.equationScript, variables)
+                } catch (e: Exception) {
+                    null
+                }
+        return when {
+            valeur == null -> "Équation $libelle non évaluable (« ${equation.equationScript} »)"
+            !valeur.isFinite() -> "Équation $libelle : résultat non fini pour un poids de $poids kg"
+            else -> null
+        }
+    }
+
+    /**
+     * Avertissements liés aux équations BW et BEE d'un référentiel pour une consultation :
+     * liste vide quand les deux sont évaluables.
+     */
+    fun avertissementsReference(
+            poids: Double,
+            reference: ReferenceEv,
+            variablesSupp: List<SupplementalvariableP> = emptyList()
+    ): List<String> =
+            listOfNotNull(
+                    diagnostiquerEquation("BW", reference.equationBW, poids, variablesSupp)
+                            ?.let { "$it : poids métabolique non calculable" },
+                    diagnostiquerEquation("BEE", reference.equationBEE, poids, variablesSupp)
+                            ?.let { "$it : besoin énergétique non calculable" }
+            )
+
+    /**
+     * Avertissement lorsque [poidsMetaboliqueOuDefaut] retombe sur BW^[EXPOSANT_PAR_DEFAUT] :
+     * `null` si l'équation BW est évaluable.
+     */
+    fun avertissementRepliPoidsMetabolique(
+            poids: Double,
+            equationBW: Equation?,
+            variablesSupp: List<SupplementalvariableP> = emptyList()
+    ): String? =
+            diagnostiquerEquation("BW", equationBW, poids, variablesSupp)
+                    ?.let { "$it : poids métabolique calculé avec BW^$EXPOSANT_PAR_DEFAUT" }
+
+    /**
      * Poids idéal estimé (kg) à partir du poids et de la note d'état corporel sur 9 : chaque point
      * au-dessus (au-dessous) de 5 correspond à 10 % de poids en plus (en moins).
      */

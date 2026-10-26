@@ -39,6 +39,8 @@ fun SectionValeursMetaboliques(
         kCalcule: Double,
         energieAdditionnelle: Double? = null,
         referenceUtilisee: ReferenceEv? = null,
+        // Motifs d'un poids métabolique ou d'un besoin non calculable par le référentiel
+        avertissements: List<String> = emptyList(),
         onUpdateWeights: ((currentWeight: Double, idealWeight: Double) -> Unit)? = null,
         onExpand: () -> Unit,
         modifier: Modifier = Modifier,
@@ -102,6 +104,8 @@ fun SectionValeursMetaboliques(
                     )
                 }
             }
+
+            AvertissementsMetaboliques(avertissements)
 
             if (isNarrow) {
                 // Mode étroit : éléments qui se wrap automatiquement sur plusieurs lignes
@@ -789,5 +793,29 @@ private fun LigneInfoLocaleCompacte(label: String, value: String) {
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
         )
         Text(text = value, style = MaterialTheme.typography.caption, fontWeight = FontWeight.Medium)
+    }
+}
+
+/** Avertissements de calcul (équation absente, variable manquante) affichés sous le titre. */
+@Composable
+internal fun AvertissementsMetaboliques(avertissements: List<String>, modifier: Modifier = Modifier) {
+    if (avertissements.isEmpty()) return
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)) {
+        avertissements.forEach { message ->
+            Row(verticalAlignment = Alignment.Top) {
+                Icon(
+                        imageVector = fr.vetbrain.vetnutri_mp.Theme.AppIcons.Warning,
+                        contentDescription = null,
+                        tint = VetNutriColors.AvertissementCalcul,
+                        modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                Text(
+                        text = message,
+                        style = MaterialTheme.typography.caption,
+                        color = VetNutriColors.AvertissementCalcul
+                )
+            }
+        }
     }
 }

@@ -241,6 +241,8 @@ fun RationsView(
         // Poids utilisé pour les besoins (poids de l'étape pour un plan évolutif)
         val poidsEffectif by viewModel.poidsEffectif.collectAsState()
         val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
+        // Motifs d'un besoin non calculable par le référentiel (équation absente, variable manquante)
+        val avertissementsMetaboliques by viewModel.avertissementsMetaboliques.collectAsState()
         // Le BE final devient la seule valeur de BE utilisée dans la vue
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
         // Variables propres aux étapes : celles des équations d'énergie (et complémentaires)
@@ -827,6 +829,7 @@ fun RationsView(
                                                                 kCalcule = kCalcule,
                                                                energieAdditionnelle = energieAdditionnelle,
                                                                 referenceUtilisee = referenceUtilisee,
+                                                                avertissements = avertissementsMetaboliques,
                                                                 onUpdateWeights = if (typeTroupeauAnalyse != null) null else { currentWeight: Double, idealWeight: Double ->
                                                                         selectedConsultation?.let { consultation ->
                                                                                 viewModel.updateConsultationWeights(
@@ -1821,6 +1824,7 @@ fun RationsView(
                                         kObserve = kObserve,
                                         kCalcule = kCalcule,
                                         referenceUtilisee = referenceUtilisee,
+                                        avertissements = avertissementsMetaboliques,
                                         onDismiss = { showMetabolicValuesDialog = false }
                                 )
                         }

@@ -103,4 +103,54 @@ class CalculMetaboliqueTest {
         assertNear(10.0, CalculMetabolique.estimerPoidsIdeal(10.0, 5))
         assertNear(10.0, CalculMetabolique.estimerPoidsIdeal(12.0, 7))
     }
+
+    @Test
+    fun diagnostiquerEquation_nullQuandEvaluable() {
+        assertNull(CalculMetabolique.diagnostiquerEquation("BW", reference().equationBW, 10.0))
+        assertTrue(CalculMetabolique.avertissementsReference(10.0, reference()).isEmpty())
+    }
+
+    @Test
+    fun diagnostiquerEquation_equationAbsente() {
+        val motif = CalculMetabolique.diagnostiquerEquation("BW", null, 10.0)
+        assertNotNull(motif)
+        assertTrue(motif.contains("absente"), motif)
+        val vide = Equation(equationScript = "", kind = EquationKind.MW)
+        assertTrue(CalculMetabolique.diagnostiquerEquation("BW", vide, 10.0)!!.contains("absente"))
+    }
+
+    @Test
+    fun diagnostiquerEquation_variableSansValeur() {
+        // iBW (poids idéal) n'a pas de valeur par défaut : il doit venir de la consultation
+        val eq = Equation(equationScript = "iBW ^ 0.75", kind = EquationKind.MW)
+        val motif = CalculMetabolique.diagnostiquerEquation("BW", eq, 10.0)
+        assertNotNull(motif)
+        assertTrue(motif.contains("iBW"), motif)
+        // Une valeur fournie par la consultation lève l'avertissement
+        val svp = listOf(SupplementalvariableP(VariableKind.iBW, 9.0))
+        assertNull(CalculMetabolique.diagnostiquerEquation("BW", eq, 10.0, svp))
+    }
+
+    @Test
+    fun avertissementsReference_listeLesDeuxEquations() {
+        val ref = reference(bw = null, bee = "130 * iBW ^ 0.75")
+        val avertissements = CalculMetabolique.avertissementsReference(10.0, ref)
+        assertEquals(2, avertissements.size, avertissements.toString())
+        assertTrue(avertissements[0].contains("BW") && avertissements[0].contains("poids métabolique"))
+        assertTrue(avertissements[1].contains("iBW") && avertissements[1].contains("besoin énergétique"))
+    }
+
+    @Test
+    fun rationCalculator_signaleLeRepliSurKleiber() {
+        val sans = RationCalculator().apply { setPoids(10.0); calculer(emptyList()) }
+        assertNotNull(sans.avertissementPoidsMetabolique)
+        assertTrue(sans.avertissementPoidsMetabolique!!.contains("0.75"))
+        val avec = RationCalculator().apply {
+            setPoids(10.0)
+            setEquationPM(reference(bw = "BW ^ 0.67").equationBW)
+            calculer(emptyList())
+        }
+        assertNull(avec.avertissementPoidsMetabolique)
+        assertNull(avec.clone().avertissementPoidsMetabolique)
+    }
 }

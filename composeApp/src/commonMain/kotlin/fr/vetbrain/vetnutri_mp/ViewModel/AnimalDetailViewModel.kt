@@ -271,9 +271,18 @@ class AnimalDetailViewModel(
             val poidsCorps: Double? = null,
             val poidsMetabolique: Double? = null,
             val besoinEnergetiqueStandard: Double? = null,
-            val besoinEnergetiqueTotal: Double? = null
+            val besoinEnergetiqueTotal: Double? = null,
+            // Motifs pour lesquels le référentiel n'a pas pu calculer un poids métabolique ou un besoin
+            val avertissements: List<String> = emptyList()
     )
     private val _valeursMetaboliques = MutableStateFlow(ValeursMetaboliques())
+    /**
+     * Avertissements de l'analyse : équation BW ou BEE du référentiel absente, variable sans
+     * valeur, expression invalide, poids non renseigné. Vide quand tout est calculable.
+     */
+    val avertissementsMetaboliques: StateFlow<List<String>> = _valeursMetaboliques
+            .map { it.avertissements }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // API publique inchangée — chaque flow est dérivé du groupe
     val referenceUtilisee: StateFlow<ReferenceEv?> = _valeursMetaboliques
@@ -2174,13 +2183,18 @@ class AnimalDetailViewModel(
                 val poidsMetabolique = calculerPoidsMetabolique(consultationEtape, reference)
                 val bee = calculerBesoinEnergetiqueStandard(consultationEtape, reference)
                 val besoinTotal = bee?.let { calculerBesoinEnergetiqueTotal(consultationEtape, it) }
+                val poidsCorps = consultationEtape.effectiveWeight
+                val avertissements =
+                        if (poidsCorps == null) listOf("Poids non renseigné : besoins non calculables")
+                        else CalculMetabolique.avertissementsReference(poidsCorps, reference, consultationEtape.suppVarp)
 
                 _valeursMetaboliques.value = ValeursMetaboliques(
                         referenceUtilisee = reference,
-                        poidsCorps = consultationEtape.effectiveWeight,
+                        poidsCorps = poidsCorps,
                         poidsMetabolique = poidsMetabolique,
                         besoinEnergetiqueStandard = bee,
-                        besoinEnergetiqueTotal = besoinTotal
+                        besoinEnergetiqueTotal = besoinTotal,
+                        avertissements = avertissements
                 )
             } catch (e: Exception) {
                 e.printStackTrace()

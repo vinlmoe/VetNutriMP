@@ -19,6 +19,12 @@ class RationCalculator {
     private var espece: Espece = Espece.CHIEN
     private var equationBEE: Equation? = null
     private var equationPM: Equation? = null
+    /**
+     * Motif pour lequel le poids métabolique a été calculé avec BW^0,75 au lieu de l'équation BW
+     * (équation absente, variable manquante...) ; `null` quand l'équation du référentiel a servi.
+     */
+    var avertissementPoidsMetabolique: String? = null
+        private set
 
     /** Constructeur par défaut */
     constructor() {
@@ -52,6 +58,8 @@ class RationCalculator {
     fun calculer(svp: List<SupplementalvariableP>) {
         // Calcul du poids métabolique (équation BW du référentiel, sinon BW^0,75)
         poidsMetabolique = CalculMetabolique.poidsMetaboliqueOuDefaut(poids, equationPM, svp)
+        avertissementPoidsMetabolique =
+                CalculMetabolique.avertissementRepliPoidsMetabolique(poids, equationPM, svp)
         poidsMetaboliqueOptimal = CalculMetabolique.poidsMetaboliqueOuDefaut(poidsOptimal, equationPM, svp)
 
         // Calcul du besoin énergétique (équation BEE si disponible, sinon 70 × PM)
@@ -123,6 +131,7 @@ class RationCalculator {
         clone.espece = this.espece
         clone.equationBEE = this.equationBEE
         clone.equationPM = this.equationPM
+        clone.avertissementPoidsMetabolique = this.avertissementPoidsMetabolique
         return clone
     }
 }

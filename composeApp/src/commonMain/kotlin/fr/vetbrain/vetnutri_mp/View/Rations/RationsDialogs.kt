@@ -270,6 +270,7 @@ internal fun MetabolicValuesDialog(
         kObserve: Double,
         kCalcule: Double,
         referenceUtilisee: ReferenceEv?,
+        avertissements: List<String> = emptyList(),
         onDismiss: () -> Unit
 ) {
         AlertDialog(
@@ -283,6 +284,7 @@ internal fun MetabolicValuesDialog(
                 },
                 text = {
                         Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)) {
+                                fr.vetbrain.vetnutri_mp.View.AnalNut.AvertissementsMetaboliques(avertissements)
                                 LocalInfoRow(
                                         label = translate(AnalNut.WEIGHT_CURRENT),
                                         value =
