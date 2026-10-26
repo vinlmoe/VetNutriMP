@@ -12,13 +12,10 @@ import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
-import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
-import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.NutrientRefViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
@@ -27,10 +24,7 @@ import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
  *
  * @param referenceEvViewModel ViewModel pour la référence
  * @param equationViewModel ViewModel pour les équations
- * @param biblioRefRepository Repository pour les références bibliographiques
- * @param equationRepository Repository pour les équations
- * @param referenceEvRepository Repository pour les références nutritionnelles
- * @param platformDispatcher Dispatcher pour la concurrence
+ * @param nutrientRefViewModel ViewModel des besoins nutritionnels
  * @param referenceEvId Identifiant de la référence à éditer
  * @param onNavigateBack Callback pour revenir à la liste des références
  * @param onEditEquation Callback pour éditer une équation spécifique
@@ -43,18 +37,14 @@ import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 fun ReferenceEvTabsView(
         referenceEvViewModel: ReferenceEvViewModel,
         equationViewModel: EquationViewModel,
-        biblioRefRepository: BiblioRefRepository,
-        equationRepository: EquationRepository,
-        referenceEvRepository: DatabaseReferenceEvRepository,
-        platformDispatcher: PlatformDispatcher,
+        nutrientRefViewModel: NutrientRefViewModel,
+        newReferenceEvViewModel: NewReferenceEvViewModel,
         referenceEvId: String,
         onNavigateBack: () -> Unit,
         onEditEquation: (String) -> Unit = {},
         onCreateEquation: () -> Unit = {},
         modifier: Modifier = Modifier,
-        isIntegratedView: Boolean = false,
-        newReferenceEvViewModel: NewReferenceEvViewModel =
-                NewReferenceEvViewModel(referenceEvRepository, equationRepository)
+        isIntegratedView: Boolean = false
 ) {
     val currentReferenceEv by
             referenceEvViewModel.currentReferenceEv.collectAsState(initial = ReferenceEv())
@@ -127,9 +117,7 @@ fun ReferenceEvTabsView(
                     // Onglet Besoins nutritionnels
                     ReferenceEvNutrientView(
                             referenceEvViewModel = referenceEvViewModel,
-                            biblioRefRepository = biblioRefRepository,
-                            referenceEvRepository = referenceEvRepository,
-                            platformDispatcher = platformDispatcher,
+                            nutrientRefViewModel = nutrientRefViewModel,
                             referenceEvId = referenceEvId,
                             onNavigateBack = onNavigateBack,
                             modifier = Modifier.fillMaxSize(),

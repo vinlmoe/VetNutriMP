@@ -22,8 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.Ration
-import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
-import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
+import fr.vetbrain.vetnutri_mp.ViewModel.RecipeDialogViewModel
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -31,8 +30,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun RecipeDialog(
-        repository: RecipeRepository,
-        foodRepository: FoodRepository,
+        viewModel: RecipeDialogViewModel,
         onApply: (Ration) -> Unit,
         onClose: () -> Unit
 ) {
@@ -42,24 +40,10 @@ fun RecipeDialog(
     var showCreateDialog by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
 
-    // Fonction helper pour charger les recettes avec les détails des aliments
-    suspend fun loadRecipesWithFoodDetails(): List<Ration> {
-        val loadedRecipes = repository.getAllRecipes()
-        return loadedRecipes.map { recipe ->
-            val alimentsWithDetails =
-                    recipe.alimentMutableList.map { aliment ->
-                        val alimentDetails =
-                                aliment.refAlimUnif?.let { foodRepository.getFoodById(it) }
-                        aliment.copy(aliment = alimentDetails)
-                    }
-            recipe.copy(alimentMutableList = alimentsWithDetails.toMutableList())
-        }
-    }
-
     LaunchedEffect(Unit) {
         isLoading = true
         try {
-            recipes = loadRecipesWithFoodDetails()
+            recipes = viewModel.loadRecipesWithFoodDetails()
         } finally {
             isLoading = false
         }
@@ -137,9 +121,9 @@ fun RecipeDialog(
                                                     modifier =
                                                             Modifier.size(24.dp).clickable {
                                                                 scope.launch {
-                                                                    repository.cloneRecipe(r.uuid)
+                                                                    viewModel.cloneRecipe(r.uuid)
                                                                     recipes =
-                                                                            loadRecipesWithFoodDetails()
+                                                                            viewModel.loadRecipesWithFoodDetails()
                                                                 }
                                                             }
                                             )
@@ -152,9 +136,9 @@ fun RecipeDialog(
                                                     modifier =
                                                             Modifier.size(24.dp).clickable {
                                                                 scope.launch {
-                                                                    repository.deleteRecipe(r.uuid)
+                                                                    viewModel.deleteRecipe(r.uuid)
                                                                     recipes =
-                                                                            loadRecipesWithFoodDetails()
+                                                                            viewModel.loadRecipesWithFoodDetails()
                                                                 }
                                                             }
                                             )
@@ -222,12 +206,12 @@ fun RecipeDialog(
                                                     enabled = newName.isNotBlank(),
                                                     onClick = {
                                                         scope.launch {
-                                                            repository.createRecipe(
+                                                            viewModel.createRecipe(
                                                                     newName,
                                                                     null,
                                                                     null
                                                             )
-                                                            recipes = loadRecipesWithFoodDetails()
+                                                            recipes = viewModel.loadRecipesWithFoodDetails()
                                                             newName = ""
                                                             showCreateDialog = false
                                                         }

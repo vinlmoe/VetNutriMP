@@ -21,9 +21,9 @@ import kotlinx.coroutines.launch
  */
 class ImportViewModel(
         private val animalListViewModel: AnimalListViewModel,
-        val databaseReferenceEvRepository: DatabaseReferenceEvRepository? = null,
-        val equationRepository: EquationRepository? = null,
-        val biblioRefRepository: BiblioRefRepository? = null
+        private val databaseReferenceEvRepository: DatabaseReferenceEvRepository? = null,
+        private val equationRepository: EquationRepository? = null,
+        private val biblioRefRepository: BiblioRefRepository? = null
 ) {
     // Scope des coroutines pour les opérations suspend
     private val job = SupervisorJob()

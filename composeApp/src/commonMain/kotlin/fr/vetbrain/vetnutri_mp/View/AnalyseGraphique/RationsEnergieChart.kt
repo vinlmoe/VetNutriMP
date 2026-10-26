@@ -29,7 +29,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.KoalaPlotExtensions
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
+import fr.vetbrain.vetnutri_mp.Data.RationEnergyData
 import io.github.koalaplot.core.*
 import io.github.koalaplot.core.line.LinePlot
 import io.github.koalaplot.core.style.LineStyle
@@ -43,7 +43,6 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 @Composable
 fun RationsEnergieChart(
         viewModel: AnimalDetailViewModel,
-        equationRepository: EquationRepository? = null,
         currentConsultationOnly: Boolean = false,
         showRationArea: Boolean = false
 ) {
@@ -62,7 +61,7 @@ fun RationsEnergieChart(
         var rationSelectionnee by remember { mutableStateOf<String?>(null) }
 
         // Calculer les données des rations de manière asynchrone
-        LaunchedEffect(consultations, referenceUtilisee, equationRepository) {
+        LaunchedEffect(consultations, referenceUtilisee) {
                 isLoading = true
                 val resultat = mutableListOf<RationEnergyData>()
 
@@ -72,10 +71,9 @@ fun RationsEnergieChart(
                                         // 🔍 LOG DIAGNOSTIC : Vérifier les données de la ration
 
                                         val rationData =
-                                                calculerPourcentagesEnergieRation(
+                                                viewModel.calculerEnergieRationGraphique(
                                                         ration = ration,
-                                                        referenceEv = referenceUtilisee,
-                                                        equationRepository = equationRepository
+                                                        referenceEv = referenceUtilisee
                                                 )
 
                                         rationData?.let { data ->

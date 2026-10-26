@@ -18,7 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Export.*
-import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+import fr.vetbrain.vetnutri_mp.ViewModel.ConseilsViewModel
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ConseilsPersonnalisesView(
-        conseilRepository: ConseilRepository, 
+        conseilsViewModel: ConseilsViewModel,
         onNavigateBack: () -> Unit,
         onEditConseil: (String) -> Unit = {},
         onCreateConseil: () -> Unit = {}
@@ -44,7 +44,7 @@ fun ConseilsPersonnalisesView(
     // Charger les conseils au démarrage
     LaunchedEffect(Unit) {
         try {
-            val result = conseilRepository.getConseilsActifs()
+            val result = conseilsViewModel.getConseilsActifs()
             if (result.isSuccess) {
                 conseils = result.getOrThrow()
             }
@@ -209,7 +209,7 @@ fun ConseilsPersonnalisesView(
     // Dialog pour afficher les templates
     if (showTemplates) {
         TemplatesDialog(
-                conseilRepository = conseilRepository,
+                conseilsViewModel = conseilsViewModel,
                 onDismiss = { showTemplates = false },
                 onSelectTemplate = { template ->
                     // TODO: Créer un conseil à partir du template
@@ -234,9 +234,9 @@ fun ConseilsPersonnalisesView(
                                 conseilToDelete?.let { conseil ->
                                     scope.launch {
                                         try {
-                                            conseilRepository.supprimerConseil(conseil.id)
+                                            conseilsViewModel.supprimerConseil(conseil.id)
                                             // Recharger la liste
-                                            val result = conseilRepository.getConseilsActifs()
+                                            val result = conseilsViewModel.getConseilsActifs()
                                             if (result.isSuccess) {
                                                 conseils = result.getOrThrow()
                                             }
@@ -382,7 +382,7 @@ private fun ConseilCard(
 
 @Composable
 private fun TemplatesDialog(
-        conseilRepository: ConseilRepository,
+        conseilsViewModel: ConseilsViewModel,
         onDismiss: () -> Unit,
         onSelectTemplate: (HtmlSection) -> Unit
 ) {
@@ -391,7 +391,7 @@ private fun TemplatesDialog(
 
     LaunchedEffect(Unit) {
         try {
-            val result = conseilRepository.getTemplatesConseils()
+            val result = conseilsViewModel.getTemplatesConseils()
             if (result.isSuccess) {
                 templates = result.getOrThrow()
             }

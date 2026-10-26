@@ -9,8 +9,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
-import fr.vetbrain.vetnutri_mp.View.AnalNut.adjustmentNeedMultiplier
-import fr.vetbrain.vetnutri_mp.View.AnalNut.arrondirQuantiteSelonRegles
 import kotlin.math.abs
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import kotlinx.coroutines.yield

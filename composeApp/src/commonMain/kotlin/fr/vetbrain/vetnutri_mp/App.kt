@@ -131,7 +131,34 @@ fun App(appDatabase: AppDatabase) {
             databaseReferenceEvRepository,
             preferencesRepository,
             foodRepository,
-            equationRepository
+            equationRepository,
+            conseilRepository
+        )
+    }
+    val animalExportViewModel = remember {
+        AnimalExportViewModel(
+            animalRepository = animalRepository,
+            foodRepository = foodRepository,
+            equationRepository = equationRepository,
+            referenceRepository = databaseReferenceEvRepository,
+            biblioRepository = biblioRefRepository,
+            consultationRepository = consultationRepository,
+            recipeRepository = recipeRepository,
+            conseilRepository = conseilRepository,
+            transactionRunner = RoomTransactionRunner(appDatabase)
+        )
+    }
+    val recipeDialogViewModel = remember {
+        RecipeDialogViewModel(recipeRepository = recipeRepository, foodRepository = foodRepository)
+    }
+    val preferencesViewModel = remember { PreferencesViewModel(preferencesRepository) }
+    val conseilsViewModel = remember { ConseilsViewModel(conseilRepository) }
+    val startupViewModel = remember {
+        StartupViewModel(
+            foodRepository = foodRepository,
+            animalRepository = animalRepository,
+            referenceRepository = databaseReferenceEvRepository,
+            conseilRepository = conseilRepository
         )
     }
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
@@ -144,7 +171,8 @@ fun App(appDatabase: AppDatabase) {
             equationRepository = equationRepository,
             biblioRefRepository = biblioRefRepository,
             consultationRepository = consultationRepository,
-            conseilRepository = conseilRepository
+            conseilRepository = conseilRepository,
+            exportImportRepository = exportImportRepository
         )
     }
     val foodListViewModel = remember { FoodListViewModel(foodRepository) }
@@ -159,7 +187,6 @@ fun App(appDatabase: AppDatabase) {
     val equationViewModel = remember {
         EquationViewModel(
             equationRepository = equationRepository,
-            biblioRefDao = appDatabase.biblioRefDao(),
             biblioRepository = biblioRefRepository,
             referenceRepository = databaseReferenceEvRepository
         )
@@ -178,6 +205,13 @@ fun App(appDatabase: AppDatabase) {
             repository = databaseReferenceEvRepository,
             equationRepository = equationRepository,
             biblioRefRepository = biblioRefRepository
+        )
+    }
+    val nutrientRefViewModel = remember {
+        NutrientRefViewModel(
+            referenceEvRepository = databaseReferenceEvRepository,
+            biblioRefRepository = biblioRefRepository,
+            platformDispatcher = platformDispatcher
         )
     }
     val backupRestoreViewModel = remember(backupService) {
@@ -226,14 +260,30 @@ fun App(appDatabase: AppDatabase) {
         )
     }
 
+    DisposableEffect(backupRestoreViewModel) {
+        onDispose { backupRestoreViewModel?.clear() }
+    }
     DisposableEffect(Unit) {
         onDispose {
             animalDetailViewModel.clear()
+            animalExportViewModel.clear()
+            recipeDialogViewModel.clear()
+            createAnimalViewModel.clear()
+            preferencesViewModel.clear()
+            conseilsViewModel.clear()
+            startupViewModel.clear()
             foodListViewModel.clear()
             biblioRefViewModel.clear()
             referenceEvViewModel.clear()
             newReferenceEvViewModel.clear()
+            nutrientRefViewModel.clear()
+            equationViewModel.clear()
             importViewModel.clear()
+            examGradingViewModel.clear()
+            bulkReferenceEditorViewModel.clear()
+            bulkAddBiblioToFoodsViewModel.clear()
+            multiRationViewModel.clear()
+            crossAnalysisViewModel.clear()
         }
     }
 
@@ -281,14 +331,19 @@ fun App(appDatabase: AppDatabase) {
     val models = AppNavModels(
         animalListViewModel = animalListViewModel,
         animalDetailViewModel = animalDetailViewModel,
+        animalExportViewModel = animalExportViewModel,
+        recipeDialogViewModel = recipeDialogViewModel,
         createAnimalViewModel = createAnimalViewModel,
         settingsViewModel = settingsViewModel,
+        preferencesViewModel = preferencesViewModel,
         foodListViewModel = foodListViewModel,
         foodEditViewModel = foodEditViewModel,
         biblioRefViewModel = biblioRefViewModel,
         referenceEvViewModel = referenceEvViewModel,
         newReferenceEvViewModel = newReferenceEvViewModel,
+        nutrientRefViewModel = nutrientRefViewModel,
         equationViewModel = equationViewModel,
+        conseilsViewModel = conseilsViewModel,
         importViewModel = importViewModel,
         examGradingViewModel = examGradingViewModel,
         crossAnalysisViewModel = crossAnalysisViewModel,
@@ -298,31 +353,21 @@ fun App(appDatabase: AppDatabase) {
         bulkAddBiblioToFoodsViewModel = bulkAddBiblioToFoodsViewModel,
         multiRationViewModel = multiRationViewModel
     )
-    val repos = AppNavRepositories(
-        equationRepository = equationRepository,
-        recipeRepository = recipeRepository,
-        conseilRepository = conseilRepository,
-        biblioRefRepository = biblioRefRepository,
-        databaseReferenceEvRepository = databaseReferenceEvRepository,
-        platformDispatcher = platformDispatcher,
-        preferencesRepository = preferencesRepository
-    )
 
     VetNutriTheme {
         Box(modifier = Modifier.fillMaxSize().imePadding()) {
             when {
                 showStartupScreen -> StartupScreen(
-                    referenceRepository = databaseReferenceEvRepository,
+                    startupViewModel = startupViewModel,
                     settingsViewModel = settingsViewModel,
                     onDatabaseReady = { showStartupScreen = false },
-                    conseilRepository = settingsViewModel.conseilRepository,
                     onShowBackupDialog = { showStartupBackupDialog = true },
                     onStartExam = { session -> examSession = session },
                     findRecoveryBackup = { startupService.findRecoveryBackup() },
                     restoreRecoveryBackup = { backup -> startupService.restoreBackup(backup) }
                 )
                 else -> Column(modifier = Modifier.fillMaxSize()) {
-                    AppNavHost(nav, models, repos, examSession)
+                    AppNavHost(nav, models, equationRepository, examSession)
                 }
             }
 

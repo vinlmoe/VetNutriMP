@@ -22,14 +22,14 @@ import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
-import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
+import fr.vetbrain.vetnutri_mp.ViewModel.PreferencesViewModel
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.coroutines.launch
 
 @Composable
 fun SpeciesPreferencesView(
         species: Espece,
-        preferencesRepository: PreferencesRepository,
+        preferencesViewModel: PreferencesViewModel,
         modifier: Modifier = Modifier
 ) {
         var currentPreferences by remember {
@@ -43,8 +43,7 @@ fun SpeciesPreferencesView(
         // Charger les préférences au démarrage
         LaunchedEffect(Unit) {
                 try {
-                        preferencesRepository.loadPreferences()
-                        currentPreferences = preferencesRepository.preferences
+                        currentPreferences = preferencesViewModel.loadPreferences()
                 } catch (e: Exception) {
                         currentPreferences = fr.vetbrain.vetnutri_mp.Data.PreferencesApplication()
                 } finally {
@@ -170,8 +169,7 @@ fun SpeciesPreferencesView(
                                                                                                                                                                 updatedSpeciesPrefs
                                                                                                                                                         )
 
-                                                                                                                                                preferencesRepository
-                                                                                                                                                        .savePreferences(
+                                                                                                                                                preferencesViewModel.savePreferences(
                                                                                                                                                                 updatedPrefs
                                                                                                                                                         )
                                                                                                                                                 currentPreferences =
@@ -290,8 +288,7 @@ fun SpeciesPreferencesView(
                                                 scope.launch {
                                                         try {
                                                                 isSaving = true
-                                                                preferencesRepository
-                                                                        .savePreferences(
+                                                                preferencesViewModel.savePreferences(
                                                                                 updatedPrefs
                                                                         )
                                                                 currentPreferences = updatedPrefs

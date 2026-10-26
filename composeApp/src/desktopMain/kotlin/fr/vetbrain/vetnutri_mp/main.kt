@@ -367,39 +367,11 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
     viewModel.startApiImport()
         try {
             val content = withContext(Dispatchers.IO) { selectedFile.readText() }
-            val exportRepo =
-                    fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
-                            animalRepository = viewModel.animalRepository,
-                            foodRepository = viewModel.foodRepository,
-                            equationRepository = viewModel.equationRepository,
-                            referenceRepository = viewModel.referenceEvRepository,
-                            biblioRepository = viewModel.biblioRefRepository,
-                            consultationRepository = viewModel.consultationRepository,
-                            recipeRepository = viewModel.recipeRepository,
-                            conseilRepository = viewModel.conseilRepository,
-                            transactionRunner =
-                                    desktopAppDatabase?.let {
-                                        fr.vetbrain.vetnutri_mp.Repository.RoomTransactionRunner(it)
-                                    } ?: fr.vetbrain.vetnutri_mp.Repository.TransactionRunner.None
-                    )
             // Découper l'import en étapes et mettre à jour la progression/logs via callbacks
             // simples
             viewModel.appendApiImportLog("Lecture du fichier terminée")
-            val counts = withContext(Dispatchers.IO) {
-                exportRepo.importAll(
-                        apiJson = content,
-                        listener =
-                                fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
-                                        .ImportProgressListener(
-                                                onProgress = { p ->
-                                                    viewModel.updateApiImportProgress(p)
-                                                },
-                                                onLog = { msg ->
-                                                    viewModel.appendApiImportLog(msg)
-                                                }
-                                        )
-                )
-            }
+            // Import délégué au ViewModel (repositories et transaction Room via AppContainer)
+            val counts = viewModel.importApiJson(content)
             counts.requireComplete()
             viewModel.updateApiImportProgress(1.0)
             val total = counts.animals + counts.foods + counts.equations + counts.references + counts.conseils

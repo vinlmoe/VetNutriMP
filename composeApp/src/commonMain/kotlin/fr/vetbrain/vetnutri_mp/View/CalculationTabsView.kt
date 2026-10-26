@@ -10,14 +10,10 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Reference
 import fr.vetbrain.vetnutri_mp.Localization.translate
-import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
-import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
-import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.ViewModel.BiblioRefViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.ConseilsViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
@@ -35,17 +31,16 @@ import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
  * @param selectedTab Index de l'onglet sélectionné (par défaut 0)
  * @param onTabChanged Callback appelé quand l'onglet change
  * @param modifier Modifier à appliquer à la vue
- * @param biblioRefRepository Repository pour les références bibliographiques
- * @param equationRepository Repository pour les équations
- * @param referenceEvRepository Repository pour les références évaluées
- * @param platformDispatcher Dispatcher pour les opérations asynchrones
+ * @param conseilsViewModel ViewModel des conseils personnalisés
+ * @param newReferenceEvViewModel ViewModel d'édition d'un référentiel (partagé avec l'écran dédié)
  */
 @Composable
 fun CalculationTabsView(
         equationViewModel: EquationViewModel,
         biblioRefViewModel: BiblioRefViewModel,
         referenceEvViewModel: ReferenceEvViewModel,
-        conseilRepository: ConseilRepository,
+        conseilsViewModel: ConseilsViewModel,
+        newReferenceEvViewModel: NewReferenceEvViewModel,
         onNavigateBack: () -> Unit,
         onEditReferenceEv: (String) -> Unit,
         onCreateReferenceEv: () -> Unit,
@@ -55,11 +50,7 @@ fun CalculationTabsView(
         selectedTab: Int = 0,
         onTabChanged: (Int) -> Unit = {},
         modifier: Modifier = Modifier,
-        isExamMode: Boolean = false,
-        biblioRefRepository: BiblioRefRepository? = null,
-        equationRepository: EquationRepository? = null,
-        referenceEvRepository: DatabaseReferenceEvRepository? = null,
-        platformDispatcher: PlatformDispatcher? = null
+        isExamMode: Boolean = false
 ) {
         var selectedEquationId by remember { mutableStateOf<String?>(null) }
         var selectedBiblioRefId by remember { mutableStateOf<String?>(null) }
@@ -109,20 +100,9 @@ fun CalculationTabsView(
         }
 
         // Gérer l'édition d'une référence évaluée en interne
-        if (isEditingReferenceEv &&
-                        selectedReferenceEvId != null &&
-                        biblioRefRepository != null &&
-                        equationRepository != null &&
-                        referenceEvRepository != null &&
-                        platformDispatcher != null
-        ) {
+        if (isEditingReferenceEv && selectedReferenceEvId != null) {
                 NewReferenceEvEditView(
-                        viewModel =
-                                NewReferenceEvViewModel(
-                                        repository = referenceEvRepository,
-                                        equationRepository = equationRepository,
-                                        biblioRefRepository = biblioRefRepository
-                                ),
+                        viewModel = newReferenceEvViewModel,
                         referenceId = selectedReferenceEvId,
                         onNavigateBack = {
                                 isEditingReferenceEv = false
@@ -213,7 +193,7 @@ fun CalculationTabsView(
                                         }
                                 } else {
                                         ConseilsPersonnalisesView(
-                                                conseilRepository = conseilRepository,
+                                                conseilsViewModel = conseilsViewModel,
                                                 onNavigateBack = onNavigateBack,
                                                 onEditConseil = onEditConseil,
                                                 onCreateConseil = onCreateConseil

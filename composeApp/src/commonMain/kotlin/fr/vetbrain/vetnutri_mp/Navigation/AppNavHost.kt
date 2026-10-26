@@ -16,13 +16,20 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ExamSession
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.View.*
 
 @Composable
 internal fun AppNavHost(
     nav: AppNavController,
     models: AppNavModels,
-    repos: AppNavRepositories,
+    /**
+     * Seul repository encore transmis à une vue : les écrans d'analyse (rations, graphiques,
+     * ajustement multi-nutriments, carte thermique) le passent aux calculs de la couche Data
+     * (`AlimentRation.getNutrientWithComplementary`, `getEnergie`). Son remplacement complet par
+     * des méthodes de ViewModel reste à faire (≈ 200 points d'appel).
+     */
+    equationRepository: EquationRepository,
     examSession: ExamSession?
 ) {
     when (nav.screen) {
@@ -104,7 +111,8 @@ internal fun AppNavHost(
             Column(modifier = Modifier.fillMaxSize()) {
                 AnimalDetailView(
                     viewModel = models.animalDetailViewModel,
-                    settingsViewModel = models.settingsViewModel,
+                    animalExportViewModel = models.animalExportViewModel,
+                    recipeDialogViewModel = models.recipeDialogViewModel,
                     onNavigateBack = {
                         val retour = nav.detailReturnScreen
                         nav.detailReturnScreen = Screen.List
@@ -112,9 +120,7 @@ internal fun AppNavHost(
                     },
                     onOpenSettings = { nav.navigate(Screen.Settings) },
                     modifier = Modifier.fillMaxWidth().weight(1f),
-                    equationRepository = repos.equationRepository,
-                    recipeRepository = repos.recipeRepository,
-                    conseilRepository = repos.conseilRepository,
+                    equationRepository = equationRepository,
                     isExamMode = examSession != null
                 )
             }
@@ -154,7 +160,8 @@ internal fun AppNavHost(
                 equationViewModel = models.equationViewModel,
                 biblioRefViewModel = models.biblioRefViewModel,
                 referenceEvViewModel = models.referenceEvViewModel,
-                conseilRepository = repos.conseilRepository,
+                conseilsViewModel = models.conseilsViewModel,
+                newReferenceEvViewModel = models.newReferenceEvViewModel,
                 onNavigateBack = { nav.navigate(Screen.List) },
                 onEditReferenceEv = { referenceEvId ->
                     nav.selectedReferenceEvId = referenceEvId
@@ -181,11 +188,7 @@ internal fun AppNavHost(
                 selectedTab = nav.selectedCalculationTab,
                 onTabChanged = { nav.selectedCalculationTab = it },
                 modifier = Modifier.fillMaxSize(),
-                isExamMode = examSession != null,
-                biblioRefRepository = repos.biblioRefRepository,
-                equationRepository = repos.equationRepository,
-                referenceEvRepository = repos.databaseReferenceEvRepository,
-                platformDispatcher = repos.platformDispatcher
+                isExamMode = examSession != null
             )
         }
 
@@ -274,9 +277,7 @@ internal fun AppNavHost(
         Screen.ReferenceEvNutrient -> {
             ReferenceEvNutrientView(
                 referenceEvViewModel = models.referenceEvViewModel,
-                biblioRefRepository = repos.biblioRefRepository,
-                referenceEvRepository = repos.databaseReferenceEvRepository,
-                platformDispatcher = repos.platformDispatcher,
+                nutrientRefViewModel = models.nutrientRefViewModel,
                 referenceEvId = nav.selectedReferenceEvId ?: "",
                 onNavigateBack = { nav.navigate(Screen.EquationList) },
                 modifier = Modifier.fillMaxSize()
@@ -318,7 +319,7 @@ internal fun AppNavHost(
 
         Screen.ConseilEdit -> {
             ConseilEditView(
-                conseilRepository = repos.conseilRepository,
+                conseilsViewModel = models.conseilsViewModel,
                 conseilId = nav.selectedConseilId,
                 onNavigateBack = {
                     nav.selectedConseilId = null
@@ -340,6 +341,7 @@ internal fun AppNavHost(
                 SettingsView(
                     viewModel = models.settingsViewModel,
                     importViewModel = models.importViewModel,
+                    preferencesViewModel = models.preferencesViewModel,
                     onImportAnimals = { models.importViewModel.importAnimalsFromFileUI() },
                     onBack = { nav.navigate(Screen.List) },
                     onAnimalListRefresh = { models.animalListViewModel.loadAnimals() },
@@ -379,7 +381,7 @@ internal fun AppNavHost(
                 ) { paddingValues ->
                     fr.vetbrain.vetnutri_mp.View.SpeciesPreferencesView(
                         species = species,
-                        preferencesRepository = repos.preferencesRepository,
+                        preferencesViewModel = models.preferencesViewModel,
                         modifier = Modifier.padding(paddingValues)
                     )
                 }

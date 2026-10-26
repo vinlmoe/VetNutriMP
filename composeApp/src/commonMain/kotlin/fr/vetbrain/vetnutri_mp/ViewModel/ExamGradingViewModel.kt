@@ -1,8 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
 import fr.vetbrain.vetnutri_mp.Localization.translate
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile
 import fr.vetbrain.vetnutri_mp.Repository.ExamGradingRepository
@@ -23,7 +21,7 @@ class ExamGradingViewModel(
     private val repository: ExamGradingRepository,
     private val exportImportRepository: ExportImportRepository,
     private val fileService: FileService
-) : ViewModel() {
+) : BaseViewModel() {
     enum class ExamAnalysisMetricId {
         WEIGHT_KG,
         BEC_KCAL,

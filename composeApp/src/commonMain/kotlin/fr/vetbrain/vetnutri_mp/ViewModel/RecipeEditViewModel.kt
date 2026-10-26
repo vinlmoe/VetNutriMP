@@ -16,7 +16,11 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 
 /**
@@ -24,10 +28,16 @@ import kotlinx.datetime.Clock
  */
 class RecipeEditViewModel(
     private val recipeRepository: RecipeRepository,
-    val foodRepository: FoodRepository
+    private val foodRepository: FoodRepository
 ) {
     private val job = SupervisorJob()
-    private val scope = CoroutineScope(AppDispatchers.IO + job)
+    // Scope sur Main : les états Compose (mutableStateOf / mutableStateListOf) sont modifiés ici ;
+    // les accès au repository passent par withContext(AppDispatchers.IO).
+    private val scope = CoroutineScope(AppDispatchers.Main + job)
+
+    /** Aliments disponibles (flux du repository), pour l'écran d'ajout d'ingrédient. */
+    val foods: StateFlow<List<AlimentEv>> =
+        foodRepository.observeAllFoods().stateIn(scope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Compteur pour générer des UUIDs uniques
     private var uuidCounter = 0
@@ -113,7 +123,7 @@ class RecipeEditViewModel(
     private suspend fun loadRecipesInternal() {
         try {
             _isLoading.value = true
-            val loadedRecipes = recipeRepository.getAllRecipes()
+            val loadedRecipes = withContext(AppDispatchers.IO) { recipeRepository.getAllRecipes() }
             _recipes.clear()
             _recipes.addAll(loadedRecipes)
         } catch (e: Exception) {
@@ -341,17 +351,21 @@ class RecipeEditViewModel(
                 
                 if (!isNewRecipe && _editingRecipe.value?.uuid != null) {
                     // Modification d'une recette existante
-                    recipeRepository.renameRecipe(recipeToSave.uuid, recipeToSave.name)
-                    recipeRepository.replaceAliments(recipeToSave.uuid, recipeToSave.alimentMutableList)
+                    withContext(AppDispatchers.IO) {
+                        recipeRepository.renameRecipe(recipeToSave.uuid, recipeToSave.name)
+                        recipeRepository.replaceAliments(recipeToSave.uuid, recipeToSave.alimentMutableList)
+                    }
                     _message.value = translate("recipe.success.updated")
                 } else {
                     // Création d'une nouvelle recette
-                    val newRecipe = recipeRepository.createRecipe(
-                        name = recipeToSave.name,
-                        espece = recipeToSave.espece,
-                        description = recipeToSave.description
-                    )
-                    recipeRepository.addAliments(newRecipe.uuid, recipeToSave.alimentMutableList)
+                    withContext(AppDispatchers.IO) {
+                        val newRecipe = recipeRepository.createRecipe(
+                            name = recipeToSave.name,
+                            espece = recipeToSave.espece,
+                            description = recipeToSave.description
+                        )
+                        recipeRepository.addAliments(newRecipe.uuid, recipeToSave.alimentMutableList)
+                    }
                     _message.value = translate("recipe.success.created")
                 }
                 
@@ -374,7 +388,7 @@ class RecipeEditViewModel(
         scope.launch {
             try {
                 _isLoading.value = true
-                recipeRepository.deleteRecipe(recipe.uuid)
+                withContext(AppDispatchers.IO) { recipeRepository.deleteRecipe(recipe.uuid) }
                 _message.value = translate("recipe.success.deleted")
                 loadRecipesInternal()
             } catch (e: Exception) {
@@ -392,7 +406,7 @@ class RecipeEditViewModel(
         scope.launch {
             try {
                 _isLoading.value = true
-                val duplicatedRecipe = recipeRepository.cloneRecipe(recipe.uuid)
+                val duplicatedRecipe = withContext(AppDispatchers.IO) { recipeRepository.cloneRecipe(recipe.uuid) }
                 if (duplicatedRecipe != null) {
                     _message.value = translate("recipe.success.duplicated")
                 } else {

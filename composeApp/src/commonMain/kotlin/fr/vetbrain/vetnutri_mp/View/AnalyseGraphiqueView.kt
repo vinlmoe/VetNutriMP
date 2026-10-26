@@ -11,7 +11,6 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.*
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -21,7 +20,6 @@ import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 @Composable
 fun AnalyseGraphiqueView(
         viewModel: AnimalDetailViewModel,
-        equationRepository: EquationRepository? = null,
         modifier: Modifier = Modifier
 ) {
         var currentConsultationOnly by remember { mutableStateOf(true) }
@@ -138,16 +136,15 @@ fun AnalyseGraphiqueView(
                                         onUpdateMaxVariation = { maxVariationPercent = it }
                                 )
                                 ChartType.RATIONS_ENERGIE ->
-                                        RationsEnergieChart(viewModel, equationRepository, currentConsultationOnly, showRationArea)
+                                        RationsEnergieChart(viewModel, currentConsultationOnly, showRationArea)
                                 ChartType.DENSITE_RATIONS ->
                                         DensiteRationsChart(
                                                 viewModel,
-                                                equationRepository,
                                                 useDryMatterPer100g,
                                                 currentConsultationOnly
                                         )
                                 ChartType.NUTRIMENTS_RATIONS ->
-                                        NutrimentsRationsChart(viewModel, equationRepository, currentConsultationOnly, showRationArea)
+                                        NutrimentsRationsChart(viewModel, currentConsultationOnly, showRationArea)
                         }
 
                         // Légende et informations

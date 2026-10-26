@@ -1,7 +1,5 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.avecEspeceDuTroupeau
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
@@ -15,7 +13,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalUuidApi::class)
-class CreateAnimalViewModel(private val animalRepository: AnimalRepository) : ViewModel() {
+class CreateAnimalViewModel(private val animalRepository: AnimalRepository) : BaseViewModel() {
     private val _animal = MutableStateFlow(AnimalEv(specieId = Espece.CHIEN.label))
     val animal: StateFlow<AnimalEv> = _animal
 

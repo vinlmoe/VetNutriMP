@@ -1,7 +1,5 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Export.*
 import fr.vetbrain.vetnutri_mp.Repository.HtmlSectionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,7 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /** ViewModel pour gérer les sections HTML réutilisables */
-class HtmlSectionViewModel(private val repository: HtmlSectionRepository) : ViewModel() {
+class HtmlSectionViewModel(private val repository: HtmlSectionRepository) : BaseViewModel() {
 
     // États pour l'interface utilisateur
     private val _sections = MutableStateFlow<List<HtmlSection>>(emptyList())

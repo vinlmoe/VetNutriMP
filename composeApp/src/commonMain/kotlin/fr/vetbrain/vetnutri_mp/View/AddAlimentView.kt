@@ -194,10 +194,7 @@ fun AddAlimentView(
                                         contentDescription = translate("addAliment.createFood"),
                                         tooltip = translate("addAliment.createFood"),
                                         onClick = {
-                                                foodEditViewModel = FoodEditViewModel(
-                                                        foodRepository = viewModel.foodRepository,
-                                                        alimentUuid = null
-                                                )
+                                                foodEditViewModel = viewModel.createFoodEditViewModel()
                                                 showFoodEditView = true
                                         },
                                         modifier = Modifier.size(AppSizes.iconSizeLarge),

@@ -5,6 +5,7 @@ import fr.vetbrain.vetnutri_mp.Service.BackupService.BackupMetadata
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,8 +21,15 @@ import kotlinx.datetime.toLocalDateTime
 class BackupRestoreViewModel(
     private val backupService: BackupService,
     private val platformDispatcher: PlatformDispatcher
-) {
-    private val coroutineScope: CoroutineScope = kotlinx.coroutines.CoroutineScope(platformDispatcher.provideIODispatcher())
+) : BaseViewModel() {
+    // Les opérations de BackupService font des E/S bloquantes : scope IO dédié, annulé par clear().
+    private val coroutineScope: CoroutineScope =
+        kotlinx.coroutines.CoroutineScope(platformDispatcher.provideIODispatcher() + kotlinx.coroutines.SupervisorJob())
+
+    override fun clear() {
+        coroutineScope.cancel()
+        super.clear()
+    }
     
     private val _backups = MutableStateFlow<List<BackupMetadata>>(emptyList())
     val backups: StateFlow<List<BackupMetadata>> = _backups.asStateFlow()

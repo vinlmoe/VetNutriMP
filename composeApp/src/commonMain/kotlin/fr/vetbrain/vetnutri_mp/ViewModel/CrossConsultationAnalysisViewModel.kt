@@ -1,7 +1,5 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
@@ -53,7 +51,7 @@ class CrossConsultationAnalysisViewModel(
         private val consultationRepository: ConsultationRepository,
         private val referenceEvRepository: DatabaseReferenceEvRepository,
         private val equationRepository: EquationRepository
-) : ViewModel() {
+) : BaseViewModel() {
 
     data class ConsultationItem(
             val consultationId: String,

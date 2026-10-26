@@ -56,9 +56,6 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKey
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
-import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
-import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
-import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
@@ -76,6 +73,7 @@ import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionValeursMetaboliques
 import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseQuantitativeRationSection
 import fr.vetbrain.vetnutri_mp.View.Components.RecipeDialog
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.RecipeDialogViewModel
 import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
@@ -139,6 +137,12 @@ private fun GroupesRationsItems(
         }
 }
 
+/** Nom d'affichage d'un code nutriment (nom lisible des nutriments personnalisés). */
+private fun formatNutrientNameForDisplay(nutrientCode: String): String {
+        val nutrient = NutrientResolver.resolveStoredLabel(nutrientCode)
+        return if (nutrient is CustomNutrient) nutrient.nameToString() else nutrientCode
+}
+
 /**
  * Rations d'un animal.
  * - S'appuie sur `AnimalDetailViewModel` pour les consultations/rations/ref. nutritionnelles.
@@ -151,7 +155,7 @@ fun RationsView(
         showSnackbar: (String) -> Unit,
         modifier: Modifier = Modifier,
         equationRepository: EquationRepository,
-        recipeRepository: RecipeRepository,
+        recipeDialogViewModel: RecipeDialogViewModel,
         isExamMode: Boolean = false
 ) {
         val animal by viewModel.animal.collectAsState()
@@ -275,11 +279,9 @@ fun RationsView(
 
         // Système de préférences pour le filtrage des nutriments
         val preferencesStorage: PreferencesStorage = remember { createPreferencesStorage() }
-        val preferencesRepository: PreferencesRepository = remember { PreferencesRepository(preferencesStorage) }
         var preferencesApplication by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null) }
         LaunchedEffect(Unit) {
-                preferencesRepository.loadPreferences()
-                preferencesApplication = preferencesRepository.preferences
+                preferencesApplication = viewModel.chargerPreferencesApplication()
         }
 
         // Énergie additionnelle issue des références maladies (calculée dans le ViewModel)
@@ -475,11 +477,6 @@ fun RationsView(
                         }
                 }
 
-        fun formatNutrientNameForDisplay(nutrientCode: String): String {
-                val nutrient = NutrientResolver.resolveStoredLabel(nutrientCode)
-                return if (nutrient is CustomNutrient) nutrient.nameToString() else nutrientCode
-        }
-
         val typeExpressionSelector: @Composable RowScope.() -> Unit = {
                 Box {
                         Row(
@@ -634,8 +631,7 @@ fun RationsView(
         // Dialog de gestion des recettes
         if (!isExamMode && showRecipeDialog) {
                 RecipeDialog(
-                        repository = recipeRepository,
-                        foodRepository = viewModel.foodRepository,
+                        viewModel = recipeDialogViewModel,
                         onApply = { recette ->
                                 viewModel.applyRecipeToRation(recette)
                                 showRecipeDialog = false
@@ -672,21 +668,11 @@ fun RationsView(
                                                 if (ration != null && newRecipeName.isNotBlank()) {
                                                         coroutineScope.launch {
                                                                 try {
-                                                                        val recette =
-                                                                                recipeRepository
-                                                                                        .createRecipe(
-                                                                                                name =
-                                                                                                        newRecipeName,
-                                                                                                espece =
-                                                                                                        ration.espece,
-                                                                                                description =
-                                                                                                        null
-                                                                                        )
-                                                                        recipeRepository
-                                                                                .replaceAliments(
-                                                                                        recette.uuid,
-                                                                                        ration.alimentMutableList
-                                                                                )
+                                                                        recipeDialogViewModel.saveRationAsRecipe(
+                                                                                name = newRecipeName,
+                                                                                espece = ration.espece,
+                                                                                aliments = ration.alimentMutableList
+                                                                        )
                                                                         showSnackbar(
                                                                                 "${translate(RationKeys.RECIPE_CREATED)} $newRecipeName"
                                                                         )
@@ -1240,8 +1226,6 @@ fun RationsView(
                                                                                                 true
                                                                                 },
                                                                                 animal = animal,
-                                                                                preferencesRepository =
-                                                                                        preferencesRepository,
                                                                                 equationRepository =
                                                                                         equationRepository,
                                                                         // Utiliser les préférences
@@ -1685,8 +1669,6 @@ fun RationsView(
                                                                                         true
                                                                         },
                                                                         animal = animal,
-                                                                        preferencesRepository =
-                                                                                preferencesRepository,
                                                                         equationRepository =
                                                                                 equationRepository,
                                                                         typeExpressionBesoin =

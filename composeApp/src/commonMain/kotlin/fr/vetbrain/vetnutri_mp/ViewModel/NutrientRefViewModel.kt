@@ -22,9 +22,11 @@ class NutrientRefViewModel(
         private val referenceEvRepository: DatabaseReferenceEvRepository,
         private val biblioRefRepository: BiblioRefRepository,
         private val platformDispatcher: PlatformDispatcher = PlatformDispatcher(),
-        private val coroutineContext: CoroutineContext = platformDispatcher.provideMainDispatcher()
-) {
-    private val scope = CoroutineScope(coroutineContext)
+        @Suppress("UNUSED_PARAMETER") coroutineContext: CoroutineContext = platformDispatcher.provideMainDispatcher()
+) : BaseViewModel() {
+    // Scope géré par BaseViewModel (annulé par clear()) ; `coroutineContext` conservé pour la
+    // compatibilité de la signature.
+    private val scope: CoroutineScope get() = viewModelScope
 
     // Référence en cours d'édition
     private val _currentReference = MutableStateFlow<ReferenceEv?>(null)

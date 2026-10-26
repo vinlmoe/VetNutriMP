@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 import fr.vetbrain.vetnutri_mp.Data.ConstraintAdjustmentResult
 import fr.vetbrain.vetnutri_mp.Data.adjustRationByConstraints
+import fr.vetbrain.vetnutri_mp.Data.arrondirQuantiteSelonRegles
 
 /** Données d'ajustement pour un aliment spécifique */
 data class AlimentAdjustmentData(
@@ -71,7 +72,7 @@ data class AdjustmentParams(
 
 /** La cellulose est ajustée à un objectif clinique de cinq fois le besoin de référence. */
 internal fun adjustmentNeedMultiplier(nutrient: Nutrient): Double =
-        if (nutrient == NutrientMain.CELLULOSE) 5.0 else 1.0
+        fr.vetbrain.vetnutri_mp.Data.adjustmentNeedMultiplier(nutrient)
 
 /** Résultat d'un ajustement de ration */
 data class RationAdjustmentResult(
@@ -2199,33 +2200,4 @@ private suspend fun adjustRationForMultipleNutrients(
                         message = translate("analnut.error.sequential_adjust", e.message ?: "")
                 )
         }
-}
-
-/**
- * Arrondit la quantité selon les règles métier
- * @param alimentRation L'aliment concerné
- * @param quantite La quantité à arrondir
- * @return La quantité arrondie
- */
-/** Non privée : réutilisée par le solveur d'ajustement par contraintes (RationConstraintAdjuster.kt). */
-fun arrondirQuantiteSelonRegles(alimentRation: AlimentRation, quantite: Double): Double {
-        val aliment = alimentRation.aliment
-        if (aliment != null) {
-                val cont = aliment.cont
-                val quantInt = aliment.quantInt
-                
-                // Règle contenant: si contenant défini et quantInt > 0, arrondir au multiple de quantInt/2
-                if (cont != null && cont != ContEnum.NO && quantInt != null && quantInt > 0.0) {
-                        val step = quantInt / 2.0
-                        return fr.vetbrain.vetnutri_mp.Utils.NumberUtils.arrondirAuPas(quantite, step).coerceAtLeast(0.0)
-                }
-        }
-        
-        // Règles générales par défaut
-        val arrondie = when {
-                quantite < 20.0 -> kotlin.math.round(quantite) // Arrondi au gramme
-                quantite < 200.0 -> kotlin.math.round(quantite / 5.0) * 5.0 // Arrondi aux 5g
-                else -> kotlin.math.round(quantite / 25.0) * 25.0 // Arrondi aux 25g
-        }
-        return arrondie.coerceAtLeast(0.0)
 }

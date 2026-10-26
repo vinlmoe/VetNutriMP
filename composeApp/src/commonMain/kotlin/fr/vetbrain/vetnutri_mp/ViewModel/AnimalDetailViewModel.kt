@@ -22,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
+import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -80,8 +81,9 @@ class AnimalDetailViewModel(
         private val animalRepository: AnimalRepository,
         private val databaseReferenceEvRepository: DatabaseReferenceEvRepository,
         private val preferencesRepository: PreferencesRepository,
-        val foodRepository: FoodRepository,
-        private val equationRepository: EquationRepository? = null
+        private val foodRepository: FoodRepository,
+        private val equationRepository: EquationRepository? = null,
+        private val conseilRepository: ConseilRepository? = null
 ) {
     private val job = SupervisorJob()
     private val viewModelScope = CoroutineScope(AppDispatchers.Main + job)
@@ -2724,6 +2726,46 @@ class AnimalDetailViewModel(
         updateRation(rationAjusteeTroupeau(ration, facteur))
         return true
     }
+
+    // ---- Accès indirects pour les vues (plus d'accès direct aux repositories) ----
+
+    /** Conseils personnalisés actifs (liste vide si indisponible ou en erreur). */
+    suspend fun loadConseilsActifs(): List<fr.vetbrain.vetnutri_mp.Export.HtmlSection> =
+            withContext(AppDispatchers.IO) {
+                try {
+                    conseilRepository?.getConseilsActifs()?.getOrNull() ?: emptyList()
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            }
+
+    /** Préférences de l'application (rechargées depuis le stockage). */
+    suspend fun chargerPreferencesApplication(): PreferencesApplication {
+        preferencesRepository.loadPreferences()
+        return preferencesRepository.preferences
+    }
+
+    /** ViewModel de création d'un aliment (écran « ajouter un aliment » de la ration). */
+    fun createFoodEditViewModel(): FoodEditViewModel =
+            FoodEditViewModel(foodRepository = foodRepository, alimentUuid = null)
+
+    // ---- Calculs des graphiques d'analyse (Data/AnalyseGraphiqueCalculs.kt) ----
+    // Les Composables des graphiques passent par ces méthodes au lieu de recevoir
+    // l'EquationRepository.
+
+    /** Nutriments totaux d'une ration pour le graphique « nutriments des rations ». */
+    suspend fun calculerNutrimentsRationGraphique(
+            ration: Ration,
+            referenceEv: ReferenceEv?,
+            isRationActuelle: Boolean = false
+    ): RationNutrimentData? =
+            calculerNutrimentsRation(ration, referenceEv, equationRepository, isRationActuelle)
+
+    /** Répartition énergétique d'une ration pour les graphiques énergie / densité. */
+    suspend fun calculerEnergieRationGraphique(
+            ration: Ration,
+            referenceEv: ReferenceEv?
+    ): RationEnergyData? = calculerPourcentagesEnergieRation(ration, referenceEv, equationRepository)
 
     fun clear() {
         rationAnalysisCache.clear()

@@ -33,66 +33,6 @@ data class ConsultationAgeData(
         val weightUuid: String? = null
 )
 
-// Data class pour stocker les données énergétiques des rations
-data class RationEnergyData(
-        val consultationDate: LocalDate?,
-        val consultationId: String,
-        val rationName: String,
-        val rationId: String,
-        val numero: Int,
-        val proteineEnergyPercentage: Double,
-        val lipideEnergyPercentage: Double,
-        val energieTotale: Double,
-        val matiereSeche: Double = 0.0,
-        val poidsTotal: Double = 0.0,
-        val isRationActuelle: Boolean = false
-)
-
-fun generateUuidString(): String {
-        return Clock.System.now().toEpochMilliseconds().toString() +
-                "-" +
-                kotlin.random.Random.nextInt()
-}
-
-// Classes pour les courbes de croissance
-data class CurveParamP(
-        val name: String,
-        val max: Double,
-        val half: Double,
-        val slope: Double,
-        val UUID: String = generateUuidString()
-)
-
-data class CurveP(
-        val description: String,
-        val params: List<CurveParamP>,
-        val biblioRef: String,
-        val espece: String,
-        val code: String,
-        val ageMax: Int
-)
-
-// Données étendues des nutriments des rations
-data class RationNutrimentData(
-        val consultationDate: LocalDate?,
-        val consultationId: String,
-        val rationName: String,
-        val rationId: String,
-        val numero: Int,
-        val proteines: Double = 0.0,
-        val lipides: Double = 0.0,
-        val glucides: Double = 0.0,
-        val energie: Double = 0.0,
-        val calcium: Double = 0.0,
-        val phosphore: Double = 0.0,
-        val magnesium: Double = 0.0,
-        val sodium: Double = 0.0,
-        val potassium: Double = 0.0,
-        val matiereSeche: Double = 0.0,
-        val poidsTotal: Double = 0.0,
-        val isRationActuelle: Boolean = false
-)
-
 // Liste des nutriments disponibles pour les graphiques personnalisés (spécifique à cette vue)
 // displayName contient une clé LocalizationKeys : utiliser translate(option.displayName) à l'affichage.
 data class ViewNutrimentOption(

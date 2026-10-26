@@ -2,13 +2,9 @@ package fr.vetbrain.vetnutri_mp.ViewModel
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
-import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
-import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrient
 import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrientRegistry
@@ -37,24 +33,24 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * ViewModel pour gérer les équations
  *
  * @param equationRepository Repository pour accéder aux équations
- * @param biblioRefDao DAO pour accéder aux références bibliographiques
  * @param biblioRepository Repository pour accéder aux références bibliographiques
  * @param referenceRepository Repository pour accéder aux références
  */
 class EquationViewModel(
         private val equationRepository: EquationRepository,
-        private val biblioRefDao: BiblioRefDao?,
         private val biblioRepository: BiblioRefRepository,
         private val referenceRepository: DatabaseReferenceEvRepository
-) : ViewModel() {
+) : BaseViewModel() {
     private val coroutineScope = viewModelScope
 
     // État d'édition
@@ -263,14 +259,8 @@ class EquationViewModel(
     fun loadBiblioRefs() {
         coroutineScope.launch {
             try {
-                if (biblioRefDao != null) {
-                    val refs = biblioRefDao.getAllBiblioRefs()
-                    val mappedRefs = refs.map { ref -> ref.toDomain() }
-                    _biblioRefs.value = mappedRefs
-                } else {
-                    // Utiliser le repository si le DAO n'est pas disponible
-                    biblioRepository.getAllBiblioRefs().collect { refs -> _biblioRefs.value = refs }
-                }
+                // Lecture ponctuelle via le repository (plus d'accès direct au DAO)
+                _biblioRefs.value = withContext(AppDispatchers.IO) { biblioRepository.getAllBiblioRefs().first() }
             } catch (e: Exception) {}
         }
     }

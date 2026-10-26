@@ -31,7 +31,7 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.KoalaPlotExtensions
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
+import fr.vetbrain.vetnutri_mp.Data.RationNutrimentData
 import io.github.koalaplot.core.*
 import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
@@ -44,7 +44,6 @@ import io.github.koalaplot.core.xygraph.*
 @Composable
 fun NutrimentsRationsChart(
         viewModel: AnimalDetailViewModel,
-        equationRepository: EquationRepository? = null,
         currentConsultationOnly: Boolean = false,
         showRationArea: Boolean = false
 ) {
@@ -68,7 +67,7 @@ fun NutrimentsRationsChart(
         } // "" = histogramme, autre = scatter plot
 
         // Calculer les données des rations de manière asynchrone
-        LaunchedEffect(consultations, referenceUtilisee, equationRepository) {
+        LaunchedEffect(consultations, referenceUtilisee) {
                 isLoading = true
                 val resultat = mutableListOf<RationNutrimentData>()
 
@@ -76,10 +75,9 @@ fun NutrimentsRationsChart(
                         consultation.rations.forEachIndexed { rationIndex, ration ->
                                 try {
                                         val rationData =
-                                                calculerNutrimentsRation(
+                                                viewModel.calculerNutrimentsRationGraphique(
                                                         ration = ration,
                                                         referenceEv = referenceUtilisee,
-                                                        equationRepository = equationRepository,
                                                         isRationActuelle =
                                                                 PlanEvolutif.estActuelle(consultation, ration)
                                                 )

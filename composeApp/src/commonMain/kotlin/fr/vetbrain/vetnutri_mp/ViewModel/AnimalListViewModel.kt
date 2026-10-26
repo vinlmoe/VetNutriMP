@@ -42,13 +42,13 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 @OptIn(ExperimentalUuidApi::class)
 class AnimalListViewModel(
     private val animalRepository: AnimalRepository,
-    internal val foodRepository: fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository? = null,
-    internal val recipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository? = null,
-    internal val referenceEvRepository: fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository? = null,
-    internal val equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
-    internal val biblioRefRepository: fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository? = null,
-    internal val consultationRepository: fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository? = null,
-    internal val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null
+    private val foodRepository: fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository? = null,
+    private val recipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository? = null,
+    private val referenceEvRepository: fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository? = null,
+    private val equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
+    private val biblioRefRepository: fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository? = null,
+    private val consultationRepository: fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository? = null,
+    private val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null
 ) : ViewModel() {
     enum class AnimalSortOrder {
         LAST_CONSULTATION,

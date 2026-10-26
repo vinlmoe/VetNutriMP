@@ -14,7 +14,7 @@ import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
 
 // Import des modèles de données depuis le fichier parent
-import fr.vetbrain.vetnutri_mp.View.AlimentAnalyseData
+import fr.vetbrain.vetnutri_mp.Data.AlimentAnalyseData
 import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**

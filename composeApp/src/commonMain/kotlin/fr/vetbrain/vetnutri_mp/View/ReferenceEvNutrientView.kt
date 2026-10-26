@@ -10,10 +10,7 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
-import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
-import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.ViewModel.NutrientRefViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
@@ -23,9 +20,7 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
  * Vue pour l'édition des besoins nutritionnels d'une référence évaluée
  *
  * @param referenceEvViewModel ViewModel pour gérer la référence évaluée
- * @param biblioRefRepository Repository pour accéder aux références bibliographiques
- * @param referenceEvRepository Repository pour accéder aux références évaluées
- * @param platformDispatcher PlatformDispatcher pour gérer les tâches de fond
+ * @param nutrientRefViewModel ViewModel des besoins nutritionnels (créé dans App.kt)
  * @param referenceEvId Identifiant de la référence à éditer
  * @param onNavigateBack Callback pour revenir à l'écran précédent
  * @param modifier Modifier à appliquer à la vue
@@ -34,9 +29,7 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 @Composable
 fun ReferenceEvNutrientView(
         referenceEvViewModel: ReferenceEvViewModel,
-        biblioRefRepository: BiblioRefRepository,
-        referenceEvRepository: DatabaseReferenceEvRepository,
-        platformDispatcher: PlatformDispatcher,
+        nutrientRefViewModel: NutrientRefViewModel,
         referenceEvId: String,
         onNavigateBack: () -> Unit,
         modifier: Modifier = Modifier,
@@ -45,15 +38,6 @@ fun ReferenceEvNutrientView(
         // Charger la référence
         val currentReferenceEv by
                 referenceEvViewModel.currentReferenceEv.collectAsState(initial = ReferenceEv())
-
-        // Créer le ViewModel spécifique pour les besoins nutritionnels
-        val nutrientRefViewModel = remember {
-                NutrientRefViewModel(
-                        referenceEvRepository = referenceEvRepository,
-                        biblioRefRepository = biblioRefRepository,
-                        platformDispatcher = platformDispatcher
-                )
-        }
 
         // Positionner la référence en cours d'édition
         LaunchedEffect(referenceEvId) { referenceEvViewModel.loadReferenceEvById(referenceEvId) }

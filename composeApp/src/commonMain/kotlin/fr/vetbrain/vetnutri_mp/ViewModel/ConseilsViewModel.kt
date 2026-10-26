@@ -11,12 +11,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.datetime.Clock
 
+/**
+ * Conseils personnalisés (liste, filtres, création/suppression) et accès indirects utilisés par
+ * ConseilsPersonnalisesView, ConseilEditView et CalculationTabsView (plus d'accès direct au
+ * ConseilRepository depuis les Composables).
+ */
 class ConseilsViewModel(
-        private val conseilRepository: ConseilRepository,
-        private val coroutineScope: CoroutineScope
-) {
+        private val conseilRepository: ConseilRepository
+) : BaseViewModel() {
+    private val coroutineScope: CoroutineScope get() = viewModelScope
     private val _conseils = MutableStateFlow<List<HtmlSection>>(emptyList())
     val conseils: StateFlow<List<HtmlSection>> = _conseils.asStateFlow()
 
@@ -149,4 +156,18 @@ class ConseilsViewModel(
     fun clearError() {
         _error.value = null
     }
+
+    // ---- Accès suspend pour les écrans (résultats bruts du repository) ----
+
+    suspend fun getConseilsActifs(): Result<List<HtmlSection>> =
+            withContext(AppDispatchers.IO) { conseilRepository.getConseilsActifs() }
+
+    suspend fun getTemplatesConseils(): Result<List<HtmlSection>> =
+            withContext(AppDispatchers.IO) { conseilRepository.getTemplatesConseils() }
+
+    suspend fun sauvegarderConseil(conseil: HtmlSection): Result<Unit> =
+            withContext(AppDispatchers.IO) { conseilRepository.sauvegarderConseil(conseil) }
+
+    suspend fun supprimerConseil(conseilId: String): Result<Unit> =
+            withContext(AppDispatchers.IO) { conseilRepository.supprimerConseil(conseilId) }
 }

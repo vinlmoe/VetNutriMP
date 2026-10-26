@@ -46,10 +46,11 @@ class BulkReferenceEditorViewModel(
         private val referenceEvRepository: DatabaseReferenceEvRepository,
         private val biblioRefRepository: BiblioRefRepository,
         private val platformDispatcher: PlatformDispatcher = PlatformDispatcher(),
-        private val coroutineContext: CoroutineContext =
+        @Suppress("UNUSED_PARAMETER") coroutineContext: CoroutineContext =
                 platformDispatcher.provideMainDispatcher()
-) {
-    private val scope = CoroutineScope(coroutineContext)
+) : BaseViewModel() {
+    // Scope géré par BaseViewModel (annulé par clear()).
+    private val scope: CoroutineScope get() = viewModelScope
 
     private val _references = MutableStateFlow<List<ReferenceEv>>(emptyList())
     val references: StateFlow<List<ReferenceEv>> = _references.asStateFlow()

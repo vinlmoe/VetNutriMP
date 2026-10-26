@@ -17,7 +17,7 @@ import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Export.*
 import fr.vetbrain.vetnutri_mp.Localization.translate
-import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+import fr.vetbrain.vetnutri_mp.ViewModel.ConseilsViewModel
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import kotlinx.datetime.Clock
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -26,14 +26,14 @@ import kotlinx.coroutines.launch
 /**
  * Vue pour éditer un conseil personnalisé
  *
- * @param conseilRepository Repository pour la gestion des conseils
+ * @param conseilsViewModel ViewModel des conseils personnalisés
  * @param conseilId ID du conseil à éditer (null pour création)
  * @param onNavigateBack Callback pour revenir à l'écran précédent
  * @param modifier Modifier à appliquer à la vue
  */
 @Composable
 fun ConseilEditView(
-        conseilRepository: ConseilRepository,
+        conseilsViewModel: ConseilsViewModel,
         conseilId: String?,
         onNavigateBack: () -> Unit,
         modifier: Modifier = Modifier
@@ -58,7 +58,7 @@ fun ConseilEditView(
     LaunchedEffect(conseilId) {
         if (conseilId != null) {
             try {
-                val result = conseilRepository.getConseilsActifs()
+                val result = conseilsViewModel.getConseilsActifs()
                 if (result.isSuccess) {
                     val conseil = result.getOrThrow().find { it.id == conseilId }
                     if (conseil != null) {
@@ -239,7 +239,7 @@ fun ConseilEditView(
                                                                 emptyList() // Plus de groupes d'âge
                                                 )
 
-                                        val result = conseilRepository.sauvegarderConseil(conseil)
+                                        val result = conseilsViewModel.sauvegarderConseil(conseil)
                                         if (result.isSuccess) {
                                             showSuccessDialog = true
                                         } else {

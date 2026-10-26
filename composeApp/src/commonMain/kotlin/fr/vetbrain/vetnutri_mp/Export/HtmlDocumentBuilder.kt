@@ -46,35 +46,6 @@ object HtmlDocumentBuilder {
                 .replace("'", "&#39;")
     }
 
-    private fun formatAlimentDisplayName(aliment: fr.vetbrain.vetnutri_mp.Data.AlimentEv?): String {
-        if (aliment == null) return "?"
-        fun debugChars(input: String): String =
-            input.map { c -> "${c.code.toString(16).padStart(4, '0')}(${c})" }.joinToString(" ")
-        fun clean(value: String?): String? {
-            if (value == null) return null
-            var normalized = value.trim()
-            while (normalized.length >= 2 &&
-                ((normalized.startsWith("\"") && normalized.endsWith("\"")) ||
-                    (normalized.startsWith("'") && normalized.endsWith("'")))) {
-                normalized = normalized.substring(1, normalized.length - 1).trim()
-            }
-            normalized =
-                normalized
-                    .replace('\u00A0', ' ')
-                    .replace(Regex("""^[\s"'`]+|[\s"'`]+$"""), "")
-            if (normalized.isBlank()) return null
-            val semantic = normalized.lowercase().filter { it.isLetterOrDigit() }
-            if (semantic == "null" || semantic == "none" || semantic == "na") return null
-            return normalized
-        }
-        val parts = listOfNotNull(
-            clean(aliment.brand),
-            clean(aliment.gamme),
-            clean(aliment.nom)
-        )
-        return if (parts.isEmpty()) "?" else parts.joinToString(", ")
-    }
-
     /**
      * Obtient le nom traduit d'un nutriment selon son type en utilisant les traductions JSON
      */
@@ -284,7 +255,7 @@ object HtmlDocumentBuilder {
         if (ration == null) return ""
         val rows =
                 ration.alimentMutableList.mapIndexed { index, a ->
-                    val nom = formatAlimentDisplayName(a.aliment)
+                    val nom = formatAlimentDisplayName(a.aliment, fallback = "?")
                     val qte = TextUtils.formatDecimal(a.quantite.toDouble(), 1)
                     val quantiteUnites = calculerQuantiteEnUnites(a)
 
@@ -788,7 +759,7 @@ object HtmlDocumentBuilder {
                 }
         val lignes =
                 PlanEvolutif.matriceSynthese(consultation, parent).joinToString("\n") { ligne ->
-                    val nom = ligne.aliment?.let { formatAlimentDisplayName(it) } ?: ligne.nom
+                    val nom = ligne.aliment?.let { formatAlimentDisplayName(it, fallback = "?") } ?: ligne.nom
                     val cellules =
                             ligne.quantites.joinToString("") { quantite ->
                                 if (quantite == null) {

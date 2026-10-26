@@ -50,7 +50,7 @@ La navigation est manuelle (sans Voyager/Decompose). Les écrans sont décrits d
 | `Screen.kt` | 23 destinations (sealed objects) |
 | `AppNavController.kt` | État mutable de navigation (`screen`, `selectedXxxId`, etc.) |
 | `AppNavHost.kt` | `when(nav.screen)` — dispatch vers les Composables d'écran |
-| `AppNavModels.kt` | `AppNavModels` (ViewModels) + `AppNavRepositories` (repos directs) |
+| `AppNavModels.kt` | `AppNavModels` (ViewModels partagés par les écrans ; plus de repositories transmis aux vues, hors `equationRepository` passé à `AppNavHost` pour les calculs nutritionnels) |
 | `AppDialogs.kt` | Dialogues d'overlay transversaux (import résultats, backup) |
 
 `App.kt` est l'orchestrateur : il crée les ViewModels, les repositories, le `AppNavController`, et appelle `AppNavHost`.

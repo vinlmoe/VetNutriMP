@@ -1,7 +1,6 @@
 package fr.vetbrain.vetnutri_mp
 
 import androidx.lifecycle.viewModelScope
-import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.ImportUtils
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
@@ -57,21 +56,7 @@ internal fun importApiJsonFile(viewModel: SettingsViewModel) {
     }) { content ->
         viewModel.startApiImport()
         try {
-            val repository = ExportImportRepository(
-                animalRepository = viewModel.animalRepository,
-                foodRepository = viewModel.foodRepository,
-                equationRepository = viewModel.equationRepository,
-                referenceRepository = viewModel.referenceEvRepository,
-                biblioRepository = viewModel.biblioRefRepository,
-                consultationRepository = viewModel.consultationRepository,
-                recipeRepository = viewModel.recipeRepository,
-                conseilRepository = viewModel.conseilRepository
-            )
-            val counts = withContext(AppDispatchers.IO) {
-                repository.importAll(content, ExportImportRepository.ImportProgressListener(
-                    viewModel::updateApiImportProgress, viewModel::appendApiImportLog
-                ))
-            }
+            val counts = viewModel.importApiJson(content)
             if (counts.errorCount > 0) {
                 viewModel.setImportResult(SettingsViewModel.ImportResult.Error(
                     "Import partiel : ${counts.errorCount} erreur(s). Consultez le journal d'import."

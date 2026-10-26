@@ -20,14 +20,14 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
-import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
+import fr.vetbrain.vetnutri_mp.ViewModel.PreferencesViewModel
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /** Vue des préférences de l'application */
 @Composable
 fun PreferencesView(
-        preferencesRepository: PreferencesRepository,
+        preferencesViewModel: PreferencesViewModel,
         modifier: Modifier = Modifier
 ) {
         var selectedSpecies by remember { mutableStateOf<Espece?>(null) }
@@ -36,13 +36,13 @@ fun PreferencesView(
 
         // Charger les données au démarrage
         LaunchedEffect(Unit) {
-                preferencesRepository.loadPreferences()
-                availableSpecies = preferencesRepository.getAvailableSpecies()
+                preferencesViewModel.loadPreferences()
+                availableSpecies = preferencesViewModel.getAvailableSpecies()
 
                 if (availableSpecies.isNotEmpty()) {
                         selectedSpecies = availableSpecies.first()
                         currentPreferences =
-                                preferencesRepository.getPreferencesForSpecies(selectedSpecies!!)
+                                preferencesViewModel.getPreferencesForSpecies(selectedSpecies!!)
                 }
         }
 
@@ -112,7 +112,7 @@ fun PreferencesView(
                                                                         // Charger les préférences
                                                                         // pour cette espèce
                                                                         // currentPreferences =
-                                                                        // preferencesRepository.getPreferencesForSpecies(species)
+                                                                        // preferencesViewModel.getPreferencesForSpecies(species)
                                                                 }
                                                         ) { Text(species.translateEnum()) }
                                                 }
@@ -144,7 +144,7 @@ fun PreferencesView(
                                                                                 selectedSpecies =
                                                                                         species
                                                                                 // currentPreferences =
-                                                                                // preferencesRepository.getPreferencesForSpecies(species)
+                                                                                // preferencesViewModel.getPreferencesForSpecies(species)
                                                                         },
                                                         verticalAlignment =
                                                                 Alignment.CenterVertically

@@ -1,6 +1,8 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
 import fr.vetbrain.vetnutri_mp.Data.CalculMetabolique
+import fr.vetbrain.vetnutri_mp.Data.CurveP
+import fr.vetbrain.vetnutri_mp.Data.CurveParamP
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind

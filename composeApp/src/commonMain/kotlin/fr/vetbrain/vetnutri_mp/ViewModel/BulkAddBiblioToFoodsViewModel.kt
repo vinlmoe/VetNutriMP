@@ -24,9 +24,10 @@ class BulkAddBiblioToFoodsViewModel(
         private val foodRepository: FoodRepository,
         private val biblioRefRepository: BiblioRefRepository,
         private val platformDispatcher: PlatformDispatcher = PlatformDispatcher(),
-        private val coroutineContext: CoroutineContext = platformDispatcher.provideMainDispatcher()
-) {
-        private val scope = CoroutineScope(coroutineContext)
+        @Suppress("UNUSED_PARAMETER") coroutineContext: CoroutineContext = platformDispatcher.provideMainDispatcher()
+) : BaseViewModel() {
+        // Scope géré par BaseViewModel (annulé par clear()).
+        private val scope: CoroutineScope get() = viewModelScope
 
         private val _allFoods = MutableStateFlow<List<AlimentEv>>(emptyList())
         val allFoods: StateFlow<List<AlimentEv>> = _allFoods.asStateFlow()

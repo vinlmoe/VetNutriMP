@@ -42,6 +42,7 @@ import fr.vetbrain.vetnutri_mp.View.SettingsSections.AdministrationSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.PreferencesViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
@@ -129,6 +130,7 @@ fun SettingsDialog(
 fun SettingsView(
         viewModel: SettingsViewModel,
         importViewModel: ImportViewModel,
+        preferencesViewModel: PreferencesViewModel,
         onImportAnimals: () -> Unit,
         onBack: () -> Unit,
         onAnimalListRefresh: () -> Unit,
@@ -179,7 +181,7 @@ fun SettingsView(
         LaunchedEffect(Unit) {
                 try {
                         val count =
-                                viewModel.conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+                                viewModel.getConseilsCount()
                         conseilsCount = count
                 } catch (e: Exception) {
                         // En cas d'erreur, garder 0
@@ -235,6 +237,7 @@ fun SettingsView(
                                 }
                                 1 -> { // Préférences
                                         PreferencesSection(
+                                                preferencesViewModel = preferencesViewModel,
                                                 modifier = Modifier.fillMaxWidth(),
                                                 onSpeciesClick = onSpeciesClick
                                         )
@@ -452,9 +455,7 @@ fun SettingsView(
                                                                                 selectionLoadError = null
                                                                                 try {
                                                                                         availableAnimals =
-                                                                                                viewModel
-                                                                                                        .animalRepository
-                                                                                                        .getAllAnimals()
+                                                                                                viewModel.getAllAnimals()
                                                                                 } catch (e: Exception) {
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement animaux: ${e.message}"
@@ -481,9 +482,7 @@ fun SettingsView(
                                                                                 selectionLoadError = null
                                                                                 try {
                                                                                         availableFoods =
-                                                                                                viewModel
-                                                                                                        .foodRepository
-                                                                                                        .getAllFoods()
+                                                                                                viewModel.getAllFoods()
                                                                                 } catch (e: Exception) {
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement aliments: ${e.message}"
@@ -510,10 +509,7 @@ fun SettingsView(
                                                                                 selectionLoadError = null
                                                                                 try {
                                                                                         availableRecipes =
-                                                                                                viewModel
-                                                                                                        .recipeRepository
-                                                                                                        ?.getAllRecipesAsRecette()
-                                                                                                        ?: emptyList()
+                                                                                                viewModel.getAllRecipesAsRecette()
                                                                                 } catch (e: Exception) {
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement recettes: ${e.message}"
@@ -536,10 +532,7 @@ fun SettingsView(
                                                                                 selectionLoadError = null
                                                                                 try {
                                                                                         availableEquations =
-                                                                                                viewModel
-                                                                                                        .equationRepository
-                                                                                                        ?.getAllEquations()
-                                                                                                        ?: emptyList()
+                                                                                                viewModel.getAllEquations()
                                                                                 } catch (e: Exception) {
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement equations: ${e.message}"
@@ -562,10 +555,7 @@ fun SettingsView(
                                                                                 selectionLoadError = null
                                                                                 try {
                                                                                         availableReferences =
-                                                                                                viewModel
-                                                                                                        .referenceEvRepository
-                                                                                                        ?.getAllReferenceEv()
-                                                                                                        ?: emptyList()
+                                                                                                viewModel.getAllReferenceEv()
                                                                                 } catch (e: Exception) {
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement references: ${e.message}"
@@ -588,11 +578,7 @@ fun SettingsView(
                                                                                 selectionLoadError = null
                                                                                 try {
                                                                                         availableConseils =
-                                                                                                viewModel
-                                                                                                        .conseilRepository
-                                                                                                        ?.getConseilsActifs()
-                                                                                                        ?.getOrThrow()
-                                                                                                        ?: emptyList()
+                                                                                                viewModel.getConseilsActifs()
                                                                                 } catch (e: Exception) {
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement conseils: ${e.message}"
@@ -2069,33 +2055,6 @@ fun SettingsView(
                                                         onClick = {
                                                                 coroutineScope.launch {
                                                                         try {
-                                                                                val exportRepo =
-                                                                                        ExportImportRepository(
-                                                                                                animalRepository =
-                                                                                                        viewModel
-                                                                                                                .animalRepository,
-                                                                                                foodRepository =
-                                                                                                        viewModel
-                                                                                                                .foodRepository,
-                                                                                                equationRepository =
-                                                                                                        viewModel
-                                                                                                                .equationRepository,
-                                                                                                referenceRepository =
-                                                                                                        viewModel
-                                                                                                                .referenceEvRepository,
-                                                                                                biblioRepository =
-                                                                                                        viewModel
-                                                                                                                .biblioRefRepository,
-                                                                                                consultationRepository =
-                                                                                                        viewModel
-                                                                                                                .consultationRepository,
-                                                                                                recipeRepository =
-                                                                                                        viewModel
-                                                                                                                .recipeRepository,
-                                                                                                conseilRepository =
-                                                                                                        viewModel
-                                                                                                                .conseilRepository
-                                                                                        )
                                                                                 val exportOptions =
                                                                                         ExportImportRepository
                                                                                                 .ExportSelectionOptions(
@@ -2172,10 +2131,7 @@ fun SettingsView(
                                                                                                 AppDispatchers.IO
                                                                                         ) {
                                                                                                 val envelope =
-                                                                                                        exportRepo
-                                                                                                                .exportWithSelectionEnvelope(
-                                                                                                                        effectiveOptions
-                                                                                                                )
+                                                                                                        viewModel.exportApiEnvelope(effectiveOptions)
                                                                                                 fr.vetbrain
                                                                                                         .vetnutri_mp
                                                                                                         .exportApiEnvelopeToFile(
@@ -2568,17 +2524,11 @@ fun SettingsView(
                                         }
                                 }
                                 3 -> { // Excel Import/Export
-                                        val excelFoodService = remember {
-                                                viewModel.foodRepository?.let { foodRepo ->
-                                                        viewModel.biblioRefRepository?.let { biblioRepo ->
-                                                                ExcelFoodService(foodRepo, biblioRepo)
-                                                        }
-                                                }
-                                        }
+                                        val excelFoodService = remember { viewModel.createExcelFoodService() }
                                         ExcelImportExportSection(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 excelFoodService = excelFoodService,
-                                                foodRepository = viewModel.foodRepository
+                                                loadAllFoods = viewModel::getAllFoods
                                         )
                                 }
                                 4 -> { // Recettes
@@ -2592,22 +2542,9 @@ fun SettingsView(
                                                         )
                                                 }
                                         } else {
-                                                val recipeEditViewModel = remember(
-                                                        viewModel.recipeRepository,
-                                                        viewModel.foodRepository
-                                                ) {
-                                                        RecipeEditViewModel(
-                                                                recipeRepository =
-                                                                        viewModel.recipeRepository
-                                                                                ?: throw IllegalStateException(
-                                                                                        "RecipeRepository not available"
-                                                                                ),
-                                                                foodRepository =
-                                                                        viewModel.foodRepository
-                                                                                ?: throw IllegalStateException(
-                                                                                        "FoodRepository not available"
-                                                                                )
-                                                        )
+                                                val recipeEditViewModel = remember {
+                                                        viewModel.createRecipeEditViewModel()
+                                                                ?: throw IllegalStateException("RecipeRepository not available")
                                                 }
                                                 DisposableEffect(recipeEditViewModel) {
                                                         onDispose { recipeEditViewModel.clear() }
@@ -2684,41 +2621,21 @@ enum class SettingsSection(val title: String) {
 /** Composant pour la section des préférences */
 @Composable
 private fun PreferencesSection(
+        preferencesViewModel: PreferencesViewModel,
         modifier: Modifier = Modifier,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {}
 ) {
-        // Créer l'instance PreferencesStorage pour Desktop
-        val preferencesStorage = remember {
-                try {
-                        // Utiliser la fonction helper createPreferencesStorage
-                        fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage()
-                } catch (e: Exception) {
-                        null
-                }
-        }
-
-        if (preferencesStorage != null) {
-                // Créer le repository des préférences
-                val preferencesRepository = remember {
-                        fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository(preferencesStorage)
-                }
-
-                // Utiliser le vrai système de persistance
-                PreferencesContentWithPersistence(
-                        preferencesRepository = preferencesRepository,
-                        modifier = modifier,
-                        onSpeciesClick = onSpeciesClick
-                )
-        } else {
-                // Fallback temporaire si PreferencesStorage n'est pas disponible
-                PreferencesContentSimplified(modifier = modifier)
-        }
+        PreferencesContentWithPersistence(
+                preferencesViewModel = preferencesViewModel,
+                modifier = modifier,
+                onSpeciesClick = onSpeciesClick
+        )
 }
 
 /** Contenu des préférences avec persistance réelle */
 @Composable
 private fun PreferencesContentWithPersistence(
-        preferencesRepository: fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository,
+        preferencesViewModel: PreferencesViewModel,
         modifier: Modifier = Modifier,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {}
 ) {
@@ -2734,8 +2651,7 @@ private fun PreferencesContentWithPersistence(
         LaunchedEffect(Unit) {
                 try {
                         isLoading = true
-                        preferencesRepository.loadPreferences()
-                        currentPreferences = preferencesRepository.preferences
+                        currentPreferences = preferencesViewModel.loadPreferences()
                         preferencesLoaded = true
                 } catch (e: Exception) {
                         // Utiliser des préférences par défaut
@@ -2866,8 +2782,7 @@ private fun PreferencesContentWithPersistence(
                                                                                                                 email =
                                                                                                                         email
                                                                                                         )
-                                                                                        preferencesRepository
-                                                                                                .savePreferences(
+                                                                                        preferencesViewModel.savePreferences(
                                                                                                         updated
                                                                                                 )
                                                                                         currentPreferences =
@@ -2924,7 +2839,7 @@ private fun PreferencesContentWithPersistence(
                                 ) { espece ->
                                         SpeciesPreferenceCardWithPersistence(
                                                 species = espece,
-                                                preferencesRepository = preferencesRepository,
+                                                preferencesViewModel = preferencesViewModel,
                                                 currentPreferences = currentPreferences!!,
                                                 onPreferencesChanged = { newPreferences ->
                                                         currentPreferences = newPreferences
@@ -2972,7 +2887,7 @@ private fun PreferencesContentWithPersistence(
 @Composable
 private fun SpeciesPreferenceCardWithPersistence(
         species: fr.vetbrain.vetnutri_mp.Enumer.Espece,
-        preferencesRepository: fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository,
+        preferencesViewModel: PreferencesViewModel,
         currentPreferences: fr.vetbrain.vetnutri_mp.Data.PreferencesApplication,
         onPreferencesChanged: (fr.vetbrain.vetnutri_mp.Data.PreferencesApplication) -> Unit,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit
@@ -3074,8 +2989,7 @@ private fun SpeciesPreferenceCardWithPersistence(
                                                                                                                         )
 
                                                                                                         // Sauvegarder dans PreferencesStorage
-                                                                                                        preferencesRepository
-                                                                                                                .savePreferences(
+                                                                                                        preferencesViewModel.savePreferences(
                                                                                                                         updatedPrefs
                                                                                                                 )
 

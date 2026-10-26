@@ -1,7 +1,5 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.CaseEquilibre
@@ -34,7 +32,7 @@ import fr.vetbrain.vetnutri_mp.Repository.MultiRationExplorationRepository
 import fr.vetbrain.vetnutri_mp.Utils.instantNow
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
-import fr.vetbrain.vetnutri_mp.View.AnalNut.adjustmentNeedMultiplier
+import fr.vetbrain.vetnutri_mp.Data.adjustmentNeedMultiplier
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,7 +52,7 @@ class MultiRationViewModel(
         private val referenceEvRepository: DatabaseReferenceEvRepository,
         val equationRepository: EquationRepository,
         private val explorationRepository: MultiRationExplorationRepository
-) : ViewModel() {
+) : BaseViewModel() {
 
     data class Progression(val faits: Int, val total: Int)
 

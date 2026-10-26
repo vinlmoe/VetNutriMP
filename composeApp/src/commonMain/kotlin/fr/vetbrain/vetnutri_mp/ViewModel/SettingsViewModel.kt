@@ -30,20 +30,22 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 
 /** ViewModel pour la gestion des paramètres de l'application */
 class SettingsViewModel(
-        internal val animalRepository: AnimalRepository,
-        internal val foodRepository: DatabaseFoodRepository,
-        internal val recipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository? = null,
-        internal val referenceEvRepository:
+        private val animalRepository: AnimalRepository,
+        private val foodRepository: DatabaseFoodRepository,
+        private val recipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository? = null,
+        private val referenceEvRepository:
                 fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository? =
                 null,
-        internal val equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? =
+        private val equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? =
                 null,
-        internal val biblioRefRepository: fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository? =
+        private val biblioRefRepository: fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository? =
                 null,
-        internal val consultationRepository:
+        private val consultationRepository:
                 fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository? =
                 null,
-        internal val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null
+        private val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null,
+        /** Repository d'export/import partagé (AppContainer, avec transaction Room) ; construit à la volée sinon. */
+        private val exportImportRepository: fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository? = null
 ) : ViewModel() {
     // Instance statique de Json pour éviter la création redondante
     private val json = Json { ignoreUnknownKeys = true }
@@ -230,6 +232,58 @@ class SettingsViewModel(
     fun finishApiImport() {
         _isApiImporting.value = false
     }
+
+    // ---- Accès indirects pour les vues et le code de plateforme (plus d'accès aux repositories) ----
+
+    private fun exportImportRepositoryOrBuild(): fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository =
+            exportImportRepository
+                    ?: fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
+                            animalRepository = animalRepository,
+                            foodRepository = foodRepository,
+                            equationRepository = equationRepository,
+                            referenceRepository = referenceEvRepository,
+                            biblioRepository = biblioRefRepository,
+                            consultationRepository = consultationRepository,
+                            recipeRepository = recipeRepository,
+                            conseilRepository = conseilRepository
+                    )
+
+    /**
+     * Importe un contenu JSON au format API (enveloppe) ; la progression et le journal sont
+     * poussés dans `apiImportProgress` / `apiImportLogs`. L'appelant gère start/finishApiImport.
+     */
+    suspend fun importApiJson(content: String): fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ImportCounts =
+            withContext(AppDispatchers.IO) {
+                exportImportRepositoryOrBuild().importAll(
+                        apiJson = content,
+                        listener =
+                                fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ImportProgressListener(
+                                        onProgress = ::updateApiImportProgress,
+                                        onLog = ::appendApiImportLog
+                                )
+                )
+            }
+
+    /** Enveloppe API d'export selon une sélection (écran Paramètres → export). */
+    suspend fun exportApiEnvelope(
+            options: fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ExportSelectionOptions
+    ) = withContext(AppDispatchers.IO) { exportImportRepositoryOrBuild().exportWithSelectionEnvelope(options) }
+
+    suspend fun getAllAnimals() = animalRepository.getAllAnimals()
+    suspend fun getAllFoods() = foodRepository.getAllFoods()
+    suspend fun getAllRecipesAsRecette() = recipeRepository?.getAllRecipesAsRecette() ?: emptyList()
+    suspend fun getAllEquations() = equationRepository?.getAllEquations() ?: emptyList()
+    suspend fun getAllReferenceEv() = referenceEvRepository?.getAllReferenceEv() ?: emptyList()
+    suspend fun getConseilsActifs() = conseilRepository?.getConseilsActifs()?.getOrThrow() ?: emptyList()
+    suspend fun getConseilsCount(): Int = conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+
+    /** Service Excel des aliments (null si la bibliographie n'est pas disponible). */
+    fun createExcelFoodService(): fr.vetbrain.vetnutri_mp.Service.ExcelFoodService? =
+            biblioRefRepository?.let { fr.vetbrain.vetnutri_mp.Service.ExcelFoodService(foodRepository, it) }
+
+    /** ViewModel d'édition des recettes (null si le RecipeRepository n'est pas disponible). */
+    fun createRecipeEditViewModel(): RecipeEditViewModel? =
+            recipeRepository?.let { RecipeEditViewModel(recipeRepository = it, foodRepository = foodRepository) }
 
     /**
      * Importe les aliments à partir d'un contenu JSON.
