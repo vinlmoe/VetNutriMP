@@ -167,6 +167,21 @@ poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existan
 
 ---
 
+## Skills du projet (`.claude/skills/`)
+
+| Skill | Quand |
+|-------|-------|
+| `migration-room` | Modifier une entité, une table, une colonne ; monter la version du schéma |
+| `ajouter-ecran` | Nouvelle destination de navigation, ViewModel d'écran, option d'administration |
+| `ajouter-repository` | Nouveau DAO / Repository, câblage dans `AppContainer` |
+| `ajouter-nutriment` | Nouvelle entrée d'enum de nutriment, alias d'import, rapport calculé |
+| `traduire-interface` | Textes traduits, clés `LocalizationKeys`, fichiers `strings_*.json` |
+| `donnees-initiales` | Aliments et référentiels livrés dans `vetnutri_export_init.json` |
+| `parite-vetnutridogr` | Calculs ou enums Kotlin repris par le module R `vetnutriDogR` |
+| `verifier-changement` | Tests et compilation à lancer avant commit, attentes de la CI |
+
+---
+
 ## Commandes de build
 
 ```bash
