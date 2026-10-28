@@ -159,6 +159,11 @@ appel réseau. `Export/CompteRenduIa.kt` construit un prompt (consignes + JSON d
 colle dans son IA, puis `lireReponse` relit le JSON collé (`anamnese`, `examenClinique`,
 `facteurNutritionnelClef`, `texteAdditionnel`) qui remplace les textes du compte rendu.
 Point d'entrée ViewModel : `AnimalDetailViewModel.construirePromptCompteRenduIa`.
+Livre de cours : `scripts/livre_cours_vers_vetnutri.py <dossier du livre LaTeX>` convertit chaque `\section` en
+section de catégorie `LIVRE_COURS` (import JSON des conseils ; hors liste des conseils de l'ordonnance, qui ne
+prend que les catégories `CONSEIL*`). L'Assistant IA les propose à joindre au prompt (`extraitsLivreCours`),
+présélection `CompteRenduIa.suggererExtraits` (sections « accompagnement » / « facteurs clefs » des chapitres
+dont le titre partage une racine avec les référentiels maladies ou l'objet de la consultation).
 
 ### Threads
 - `AppDispatchers.IO` → opérations DB et réseau

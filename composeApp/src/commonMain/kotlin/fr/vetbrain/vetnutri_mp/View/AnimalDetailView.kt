@@ -1094,6 +1094,10 @@ private fun WideScreenLayout(
         var selectedConseils by remember {
                 mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
         }
+        // Extraits du livre de cours (catégorie LIVRE_COURS) proposés dans l'Assistant IA
+        var extraitsLivre by remember {
+                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
+        }
         var isLoadingConseils by remember { mutableStateOf(true) }
         var showSearchDialog by remember { mutableStateOf(false) }
         var pendingCopyText by remember { mutableStateOf<String?>(null) }
@@ -1200,6 +1204,12 @@ private fun WideScreenLayout(
                         if (result.isSuccess) {
                                 availableConseils = result.getOrThrow()
                         }
+                        extraitsLivre =
+                                conseilRepository
+                                        .getConseilsByCategory(fr.vetbrain.vetnutri_mp.Export.SectionCategory.LIVRE_COURS)
+                                        .getOrNull()
+                                        .orEmpty()
+                                        .filter { it.isActive }
                 } catch (e: Exception) {
                         e.printStackTrace()
                 } finally {
@@ -1940,7 +1950,9 @@ private fun WideScreenLayout(
                                                                 additionalText = it
                                                                 schedulePrescriptionSave()
                                                         },
-                                                        construirePromptIa = {
+                                                        extraitsLivre = extraitsLivre,
+                                                        suggererExtraitsLivre = { viewModel.suggererExtraitsLivre(selectedConsultation, extraitsLivre) },
+                                                        construirePromptIa = { extraitsChoisis ->
                                                                 viewModel.construirePromptCompteRenduIa(
                                                                         animal = animalDetails,
                                                                         consultation = selectedConsultation,
@@ -1949,7 +1961,8 @@ private fun WideScreenLayout(
                                                                         facteurNutritionnelClef = facteurNutritionnelClefText,
                                                                         texteAdditionnel = additionalText,
                                                                         conseils = (selectedConseils + localHtmlSections).map { it.title },
-                                                                        nomAliment = ::formatAlimentDisplayName
+                                                                        nomAliment = ::formatAlimentDisplayName,
+                                                                        extraitsLivre = extraitsChoisis
                                                                 )
                                                         },
                                                         onAppliquerReponseIa = { reponse ->
@@ -2187,6 +2200,10 @@ private fun NarrowScreenLayout(
         var selectedConseils by remember {
                 mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
         }
+        // Extraits du livre de cours (catégorie LIVRE_COURS) proposés dans l'Assistant IA
+        var extraitsLivre by remember {
+                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
+        }
         var isLoadingConseils by remember { mutableStateOf(true) }
         var showSearchDialog by remember { mutableStateOf(false) }
         var pendingCopyText by remember { mutableStateOf<String?>(null) }
@@ -2293,6 +2310,12 @@ private fun NarrowScreenLayout(
                         if (result.isSuccess) {
                                 availableConseils = result.getOrThrow()
                         }
+                        extraitsLivre =
+                                conseilRepository
+                                        .getConseilsByCategory(fr.vetbrain.vetnutri_mp.Export.SectionCategory.LIVRE_COURS)
+                                        .getOrNull()
+                                        .orEmpty()
+                                        .filter { it.isActive }
                 } catch (e: Exception) {
                         e.printStackTrace()
                 } finally {
@@ -3173,7 +3196,9 @@ private fun NarrowScreenLayout(
                                                                                 additionalText = it
                                                                                 schedulePrescriptionSave()
                                                                         },
-                                                                        construirePromptIa = {
+                                                                        extraitsLivre = extraitsLivre,
+                                                                        suggererExtraitsLivre = { viewModel.suggererExtraitsLivre(selectedConsultation, extraitsLivre) },
+                                                                        construirePromptIa = { extraitsChoisis ->
                                                                                 viewModel.construirePromptCompteRenduIa(
                                                                                         animal = animalDetails,
                                                                                         consultation = selectedConsultation,
@@ -3182,7 +3207,8 @@ private fun NarrowScreenLayout(
                                                                                         facteurNutritionnelClef = facteurNutritionnelClefText,
                                                                                         texteAdditionnel = additionalText,
                                                                                         conseils = (selectedConseils + localHtmlSections).map { it.title },
-                                                                                        nomAliment = ::formatAlimentDisplayName
+                                                                                        nomAliment = ::formatAlimentDisplayName,
+                                                                                        extraitsLivre = extraitsChoisis
                                                                                 )
                                                                         },
                                                                         onAppliquerReponseIa = { reponse ->

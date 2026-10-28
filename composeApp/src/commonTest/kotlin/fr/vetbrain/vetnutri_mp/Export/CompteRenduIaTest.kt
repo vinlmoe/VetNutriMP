@@ -97,4 +97,53 @@ class CompteRenduIaTest {
         assertNull(CompteRenduIa.lireReponse("{ pas du json }"))
         assertNull(CompteRenduIa.lireReponse("{\"autre\": \"x\"}"))
     }
+
+    private fun extrait(id: String, titre: String, vararg blocs: TextBlock) =
+            HtmlSection(id = id, title = titre, content = RichTextContent(blocs.toList()), category = SectionCategory.LIVRE_COURS)
+
+    private val livre =
+            listOf(
+                    extrait("obe-intro", "Surpoids, obésité et arthrose — Introduction"),
+                    extrait("obe-acc", "Surpoids, obésité et arthrose — Accompagnement nutritionnel"),
+                    extrait("mrc-acc", "La maladie rénale chronique — Éléments clefs de l’accompagnement nutritionnel"),
+                    extrait("coeur-fc", "Les affections cardiovasculaires — Facteurs clefs")
+            )
+
+    @Test
+    fun suggererExtraitsSelonReferentielsEtObjet() {
+        assertEquals(setOf("obe-acc"), CompteRenduIa.suggererExtraits(livre, listOf("Obèse chien")))
+        assertEquals(
+                setOf("mrc-acc", "coeur-fc"),
+                CompteRenduIa.suggererExtraits(livre, listOf("Maladie rénale chronique stade 2", "Cardiopathie"))
+        )
+        assertEquals(emptySet<String>(), CompteRenduIa.suggererExtraits(livre, listOf("Maladie du chat")))
+    }
+
+    @Test
+    fun extraitsJointsAuPromptEnTexteBrut() {
+        val section =
+                extrait(
+                        "obe-acc", "Surpoids, obésité et arthrose — Accompagnement nutritionnel",
+                        TextBlock.Heading("h1", 2, "Protéines"),
+                        TextBlock.Paragraph("p1", "Assurer le besoin d'entretien."),
+                        TextBlock.ListBlock("l1", listOf("EPA", "DHA")),
+                        TextBlock.TableBlock("t1", listOf("Nutriment", "Min"), listOf(listOf("Protéines", "20")))
+                )
+
+        assertEquals(
+                "PROTÉINES\n\nAssurer le besoin d'entretien.\n\n- EPA\n- DHA\n\nNutriment | Min\nProtéines | 20",
+                CompteRenduIa.texteBrut(section)
+        )
+        val prompt =
+                CompteRenduIa.construirePrompt(
+                        DonneesPromptIa(
+                                animal = animal, consultation = null, referentielGeneral = null,
+                                referentielsMaladies = emptyList(), anamnese = "", examenClinique = "",
+                                facteurNutritionnelClef = "", texteAdditionnel = "", conseils = emptyList(),
+                                nomAliment = { "" }, extraitsLivre = listOf(section)
+                        )
+                )
+        assertTrue(prompt.contains("\"extraitsLivreCours\""))
+        assertTrue(prompt.contains("\"source\": \"Surpoids, obésité et arthrose — Accompagnement nutritionnel\""))
+    }
 }

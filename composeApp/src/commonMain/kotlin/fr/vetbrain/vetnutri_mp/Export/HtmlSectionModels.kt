@@ -42,7 +42,9 @@ enum class SectionCategory {
         CONSEIL_REPRODUCTION,
         CONSEIL_ALIMENTATION,
         CONSEIL_ACTIVITE,
-        CONSEIL_PREVENTION
+        CONSEIL_PREVENTION,
+        // Extraits du livre de cours (hors conseils de l'ordonnance), joints au prompt de l'Assistant IA
+        LIVRE_COURS
 }
 
 /** Contenu de texte enrichi avec support du formatage */

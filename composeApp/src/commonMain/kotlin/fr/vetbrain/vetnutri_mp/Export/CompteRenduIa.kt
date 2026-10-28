@@ -42,7 +42,9 @@ data class DonneesPromptIa(
         val facteurNutritionnelClef: String,
         val texteAdditionnel: String,
         val conseils: List<String>,
-        val nomAliment: (AlimentEv?) -> String
+        val nomAliment: (AlimentEv?) -> String,
+        /** Extraits du livre de cours (catégorie LIVRE_COURS) joints au prompt. */
+        val extraitsLivre: List<HtmlSection> = emptyList()
 )
 
 /**
@@ -66,7 +68,8 @@ object CompteRenduIa {
             - Rédige en français, dans le style d'un compte rendu vétérinaire adressé à un confrère, en phrases complètes.
             - N'invente aucune valeur (poids, quantités, apports, besoins) absente des données ; si une information utile manque, signale-la.
             - $ANIMAL, $PROPRIETAIRE et $COORDONNEES remplacent des données masquées : garde-les tels quels.
-            - Si des documents de référence (livre de cours, recommandations) sont joints à cette conversation, appuie-toi dessus en priorité et cite le chapitre ou la page utilisés.
+            - Les extraits du livre de cours de l'auteur (« extraitsLivreCours ») font référence : appuie-toi dessus en priorité, sans les contredire, et cite la section utilisée.
+            - Si d'autres documents de référence sont joints à cette conversation, utilise-les aussi et cite le chapitre ou la page.
             - Les textes déjà saisis par le vétérinaire (« textesSaisis ») sont à reprendre et à compléter, pas à contredire.
             - Réponds uniquement par un objet JSON valide, sans texte avant ni après, de la forme :
             {
@@ -141,7 +144,63 @@ object CompteRenduIa {
                 putSiPresent("facteurNutritionnelClef", anonyme(d.facteurNutritionnelClef))
                 putSiPresent("texteAdditionnel", anonyme(d.texteAdditionnel))
             }
+            if (d.extraitsLivre.isNotEmpty()) {
+                putJsonArray("extraitsLivreCours") {
+                    d.extraitsLivre.forEach { extrait ->
+                        addJsonObject {
+                            put("source", extrait.title)
+                            put("texte", texteBrut(extrait))
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    /** Contenu d'une section en texte brut : titres, paragraphes, listes à tirets, tableaux « a | b ». */
+    fun texteBrut(section: HtmlSection): String =
+            section.content.blocks.joinToString("\n\n") { bloc ->
+                when (bloc) {
+                    is TextBlock.Paragraph -> bloc.text
+                    is TextBlock.Heading -> bloc.text.uppercase()
+                    is TextBlock.ListBlock -> bloc.items.joinToString("\n") { "- $it" }
+                    is TextBlock.TableBlock ->
+                            (listOf(bloc.headers) + bloc.rows).filter { it.isNotEmpty() }.joinToString("\n") { it.joinToString(" | ") }
+                    is TextBlock.RawHtml -> bloc.html
+                }
+            }
+
+    private val MOTS_VIDES = setOf("chien", "chiens", "chat", "chats", "maladie", "maladies", "affection", "affections", "chronique", "suivi", "stade")
+
+    private fun racines(texte: String): Set<String> =
+            texte.lowercase()
+                    .map { c -> SANS_ACCENT[c] ?: c }
+                    .joinToString("")
+                    .split(Regex("[^a-z0-9]+"))
+                    .filter { it.length >= 5 && it !in MOTS_VIDES }
+                    .map { it.take(4) }
+                    .toSet()
+
+    private val SANS_ACCENT: Map<Char, Char> =
+            "àâäáãéèêëíìîïóòôöõúùûüçñ".zip("aaaaaeeeeiiiiooooouuuucn").toMap()
+
+    /**
+     * Extraits suggérés pour la consultation : sections « accompagnement » ou « facteurs clefs » des
+     * chapitres dont le titre partage une racine (4 premières lettres d'un mot de 5 lettres ou plus,
+     * sans accent) avec un mot-clé (référentiels maladies, objet de la consultation).
+     */
+    fun suggererExtraits(extraits: List<HtmlSection>, motsCles: List<String>): Set<String> {
+        val cles = motsCles.flatMap { racines(it) }.toSet()
+        if (cles.isEmpty()) return emptySet()
+        return extraits
+                .filter { extrait ->
+                    val chapitre = extrait.title.substringBefore(" — ")
+                    val section = extrait.title.substringAfter(" — ", "").lowercase()
+                    (section.contains("accompagnement") || section.contains("facteurs clefs")) &&
+                            racines(chapitre).any { it in cles }
+                }
+                .map { it.id }
+                .toSet()
     }
 
     private fun ration(ration: Ration, d: DonneesPromptIa): JsonObject = buildJsonObject {

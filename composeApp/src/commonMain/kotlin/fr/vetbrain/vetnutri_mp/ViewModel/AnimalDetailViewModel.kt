@@ -20,6 +20,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.RationAnalysisScope
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 import fr.vetbrain.vetnutri_mp.Export.CompteRenduIa
 import fr.vetbrain.vetnutri_mp.Export.DonneesPromptIa
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -871,7 +872,8 @@ class AnimalDetailViewModel(
             facteurNutritionnelClef: String,
             texteAdditionnel: String,
             conseils: List<String>,
-            nomAliment: (AlimentEv?) -> String
+            nomAliment: (AlimentEv?) -> String,
+            extraitsLivre: List<HtmlSection>
     ): String {
         val references = _availableReferences.value
         fun reference(id: String): ReferenceEv? = references.firstOrNull { it.uuid == id }
@@ -889,9 +891,23 @@ class AnimalDetailViewModel(
                         facteurNutritionnelClef = facteurNutritionnelClef,
                         texteAdditionnel = texteAdditionnel,
                         conseils = conseils,
-                        nomAliment = nomAliment
+                        nomAliment = nomAliment,
+                        extraitsLivre = extraitsLivre
                 )
         )
+    }
+
+    /**
+     * Extraits du livre de cours présélectionnés dans l'Assistant IA, d'après les référentiels
+     * maladies et l'objet de la consultation.
+     */
+    fun suggererExtraitsLivre(consultation: ConsultationEv?, extraitsLivre: List<HtmlSection>): Set<String> {
+        val references = _availableReferences.value
+        val motsCles =
+                consultation?.referencesMaladies.orEmpty().mapNotNull { id ->
+                    references.firstOrNull { it.uuid == id }?.let { "${it.nomMaladie} ${it.nom}" }
+                } + listOfNotNull(consultation?.objectConsult)
+        return CompteRenduIa.suggererExtraits(extraitsLivre, motsCles)
     }
 
     /**

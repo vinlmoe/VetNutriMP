@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,9 +10,11 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -18,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import fr.vetbrain.vetnutri_mp.Export.CompteRenduIa
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import fr.vetbrain.vetnutri_mp.Export.ReponseIaCompteRendu
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
@@ -29,16 +34,21 @@ private val FormeChamp = RoundedCornerShape(8.dp)
 
 /**
  * Rédaction du compte rendu avec une IA externe, sans appel réseau : 1) copier le prompt
- * anonymisé, 2) coller la réponse JSON de l'IA, appliquée aux textes du compte rendu.
+ * anonymisé, avec les extraits du livre de cours choisis, 2) coller la réponse JSON de l'IA,
+ * appliquée aux textes du compte rendu.
  */
 @Composable
 fun AssistantIaCompteRenduDialog(
-        prompt: String,
+        extraitsLivre: List<HtmlSection>,
+        extraitsSuggeres: Set<String>,
+        construirePrompt: (List<HtmlSection>) -> String,
         onAppliquer: (ReponseIaCompteRendu) -> Unit,
         onDismiss: () -> Unit
 ) {
     val presse = LocalClipboardManager.current
-    var promptCopie by remember { mutableStateOf(false) }
+    var selection by remember { mutableStateOf(extraitsSuggeres) }
+    val prompt = remember(selection) { construirePrompt(extraitsLivre.filter { it.id in selection }) }
+    var promptCopie by remember(selection) { mutableStateOf(false) }
     var reponse by remember { mutableStateOf("") }
     var reponseInvalide by remember { mutableStateOf(false) }
 
@@ -63,6 +73,10 @@ fun AssistantIaCompteRenduDialog(
                     }
                 }
 
+                if (extraitsLivre.isNotEmpty()) {
+                    ChoixExtraitsLivre(extraitsLivre, selection) { selection = it }
+                }
+
                 Text(translate(AnimalDetail.AI_ASSISTANT_STEP_PROMPT), style = MaterialTheme.typography.body2)
                 OutlinedTextField(
                         value = prompt,
@@ -85,14 +99,13 @@ fun AssistantIaCompteRenduDialog(
                         Spacer(Modifier.width(6.dp))
                         Text(translate(AnimalDetail.AI_ASSISTANT_COPY_PROMPT))
                     }
-                    if (promptCopie) {
-                        Spacer(Modifier.width(AppSizes.paddingSmall))
-                        Text(
-                                translate(AnimalDetail.AI_ASSISTANT_PROMPT_COPIED),
-                                style = MaterialTheme.typography.caption,
-                                color = VetNutriColors.Primary
-                        )
-                    }
+                    Spacer(Modifier.width(AppSizes.paddingSmall))
+                    Text(
+                            if (promptCopie) translate(AnimalDetail.AI_ASSISTANT_PROMPT_COPIED)
+                            else translate(AnimalDetail.AI_ASSISTANT_PROMPT_SIZE, prompt.length.toString()),
+                            style = MaterialTheme.typography.caption,
+                            color = if (promptCopie) VetNutriColors.Primary else MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    )
                 }
 
                 Spacer(Modifier.height(AppSizes.paddingSmall))
@@ -147,6 +160,64 @@ fun AssistantIaCompteRenduDialog(
                                     )
                     ) { Text(translate(AnimalDetail.AI_ASSISTANT_APPLY)) }
                 }
+            }
+        }
+    }
+}
+
+/** Extraits du livre de cours à joindre au prompt : recherche et cases à cocher, cochés en tête. */
+@Composable
+private fun ChoixExtraitsLivre(
+        extraits: List<HtmlSection>,
+        selection: Set<String>,
+        onSelectionChange: (Set<String>) -> Unit
+) {
+    var recherche by remember { mutableStateOf("") }
+    val affiches =
+            extraits.filter { recherche.isBlank() || it.title.contains(recherche, ignoreCase = true) }
+                    .sortedByDescending { it.id in selection }
+
+    Text(
+            translate(AnimalDetail.AI_ASSISTANT_BOOK_TITLE, selection.size.toString()),
+            style = MaterialTheme.typography.subtitle2,
+            fontWeight = FontWeight.SemiBold
+    )
+    Text(
+            translate(AnimalDetail.AI_ASSISTANT_BOOK_HINT),
+            style = MaterialTheme.typography.caption,
+            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+    )
+    OutlinedTextField(
+            value = recherche,
+            onValueChange = { recherche = it },
+            placeholder = { Text(translate(AnimalDetail.AI_ASSISTANT_BOOK_SEARCH)) },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            singleLine = true,
+            shape = FormeChamp,
+            modifier = Modifier.fillMaxWidth()
+    )
+    Column(
+            modifier =
+                    Modifier.fillMaxWidth()
+                            .heightIn(max = 200.dp)
+                            .border(1.dp, Color.Gray.copy(alpha = 0.2f), FormeChamp)
+                            .verticalScroll(rememberScrollState())
+    ) {
+        affiches.forEach { extrait ->
+            val coche = extrait.id in selection
+            Row(
+                    modifier =
+                            Modifier.fillMaxWidth()
+                                    .clickable { onSelectionChange(if (coche) selection - extrait.id else selection + extrait.id) }
+                                    .padding(end = AppSizes.paddingSmall),
+                    verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                        checked = coche,
+                        onCheckedChange = { onSelectionChange(if (it) selection + extrait.id else selection - extrait.id) },
+                        colors = CheckboxDefaults.colors(checkedColor = VetNutriColors.Primary)
+                )
+                Text(extrait.title, style = MaterialTheme.typography.body2)
             }
         }
     }

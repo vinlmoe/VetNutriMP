@@ -77,7 +77,9 @@ fun PrescriptionPreparationPanel(
         onFacteurNutritionnelClefChange: (String) -> Unit,
         additionalText: String,
         onAdditionalTextChange: (String) -> Unit,
-        construirePromptIa: () -> String,
+        extraitsLivre: List<HtmlSection>,
+        suggererExtraitsLivre: () -> Set<String>,
+        construirePromptIa: (List<HtmlSection>) -> String,
         onAppliquerReponseIa: (ReponseIaCompteRendu) -> Unit,
         onCopyCompteRendu: () -> Unit,
         onPreviewCompteRendu: () -> Unit,
@@ -88,7 +90,7 @@ fun PrescriptionPreparationPanel(
         consultation?.let { PlanEvolutif.rationsPrincipales(it).sortedForDisplay() } ?: emptyList()
     }
     val nbRationsSelectionnees = rations.count { it.uuid in selectedRationIds }
-    var promptIa by remember { mutableStateOf<String?>(null) }
+    var extraitsSuggeres by remember { mutableStateOf<Set<String>?>(null) }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val large = maxWidth >= 900.dp
@@ -109,7 +111,7 @@ fun PrescriptionPreparationPanel(
             }
             val carteCompteRendu: @Composable ColumnScope.() -> Unit = {
                 CarteCompteRendu(
-                        onOuvrirAssistantIa = if (isExamMode) null else ({ promptIa = construirePromptIa() }),
+                        onOuvrirAssistantIa = if (isExamMode) null else ({ extraitsSuggeres = suggererExtraitsLivre() }),
                         anamnese, onAnamneseChange,
                         examenClinique, onExamenCliniqueChange,
                         facteurNutritionnelClef, onFacteurNutritionnelClefChange,
@@ -153,11 +155,13 @@ fun PrescriptionPreparationPanel(
         }
     }
 
-    promptIa?.let { prompt ->
+    extraitsSuggeres?.let { suggeres ->
         AssistantIaCompteRenduDialog(
-                prompt = prompt,
+                extraitsLivre = extraitsLivre,
+                extraitsSuggeres = suggeres,
+                construirePrompt = construirePromptIa,
                 onAppliquer = onAppliquerReponseIa,
-                onDismiss = { promptIa = null }
+                onDismiss = { extraitsSuggeres = null }
         )
     }
 }
