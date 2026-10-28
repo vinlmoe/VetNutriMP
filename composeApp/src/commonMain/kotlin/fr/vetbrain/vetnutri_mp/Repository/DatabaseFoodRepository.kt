@@ -43,8 +43,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
+import fr.vetbrain.vetnutri_mp.Utils.parseDateMiseAJourOrNull
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -157,29 +156,14 @@ class DatabaseFoodRepository(
         }
     }
 
-    private fun parseDateToInstantOrNull(rawDate: String?): Instant? {
-        val date = rawDate?.trim().orEmpty()
-        if (date.isEmpty()) return null
-        return try {
-            Instant.parse(date)
-        } catch (_: Exception) {
-            val datePart = if (date.length >= 10) date.substring(0, 10) else date
-            try {
-                Instant.parse("${LocalDate.parse(datePart)}T00:00:00Z")
-            } catch (_: Exception) {
-                null
-            }
-        }
-    }
-
     private fun shouldUpdateFood(
             existing: FoodEntity,
             incomingDate: String?,
             importOnlyIfNewer: Boolean
     ): Boolean {
         if (!importOnlyIfNewer) return true
-        val incomingInstant = parseDateToInstantOrNull(incomingDate)
-        val existingInstant = parseDateToInstantOrNull(existing.lastUpdateDate)
+        val incomingInstant = parseDateMiseAJourOrNull(incomingDate)
+        val existingInstant = parseDateMiseAJourOrNull(existing.lastUpdateDate)
         if (incomingInstant == null) return false
         if (existingInstant == null) return true
         return incomingInstant > existingInstant

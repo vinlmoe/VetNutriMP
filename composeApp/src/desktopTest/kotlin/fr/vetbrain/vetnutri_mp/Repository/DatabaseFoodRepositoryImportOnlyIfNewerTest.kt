@@ -112,6 +112,35 @@ class DatabaseFoodRepositoryImportOnlyIfNewerTest {
     }
 
     @Test
+    fun importFoods_newerFrenchDate_withImportOnlyIfNewer_appliesUpdate() = runTest {
+        // Date jj/mm/aaaa (données initiales, Excel) comparée à une date ISO déjà en base
+        seedExistingFood("food-1", "Ancien nom", "2024-06-01")
+
+        val result = repository.importFoods(
+            listOf(incomingFood("food-1", "Nom mis à jour", "02/01/2025")),
+            mergeNutrients = false,
+            importOnlyIfNewer = true
+        )
+
+        assertEquals(1, result.updatedCount)
+        assertEquals("Nom mis à jour", db.foodDao().getFoodById("food-1")?.nameDef)
+    }
+
+    @Test
+    fun importFoods_olderFrenchDate_withImportOnlyIfNewer_doesNotOverwrite() = runTest {
+        seedExistingFood("food-1", "Nom modifié localement", "2025-02-01")
+
+        val result = repository.importFoods(
+            listOf(incomingFood("food-1", "Nom obsolète", "31/01/2025")),
+            mergeNutrients = false,
+            importOnlyIfNewer = true
+        )
+
+        assertEquals(0, result.updatedCount)
+        assertEquals("Nom modifié localement", db.foodDao().getFoodById("food-1")?.nameDef)
+    }
+
+    @Test
     fun importFoods_incomingDataWithoutDate_withImportOnlyIfNewer_doesNotOverwrite() = runTest {
         seedExistingFood("food-1", "Ancien nom", "2024-06-01")
 
