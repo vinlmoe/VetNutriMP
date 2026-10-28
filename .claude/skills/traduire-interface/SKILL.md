@@ -18,7 +18,7 @@ Préfixe Kotlin : `composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/`.
   - `composeApp/src/commonMain/resources/strings_*.json` (desktop, iOS, tests) ;
   - `composeApp/src/androidMain/assets/strings_*.json` (Android lit `assets`, voir
     `androidMain/.../Localization/ResourceReader.kt`).
-  Elles ont déjà divergé (ex. `consultation.observation` absente côté Android) : ne pas aggraver.
+  Elles sont identiques aujourd'hui : après modification, `cmp` chaque paire pour le vérifier.
   Ignorer `strings_de copy.json`.
 
 ## Choisir : texte traduit ou français en dur ?

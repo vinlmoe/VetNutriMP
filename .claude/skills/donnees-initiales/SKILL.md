@@ -27,15 +27,16 @@ pas d'aliments. À version égale, rien n'est réimporté : un ajout sans change
 que les nouvelles installations.
 
 ⇒ Monter `version` dans les trois copies quand les données doivent partir chez les utilisateurs
-existants. Elle suit `versionName` de `composeApp/build.gradle.kts` (actuellement identiques) : à faire
-avec la montée de version de l'application, ou demander à l'utilisateur. Mettre aussi à jour
-`generatedAtEpochMs` (`date +%s000`).
+existants. Elle est indépendante de `versionName` (`composeApp/build.gradle.kts`) mais en reprend la
+base : à une sortie d'application, la mettre à `versionName` ; entre deux sorties, ajouter ou
+incrémenter un 4ᵉ nombre (`3.3.18` → `3.3.18.1` → `3.3.18.2`), qui reste inférieur à la version
+suivante (`3.3.19`). Mettre aussi à jour `generatedAtEpochMs` (`date +%s000`).
 
 ```bash
 for f in composeApp/src/commonMain/resources/data/vetnutri_export_init.json \
          composeApp/src/androidMain/assets/data/vetnutri_export_init.json \
          iosApp/iosApp/Resources/vetnutri_export_init.json; do
-  sed -i '2s/"version": "[^"]*"/"version": "3.3.19"/; 3s/"generatedAtEpochMs": [0-9]*/"generatedAtEpochMs": '"$(date +%s000)"'/' "$f"
+  sed -i '2s/"version": "[^"]*"/"version": "3.3.18.2"/; 3s/"generatedAtEpochMs": [0-9]*/"generatedAtEpochMs": '"$(date +%s000)"'/' "$f"
 done
 head -3 composeApp/src/commonMain/resources/data/vetnutri_export_init.json
 ```
@@ -83,8 +84,8 @@ Règles :
   `COMPLEMENTAIRE`, `MEN` (ingrédient ménager), `BARF`, `ALL` ; `presentation` ∈ `CAN`, `SACHET`,
   `BOUCH`, `DOSETTE`, `GEL`, `ML`, `PRESSION`, `COMP`, `NO` ; `indications` = noms des
   entrées de `Enumer/AlimIndic.kt` (`PHYS`, `PED`, `SEN`, `CROISSANCE`…). En cas de doute, copier les valeurs d'un aliment voisin du même type.
-- **`lastUpdateDate`** : `aaaa-mm-jj` (ISO). L'option d'import « seulement si plus récent » ne sait pas
-  comparer les dates `jj/mm/aaaa` (`DatabaseFoodRepository.parseDateToInstantOrNull`).
+- **`lastUpdateDate`** : `aaaa-mm-jj` (ISO), format de tout le fichier. Les dates `jj/mm/aaaa` sont
+  comprises à l'import (`Utils/DateMiseAJour.kt`) mais ne doivent pas être réintroduites ici.
 - `dataB` : source des données (`VF2026` pour la base actuelle).
 
 ## Ajouter ou mettre à jour des aliments
