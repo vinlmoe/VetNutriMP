@@ -4,9 +4,21 @@
 # « ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode » échoue (exit 65).
 set -e
 
-echo "☕ Installation du JDK 17 (Homebrew)..."
 export HOMEBREW_NO_AUTO_UPDATE=1
 export HOMEBREW_NO_INSTALL_CLEANUP=1
+
+# Les images (icônes de l'app, ressources Compose) sont dans Git LFS : Xcode Cloud
+# ne clone que les pointeurs texte, ce qui donne une app sans icône que
+# App Store Connect refuse (« Preparing build for App Store Connect failed »).
+echo "🖼️ Récupération des fichiers Git LFS..."
+brew install git-lfs
+cd "${CI_PRIMARY_REPOSITORY_PATH:-$(dirname "$0")/../..}"
+git lfs install --local
+git lfs pull
+head -c 8 iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/1024.png | grep -q PNG \
+  || { echo "❌ L'icône 1024.png n'est pas un PNG après git lfs pull"; exit 1; }
+
+echo "☕ Installation du JDK 17 (Homebrew)..."
 brew install openjdk@17
 
 JDK_HOME="$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home"
