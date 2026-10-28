@@ -20,8 +20,6 @@
 	<string>3.3.18</string>
 	<key>CFBundleVersion</key>
 	<string>318</string>
-	<key>LSApplicationCategoryType</key>
-	<string></string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
@@ -33,11 +31,9 @@
 	</dict>
 	<key>UILaunchScreen</key>
 	<dict/>
-	<key>UILaunchStoryboardName</key>
-	<string></string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleLightContent</string>
