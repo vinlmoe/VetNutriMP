@@ -18,6 +18,8 @@ import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.RationAnalysisScope
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
+import fr.vetbrain.vetnutri_mp.Export.CompteRenduIa
+import fr.vetbrain.vetnutri_mp.Export.DonneesPromptIa
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -855,6 +857,41 @@ class AnimalDetailViewModel(
                 e.printStackTrace()
             }
         }
+    }
+
+    /**
+     * Prompt anonymisé pour rédiger le compte rendu avec une IA externe (copier/coller, sans appel
+     * réseau) : référentiels nommés d'après les références chargées.
+     */
+    fun construirePromptCompteRenduIa(
+            animal: AnimalEv?,
+            consultation: ConsultationEv?,
+            anamnese: String,
+            examenClinique: String,
+            facteurNutritionnelClef: String,
+            texteAdditionnel: String,
+            conseils: List<String>,
+            nomAliment: (AlimentEv?) -> String
+    ): String {
+        val references = _availableReferences.value
+        fun reference(id: String): ReferenceEv? = references.firstOrNull { it.uuid == id }
+        return CompteRenduIa.construirePrompt(
+                DonneesPromptIa(
+                        animal = animal,
+                        consultation = consultation,
+                        referentielGeneral = consultation?.referenceGeneraleId?.let { reference(it)?.nom },
+                        referentielsMaladies =
+                                consultation?.referencesMaladies.orEmpty().mapNotNull { id ->
+                                    reference(id)?.let { it.nomMaladie.ifBlank { it.nom } }
+                                },
+                        anamnese = anamnese,
+                        examenClinique = examenClinique,
+                        facteurNutritionnelClef = facteurNutritionnelClef,
+                        texteAdditionnel = texteAdditionnel,
+                        conseils = conseils,
+                        nomAliment = nomAliment
+                )
+        )
     }
 
     /**

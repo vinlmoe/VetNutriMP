@@ -152,6 +152,14 @@ virtuelle et en lecture seule) et la consultation d'analyse `consultationAnalyse
 poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existante. Moteur pur dans
 `Data/Troupeau.kt` (`facteursRepartitionTroupeau`, `AnalyseurTroupeau`).
 
+### Compte rendu par IA externe
+Bouton « Assistant IA » de la carte compte rendu (`PrescriptionPreparationPanel`, masqué en mode examen) : aucun
+appel réseau. `Export/CompteRenduIa.kt` construit un prompt (consignes + JSON de la consultation) anonymisé
+(nom de l'animal, propriétaire, e-mails, téléphones masqués ; ni identifiant, ni vétérinaire) que l'utilisateur
+colle dans son IA, puis `lireReponse` relit le JSON collé (`anamnese`, `examenClinique`,
+`facteurNutritionnelClef`, `texteAdditionnel`) qui remplace les textes du compte rendu.
+Point d'entrée ViewModel : `AnimalDetailViewModel.construirePromptCompteRenduIa`.
+
 ### Threads
 - `AppDispatchers.IO` → opérations DB et réseau
 - `AppDispatchers.Main` → mise à jour UI (StateFlow)

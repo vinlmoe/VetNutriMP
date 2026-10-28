@@ -1940,6 +1940,30 @@ private fun WideScreenLayout(
                                                                 additionalText = it
                                                                 schedulePrescriptionSave()
                                                         },
+                                                        construirePromptIa = {
+                                                                viewModel.construirePromptCompteRenduIa(
+                                                                        animal = animalDetails,
+                                                                        consultation = selectedConsultation,
+                                                                        anamnese = anamneseText,
+                                                                        examenClinique = examenCliniqueText,
+                                                                        facteurNutritionnelClef = facteurNutritionnelClefText,
+                                                                        texteAdditionnel = additionalText,
+                                                                        conseils = (selectedConseils + localHtmlSections).map { it.title },
+                                                                        nomAliment = ::formatAlimentDisplayName
+                                                                )
+                                                        },
+                                                        onAppliquerReponseIa = { reponse ->
+                                                                reponse.anamnese?.let { anamneseText = it }
+                                                                reponse.examenClinique?.let { examenCliniqueText = it }
+                                                                reponse.facteurNutritionnelClef?.let { facteurNutritionnelClefText = it }
+                                                                reponse.texteAdditionnel?.let { additionalText = it }
+                                                                schedulePrescriptionSave()
+                                                                scope.launch {
+                                                                        snackbarHostState.showSnackbar(
+                                                                                translate(AnimalDetail.AI_ASSISTANT_APPLIED, reponse.nombreChamps.toString())
+                                                                        )
+                                                                }
+                                                        },
                                                         onCopyCompteRendu = {
                                                                 pendingCopyText = compteRenduText
                                                                 scope.launch {
@@ -3148,6 +3172,30 @@ private fun NarrowScreenLayout(
                                                                         onAdditionalTextChange = {
                                                                                 additionalText = it
                                                                                 schedulePrescriptionSave()
+                                                                        },
+                                                                        construirePromptIa = {
+                                                                                viewModel.construirePromptCompteRenduIa(
+                                                                                        animal = animalDetails,
+                                                                                        consultation = selectedConsultation,
+                                                                                        anamnese = anamneseText,
+                                                                                        examenClinique = examenCliniqueText,
+                                                                                        facteurNutritionnelClef = facteurNutritionnelClefText,
+                                                                                        texteAdditionnel = additionalText,
+                                                                                        conseils = (selectedConseils + localHtmlSections).map { it.title },
+                                                                                        nomAliment = ::formatAlimentDisplayName
+                                                                                )
+                                                                        },
+                                                                        onAppliquerReponseIa = { reponse ->
+                                                                                reponse.anamnese?.let { anamneseText = it }
+                                                                                reponse.examenClinique?.let { examenCliniqueText = it }
+                                                                                reponse.facteurNutritionnelClef?.let { facteurNutritionnelClefText = it }
+                                                                                reponse.texteAdditionnel?.let { additionalText = it }
+                                                                                schedulePrescriptionSave()
+                                                                                scope.launch {
+                                                                                        snackbarHostState.showSnackbar(
+                                                                                                translate(AnimalDetail.AI_ASSISTANT_APPLIED, reponse.nombreChamps.toString())
+                                                                                        )
+                                                                                }
                                                                         },
                                                                         onCopyCompteRendu = {
                                                                                 pendingCopyText = compteRenduText

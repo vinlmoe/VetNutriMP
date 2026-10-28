@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -38,6 +39,7 @@ import fr.vetbrain.vetnutri_mp.Data.PlanEvolutif
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.sortedForDisplay
 import fr.vetbrain.vetnutri_mp.Export.HtmlSection
+import fr.vetbrain.vetnutri_mp.Export.ReponseIaCompteRendu
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -75,6 +77,8 @@ fun PrescriptionPreparationPanel(
         onFacteurNutritionnelClefChange: (String) -> Unit,
         additionalText: String,
         onAdditionalTextChange: (String) -> Unit,
+        construirePromptIa: () -> String,
+        onAppliquerReponseIa: (ReponseIaCompteRendu) -> Unit,
         onCopyCompteRendu: () -> Unit,
         onPreviewCompteRendu: () -> Unit,
         onPreviewPrescription: () -> Unit,
@@ -84,6 +88,7 @@ fun PrescriptionPreparationPanel(
         consultation?.let { PlanEvolutif.rationsPrincipales(it).sortedForDisplay() } ?: emptyList()
     }
     val nbRationsSelectionnees = rations.count { it.uuid in selectedRationIds }
+    var promptIa by remember { mutableStateOf<String?>(null) }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val large = maxWidth >= 900.dp
@@ -104,6 +109,7 @@ fun PrescriptionPreparationPanel(
             }
             val carteCompteRendu: @Composable ColumnScope.() -> Unit = {
                 CarteCompteRendu(
+                        onOuvrirAssistantIa = if (isExamMode) null else ({ promptIa = construirePromptIa() }),
                         anamnese, onAnamneseChange,
                         examenClinique, onExamenCliniqueChange,
                         facteurNutritionnelClef, onFacteurNutritionnelClefChange,
@@ -145,6 +151,14 @@ fun PrescriptionPreparationPanel(
                     onPreviewPrescription = onPreviewPrescription
             )
         }
+    }
+
+    promptIa?.let { prompt ->
+        AssistantIaCompteRenduDialog(
+                prompt = prompt,
+                onAppliquer = onAppliquerReponseIa,
+                onDismiss = { promptIa = null }
+        )
     }
 }
 
@@ -452,6 +466,7 @@ private fun LigneElement(titre: String, detail: String, onRemove: () -> Unit) {
 
 @Composable
 private fun CarteCompteRendu(
+        onOuvrirAssistantIa: (() -> Unit)?,
         anamnese: String,
         onAnamneseChange: (String) -> Unit,
         examenClinique: String,
@@ -461,7 +476,20 @@ private fun CarteCompteRendu(
         additionalText: String,
         onAdditionalTextChange: (String) -> Unit
 ) {
-    CarteSection(icone = Icons.Filled.Description, titre = translate(AnimalDetail.PRESCRIPTION_REPORT_TITLE)) {
+    CarteSection(
+            icone = Icons.Filled.Description,
+            titre = translate(AnimalDetail.PRESCRIPTION_REPORT_TITLE),
+            action =
+                    if (onOuvrirAssistantIa != null) {
+                        {
+                            TextButton(onClick = onOuvrirAssistantIa) {
+                                Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(translate(AnimalDetail.AI_ASSISTANT_BUTTON))
+                            }
+                        }
+                    } else null
+    ) {
         ChampTexte(anamnese, onAnamneseChange, translate(AnimalDetail.CR_SECTION_ANAMNESE), 6)
         ChampTexte(examenClinique, onExamenCliniqueChange, translate(AnimalDetail.CR_EXAM_CLINIQUE), 6)
         ChampTexte(
