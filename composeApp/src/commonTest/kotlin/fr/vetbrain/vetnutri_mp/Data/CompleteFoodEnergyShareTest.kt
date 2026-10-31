@@ -2,9 +2,6 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
-import fr.vetbrain.vetnutri_mp.View.AnalNut.AlimentAdjustmentData
-import fr.vetbrain.vetnutri_mp.View.AnalNut.RationAdjustmentResult
-import fr.vetbrain.vetnutri_mp.View.AnalNut.calculerAjustement
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

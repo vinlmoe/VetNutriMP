@@ -3,6 +3,8 @@ package fr.vetbrain.vetnutri_mp.View
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -66,6 +68,7 @@ import fr.vetbrain.vetnutri_mp.Utils.DataB
  * Vue de sélection d'aliments avec deux listes (gauche et droite) et boutons de sélection.
  * Peut être utilisée pour l'analyse graphique ou toute action principale sur une sélection.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AnalyseSelectionAlimentsView(
     aliments: List<AlimentEv>,
@@ -389,104 +392,103 @@ fun AnalyseSelectionAlimentsView(
                         modifier = Modifier.fillMaxWidth().height(40.dp)
                     )
                     
-                    // Filtres en grille (même structure que FoodSearchComponent)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                    ) {
-                        // Type d'aliment
-                        Box(modifier = Modifier.weight(1f)) {
-                            DropdownField(
-                                label = translate(LocalizationKeys.Chart.FILTER_TYPE_LABEL),
-                                selectedValue = filters.selectedFoodType,
-                                options = FoodKind.entries,
-                                onValueChange = { filters = filters.copy(selectedFoodType = it) },
-                                valueToString = { it.translateEnum() },
-                                modifier = Modifier.fillMaxWidth(),
-                                height = 40.dp,
-                                fontSize = 12.sp,
-                                labelFontSize = 10.sp,
-                                borderWidth = 0.5.dp
-                            )
-                        }
-
-                        // Espèce
-                        Box(modifier = Modifier.weight(1f)) {
-                            DropdownField(
-                                label = translate(LocalizationKeys.Animal.SPECIES),
-                                selectedValue = filters.selectedEspece,
-                                options = Espece.entries,
-                                onValueChange = { filters = filters.copy(selectedEspece = it) },
-                                valueToString = { it.translateEnum() },
-                                modifier = Modifier.fillMaxWidth(),
-                                height = 40.dp,
-                                fontSize = 12.sp,
-                                labelFontSize = 10.sp,
-                                borderWidth = 0.5.dp
-                            )
-                        }
-                    }
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                    ) {
-                        // Base de données
-                        Box(modifier = Modifier.weight(1f)) {
-                            val dataBOptions = remember(aliments) {
-                                listOf("") + aliments
-                                    .mapNotNull { it.dataB?.trim() }
-                                    .filter { it.isNotEmpty() }
-                                    .distinct()
-                                    .sorted()
+                    // Filtres en grille (même structure que FoodSearchComponent) : un par ligne sur téléphone
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                            maxItemsInEachRow = if (maxWidth < AppSizes.breakpointCompact) 1 else 2
+                        ) {
+                            // Type d'aliment
+                            Box(modifier = Modifier.weight(1f)) {
+                                DropdownField(
+                                    label = translate(LocalizationKeys.Chart.FILTER_TYPE_LABEL),
+                                    selectedValue = filters.selectedFoodType,
+                                    options = FoodKind.entries,
+                                    onValueChange = { filters = filters.copy(selectedFoodType = it) },
+                                    valueToString = { it.translateEnum() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    height = 40.dp,
+                                    fontSize = 12.sp,
+                                    labelFontSize = 10.sp,
+                                    borderWidth = 0.5.dp
+                                )
                             }
-                            val selectedDataB = filters.dataB ?: ""
 
-                            DropdownField(
-                                label = translate(LocalizationKeys.Chart.FILTER_DATABASE_LABEL),
-                                selectedValue = selectedDataB,
-                                options = dataBOptions,
-                                onValueChange = {
-                                    val newDataB = if (it.isEmpty()) null else it
-                                    filters = filters.copy(dataB = newDataB)
-                                },
-                                valueToString = {
-                                    if (it.isEmpty()) translate(LocalizationKeys.CrossConsultationAnalysis.SPECIES_ALL)
-                                    else {
-                                        val dataBEnum = DataB.fromCode(it)
-                                        dataBEnum?.displayName ?: it
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                height = 40.dp,
-                                fontSize = 12.sp,
-                                labelFontSize = 10.sp,
-                                borderWidth = 0.5.dp
-                            )
-                        }
+                            // Espèce
+                            Box(modifier = Modifier.weight(1f)) {
+                                DropdownField(
+                                    label = translate(LocalizationKeys.Animal.SPECIES),
+                                    selectedValue = filters.selectedEspece,
+                                    options = Espece.entries,
+                                    onValueChange = { filters = filters.copy(selectedEspece = it) },
+                                    valueToString = { it.translateEnum() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    height = 40.dp,
+                                    fontSize = 12.sp,
+                                    labelFontSize = 10.sp,
+                                    borderWidth = 0.5.dp
+                                )
+                            }
+
+                            // Base de données
+                            Box(modifier = Modifier.weight(1f)) {
+                                val dataBOptions = remember(aliments) {
+                                    listOf("") + aliments
+                                        .mapNotNull { it.dataB?.trim() }
+                                        .filter { it.isNotEmpty() }
+                                        .distinct()
+                                        .sorted()
+                                }
+                                val selectedDataB = filters.dataB ?: ""
+
+                                DropdownField(
+                                    label = translate(LocalizationKeys.Chart.FILTER_DATABASE_LABEL),
+                                    selectedValue = selectedDataB,
+                                    options = dataBOptions,
+                                    onValueChange = {
+                                        val newDataB = if (it.isEmpty()) null else it
+                                        filters = filters.copy(dataB = newDataB)
+                                    },
+                                    valueToString = {
+                                        if (it.isEmpty()) translate(LocalizationKeys.CrossConsultationAnalysis.SPECIES_ALL)
+                                        else {
+                                            val dataBEnum = DataB.fromCode(it)
+                                            dataBEnum?.displayName ?: it
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    height = 40.dp,
+                                    fontSize = 12.sp,
+                                    labelFontSize = 10.sp,
+                                    borderWidth = 0.5.dp
+                                )
+                            }
                         
-                        // Indications (multi-sélection)
-                        Box(modifier = Modifier.weight(1f)) {
-                            MultiSelectDropdownField(
-                                label = translate(LocalizationKeys.FoodEdit.FIELD_INDICATIONS),
-                                selectedValues = filters.selectedIndications,
-                                excludedValues = filters.excludedIndications,
-                                options = AlimIndic.entries.filter { it != AlimIndic.ALL },
-                                onValuesChange = {},
-                                onTriStateValuesChange = { included, excluded ->
-                                    filters = filters.copy(
-                                        selectedIndications = included,
-                                        excludedIndications = excluded
-                                    )
-                                },
-                                triState = true,
-                                valueToString = { it.translateEnum() },
-                                modifier = Modifier.fillMaxWidth(),
-                                height = 40.dp,
-                                fontSize = 12.sp,
-                                labelFontSize = 10.sp,
-                                borderWidth = 0.5.dp
-                            )
+                            // Indications (multi-sélection)
+                            Box(modifier = Modifier.weight(1f)) {
+                                MultiSelectDropdownField(
+                                    label = translate(LocalizationKeys.FoodEdit.FIELD_INDICATIONS),
+                                    selectedValues = filters.selectedIndications,
+                                    excludedValues = filters.excludedIndications,
+                                    options = AlimIndic.entries.filter { it != AlimIndic.ALL },
+                                    onValuesChange = {},
+                                    onTriStateValuesChange = { included, excluded ->
+                                        filters = filters.copy(
+                                            selectedIndications = included,
+                                            excludedIndications = excluded
+                                        )
+                                    },
+                                    triState = true,
+                                    valueToString = { it.translateEnum() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    height = 40.dp,
+                                    fontSize = 12.sp,
+                                    labelFontSize = 10.sp,
+                                    borderWidth = 0.5.dp
+                                )
+                            }
                         }
                     }
                 }

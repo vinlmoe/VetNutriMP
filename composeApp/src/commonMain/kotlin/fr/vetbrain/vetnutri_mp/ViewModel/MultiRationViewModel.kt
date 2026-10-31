@@ -36,7 +36,7 @@ import fr.vetbrain.vetnutri_mp.Repository.MultiRationExplorationRepository
 import fr.vetbrain.vetnutri_mp.Utils.instantNow
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
-import fr.vetbrain.vetnutri_mp.View.AnalNut.adjustmentNeedMultiplier
+import fr.vetbrain.vetnutri_mp.Data.adjustmentNeedMultiplier
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow

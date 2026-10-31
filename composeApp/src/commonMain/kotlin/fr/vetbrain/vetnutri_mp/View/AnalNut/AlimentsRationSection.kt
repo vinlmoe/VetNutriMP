@@ -1,5 +1,8 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import fr.vetbrain.vetnutri_mp.Data.calculerAjustement
+import fr.vetbrain.vetnutri_mp.Data.suggestDefaultTargetNutrient
+import fr.vetbrain.vetnutri_mp.Data.AlimentAdjustmentData
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*

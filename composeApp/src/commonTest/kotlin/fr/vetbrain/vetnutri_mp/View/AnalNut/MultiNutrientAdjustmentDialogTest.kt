@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import fr.vetbrain.vetnutri_mp.Data.suggestDefaultTargetNutrient
+import fr.vetbrain.vetnutri_mp.Data.adjustmentNeedMultiplier
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef

@@ -14,8 +14,6 @@ import fr.vetbrain.vetnutri_mp.Utils.LpConstraintSense
 import fr.vetbrain.vetnutri_mp.Utils.LpModel
 import fr.vetbrain.vetnutri_mp.Utils.LpSolution
 import fr.vetbrain.vetnutri_mp.Utils.LpVariable
-import fr.vetbrain.vetnutri_mp.View.AnalNut.AlimentAdjustmentData
-import fr.vetbrain.vetnutri_mp.View.AnalNut.arrondirQuantiteSelonRegles
 
 /**
  * Convertit une valeur de référence nutritionnelle (Nut4Ref) en besoin absolu, en grammes/jour,

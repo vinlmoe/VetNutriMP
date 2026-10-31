@@ -243,18 +243,24 @@ Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pa
            Reste : \code{equationRepository} transmis aux fonctions de calcul du domaine
            (\code{getEnergie}, \code{getNutrientWithComplementary}) --- à remplacer par une
            interface de résolution d'équations dédiée. \\
-8 & partiel & Découpage vérifié par captures (400\,×\,800, 800\,×\,1000, 1400\,×\,900).
-           \code{AnimalDetailView} 3\,287\,$\to$\,1\,343 l. : \code{WideScreenLayout} et
-           \code{NarrowScreenLayout} (1\,040 et 1\,130 l., identiques à 92\,\%) fusionnés en
-           \code{AnimalDetailLayout} (menu et contenu décrits une fois, barre latérale ou tiroir) ;
-           compte rendu et export PDF dans \code{AnimalDetailExport.kt}.
-           \code{SettingsView} 3\,386\,$\to$\,1\,381 l. : six dialogues de sélection d'export
-           (\code{SettingsExportSelectionDialogs.kt}, état passé en \code{MutableState}, corps inchangé)
-           et onglet Préférences (\code{SettingsPreferencesSection.kt}).
-           \code{RationsView} 2\,981\,$\to$\,2\,005 l. : dialogues dans \code{RationsDialogs.kt}.
-           Restent au-delà de 2\,000 l. : \code{AnalyseGraphiqueAlimentsView},
-           \code{NewReferenceEvEditView}, \code{ConsultationFullScreenEditView},
-           \code{MultiNutrientAdjustmentDialog}, \code{StartupScreen}, \code{RationsView}. \\
+8 & fait & Plus aucun fichier de \code{View/} au-delà de 2\,000 lignes ; découpage vérifié par
+           captures (400\,×\,800, 800\,×\,1000, 1400\,×\,900).
+           \code{AnimalDetailView} 3\,287\,$\to$\,1\,343 l. (\code{WideScreenLayout} et
+           \code{NarrowScreenLayout}, identiques à 92\,\%, fusionnés en \code{AnimalDetailLayout} ;
+           export dans \code{AnimalDetailExport.kt}) ;
+           \code{SettingsView} 3\,386\,$\to$\,1\,381 (dialogues de sélection d'export, onglet Préférences) ;
+           \code{AnalyseGraphiqueAlimentsView} 3\,041\,$\to$\,1\,041 (graphiques, données) ;
+           \code{NewReferenceEvEditView} 2\,695\,$\to$\,608 (nutriments, coefficients, onglets
+           Équations/Compléments) ; \code{RationsView} 2\,981\,$\to$\,1\,947 ;
+           \code{ConsultationFullScreenEditView} 2\,305\,$\to$\,1\,403 ;
+           \code{StartupScreen} 2\,248\,$\to$\,1\,716 ;
+           \code{MultiNutrientAdjustmentDialog} 2\,231\,$\to$\,925 : l'algorithme d'ajustement
+           (1\,265 l., sans UI) passe dans \code{Data/AjustementMultiNutriments.kt}, ce qui supprime
+           les imports \code{Data} $\to$ \code{View.AnalNut} (\code{RationConstraintAdjuster},
+           \code{ExplorationMultiration}) et \code{ViewModel} $\to$ \code{View}.
+           Les composables principaux restent longs (\code{RationsView} $\approx$ 1\,880 l.,
+           \code{StartupScreen} $\approx$ 1\,700, éditeur de consultation $\approx$ 1\,400) : les
+           découper demande d'extraire leur état. \\
 -- & partiel & \code{!!} : 104 restants dans \code{commonMain} (142 à l'audit). Revue des sites
            exécutés après un clic ou une attente : un seul non gardé, corrigé
            (\code{besoinEnergetiqueStandard!!} dans l'ajustement multi-nutriments, plantage tant que le BEE
@@ -314,6 +320,9 @@ Suites traitées :
   \item Libellés français sans accents (sélection d'export : « Selection des equations »,
         « toggle tout », « Selectionnes ») corrigés ; barre d'actions de l'Ordonnance sur téléphone :
         ordonnance pleine largeur, libellés du compte rendu sur deux lignes au lieu d'être tronqués.
+  \item Quatre fichiers Kotlin vides et suivis supprimés (\code{BackupViewModel},
+        \code{TestApiEnvelope}, \code{FullscreenToggle}, \code{GenericGraphComponent}).
+  \item Filtres de la sélection d'aliments (Graphique Aliments) : un par ligne sur téléphone.
   \item Fichiers morts retirés : \code{AnimalDetailView.kt.old}, \code{RationsView.kt.bak2},
         \code{View/oza2.json}, \code{View/vetfood.json} (1,9\,Mo), \code{PreferencesView.kt} (jamais appelé).
 \end{itemize}

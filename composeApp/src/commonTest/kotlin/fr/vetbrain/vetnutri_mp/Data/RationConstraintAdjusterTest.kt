@@ -6,7 +6,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
-import fr.vetbrain.vetnutri_mp.View.AnalNut.AlimentAdjustmentData
 import kotlinx.coroutines.test.runTest
 import kotlin.math.abs
 import kotlin.test.Test
