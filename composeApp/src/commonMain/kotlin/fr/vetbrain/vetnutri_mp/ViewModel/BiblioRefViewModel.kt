@@ -305,7 +305,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) : ViewMode
         _operationMessage.value = null
     }
 
-    // Appelé par le ViewModelStore quand l\'écran est quitté (rememberViewModel)
+    // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
 
     override fun onCleared() {
         viewModelScope.cancel()

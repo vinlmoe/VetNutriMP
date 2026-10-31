@@ -684,7 +684,7 @@ class ReferenceEvViewModel(
         }
     }
 
-    // Appelé par le ViewModelStore quand l\'écran est quitté (rememberViewModel)
+    // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
 
     override fun onCleared() {
         scope.cancel()

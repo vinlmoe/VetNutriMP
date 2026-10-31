@@ -109,10 +109,9 @@ composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/
 ## Points d'attention
 
 ### Caches mémoire
-Trois caches utilisent le pattern `LinkedHashMap` LRU (eviction automatique de l'entrée la plus ancienne) :
+Deux caches utilisent le pattern `LinkedHashMap` LRU (eviction automatique de l'entrée la plus ancienne) :
 - `DatabaseFoodRepository.searchCache` — 50 entrées max
 - `EquationEvaluator.expressionCache` — 1000 entrées max
-- `AnimalDetailViewModel.rationAnalysisCache` — 50 entrées + TTL 2 minutes
 
 ### AppContainer (DI manuel)
 `AppContainer` est un data class avec 15 dépendances construit dans `rememberAppContainer(appDatabase)`. Il n'est pas lazy. Pour ajouter une dépendance, l'ajouter dans `AppContainer.kt` **et** dans `rememberAppContainer`.
