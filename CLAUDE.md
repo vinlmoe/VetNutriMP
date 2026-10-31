@@ -157,6 +157,10 @@ poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existan
 - Tout `catch (e: Exception)` / `catch (e: Throwable)` commence par `e.rethrowIfCancellation()` :
   sinon l'annulation d'une coroutine est avalée et la tâche continue sur un écran fermé.
 - Pas de `catch` vide : journaliser au minimum avec `AppLog.d`.
+- Pas de `!!` sur une donnée lue **après** un clic ou une attente asynchrone (sélection, état
+  d'écran) : elle a pu changer. Utiliser `valeur.orUserError("aucune ration n'est sélectionnée") ?: return@launch`
+  (`Utils/UserErrors`) : l'utilisateur voit « Action impossible : … » dans `UserErrorDialog`
+  (monté dans `App.kt`) au lieu d'un plantage.
 
 ### Dépendances
 Toutes les versions sont dans `gradle/libs.versions.toml` ; aucune version codée en dur dans

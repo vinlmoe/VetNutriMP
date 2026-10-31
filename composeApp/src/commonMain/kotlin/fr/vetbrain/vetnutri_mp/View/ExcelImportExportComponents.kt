@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.UserErrors
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.background
@@ -566,12 +567,14 @@ fun ExcelImportExportSection(
                 ExcelImportDialog(
                         result = importResult!!,
                         onConfirm = {
-                                if (csvContent != null && excelFoodService != null) {
+                                // Contenu capturé au clic : l'état peut changer pendant l'import
+                                val contenu = csvContent
+                                if (contenu != null && excelFoodService != null) {
                                         coroutineScope.launch {
                                                 try {
                                                         val finalResult =
                                                                 excelFoodService.importFoodsFromCsv(
-                                                                        csvContent!!,
+                                                                        contenu,
                                                                         selectedDataB,
                                                                         mergeNutrients = mergeNutrients,
                                                                         importOnlyIfNewer = importOnlyIfNewer
@@ -588,6 +591,10 @@ fun ExcelImportExportSection(
                                         }
                                 } else {
                                         showImportDialog = false
+                                        UserErrors.report(
+                                                if (contenu == null) "Import impossible : le contenu du fichier n'est plus disponible, rechargez le fichier."
+                                                else "Import impossible : le service d'import Excel n'est pas disponible."
+                                        )
                                 }
                         },
                         onCancel = {

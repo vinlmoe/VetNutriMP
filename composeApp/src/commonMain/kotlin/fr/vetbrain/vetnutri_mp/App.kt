@@ -336,6 +336,9 @@ fun App(appDatabase: AppDatabase) {
                 }
             }
 
+            // Erreurs signalées par UserErrors (donnée manquante au moment d'agir)
+            fr.vetbrain.vetnutri_mp.Components.UserErrorDialog()
+
             AppOverlayDialogs(
                 showAnimalImportResult = showAnimalImportResult,
                 animalImportResult = animalImportResult,

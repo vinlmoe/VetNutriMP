@@ -472,12 +472,12 @@ class EquationViewModel(
         val typeValidation = mapEquationKindToValidationType(equation.kind)
 
         return when (typeValidation) {
-            TypeEquationValidation.BESOIN_ENERGETIQUE -> EquationEvaluator.toutesLesVariables!!
+            TypeEquationValidation.BESOIN_ENERGETIQUE -> EquationEvaluator.toutesLesVariables
             TypeEquationValidation.BESOIN_NUTRITIONNEL ->
-                    EquationEvaluator.toutesLesVariables!! + getNutrientsVariables()
+                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
             TypeEquationValidation.DENSITE_ENERGETIQUE -> getNutrientsVariables()
             TypeEquationValidation.GENERALE ->
-                    EquationEvaluator.toutesLesVariables!! + getNutrientsVariables()
+                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
         }
     }
 

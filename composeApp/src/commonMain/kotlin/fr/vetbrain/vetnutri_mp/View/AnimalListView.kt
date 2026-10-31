@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Utils.orUserError
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
@@ -494,7 +495,11 @@ fun AnimalListView(
                 dismissButton = {
                     if (exportLink != null && exportError == null) {
                         OutlinedButton(
-                                onClick = { pendingCopyText = exportLink!!.binId }
+                                onClick = {
+                                    exportLink?.binId
+                                            .orUserError("le lien de partage n'est plus disponible")
+                                            ?.let { pendingCopyText = it }
+                                }
                         ) { Text(translate(General.COPY)) }
                     }
                 }
@@ -671,15 +676,15 @@ fun AnimalListView(
                     Button(
                         onClick = {
                             showApiImportDialog = false
-                            val id = pendingAutoOpenAnimalId
-                            val shouldOpen = shouldAutoOpenAfterDialog && id != null
+                            val idAOuvrir = pendingAutoOpenAnimalId.takeIf { shouldAutoOpenAfterDialog }
                             shouldAutoOpenAfterDialog = false
                             pendingAutoOpenAnimalId = null
                             viewModel.resetImportResult()
-                            if (shouldOpen) {
+                            if (idAOuvrir != null) {
                                 coroutineScope.launch {
-                                    val animal = viewModel.getAnimalById(id!!)
-                                    if (animal != null) onSelectAnimal(animal)
+                                    viewModel.getAnimalById(idAOuvrir)
+                                            .orUserError("l'animal importé est introuvable")
+                                            ?.let { onSelectAnimal(it) }
                                 }
                             }
                         }

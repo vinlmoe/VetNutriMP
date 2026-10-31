@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.orUserError
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Components.BufferedNumberTextField
 
@@ -400,22 +401,28 @@ fun CrossConsultationGradingView(
                                     )
                                     if (forbidden.contains(ingredient)) {
                                         OutlinedButton(onClick = {
-                                            val updatedForbidden = rule!!.ingredientRule.forbidden.filterNot { it.trim().lowercase() == ingredient }
-                                            gradingViewModel.updateRule(
-                                                rule!!.copy(ingredientRule = rule!!.ingredientRule.copy(forbidden = updatedForbidden))
-                                            )
+                                            val regle = rule.orUserError("aucune grille de correction n'est chargée")
+                                            if (regle != null) {
+                                                val updatedForbidden = regle.ingredientRule.forbidden.filterNot { it.trim().lowercase() == ingredient }
+                                                gradingViewModel.updateRule(
+                                                    regle.copy(ingredientRule = regle.ingredientRule.copy(forbidden = updatedForbidden))
+                                                )
+                                            }
                                         }) {
                                             Text(translate("auto.view.crossconsultationgradingview.retirer_interdit"))
                                         }
                                     } else {
                                         Button(onClick = {
-                                            gradingViewModel.updateRule(
-                                                rule!!.copy(
-                                                    ingredientRule = rule!!.ingredientRule.copy(
-                                                        forbidden = rule!!.ingredientRule.forbidden + ingredient
+                                            val regle = rule.orUserError("aucune grille de correction n'est chargée")
+                                            if (regle != null) {
+                                                gradingViewModel.updateRule(
+                                                    regle.copy(
+                                                        ingredientRule = regle.ingredientRule.copy(
+                                                            forbidden = regle.ingredientRule.forbidden + ingredient
+                                                        )
                                                     )
                                                 )
-                                            )
+                                            }
                                         }) {
                                             Text(translate("auto.view.crossconsultationgradingview.interdire"))
                                         }
