@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.Components
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,7 +37,7 @@ fun ReferenceSelector(
         allowNone: Boolean = true,
         modifier: Modifier = Modifier
 ) {
-    AlertDialog(
+    AppAlertDialog(
             onDismissRequest = onDismiss,
             title = {
                 Text(

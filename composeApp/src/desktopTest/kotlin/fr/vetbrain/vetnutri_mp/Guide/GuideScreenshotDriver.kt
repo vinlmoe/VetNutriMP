@@ -78,6 +78,11 @@ class GuideScreenshotDriver {
                         "scrolltodesc" ->onAllNodesWithContentDescription(arg, useUnmergedTree = true)[0].performScrollTo()
                         "scrolldown" ->onAllNodes(hasScrollAction())[arg.ifEmpty { "0" }.toInt()]
                             .performTouchInput { swipeUp(startY = bottom - 10f, endY = top + 10f) }
+                        // Défile la dernière zone défilante (celle du dialogue ouvert, le cas échéant)
+                        "scrolllast" -> onAllNodes(hasScrollAction()).let { zones ->
+                            zones[zones.fetchSemanticsNodes().size - 1]
+                                .performTouchInput { swipeUp(startY = bottom - 10f, endY = top + 10f) }
+                        }
                         "clickdesc" ->onAllNodesWithContentDescription(arg, useUnmergedTree = true)[0].performClick()
                         "clickn" -> {
                             val n = arg.substringBefore(' ').toInt()

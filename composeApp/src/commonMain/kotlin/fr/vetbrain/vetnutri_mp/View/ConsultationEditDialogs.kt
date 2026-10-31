@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -104,7 +105,7 @@ private fun ScoreSelectionDialog(
         onScoreSelected: (Double) -> Unit,
         onDismiss: () -> Unit
 ) {
-        AlertDialog(
+        AppAlertDialog(
                 onDismissRequest = onDismiss,
                 title = { Text(ConsultationEdit.BCS_DIALOG_TITLE.translate(label)) },
                 text = {
@@ -221,7 +222,7 @@ private fun CoefficientSelectionDialog(
         onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit,
         onDismiss: () -> Unit
 ) {
-        AlertDialog(
+        AppAlertDialog(
                 onDismissRequest = onDismiss,
                 title = { Text(ConsultationEdit.BCS_DIALOG_TITLE.translate(nom)) },
                 text = {
@@ -290,7 +291,7 @@ internal fun ReferenceGeneraleDialog(
                         }
                 }
 
-        AlertDialog(
+        AppAlertDialog(
                 onDismissRequest = { onValueChange(value) },
                 title = { Text(ConsultationEdit.REF_GENERAL_DIALOG_TITLE.translate()) },
                 text = {
@@ -446,7 +447,7 @@ internal fun ReferenceMaladieDialog(
                         }
                 }
 
-        AlertDialog(
+        AppAlertDialog(
                 onDismissRequest = onDismiss,
                 title = { Text(ConsultationEdit.REF_DISEASE_DIALOG_TITLE.translate()) },
                 text = {

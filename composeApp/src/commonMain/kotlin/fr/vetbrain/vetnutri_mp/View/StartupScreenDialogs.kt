@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -315,7 +316,7 @@ internal fun UpdateConfirmationDialog(
 /** Dialogue des conditions générales d'utilisation */
 @Composable
 internal fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit) {
-        AlertDialog(
+        AppAlertDialog(
                 onDismissRequest = onDismiss,
                 title = {
                         Text(
@@ -429,7 +430,7 @@ internal fun TestersDialog(onDismiss: () -> Unit) {
                 "Antoine Rached"
         ).sorted()
 
-        AlertDialog(
+        AppAlertDialog(
                 onDismissRequest = onDismiss,
                 title = {
                         Text(

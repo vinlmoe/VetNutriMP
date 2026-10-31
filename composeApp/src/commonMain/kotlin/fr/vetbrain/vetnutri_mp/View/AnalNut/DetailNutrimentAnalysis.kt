@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -124,7 +125,7 @@ fun NutrientDetailDialog(
                                 ?: TypeExpressionBesoin.DEFAULT
                 }
 
-        AlertDialog(
+        AppAlertDialog(
                 modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
                 onDismissRequest = onDismiss,
                 title = { DialogTitre(titre = translate(LocalizationKeys.AnalNut.DETAILS_TITLE, nom), onDismiss = onDismiss) },

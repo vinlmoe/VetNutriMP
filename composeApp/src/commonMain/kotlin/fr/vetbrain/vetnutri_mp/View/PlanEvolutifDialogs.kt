@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -85,7 +86,7 @@ fun EtapeEditDialog(
         return poids to (autres + saisies)
     }
 
-    AlertDialog(
+    AppAlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(titre) },
             text = {

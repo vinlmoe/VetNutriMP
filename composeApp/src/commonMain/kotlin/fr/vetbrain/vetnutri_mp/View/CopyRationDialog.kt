@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,7 +22,7 @@ internal fun CopyRationDialog(
         val sources = consultations.filter { it.rations.isNotEmpty() }.sortedByDescending { it.date }
         val consultation = sources.firstOrNull { it.uuid == selected?.first }
         val ration = consultation?.rations?.firstOrNull { it.uuid == selected?.second }
-        AlertDialog(
+        AppAlertDialog(
                 onDismissRequest = onDismiss,
                 title = { Text("Reprendre une ration d’une autre consultation") },
                 text = {

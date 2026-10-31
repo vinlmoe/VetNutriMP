@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.Components
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -1287,7 +1288,7 @@ fun AdvancedSortDialog(
                 localSortOrder = filters.sortOrder
                 localIncludeDeprecated = filters.includeDeprecated
         }
-        AlertDialog(
+        AppAlertDialog(
                 onDismissRequest = onDismiss,
                 title = { Text(translate("auto.view.components.foodsearchcomponent.tri_et_filtres_avances"), fontWeight = FontWeight.Bold) },
                 text = {

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -368,7 +369,7 @@ private fun TemplatesDialog(
 
     LaunchedEffect(Unit) { viewModel.loadTemplates() }
 
-    AlertDialog(
+    AppAlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(translate("auto.view.conseilspersonnalisesview.templates_de_conseils")) },
             text = {

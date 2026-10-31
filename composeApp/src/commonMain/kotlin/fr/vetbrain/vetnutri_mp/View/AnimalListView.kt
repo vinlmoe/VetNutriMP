@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -613,7 +614,7 @@ fun AnimalListView(
         val apiLogs = viewModel.apiImportLogs.collectAsState().value
 
         if (apiImporting) {
-            AlertDialog(
+            AppAlertDialog(
                 onDismissRequest = {},
                 title = { Text(translate(Settings.IMPORT_RUNNING)) },
                 text = {

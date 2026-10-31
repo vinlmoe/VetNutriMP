@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import fr.vetbrain.vetnutri_mp.Utils.UserErrors
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -712,7 +713,7 @@ fun ExcelImportDialog(
         onConfirm: () -> Unit,
         onCancel: () -> Unit
 ) {
-        AlertDialog(
+        AppAlertDialog(
                 onDismissRequest = onCancel,
                 title = {
                         Text(

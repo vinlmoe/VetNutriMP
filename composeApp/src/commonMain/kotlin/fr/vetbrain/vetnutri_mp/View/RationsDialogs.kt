@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -661,7 +662,7 @@ internal fun CoefficientsDialog(
         val isCoefficientValid = coefficientValue != null
         val showCoefficientError = coefficientText.isNotBlank() && !isCoefficientValid
 
-        AlertDialog(
+        AppAlertDialog(
                 onDismissRequest = onDismiss,
                 title = {
                         Text(

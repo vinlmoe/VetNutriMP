@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.background
@@ -39,7 +40,7 @@ fun UpdateDialog(
 ) {
     val coroutineScope = rememberCoroutineScope()
     
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(

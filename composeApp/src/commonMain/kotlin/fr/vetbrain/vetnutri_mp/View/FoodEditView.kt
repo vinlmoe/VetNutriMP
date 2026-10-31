@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
@@ -617,7 +618,7 @@ private fun BiblioRefTab(
                                 ref.completeRef.contains(searchQuery, ignoreCase = true) ||
                                 ref.year.toString().contains(searchQuery)
                 }
-                AlertDialog(
+                AppAlertDialog(
                         onDismissRequest = { showPicker = false; searchQuery = "" },
                         title = { Text(translate("food_edit.biblio.picker_title")) },
                         text = {

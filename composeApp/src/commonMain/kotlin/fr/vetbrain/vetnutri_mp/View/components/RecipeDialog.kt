@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.Components
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -65,7 +66,7 @@ fun RecipeDialog(
         }
     }
 
-    AlertDialog(
+    AppAlertDialog(
             onDismissRequest = onClose,
             title = { Text(translate(LocalizationKeys.Recipe.TITLE)) },
             text = {

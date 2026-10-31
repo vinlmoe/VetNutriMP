@@ -39,7 +39,7 @@ fun ShareLinkDialog(
         qrDataCopied = true
     }
     
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(
