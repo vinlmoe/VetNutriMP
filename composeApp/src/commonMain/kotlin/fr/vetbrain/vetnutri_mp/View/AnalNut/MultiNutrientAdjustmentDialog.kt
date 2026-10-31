@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -685,6 +686,7 @@ fun MultiNutrientAdjustmentView(
                                                                                         onConfirm(result)
                                                                                 }
                                                                         } catch (e: Exception) {
+                                                                                e.rethrowIfCancellation()
                                                                                 val result = RationAdjustmentResult(
                                                                                         success = false,
                                                                                         message = translate(LocalizationKeys.AnalNut.ADJUST_FAIL) + ": ${e.message}"
@@ -1568,6 +1570,7 @@ suspend fun calculerAjustement(
                         adjustedAliments = adjustedAliments
                 )
         } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return RationAdjustmentResult(
                         success = false,
                         message = translate("analnut.error.sequential_adjust", e.message ?: "")
@@ -1750,6 +1753,7 @@ private fun adjustRationForNutrient(
                         message = translate(LocalizationKeys.AnalNut.ADJUST_NUTRIENT_SUCCESS, nutrient.label)
                 )
         } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return RationAdjustmentResult(
                         success = false,
                         message = translate(LocalizationKeys.AnalNut.ADJUST_FAIL) + ": ${e.message}"
@@ -1985,6 +1989,7 @@ private suspend fun ajusterAlimentsPourNutriment(
                                 translate(LocalizationKeys.AnalNut.ADJUST_NUTRIENT_ADDED, nutriment.label, TextUtils.formatDecimal(totalAjoute, 2))
                 )
         } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return RationAdjustmentResult(
                         success = false,
                         message =
@@ -2194,6 +2199,7 @@ private suspend fun adjustRationForMultipleNutrients(
                                 translate("analnut.success.sequential_adjust", nutrimentsTraites.size.toString())
                 )
         } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return RationAdjustmentResult(
                         success = false,
                         message = translate("analnut.error.sequential_adjust", e.message ?: "")

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Localization
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import java.io.File
 import kotlin.io.path.readText
@@ -43,6 +44,7 @@ actual open class ResourceReader actual constructor() {
 
             throw IllegalStateException("Resource not found: $name")
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             throw IllegalStateException("Failed to read resource $name: ${e.message}", e)
         }
     }
@@ -71,6 +73,7 @@ actual open class ResourceReader actual constructor() {
             // Fallback vers readResource pour les autres méthodes
             readResource(name)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             throw IllegalStateException("Failed to read resource $name: ${e.message}", e)
         }
     }
@@ -127,6 +130,7 @@ actual open class ResourceReader actual constructor() {
             val content = readResource(name)
             extractVersionFromJson(content)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             null
         }
     }
@@ -152,6 +156,7 @@ actual open class ResourceReader actual constructor() {
             try {
                 file.readText()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 null
             }
         } else {
@@ -172,6 +177,7 @@ actual open class ResourceReader actual constructor() {
             file.writeText(content)
             true
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }

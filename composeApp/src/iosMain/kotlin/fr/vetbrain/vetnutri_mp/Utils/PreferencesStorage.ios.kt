@@ -15,6 +15,7 @@ actual class PreferencesStorage {
                 userDefaults.setObject(value, key)
                 userDefaults.synchronize()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -26,6 +27,7 @@ actual class PreferencesStorage {
                 val value = userDefaults.stringForKey(key) ?: defaultValue
                 value
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 defaultValue
             }
         }

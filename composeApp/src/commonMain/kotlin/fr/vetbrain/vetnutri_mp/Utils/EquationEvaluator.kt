@@ -460,7 +460,7 @@ object EquationEvaluator {
                 if (enaFromRefEv != null && enaFromRefEv > 0.0) {
                     variables[NutrientMain.ENA.label] = enaFromRefEv
                 }
-            } catch (_: Throwable) {}
+            } catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
         }
 
         injecterNutrimentsDepuisReference(variables = variables, referenceEv = referenceEv)
@@ -552,7 +552,7 @@ object EquationEvaluator {
             if (variablesSupp.isNotEmpty()) {
                 val supp = variablesSupp.joinToString { v -> "${v.variable?.variable}=${v.varue}" }
             }
-        } catch (_: Throwable) {}
+        } catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
 
         // Injecter les nutriments agrégés de la ration (avec compléments si disponibles)
         suspend fun sommeRation(n: Nutrient): Double {
@@ -582,7 +582,7 @@ object EquationEvaluator {
             val dbg = debugKeys.map { k -> "$k=${variables[k] ?: 0.0}" }.joinToString(", ")
             // Log complet des variables (peut être volumineux)
             val all = variables.entries.sortedBy { it.key }.joinToString(", ") { (k, v) -> "$k=$v" }
-        } catch (_: Throwable) {}
+        } catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
 
         var total = 0.0
         for (ref in referencesMaladies) {
@@ -594,21 +594,21 @@ object EquationEvaluator {
                     }
             if (eqs.isEmpty()) continue
             for (eq in eqs) {
-                try {} catch (_: Throwable) {}
+                try {} catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
                 val res = ExpressionMathematique.evaluer(eq.equationScript, variables)
-                try {} catch (_: Throwable) {}
+                try {} catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
                 if (res != null && !res.isNaN() && !res.isInfinite()) total += res
             }
         }
         if (total.isNaN() || total.isInfinite()) {
-            try {} catch (_: Throwable) {}
+            try {} catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
             return 0.0
         }
         if (total < 0.0) {
-            try {} catch (_: Throwable) {}
+            try {} catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
             return 0.0
         }
-        try {} catch (_: Throwable) {}
+        try {} catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
         return total
     }
 

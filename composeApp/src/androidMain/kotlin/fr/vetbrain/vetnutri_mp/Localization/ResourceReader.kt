@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Localization
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import java.io.File
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -73,6 +74,7 @@ actual open class ResourceReader actual constructor() {
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 // Continuer avec le chemin suivant
                 continue
             }
@@ -98,6 +100,7 @@ actual open class ResourceReader actual constructor() {
             try {
                 file.readText()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 null
             }
         } else {
@@ -114,6 +117,7 @@ actual open class ResourceReader actual constructor() {
             file.writeText(content)
             true
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }

@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
@@ -143,12 +145,14 @@ class DatabaseAnimalRepository(
                                         val espece = Espece.getEnumFromInt(especeNumId)
                                         espece.label
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         // Essayer les autres stratégies
                                         try {
                                                 val especeByName =
                                                         Espece.valueOf(especeId.uppercase())
                                                 especeByName.label
                                         } catch (e2: Exception) {
+                                                e2.rethrowIfCancellation()
                                                 // Essayer par label
                                                 val especeByLabel = Espece.getByLabel(especeId)
                                                 if (especeByLabel != null) {
@@ -172,6 +176,7 @@ class DatabaseAnimalRepository(
                                 val especeEnum = Espece.valueOf(especeId.uppercase())
                                 especeEnum.label
                         } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 // En cas d'échec, conserver la valeur originale
                                 especeId
                         }
@@ -277,7 +282,8 @@ class DatabaseAnimalRepository(
                                         availableFoodUUIDs.add(uuid)
                                         importedFoodsCount++
                                 } catch (e: Exception) {
-                                        e.printStackTrace()
+                                        e.rethrowIfCancellation()
+                                        AppLog.e("DatabaseAnimalRepository", e.message ?: "Erreur", e)
                                 }
                         }
 
@@ -485,6 +491,7 @@ class DatabaseAnimalRepository(
                                                                                                         } catch (
                                                                                                                 e:
                                                                                                                         Exception) {
+                                                                                                                e.rethrowIfCancellation()
                                                                                                                 null
                                                                                                         },
                                                                                                 varue =
@@ -560,7 +567,8 @@ class DatabaseAnimalRepository(
                                                                                         )
                                                                                 )
                                                                                 availableFoodUUIDs.add(refAlimUnif)
-                                                                        } catch (_: Exception) {
+                                                                        } catch (ignored: Exception) {
+                                                                                ignored.rethrowIfCancellation()
                                                                                 return@forEach
                                                                         }
                                                                 }
@@ -624,9 +632,10 @@ class DatabaseAnimalRepository(
 
                                         importedCount++
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         // Ignorer les erreurs d'importation pour un animal
                                         // spécifique
-                                        e.printStackTrace() // Ajouter la trace de la pile pour le
+                                        AppLog.e("DatabaseAnimalRepository", e.message ?: "Erreur", e) // Ajouter la trace de la pile pour le
                                         // débogage
                                 }
                         }

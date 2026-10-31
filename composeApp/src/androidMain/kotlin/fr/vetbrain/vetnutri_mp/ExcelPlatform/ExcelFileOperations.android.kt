@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ExcelPlatform
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,7 +19,8 @@ actual suspend fun openCsvFileForImport(): String? {
                 inputStream.bufferedReader().use { it.readText() }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ExcelFileOperations", e.message ?: "Erreur", e)
             null
         }
     }
@@ -32,7 +35,8 @@ actual suspend fun saveCsvFileForExport(csvContent: String, defaultFileName: Str
             }
             true
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ExcelFileOperations", e.message ?: "Erreur", e)
             false
         }
     }

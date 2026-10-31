@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Export
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder
 import com.openhtmltopdf.svgsupport.BatikSVGDrawer
 import fr.vetbrain.vetnutri_mp.Utils.FileUtils
@@ -51,7 +53,8 @@ actual object PdfExporter {
                 }
                 result
             } catch (t: Throwable) {
-                t.printStackTrace()
+                t.rethrowIfCancellation()
+                AppLog.e("PdfExporter", t.message ?: "Erreur", t)
                 false
             }
         }

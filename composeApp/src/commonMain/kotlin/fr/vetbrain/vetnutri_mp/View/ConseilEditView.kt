@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -86,6 +87,7 @@ fun ConseilEditView(
                     showErrorDialog = true
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 errorMessage = translate("conseil.edit.exceptionErrorFormat", e.message.orEmpty())
                 showErrorDialog = true
             }
@@ -247,6 +249,7 @@ fun ConseilEditView(
                                             showErrorDialog = true
                                         }
                                     } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         errorMessage = "Erreur: ${e.message}"
                                         showErrorDialog = true
                                     } finally {

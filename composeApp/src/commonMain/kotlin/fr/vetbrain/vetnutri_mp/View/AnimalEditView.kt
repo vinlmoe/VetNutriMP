@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -155,6 +156,7 @@ fun AnimalEditView(
                                                         if (it.isNotEmpty()) LocalDate.parse(it)
                                                         true
                                                 } catch (e: Exception) {
+                                                        e.rethrowIfCancellation()
                                                         false
                                                 }
                                 },
@@ -336,6 +338,7 @@ fun AnimalEditView(
                                                                         )
                                                                 else null
                                                         } catch (e: Exception) {
+                                                                e.rethrowIfCancellation()
                                                                 null
                                                         }
 

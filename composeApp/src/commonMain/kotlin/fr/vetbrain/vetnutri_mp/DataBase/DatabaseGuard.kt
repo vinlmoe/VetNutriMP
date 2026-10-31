@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.DataBase
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.datetime.Clock
 import okio.FileSystem
@@ -24,7 +26,7 @@ fun backupDatabaseFiles(dbPath: String) {
             if (fs.exists(src)) {
                 fs.copy(src, "$dbPath$ext.bak".toPath())
             }
-        } catch (_: Exception) {}
+        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseGuard", "Exception ignorée : ${ignored.message}") }
     }
 }
 
@@ -45,7 +47,8 @@ fun isDatabaseReadable(dbPath: String): Boolean {
             }
         }
         true
-    } catch (_: Exception) {
+    } catch (ignored: Exception) {
+        ignored.rethrowIfCancellation()
         false
     }
 }
@@ -73,7 +76,8 @@ fun setAsideDatabaseFiles(dbPath: String, tag: String): List<String> {
             if (fs.exists(src)) {
                 fs.atomicMove(src, "$dbPath$ext.$tag.$ts".toPath())
             }
-        } catch (_: Exception) {
+        } catch (ignored: Exception) {
+            ignored.rethrowIfCancellation()
             failures += src.toString()
         }
     }
@@ -93,7 +97,8 @@ fun readAnimalCount(dbPath: String): Int? {
                 if (statement.step()) statement.getLong(0).toInt() else null
             }
         }
-    } catch (_: Exception) {
+    } catch (ignored: Exception) {
+        ignored.rethrowIfCancellation()
         null
     }
 }
@@ -111,7 +116,8 @@ fun readDatabaseVersion(dbPath: String): Int? {
                 if (statement.step()) statement.getLong(0).toInt() else null
             }
         }
-    } catch (_: Exception) {
+    } catch (ignored: Exception) {
+        ignored.rethrowIfCancellation()
         null
     }
 }
@@ -131,7 +137,7 @@ private fun moveDatabaseFiles(from: String, to: String) {
             // Une cible existante est elle-même conservée (renommée), jamais supprimée
             if (fs.exists(dst)) fs.atomicMove(dst, "$to$ext.old.$ts".toPath())
             fs.atomicMove(src, dst)
-        } catch (_: Exception) {}
+        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseGuard", "Exception ignorée : ${ignored.message}") }
     }
 }
 

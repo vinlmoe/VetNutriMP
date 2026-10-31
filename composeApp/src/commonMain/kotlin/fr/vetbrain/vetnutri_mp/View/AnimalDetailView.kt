@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -544,7 +546,8 @@ private suspend fun exporterAnimalComplet(
                         )
                 }
         } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
                 snackbarHostState.showSnackbar(
                         message = "${translate(AnimalDetail.EXPORT_ERROR)}${e.message}",
                         duration = SnackbarDuration.Long
@@ -717,7 +720,8 @@ private suspend fun partagerAnimalEnLigne(
                         )
                 }
         } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
                 withContext(AppDispatchers.Main) {
                         snackbarHostState.showSnackbar(
                                 message = "${translate(AnimalDetail.SHARE_ERROR)}${e.message}",
@@ -791,6 +795,7 @@ private fun handlePdfExport(
                     defaultFileName = generateDefaultPdfFileName(animalDetails, selectedConsultation)
                 )
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 fr.vetbrain.vetnutri_mp.exportPdfDocument(
                     documentType = DocumentType.PRESCRIPTION,
                     data = ExportData(
@@ -1201,7 +1206,8 @@ private fun WideScreenLayout(
                                 availableConseils = result.getOrThrow()
                         }
                 } catch (e: Exception) {
-                        e.printStackTrace()
+                        e.rethrowIfCancellation()
+                        AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
                 } finally {
                         isLoadingConseils = false
                 }
@@ -1222,7 +1228,7 @@ private fun WideScreenLayout(
                                         telephone = prefs.telephone,
                                         email = prefs.email
                                 )
-                } catch (_: Exception) {}
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("AnimalDetailView", "Exception ignorée : ${ignored.message}") }
         }
         
         // Variables pour la prévisualisation et l'export
@@ -1617,8 +1623,9 @@ private fun WideScreenLayout(
                                                                                                 ) // Fallback
                                                                                 }
                                                                         } catch (e: Exception) {
+                                                                                e.rethrowIfCancellation()
 
-                                                                                e.printStackTrace()
+                                                                                AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
                                                                                 alimentsAvecValeurs
                                                                                         .add(
                                                                                                 aliment
@@ -2023,6 +2030,7 @@ private fun WideScreenLayout(
                                                                                 previewCompteRenduText = ""
                                                                                 showPreview = true
                                                                         } catch (e: Exception) {
+                                                                                e.rethrowIfCancellation()
                                                                                 val selectedRationsForPrescription: List<Ration> =
                                                                                         selectedConsultation?.rations
                                                                                                 ?.filter { ration: Ration ->
@@ -2270,7 +2278,8 @@ private fun NarrowScreenLayout(
                                 availableConseils = result.getOrThrow()
                         }
                 } catch (e: Exception) {
-                        e.printStackTrace()
+                        e.rethrowIfCancellation()
+                        AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
                 } finally {
                         isLoadingConseils = false
                 }
@@ -2291,7 +2300,7 @@ private fun NarrowScreenLayout(
                                         telephone = prefs.telephone,
                                         email = prefs.email
                                 )
-                } catch (_: Exception) {}
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("AnimalDetailView", "Exception ignorée : ${ignored.message}") }
         }
 
         // Variables pour la prévisualisation et l'export
@@ -2750,8 +2759,9 @@ private fun NarrowScreenLayout(
                                                                                         } catch (
                                                                                                 e:
                                                                                                         Exception) {
+                                                                                                e.rethrowIfCancellation()
 
-                                                                                                e.printStackTrace()
+                                                                                                AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
                                                                                                 alimentsAvecValeurs
                                                                                                         .add(
                                                                                                                 aliment
@@ -3222,6 +3232,7 @@ private fun NarrowScreenLayout(
                                                                                                 previewCompteRenduText = ""
                                                                                                 showPreview = true
                                                                                         } catch (e: Exception) {
+                                                                                                e.rethrowIfCancellation()
                                                                                                 val selectedRationsForPrescription: List<Ration> =
                                                                                                         selectedConsultation?.rations
                                                                                                                 ?.filter { ration: Ration ->

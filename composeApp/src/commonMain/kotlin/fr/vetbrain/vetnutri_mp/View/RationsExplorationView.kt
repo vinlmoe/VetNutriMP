@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -153,6 +154,7 @@ internal fun RationsExplorationView(
                                                 } catch (e: CancellationException) {
                                                     throw e
                                                 } catch (e: Exception) {
+                                                    e.rethrowIfCancellation()
                                                     message = "Ajout impossible : ${e.message}"
                                                 } finally {
                                                     enCours = false

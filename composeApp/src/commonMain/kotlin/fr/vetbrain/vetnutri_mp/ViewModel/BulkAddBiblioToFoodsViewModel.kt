@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
@@ -58,6 +59,7 @@ class BulkAddBiblioToFoodsViewModel(
                                         _availableBiblioRefs.value = refs
                                 }
                         } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 _error.value = "Erreur lors du chargement des bibliographies : ${e.message}"
                         }
                 }
@@ -109,6 +111,7 @@ class BulkAddBiblioToFoodsViewModel(
                                 _resultMessage.value =
                                         "Bibliographie ajoutée à $updatedCount aliment(s)."
                         } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 _error.value = "Erreur lors de l'application : ${e.message ?: "Erreur inconnue"}"
                         } finally {
                                 _loading.value = false

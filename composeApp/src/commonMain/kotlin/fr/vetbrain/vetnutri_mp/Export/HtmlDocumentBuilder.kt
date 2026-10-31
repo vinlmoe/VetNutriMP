@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Export
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.PlanEvolutif
@@ -491,6 +492,7 @@ object HtmlDocumentBuilder {
                                 referenceEv = reference
                         )
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         analyserValeursNutritionnellesRation(ration)
                     }
                 } else {

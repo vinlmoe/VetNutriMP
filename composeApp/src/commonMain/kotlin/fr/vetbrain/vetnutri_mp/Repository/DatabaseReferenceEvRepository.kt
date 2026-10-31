@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.DataBase.*
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
@@ -26,6 +27,7 @@ class DatabaseReferenceEvRepository(
                 val entities = referenceEvDao.getAllReferenceEv()
                 entities.map { convertEntityToReferenceEv(it) }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 emptyList()
             }
         }
@@ -37,6 +39,7 @@ class DatabaseReferenceEvRepository(
                 val entity = referenceEvDao.getReferenceEvById(id)
                 entity?.let { convertEntityToReferenceEv(it) }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 null
             }
         }
@@ -233,6 +236,7 @@ class DatabaseReferenceEvRepository(
             saveReferenceEv(reference)
             true
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }
@@ -242,6 +246,7 @@ class DatabaseReferenceEvRepository(
             updateReferenceEv(reference)
             true
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }
@@ -251,6 +256,7 @@ class DatabaseReferenceEvRepository(
             deleteReferenceEv(id)
             true
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }
@@ -285,6 +291,7 @@ class DatabaseReferenceEvRepository(
                 false
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }
@@ -300,6 +307,7 @@ class DatabaseReferenceEvRepository(
                 false
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }
@@ -315,6 +323,7 @@ class DatabaseReferenceEvRepository(
                 false
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }
@@ -330,6 +339,7 @@ class DatabaseReferenceEvRepository(
                 false
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }
@@ -345,6 +355,7 @@ class DatabaseReferenceEvRepository(
                 false
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }
@@ -860,6 +871,7 @@ class DatabaseReferenceEvRepository(
                         it.label == label
                     }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             null
         }
     }

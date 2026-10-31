@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Service
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.DataBase.AlimentRationEntity
 import fr.vetbrain.vetnutri_mp.DataBase.AnimalEntity
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
@@ -315,7 +317,7 @@ private fun loadLegacyReferenceInfo(refDbFile: File?): Map<String, LegacyReferen
             runCatching {
                 if (conn.tableExists("targetMethod") && conn.tableExists("method")) {
                     val tmCols = conn.tableColumns("targetMethod")
-                    println("[VetNutriMigration] Colonnes targetMethod: ${tmCols.joinToString()}")
+                    AppLog.d("LegacyV2Migration", "[VetNutriMigration] Colonnes targetMethod: ${tmCols.joinToString()}")
                     // Try all plausible column name patterns for (methodUUID, dataRefUUID)
                     conn.queryAll("SELECT * FROM targetMethod").forEach { row ->
                         val methodId = row.str(
@@ -402,10 +404,10 @@ suspend fun previewV2Migration(dbFolderPath: String): LegacyMigrationViewModel.M
         val animDb = File(folder, "Data-Anim.db")
         val foodDb = File(folder, "Data-Food.db")
 
-        println("[VetNutriMigration] Dossier: $dbFolderPath")
+        AppLog.d("LegacyV2Migration", "[VetNutriMigration] Dossier: $dbFolderPath")
         val allFiles = folder.listFiles { f -> f.isFile && f.name.endsWith(".db", ignoreCase = true) }
             ?.map { it.name } ?: emptyList()
-        println("[VetNutriMigration] Fichiers .db trouvés: ${allFiles.joinToString()}")
+        AppLog.d("LegacyV2Migration", "[VetNutriMigration] Fichiers .db trouvés: ${allFiles.joinToString()}")
 
         var animals = 0; var consultations = 0; var rations = 0; var weights = 0
         var foods = 0; var biblioRefs = 0; var equations = 0; var references = 0
@@ -433,11 +435,11 @@ suspend fun previewV2Migration(dbFolderPath: String): LegacyMigrationViewModel.M
 
         val refDbFile = findRefDb(folder)
         if (refDbFile != null) {
-            println("[VetNutriMigration] Base de références trouvée: ${refDbFile.name}")
+            AppLog.d("LegacyV2Migration", "[VetNutriMigration] Base de références trouvée: ${refDbFile.name}")
             val (b, e, r) = countRefTables(refDbFile)
             biblioRefs = b; equations = e; references = r
         } else {
-            println("[VetNutriMigration] Aucune base de références trouvée dans $dbFolderPath")
+            AppLog.d("LegacyV2Migration", "[VetNutriMigration] Aucune base de références trouvée dans $dbFolderPath")
         }
 
         LegacyMigrationViewModel.MigrationCounts(
@@ -640,6 +642,7 @@ private suspend fun importLegacyAnimDb(
                         animalDao.insert(entity)
                         stats.impAnimals++
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         val msg = "Animal ${row["UUID"]}: ${e.message}"
                         errors.add(msg); logError(msg, e)
                     }
@@ -663,6 +666,7 @@ private suspend fun importLegacyAnimDb(
                         animalDao.insertWeight(entity)
                         stats.impWeights++
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         val msg = "Poids ${row["UUID"]}: ${e.message}"
                         errors.add(msg); logError(msg, e)
                     }
@@ -826,6 +830,7 @@ private suspend fun importLegacyAnimDb(
                         consultationDao.insert(entity)
                         stats.impConsults++
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         val msg = "Consultation ${row["UUID"]}: ${e.message}"
                         errors.add(msg); logError(msg, e)
                     }
@@ -890,7 +895,7 @@ private suspend fun importLegacyAnimDb(
                                     )
                                     try {
                                         consultationDao.insertAlimentRation(alimentEntity)
-                                    } catch (_: Exception) {}
+                                    } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("LegacyV2Migration", "Exception ignorée : ${ignored.message}") }
 
                                     // VetNutriMP loads nutrients via refAlimUnif → FoodEntity.
                                     // If the base food doesn't exist in our DB (was only a ration
@@ -945,12 +950,14 @@ private suspend fun importLegacyAnimDb(
                                         }
                                     }
                                 } catch (e: Exception) {
+                                    e.rethrowIfCancellation()
                                     val msg = "AlimentRation ${fRow["UUID"]}: ${e.message}"
                                     errors.add(msg); logError(msg, e)
                                 }
                             }
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         // FK constraint = ration orpheline (consultation absente) → skip silencieux
                         if (e.message?.contains("FOREIGN KEY", ignoreCase = true) == true ||
                             e.message?.contains("constraint", ignoreCase = true) == true) {
@@ -1138,6 +1145,7 @@ private suspend fun importLegacyFoodDb(
                             nutrientValueDao.insertNutrientValues(nutrientValues)
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         val msg = "Aliment ${row["UUID"]}: ${e.message}"
                         errors.add(msg); logError(msg, e)
                     }
@@ -1229,6 +1237,7 @@ private suspend fun importLegacyRefDb(
                         biblioRefDao.insertBiblioRef(entity)
                         stats.impBiblioRefs++
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         val msg = "BiblioRef ${row.str("UUID", "uuid")}: ${e.message}"
                         errors.add(msg); logError(msg, e)
                     }
@@ -1282,6 +1291,7 @@ private suspend fun importLegacyRefDb(
                         equationDao.insertEquation(entity)
                         stats.impEquations++
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         val msg = "Equation ${row.str("UUID", "uuid")}: ${e.message}"
                         errors.add(msg); logError(msg, e)
                     }
@@ -1359,6 +1369,7 @@ private suspend fun importLegacyRefDb(
                             }
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         val msg = "ReferenceEv ${row.str("UUID", "uuid")}: ${e.message}"
                         errors.add(msg); logError(msg, e)
                     }
@@ -1427,7 +1438,7 @@ private suspend fun importLegacyRefDb(
                             )
                         )
                         impCoef++
-                    } catch (_: Exception) {}
+                    } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("LegacyV2Migration", "Exception ignorée : ${ignored.message}") }
                 }
                 if (impCoef > 0) log("Coefficients importés: $impCoef")
                 log("Carte coef→référence construite: ${coefToRefMap.size} entrées")
@@ -1511,7 +1522,7 @@ private suspend fun importLegacyRefDb(
                                 )
                             )
                             impNut++
-                        } catch (_: Exception) {}
+                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("LegacyV2Migration", "Exception ignorée : ${ignored.message}") }
                     }
                 }
             }
@@ -1530,7 +1541,7 @@ suspend fun runV2Migration(
     onLog: suspend (String) -> Unit
 ): LegacyMigrationViewModel.MigrationResult = withContext(AppDispatchers.IO) {
     suspend fun log(msg: String) {
-        println("[VetNutriMigration] $msg")
+        AppLog.d("LegacyV2Migration", "[VetNutriMigration] $msg")
         onLog(msg)
     }
     fun logError(msg: String, e: Exception) {

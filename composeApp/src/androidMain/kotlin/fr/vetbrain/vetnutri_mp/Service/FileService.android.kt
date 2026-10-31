@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Service
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import android.content.Context
 import fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
@@ -31,6 +32,7 @@ actual class FileService(private val context: Context) {
                 }
                 Result.success(Unit)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 Result.failure(e)
             }
         }
@@ -50,6 +52,7 @@ actual class FileService(private val context: Context) {
                 if (file.exists()) check(file.delete()) { "Cannot delete ${file.path}" }
                 Result.success(Unit)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 Result.failure(e)
             }
         }
@@ -64,7 +67,8 @@ actual class FileService(private val context: Context) {
                     if (pattern != null) files.filter { it.name.matches(pattern.toRegex()) }
                     else files
                 }
-            } catch (_: Exception) {
+            } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
                 emptyList()
             }
         }
@@ -76,6 +80,7 @@ actual class FileService(private val context: Context) {
                 source.copyTo(destination, overwrite = true)
                 Result.success(Unit)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 Result.failure(e)
             }
         }
@@ -87,6 +92,7 @@ actual class FileService(private val context: Context) {
                 check(source.renameTo(destination)) { "Cannot move ${source.path} to ${destination.path}" }
                 Result.success(Unit)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 Result.failure(e)
             }
         }
@@ -98,6 +104,7 @@ actual class FileService(private val context: Context) {
                 file.writeText(text)
                 Result.success(Unit)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 Result.failure(e)
             }
         }
@@ -108,6 +115,7 @@ actual class FileService(private val context: Context) {
             try {
                 Result.success(file.readText())
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 Result.failure(e)
             }
         }

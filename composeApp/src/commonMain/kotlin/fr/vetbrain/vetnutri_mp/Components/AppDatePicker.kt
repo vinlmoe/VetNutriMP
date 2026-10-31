@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Components
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material3.DatePicker
@@ -55,9 +57,7 @@ fun AppDatePicker(
                                 try {
                                         val date = LocalDate.parse(newValue)
                                         onDateSelected(date)
-                                } catch (e: Exception) {
-                                        // L'erreur sera gérée par le composant parent
-                                }
+                                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AppDatePicker", "Exception ignorée : ${e.message}") }
                         },
                         label = { Text(label) },
                         trailingIcon = {

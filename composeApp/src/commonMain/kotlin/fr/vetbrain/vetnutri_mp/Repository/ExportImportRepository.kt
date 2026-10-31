@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
@@ -154,7 +156,8 @@ class ExportImportRepository(
                                                                 .getConsultationsForAnimal(
                                                                         animal.uuid
                                                                 )
-                                                } catch (_: Exception) {
+                                                } catch (ignored: Exception) {
+                                                        ignored.rethrowIfCancellation()
                                                         emptyList()
                                                 }
                                         animal.copy(consultations = cons.toMutableList())
@@ -228,7 +231,7 @@ class ExportImportRepository(
                                                         linkedEquationIds.add(it.uuid)
                                                 }
                                         }
-                                } catch (_: Exception) {}
+                                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("ExportImportRepository", "Exception ignorée : ${ignored.message}") }
                         }
                 }
 
@@ -263,7 +266,7 @@ class ExportImportRepository(
                                                         equationIdsFromReferences.add(it.uuid)
                                                 }
                                         }
-                                } catch (_: Exception) {}
+                                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("ExportImportRepository", "Exception ignorée : ${ignored.message}") }
                         }
                 }
 
@@ -293,7 +296,7 @@ class ExportImportRepository(
                 if (shouldIncludeFoods && foodRepository is DatabaseFoodRepository) {
                         try {
                                 foodRepository.forceRefresh()
-                        } catch (_: Exception) {}
+                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("ExportImportRepository", "Exception ignorée : ${ignored.message}") }
                 }
                 val allFoods =
                         if (shouldIncludeFoods)
@@ -407,7 +410,8 @@ class ExportImportRepository(
                                                 }
                                                 .map { it.toApi() }
                                                 .toList()
-                                } catch (_: Exception) {
+                                } catch (ignored: Exception) {
+                                        ignored.rethrowIfCancellation()
                                         emptyList()
                                 }
                         } else emptyList()
@@ -451,7 +455,8 @@ class ExportImportRepository(
                                 }
 
                                 filteredBiblioRefs.map { it.toApi() }
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
                                 emptyList()
                         }
                 val consultationKeywords: List<ConsultationKeywordApi> =
@@ -478,7 +483,8 @@ class ExportImportRepository(
                                 filteredKeywords.map {
                                         ConsultationKeywordApi(uuid = it.uuid, label = it.label)
                                 }
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
                                 emptyList()
                         }
 
@@ -566,6 +572,7 @@ class ExportImportRepository(
                                         biblioImported++
                                         advance()
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         if (e is kotlinx.coroutines.CancellationException) throw e
                                         errorCount++
                                         listener?.onLog?.invoke(
@@ -592,6 +599,7 @@ class ExportImportRepository(
                                         keywordsImported++
                                         advance()
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         if (e is kotlinx.coroutines.CancellationException) throw e
                                         errorCount++
                                         listener?.onLog?.invoke(
@@ -639,6 +647,7 @@ class ExportImportRepository(
                                                 biblioRepository.getAllBiblioRefs().first()
                                                         .associateBy { it.uuid }
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 if (e is kotlinx.coroutines.CancellationException) throw e
                                                 errorCount++
                                                 emptyMap()
@@ -659,6 +668,7 @@ class ExportImportRepository(
                                                 "Aliments importés=${res.importedCount}, mis à jour=${res.updatedCount}, erreurs=${res.errorCount}"
                                         )
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         if (e is kotlinx.coroutines.CancellationException) throw e
                                         errorCount++
                                         listener?.onLog?.invoke(
@@ -674,6 +684,7 @@ class ExportImportRepository(
                                                 foodsImported++
                                                 advance()
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 if (e is kotlinx.coroutines.CancellationException) throw e
                                                 errorCount++
                                                 listener?.onLog?.invoke(
@@ -699,6 +710,7 @@ class ExportImportRepository(
                                                 eqCache[eq.uuid] = eq
                                         }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         if (e is kotlinx.coroutines.CancellationException) throw e
                                         errorCount++
                                 }
@@ -710,6 +722,7 @@ class ExportImportRepository(
                                                 (biblioRepository.getAllBiblioRefs().first())
                                                         .associateBy { it.uuid }
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 if (e is kotlinx.coroutines.CancellationException) throw e
                                                 errorCount++
                                                 emptyMap()
@@ -845,6 +858,7 @@ class ExportImportRepository(
                                                                         )
                                                     }
                                                 } catch (e: Exception) {
+                                                        e.rethrowIfCancellation()
                                                         if (e is kotlinx.coroutines.CancellationException) throw e
                                                         errorCount++
                                                     
@@ -902,6 +916,7 @@ class ExportImportRepository(
                                                                                         .add(coef)
                                                     }
                                                 } catch (e: Exception) {
+                                                        e.rethrowIfCancellation()
                                                         if (e is kotlinx.coroutines.CancellationException) throw e
                                                         errorCount++
                                                                 listener?.onLog?.invoke(
@@ -915,6 +930,7 @@ class ExportImportRepository(
                                         referencesImported++
                                         advance()
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         if (e is kotlinx.coroutines.CancellationException) throw e
                                         errorCount++
                                         listener?.onLog?.invoke(
@@ -938,6 +954,7 @@ class ExportImportRepository(
                         val existingAnimalIds: MutableSet<String> = try {
                                 animalRepository.getAllAnimals().map { it.uuid }.toMutableSet()
                         } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 if (e is kotlinx.coroutines.CancellationException) throw e
                                 errorCount++
                                 listener?.onLog?.invoke(
@@ -1020,6 +1037,7 @@ class ExportImportRepository(
                                                                                                 )
                                                                                         foodsImported++
                                                                                 } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
                                                                                         if (e is kotlinx.coroutines.CancellationException) throw e
                                                                                         errorCount++
                                                                                 }
@@ -1040,6 +1058,7 @@ class ExportImportRepository(
                                         animalsImported++
                                         advance()
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         if (e is kotlinx.coroutines.CancellationException) throw e
                                         errorCount++
                                         listener?.onLog(
@@ -1063,6 +1082,7 @@ class ExportImportRepository(
                                         try {
                                                 foodRepository.getAllFoods().map { it.uuid }.toSet()
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 if (e is kotlinx.coroutines.CancellationException) throw e
                                                 errorCount++
                                                 emptySet()
@@ -1100,6 +1120,7 @@ class ExportImportRepository(
                                                                         .add(foodId)
                                                                 foodsImported++
                                                         } catch (e: Exception) {
+                                                                e.rethrowIfCancellation()
                                                                 if (e is kotlinx.coroutines.CancellationException) throw e
                                                                 errorCount++
                                                         }
@@ -1111,6 +1132,7 @@ class ExportImportRepository(
                                         recipesImported++
                                         advance()
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         if (e is kotlinx.coroutines.CancellationException) throw e
                                         errorCount++
                                         listener?.onLog?.invoke(
@@ -1133,6 +1155,7 @@ class ExportImportRepository(
                                         conseilsImported++
                                         advance()
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         if (e is kotlinx.coroutines.CancellationException) throw e
                                         errorCount++
                                         listener?.onLog?.invoke(

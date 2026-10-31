@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefEntity
@@ -153,7 +155,8 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
             val dbRefs = allRefs.map { it.toDomain() }
             _biblioRefs.value = dbRefs
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
         }
     }
 
@@ -189,10 +192,7 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                 // Mettre à jour le cache et émettre les nouvelles données
                 _biblioRefs.value = dbRefs
                 emit(dbRefs)
-            } catch (e: Exception) {
-                // En cas d'erreur, on n'émet rien de plus (les données du cache ont déjà été
-                // émises)
-            }
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("BiblioRefRepository", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -210,7 +210,8 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                     }
                     refreshFromDatabase()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.rethrowIfCancellation()
+                    AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
                     throw e
                 }
             }
@@ -224,7 +225,8 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                     biblioRefDao.updateBiblioRef(biblioRef.toEntity())
                     refreshFromDatabase()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.rethrowIfCancellation()
+                    AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
                     throw e
                 }
             }
@@ -238,7 +240,8 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                     biblioRefDao.deleteBiblioRef(biblioRef.toEntity())
                     refreshFromDatabase()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.rethrowIfCancellation()
+                    AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
                     throw e
                 }
             }
@@ -256,7 +259,8 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                     }
                     count
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.rethrowIfCancellation()
+                    AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
                     throw e
                 }
             }

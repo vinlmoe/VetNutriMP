@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -340,6 +341,7 @@ class ExamGradingViewModel(
                             importedAtEpochMs = now
                         )
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         entries += ExamCopyImportEntry(
                             nom = row.nom,
                             prenom = row.prenom,
@@ -375,6 +377,7 @@ class ExamGradingViewModel(
                 appendImportLog("✅ Import terminé: $ok OK, $ko erreur(s)")
                 onCompleted?.invoke()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _message.value = "❌ Import CSV impossible: ${e.message}"
                 appendImportLog("❌ Erreur globale: ${e.message}")
             } finally {

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
 import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import fr.vetbrain.vetnutri_mp.Utils.createExportJson
@@ -21,7 +22,8 @@ private suspend fun saveJson(defaultFileName: String, write: (OutputStream) -> U
         true
     } catch (e: CancellationException) {
         throw e
-    } catch (_: Exception) {
+    } catch (ignored: Exception) {
+        ignored.rethrowIfCancellation()
         false
     }
 }

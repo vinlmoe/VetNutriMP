@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -154,7 +156,8 @@ class ImportViewModel(
                             "❌ Aucune référence nutritionnelle trouvée dans le fichier"
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("ImportViewModel", e.message ?: "Erreur", e)
                 _nutritionalRequirementImportResultMessage.value =
                         "❌ Erreur lors de l'importation: ${e.message ?: "Erreur inconnue"}\n\nVérifiez que le fichier est au format .vbnr.json valide."
             } finally {

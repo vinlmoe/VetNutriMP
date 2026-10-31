@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.compose.runtime.getValue
@@ -357,6 +359,7 @@ class SettingsViewModel(
                 conseils = importCounts.conseils
             )
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             finishApiImport()
             appendApiImportLog(translate("settings.errorFormat", e.message ?: ""))
             ImportResult.Error(translate("settings.jsonbinErrorImport", e.message ?: ""))
@@ -378,6 +381,7 @@ class SettingsViewModel(
             _nutritionalRequirementMessage.value =
                     translate("settings.nutritionalReqWrongViewModel")
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _nutritionalRequirementMessage.value = translate("settings.errorFormat", e.message ?: "")
         }
     }
@@ -507,6 +511,7 @@ class SettingsViewModel(
             try {
                 action()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 resetErrors += "$step: ${e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR)}"
             }
         }
@@ -604,7 +609,8 @@ class SettingsViewModel(
                     try {
                         resourceReader.readJsonVersion("vetnutri_export_init.json")
                                 ?: resourceReader.readJsonVersion("data/vetnutri_export_init.json")
-                    } catch (_: Exception) {
+                    } catch (ignored: Exception) {
+                        ignored.rethrowIfCancellation()
                         null
                     }
             val updateNeeded =
@@ -645,6 +651,7 @@ class SettingsViewModel(
                             log("✓ Fichier lu avec succès (foods=${result.foods.size}, references=${result.references.size})")
                             result
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             log("⚠ Chemin direct échoué, tentative: data/vetnutri_export_init.json")
                             val result = resourceReader
                                     .readApiEnvelopeOptimized("data/vetnutri_export_init.json")
@@ -652,6 +659,7 @@ class SettingsViewModel(
                             result
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         log("❌ ERREUR: Fichier introuvable - ${e.message}")
                         throw IllegalStateException(
                                 translate("settings.importFileNotFound", e.message ?: "")
@@ -725,13 +733,14 @@ class SettingsViewModel(
                     conseils = importCounts.conseils
             )
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             log("=".repeat(60))
             log("❌ ERREUR LORS DE L'IMPORT")
             log("Type: ${e::class.simpleName}")
             log("Message: ${e.message}")
             log("Stack trace:")
-            logMessages.forEach { println(it) }
-            e.printStackTrace()
+            logMessages.forEach { AppLog.d("SettingsViewModel", (it).toString()) }
+            AppLog.e("SettingsViewModel", e.message ?: "Erreur", e)
             log("=".repeat(60))
             ImportResult.Error(translate("settings.autoImportErrorFormat", e.message ?: ""))
         }

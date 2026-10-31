@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.DataBase.HtmlSectionDao
@@ -23,6 +24,7 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
             dao.insertSection(entity)
             Result.success(Unit)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -34,6 +36,7 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
             dao.updateSection(entity)
             Result.success(Unit)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -49,6 +52,7 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
                 Result.failure(Exception("Section not found"))
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -59,6 +63,7 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
             val entity = dao.getSectionById(id)
             Result.success(entity?.toDomain())
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -70,6 +75,7 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
             val sections = entities.map { it.toDomain() }
             Result.success(sections)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -81,6 +87,7 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
             val sections = entities.map { it.toDomain() }
             Result.success(sections)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -92,6 +99,7 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
             val sections = entities.map { it.toDomain() }
             Result.success(sections)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -103,6 +111,7 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
             val sections = entities.map { it.toDomain() }
             Result.success(sections)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -127,6 +136,7 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
                 Result.failure(Exception("Template not found"))
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -151,6 +161,7 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
                 Result.failure(Exception("Section not found"))
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }

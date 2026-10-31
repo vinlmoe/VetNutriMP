@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
@@ -203,6 +205,7 @@ class NewReferenceEvViewModel(
                     _availableEquations.value = equations
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _equations.value = emptyList()
                 _availableEquations.value = emptyList()
             } finally {
@@ -222,6 +225,7 @@ class NewReferenceEvViewModel(
                 }
                         ?: run { _availableBiblioRefs.value = emptyList() }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _availableBiblioRefs.value = emptyList()
             }
         }
@@ -399,6 +403,7 @@ class NewReferenceEvViewModel(
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _errorMessage.value = translate(LocalizationKeys.Reference.VM_SAVE_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             }
@@ -420,9 +425,7 @@ class NewReferenceEvViewModel(
                     repository.create(reference)
                 }
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation automatique
-            } catch (e: Exception) {
-                // Log silencieux de l'erreur
-            }
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("NewReferenceEvViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -475,6 +478,7 @@ class NewReferenceEvViewModel(
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             } finally {
@@ -505,6 +509,7 @@ class NewReferenceEvViewModel(
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             } finally {
@@ -535,6 +540,7 @@ class NewReferenceEvViewModel(
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             } finally {
@@ -565,6 +571,7 @@ class NewReferenceEvViewModel(
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             } finally {
@@ -589,6 +596,7 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
@@ -609,6 +617,7 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
@@ -628,6 +637,7 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
@@ -647,6 +657,7 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
@@ -701,6 +712,7 @@ class NewReferenceEvViewModel(
                             translate(LocalizationKeys.Reference.VM_UPDATE_COMPLEMENTARY_ERROR)
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
@@ -752,7 +764,7 @@ class NewReferenceEvViewModel(
 
             // Mettre à jour la référence avec les équations chargées
             _currentReference.value = reference
-        } catch (e: Exception) {}
+        } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("NewReferenceEvViewModel", "Exception ignorée : ${e.message}") }
     }
 
     // ==================== MÉTHODES POUR LA GESTION DES COEFFICIENTS ====================

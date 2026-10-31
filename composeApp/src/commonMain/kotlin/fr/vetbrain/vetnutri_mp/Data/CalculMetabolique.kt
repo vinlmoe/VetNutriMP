@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 
 /**
@@ -75,6 +76,7 @@ object CalculMetabolique {
             ajouterVariablesParDefaut(variables, equation.equationScript)
             ExpressionEvaluator.evaluer(equation.equationScript, variables)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             null
         }
     }

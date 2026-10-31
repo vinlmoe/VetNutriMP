@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View.SettingsSections
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -130,6 +132,7 @@ fun AdministrationSettings(
                                                 }
                                             }
                                         } catch (e: Exception) {
+                                            e.rethrowIfCancellation()
                                             autoImportResult = translate(LocalizationKeys.Administration.UNEXPECTED_ERROR, e.message ?: "")
                                         } finally {
                                             isAutoImporting = false
@@ -366,6 +369,7 @@ fun AdministrationSettings(
                             resultMessage = translate(LocalizationKeys.Administration.DELETE_FOODS_SUCCESS, count.toString())
                             onFoodListRefresh()
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
@@ -388,6 +392,7 @@ fun AdministrationSettings(
                             resultMessage = translate(LocalizationKeys.Administration.DELETE_ANIMALS_SUCCESS, count.toString())
                             onAnimalListRefresh()
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
@@ -412,13 +417,13 @@ fun AdministrationSettings(
 
                             try {
                                 refCount = viewModel.clearAllReferences()
-                            } catch (e: Exception) {}
+                            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AdministrationSettings", "Exception ignorée : ${e.message}") }
                             try {
                                 eqCount = viewModel.clearAllEquations()
-                            } catch (e: Exception) {}
+                            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AdministrationSettings", "Exception ignorée : ${e.message}") }
                             try {
                                 bibCount = viewModel.clearAllBiblioRefs()
-                            } catch (e: Exception) {}
+                            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AdministrationSettings", "Exception ignorée : ${e.message}") }
 
                             resultMessage =
                                     translate(
@@ -428,6 +433,7 @@ fun AdministrationSettings(
                                             bibCount.toString()
                                     )
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
@@ -449,6 +455,7 @@ fun AdministrationSettings(
                             val count = viewModel.clearAllEquations()
                             resultMessage = translate(LocalizationKeys.Administration.DELETE_EQUATIONS_SUCCESS, count.toString())
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
@@ -471,6 +478,7 @@ fun AdministrationSettings(
                             resultMessage =
                                     translate(LocalizationKeys.Administration.DELETE_BIBLIO_SUCCESS, count.toString())
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false

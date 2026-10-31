@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -146,7 +148,7 @@ fun StartupScreen(
                                                 val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
                                                 val conseilsCount = try {
                                                         conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
-                                                } catch (_: Exception) { 0 }
+                                                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); 0 }
                                                 databaseStatus = databaseStatus?.copy(
                                                         foodCount = foodCount,
                                                         referenceCount = referenceCount,
@@ -194,11 +196,12 @@ fun StartupScreen(
                                                 }
                                         }
                                 }
-                        } catch (_: Exception) {}
+                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${ignored.message}") }
                         val conseilsCount =
                                 try {
                                         conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         0
                                 }
 
@@ -216,7 +219,7 @@ fun StartupScreen(
                                 if (settingsViewModel.animalRepository.getAnimalsCount() == 0) {
                                         recoveryBackup = findRecoveryBackup()
                                 }
-                        } catch (_: Exception) {}
+                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${ignored.message}") }
 
                         // Vérifier si les CGU ont déjà été acceptées
                         hasAcceptedTerms = termsStorage.checkTermsAcceptance()
@@ -243,6 +246,7 @@ fun StartupScreen(
                                                         "data/vetnutri_export_init.json"
                                                 )
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 null
                                         }
                                 embeddedJsonVersion = localEmbeddedJsonVersion
@@ -295,6 +299,7 @@ fun StartupScreen(
                                         )
                                 }
                         } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 // En cas d'erreur, on considère qu'aucune mise à jour n'est
                                 // nécessaire
                                 jsonUpdateAvailable = false
@@ -358,6 +363,7 @@ fun StartupScreen(
                                                 journaliserMiseAJour("Version actuelle ($currentAppVersion) est à jour")
                                         }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         appUpdateError = translate("startup.update_check_error", e.message ?: "")
                                         showAppUpdateErrorDialog = true
                                         journaliserMiseAJour("❌ EXCEPTION CAPTURÉE LORS DE LA VÉRIFICATION:")
@@ -381,6 +387,7 @@ fun StartupScreen(
                         // Attendre un peu pour montrer l'écran de démarrage
                         kotlinx.coroutines.delay(2000)
                 } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         databaseStatus =
                                 DatabaseStatus(
                                         foodCount = 0,
@@ -391,7 +398,8 @@ fun StartupScreen(
                         unreadableRecoveryBackup =
                                 try {
                                         findRecoveryBackup()
-                                } catch (_: Exception) {
+                                } catch (ignored: Exception) {
+                                        ignored.rethrowIfCancellation()
                                         null
                                 }
                         showRecoveryDialog = true
@@ -440,9 +448,7 @@ fun StartupScreen(
                                                                 // l'utilisateur voie la mise à jour
                                                                 kotlinx.coroutines.delay(1000)
                                                         }
-                                                } catch (e: Exception) {
-                                                        // Gérer l'erreur silencieusement
-                                                }
+                                                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${e.message}") }
                                         }
                                         DatabaseChangeNotifier.ChangeType
                                                 .DATABASE_VERSION_UPDATED -> {
@@ -941,7 +947,7 @@ fun StartupScreen(
                                                                 OutlinedButton(
                                                                         onClick = {
                                                                                 coroutineScope.launch {
-                                                                                    try { createPreferencesStorage().saveString("startup_complete", "true") } catch (_: Exception) {}
+                                                                                    try { createPreferencesStorage().saveString("startup_complete", "true") } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${ignored.message}") }
                                                                                 }
                                                                                 showStartupScreen =
                                                                                         false
@@ -1050,7 +1056,7 @@ fun StartupScreen(
                                                                 Button(
                                                                         onClick = {
                                                                                 coroutineScope.launch {
-                                                                                    try { createPreferencesStorage().saveString("startup_complete", "true") } catch (_: Exception) {}
+                                                                                    try { createPreferencesStorage().saveString("startup_complete", "true") } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${ignored.message}") }
                                                                                 }
                                                                                 showStartupScreen =
                                                                                         false
@@ -1395,7 +1401,8 @@ fun StartupScreen(
                                                                                                 ?.getConseilsCount()
                                                                                                 ?.getOrThrow()
                                                                                                 ?: 0
-                                                                                } catch (_: Exception) {
+                                                                                } catch (ignored: Exception) {
+                                                                                        ignored.rethrowIfCancellation()
                                                                                         0
                                                                                 }
                                                                         databaseStatus =
@@ -1509,7 +1516,8 @@ fun StartupScreen(
                                                                                                 ?.getConseilsCount()
                                                                                                 ?.getOrThrow()
                                                                                                 ?: 0
-                                                                                } catch (_: Exception) {
+                                                                                } catch (ignored: Exception) {
+                                                                                        ignored.rethrowIfCancellation()
                                                                                         0
                                                                                 }
                                                                         databaseStatus =
@@ -1679,7 +1687,7 @@ fun StartupScreen(
                                                                         referenceCount = referenceCount,
                                                                         needsUpdate = foodCount == 0 || referenceCount == 0
                                                                 )
-                                                        } catch (_: Exception) {}
+                                                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${ignored.message}") }
                                                         isUpdatingDatabase = false
                                                         closeRecovery()
                                                 }
@@ -1736,7 +1744,7 @@ fun StartupScreen(
                                                                                 examStudentId.trim()
                                                                 )
                                                         coroutineScope.launch {
-                                                            try { createPreferencesStorage().saveString("startup_complete", "true") } catch (_: Exception) {}
+                                                            try { createPreferencesStorage().saveString("startup_complete", "true") } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${ignored.message}") }
                                                         }
                                                         onStartExam(session)
                                                         showExamDialog = false
@@ -2243,6 +2251,7 @@ private fun formatBackupDate(timestamp: Long): String =
                 "${dateTime.dayOfMonth.toString().padStart(2, '0')}/" +
                         "${dateTime.monthNumber.toString().padStart(2, '0')}/${dateTime.year} " +
                         "${dateTime.hour.toString().padStart(2, '0')}:${dateTime.minute.toString().padStart(2, '0')}"
-        } catch (_: Exception) {
+        } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
                 "?"
         }

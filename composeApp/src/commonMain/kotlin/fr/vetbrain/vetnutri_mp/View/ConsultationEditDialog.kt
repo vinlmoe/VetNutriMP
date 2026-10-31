@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -60,6 +61,7 @@ fun ConsultationEditDialog(
                                 editedConsultation = editedConsultation.copy(date = date)
                                 showDateError = false
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 showDateError = true
                             }
                         },

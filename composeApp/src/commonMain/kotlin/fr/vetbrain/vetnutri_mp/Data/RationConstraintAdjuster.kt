@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
@@ -369,6 +370,7 @@ suspend fun adjustRationByConstraints(
                         }
                 }
         } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return ConstraintAdjustmentResult(
                         success = false,
                         message = "Erreur lors de l'ajustement par contraintes : ${e.message}"

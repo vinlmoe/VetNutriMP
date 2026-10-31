@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrient
 import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
@@ -394,7 +395,7 @@ private fun calculerValeurNutrimentDansRation(
                 // L'ingrédient n'a pas de valeur pour ce nutriment
                 tousLesIngredientsOntUneValeur = false
                 if (nutriment is AAEnum) {
-                    val db = try { alimentRation.aliment?.dataB } catch (e: Exception) { null }
+                    val db = try { alimentRation.aliment?.dataB } catch (e: Exception) { e.rethrowIfCancellation(); null }
                 }
                 contributrionsIngredients.add("$nomIngredient:NA")
             }

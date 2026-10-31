@@ -65,7 +65,8 @@ class DatabaseVersionManager {
             _importSource.value = importSource
             DatabaseChangeNotifier.notifyVersionUpdate(previousVersion, newVersion)
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("DatabaseVersionManager", e.message ?: "Erreur", e)
         }
     }
     
@@ -152,7 +153,8 @@ class DatabaseVersionManager {
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("DatabaseVersionManager", e.message ?: "Erreur", e)
         }
     }
 
@@ -220,7 +222,8 @@ class DatabaseVersionManager {
 
             return false
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("DatabaseVersionManager", e.message ?: "Erreur", e)
             // En cas d'erreur, considérer qu'une mise à jour est nécessaire
             return true
         }
@@ -249,7 +252,8 @@ class DatabaseVersionManager {
 
             return false
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("DatabaseVersionManager", e.message ?: "Erreur", e)
             return true
         }
     }
@@ -289,7 +293,8 @@ class DatabaseVersionManager {
                 )
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("DatabaseVersionManager", e.message ?: "Erreur", e)
         }
     }
 
@@ -317,7 +322,8 @@ class DatabaseVersionManager {
                 embeddedVersion
             )
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("DatabaseVersionManager", e.message ?: "Erreur", e)
         }
     }
 
@@ -386,7 +392,8 @@ class DatabaseVersionManager {
             _importSource.value = null
             
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("DatabaseVersionManager", e.message ?: "Erreur", e)
         }
     }
     
@@ -419,6 +426,7 @@ class DatabaseVersionManager {
                     "${now.monthNumber.toString().padStart(2, '0')}-" +
                     "${now.dayOfMonth.toString().padStart(2, '0')}"
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Fallback très simple
             "Unknown"
         }

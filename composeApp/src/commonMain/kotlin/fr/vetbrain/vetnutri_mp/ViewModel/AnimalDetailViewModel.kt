@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -322,7 +324,7 @@ class AnimalDetailViewModel(
                     }
                 }
                 .catch { e ->
-                    e.printStackTrace()
+                    AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
                     _availableFoods.value = emptyList()
                     _isLoadingFoods.value = false
                 }
@@ -354,7 +356,8 @@ class AnimalDetailViewModel(
                 val alimentComplet = foodRepository.getFoodById(uuid)
                 onComplete(alimentComplet)
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
                 onComplete(null)
             }
         }
@@ -402,7 +405,8 @@ class AnimalDetailViewModel(
                 // Mettre à jour la ration dans la consultation
                 updateRationInConsultation(updatedRation)
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
@@ -461,6 +465,7 @@ class AnimalDetailViewModel(
                 // soient prêtes lors de la sélection automatique de consultation
                 chargerReferencesDisponibles()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _speciesPreferences.value = null
             }
 
@@ -512,8 +517,9 @@ class AnimalDetailViewModel(
                     aSelectionner?.let { selectConsultation(it, rationPrecedente) }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 // Gérer les erreurs potentielles lors du chargement des consultations
-                e.printStackTrace()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
@@ -771,7 +777,8 @@ class AnimalDetailViewModel(
                 val resultat = rationAnalyzer.analyserRation(rationActuelle, consultationEtape)
                 _rationAnalyseResultat.value = resultat
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
 
                 // Créer un résultat avec une erreur
                 _rationAnalyseResultat.value =
@@ -802,7 +809,8 @@ class AnimalDetailViewModel(
                 val resultat = rationAnalyzer.comparerRations(rationActuelle, autreRation)
                 _rationsComparaison.value = resultat
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
 
                 // Réinitialiser la comparaison en cas d'erreur
                 _rationsComparaison.value = emptyMap()
@@ -851,8 +859,9 @@ class AnimalDetailViewModel(
                     } else {}
                 } else {}
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
 
-                e.printStackTrace()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
@@ -1037,7 +1046,8 @@ class AnimalDetailViewModel(
                 // Arrêter le mode édition
                 isEditingConsultation = false
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
@@ -1076,7 +1086,8 @@ class AnimalDetailViewModel(
                     _selectedConsultation.value = consultation
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
@@ -1227,7 +1238,8 @@ class AnimalDetailViewModel(
                 // Ajouter la consultation dupliquée
                 addConsultation(duplicatedConsultation)
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
@@ -1303,7 +1315,8 @@ class AnimalDetailViewModel(
                 isEditingAnimal = false
                 _showFullScreenEdit.value = false
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
                 return@launch
             }
         }
@@ -1581,7 +1594,8 @@ class AnimalDetailViewModel(
 
                 _rationAnalyseResultat.value = resultat
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             } finally {
                 _isAnalyzing.value = false
             }
@@ -1601,7 +1615,8 @@ class AnimalDetailViewModel(
                 val comparaison = rationAnalyzer.comparerRations(ration1, ration2)
                 _rationsComparaison.value = comparaison
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             } finally {
                 _isAnalyzing.value = false
             }
@@ -1629,6 +1644,7 @@ class AnimalDetailViewModel(
                     references.forEach { ref -> }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _availableReferences.value = emptyList()
             } finally {
                 _isLoadingReferences.value = false
@@ -1641,7 +1657,8 @@ class AnimalDetailViewModel(
             try {
                 _availableKeywords.value = consultationRepository.getAllKeywords()
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
                 _availableKeywords.value = emptyList()
             }
         }
@@ -1660,7 +1677,8 @@ class AnimalDetailViewModel(
                 consultationRepository.saveKeyword(keyword)
                 _availableKeywords.value = consultationRepository.getAllKeywords()
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
@@ -1682,7 +1700,7 @@ class AnimalDetailViewModel(
                         updateConsultation(consultation)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -1703,7 +1721,7 @@ class AnimalDetailViewModel(
                         updateConsultation(consultation)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -1724,7 +1742,7 @@ class AnimalDetailViewModel(
                         updateConsultation(consultation)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -1762,7 +1780,7 @@ class AnimalDetailViewModel(
                     val updatedConsultation = it.copy(referenceGeneraleId = referenceId)
                     updateConsultation(updatedConsultation)
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -1779,7 +1797,7 @@ class AnimalDetailViewModel(
                         updateConsultation(updatedConsultation)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -1794,7 +1812,7 @@ class AnimalDetailViewModel(
                     val updatedConsultation = it.copy(referencesMaladies = newReferences)
                     updateConsultation(updatedConsultation)
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -1854,7 +1872,8 @@ class AnimalDetailViewModel(
                 // Recalculer les valeurs métaboliques après la sauvegarde
                 calculerValeursMetaboliques(consultationToSave)
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
@@ -2058,7 +2077,8 @@ class AnimalDetailViewModel(
                 }
                 _bilansEtapes.value = bilans
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
@@ -2141,7 +2161,8 @@ class AnimalDetailViewModel(
                         besoinEnergetiqueTotal = besoinTotal
                 )
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
                 resetCalculsMetaboliques()
             }
         }
@@ -2209,6 +2230,7 @@ class AnimalDetailViewModel(
 
             null
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             null
         }
     }
@@ -2246,7 +2268,7 @@ class AnimalDetailViewModel(
                         calculerValeursMetaboliques(consultationMiseAJour)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -2276,7 +2298,7 @@ class AnimalDetailViewModel(
                         calculerValeursMetaboliques(consultationMiseAJour)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -2331,7 +2353,7 @@ class AnimalDetailViewModel(
                         calculerValeursMetaboliques(consultationMiseAJour)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -2397,7 +2419,7 @@ class AnimalDetailViewModel(
                     // Désactiver le mode d'ajout
                     isAddingWeight = false
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -2434,7 +2456,7 @@ class AnimalDetailViewModel(
                         }
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -2627,7 +2649,8 @@ class AnimalDetailViewModel(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        e.rethrowIfCancellation()
+                        AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
                     }
                 }
     }

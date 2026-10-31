@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.mutableStateOf
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
@@ -66,7 +68,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 kotlinx.coroutines.withTimeoutOrNull(2000) {
                     repository.getAllBiblioRefs().collect { refs -> }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("BiblioRefViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -94,8 +96,9 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _operationMessage.value = "Erreur lors du chargement: ${e.message}"
-            e.printStackTrace()
+            AppLog.e("BiblioRefViewModel", e.message ?: "Erreur", e)
         } finally {
             _actionInProgress.value = false
         }
@@ -169,6 +172,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 completeRef.value = result.completeRef
                 validateForm()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _doiError.value = "DOI introuvable ou API inaccessible"
             } finally {
                 _doiLoading.value = false
@@ -239,8 +243,9 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 // Réinitialiser le formulaire après sauvegarde
                 initForEdit()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur: ${e.message}"
-                e.printStackTrace()
+                AppLog.e("BiblioRefViewModel", e.message ?: "Erreur", e)
             } finally {
                 _actionInProgress.value = false
             }
@@ -265,6 +270,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 refreshBiblioRefs()
                 _operationMessage.value = "Référence dupliquée avec succès"
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur: ${e.message}"
             }
         }
@@ -284,8 +290,9 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                     initForEdit()
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur: ${e.message}"
-                e.printStackTrace()
+                AppLog.e("BiblioRefViewModel", e.message ?: "Erreur", e)
             } finally {
                 _actionInProgress.value = false
             }

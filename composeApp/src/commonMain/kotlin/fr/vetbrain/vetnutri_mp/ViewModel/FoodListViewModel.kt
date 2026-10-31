@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
@@ -99,7 +100,7 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                                 updateAvailableFilterValues(allFoods)
                         }
                         .catch { e ->
-                                e.printStackTrace()
+                                AppLog.e("FoodListViewModel", e.message ?: "Erreur", e)
                                 _allFoods.value = emptyList()
                                 _foods.value = emptyList()
                         }

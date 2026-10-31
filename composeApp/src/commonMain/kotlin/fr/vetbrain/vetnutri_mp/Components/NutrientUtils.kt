@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Components
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
@@ -132,8 +134,9 @@ fun calculerValeursNutritionnelles(
                 }
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Ignorer les erreurs et continuer avec les autres aliments
-            e.printStackTrace()
+            AppLog.e("NutrientUtils", e.message ?: "Erreur", e)
         }
     }
 

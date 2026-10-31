@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.DataBase
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
@@ -71,6 +73,7 @@ object Mappers {
                                         try {
                                                 LocalDate.parse(dateStr)
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
 
                                                 null
                                         }
@@ -179,7 +182,8 @@ object Mappers {
                                 } else {
                                         mutableListOf()
                                 }
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
                                 mutableListOf()
                         }
 
@@ -194,7 +198,8 @@ object Mappers {
                                 } else {
                                         mutableListOf()
                                 }
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
                                 mutableListOf()
                         }
 
@@ -209,7 +214,8 @@ object Mappers {
                                 } else {
                                         mutableListOf()
                                 }
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
                                 mutableListOf()
                         }
 
@@ -221,6 +227,7 @@ object Mappers {
                                         try {
                                                 LocalDate.parse(this.date)
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
 
                                                 null
                                         }
@@ -472,6 +479,7 @@ object Mappers {
                                                 }
                                         }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
 
                                         // Nettoyer quand même en cas d'erreur
                                         val cleanedEspece =
@@ -510,6 +518,7 @@ object Mappers {
                                                                 else null
                                                         }
                                                 } catch (e: Exception) {
+                                                        e.rethrowIfCancellation()
                                                         // Nettoyer quand même en cas d'erreur
                                                         val cleaned =
                                                                 it.espece
@@ -541,7 +550,7 @@ object Mappers {
                                         ) {
                                                 indicatList.add(alimIndic)
                                         }
-                                } catch (e: Exception) {}
+                                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("Mappers", "Exception ignorée : ${e.message}") }
                         }
                 } else {
                         indicatList.addAll(
@@ -554,6 +563,7 @@ object Mappers {
                                                 if (indication != null) {}
                                                 indication
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 null
                                         }
                                 }
@@ -567,12 +577,14 @@ object Mappers {
                                 try {
                                         this.typeAlim.let { FoodKind.entries.getOrNull(it) }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         null
                                 },
                         group =
                                 try {
                                         this.groupAlim.let { GroupAlim.entries.getOrNull(it) }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         null
                                 },
                         consistent = this.consistent == 1,
@@ -623,6 +635,7 @@ object Mappers {
                                                 }
                                         }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         val cleanedEspece =
                                                 especeStr
                                                         .replace("[", "")
@@ -650,9 +663,7 @@ object Mappers {
                                         ) {
                                                 indicatList.add(alimIndic)
                                         }
-                                } catch (e: Exception) {
-                                        // Ignorer les indications non reconnues
-                                }
+                                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("Mappers", "Exception ignorée : ${e.message}") }
                         }
                 }
 
@@ -663,12 +674,14 @@ object Mappers {
                                 try {
                                         this.typeAlim.let { FoodKind.entries.getOrNull(it) }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         null
                                 },
                         group =
                                 try {
                                         this.groupAlim.let { GroupAlim.entries.getOrNull(it) }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         null
                                 },
                         brand = this.brand ?: "",
@@ -699,6 +712,7 @@ object Mappers {
                                         try {
                                                 LocalDate.parse(this.date)
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
 
                                                 LocalDate(
                                                         2000,

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -134,6 +135,7 @@ fun AnalyseNutritionnelleCard(
                     localTypeExpressionBesoin = preferences.getTypeExpressionBesoinEnum()
                     preferencesLoaded = true
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     localTypeExpressionBesoin = TypeExpressionBesoin.DEFAULT
                     preferencesLoaded = false
                 }
@@ -1096,6 +1098,7 @@ private fun parseColor(hexColor: String): Color {
         val colorValue = cleanHex.toLong(16)
         Color(colorValue or 0xFF000000L)
     } catch (e: Exception) {
+        e.rethrowIfCancellation()
         Color.Gray
     }
 }

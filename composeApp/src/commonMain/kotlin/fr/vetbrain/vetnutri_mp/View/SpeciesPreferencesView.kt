@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,6 +48,7 @@ fun SpeciesPreferencesView(
                         preferencesRepository.loadPreferences()
                         currentPreferences = preferencesRepository.preferences
                 } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         currentPreferences = fr.vetbrain.vetnutri_mp.Data.PreferencesApplication()
                 } finally {
                         isLoading = false
@@ -179,7 +182,7 @@ fun SpeciesPreferencesView(
                                                                                                                                         }
                                                                                                                         } catch (
                                                                                                                                 e:
-                                                                                                                                        Exception) {} finally {
+                                                                                                                                        Exception) { e.rethrowIfCancellation(); AppLog.d("SpeciesPreferencesView", "Exception ignorée : ${e.message}") } finally {
                                                                                                                                 isSaving =
                                                                                                                                         false
                                                                                                                         }
@@ -295,7 +298,7 @@ fun SpeciesPreferencesView(
                                                                                 updatedPrefs
                                                                         )
                                                                 currentPreferences = updatedPrefs
-                                                        } catch (e: Exception) {} finally {
+                                                        } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("SpeciesPreferencesView", "Exception ignorée : ${e.message}") } finally {
                                                                 isSaving = false
                                                         }
                                                 }

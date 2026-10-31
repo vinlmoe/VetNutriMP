@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ExcelPlatform
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.CoreGraphics.CGRectMake
@@ -88,7 +90,8 @@ private fun readCsvContent(url: NSURL): String? {
     return try {
         NSString.stringWithContentsOfURL(url, NSUTF8StringEncoding, null)
     } catch (e: Exception) {
-        e.printStackTrace()
+        e.rethrowIfCancellation()
+        AppLog.e("ExcelFileOperations", e.message ?: "Erreur", e)
         null
     } finally {
         if (didStartAccess) url.stopAccessingSecurityScopedResource()
@@ -131,7 +134,8 @@ actual suspend fun saveCsvFileForExport(csvContent: String, defaultFileName: Str
         )
         true
     } catch (e: Exception) {
-        e.printStackTrace()
+        e.rethrowIfCancellation()
+        AppLog.e("ExcelFileOperations", e.message ?: "Erreur", e)
         false
     }
 }

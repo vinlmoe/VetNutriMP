@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Service
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
@@ -132,6 +133,7 @@ class BackupService(
                     source.copy(fileName = fileName, filePath = destination.absolutePath, isLongTerm = true)
             )
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             if (e is CancellationException) throw e
         }
     }
@@ -188,6 +190,7 @@ class BackupService(
             if (rotate) manageBackupRotation()
             Result.success(metadata)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             if (e is CancellationException) throw e
             Result.failure(e)
         }
@@ -230,11 +233,13 @@ class BackupService(
                             fileService.deleteFile(metadataFile).getOrThrow()
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         if (e is CancellationException) throw e
                     }
                 }
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             if (e is CancellationException) throw e
         }
     }
@@ -249,6 +254,7 @@ class BackupService(
             val metadataJson = json.encodeToString(metadata)
             fileService.writeText(metadataFile, metadataJson)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             if (e is CancellationException) throw e
         }
     }
@@ -313,18 +319,21 @@ class BackupService(
                                     val metadataJson = json.encodeToString(metadata)
                                     fileService.writeText(createdMetadataFile, metadataJson)
                                 } catch (e: Exception) {
+                                    e.rethrowIfCancellation()
                                     if (e is CancellationException) throw e
                                 }
 
                                 metadata
                             }
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             if (e is CancellationException) throw e
                             null
                         }
                     }
                     .sortedByDescending { it.createdAt }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             if (e is CancellationException) throw e
             emptyList()
         }
@@ -351,11 +360,13 @@ class BackupService(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 Result.failure(IllegalStateException(
                     "Restauration incomplète : ${e.message}. Sauvegarde préalable conservée : ${recovery.fileName}", e
                 ))
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             if (e is CancellationException) throw e
             Result.failure(e)
         }
@@ -380,6 +391,7 @@ class BackupService(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             if (e is CancellationException) throw e
             Result.failure(e)
         }

@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Service
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.withContext
@@ -24,8 +26,9 @@ actual class FileService {
                         )
                 val path = url?.path
                 if (path != null && path.isNotEmpty()) path else NSHomeDirectory() + "/Documents"
-            } catch (_: Exception) {
-                println("[FileService][iOS] Échec résolution URLForDirectory, utilisation de NSHomeDirectory/Documents")
+            } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
+                AppLog.d("FileService", "[FileService][iOS] Échec résolution URLForDirectory, utilisation de NSHomeDirectory/Documents")
                 NSHomeDirectory() + "/Documents"
             }
         }
@@ -35,7 +38,7 @@ actual class FileService {
         return withContext(AppDispatchers.IO) {
             val backupDir = PlatformFile.create("$documentsPath/VetNutriMP/backups")
             if (!backupDir.exists()) backupDir.mkdirs()
-            println("[FileService][iOS] Répertoire backup existe=${backupDir.exists()} contenuCount=${backupDir.listFiles()?.size ?: 0}")
+            AppLog.d("FileService", "[FileService][iOS] Répertoire backup existe=${backupDir.exists()} contenuCount=${backupDir.listFiles()?.size ?: 0}")
             backupDir
         }
     }
@@ -45,7 +48,7 @@ actual class FileService {
         return withContext(AppDispatchers.IO) {
             val dataDir = PlatformFile.create("$documentsPath/VetNutriMP/data")
             if (!dataDir.exists()) dataDir.mkdirs()
-            println("[FileService][iOS] Répertoire data existe=${dataDir.exists()} contenuCount=${dataDir.listFiles()?.size ?: 0}")
+            AppLog.d("FileService", "[FileService][iOS] Répertoire data existe=${dataDir.exists()} contenuCount=${dataDir.listFiles()?.size ?: 0}")
             dataDir
         }
     }
@@ -58,6 +61,7 @@ actual class FileService {
                 }
                 Result.success(Unit)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 Result.failure(e)
             }
         }
@@ -83,6 +87,7 @@ actual class FileService {
                 }
                 Result.success(Unit)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 Result.failure(e)
             }
         }
@@ -97,10 +102,11 @@ actual class FileService {
                     val filtered =
                             if (pattern != null) files.filter { it.name.matches(pattern.toRegex()) }
                             else files
-                    println("[FileService][iOS] Listing: dir=${directory.absolutePath} total=${files.size} filtrés=${filtered.size} pattern=${pattern}")
+                    AppLog.d("FileService", "[FileService][iOS] Listing: dir=${directory.absolutePath} total=${files.size} filtrés=${filtered.size} pattern=${pattern}")
                     filtered
                 }
-            } catch (_: Exception) {
+            } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
                 emptyList()
             }
         }
@@ -109,11 +115,12 @@ actual class FileService {
     actual suspend fun copyFile(source: PlatformFile, destination: PlatformFile): Result<Unit> {
         return withContext(AppDispatchers.IO) {
             try {
-                println("[FileService][iOS] Copie: ${source.absolutePath} => ${destination.absolutePath}")
+                AppLog.d("FileService", "[FileService][iOS] Copie: ${source.absolutePath} => ${destination.absolutePath}")
                 source.copyTo(destination, overwrite = true)
                 Result.success(Unit)
             } catch (e: Exception) {
-                println("[FileService][iOS] Erreur copie ${source.absolutePath} => ${destination.absolutePath}: ${e.message}")
+                e.rethrowIfCancellation()
+                AppLog.d("FileService", "[FileService][iOS] Erreur copie ${source.absolutePath} => ${destination.absolutePath}: ${e.message}")
                 Result.failure(e)
             }
         }
@@ -122,11 +129,12 @@ actual class FileService {
     actual suspend fun moveFile(source: PlatformFile, destination: PlatformFile): Result<Unit> {
         return withContext(AppDispatchers.IO) {
             try {
-                println("[FileService][iOS] Déplacement: ${source.absolutePath} => ${destination.absolutePath}")
+                AppLog.d("FileService", "[FileService][iOS] Déplacement: ${source.absolutePath} => ${destination.absolutePath}")
                 check(source.renameTo(destination)) { "Cannot move ${source.path} to ${destination.path}" }
                 Result.success(Unit)
             } catch (e: Exception) {
-                println("[FileService][iOS] Erreur déplacement ${source.absolutePath} => ${destination.absolutePath}: ${e.message}")
+                e.rethrowIfCancellation()
+                AppLog.d("FileService", "[FileService][iOS] Erreur déplacement ${source.absolutePath} => ${destination.absolutePath}: ${e.message}")
                 Result.failure(e)
             }
         }
@@ -138,6 +146,7 @@ actual class FileService {
                 file.writeText(text)
                 Result.success(Unit)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 Result.failure(e)
             }
         }
@@ -147,9 +156,10 @@ actual class FileService {
         return withContext(AppDispatchers.IO) {
             try {
                 val content = file.readText()
-                println("[FileService][iOS] Lecture OK: ${file.absolutePath} taille=${content.length}")
+                AppLog.d("FileService", "[FileService][iOS] Lecture OK: ${file.absolutePath} taille=${content.length}")
                 Result.success(content)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 Result.failure(e)
             }
         }

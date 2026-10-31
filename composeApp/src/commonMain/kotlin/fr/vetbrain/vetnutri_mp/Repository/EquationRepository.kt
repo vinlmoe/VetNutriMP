@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
@@ -173,7 +175,8 @@ class DatabaseEquationRepository(
 
             loadEquations()
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("EquationRepository", e.message ?: "Erreur", e)
             throw e
         }
     }
@@ -202,7 +205,8 @@ class DatabaseEquationRepository(
 
             count
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("EquationRepository", e.message ?: "Erreur", e)
             throw e
         }
     }

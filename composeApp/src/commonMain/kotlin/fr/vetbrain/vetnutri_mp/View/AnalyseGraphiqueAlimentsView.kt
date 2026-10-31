@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -121,9 +123,7 @@ private suspend fun calculerDensiteEnergetiqueAsync(
                     _energie // Énergie pour 100g d'aliment total
                 }
             }
-        } catch (e: Exception) {
-            // Fallback sur la méthode simple
-        }
+        } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnalyseGraphiqueAlimentsView", "Exception ignorée : ${e.message}") }
     }
 
     // Méthode simple : calcul basé sur les macronutriments
@@ -898,8 +898,9 @@ fun AnalyseGraphiqueAlimentsView(
                                 )
                 )
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
 
-                e.printStackTrace()
+                AppLog.e("AnalyseGraphiqueAlimentsView", e.message ?: "Erreur", e)
             }
         }
 

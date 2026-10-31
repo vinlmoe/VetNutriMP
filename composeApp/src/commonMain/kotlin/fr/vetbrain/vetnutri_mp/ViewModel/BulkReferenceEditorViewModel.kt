@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
@@ -90,6 +91,7 @@ class BulkReferenceEditorViewModel(
                 _editedValues.value = emptyMap()
                 _consistencyErrors.value = emptyList()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors du chargement : ${e.message ?: "Erreur inconnue"}"
             } finally {
                 _loading.value = false
@@ -242,6 +244,7 @@ class BulkReferenceEditorViewModel(
                                 try {
                                     Reflevel.valueOf(levelName)
                                 } catch (e: Exception) {
+                                    e.rethrowIfCancellation()
                                     return@forEach
                                 }
                         val nutrient = findNutrientByLabelAllCategories(nutrientLabel)
@@ -258,6 +261,7 @@ class BulkReferenceEditorViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors de la sauvegarde : ${e.message ?: "Erreur inconnue"}"
             } finally {
                 _loading.value = false
@@ -272,6 +276,7 @@ class BulkReferenceEditorViewModel(
                     _availableBiblioRefs.value = refs
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value =
                         "Erreur lors du chargement des bibliographies : ${e.message}"
             }

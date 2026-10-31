@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource
@@ -41,7 +43,7 @@ import kotlin.system.exitProcess
 
 // Configuration du gestionnaire d'exceptions pour desktop (accessible globalement)
 private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
-    throwable.printStackTrace()
+    AppLog.e("main", throwable.message ?: "Erreur", throwable)
 }
 
 private var appScope: CoroutineScope? = null
@@ -182,7 +184,8 @@ suspend fun main(args: Array<String> = emptyArray()) {
                             sauvegarderEnBase = false
                     )
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.rethrowIfCancellation()
+                    AppLog.e("main", e.message ?: "Erreur", e)
                     exitProcess(1)
                 }
                 exitProcess(0)
@@ -242,6 +245,7 @@ actual fun performDatabaseFactoryReset(): String? {
 
         exitProcess(0)
     } catch (e: Exception) {
+        e.rethrowIfCancellation()
         "Echec du factory reset: ${e.message}"
     }
 }
@@ -338,6 +342,7 @@ actual fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel) {
                 viewModel.importNutritionalRequirementsFromJson(jsonContent)
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             viewModel.setNutritionalRequirementImportError(
                     "Erreur lors de la lecture du fichier: ${e.message}"
             )
@@ -409,6 +414,7 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
                     )
             )
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             viewModel.appendApiImportLog("Erreur: ${e.message}")
             viewModel.setImportResult(
                     SettingsViewModel.ImportResult.Error("Erreur import API: ${e.message}")
@@ -523,7 +529,8 @@ actual suspend fun exportPdfDocument(
             }
             result
         } catch (t: Throwable) {
-            t.printStackTrace()
+            t.rethrowIfCancellation()
+            AppLog.e("main", t.message ?: "Erreur", t)
             false
         }
     }

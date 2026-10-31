@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Service.BackupService
 import fr.vetbrain.vetnutri_mp.Service.BackupService.BackupMetadata
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
@@ -60,6 +61,7 @@ class BackupRestoreViewModel(
                 val availableBackups = backupService.getAvailableBackups()
                 _backups.value = availableBackups
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors du chargement des sauvegardes: ${e.message}"
             } finally {
                 _isLoading.value = false
@@ -83,6 +85,7 @@ class BackupRestoreViewModel(
                     _error.value = "Erreur lors de la création de la sauvegarde: ${result.exceptionOrNull()?.message}"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors de la création de la sauvegarde: ${e.message}"
             } finally {
                 _isLoading.value = false
@@ -123,6 +126,7 @@ class BackupRestoreViewModel(
                     _restoreLog.value = "Erreur: ${result.exceptionOrNull()?.message}"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors de la restauration: ${e.message}"
                 _restoreLog.value = "Erreur: ${e.message}"
             } finally {
@@ -151,6 +155,7 @@ class BackupRestoreViewModel(
                     _error.value = "Erreur lors de la suppression: ${result.exceptionOrNull()?.message}"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors de la suppression: ${e.message}"
             }
         }
@@ -192,6 +197,7 @@ class BackupRestoreViewModel(
             val localDateTime = instant.toLocalDateTime(tz)
             "${localDateTime.dayOfMonth}/${localDateTime.monthNumber}/${localDateTime.year} ${localDateTime.hour}:${localDateTime.minute.toString().padStart(2, '0')}"
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             "Date inconnue"
         }
     }

@@ -48,7 +48,8 @@ actual fun createPreferencesStorage(): PreferencesStorage {
         val storage = PreferencesStorage(context)
         return storage
     } catch (e: Exception) {
-        e.printStackTrace()
+        e.rethrowIfCancellation()
+        AppLog.e("PreferencesStorage", e.message ?: "Erreur", e)
         throw e
     }
 }

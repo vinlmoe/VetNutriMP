@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ExcelPlatform
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import java.io.File
 import java.util.concurrent.FutureTask
 import javax.swing.JFileChooser
@@ -45,7 +47,8 @@ actual suspend fun openCsvFileForImport(): String? {
         try {
             withContext(Dispatchers.IO) { File(selectedPath).readText() }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ExcelFileOperations", e.message ?: "Erreur", e)
             null
         }
     } else {
@@ -79,7 +82,8 @@ actual suspend fun saveCsvFileForExport(csvContent: String, defaultFileName: Str
             }
             true
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ExcelFileOperations", e.message ?: "Erreur", e)
             false
         }
     } else {

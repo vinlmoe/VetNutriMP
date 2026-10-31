@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.*
@@ -287,6 +288,7 @@ class MultiRationViewModel(
                     } catch (e: ExplorationException) {
                         _erreur.value = e.message
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         _erreur.value = "Calcul impossible : ${e.message}"
                     } finally {
                         _progression.value = null
@@ -378,6 +380,7 @@ class MultiRationViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _erreur.value = "Enregistrement des corrections impossible : ${e.message}"
             } finally {
                 _enregistrementCorrections.value = false
@@ -395,6 +398,7 @@ class MultiRationViewModel(
                     try {
                         explorationRepository.getAllExplorations()
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         _erreur.value = "Lecture des explorations enregistrées impossible : ${e.message}"
                         emptyList()
                     }
@@ -429,6 +433,7 @@ class MultiRationViewModel(
                 _message.value = "Exploration « $nomPropre » enregistrée."
                 _explorations.value = explorationRepository.getAllExplorations()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _erreur.value = "Enregistrement impossible : ${e.message}"
             }
         }
@@ -461,6 +466,7 @@ class MultiRationViewModel(
                                 if (manquants.isEmpty()) "" else " Introuvables (ignorés) : ${manquants.joinToString()}."
                 if (corrections.isNotEmpty() && manquants.isEmpty()) lancerCalcul()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _erreur.value = "Chargement impossible : ${e.message}"
             }
         }
@@ -473,6 +479,7 @@ class MultiRationViewModel(
                 if (_explorationCourante.value?.uuid == uuid) _explorationCourante.value = null
                 _explorations.value = explorationRepository.getAllExplorations()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _erreur.value = "Suppression impossible : ${e.message}"
             }
         }

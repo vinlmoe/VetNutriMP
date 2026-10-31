@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvLight
@@ -115,8 +117,8 @@ class DatabaseFoodRepository(
     private suspend fun loadCustomNutrientsFromDb() {
         try {
             customNutrientDao?.getAll()?.forEach { entity ->
-                val ue = try { UnitEnum.valueOf(entity.ueCode) } catch (_: Exception) { UnitEnum.BUg }
-                val category = try { MainNutrientEnum.valueOf(entity.categoryCode) } catch (_: Exception) { MainNutrientEnum.OTHER }
+                val ue = try { UnitEnum.valueOf(entity.ueCode) } catch (ignored: Exception) { ignored.rethrowIfCancellation(); UnitEnum.BUg }
+                val category = try { MainNutrientEnum.valueOf(entity.categoryCode) } catch (ignored: Exception) { ignored.rethrowIfCancellation(); MainNutrientEnum.OTHER }
                 val nutrient = CustomNutrient(
                     displayName = entity.displayName,
                     label = entity.label,
@@ -126,7 +128,7 @@ class DatabaseFoodRepository(
                 )
                 CustomNutrientRegistry.register(nutrient)
             }
-        } catch (_: Exception) { }
+        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
     }
 
     private suspend fun saveCustomNutrientsFromFood(food: fr.vetbrain.vetnutri_mp.Data.AlimentEv) {
@@ -165,11 +167,13 @@ class DatabaseFoodRepository(
         if (date.isEmpty()) return null
         return try {
             Instant.parse(date)
-        } catch (_: Exception) {
+        } catch (ignored: Exception) {
+            ignored.rethrowIfCancellation()
             val datePart = if (date.length >= 10) date.substring(0, 10) else date
             try {
                 Instant.parse("${LocalDate.parse(datePart)}T00:00:00Z")
-            } catch (_: Exception) {
+            } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
                 null
             }
         }
@@ -236,7 +240,7 @@ class DatabaseFoodRepository(
                     uuids.chunked(500)
                         .flatMap { chunk -> energyPerSpeciesDao.getForAliments(chunk) }
                         .groupBy { it.refAliment }
-                } catch (_: Exception) { emptyMap() }
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyMap() }
             } else emptyMap()
 
         val filteredFoods =
@@ -281,7 +285,8 @@ class DatabaseFoodRepository(
                 val existingFoodUUIDs: Set<String> =
                         try {
                             foodDao.getAllFoodIds().toSet()
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                            ignored.rethrowIfCancellation()
                             emptySet()
                         }
                 val batchSize = 200
@@ -318,6 +323,7 @@ class DatabaseFoodRepository(
                                 updateIds.add(aliment.uuid)
                             }
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             errorCount++
                         }
                     }
@@ -327,7 +333,8 @@ class DatabaseFoodRepository(
                         val existants: Map<String, FoodEntity> =
                                 try {
                                     foodDao.getFoodsByIds(updateIds).associateBy { it.uuid }
-                                } catch (_: Exception) {
+                                } catch (ignored: Exception) {
+                                    ignored.rethrowIfCancellation()
                                     emptyMap()
                                 }
                         batch.forEach { aliment ->
@@ -361,6 +368,7 @@ class DatabaseFoodRepository(
                                         batchBiblioJunctions.add(AlimentBiblioRefEntity(alimentUuid = aliment.uuid, biblioRefUuid = ref.uuid))
                                     }
                                 } catch (e: Exception) {
+                                    e.rethrowIfCancellation()
                                     errorCount++
                                 }
                             }
@@ -374,11 +382,13 @@ class DatabaseFoodRepository(
                                 foodDao.insertFoods(part)
                                 importCount += part.size
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 part.forEach { entity ->
                                     try {
                                         foodDao.insertFoods(listOf(entity))
                                         importCount++
                                     } catch (itemError: Exception) {
+                                        itemError.rethrowIfCancellation()
                                         errorCount++
                                     }
                                 }
@@ -391,11 +401,13 @@ class DatabaseFoodRepository(
                                 foodDao.updateFoods(part)
                                 updateCount += part.size
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 part.forEach { entity ->
                                     try {
                                         foodDao.updateFoods(listOf(entity))
                                         updateCount++
                                     } catch (itemError: Exception) {
+                                        itemError.rethrowIfCancellation()
                                         errorCount++
                                     }
                                 }
@@ -416,18 +428,20 @@ class DatabaseFoodRepository(
                                     nutrientValueDao.deleteAllForAliments(part)
                                 }
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                e.rethrowIfCancellation()
+                                AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
                             }
                         }
                         try {
                             batchNutrientValues.chunked(1000).forEach { chunk ->
                                 nutrientValueDao.insertNutrientValues(chunk)
                             }
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                            ignored.rethrowIfCancellation()
                             batchNutrientValues.forEach { nv ->
                                 try {
                                     nutrientValueDao.insertNutrientValues(listOf(nv))
-                                } catch (_: Exception) {}
+                                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                             }
                         }
                     }
@@ -438,13 +452,13 @@ class DatabaseFoodRepository(
                             addAll(updateEntities.map { it.uuid })
                         }
                         if (!mergeNutrients) {
-                            try { allIds.forEach { energyPerSpeciesDao.deleteForAliment(it) } } catch (_: Exception) {}
+                            try { allIds.forEach { energyPerSpeciesDao.deleteForAliment(it) } } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                         }
                         try {
                             batchEnergyPerSpecies.chunked(1000).forEach { chunk ->
                                 energyPerSpeciesDao.insert(chunk)
                             }
-                        } catch (_: Exception) {}
+                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                     }
                     // Bibliographie liée aux aliments (batch)
                     if (alimentBiblioRefDao != null) {
@@ -453,12 +467,12 @@ class DatabaseFoodRepository(
                             addAll(updateEntities.map { it.uuid })
                         }
                         if (!mergeNutrients && allIds.isNotEmpty()) {
-                            try { allIds.forEach { alimentBiblioRefDao.deleteForAliment(it) } } catch (_: Exception) {}
+                            try { allIds.forEach { alimentBiblioRefDao.deleteForAliment(it) } } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                         }
                         if (batchBiblioJunctions.isNotEmpty()) {
                             try {
                                 alimentBiblioRefDao.insertAll(batchBiblioJunctions)
-                            } catch (_: Exception) {}
+                            } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                         }
                     }
                 }
@@ -485,7 +499,8 @@ class DatabaseFoodRepository(
                     totalCount =
                             try {
                                 foodDao.getAllFoods().size
-                            } catch (_: Exception) {
+                            } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
                                 0
                             },
                     nonResolvedNutrientsCount = nonResolvedNutrients.size,
@@ -502,6 +517,7 @@ class DatabaseFoodRepository(
                 val initialFoods = getAllFoodsLightAsEv()
                 _foodsFlow.value = initialFoods
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _foodsFlow.value = emptyList()
             }
         }
@@ -513,7 +529,8 @@ class DatabaseFoodRepository(
             val foods = getAllFoodsLightAsEv()
             _foodsFlow.value = foods
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
         }
     }
 
@@ -535,7 +552,7 @@ class DatabaseFoodRepository(
                         uuids.chunked(500)
                             .flatMap { chunk -> nutrientValueDao.getNutrientValuesForAliments(chunk) }
                             .groupBy { it.refAliment }
-                    } catch (_: Exception) { emptyMap() }
+                    } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyMap() }
                 } else emptyMap()
 
             val energyByFood: Map<String, List<EnergyPerSpeciesEntity>> =
@@ -545,7 +562,7 @@ class DatabaseFoodRepository(
                         uuids.chunked(500)
                             .flatMap { chunk -> energyPerSpeciesDao.getForAliments(chunk) }
                             .groupBy { it.refAliment }
-                    } catch (_: Exception) { emptyMap() }
+                    } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyMap() }
                 } else emptyMap()
 
             val biblioRefsByFood: Map<String, List<fr.vetbrain.vetnutri_mp.Data.BiblioRef>> =
@@ -566,7 +583,8 @@ class DatabaseFoodRepository(
                             keySelector = { it.alimentUuid },
                             valueTransform = { refsByUuid[it.biblioRefUuid]?.toDomain() }
                         ).mapValues { (_, refs) -> refs.filterNotNull() }
-                    } catch (_: Exception) {
+                    } catch (ignored: Exception) {
+                        ignored.rethrowIfCancellation()
                         emptyMap()
                     }
                 } else emptyMap()
@@ -727,7 +745,7 @@ class DatabaseFoodRepository(
                 try {
                     alimentBiblioRefDao.getBiblioRefUuids(food.uuid)
                         .mapNotNull { refUuid -> biblioRefDao.getBiblioRefById(refUuid)?.toDomain() }
-                } catch (_: Exception) { emptyList() }
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyList() }
             } else emptyList()
             val energyPerSpecies = energyPerSpeciesDao?.getForAliment(food.uuid) ?: emptyList()
             return@withContext food.toAlimentEv(
@@ -771,7 +789,8 @@ class DatabaseFoodRepository(
                 val existingFoodUUIDs: Set<String> =
                         try {
                             foodDao.getAllFoodIds().toSet()
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                            ignored.rethrowIfCancellation()
                             emptySet()
                         }
                 val newEntities: MutableList<FoodEntity> = mutableListOf()
@@ -789,7 +808,8 @@ class DatabaseFoodRepository(
                             val cleanedEspece: String = nettoyerChaineBruteBrackets(especeStr)
                             val espece: Espece? = Espece.getFromString(cleanedEspece)
                             if (espece != null) espece.name else cleanedEspece
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                            ignored.rethrowIfCancellation()
                             especeStr
                         }
                     }
@@ -800,7 +820,8 @@ class DatabaseFoodRepository(
                             val cleanedIndic: String = nettoyerChaineBruteBrackets(indicStr)
                             val indication: AlimIndic? = AlimIndic.getFromString(cleanedIndic)
                             indication?.name ?: cleanedIndic
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                            ignored.rethrowIfCancellation()
                             indicStr
                         }
                     }
@@ -816,7 +837,8 @@ class DatabaseFoodRepository(
                             } -> raw.uppercase()
                             else -> fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO.name
                         }
-                    } catch (_: Exception) {
+                    } catch (ignored: Exception) {
+                        ignored.rethrowIfCancellation()
                         fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO.name
                     }
                 }
@@ -923,7 +945,7 @@ class DatabaseFoodRepository(
                                         )
                                 )
                             }
-                        } catch (_: Exception) {}
+                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                     }
                     return result
                 }
@@ -950,7 +972,8 @@ class DatabaseFoodRepository(
                                             groupAlim =
                                                     try {
                                                         GroupAlim.valueOf(food.group ?: "").ordinal
-                                                    } catch (_: Exception) {
+                                                    } catch (ignored: Exception) {
+                                                        ignored.rethrowIfCancellation()
                                                         0
                                                     },
                                             typeAlim =
@@ -1000,6 +1023,7 @@ class DatabaseFoodRepository(
                             // les existants
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         errorCount++
                         importErrors.add(
                                 "Erreur générale lors du prétraitement de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
@@ -1010,7 +1034,8 @@ class DatabaseFoodRepository(
                     val existants: Map<String, FoodEntity> =
                             try {
                                 foodDao.getFoodsByIds(updateCandidateIds).associateBy { it.uuid }
-                            } catch (_: Exception) {
+                            } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
                                 emptyMap()
                             }
                     foods.forEach { food ->
@@ -1040,7 +1065,8 @@ class DatabaseFoodRepository(
                                                         fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO
                                                                 .name
                                             }
-                                        } catch (_: Exception) {
+                                        } catch (ignored: Exception) {
+                                            ignored.rethrowIfCancellation()
                                             existing.cont
                                                     ?: fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO
                                                             .name
@@ -1075,6 +1101,7 @@ class DatabaseFoodRepository(
                                 updateCount++
                                 updateIds.add(food.UUID)
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 errorCount++
                                 importErrors.add(
                                         "Erreur lors de la préparation update ${food.nom} (${food.UUID}): ${e.message}"
@@ -1087,6 +1114,7 @@ class DatabaseFoodRepository(
                     try {
                         newEntities.chunked(500).forEach { batch -> foodDao.insertFoods(batch) }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         errorCount += newEntities.size
                     }
                 }
@@ -1094,6 +1122,7 @@ class DatabaseFoodRepository(
                     try {
                         updateEntities.chunked(500).forEach { batch -> foodDao.updateFoods(batch) }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         errorCount += updateEntities.size
                     }
                 }
@@ -1105,7 +1134,7 @@ class DatabaseFoodRepository(
                             updateIds.chunked(500).forEach { part ->
                                 nutrientValueDao.deleteAllForAliments(part)
                             }
-                        } catch (_: Exception) {}
+                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                     }
                     // Insérer les nouveaux nutriments
                     try {
@@ -1113,13 +1142,14 @@ class DatabaseFoodRepository(
                             nutrientValueDao.insertNutrientValues(chunk)
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         // Fallback insertion une par une
                         var ok: Int = 0
                         allNutrientValues.forEach { nv ->
                             try {
                                 nutrientValueDao.insertNutrientValues(listOf(nv))
                                 ok++
-                            } catch (_: Exception) {}
+                            } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                         }
                     }
                 }
@@ -1130,11 +1160,11 @@ class DatabaseFoodRepository(
                             addAll(newEntities.map { it.uuid })
                             addAll(updateIds)
                         }
-                        try { idsToClean.forEach { energyPerSpeciesDao.deleteForAliment(it) } } catch (_: Exception) {}
+                        try { idsToClean.forEach { energyPerSpeciesDao.deleteForAliment(it) } } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                     }
                     try {
                         allEnergyPerSpecies.chunked(1000).forEach { energyPerSpeciesDao.insert(it) }
-                    } catch (_: Exception) {}
+                    } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                 }
             } finally {
                 endBatch()
@@ -1147,7 +1177,8 @@ class DatabaseFoodRepository(
                     totalCount =
                             try {
                                 foodDao.getAllFoods().size
-                            } catch (_: Exception) {
+                            } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
                                 0
                             },
                     nonResolvedNutrientsCount = nonResolvedNutrients.size,
@@ -1182,7 +1213,8 @@ class DatabaseFoodRepository(
                 return
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
             // Continuer malgré l'erreur pour tenter l'insertion
         }
 
@@ -1219,7 +1251,8 @@ class DatabaseFoodRepository(
                                 )
                         )
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        e.rethrowIfCancellation()
+                        AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
                     }
                 } else {
                     // Deuxième essai - traitements spéciaux pour certains nutriments connus
@@ -1313,7 +1346,8 @@ class DatabaseFoodRepository(
                                     )
                             )
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            e.rethrowIfCancellation()
+                            AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
                         }
                     } else {
                         nonResolvedCount++
@@ -1322,7 +1356,8 @@ class DatabaseFoodRepository(
                     }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
             }
         }
 
@@ -1333,7 +1368,8 @@ class DatabaseFoodRepository(
                     nutrientValueDao.insertNutrientValues(nutrientValues)
                 } else {}
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
 
                 // Tenter d'insérer les valeurs une par une en cas d'erreur sur l'insertion en bloc
                 if (nutrientValueDao != null) {
@@ -1345,7 +1381,7 @@ class DatabaseFoodRepository(
                             // au lieu de insertNutrientValue qui n'existe pas
                             nutrientValueDao.insertNutrientValues(listOf(nutrientValue))
                             successCount++
-                        } catch (innerE: Exception) {}
+                        } catch (innerE: Exception) { innerE.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${innerE.message}") }
                     }
                 }
             }
@@ -1360,10 +1396,8 @@ class DatabaseFoodRepository(
     override suspend fun insertFood(food: AlimentEv) {
         withContext(AppDispatchers.IO) {
             try {
-                println(
-                    "[FoodSaveDebug][Repo] insertFood start uuid=${food.uuid} " +
-                        "valMapCount=${food.valMap.size}"
-                )
+                AppLog.d("DatabaseFoodRepository", "[FoodSaveDebug][Repo] insertFood start uuid=${food.uuid} " +
+                        "valMapCount=${food.valMap.size}")
                 // Convertir en FoodEntity et insérer
                 val foodEntity = food.toFoodEntity().copy(RefRation = null)
                 foodDao.insertFood(foodEntity)
@@ -1388,19 +1422,15 @@ class DatabaseFoodRepository(
 
                 // Traiter les valeurs nutritionnelles
                 val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
-                println(
-                    "[FoodSaveDebug][Repo] insertFood nutrientEntities uuid=${food.uuid} " +
+                AppLog.d("DatabaseFoodRepository", "[FoodSaveDebug][Repo] insertFood nutrientEntities uuid=${food.uuid} " +
                         "count=${nutrientValues.size} " +
-                        "sample=${nutrientValues.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}"
-                )
+                        "sample=${nutrientValues.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}")
                 if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
                     nutrientValueDao.insertNutrientValues(nutrientValues)
                     val reloaded = nutrientValueDao.getNutrientValues(food.uuid)
-                    println(
-                        "[FoodSaveDebug][Repo] insertFood DB check uuid=${food.uuid} " +
+                    AppLog.d("DatabaseFoodRepository", "[FoodSaveDebug][Repo] insertFood DB check uuid=${food.uuid} " +
                             "dbCount=${reloaded.size} " +
-                            "sample=${reloaded.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}"
-                    )
+                            "sample=${reloaded.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}")
                 }
                 saveCustomNutrientsFromFood(food)
 
@@ -1422,7 +1452,8 @@ class DatabaseFoodRepository(
 
                 clearCache()
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
                 throw e
             }
         }
@@ -1433,13 +1464,12 @@ class DatabaseFoodRepository(
                 try {
                     refreshFoodsFlow()
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     // Fallback: essayer de mettre à jour le Flow directement
                     try {
                         val foods = getAllFoodsFresh()
                         _foodsFlow.value = foods
-                    } catch (e2: Exception) {
-                        // Ignore
-                    }
+                    } catch (e2: Exception) { e2.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${e2.message}") }
                 }
             }
         }
@@ -1459,6 +1489,7 @@ class DatabaseFoodRepository(
                     try {
                         foodDao.getEspecesForAliment(uuid)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         emptyList()
                     }
 
@@ -1475,7 +1506,7 @@ class DatabaseFoodRepository(
                 try {
                     alimentBiblioRefDao.getBiblioRefUuids(uuid)
                         .mapNotNull { refUuid -> biblioRefDao.getBiblioRefById(refUuid)?.toDomain() }
-                } catch (_: Exception) { emptyList() }
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyList() }
             } else emptyList()
 
             val energyPerSpecies = energyPerSpeciesDao?.getForAliment(uuid) ?: emptyList()
@@ -1521,7 +1552,7 @@ class DatabaseFoodRepository(
                         { it.alimentUuid },
                         { biblioRefEntitiesByUuid[it.biblioRefUuid]?.toDomain() }
                     ).mapValues { (_, refs) -> refs.filterNotNull() }
-                } catch (_: Exception) { emptyMap() }
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyMap() }
 
             foodEntities.associate { entity ->
                 entity.uuid to entity.toAlimentEv(
@@ -1566,10 +1597,8 @@ class DatabaseFoodRepository(
     override suspend fun updateFood(food: AlimentEv) {
         withContext(AppDispatchers.IO) {
             try {
-                println(
-                    "[FoodSaveDebug][Repo] updateFood start uuid=${food.uuid} " +
-                        "valMapCount=${food.valMap.size}"
-                )
+                AppLog.d("DatabaseFoodRepository", "[FoodSaveDebug][Repo] updateFood start uuid=${food.uuid} " +
+                        "valMapCount=${food.valMap.size}")
                 // Vérifier que l'aliment existe
                 val existingFood = foodDao.getFoodById(food.uuid)
                 if (existingFood == null) {
@@ -1584,6 +1613,7 @@ class DatabaseFoodRepository(
                     // Mettre à jour l'entité principale
                     foodDao.update(foodEntity)
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
 
                     // Plan B: si la mise à jour échoue, on essaie de mettre à jour sans la
                     // référence à la ration
@@ -1607,27 +1637,24 @@ class DatabaseFoodRepository(
                         foodDao.insertEspeces(especeEntities)
                     } else {}
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.rethrowIfCancellation()
+                    AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
                 }
 
                 // Remplacer atomiquement les valeurs nutritionnelles (delete + insert en 1 transaction)
                 val replacing = food.valMap.toNutrientValueEntities(food.uuid)
-                println(
-                    "[FoodSaveDebug][Repo] updateFood replace values uuid=${food.uuid} " +
+                AppLog.d("DatabaseFoodRepository", "[FoodSaveDebug][Repo] updateFood replace values uuid=${food.uuid} " +
                         "replaceCount=${replacing.size} " +
-                        "sample=${replacing.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}"
-                )
+                        "sample=${replacing.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}")
                 nutrientValueDao?.replaceNutrientValues(
                         food.uuid,
                         replacing
                 )
                 if (nutrientValueDao != null) {
                     val reloaded = nutrientValueDao.getNutrientValues(food.uuid)
-                    println(
-                        "[FoodSaveDebug][Repo] updateFood DB check uuid=${food.uuid} " +
+                    AppLog.d("DatabaseFoodRepository", "[FoodSaveDebug][Repo] updateFood DB check uuid=${food.uuid} " +
                             "dbCount=${reloaded.size} " +
-                            "sample=${reloaded.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}"
-                    )
+                            "sample=${reloaded.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}")
                 }
                 saveCustomNutrientsFromFood(food)
 
@@ -1652,7 +1679,8 @@ class DatabaseFoodRepository(
 
                 clearCache()
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
                 throw e
             }
         }
@@ -1728,6 +1756,7 @@ class DatabaseFoodRepository(
 
                 return@withContext true
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return@withContext false
             }
         }
@@ -1747,7 +1776,7 @@ class DatabaseFoodRepository(
                         foods.map { it.uuid }.chunked(500)
                             .flatMap { chunk -> energyPerSpeciesDao.getForAliments(chunk) }
                             .groupBy { it.refAliment }
-                    } catch (_: Exception) { emptyMap() }
+                    } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyMap() }
                 } else emptyMap()
             return@withContext foods.map { foodEntity ->
                 val nutrientValues =

@@ -11,6 +11,7 @@ object AppDispatchers {
     private var _main: CoroutineDispatcher = try {
         platformDispatcher.provideMainDispatcher()
     } catch (e: Exception) {
+        e.rethrowIfCancellation()
         // Fallback pour éviter les erreurs Android sur desktop
         Dispatchers.Main
     }
@@ -47,6 +48,7 @@ object AppDispatchers {
         _main = try {
             platformDispatcher.provideMainDispatcher()
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Fallback pour éviter les erreurs Android sur desktop
             Dispatchers.Main
         }

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Data.PreferencesApplication
@@ -66,6 +67,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                 _preferences = PreferencesApplication()
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // En cas d'erreur, utiliser les préférences par défaut
             _preferences = PreferencesApplication.createDefault()
         }
@@ -79,6 +81,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
             preferencesStorage.saveString(PREFERENCES_KEY, jsonString)
             _preferences = preferences
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Même en cas d'erreur de sauvegarde, on met à jour en mémoire
             _preferences = preferences
         }
@@ -248,6 +251,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                     email = email
             )
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return PreferencesApplication.createDefault()
         }
     }
@@ -277,6 +281,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                 }
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Retourner une map vide en cas d'erreur
             return mapOf(
                     "BASE" to emptyList(),
@@ -317,6 +322,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                 emptyMap()
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             emptyMap()
         }
     }
@@ -333,6 +339,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
             savePreferences(nouvellesPreferences)
             true
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }

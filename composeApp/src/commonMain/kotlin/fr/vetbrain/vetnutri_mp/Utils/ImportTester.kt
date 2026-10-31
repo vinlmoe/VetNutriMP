@@ -56,6 +56,7 @@ object ImportTester {
                             val espece = Espece.valueOf(especeStr)
                             report.append("    - $especeStr = OK (ID: ${espece.id})\n")
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             try {
                                 val espece = Espece.getByLabel(especeStr)
                                 if (espece != null) {
@@ -66,6 +67,7 @@ object ImportTester {
                                     report.append("    - $especeStr = NON RECONNU\n")
                                 }
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 report.append("    - $especeStr = ERREUR: ${e.message}\n")
                             }
                         }
@@ -75,8 +77,9 @@ object ImportTester {
                 }
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             report.append("ERREUR CRITIQUE: ${e.message}\n")
-            e.printStackTrace()
+            AppLog.e("ImportTester", e.message ?: "Erreur", e)
         }
 
         return report.toString()

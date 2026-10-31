@@ -28,7 +28,8 @@ fun anonymizeExportJson(jsonContent: String): String {
         val anonymizedEnvelope = envelope.copy(animals = anonymizedAnimals)
         return json.encodeToString(anonymizedEnvelope)
     } catch (e: Exception) {
-        e.printStackTrace()
+        e.rethrowIfCancellation()
+        AppLog.e("AnonymizationUtils", e.message ?: "Erreur", e)
         return jsonContent
     }
 }

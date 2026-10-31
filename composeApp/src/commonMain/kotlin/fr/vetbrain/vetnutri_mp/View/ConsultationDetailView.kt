@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -165,6 +166,7 @@ fun AppConsultationDetailView(
                                                                 weightErrorMessage = null
                                                         }
                                                 } catch (e: Exception) {
+                                                        e.rethrowIfCancellation()
                                                         showWeightError = true
                                                         weightErrorMessage =
                                                                 ConsultationEdit.FORMAT_WEIGHT_ERROR.translate()

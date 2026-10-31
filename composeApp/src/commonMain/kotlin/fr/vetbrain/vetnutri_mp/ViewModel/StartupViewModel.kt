@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.runtime.*
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
@@ -62,6 +63,7 @@ class StartupViewModel(
                 )
                 
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _uiState.value = _uiState.value.copy(
                     isCheckingDatabase = false,
                     error = e.message ?: "Erreur inconnue"
@@ -79,6 +81,7 @@ class StartupViewModel(
         val conseilsCount = try {
             conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             0
         }
         

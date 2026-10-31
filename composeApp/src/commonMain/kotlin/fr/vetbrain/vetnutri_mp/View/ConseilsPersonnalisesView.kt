@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -49,7 +51,8 @@ fun ConseilsPersonnalisesView(
                 conseils = result.getOrThrow()
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ConseilsPersonnalisesView", e.message ?: "Erreur", e)
         } finally {
             isLoading = false
         }
@@ -241,7 +244,8 @@ fun ConseilsPersonnalisesView(
                                                 conseils = result.getOrThrow()
                                             }
                                         } catch (e: Exception) {
-                                            e.printStackTrace()
+                                            e.rethrowIfCancellation()
+                                            AppLog.e("ConseilsPersonnalisesView", e.message ?: "Erreur", e)
                                         }
                                     }
                                 }
@@ -396,7 +400,8 @@ private fun TemplatesDialog(
                 templates = result.getOrThrow()
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ConseilsPersonnalisesView", e.message ?: "Erreur", e)
         } finally {
             isLoading = false
         }

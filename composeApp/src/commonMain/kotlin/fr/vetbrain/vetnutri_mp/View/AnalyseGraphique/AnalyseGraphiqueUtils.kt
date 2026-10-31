@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import kotlin.math.pow
 import kotlin.math.round
 import fr.vetbrain.vetnutri_mp.Data.Ration
@@ -180,7 +182,8 @@ suspend fun calculerNutrimentsRation(
                         isRationActuelle = isRationActuelle
                 )
         } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnalyseGraphiqueUtils", e.message ?: "Erreur", e)
                 return null
         }
 }
@@ -407,6 +410,7 @@ suspend fun calculerPourcentagesEnergieRation(
                         poidsTotal = poidsTotal
                 )
         } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return null
         }
 }

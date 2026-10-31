@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -109,6 +110,7 @@ fun ExcelImportExportSection(
                                                 "✅ Export d'exemple généré (service non disponible)"
                                 }
                         } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 exportResult = "❌ Erreur d'export: ${e.message}"
                         } finally {
                                 isExporting = false
@@ -193,6 +195,7 @@ fun ExcelImportExportSection(
                                                                                         foodRepository
                                                                                                 .getAllFoods()
                                                                         } catch (e: Exception) {
+                                                                                e.rethrowIfCancellation()
                                                                                 selectionLoadError =
                                                                                         "Erreur de chargement: ${e.message}"
                                                                         } finally {
@@ -576,6 +579,7 @@ fun ExcelImportExportSection(
                                                         importResult = finalResult
                                                         showImportDialog = false
                                                 } catch (e: Exception) {
+                                                        e.rethrowIfCancellation()
                                                         importResult = ExcelFoodService.ExcelImportResult(
                                                                 success = false,
                                                                 message = "Erreur lors de l'import final: ${e.message}"
@@ -664,6 +668,7 @@ fun ExcelImportExportSection(
                                                                                 showImportDialog = true
                                                                         }
                                                                 } catch (e: Exception) {
+                                                                        e.rethrowIfCancellation()
                                                                         importResult = ExcelFoodService.ExcelImportResult(
                                                                                 success = false,
                                                                                 message = "Erreur lors de la préparation: ${e.message}"

@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
@@ -142,6 +144,7 @@ class ReferenceEvViewModel(
                 }
                 _allReferences.value = references
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value =
                         translate(LocalizationKeys.Reference.VM_LOAD_ALL_ERROR_FORMAT, e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR))
             } finally {
@@ -187,6 +190,7 @@ class ReferenceEvViewModel(
 
             return newReference
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _error.value =
                     "Erreur lors de la création de la référence: ${e.message ?: "Erreur inconnue"}"
             throw e
@@ -204,6 +208,7 @@ class ReferenceEvViewModel(
             repository.update(reference)
             loadAllReferences() // Recharger la liste
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _error.value =
                     "Erreur lors de la mise à jour de la référence: ${e.message ?: "Erreur inconnue"}"
             throw e
@@ -220,6 +225,7 @@ class ReferenceEvViewModel(
             repository.delete(referenceId)
             loadAllReferences() // Recharger la liste
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _error.value =
                     "Erreur lors de la suppression de la référence: ${e.message ?: "Erreur inconnue"}"
             throw e
@@ -353,6 +359,7 @@ class ReferenceEvViewModel(
                 _operationMessage.value = "Erreur lors de la sauvegarde de la référence dupliquée"
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _error.value = "Erreur lors de la duplication: ${e.message ?: "Erreur inconnue"}"
         } finally {
             _loading.value = false
@@ -370,6 +377,7 @@ class ReferenceEvViewModel(
         return try {
             repository.getById(referenceId)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _error.value =
                     "Erreur lors de la récupération de la référence: ${e.message ?: "Erreur inconnue"}"
             null
@@ -447,6 +455,7 @@ class ReferenceEvViewModel(
                                     "Référence non trouvée avec l'ID: $referenceEvId"
                         }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors du chargement de la référence: ${e.message}"
                 _operationMessage.value = "Erreur lors du chargement de la référence: ${e.message}"
             } finally {
@@ -546,6 +555,7 @@ class ReferenceEvViewModel(
 
             _operationMessage.value = "Référence sauvegardée avec succès"
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _operationMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
             throw e
         } finally {
@@ -594,8 +604,9 @@ class ReferenceEvViewModel(
                     _operationMessage.value = "Erreur lors de la mise à jour de l'équation"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur: ${e.message}"
-                e.printStackTrace()
+                AppLog.e("ReferenceEvViewModel", e.message ?: "Erreur", e)
             } finally {
                 _actionInProgress.value = false
             }
@@ -645,8 +656,9 @@ class ReferenceEvViewModel(
                             "Erreur lors de la modification des équations nutritionnelles"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur: ${e.message}"
-                e.printStackTrace()
+                AppLog.e("ReferenceEvViewModel", e.message ?: "Erreur", e)
             } finally {
                 _actionInProgress.value = false
             }
@@ -661,7 +673,8 @@ class ReferenceEvViewModel(
                 val equations = equationRepository?.getAllEquations() ?: emptyList()
                 _availableEquations.value = equations
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("ReferenceEvViewModel", e.message ?: "Erreur", e)
                 _operationMessage.value = "Erreur lors du chargement des équations: ${e.message}"
                 _availableEquations.value = emptyList()
             } finally {

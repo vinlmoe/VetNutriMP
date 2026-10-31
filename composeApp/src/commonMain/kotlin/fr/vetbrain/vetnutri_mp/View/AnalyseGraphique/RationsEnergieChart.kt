@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -99,8 +101,9 @@ fun RationsEnergieChart(
                                         }
                                                 ?: run {}
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
 
-                                        e.printStackTrace()
+                                        AppLog.e("RationsEnergieChart", e.message ?: "Erreur", e)
                                 }
                         }
                 }

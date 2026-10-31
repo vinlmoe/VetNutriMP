@@ -64,7 +64,8 @@ private fun loadAppIconPainter(): BitmapPainter? {
         val bytes = pngData.bytes?.reinterpret<ByteVar>()?.readBytes(length) ?: return null
         val skiaImage = SkiaImage.makeFromEncoded(bytes)
         BitmapPainter(skiaImage.toComposeImageBitmap())
-    } catch (_: Throwable) {
+    } catch (ignored: Throwable) {
+        ignored.rethrowIfCancellation()
         null
     }
 }

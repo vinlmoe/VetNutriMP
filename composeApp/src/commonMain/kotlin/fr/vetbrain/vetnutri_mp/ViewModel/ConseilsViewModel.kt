@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -49,6 +50,7 @@ class ConseilsViewModel(
                     _error.value = "Erreur lors du chargement des conseils"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur: ${e.message}"
             } finally {
                 _isLoading.value = false
@@ -116,6 +118,7 @@ class ConseilsViewModel(
                     _error.value = "Erreur lors de la création du conseil"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur: ${e.message}"
             }
         }
@@ -131,6 +134,7 @@ class ConseilsViewModel(
                     _error.value = "Erreur lors de la suppression du conseil"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur: ${e.message}"
             }
         }
@@ -141,6 +145,7 @@ class ConseilsViewModel(
             try {
                 conseilRepository.incrementerUsage(conseilId)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur: ${e.message}"
             }
         }

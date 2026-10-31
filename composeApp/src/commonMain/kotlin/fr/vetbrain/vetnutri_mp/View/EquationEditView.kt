@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -860,6 +861,7 @@ private fun EquationTestTab(
                                 testError = errorMessage
                             }
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             testResult = null
                             testError = "Erreur: ${e.message}"
                         }
@@ -943,6 +945,7 @@ private fun EquationTestTab(
                                         null
                                     }
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             testResult = null
                             testError = "Erreur: ${e.message}"
                         }

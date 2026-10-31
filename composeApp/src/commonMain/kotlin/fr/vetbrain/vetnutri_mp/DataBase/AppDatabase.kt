@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.DataBase
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -185,10 +187,11 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
         }
         database
     } catch (e: Exception) {
+        e.rethrowIfCancellation()
         // ⚠️ Migration ou initialisation échouée : la base est mise de côté, jamais effacée
         try {
             opened?.close()
-        } catch (_: Exception) {}
+        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("AppDatabase", "Exception ignorée : ${ignored.message}") }
         setAsideDatabaseFiles(dbPath, "migration-failed")
         DatabaseChangeNotifier.notifyChange(
             DatabaseChangeNotifier.ChangeType.DATABASE_MIGRATION_FAILED,
@@ -213,7 +216,8 @@ suspend fun AppDatabase.checkIntegrity(): Boolean = withContext(AppDispatchers.I
                 stmt.step() && stmt.getText(0) == "ok"
             }
         }
-    } catch (_: Exception) {
+    } catch (ignored: Exception) {
+        ignored.rethrowIfCancellation()
         false
     }
 }
@@ -232,6 +236,7 @@ fun createDatabaseBackup(database: AppDatabase): Boolean {
         // - Exporter les références nutritionnelles custom
         true
     } catch (e: Exception) {
+        e.rethrowIfCancellation()
         false
     }
 }
@@ -263,6 +268,7 @@ fun createMigration17to18(): Migration {
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -308,6 +314,7 @@ fun createMigration18to19(): Migration {
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -331,6 +338,7 @@ fun createMigration19to20(): Migration {
                     statement.step()
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
 
                 throw e
             }
@@ -349,6 +357,7 @@ fun createMigration20to21(): Migration {
                         )
                         .use { statement -> statement.step() }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
 
                 throw e
             }
@@ -385,6 +394,7 @@ fun createMigration21to22(): Migration {
                         )
                         .use { it.step() }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -430,6 +440,7 @@ fun createMigration22to23(): Migration {
                         )
                         .use { it.step() }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
 
                 throw e
             }
@@ -507,6 +518,7 @@ fun createMigration23to24(): Migration {
                 connection.prepare("CREATE INDEX index_HTML_SECTIONS_title ON HTML_SECTIONS(title)")
                         .use { it.step() }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -525,6 +537,7 @@ fun createMigration24to25(): Migration {
                     statement.step() 
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -556,6 +569,7 @@ fun createMigration25to26(): Migration {
                         "CREATE UNIQUE INDEX index_CONSULTATION_KEYWORDS_label ON CONSULTATION_KEYWORDS(label)"
                 )
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -576,6 +590,7 @@ fun createMigration26to27(): Migration {
                         "ALTER TABLE FOOD ADD COLUMN imageRef TEXT"
                 )
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -604,6 +619,7 @@ fun createMigration27to28(): Migration {
                         "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionSelectedRationIdsJson TEXT"
                 )
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -628,6 +644,7 @@ fun createMigration28to29(): Migration {
                         "ALTER TABLE ANIMALS ADD COLUMN examStudentNumber TEXT"
                 )
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -644,6 +661,7 @@ fun createMigration29to30(): Migration {
                         "ALTER TABLE ANIMALS ADD COLUMN examExerciseId TEXT"
                 )
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -664,6 +682,7 @@ fun createMigration30to31(): Migration {
                         "CREATE TABLE IF NOT EXISTS EXAM_GRADES (examId TEXT NOT NULL, exerciseId TEXT NOT NULL, studentId TEXT NOT NULL, animalId TEXT, animalName TEXT NOT NULL, consultationId TEXT, autoScore REAL NOT NULL, manualScore REAL, finalScore REAL NOT NULL, detailsJson TEXT NOT NULL, updatedAtEpochMs INTEGER NOT NULL, PRIMARY KEY(examId, exerciseId, studentId))"
                 )
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -688,6 +707,7 @@ fun createMigration31to32(): Migration {
                         "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionFacteurNutritionnelClef TEXT"
                 )
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.DataBase.HtmlSectionDao
@@ -26,6 +27,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             val conseils = conseilEntities.map { it.toDomain() }.filter { it.isActive }
             Result.success(conseils)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -40,6 +42,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
                     }
             Result.success(conseilsFiltres)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -56,6 +59,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             dao.updateSection(conseilMisAJour.toEntity())
             Result.success(Unit)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -67,6 +71,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             val conseils = entities.map { it.toDomain() }
             Result.success(conseils)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -78,6 +83,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             val conseils = entities.map { it.toDomain() }
             Result.success(conseils)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -89,6 +95,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             val conseils = entities.map { it.toDomain() }
             Result.success(conseils)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -100,6 +107,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             val conseils = entities.map { it.toDomain() }
             Result.success(conseils)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -132,6 +140,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             dao.insertSection(conseilFinal.toEntity())
             Result.success(conseilFinal)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -142,6 +151,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             val count = dao.getConseilsCount()
             Result.success(count)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -152,6 +162,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             dao.insertSection(conseil.toEntity())
             Result.success(Unit)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -164,6 +175,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
                     entities.map { it.toDomain() }.filter { it.category.name.startsWith("CONSEIL") }
             Result.success(templates)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -190,6 +202,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             dao.insertSection(template.toEntity())
             Result.success(template)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -200,6 +213,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             dao.insertSection(conseil.toEntity())
             Result.success(Unit)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -211,6 +225,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             dao.updateSection(conseilMisAJour.toEntity())
             Result.success(Unit)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }
@@ -224,6 +239,7 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             dao.deleteSection(entity)
             Result.success(Unit)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             Result.failure(e)
         }
     }

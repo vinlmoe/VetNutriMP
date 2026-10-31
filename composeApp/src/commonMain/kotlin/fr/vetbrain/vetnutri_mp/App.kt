@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -52,7 +54,7 @@ private suspend fun ensureDefaultConsultationKeywords(
                 consultationRepository.saveKeyword(
                     fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword(label = label)
                 )
-            } catch (_: Exception) {}
+            } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("App", "Exception ignorée : ${ignored.message}") }
         }
 }
 
@@ -71,7 +73,7 @@ private suspend fun ensureDefaultBiblioRef(biblioRefRepository: BiblioRefReposit
                 )
             )
         }
-    } catch (_: Exception) {}
+    } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("App", "Exception ignorée : ${ignored.message}") }
 }
 
 @Composable
@@ -243,10 +245,10 @@ fun App(appDatabase: AppDatabase) {
 
     // Effets d'initialisation
     LaunchedEffect(consultationRepository) {
-        try { ensureDefaultConsultationKeywords(consultationRepository) } catch (_: Exception) {}
+        try { ensureDefaultConsultationKeywords(consultationRepository) } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("App", "Exception ignorée : ${ignored.message}") }
     }
     LaunchedEffect(biblioRefRepository) {
-        try { ensureDefaultBiblioRef(biblioRefRepository) } catch (_: Exception) {}
+        try { ensureDefaultBiblioRef(biblioRefRepository) } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("App", "Exception ignorée : ${ignored.message}") }
     }
     LaunchedEffect(Unit) {
         startupService.initialize()

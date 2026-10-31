@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Export
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSData
@@ -86,13 +88,15 @@ actual object PdfExporter {
                                         imprimerAvecSimpleTextFormatter(cleanHtml, controleur)
                                         
                                 } catch (t: Throwable) {
-                                        t.printStackTrace()
+                                        t.rethrowIfCancellation()
+                                        AppLog.e("PdfExporter", t.message ?: "Erreur", t)
                                 }
                         }
                         
                         true
                 } catch (t: Throwable) {
-                        t.printStackTrace()
+                        t.rethrowIfCancellation()
+                        AppLog.e("PdfExporter", t.message ?: "Erreur", t)
                         false
                 }
         }
@@ -132,6 +136,7 @@ actual object PdfExporter {
                         
                         true
                 } catch (t: Throwable) {
+                        t.rethrowIfCancellation()
                         false
                 }
         }
@@ -174,6 +179,7 @@ actual object PdfExporter {
                         
                         true
                 } catch (t: Throwable) {
+                        t.rethrowIfCancellation()
                         false
                 }
         }
@@ -193,6 +199,7 @@ actual object PdfExporter {
                         
                         text
                 } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         html
                 }
         }
@@ -223,7 +230,8 @@ actual object PdfExporter {
                         return null
                         
                 } catch (t: Throwable) {
-                        t.printStackTrace()
+                        t.rethrowIfCancellation()
+                        AppLog.e("PdfExporter", t.message ?: "Erreur", t)
                         null
                 }
         }
@@ -275,7 +283,8 @@ actual object PdfExporter {
                         
                         data
                 } catch (t: Throwable) {
-                        t.printStackTrace()
+                        t.rethrowIfCancellation()
+                        AppLog.e("PdfExporter", t.message ?: "Erreur", t)
                         null
                 }
         }
@@ -322,6 +331,7 @@ actual object PdfExporter {
                         
                         cleanHtml
                 } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         html // Retourner l'original en cas d'erreur
                 }
         }
@@ -363,7 +373,8 @@ actual object PdfExporter {
                                 completion = null
                         )
                 } catch (t: Throwable) {
-                        t.printStackTrace()
+                        t.rethrowIfCancellation()
+                        AppLog.e("PdfExporter", t.message ?: "Erreur", t)
                 }
         }
 }

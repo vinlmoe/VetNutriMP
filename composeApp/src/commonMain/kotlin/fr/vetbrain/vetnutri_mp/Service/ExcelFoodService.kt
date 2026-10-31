@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Service
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AlimentExcelRow
@@ -112,6 +113,7 @@ class ExcelFoodService(
             return@withContext finalResult
             
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             
             val errorResult = ExcelImportResult(
                 success = false,

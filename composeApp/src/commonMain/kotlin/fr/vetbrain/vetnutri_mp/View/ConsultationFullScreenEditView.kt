@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -397,6 +398,7 @@ fun ConsultationFullScreenEditView(
                                                                         weightErrorMessage = null
                                                                 }
                                                         } catch (e: Exception) {
+                                                                e.rethrowIfCancellation()
                                                                 showWeightError = true
                                                                 weightErrorMessage =
                                                                         ConsultationEdit.FORMAT_WEIGHT_ERROR.translate()
@@ -551,6 +553,7 @@ fun ConsultationFullScreenEditView(
                                                                                 idealWeightErrorMessage = null
                                                                         }
                                                                 } catch (e: Exception) {
+                                                                        e.rethrowIfCancellation()
                                                                         showIdealWeightError = true
                                                                         idealWeightErrorMessage =
                                                                                 ConsultationEdit.FORMAT_IDEAL_WEIGHT_ERROR.translate()

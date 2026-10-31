@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
@@ -24,6 +25,7 @@ internal fun launchJsonFileImport(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             onError("Erreur d'import : ${e.message}")
         }
     }

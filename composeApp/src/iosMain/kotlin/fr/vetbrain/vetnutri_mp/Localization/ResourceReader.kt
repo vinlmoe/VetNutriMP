@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Localization
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -18,37 +20,37 @@ import platform.Foundation.writeToFile
 @OptIn(ExperimentalForeignApi::class)
 actual open class ResourceReader actual constructor() {
     actual open fun readResource(name: String): String {
-        println("ResourceReader: Reading resource: $name")
+        AppLog.d("ResourceReader", "ResourceReader: Reading resource: $name")
         val bundle = NSBundle.mainBundle
         val resourceName = name.removeSuffix(".json")
         val extension = "json"
 
-        println("ResourceReader: Path for resource: $resourceName with extension: $extension")
+        AppLog.d("ResourceReader", "ResourceReader: Path for resource: $resourceName with extension: $extension")
         var path = bundle.pathForResource(resourceName, extension)
 
         if (path == null) {
-            println("ResourceReader: Resource $name not found in main bundle. Trying with extension in name.")
+            AppLog.d("ResourceReader", "ResourceReader: Resource $name not found in main bundle. Trying with extension in name.")
             path = bundle.pathForResource(name, null)
         }
 
         if (path == null) {
-            println("ResourceReader: Resource $name still not found. Listing all available json resources:")
+            AppLog.d("ResourceReader", "ResourceReader: Resource $name still not found. Listing all available json resources:")
             val allResources = bundle.pathsForResourcesOfType("json", null)
             allResources?.forEach { resourcePath ->
-                println("ResourceReader: Found JSON resource: $resourcePath")
+                AppLog.d("ResourceReader", "ResourceReader: Found JSON resource: $resourcePath")
             }
             throw IllegalStateException("Resource $name not found")
         }
 
-        println("ResourceReader: Found path: $path")
+        AppLog.d("ResourceReader", "ResourceReader: Found path: $path")
         val content = NSString.stringWithContentsOfFile(path, NSUTF8StringEncoding, null)
 
         if (content == null) {
-            println("ResourceReader: Failed to read content from path: $path")
+            AppLog.d("ResourceReader", "ResourceReader: Failed to read content from path: $path")
             throw IllegalStateException("Failed to read resource $name")
         }
 
-        println("ResourceReader: Successfully read ${content.length} characters from $name")
+        AppLog.d("ResourceReader", "ResourceReader: Successfully read ${content.length} characters from $name")
         return content
     }
     
@@ -75,7 +77,7 @@ actual open class ResourceReader actual constructor() {
      */
     @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
     actual open fun readJsonVersion(name: String): String? {
-        println("ResourceReader: Checking version for $name")
+        AppLog.d("ResourceReader", "ResourceReader: Checking version for $name")
         return try {
             val bundle = NSBundle.mainBundle
             val resourceName = name.removeSuffix(".json")
@@ -97,13 +99,14 @@ actual open class ResourceReader actual constructor() {
                 
                 val chunk = buffer.decodeToString(0, bytesRead.toInt())
                 val version = extractVersionFromJson(chunk)
-                println("ResourceReader: Version found for $name: $version")
+                AppLog.d("ResourceReader", "ResourceReader: Version found for $name: $version")
                 return version
             } finally {
                 platform.posix.fclose(file)
             }
         } catch (e: Exception) {
-            println("ResourceReader: Error reading version for $name: ${e.message}")
+            e.rethrowIfCancellation()
+            AppLog.d("ResourceReader", "ResourceReader: Error reading version for $name: ${e.message}")
             null
         }
     }
@@ -134,6 +137,7 @@ actual open class ResourceReader actual constructor() {
                 null
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             null
         }
     }
@@ -152,6 +156,7 @@ actual open class ResourceReader actual constructor() {
 
             nsString.writeToFile(filePath, true, NSUTF8StringEncoding, null)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }

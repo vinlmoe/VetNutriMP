@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKindResolver
@@ -53,10 +54,12 @@ private fun stringToAlimIndic(indicStr: String): AlimIndic? {
         // Essayer d'abord par le nom de l'énumération (PED, NEUT, etc.)
         AlimIndic.valueOf(indicStr)
     } catch (e: Exception) {
+        e.rethrowIfCancellation()
         try {
             // Si ça échoue, essayer par le label (Pédiatrique, Stérilisé, etc.)
             AlimIndic.byName(indicStr)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Si ça échoue encore, retourner null
             null
         }
@@ -102,6 +105,7 @@ fun AlimentEvJson.toData(): AlimentEv {
                             try {
                                 GroupAlim.valueOf(this.group)
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 null
                             },
                     typeAliment = FoodKindResolver.resoudreFoodKindBrut(this.foodKind),
@@ -175,6 +179,7 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
                     try {
                         GroupAlim.valueOf(this.group)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                     },
             typeAliment = FoodKindResolver.resoudreFoodKindBrut(this.foodKind),
@@ -232,6 +237,7 @@ private fun convertirEspecesEnLabels(especes: List<String>, especeId: Int): List
                             ?: especeStr // Utiliser le label si trouvé, sinon garder la chaîne
                     // d'origine
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     especeStr // En cas d'erreur, garder la chaîne d'origine
                 }
             } else {
@@ -246,6 +252,7 @@ private fun convertirEspecesEnLabels(especes: List<String>, especeId: Int): List
             val espece = Espece.getEnumFromInt(especeId)
             return listOf(espece?.label ?: especeId.toString())
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return listOf(especeId.toString())
         }
     }
@@ -292,6 +299,7 @@ fun AnimalEvJson.toData(): AnimalEv {
                     else -> emptyList()
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 emptyList()
             }
 
@@ -306,6 +314,7 @@ fun AnimalEvJson.toData(): AnimalEv {
                         val especeEnum = Espece.getEnumFromInt(especeId)
                         especeEnum.label
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         // Fallback au label CHIEN
                         Espece.CHIEN.label
                     }
@@ -315,6 +324,7 @@ fun AnimalEvJson.toData(): AnimalEv {
                         val especeEnum = Espece.valueOf(especeStr)
                         especeEnum.label
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         // Essayer de trouver par label
                         val especeByLabel = Espece.getByLabel(especeStr)
                         if (especeByLabel != null) {
@@ -325,6 +335,7 @@ fun AnimalEvJson.toData(): AnimalEv {
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 // Valeur par défaut en cas d'erreur
                 Espece.CHIEN.label
             }
@@ -349,6 +360,7 @@ fun AnimalEvJson.toData(): AnimalEv {
                     try {
                         this.listWeight.map { it.toData() }.toMutableList()
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         mutableListOf()
                     },
             consultations = consultationsList.toMutableList(),
@@ -504,6 +516,7 @@ fun SupplementalvariablePJson.toData(): SupplementalvariableP {
                     try {
                         VariableKind.valueOf(this.variable)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                     },
             varue = this.value
@@ -554,6 +567,7 @@ fun AdjustSaveEvJson.toData(): AdjustSaveEv {
                     try {
                         Espece.valueOf(this.esp)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                     },
             MutableList = this.list.map { it.toData() }.toMutableList()
@@ -577,6 +591,7 @@ fun TargetDefinitionEvJson.toData(): TargetDefinitionEv {
                     try {
                         TargetAdjust.valueOf(this.target)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                     },
             varue = this.value,
@@ -584,6 +599,7 @@ fun TargetDefinitionEvJson.toData(): TargetDefinitionEv {
                     try {
                         UnitReqEnum.valueOf(this.unit)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                     },
             percent = this.percentCompletion,

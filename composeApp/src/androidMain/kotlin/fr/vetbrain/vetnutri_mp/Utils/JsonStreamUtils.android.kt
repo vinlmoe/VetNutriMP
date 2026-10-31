@@ -13,6 +13,7 @@ actual fun Json.encodeEnvelopeToFile(envelope: ApiEnvelope, file: PlatformFile):
         }
         Result.success(Unit)
     } catch (e: Exception) {
+        e.rethrowIfCancellation()
         Result.failure(e)
     }
 }
