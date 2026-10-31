@@ -96,7 +96,6 @@ kotlin {
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
             implementation(libs.okio)
-            implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.core)
@@ -191,6 +190,33 @@ val generateSecrets by tasks.registering {
 kotlin.sourceSets["commonMain"].kotlin
     .srcDir(generateSecrets.map { it.outputs.files })
 
+// ---------------------------------------------------------------------------
+// Données initiales : source unique dans src/commonMain/resources/data.
+// Android les lit dans ses assets, iOS dans le bundle Xcode : les copies sont
+// produites ici au build au lieu d'être maintenues à la main.
+// ---------------------------------------------------------------------------
+val initialDataFile = layout.projectDirectory.file("src/commonMain/resources/data/vetnutri_export_init.json")
+val initialDataAndroidAssetsDir = layout.buildDirectory.dir("generated/initialDataAssets").get().asFile
+
+val syncInitialDataAndroidAssets by tasks.registering(Sync::class) {
+    from(initialDataFile)
+    into(File(initialDataAndroidAssetsDir, "data"))
+}
+
+val syncInitialDataIos by tasks.registering(Copy::class) {
+    description = "Copie vetnutri_export_init.json dans le bundle de l'app iOS (iosApp/iosApp)."
+    from(initialDataFile)
+    into(rootProject.layout.projectDirectory.dir("iosApp/iosApp"))
+}
+
+tasks.matching {
+    it.name == "preBuild" || (it.name.startsWith("merge") && it.name.endsWith("Assets")) ||
+        (it.name.startsWith("lint") && it.name != "lint")
+}.configureEach { dependsOn(syncInitialDataAndroidAssets) }
+
+tasks.matching { it.name == "embedAndSignAppleFrameworkForXcode" }
+    .configureEach { dependsOn(syncInitialDataIos) }
+
 android {
     namespace = "fr.vetbrain.vetnutri_mp"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -202,6 +228,7 @@ android {
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     sourceSets["main"].res.srcDirs("src/androidMain/res")
     sourceSets["main"].resources.srcDirs("src/commonMain/resources")
+    sourceSets["main"].assets.srcDirs("src/androidMain/assets", initialDataAndroidAssetsDir)
 
     defaultConfig {
         applicationId = "fr.vetbrain.vetnutri_mp"
