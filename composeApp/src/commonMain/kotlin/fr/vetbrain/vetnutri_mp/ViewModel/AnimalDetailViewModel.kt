@@ -241,14 +241,12 @@ class AnimalDetailViewModel(
     val analyseSelectionFilters: StateFlow<FoodSearchFilters> =
             _analyseSelectionFilters.asStateFlow()
 
-    private val _availableReferences = MutableStateFlow<List<ReferenceEv>>(emptyList())
-    val availableReferences: StateFlow<List<ReferenceEv>> = _availableReferences.asStateFlow()
-
-    private val _isLoadingReferences = MutableStateFlow(false)
-    val isLoadingReferences: StateFlow<Boolean> = _isLoadingReferences.asStateFlow()
-
-    private val _availableKeywords = MutableStateFlow<List<ConsultationKeyword>>(emptyList())
-    val availableKeywords: StateFlow<List<ConsultationKeyword>> = _availableKeywords.asStateFlow()
+    // Référentiels et mots-clés proposés dans les consultations
+    private val references =
+            ReferencesConsultation(databaseReferenceEvRepository, consultationRepository, viewModelScope)
+    val availableReferences: StateFlow<List<ReferenceEv>> = references.availableReferences
+    val isLoadingReferences: StateFlow<Boolean> = references.isLoadingReferences
+    val availableKeywords: StateFlow<List<ConsultationKeyword>> = references.availableKeywords
 
     // StateFlow pour gérer l'affichage de la vue plein écran de consultation
     private val _showFullScreenEdit = MutableStateFlow(false)
@@ -566,7 +564,7 @@ class AnimalDetailViewModel(
     fun selectConsultation(consultation: ConsultationEv, rationPreferee: String? = null) {
         viewModelScope.launch {
             // Assurer que les références sont disponibles avant d'effectuer des calculs dépendants
-            if (_availableReferences.value.isEmpty()) {
+            if (references.availableReferences.value.isEmpty()) {
                 chargerReferencesDisponibles()
             }
             val fullConsultation = consultationRepository.getConsultationById(consultation.uuid)
@@ -1309,63 +1307,12 @@ class AnimalDetailViewModel(
 
     // === MÉTHODES POUR LES RÉFÉRENCES NUTRITIONNELLES ===
 
-    /** Charge toutes les références nutritionnelles disponibles pour l'espèce de l'animal */
-    fun chargerReferencesDisponibles() {
-        viewModelScope.launch {
-            try {
-                _isLoadingReferences.value = true
-                val animalActuel = _animal.value
-                if (animalActuel != null) {
-                    val espece = Espece.getByLabel(animalActuel.specieId ?: "") ?: Espece.CHIEN
+    fun chargerReferencesDisponibles() = references.chargerReferencesDisponibles()
 
-                    // Charger toutes les références depuis la base de données
-                    val references = databaseReferenceEvRepository.getAllReferenceEv()
+    fun chargerMotsClesConsultation() = references.chargerMotsClesConsultation()
 
-                    // Pour l'instant on prend toutes les références, mais on pourrait filtrer par
-                    // espèce
-                    _availableReferences.value = references
-
-                    references.forEach { ref -> }
-                }
-            } catch (e: Exception) {
-                e.rethrowIfCancellation()
-                _availableReferences.value = emptyList()
-            } finally {
-                _isLoadingReferences.value = false
-            }
-        }
-    }
-
-    fun chargerMotsClesConsultation() {
-        viewModelScope.launch {
-            try {
-                _availableKeywords.value = consultationRepository.getAllKeywords()
-            } catch (e: Exception) {
-                e.rethrowIfCancellation()
-                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
-                _availableKeywords.value = emptyList()
-            }
-        }
-    }
-
-    fun ajouterMotCleConsultation(keyword: ConsultationKeyword) {
-        viewModelScope.launch {
-            try {
-                val existing =
-                        _availableKeywords.value.firstOrNull {
-                            it.label.equals(keyword.label, ignoreCase = true)
-                        }
-                if (existing != null) {
-                    return@launch
-                }
-                consultationRepository.saveKeyword(keyword)
-                _availableKeywords.value = consultationRepository.getAllKeywords()
-            } catch (e: Exception) {
-                e.rethrowIfCancellation()
-                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
-            }
-        }
-    }
+    fun ajouterMotCleConsultation(keyword: ConsultationKeyword) =
+            references.ajouterMotCleConsultation(keyword)
 
     /**
      * Ajoute une référence de maladie à une consultation
@@ -1590,7 +1537,7 @@ class AnimalDetailViewModel(
         }
         val maladies =
                 consultation.referencesMaladies.mapNotNull { id ->
-                    _availableReferences.value.firstOrNull { it.uuid == id }
+                    references.availableReferences.value.firstOrNull { it.uuid == id }
                 }
         viewModelScope.launch {
             try {
@@ -1779,24 +1726,9 @@ class AnimalDetailViewModel(
         return CalculMetabolique.besoinEnergetiqueStandard(poids, reference, consultation.suppVarp)
     }
 
-    /**
-     * Calcule le besoin énergétique total en multipliant le BEE par tous les coefficients K et le
-     * coefficient d'ajustement
-     */
-    private fun calculerBesoinEnergetiqueTotal(consultation: ConsultationEv, bee: Double): Double {
-        // Récupération des coefficients K de la consultation
-        val k1 = consultation.k1Value?.toDouble() ?: 1.0
-        val k2 = consultation.k2Value?.toDouble() ?: 1.0
-        val k3 = consultation.k3Value?.toDouble() ?: 1.0
-        val k4 = consultation.k4Value?.toDouble() ?: 1.0
-        val k5 = consultation.k5Value?.toDouble() ?: 1.0
-        val coefficientAjustement = consultation.coefficientAjustement?.toDouble() ?: 1.0
-
-        // Calcul du besoin total
-        val besoinTotal = bee * k1 * k2 * k3 * k4 * k5 * coefficientAjustement
-
-        return besoinTotal
-    }
+    /** Besoin énergétique total : BEE × K1…K5 × coefficient d'ajustement */
+    private fun calculerBesoinEnergetiqueTotal(consultation: ConsultationEv, bee: Double): Double =
+            bee * RationAnalysisCalculations.calculerCoefficientGlobal(consultation)
 
     /**
      * Obtient la référence active pour une consultation (générale ou première référence de maladie)
@@ -1977,42 +1909,8 @@ class AnimalDetailViewModel(
      * @param weight Le poids en kg
      */
     fun addWeight(date: LocalDate, weight: Double) {
-        viewModelScope.launch {
-            try {
-                val animalActuel = _animal.value
-                if (animalActuel != null) {
-                    // Créer un nouveau WeightDate
-                    val newWeight =
-                            WeightDate(refAnimal = animalActuel.uuid, date = date, value = weight)
-
-                    // Créer une nouvelle liste avec le nouveau poids
-                    val updatedWeightHistory = animalActuel.weightHistory.toMutableList()
-                    updatedWeightHistory.add(newWeight)
-
-                    // Créer un nouvel animal avec l'historique mis à jour
-                    val updatedAnimal = animalActuel.copy(weightHistory = updatedWeightHistory)
-
-                    // Sauvegarder l'animal mis à jour
-                    animalRepository.updateAnimal(updatedAnimal)
-
-                    // Mettre à jour l'animal dans le ViewModel
-                    _animal.update { updatedAnimal }
-
-                    // Mettre à jour la consultation sélectionnée si elle existe
-                    _selectedConsultation.value?.let { currentConsultation ->
-                        val updatedConsultation =
-                                updatedAnimal.consultations.find {
-                                    it.uuid == currentConsultation.uuid
-                                }
-                        if (updatedConsultation != null) {
-                            _selectedConsultation.value = updatedConsultation
-                        }
-                    }
-
-                    // Désactiver le mode d'ajout
-                    isAddingWeight = false
-                }
-            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
+        modifierHistoriquePoids(quitterModeAjout = true) { animal, historique ->
+            historique + WeightDate(refAnimal = animal.uuid, date = date, value = weight)
         }
     }
 
@@ -2021,34 +1919,36 @@ class AnimalDetailViewModel(
      * @param weightUuid L'UUID du poids à supprimer
      */
     fun deleteWeight(weightUuid: String) {
+        modifierHistoriquePoids(quitterModeAjout = false) { _, historique ->
+            historique.filterNot { it.uuid == weightUuid }
+        }
+    }
+
+    /**
+     * Enregistre l'historique de poids transformé par [transformation], puis met à jour l'animal et
+     * la consultation sélectionnée.
+     */
+    private fun modifierHistoriquePoids(
+            quitterModeAjout: Boolean,
+            transformation: (AnimalEv, List<WeightDate>) -> List<WeightDate>
+    ) {
         viewModelScope.launch {
             try {
-                val animalActuel = _animal.value
-                if (animalActuel != null) {
-                    // Créer une nouvelle liste sans le poids à supprimer
-                    val updatedWeightHistory = animalActuel.weightHistory.toMutableList()
-                    updatedWeightHistory.removeAll { it.uuid == weightUuid }
-
-                    // Créer un nouvel animal avec l'historique mis à jour
-                    val updatedAnimal = animalActuel.copy(weightHistory = updatedWeightHistory)
-
-                    // Sauvegarder l'animal mis à jour
-                    animalRepository.updateAnimal(updatedAnimal)
-
-                    // Mettre à jour l'animal dans le ViewModel
-                    _animal.update { updatedAnimal }
-
-                    // Mettre à jour la consultation sélectionnée si elle existe
-                    _selectedConsultation.value?.let { currentConsultation ->
-                        val updatedConsultation =
-                                updatedAnimal.consultations.find {
-                                    it.uuid == currentConsultation.uuid
-                                }
-                        if (updatedConsultation != null) {
-                            _selectedConsultation.value = updatedConsultation
-                        }
+                val animalActuel = _animal.value ?: return@launch
+                val updatedAnimal =
+                        animalActuel.copy(
+                                weightHistory =
+                                        transformation(animalActuel, animalActuel.weightHistory)
+                                                .toMutableList()
+                        )
+                animalRepository.updateAnimal(updatedAnimal)
+                _animal.update { updatedAnimal }
+                _selectedConsultation.value?.let { courante ->
+                    updatedAnimal.consultations.find { it.uuid == courante.uuid }?.let {
+                        _selectedConsultation.value = it
                     }
                 }
+                if (quitterModeAjout) isAddingWeight = false
             } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
@@ -2117,7 +2017,7 @@ class AnimalDetailViewModel(
         return consultation?.rations?.firstOrNull { it.uuid == courante.uuid }
     }
 
-    private fun referencesParId(): Map<String, ReferenceEv> = _availableReferences.value.associateBy { it.uuid }
+    private fun referencesParId(): Map<String, ReferenceEv> = references.availableReferences.value.associateBy { it.uuid }
 
     /**
      * Remplace la ration affichée par la ration d'un animal du type analysé. Si la répartition

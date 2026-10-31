@@ -1,6 +1,5 @@
-package fr.vetbrain.vetnutri_mp.View
+package fr.vetbrain.vetnutri_mp.Data
 
-import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals

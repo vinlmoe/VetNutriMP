@@ -1,6 +1,5 @@
-package fr.vetbrain.vetnutri_mp.View
+package fr.vetbrain.vetnutri_mp.Data
 
-import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 
 internal object RationAnalysisCalculations {
     fun calculerCoefficientGlobal(consultation: ConsultationEv?): Double {
