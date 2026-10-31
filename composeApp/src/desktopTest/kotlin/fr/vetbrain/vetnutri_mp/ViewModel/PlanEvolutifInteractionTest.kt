@@ -8,6 +8,8 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.*
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import java.lang.reflect.Proxy
 import java.util.concurrent.Executors
 import kotlin.math.pow
@@ -337,5 +339,49 @@ class PlanEvolutifInteractionTest {
                 rations = selection, consultation = c))
         assertTrue(html(c.rations).contains(translate(LocalizationKeys.Evolutive.PRESCRIPTION_TITLE)))
         assertFalse(html(c.etapesEvolutives).contains(translate(LocalizationKeys.Evolutive.PRESCRIPTION_TITLE)))
+    }
+
+    // --- Ajout d'aliments à une ration (une ligne par aliment en base) ---
+
+    private suspend fun quantitesEnBase(ration: String): List<Pair<String?, Double>> =
+            repo.getConsultationById("c")!!.rations.first { it.uuid == ration }
+                    .alimentMutableList.map { it.refAlimUnif to it.quantite }
+
+    @Test
+    fun ajoutAlimentDejaPresent_quantiteCumuleeSurUneLigne() = run {
+        consultationEnBase()
+        vm.addAlimentToRation(ration("actuelle"), croq, 50.0); idle()
+        assertEquals(listOf<Pair<String?, Double>>("croq" to 150.0), ration("actuelle").alimentMutableList.map { it.refAlimUnif to it.quantite })
+        assertEquals(listOf<Pair<String?, Double>>("croq" to 150.0), quantitesEnBase("actuelle"))
+    }
+
+    @Test
+    fun ajoutAlimentNouveau_ajouteUneLigne() = run {
+        consultationEnBase()
+        vm.addAlimentToRation(ration("actuelle"), huile, 20.0); idle()
+        assertEquals(listOf<Pair<String?, Double>>("croq" to 100.0, "huile" to 20.0), quantitesEnBase("actuelle"))
+    }
+
+    @Test
+    fun sansDepotsRecettesEtConseils_conseilsVidesEtRecetteRefusee() = run {
+        consultationEnBase()
+        assertEquals(emptyList(), vm.getActiveAdvices().getOrThrow())
+        assertFailsWith<IllegalStateException> { vm.saveRationAsRecipe(ration("actuelle"), "Recette") }
+    }
+
+    @Test
+    fun viewModelStoreVide_lesActionsSuivantesNeModifientPlusLaBase() = run {
+        consultationEnBase()
+        val store = androidx.lifecycle.ViewModelStore()
+        val gere = androidx.lifecycle.ViewModelProvider.create(
+                store,
+                viewModelFactory {
+                    initializer { vm }
+                }
+        )[AnimalDetailViewModel::class]
+        assertSame(vm, gere)
+        store.clear() // onCleared : scope du ViewModel annulé
+        vm.addAlimentToRation(ration("actuelle"), huile, 20.0); idle()
+        assertEquals(listOf<Pair<String?, Double>>("croq" to 100.0), quantitesEnBase("actuelle"))
     }
 }

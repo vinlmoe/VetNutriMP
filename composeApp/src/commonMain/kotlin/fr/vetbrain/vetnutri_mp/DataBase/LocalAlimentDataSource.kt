@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.DataBase
 
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
@@ -12,7 +13,6 @@ import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toFoodEntity
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
@@ -29,7 +29,7 @@ class LocalAlimentDataSource(
 ) : FoodRepository {
     private val _foodsFlow = MutableStateFlow<List<AlimentEv>>(emptyList())
     private val job = SupervisorJob()
-    private val coroutineScope = CoroutineScope(Dispatchers.Default + job)
+    private val coroutineScope = CoroutineScope(AppDispatchers.IO + job)
 
     init {
         // Initialiser le flow au démarrage

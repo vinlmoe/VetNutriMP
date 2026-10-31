@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -67,7 +68,6 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private enum class RationNutrientQuantityMode(val labelKey: String) {
@@ -100,7 +100,7 @@ fun AnalyseQuantitativeRationSection(
 
     LaunchedEffect(ration.uuid, rationChangeKey, referenceUtilisee, equationRepository) {
         loading = true
-        valeursNutritionnelles = withContext(Dispatchers.Default) {
+        valeursNutritionnelles = withContext(AppDispatchers.Default) {
             if (referenceUtilisee != null) {
                 analyserValeursNutritionnellesRationAvecEquations(
                     ration = ration,

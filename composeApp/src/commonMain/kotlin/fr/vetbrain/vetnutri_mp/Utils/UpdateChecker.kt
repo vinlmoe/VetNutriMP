@@ -1,6 +1,5 @@
 package fr.vetbrain.vetnutri_mp.Utils
 
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 
@@ -89,7 +88,7 @@ class UpdateChecker {
     /**
      * Récupère le contenu XML depuis l'URL
      */
-    private suspend fun fetchUpdateXml(): String = withContext(Dispatchers.Default) {
+    private suspend fun fetchUpdateXml(): String = withContext(AppDispatchers.IO) {
         try {
             val xmlContent = PlatformHttpClient.fetchXml(UPDATE_URL)
             xmlContent

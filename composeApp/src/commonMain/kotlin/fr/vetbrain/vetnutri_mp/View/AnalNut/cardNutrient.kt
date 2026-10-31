@@ -39,7 +39,6 @@ import fr.vetbrain.vetnutri_mp.Data.ConformiteStatus
 import fr.vetbrain.vetnutri_mp.Data.grouperNutrimentsParCategorie
 import fr.vetbrain.vetnutri_mp.Data.estNutrimentAnalysisRatio
 import fr.vetbrain.vetnutri_mp.Data.obtenirTitreCategorie
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import io.github.koalaplot.core.pie.PieChart
 import io.github.koalaplot.core.pie.DefaultSlice
@@ -192,7 +191,7 @@ fun AnalyseNutritionnelleCard(
 
         val shouldUseEquations = referenceUtilisee != null && equationRepository != null
 
-        val resultat = withContext(Dispatchers.Default) {
+        val resultat = withContext(AppDispatchers.Default) {
             if (
                 afficherTousLesNutriments ||
                 effectiveSelectedNutrients == null ||
@@ -235,7 +234,7 @@ fun AnalyseNutritionnelleCard(
         valeursNutritionnellesPies = if (labelsManquants.isEmpty()) {
             resultat
         } else {
-            val complement = withContext(Dispatchers.Default) {
+            val complement = withContext(AppDispatchers.Default) {
                 if (shouldUseEquations) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
                         ration = ration,

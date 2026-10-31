@@ -333,6 +333,11 @@ Suites traitées :
         « Insufisance hépatique ») à fusionner.
   \item \textbf{Ration} : ajouter un aliment déjà présent créait une seconde ligne à l'écran, perdue à
         l'enregistrement (index unique aliment + ration) ; la quantité est désormais cumulée.
+  \item \textbf{Dispatchers} : les 5 derniers \code{Dispatchers.*} directs passent par
+        \code{AppDispatchers} (calculs d'analyse, téléchargement des mises à jour, source d'aliments).
+  \item \textbf{Tests ViewModel} (T1) : ajout d'aliment (cumul jusqu'en base, nouvelle ligne),
+        recettes et conseils sans dépôt, arrêt du travail après \code{onCleared} (vérifié par mutation) ;
+        fusion des mots-clés et préférences partagées testées sur base Room.
   \item Quatre fichiers Kotlin vides et suivis supprimés (\code{BackupViewModel},
         \code{TestApiEnvelope}, \code{FullscreenToggle}, \code{GenericGraphComponent}).
   \item Filtres de la sélection d'aliments (Graphique Aliments) : un par ligne sur téléphone.
