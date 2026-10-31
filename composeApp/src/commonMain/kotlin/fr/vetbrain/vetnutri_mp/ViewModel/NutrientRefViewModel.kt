@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.NutrientRef
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
@@ -64,6 +66,7 @@ class NutrientRefViewModel(
                 val nutrients = loadNutrientsFromReference(reference)
                 _nutrientRefs.value = nutrients
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value =
                         "Erreur lors du chargement des nutriments: ${e.message ?: "Erreur inconnue"}"
             } finally {
@@ -91,6 +94,7 @@ class NutrientRefViewModel(
                 val otherNutrients = _nutrientRefs.value.filter { it.nutrientType != nutrientType }
                 _nutrientRefs.value = otherNutrients + nutrients
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value =
                         "Erreur lors du chargement des nutriments: ${e.message ?: "Erreur inconnue"}"
             } finally {
@@ -119,6 +123,7 @@ class NutrientRefViewModel(
                 // Recharger les nutriments
                 loadNutrientsForType(nutrientType)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value =
                         "Erreur lors de la réinitialisation: ${e.message ?: "Erreur inconnue"}"
             } finally {
@@ -147,6 +152,7 @@ class NutrientRefViewModel(
 
                 nutrientsToSave.forEach {}
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors de la sauvegarde: ${e.message ?: "Erreur inconnue"}"
             } finally {
                 _loading.value = false
@@ -209,6 +215,7 @@ class NutrientRefViewModel(
                     biblioRefs.forEach { biblio -> }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value =
                         "Erreur lors du chargement des références bibliographiques: ${e.message}"
 
@@ -340,7 +347,7 @@ class NutrientRefViewModel(
                             nutrientRef.biblioRef ?: BiblioRef()
                     )
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("NutrientRefViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 

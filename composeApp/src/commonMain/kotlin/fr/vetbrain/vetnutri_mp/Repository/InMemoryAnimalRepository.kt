@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
 import fr.vetbrain.vetnutri_mp.Data.WeightDate
@@ -88,6 +89,7 @@ class InMemoryAnimalRepository : AnimalRepository {
                     importedCount++
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 errorCount++
             }
         }

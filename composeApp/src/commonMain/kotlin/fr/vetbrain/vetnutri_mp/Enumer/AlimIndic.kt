@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Enumer
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 
 enum class AlimIndic(val coef: Int, override val label: String) : Labelable {
@@ -66,9 +68,7 @@ enum class AlimIndic(val coef: Int, override val label: String) : Labelable {
             try {
                 val upperCaseValue = cleanedValue.uppercase()
                 return valueOf(upperCaseValue)
-            } catch (e: Exception) {
-                // Pas un nom d'énumération valide
-            }
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AlimIndic", "Exception ignorée : ${e.message}") }
 
             // Vérifier si c'est un label par nom - déjà insensible à la casse via byName
             val byLabel = byName(cleanedValue)

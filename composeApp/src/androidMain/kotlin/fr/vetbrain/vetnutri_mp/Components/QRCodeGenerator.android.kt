@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Components
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
@@ -30,7 +32,8 @@ actual suspend fun generateQrCodeBitmap(text: String, size: Int): ImageBitmap? =
             resizedBitmap
         }
     } catch (e: Exception) {
-        e.printStackTrace()
+        e.rethrowIfCancellation()
+        AppLog.e("QRCodeGenerator", e.message ?: "Erreur", e)
         null
     }
 }

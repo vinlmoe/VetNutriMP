@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
@@ -104,6 +105,7 @@ data class AlimentEv(
                                 variables
                         )?.let { if (it < 0.0) 0.0 else it }
                 } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                 }
         }

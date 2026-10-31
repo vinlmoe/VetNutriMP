@@ -1,11 +1,14 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefEntity
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -133,39 +136,14 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
     private val _biblioRefs = MutableStateFlow<List<BiblioRef>>(emptyList())
     private val writeMutex = Mutex()
 
+    // Portée de vie de l'application : le repository est un singleton d'AppContainer.
+    private val scope = CoroutineScope(SupervisorJob() + AppDispatchers.IO)
+
     init {
-        // Chargement initial des données depuis la base
-        CoroutineScope(AppDispatchers.IO).launch {
-            refreshFromDatabase()
-
-            // Ajouter des références de test si la base est vide
-            if (_biblioRefs.value.isEmpty()) {
-                val testRefs =
-                        listOf(
-                                BiblioRef(
-                                        uuid = "test-1",
-                                        firstAuthor = "Dupont",
-                                        year = 2020,
-                                        completeRef =
-                                                "Dupont et al., Etude sur les nutriments, 2020",
-                                        comments = "Étude importante",
-                                        consistent = 1
-                                ),
-                                BiblioRef(
-                                        uuid = "test-2",
-                                        firstAuthor = "Martin",
-                                        year = 2021,
-                                        completeRef = "Martin J., Nutrition canine, 2021",
-                                        comments = "À vérifier",
-                                        consistent = 1
-                                )
-                        )
-
-                for (ref in testRefs) {
-                    insertBiblioRef(ref)
-                }
-            }
-        }
+        // Chargement initial des données depuis la base.
+        // (Les références fictives « Dupont 2020 » / « Martin 2021 » qui étaient insérées
+        // dans une base vide ont été retirées : elles polluaient les bases de production.)
+        scope.launch { refreshFromDatabase() }
     }
 
     private suspend fun refreshFromDatabase() {
@@ -176,11 +154,9 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
             // Convertir en objets du domaine
             val dbRefs = allRefs.map { it.toDomain() }
             _biblioRefs.value = dbRefs
-
-            if (dbRefs.isNotEmpty()) {
-            }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
         }
     }
 
@@ -216,10 +192,7 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                 // Mettre à jour le cache et émettre les nouvelles données
                 _biblioRefs.value = dbRefs
                 emit(dbRefs)
-            } catch (e: Exception) {
-                // En cas d'erreur, on n'émet rien de plus (les données du cache ont déjà été
-                // émises)
-            }
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("BiblioRefRepository", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -237,7 +210,8 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                     }
                     refreshFromDatabase()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.rethrowIfCancellation()
+                    AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
                     throw e
                 }
             }
@@ -251,7 +225,8 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                     biblioRefDao.updateBiblioRef(biblioRef.toEntity())
                     refreshFromDatabase()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.rethrowIfCancellation()
+                    AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
                     throw e
                 }
             }
@@ -265,7 +240,8 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                     biblioRefDao.deleteBiblioRef(biblioRef.toEntity())
                     refreshFromDatabase()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.rethrowIfCancellation()
+                    AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
                     throw e
                 }
             }
@@ -283,7 +259,8 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                     }
                     count
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.rethrowIfCancellation()
+                    AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
                     throw e
                 }
             }

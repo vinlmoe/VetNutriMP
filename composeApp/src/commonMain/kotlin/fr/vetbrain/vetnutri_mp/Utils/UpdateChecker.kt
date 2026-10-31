@@ -76,6 +76,7 @@ class UpdateChecker {
                 newVersion = if (isUpdateAvailable) newVersion else null
             )
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             UpdateCheckResult(
                 isUpdateAvailable = false,
                 currentVersion = currentVersion,
@@ -93,6 +94,7 @@ class UpdateChecker {
             val xmlContent = PlatformHttpClient.fetchXml(UPDATE_URL)
             xmlContent
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             throw UpdateException("Impossible de récupérer le fichier de mise à jour", e)
         }
     }
@@ -136,6 +138,7 @@ class UpdateChecker {
             
             UpdateDescriptor(baseUrl = baseUrl, entry = entry)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             throw UpdateException("Erreur lors du parsing XML", e)
         }
     }

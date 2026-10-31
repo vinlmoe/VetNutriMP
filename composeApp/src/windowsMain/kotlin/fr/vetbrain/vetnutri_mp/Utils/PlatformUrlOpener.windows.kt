@@ -24,6 +24,7 @@ actual object PlatformUrlOpener {
                 Runtime.getRuntime().exec("$command $url")
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             throw UpdateException("Impossible d'ouvrir l'URL: $url", e)
         }
     }

@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -98,7 +100,8 @@ fun NutrimentsRationsChart(
                                                 resultat.add(dataWithDate)
                                         }
                                 } catch (e: Exception) {
-                                        e.printStackTrace()
+                                        e.rethrowIfCancellation()
+                                        AppLog.e("NutrimentsRationsChart", e.message ?: "Erreur", e)
                                 }
                         }
                 }

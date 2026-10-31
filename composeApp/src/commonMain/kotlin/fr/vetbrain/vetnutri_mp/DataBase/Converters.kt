@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.DataBase
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.room.TypeConverter
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.decodeFromString
@@ -21,6 +22,7 @@ class Converters {
                 try {
                     LocalDate.parse(dateStr)
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     
                     null
                 }

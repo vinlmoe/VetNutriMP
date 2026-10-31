@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -277,6 +278,7 @@ fun SectionAlimentsRation(
                                                                                                                 } catch (
                                                                                                                         e:
                                                                                                                                 Exception) {
+                                                                                                                        e.rethrowIfCancellation()
                                                                                                                         showSnackbar(
                                                                                                                                 translate(LocalizationKeys.AnalNut.ADJUST_ERROR, e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR))
                                                                                                                         )
@@ -499,6 +501,7 @@ private fun calculerDensiteEnergetique(
 
                 return resultat ?: 0.0
         } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return 0.0
         }
 }

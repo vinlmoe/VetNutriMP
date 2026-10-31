@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.ViewModel.StartupViewModel
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Service.BackupService
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -64,10 +66,9 @@ private fun extraireVersionJson(contenu: String): String? {
  */
 @Composable
 fun StartupScreen(
-        referenceRepository: DatabaseReferenceEvRepository?,
+        startupViewModel: StartupViewModel,
         settingsViewModel: SettingsViewModel,
         onDatabaseReady: () -> Unit,
-        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null,
         onShowBackupDialog: () -> Unit = {},
         onStartExam: (ExamSession) -> Unit = {},
         findRecoveryBackup: suspend () -> BackupService.BackupMetadata? = { null },
@@ -142,11 +143,11 @@ fun StartupScreen(
                         coroutineScope.launch {
                                 when (result) {
                                         is SettingsViewModel.ImportResult.Success -> {
-                                                val foodCount = settingsViewModel.foodRepository.getAllFoods().size
-                                                val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
+                                                val foodCount = startupViewModel.countFoods()
+                                                val referenceCount = startupViewModel.countReferences()
                                                 val conseilsCount = try {
-                                                        conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
-                                                } catch (_: Exception) { 0 }
+                                                        startupViewModel.countConseils()
+                                                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); 0 }
                                                 databaseStatus = databaseStatus?.copy(
                                                         foodCount = foodCount,
                                                         referenceCount = referenceCount,
@@ -177,28 +178,18 @@ fun StartupScreen(
         // Vérifier l'état de la base de données, des CGU et des versions au démarrage
         LaunchedEffect(Unit) {
                 try {
-                        val foodCount = settingsViewModel.foodRepository.getFoodsCount()
-                        val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
+                        val foodCount = startupViewModel.countFoods()
+                        val referenceCount = startupViewModel.countReferences()
 
                         // Assainir les doublons de coefficients K (même nom et même valeur) au démarrage
                         try {
-                                if (referenceRepository != null) {
-                                        val allRefs = referenceRepository.getAllReferenceEv()
-                                        for (ref in allRefs) {
-                                                val before = listOf(ref.modk1.size, ref.modk2.size, ref.modk3.size, ref.modk4.size, ref.modk5.size)
-                                                ref.deduplicateCoefficients()
-                                                val after = listOf(ref.modk1.size, ref.modk2.size, ref.modk3.size, ref.modk4.size, ref.modk5.size)
-                                                if (after != before) {
-                                                        // Persister uniquement si modification
-                                                        referenceRepository.updateReferenceEv(ref)
-                                                }
-                                        }
-                                }
-                        } catch (_: Exception) {}
+                                startupViewModel.deduplicateReferenceCoefficients()
+                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${ignored.message}") }
                         val conseilsCount =
                                 try {
-                                        conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+                                        startupViewModel.countConseils()
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         0
                                 }
 
@@ -213,10 +204,10 @@ fun StartupScreen(
                         // Base sans animaux : proposer la sauvegarde JSON la plus récente qui en
                         // contient, avant tout import automatique
                         try {
-                                if (settingsViewModel.animalRepository.getAnimalsCount() == 0) {
+                                if (startupViewModel.isAnimalBaseEmpty()) {
                                         recoveryBackup = findRecoveryBackup()
                                 }
-                        } catch (_: Exception) {}
+                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${ignored.message}") }
 
                         // Vérifier si les CGU ont déjà été acceptées
                         hasAcceptedTerms = termsStorage.checkTermsAcceptance()
@@ -243,6 +234,7 @@ fun StartupScreen(
                                                         "data/vetnutri_export_init.json"
                                                 )
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 null
                                         }
                                 embeddedJsonVersion = localEmbeddedJsonVersion
@@ -295,6 +287,7 @@ fun StartupScreen(
                                         )
                                 }
                         } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 // En cas d'erreur, on considère qu'aucune mise à jour n'est
                                 // nécessaire
                                 jsonUpdateAvailable = false
@@ -358,6 +351,7 @@ fun StartupScreen(
                                                 journaliserMiseAJour("Version actuelle ($currentAppVersion) est à jour")
                                         }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         appUpdateError = translate("startup.update_check_error", e.message ?: "")
                                         showAppUpdateErrorDialog = true
                                         journaliserMiseAJour("❌ EXCEPTION CAPTURÉE LORS DE LA VÉRIFICATION:")
@@ -381,6 +375,7 @@ fun StartupScreen(
                         // Attendre un peu pour montrer l'écran de démarrage
                         kotlinx.coroutines.delay(2000)
                 } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         databaseStatus =
                                 DatabaseStatus(
                                         foodCount = 0,
@@ -391,7 +386,8 @@ fun StartupScreen(
                         unreadableRecoveryBackup =
                                 try {
                                         findRecoveryBackup()
-                                } catch (_: Exception) {
+                                } catch (ignored: Exception) {
+                                        ignored.rethrowIfCancellation()
                                         null
                                 }
                         showRecoveryDialog = true
@@ -411,14 +407,9 @@ fun StartupScreen(
                                                 // Mettre à jour le statut de la base de données
                                                 try {
                                                         val newFoodCount =
-                                                                settingsViewModel.foodRepository
-                                                                        .getAllFoods()
-                                                                        .size
+                                                                startupViewModel.countFoods()
                                                         val newReferenceCount =
-                                                                referenceRepository
-                                                                        ?.getAllReferenceEv()
-                                                                        ?.size
-                                                                        ?: 0
+                                                                startupViewModel.countReferences()
 
                                                         databaseStatus =
                                                                 DatabaseStatus(
@@ -440,9 +431,7 @@ fun StartupScreen(
                                                                 // l'utilisateur voie la mise à jour
                                                                 kotlinx.coroutines.delay(1000)
                                                         }
-                                                } catch (e: Exception) {
-                                                        // Gérer l'erreur silencieusement
-                                                }
+                                                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${e.message}") }
                                         }
                                         DatabaseChangeNotifier.ChangeType
                                                 .DATABASE_VERSION_UPDATED -> {
@@ -941,7 +930,7 @@ fun StartupScreen(
                                                                 OutlinedButton(
                                                                         onClick = {
                                                                                 coroutineScope.launch {
-                                                                                    try { createPreferencesStorage().saveString("startup_complete", "true") } catch (_: Exception) {}
+                                                                                    try { createPreferencesStorage().saveString("startup_complete", "true") } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${ignored.message}") }
                                                                                 }
                                                                                 showStartupScreen =
                                                                                         false
@@ -1050,7 +1039,7 @@ fun StartupScreen(
                                                                 Button(
                                                                         onClick = {
                                                                                 coroutineScope.launch {
-                                                                                    try { createPreferencesStorage().saveString("startup_complete", "true") } catch (_: Exception) {}
+                                                                                    try { createPreferencesStorage().saveString("startup_complete", "true") } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${ignored.message}") }
                                                                                 }
                                                                                 showStartupScreen =
                                                                                         false
@@ -1380,22 +1369,14 @@ fun StartupScreen(
                                                         when (result) {
                                                                 is ImportResult.Success -> {
                                                                         val refreshedFoodCount =
-                                                                                settingsViewModel
-                                                                                        .foodRepository
-                                                                                        .getAllFoods()
-                                                                                        .size
+                                                                                startupViewModel.countFoods()
                                                                         val refreshedReferenceCount =
-                                                                                referenceRepository
-                                                                                        ?.getAllReferenceEv()
-                                                                                        ?.size
-                                                                                        ?: 0
+                                                                                startupViewModel.countReferences()
                                                                         val refreshedConseilsCount =
                                                                                 try {
-                                                                                        conseilRepository
-                                                                                                ?.getConseilsCount()
-                                                                                                ?.getOrThrow()
-                                                                                                ?: 0
-                                                                                } catch (_: Exception) {
+                                                                                        startupViewModel.countConseils()
+                                                                                } catch (ignored: Exception) {
+                                                                                        ignored.rethrowIfCancellation()
                                                                                         0
                                                                                 }
                                                                         databaseStatus =
@@ -1494,22 +1475,14 @@ fun StartupScreen(
                                                         when (result) {
                                                                 is SettingsViewModel.ImportResult.Success -> {
                                                                         val refreshedFoodCount =
-                                                                                settingsViewModel
-                                                                                        .foodRepository
-                                                                                        .getAllFoods()
-                                                                                        .size
+                                                                                startupViewModel.countFoods()
                                                                         val refreshedReferenceCount =
-                                                                                referenceRepository
-                                                                                        ?.getAllReferenceEv()
-                                                                                        ?.size
-                                                                                        ?: 0
+                                                                                startupViewModel.countReferences()
                                                                         val refreshedConseilsCount =
                                                                                 try {
-                                                                                        conseilRepository
-                                                                                                ?.getConseilsCount()
-                                                                                                ?.getOrThrow()
-                                                                                                ?: 0
-                                                                                } catch (_: Exception) {
+                                                                                        startupViewModel.countConseils()
+                                                                                } catch (ignored: Exception) {
+                                                                                        ignored.rethrowIfCancellation()
                                                                                         0
                                                                                 }
                                                                         databaseStatus =
@@ -1672,14 +1645,14 @@ fun StartupScreen(
                                                                         }
                                                                 )
                                                         try {
-                                                                val foodCount = settingsViewModel.foodRepository.getFoodsCount()
-                                                                val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
+                                                                val foodCount = startupViewModel.countFoods()
+                                                                val referenceCount = startupViewModel.countReferences()
                                                                 databaseStatus = databaseStatus?.copy(
                                                                         foodCount = foodCount,
                                                                         referenceCount = referenceCount,
                                                                         needsUpdate = foodCount == 0 || referenceCount == 0
                                                                 )
-                                                        } catch (_: Exception) {}
+                                                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${ignored.message}") }
                                                         isUpdatingDatabase = false
                                                         closeRecovery()
                                                 }
@@ -1736,7 +1709,7 @@ fun StartupScreen(
                                                                                 examStudentId.trim()
                                                                 )
                                                         coroutineScope.launch {
-                                                            try { createPreferencesStorage().saveString("startup_complete", "true") } catch (_: Exception) {}
+                                                            try { createPreferencesStorage().saveString("startup_complete", "true") } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("StartupScreen", "Exception ignorée : ${ignored.message}") }
                                                         }
                                                         onStartExam(session)
                                                         showExamDialog = false
@@ -2243,6 +2216,7 @@ private fun formatBackupDate(timestamp: Long): String =
                 "${dateTime.dayOfMonth.toString().padStart(2, '0')}/" +
                         "${dateTime.monthNumber.toString().padStart(2, '0')}/${dateTime.year} " +
                         "${dateTime.hour.toString().padStart(2, '0')}:${dateTime.minute.toString().padStart(2, '0')}"
-        } catch (_: Exception) {
+        } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
                 "?"
         }

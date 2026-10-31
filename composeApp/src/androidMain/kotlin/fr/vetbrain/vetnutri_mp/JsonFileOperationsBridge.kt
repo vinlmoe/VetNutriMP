@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
@@ -46,6 +47,7 @@ internal object JsonFileOperationsBridge {
             // Some providers label .json files as text/plain or application/octet-stream.
             launcher.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             pendingImport = null
             throw e
         }
@@ -60,6 +62,7 @@ internal object JsonFileOperationsBridge {
         try {
             launcher.launch(name)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             pendingExport = null
             throw e
         }

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -194,6 +195,7 @@ fun FoodApi.toDomain(): AlimentEv {
                                                         c
                                                 )
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 null
                                         }
                                 when {
@@ -207,6 +209,7 @@ fun FoodApi.toDomain(): AlimentEv {
                                                                         c.toInt()
                                                                 )
                                                         } catch (e: Exception) {
+                                                                e.rethrowIfCancellation()
                                                                 null
                                                         }
                                                 byCat?.name ?: c
@@ -219,6 +222,7 @@ fun FoodApi.toDomain(): AlimentEv {
                                                                         c.uppercase()
                                                                 )
                                                         } catch (e: Exception) {
+                                                                e.rethrowIfCancellation()
                                                                 null
                                                         }
                                                 byName?.name ?: c
@@ -236,6 +240,7 @@ fun FoodApi.toDomain(): AlimentEv {
                                                 fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
                                                         .getFromString(c)
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 null
                                         }
                                 fromString
@@ -244,6 +249,7 @@ fun FoodApi.toDomain(): AlimentEv {
                                                         c.uppercase()
                                                 )
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 null
                                         }
                         }

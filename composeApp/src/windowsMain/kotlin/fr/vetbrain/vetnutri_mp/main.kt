@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
@@ -127,7 +129,8 @@ fun main(args: Array<String> = emptyArray()) {
                             // Afficher le rapport des résolutions problématiques
 
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            e.rethrowIfCancellation()
+                            AppLog.e("main", e.message ?: "Erreur", e)
                         }
                     } else {}
                     return@runBlocking

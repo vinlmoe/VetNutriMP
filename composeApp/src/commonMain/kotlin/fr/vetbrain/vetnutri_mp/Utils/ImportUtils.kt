@@ -148,6 +148,7 @@ object ImportUtils {
                                 jsonParser.decodeFromString<List<AnimalEvJson>>(preprocessedContent)
                         result
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
 
                         // Essayer d'importer comme un seul animal
                         try {
@@ -155,7 +156,8 @@ object ImportUtils {
                                     jsonParser.decodeFromString<AnimalEvJson>(preprocessedContent)
                             listOf(animal)
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            e.rethrowIfCancellation()
+                            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
                             emptyList()
                         }
                     }
@@ -193,7 +195,8 @@ object ImportUtils {
 
             return ImportResult(animals, allFoods.toList())
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return ImportResult(emptyList(), emptyList())
         }
     }
@@ -315,6 +318,7 @@ object ImportUtils {
 
                 return foods
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 importErrors.add("Erreur générale lors de l'importation: ${e.message}")
 
                 try {
@@ -351,12 +355,14 @@ object ImportUtils {
 
                     return listOf(food)
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     importErrors.add(
                             "Erreur lors de l'importation comme aliment unique: ${e.message}"
                     )
                 }
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             importErrors.add("Erreur lors du prétraitement du JSON: ${e.message}")
 
             // Fallback à la méthode standard
@@ -397,6 +403,7 @@ object ImportUtils {
 
                 return foods
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 importErrors.add("Erreur lors de l'importation standard comme liste: ${e.message}")
 
                 try {
@@ -433,6 +440,7 @@ object ImportUtils {
 
                     return listOf(food)
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     importErrors.add(
                             "Erreur lors de l'importation standard comme un seul aliment: ${e.message}"
                     )
@@ -510,7 +518,7 @@ object ImportUtils {
             // multiplateforme
             // Pour implémenter cette fonctionnalité, il faudrait utiliser expect/actual ou une
             // bibliothèque multiplateforme d'I/O
-        } catch (e: Exception) {}
+        } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("ImportUtils", "Exception ignorée : ${e.message}") }
     }
 
     /**
@@ -742,6 +750,7 @@ object ImportUtils {
                                                     newValMap[normalizedKey] = value
                                                 }
                                             } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 // Conserver tel quel en cas d'erreur
                                                 newValMap[normalizedKey] = value
                                             }
@@ -749,7 +758,8 @@ object ImportUtils {
                                     }
                                 }
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                e.rethrowIfCancellation()
+                                AppLog.e("ImportUtils", e.message ?: "Erreur", e)
                             }
                         }
 
@@ -784,6 +794,7 @@ object ImportUtils {
                                                     listOf(JsonPrimitive(especeEnum.label))
                                             )
                                 } catch (e: Exception) {
+                                    e.rethrowIfCancellation()
                                     // Fallback à l'ancienne méthode si la conversion échoue
                                     result["Especes"] =
                                             kotlinx.serialization.json.JsonArray(
@@ -807,6 +818,7 @@ object ImportUtils {
                                         val especeEnum = Espece.getEnumFromInt(especeValue)
                                         newEspecesList.add(JsonPrimitive(especeEnum.label))
                                     } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         // Conserver la valeur originale si la conversion échoue
                                         newEspecesList.add(especeItem)
                                     }
@@ -911,10 +923,12 @@ object ImportUtils {
                     try {
                         jsonParser.decodeFromString<List<AnimalEvJson>>(preprocessedContent)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         // Essayer d'importer comme un seul animal
                         try {
                             listOf(jsonParser.decodeFromString<AnimalEvJson>(preprocessedContent))
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             emptyList()
                         }
                     }
@@ -944,6 +958,7 @@ object ImportUtils {
 
             return allFoods.toList()
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return emptyList()
         }
     }
@@ -970,6 +985,7 @@ object ImportUtils {
                                 try {
                                     especeStr.toIntOrNull()
                                 } catch (e: Exception) {
+                                    e.rethrowIfCancellation()
                                     null
                                 }
 
@@ -981,6 +997,7 @@ object ImportUtils {
                                 // de categorie)
                                 result["espece"] = JsonPrimitive(especeEnum.id)
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 // Conserver la valeur originale si la conversion échoue
                                 // Essayer de trouver une correspondance directe par categorie
                                 val especeByCategorie =
@@ -1004,6 +1021,7 @@ object ImportUtils {
                                     result["espece"] = JsonPrimitive("1") // Par défaut CHIEN (ID 1)
                                 }
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 result["espece"] = JsonPrimitive("1") // Par défaut CHIEN (ID 1)
                             }
                         }
@@ -1179,6 +1197,7 @@ object ImportUtils {
                             )
                             true
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             diagnosticBuilder.append(
                                     "✗ Échec de désérialisation comme liste: ${e.message}\n"
                             )
@@ -1190,6 +1209,7 @@ object ImportUtils {
                                 )
                                 true
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 diagnosticBuilder.append(
                                         "✗ Échec de désérialisation comme animal unique: ${e.message}\n"
                                 )
@@ -1209,9 +1229,11 @@ object ImportUtils {
                     )
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 diagnosticBuilder.append("\nERREUR lors du prétraitement: ${e.message}\n")
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             diagnosticBuilder.append("ERREUR lors de l'analyse JSON: ${e.message}\n")
         }
 
@@ -1249,9 +1271,11 @@ object ImportUtils {
                     try {
                         jsonParser.decodeFromString<List<AlimentEvJson>>(preprocessedContent)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         try {
                             listOf(jsonParser.decodeFromString<AlimentEvJson>(preprocessedContent))
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             emptyList()
                         }
                     }
@@ -1288,6 +1312,7 @@ object ImportUtils {
                                 val espece = Espece.getByLabel(label) ?: Espece.valueOf(label)
                                 "(ID: ${espece.id}, catégorie: ${espece.categorie})"
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 "(non reconnue dans l'énumération)"
                             }
 
@@ -1319,8 +1344,9 @@ object ImportUtils {
                 }
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             diagnosticBuilder.append("\nErreur lors de l'analyse: ${e.message}\n")
-            e.printStackTrace()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
         }
 
         return diagnosticBuilder.toString()
@@ -1364,6 +1390,7 @@ object ImportUtils {
 
             return false
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return false
         }
     }
@@ -1428,6 +1455,7 @@ object ImportUtils {
             jsonParser.parseToJsonElement(content)
             true
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }
@@ -1533,7 +1561,8 @@ object ImportUtils {
 
             return references
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return emptyList()
         }
     }
@@ -1668,7 +1697,8 @@ object ImportUtils {
 
             return reference
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return null
         }
     }
@@ -1686,7 +1716,7 @@ object ImportUtils {
                     if (equation != null) {
                         equations.add(equation)
                     }
-                } catch (e: Exception) {}
+                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("ImportUtils", "Exception ignorée : ${e.message}") }
             }
         }
 
@@ -1731,6 +1761,7 @@ object ImportUtils {
                                             try {
                                                 kindRaw.content.toIntOrNull() ?: 0
                                             } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 0
                                             }
                                         }
@@ -1787,7 +1818,8 @@ object ImportUtils {
             
             return equation
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return null
         }
     }
@@ -1826,7 +1858,8 @@ object ImportUtils {
             
             return biblioRef
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return creerBiblioRefParDefaut("Erreur lors de la création")
         }
     }
@@ -1873,6 +1906,7 @@ object ImportUtils {
                     completeRef = completeRef
             )
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return null
         }
     }
@@ -1901,7 +1935,7 @@ object ImportUtils {
                     if (nutrientInfo != null) {
                         ajouterNutrientALaReference(reference, nutrientInfo)
                     }
-                } catch (e: Exception) {}
+                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("ImportUtils", "Exception ignorée : ${e.message}") }
             }
         }
     }
@@ -1999,7 +2033,8 @@ object ImportUtils {
                     bibliographicReference = biblioRef
             )
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return null
         }
     }
@@ -2206,8 +2241,7 @@ object ImportUtils {
             val valeurVerifiee = reference.obtenirNutriment(nutrientInfo.nutrient, nutrientInfo.referenceLevel)
             
             
-        } catch (e: Exception) {
-        }
+        } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("ImportUtils", "Exception ignorée : ${e.message}") }
     }
 
     /** Traite les coefficients de modification (modk1-5) si présents */
@@ -2251,7 +2285,7 @@ object ImportUtils {
 
             // Déduplication des coefficients par groupe (même nom et même valeur)
             reference.deduplicateCoefficients()
-        } catch (e: Exception) {}
+        } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("ImportUtils", "Exception ignorée : ${e.message}") }
     }
 
     /** Crée un objet CoefP à partir d'un objet JSON */
@@ -2273,6 +2307,7 @@ object ImportUtils {
                     groupUUID = groupUUID
             )
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return null
         }
     }
@@ -2575,6 +2610,7 @@ object ImportUtils {
 
             return false
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return false
         }
     }
@@ -2669,6 +2705,7 @@ object ImportUtils {
                 report.append("🎉 IMPORTATION RÉUSSIE!\n")
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             report.append("💥 ERREUR DURANT LE TEST:\n")
             report.append("${e.message}\n")
             report.append("${e.stackTraceToString()}\n")
@@ -2756,6 +2793,7 @@ object ImportUtils {
                             bibliographiesAjoutees++
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         erreurs.add(
                                 "Erreur bibliographie ${bibliographie.firstAuthor}: ${e.message}"
                         )
@@ -2823,6 +2861,7 @@ object ImportUtils {
                             equationsAjoutees++
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         erreurs.add("Erreur équation ${equation.name}: ${e.message}")
                     }
                 }
@@ -2845,11 +2884,13 @@ object ImportUtils {
                             
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         erreurs.add("Erreur référence ${reference.nom}: ${e.message}")
                     }
                 }
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             erreurs.add("Erreur générale de sauvegarde: ${e.message}")
         }
 
@@ -2942,7 +2983,8 @@ object ImportUtils {
 
             return references
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return emptyList()
         }
     }
@@ -2990,7 +3032,8 @@ object ImportUtils {
                 Pair(emptyList(), "")
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             Pair(emptyList(), "")
         }
     }

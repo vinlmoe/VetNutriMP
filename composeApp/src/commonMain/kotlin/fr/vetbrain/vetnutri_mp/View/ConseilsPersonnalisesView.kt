@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Export.*
 import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+import fr.vetbrain.vetnutri_mp.ViewModel.ConseilsViewModel
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -32,28 +33,17 @@ fun ConseilsPersonnalisesView(
         onEditConseil: (String) -> Unit = {},
         onCreateConseil: () -> Unit = {}
 ) {
-    var conseils by remember { mutableStateOf<List<HtmlSection>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<SectionCategory?>(null) }
     var showTemplates by remember { mutableStateOf(false) }
     var conseilToDelete by remember { mutableStateOf<HtmlSection?>(null) }
 
     val scope = rememberCoroutineScope()
-
-    // Charger les conseils au démarrage
-    LaunchedEffect(Unit) {
-        try {
-            val result = conseilRepository.getConseilsActifs()
-            if (result.isSuccess) {
-                conseils = result.getOrThrow()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            isLoading = false
-        }
-    }
+    // Chargement, suppression et création depuis un modèle passent par le ViewModel
+    val viewModel = remember(conseilRepository) { ConseilsViewModel(conseilRepository, scope) }
+    val conseils by viewModel.conseils.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    LaunchedEffect(viewModel) { viewModel.loadConseils() }
 
     // Filtrer les conseils selon la recherche et la catégorie
     val filteredConseils =
@@ -209,11 +199,11 @@ fun ConseilsPersonnalisesView(
     // Dialog pour afficher les templates
     if (showTemplates) {
         TemplatesDialog(
-                conseilRepository = conseilRepository,
+                viewModel = viewModel,
                 onDismiss = { showTemplates = false },
                 onSelectTemplate = { template ->
-                    // TODO: Créer un conseil à partir du template
                     showTemplates = false
+                    viewModel.createFromTemplate(template) { nouveau -> onEditConseil(nouveau.id) }
                 }
         )
     }
@@ -231,20 +221,7 @@ fun ConseilsPersonnalisesView(
                 confirmButton = {
                     TextButton(
                             onClick = {
-                                conseilToDelete?.let { conseil ->
-                                    scope.launch {
-                                        try {
-                                            conseilRepository.supprimerConseil(conseil.id)
-                                            // Recharger la liste
-                                            val result = conseilRepository.getConseilsActifs()
-                                            if (result.isSuccess) {
-                                                conseils = result.getOrThrow()
-                                            }
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                        }
-                                    }
-                                }
+                                conseilToDelete?.let { conseil -> viewModel.deleteConseil(conseil.id) }
                                 conseilToDelete = null
                             },
                             colors =
@@ -382,25 +359,14 @@ private fun ConseilCard(
 
 @Composable
 private fun TemplatesDialog(
-        conseilRepository: ConseilRepository,
+        viewModel: ConseilsViewModel,
         onDismiss: () -> Unit,
         onSelectTemplate: (HtmlSection) -> Unit
 ) {
-    var templates by remember { mutableStateOf<List<HtmlSection>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    val templates by viewModel.templates.collectAsState()
+    val isLoading by viewModel.templatesLoading.collectAsState()
 
-    LaunchedEffect(Unit) {
-        try {
-            val result = conseilRepository.getTemplatesConseils()
-            if (result.isSuccess) {
-                templates = result.getOrThrow()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            isLoading = false
-        }
-    }
+    LaunchedEffect(Unit) { viewModel.loadTemplates() }
 
     AlertDialog(
             onDismissRequest = onDismiss,

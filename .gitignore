@@ -58,3 +58,6 @@ vetnutriExamR/notes_examen_S4.csv
 vetnutriExamR/tableau_recap_notes.Rmd
 vetnutriExamR/tableau_recap_notes.html
 vetnutriExamR/correction_examen_S4.html
+# Journaux et fichiers temporaires de build
+*.log
+build_log.txt

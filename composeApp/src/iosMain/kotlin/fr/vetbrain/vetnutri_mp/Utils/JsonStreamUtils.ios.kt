@@ -10,6 +10,7 @@ actual fun Json.encodeEnvelopeToFile(envelope: ApiEnvelope, file: PlatformFile):
         file.writeText(this.encodeToString(ApiEnvelope.serializer(), envelope))
         Result.success(Unit)
     } catch (e: Exception) {
+        e.rethrowIfCancellation()
         Result.failure(e)
     }
 }

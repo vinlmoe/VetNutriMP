@@ -18,6 +18,7 @@ fun getClipboardTextComposable(): String? {
     return try {
         clipboard.getData(DataFlavor.stringFlavor) as? String
     } catch (e: Exception) {
+        e.rethrowIfCancellation()
         null
     }
 }

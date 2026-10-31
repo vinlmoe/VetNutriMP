@@ -45,6 +45,7 @@ object FileUtils {
             try {
                 File(fileChooser.selectedFile.absolutePath).readText()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 null
             }
         } else {
@@ -68,7 +69,8 @@ object FileUtils {
                 rememberDirectory(file)
                 true
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("FileUtils", e.message ?: "Erreur", e)
                 false
             }
         } else {
@@ -86,6 +88,7 @@ object FileUtils {
         return try {
             File(path).readText()
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             null
         }
     }
@@ -117,6 +120,7 @@ object FileUtils {
                 rememberDirectory(file)
                 true
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 false
             }
         } else {
@@ -157,6 +161,7 @@ object FileUtils {
                 rememberDirectory(file)
                 true
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 false
             }
         } else {

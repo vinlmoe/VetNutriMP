@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Components
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.ui.graphics.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -80,7 +82,8 @@ actual suspend fun generateQrCodeBitmap(text: String, size: Int): ImageBitmap? =
         
         imageBitmap
     } catch (e: Exception) {
-        e.printStackTrace()
+        e.rethrowIfCancellation()
+        AppLog.e("QRCodeGenerator", e.message ?: "Erreur", e)
         null
     }
 }

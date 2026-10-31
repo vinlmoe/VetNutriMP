@@ -12,6 +12,7 @@ on:
       - master
       - revetBackUp
       - 'claude/**'
+      - 'ccr-*'
     # Une modification uniquement documentaire ne justifie pas 40 min de CI.
     # Volontairement absent du déclencheur `pull_request` : un check requis
     # qui ne démarre jamais bloque la PR indéfiniment.

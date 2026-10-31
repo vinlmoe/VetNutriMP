@@ -12,7 +12,8 @@ actual fun rememberShareLauncher(): (String) -> Unit {
             val selection = StringSelection(text)
             Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, selection)
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("Share", e.message ?: "Erreur", e)
         }
     }
 }

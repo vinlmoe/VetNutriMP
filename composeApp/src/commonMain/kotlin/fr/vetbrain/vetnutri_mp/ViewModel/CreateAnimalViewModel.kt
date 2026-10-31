@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
@@ -40,9 +42,7 @@ class CreateAnimalViewModel(private val animalRepository: AnimalRepository) : Vi
                 // Troupeau : la fiche garde l'espèce du premier groupe (filtres, aliments proposés)
                 animalRepository.saveAnimal(_animal.value.avecEspeceDuTroupeau())
                 _saveSuccess.value = true
-            } catch (e: Exception) {
-                // Gérer l'erreur ici
-            } finally {
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("CreateAnimalViewModel", "Exception ignorée : ${e.message}") } finally {
                 _isSaving.value = false
             }
         }

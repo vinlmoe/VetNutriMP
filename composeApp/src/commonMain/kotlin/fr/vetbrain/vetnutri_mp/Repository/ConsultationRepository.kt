@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Data.Ration
@@ -31,7 +33,7 @@ class DatabaseConsultationRepository(
                 try {
                     val entity = aliment.copy(refRation = rationId).toEntity()
                     consultationDao.insertAlimentRation(entity)
-                } catch (_: Exception) {}
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("ConsultationRepository", "Exception ignorée : ${ignored.message}") }
             }
         }
     }
@@ -45,6 +47,7 @@ class DatabaseConsultationRepository(
                     try {
                         consultationDao.insert(entity)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         if (e.message?.contains("UNIQUE constraint failed") == true) {
                             val newUuid = fr.vetbrain.vetnutri_mp.Utils.genUUID()
                             consultationDao.insert(entity.copy(uuid = newUuid))
@@ -94,6 +97,7 @@ class DatabaseConsultationRepository(
                     rationSuppVarEntities
                 )
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }

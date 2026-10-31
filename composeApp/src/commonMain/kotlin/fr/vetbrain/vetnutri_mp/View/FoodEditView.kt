@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -243,11 +245,9 @@ fun FoodEditView(
                                                                         fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>()
 
                                                         // Log pour débugger
-                                                        println(
-                                                                "[FoodSaveDebug][UI] Save clicked uuid=${aliment.uuid} " +
+                                                        AppLog.d("FoodEditView", "[FoodSaveDebug][UI] Save clicked uuid=${aliment.uuid} " +
                                                                         "rawInputs=${nutrientValues.size} " +
-                                                                        "sample=${nutrientValues.entries.take(8).joinToString { "${it.key.label}=${it.value}" }}"
-                                                        )
+                                                                        "sample=${nutrientValues.entries.take(8).joinToString { "${it.key.label}=${it.value}" }}")
 
                                                         // Traiter les valeurs présentes dans l'UI
                                                         nutrientValues.forEach { (nutrient, valueStr) ->
@@ -291,11 +291,9 @@ fun FoodEditView(
                                                         }
 
                                                         // Log pour débugger
-                                                        println(
-                                                                "[FoodSaveDebug][UI] Processed map uuid=${aliment.uuid} " +
+                                                        AppLog.d("FoodEditView", "[FoodSaveDebug][UI] Processed map uuid=${aliment.uuid} " +
                                                                         "processedCount=${processedNutrientValues.size} " +
-                                                                        "sample=${processedNutrientValues.entries.take(8).joinToString { "${it.key.label}=${it.value.value}" }}"
-                                                        )
+                                                                        "sample=${processedNutrientValues.entries.take(8).joinToString { "${it.key.label}=${it.value.value}" }}")
 
                                                         val updatedAliment =
                                                                 aliment.copy(
@@ -388,10 +386,8 @@ fun FoodEditView(
                                                                                         .toMap()
                                                                 )
                                                          try {
-                                                                println(
-                                                                        "[FoodSaveDebug][UI] Calling saveAliment uuid=${updatedAliment.uuid} " +
-                                                                                "valMapCount=${updatedAliment.valMap.size}"
-                                                                )
+                                                                AppLog.d("FoodEditView", "[FoodSaveDebug][UI] Calling saveAliment uuid=${updatedAliment.uuid} " +
+                                                                                "valMapCount=${updatedAliment.valMap.size}")
                                                                 viewModel.saveAliment(
                                                                         updatedAliment
                                                                 )
@@ -399,12 +395,14 @@ fun FoodEditView(
                                                                 onFoodSaved(updatedAliment)
                                                                 onNavigateBack()
                                                          } catch (e: Exception) {
-                                                                 e.printStackTrace()
+                                                                 e.rethrowIfCancellation()
+                                                                 AppLog.e("FoodEditView", e.message ?: "Erreur", e)
                                                                  errorMessage =
                                                                          translate(LocalizationKeys.FoodEdit.ERROR_SAVE_FAILED, e.message ?: "")
                                                                  showErrorMessage = true
                                                          }
                                                  } catch (e: Exception) {
+                                                         e.rethrowIfCancellation()
                                                          errorMessage =
                                                                  translate(LocalizationKeys.FoodEdit.ERROR_SAVE_FAILED, e.message ?: "")
                                                          showErrorMessage = true

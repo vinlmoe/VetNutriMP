@@ -1,5 +1,8 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
+import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.EquationDao
@@ -67,39 +70,39 @@ interface EquationRepository {
 class InMemoryEquationRepository : EquationRepository {
     private val _equations = MutableStateFlow<List<Equation>>(emptyList())
 
-    override suspend fun getAllEquations(): List<Equation> {
-        return _equations.value
+    override suspend fun getAllEquations(): List<Equation> = withContext(AppDispatchers.IO) {
+        return@withContext _equations.value
     }
 
     override fun observeAllEquations(): Flow<List<Equation>> {
         return _equations.asStateFlow()
     }
 
-    override suspend fun getEquationById(uuid: String): Equation? {
-        return _equations.value.find { it.uuid == uuid }
+    override suspend fun getEquationById(uuid: String): Equation? = withContext(AppDispatchers.IO) {
+        return@withContext _equations.value.find { it.uuid == uuid }
     }
 
-    override suspend fun saveEquation(equation: Equation) {
+    override suspend fun saveEquation(equation: Equation): Unit = withContext(AppDispatchers.IO) {
         // Création d'une nouvelle liste pour déclencher la réactivité
         val newList = _equations.value.toMutableList()
         newList.add(equation)
         _equations.value = newList
     }
 
-    override suspend fun updateEquation(equation: Equation) {
+    override suspend fun updateEquation(equation: Equation): Unit = withContext(AppDispatchers.IO) {
         _equations.update { currentList ->
             currentList.map { if (it.uuid == equation.uuid) equation else it }
         }
     }
 
-    override suspend fun deleteEquation(uuid: String) {
+    override suspend fun deleteEquation(uuid: String): Unit = withContext(AppDispatchers.IO) {
         _equations.update { currentList -> currentList.filter { it.uuid != uuid } }
     }
 
-    override suspend fun clearAllEquations(): Int {
+    override suspend fun clearAllEquations(): Int = withContext(AppDispatchers.IO) {
         val count = _equations.value.size
         _equations.value = emptyList()
-        return count
+        return@withContext count
     }
 }
 
@@ -118,7 +121,7 @@ class DatabaseEquationRepository(
         scope.launch { loadEquations() }
     }
 
-    private suspend fun loadEquations() {
+    private suspend fun loadEquations(): Unit = withContext(AppDispatchers.IO) {
         loadMutex.withLock {
             val allBibs = biblioRefDao.getAllBiblioRefs().associateBy { it.uuid }
             val equations =
@@ -131,23 +134,23 @@ class DatabaseEquationRepository(
         }
     }
 
-    override suspend fun getAllEquations(): List<Equation> {
+    override suspend fun getAllEquations(): List<Equation> = withContext(AppDispatchers.IO) {
         loadEquations()
-        return equationsFlow.value
+        return@withContext equationsFlow.value
     }
 
     override fun observeAllEquations(): Flow<List<Equation>> {
         return equationsFlow.asStateFlow()
     }
 
-    override suspend fun getEquationById(uuid: String): Equation? {
-        val entity = equationDao.getEquationById(uuid) ?: return null
+    override suspend fun getEquationById(uuid: String): Equation? = withContext(AppDispatchers.IO) {
+        val entity = equationDao.getEquationById(uuid) ?: return@withContext null
         val biblioRef = entity.bibRef?.let { biblioRefDao.getBiblioRefById(it)?.toDomain() }
-        return entity.toDomain(biblioRef)
+        return@withContext entity.toDomain(biblioRef)
     }
 
     @OptIn(ExperimentalUuidApi::class)
-    override suspend fun saveEquation(equation: Equation) {
+    override suspend fun saveEquation(equation: Equation): Unit = withContext(AppDispatchers.IO) {
 
         try {
             // Si l'UUID est vide, créer une nouvelle équation avec un UUID généré
@@ -172,24 +175,25 @@ class DatabaseEquationRepository(
 
             loadEquations()
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("EquationRepository", e.message ?: "Erreur", e)
             throw e
         }
     }
 
-    override suspend fun updateEquation(equation: Equation) {
+    override suspend fun updateEquation(equation: Equation): Unit = withContext(AppDispatchers.IO) {
         equationDao.updateEquation(equation.toEntity())
         loadEquations()
     }
 
-    override suspend fun deleteEquation(uuid: String) {
+    override suspend fun deleteEquation(uuid: String): Unit = withContext(AppDispatchers.IO) {
         equationDao.deleteEquation(uuid)
     }
 
-    override suspend fun clearAllEquations(): Int {
+    override suspend fun clearAllEquations(): Int = withContext(AppDispatchers.IO) {
         
 
-        return try {
+        return@withContext try {
             // Obtenir le nombre total d'équations avant suppression
             val allEquations = getAllEquations()
             val count = allEquations.size
@@ -201,7 +205,8 @@ class DatabaseEquationRepository(
 
             count
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("EquationRepository", e.message ?: "Erreur", e)
             throw e
         }
     }

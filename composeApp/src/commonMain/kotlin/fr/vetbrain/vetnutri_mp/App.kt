@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -52,7 +54,7 @@ private suspend fun ensureDefaultConsultationKeywords(
                 consultationRepository.saveKeyword(
                     fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword(label = label)
                 )
-            } catch (_: Exception) {}
+            } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("App", "Exception ignorée : ${ignored.message}") }
         }
 }
 
@@ -71,7 +73,7 @@ private suspend fun ensureDefaultBiblioRef(biblioRefRepository: BiblioRefReposit
                 )
             )
         }
-    } catch (_: Exception) {}
+    } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("App", "Exception ignorée : ${ignored.message}") }
 }
 
 @Composable
@@ -243,10 +245,10 @@ fun App(appDatabase: AppDatabase) {
 
     // Effets d'initialisation
     LaunchedEffect(consultationRepository) {
-        try { ensureDefaultConsultationKeywords(consultationRepository) } catch (_: Exception) {}
+        try { ensureDefaultConsultationKeywords(consultationRepository) } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("App", "Exception ignorée : ${ignored.message}") }
     }
     LaunchedEffect(biblioRefRepository) {
-        try { ensureDefaultBiblioRef(biblioRefRepository) } catch (_: Exception) {}
+        try { ensureDefaultBiblioRef(biblioRefRepository) } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("App", "Exception ignorée : ${ignored.message}") }
     }
     LaunchedEffect(Unit) {
         startupService.initialize()
@@ -308,14 +310,22 @@ fun App(appDatabase: AppDatabase) {
         preferencesRepository = preferencesRepository
     )
 
+    val startupViewModel = remember {
+        fr.vetbrain.vetnutri_mp.ViewModel.StartupViewModel(
+            foodRepository = settingsViewModel.foodRepository,
+            animalRepository = settingsViewModel.animalRepository,
+            referenceRepository = databaseReferenceEvRepository,
+            conseilRepository = settingsViewModel.conseilRepository
+        )
+    }
+
     VetNutriTheme {
         Box(modifier = Modifier.fillMaxSize().imePadding()) {
             when {
                 showStartupScreen -> StartupScreen(
-                    referenceRepository = databaseReferenceEvRepository,
+                    startupViewModel = startupViewModel,
                     settingsViewModel = settingsViewModel,
                     onDatabaseReady = { showStartupScreen = false },
-                    conseilRepository = settingsViewModel.conseilRepository,
                     onShowBackupDialog = { showStartupBackupDialog = true },
                     onStartExam = { session -> examSession = session },
                     findRecoveryBackup = { startupService.findRecoveryBackup() },
@@ -325,6 +335,9 @@ fun App(appDatabase: AppDatabase) {
                     AppNavHost(nav, models, repos, examSession)
                 }
             }
+
+            // Erreurs signalées par UserErrors (donnée manquante au moment d'agir)
+            fr.vetbrain.vetnutri_mp.Components.UserErrorDialog()
 
             AppOverlayDialogs(
                 showAnimalImportResult = showAnimalImportResult,

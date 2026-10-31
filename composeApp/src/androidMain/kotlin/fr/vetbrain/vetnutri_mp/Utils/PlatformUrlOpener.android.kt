@@ -23,6 +23,7 @@ actual object PlatformUrlOpener {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             context.startActivity(intent)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             throw UpdateException("Impossible d'ouvrir l'URL: $url", e)
         }
     }

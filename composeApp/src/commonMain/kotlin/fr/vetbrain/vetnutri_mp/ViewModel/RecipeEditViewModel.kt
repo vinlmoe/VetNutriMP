@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
@@ -117,6 +118,7 @@ class RecipeEditViewModel(
             _recipes.clear()
             _recipes.addAll(loadedRecipes)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _message.value = translate("recipe.error.load", e.message ?: "")
         } finally {
             _isLoading.value = false
@@ -360,6 +362,7 @@ class RecipeEditViewModel(
                 cancelEditing()
                 
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _message.value = translate("recipe.error.save", e.message ?: "")
             } finally {
                 _isLoading.value = false
@@ -378,6 +381,7 @@ class RecipeEditViewModel(
                 _message.value = translate("recipe.success.deleted")
                 loadRecipesInternal()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _message.value = translate("recipe.error.delete", e.message ?: "")
             } finally {
                 _isLoading.value = false
@@ -400,6 +404,7 @@ class RecipeEditViewModel(
                 }
                 loadRecipesInternal()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _message.value = translate("recipe.error.duplicateDetail", e.message ?: "")
             } finally {
                 _isLoading.value = false

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Service
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AlimentExcelRow
@@ -112,6 +113,7 @@ class ExcelFoodService(
             return@withContext finalResult
             
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             
             val errorResult = ExcelImportResult(
                 success = false,
@@ -180,7 +182,9 @@ private fun AlimentEv.toAlimentEvJson(): fr.vetbrain.vetnutri_mp.Data.AlimentEvJ
         categoriePrix = categPrice ?: "i",
         marque = brand ?: "",
         indication = indicat.map { it.name },
-        espece = 0, // TODO: Déterminer l'espèce principale
+        // Champ hérité : espèce principale = première espèce reconnue de la liste
+        // (à l'import, la liste Especes prime ; 0 = chien si aucune n'est reconnue).
+        espece = especes.firstNotNullOfOrNull { fr.vetbrain.vetnutri_mp.Enumer.Espece.getFromString(it) }?.categorie ?: 0,
         Especes = especes,
         gamme = gamme ?: "",
         dateMaj = lastUpdateDate ?: "",

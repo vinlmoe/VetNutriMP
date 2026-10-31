@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -138,6 +139,7 @@ fun AddAlimentView(
                                         val met = complet?.getNutrient(AAEnum.METHIONINE)
                                         currentMap[aliment.uuid] = (lys != null && lys > 0.0) && (met != null && met > 0.0)
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         currentMap[aliment.uuid] = false
                                 }
                         }

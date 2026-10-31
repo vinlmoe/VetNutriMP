@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Export
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import android.app.Activity
 import android.content.Context
 import android.print.PrintAttributes
@@ -83,6 +84,7 @@ actual object PdfExporter {
                         webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
                         return true
                 } catch (t: Throwable) {
+                        t.rethrowIfCancellation()
                         return false
                 }
     }

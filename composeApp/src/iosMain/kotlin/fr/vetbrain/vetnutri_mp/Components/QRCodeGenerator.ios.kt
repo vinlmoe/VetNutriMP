@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Components
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.ImageBitmap
@@ -26,7 +27,8 @@ actual suspend fun generateQrCodeBitmap(text: String, size: Int): ImageBitmap? =
             canvas.drawImage(qrBitmap, Offset.Zero, paint)
             resizedBitmap
         }
-    } catch (_: Throwable) {
+    } catch (ignored: Throwable) {
+        ignored.rethrowIfCancellation()
         null
     }
 }

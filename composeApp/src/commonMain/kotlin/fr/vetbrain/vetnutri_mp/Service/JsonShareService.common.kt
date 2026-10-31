@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Service
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -146,12 +147,14 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                                 val createResponse = json.decodeFromString<JsonBinCreateResponse>(responseText)
                                 createResponse.id
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 // Essayer de parser le format alternatif avec "metadata"
                                 try {
                                     val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(responseText).jsonObject
                                     val metadata = jsonObj["metadata"]?.jsonObject
                                     metadata?.get("id")?.jsonPrimitive?.content
                                 } catch (e2: Exception) {
+                                    e2.rethrowIfCancellation()
                                     throw Exception("Format de réponse inattendu: $responseText")
                                 }
                             }
@@ -206,6 +209,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                     val json = Json { ignoreUnknownKeys = true; isLenient = true }
                     json.decodeFromString<JsonBinErrorResponse>(responseText)
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     null
                 }
                 
@@ -213,6 +217,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             log("Upload exception: ${e.message}")
             Result.failure(Exception("Erreur lors de l'upload vers jsonbin.io: ${e.message}", e))
         }
@@ -251,6 +256,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                     val readResponse = json.decodeFromString<JsonBinReadResponse>(responseText)
                     readResponse.record
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     // Si ça échoue, c'est que record est un objet JSON, pas une string
                     try {
                         val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(responseText).jsonObject
@@ -262,6 +268,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                             null
                         }
                     } catch (e2: Exception) {
+                        e2.rethrowIfCancellation()
                         null
                     }
                 }
@@ -282,6 +289,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                                 log("Decrypt success (plainSize=${decrypted.length})")
                                 Result.success(decrypted)
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 log("Decrypt error: ${e.message}")
                                 Result.failure(Exception("Erreur lors du déchiffrement", e))
                             }
@@ -300,6 +308,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                     val json = Json { ignoreUnknownKeys = true; isLenient = true }
                     json.decodeFromString<JsonBinErrorResponse>(responseText)
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     null
                 }
                 
@@ -307,6 +316,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             log("Download exception: ${e.message}")
             Result.failure(Exception("Erreur lors du téléchargement depuis jsonbin.io: ${e.message}", e))
         }
@@ -350,6 +360,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
             val json = Json { ignoreUnknownKeys = true; isLenient = true }
             json.decodeFromString(JsonBinQrPayload.serializer(), trimmed)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             null
         }
     }
@@ -363,6 +374,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
             val json = Json { ignoreUnknownKeys = true; isLenient = true }
             json.decodeFromString(EncryptedPayload.serializer(), trimmed).cipherText
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             trimmed
         }
     }

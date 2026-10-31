@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -65,8 +66,7 @@ data class AlimentConstraint(
 /** Paramètres de l'algorithme d'ajustement */
 data class AdjustmentParams(
         val toleranceGrams: Double = 0.1,
-        val roundTo: Double = 0.1,
-        val energyLastRebalance: Boolean = true
+        val roundTo: Double = 0.1
 )
 
 /** La cellulose est ajustée à un objectif clinique de cinq fois le besoin de référence. */
@@ -685,6 +685,7 @@ fun MultiNutrientAdjustmentView(
                                                                                         onConfirm(result)
                                                                                 }
                                                                         } catch (e: Exception) {
+                                                                                e.rethrowIfCancellation()
                                                                                 val result = RationAdjustmentResult(
                                                                                         success = false,
                                                                                         message = translate(LocalizationKeys.AnalNut.ADJUST_FAIL) + ": ${e.message}"
@@ -1416,19 +1417,8 @@ suspend fun calculerAjustement(
                         }
                 }
 
-                // Rééquilibrage énergie final désactivé car l'énergie est maintenant traitée comme
-                // les
-                // autres nutriments
-                // L'énergie est ajustée dans la boucle principale des nutriments
-                /*
-                /*
-                // Code commenté pour éviter les erreurs de compilation
-                // TODO: Implémenter la logique d'ajustement énergétique final
-                if (params.energyLastRebalance) {
-                    // Logique d'ajustement énergétique final à implémenter
-                }
-                */
-                */
+                // Pas de rééquilibrage énergétique final : l'énergie est ajustée dans la boucle
+                // principale, comme les autres nutriments.
 
                 // TROISIÈME ÉTAPE : Ajustement final du ratio CAP après tous les ajustements
                 val calciumSelectionne: Boolean = remainingAdjustmentData.any { it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked }
@@ -1568,6 +1558,7 @@ suspend fun calculerAjustement(
                         adjustedAliments = adjustedAliments
                 )
         } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return RationAdjustmentResult(
                         success = false,
                         message = translate("analnut.error.sequential_adjust", e.message ?: "")
@@ -1750,6 +1741,7 @@ private fun adjustRationForNutrient(
                         message = translate(LocalizationKeys.AnalNut.ADJUST_NUTRIENT_SUCCESS, nutrient.label)
                 )
         } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return RationAdjustmentResult(
                         success = false,
                         message = translate(LocalizationKeys.AnalNut.ADJUST_FAIL) + ": ${e.message}"
@@ -1985,6 +1977,7 @@ private suspend fun ajusterAlimentsPourNutriment(
                                 translate(LocalizationKeys.AnalNut.ADJUST_NUTRIENT_ADDED, nutriment.label, TextUtils.formatDecimal(totalAjoute, 2))
                 )
         } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return RationAdjustmentResult(
                         success = false,
                         message =
@@ -2194,6 +2187,7 @@ private suspend fun adjustRationForMultipleNutrients(
                                 translate("analnut.success.sequential_adjust", nutrimentsTraites.size.toString())
                 )
         } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return RationAdjustmentResult(
                         success = false,
                         message = translate("analnut.error.sequential_adjust", e.message ?: "")

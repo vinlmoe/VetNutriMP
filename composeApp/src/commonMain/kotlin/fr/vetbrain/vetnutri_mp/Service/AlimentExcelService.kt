@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Service
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentExcelRow
 import fr.vetbrain.vetnutri_mp.Enumer.*
@@ -91,6 +92,7 @@ class AlimentExcelService {
                     logInfo("✅ Ligne ${index + 2} importée avec succès")
                     
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     errorCount++
                     val errorMsg = "❌ Erreur ligne ${index + 2}: ${e.message}"
                     logError("$errorMsg - Exception: ${e::class.simpleName}")
@@ -108,6 +110,7 @@ class AlimentExcelService {
             return ImportResult(aliments, errors + warnings)
             
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             logError("Erreur critique lors de l'import CSV: ${e.message}")
             logError("Stack trace: ${e.stackTraceToString()}")
             return ImportResult(emptyList(), listOf("Erreur critique: ${e.message}"))

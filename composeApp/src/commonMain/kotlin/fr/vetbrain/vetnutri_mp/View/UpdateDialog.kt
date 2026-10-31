@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -204,8 +206,7 @@ fun UpdateDialog(
                                 // Essayer d'ouvrir l'URL dans le navigateur
                                 try {
                                     PlatformUrlOpener.openUrl(updateResult.downloadUrl)
-                                } catch (e: Exception) {
-                                }
+                                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("UpdateDialog", "Exception ignorée : ${e.message}") }
                             },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(

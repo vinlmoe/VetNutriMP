@@ -55,6 +55,7 @@ class MathParser {
             evaluer(expr, vars)
             true
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }
@@ -479,7 +480,8 @@ object ExpressionMathematique {
     fun evaluer(expression: String, variables: Map<String, Double> = emptyMap()): Double? {
         return try {
             parser.evaluer(expression, variables)
-        } catch (_: Exception) {
+        } catch (ignored: Exception) {
+            ignored.rethrowIfCancellation()
             null
         }
     }

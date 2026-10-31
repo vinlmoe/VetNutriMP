@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Localization
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -8,13 +10,13 @@ import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 object LocalizationManager {
     private const val KEY_LOCALE = "selected_locale"
-    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val scope = CoroutineScope(AppDispatchers.Main + SupervisorJob())
     private var strings by mutableStateOf<LocalizedStrings?>(null)
     private var currentLocaleState by mutableStateOf("fr")
     val currentLocale: String
@@ -34,7 +36,8 @@ object LocalizationManager {
             val storage = createPreferencesStorage()
             val savedLocale = storage.getString(KEY_LOCALE, "fr")
             initialize(savedLocale)
-        } catch (_: Exception) {
+        } catch (ignored: Exception) {
+            ignored.rethrowIfCancellation()
             initialize("fr")
         }
     }
@@ -53,7 +56,7 @@ object LocalizationManager {
                 try {
                     val storage = createPreferencesStorage()
                     storage.saveString(KEY_LOCALE, locale)
-                } catch (_: Exception) {}
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("LocalizationManager", "Exception ignorée : ${ignored.message}") }
             }
         }
     }
@@ -63,7 +66,8 @@ object LocalizationManager {
         try {
             val jsonString = resourceReader.readResource(resourceName)
             strings = json.decodeFromString<LocalizedStrings>(jsonString)
-        } catch (_: Exception) {
+        } catch (ignored: Exception) {
+            ignored.rethrowIfCancellation()
             if (currentLocaleState != "fr") {
                 currentLocaleState = "fr"
                 loadStrings()

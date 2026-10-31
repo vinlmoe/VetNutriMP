@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Data.ExamGrade
 import fr.vetbrain.vetnutri_mp.Data.ExamGradeDetail
 import fr.vetbrain.vetnutri_mp.Data.ExamGradingRuleSet
@@ -14,12 +16,12 @@ class ExamGradingRepository(
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    suspend fun getRule(examId: String, exerciseId: String): ExamGradingRuleSet? {
-        val entity = dao.getRule(examId, exerciseId) ?: return null
-        return json.decodeFromString(ExamGradingRuleSet.serializer(), entity.rulesJson)
+    suspend fun getRule(examId: String, exerciseId: String): ExamGradingRuleSet? = withContext(AppDispatchers.IO) {
+        val entity = dao.getRule(examId, exerciseId) ?: return@withContext null
+        return@withContext json.decodeFromString(ExamGradingRuleSet.serializer(), entity.rulesJson)
     }
 
-    suspend fun saveRule(rule: ExamGradingRuleSet) {
+    suspend fun saveRule(rule: ExamGradingRuleSet): Unit = withContext(AppDispatchers.IO) {
         val entity = ExamGradingRuleEntity(
             examId = rule.examId,
             exerciseId = rule.exerciseId,
@@ -29,16 +31,16 @@ class ExamGradingRepository(
         dao.upsertRule(entity)
     }
 
-    suspend fun getGrades(examId: String, exerciseId: String): List<ExamGrade> {
-        return dao.getGrades(examId, exerciseId).map { it.toDomain(json) }
+    suspend fun getGrades(examId: String, exerciseId: String): List<ExamGrade> = withContext(AppDispatchers.IO) {
+        return@withContext dao.getGrades(examId, exerciseId).map { it.toDomain(json) }
     }
 
-    suspend fun saveGrades(grades: List<ExamGrade>) {
+    suspend fun saveGrades(grades: List<ExamGrade>): Unit = withContext(AppDispatchers.IO) {
         val entities = grades.map { it.toEntity(json) }
         dao.upsertGrades(entities)
     }
 
-    suspend fun clearGrades(examId: String, exerciseId: String) {
+    suspend fun clearGrades(examId: String, exerciseId: String): Unit = withContext(AppDispatchers.IO) {
         dao.deleteGrades(examId, exerciseId)
     }
 }

@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.mutableStateListOf
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Enumer.*
@@ -145,7 +147,7 @@ class FoodEditViewModel(
                         _availableBiblioRefs.value = refs
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("FoodEditViewModel", "Exception ignorée : ${ignored.message}") }
         }
     }
 
@@ -176,7 +178,8 @@ class FoodEditViewModel(
                     }
                 } else {}
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("FoodEditViewModel", e.message ?: "Erreur", e)
             }
         }
     }
@@ -198,9 +201,7 @@ class FoodEditViewModel(
                         _allNutrients.add(nutrient)
                     }
                 }
-            } catch (_: Exception) {
-                // Ne bloque pas l'édition si le préchargement échoue
-            }
+            } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("FoodEditViewModel", "Exception ignorée : ${ignored.message}") }
         }
     }
 
@@ -295,11 +296,9 @@ class FoodEditViewModel(
 
     suspend fun saveAliment(aliment: AlimentEv) {
         try {
-            println(
-                "[FoodSaveDebug][VM] saveAliment start uuid=${aliment.uuid} " +
+            AppLog.d("FoodEditViewModel", "[FoodSaveDebug][VM] saveAliment start uuid=${aliment.uuid} " +
                     "incomingValMap=${aliment.valMap.size} " +
-                    "sample=${aliment.valMap.entries.take(8).joinToString { "${it.key.label}=${it.value.value}" }}"
-            )
+                    "sample=${aliment.valMap.entries.take(8).joinToString { "${it.key.label}=${it.value.value}" }}")
             val todayIso = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
             val alimentWithDate = aliment.copy(
                 lastUpdateDate = todayIso,
@@ -311,31 +310,31 @@ class FoodEditViewModel(
                     try {
                         foodRepository.getFoodById(alimentWithDate.uuid)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                     }
 
             // Sauvegarder l'aliment selon le cas
             if (existingAliment != null) {
                 // Aliment existant : mise à jour
-                println("[FoodSaveDebug][VM] update path uuid=${alimentWithDate.uuid}")
+                AppLog.d("FoodEditViewModel", "[FoodSaveDebug][VM] update path uuid=${alimentWithDate.uuid}")
                 foodRepository.updateFood(alimentWithDate)
             } else {
                 // Nouvel aliment : insertion
-                println("[FoodSaveDebug][VM] insert path uuid=${alimentWithDate.uuid}")
+                AppLog.d("FoodEditViewModel", "[FoodSaveDebug][VM] insert path uuid=${alimentWithDate.uuid}")
                 foodRepository.insertFood(alimentWithDate)
             }
 
-            val reloaded = try { foodRepository.getFood(alimentWithDate.uuid) } catch (_: Exception) { null }
-            println(
-                "[FoodSaveDebug][VM] reload after save uuid=${alimentWithDate.uuid} " +
+            val reloaded = try { foodRepository.getFood(alimentWithDate.uuid) } catch (ignored: Exception) { ignored.rethrowIfCancellation(); null }
+            AppLog.d("FoodEditViewModel", "[FoodSaveDebug][VM] reload after save uuid=${alimentWithDate.uuid} " +
                     "reloadedValMap=${reloaded?.valMap?.size ?: -1} " +
-                    "sample=${reloaded?.valMap?.entries?.take(8)?.joinToString { "${it.key.label}=${it.value.value}" }}"
-            )
+                    "sample=${reloaded?.valMap?.entries?.take(8)?.joinToString { "${it.key.label}=${it.value.value}" }}")
 
             // Mettre à jour l'état local
             _alimentState.value = alimentWithDate
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("FoodEditViewModel", e.message ?: "Erreur", e)
             throw e // Relancer l'exception pour que la vue puisse la gérer
         }
     }

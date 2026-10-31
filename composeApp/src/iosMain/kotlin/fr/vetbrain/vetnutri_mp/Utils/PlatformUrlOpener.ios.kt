@@ -15,6 +15,7 @@ actual object PlatformUrlOpener {
             
             UIApplication.sharedApplication.openURL(nsUrl)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             throw UpdateException("Impossible d'ouvrir l'URL: $url", e)
         }
     }

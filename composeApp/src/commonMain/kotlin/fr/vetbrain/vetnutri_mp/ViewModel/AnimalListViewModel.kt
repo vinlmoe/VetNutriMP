@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
@@ -334,6 +336,7 @@ class AnimalListViewModel(
 
                 shareService.uploadJson(jsonContent, shareOptions)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 Result.failure(Exception(translate(LocalizationKeys.AnimalList.EXPORT_EXAM_ERROR_DETAIL, e.message ?: ""), e))
             }
         }
@@ -358,7 +361,8 @@ class AnimalListViewModel(
 
         try {
             _availableKeywords.value = consultationRepository.getAllKeywords()
-        } catch (_: Exception) {
+        } catch (ignored: Exception) {
+            ignored.rethrowIfCancellation()
             _availableKeywords.value = emptyList()
         }
 
@@ -376,7 +380,8 @@ class AnimalListViewModel(
                                 .toSet()
                 keywordMap[animalId] = keywordIds
                 lastConsultationMap[animalId] = consultations.mapNotNull { it.date }.maxOrNull()
-            } catch (_: Exception) {
+            } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
                 keywordMap[animalId] = emptySet()
                 lastConsultationMap[animalId] = null
             }
@@ -398,7 +403,8 @@ class AnimalListViewModel(
                 val saved = preferencesStorage.getString(KEY_ANIMAL_SORT_ORDER, AnimalSortOrder.NAME_ASC.name)
                 val parsed = runCatching { AnimalSortOrder.valueOf(saved) }.getOrDefault(AnimalSortOrder.NAME_ASC)
                 _sortOrder.value = parsed
-            } catch (_: Exception) {
+            } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
                 _sortOrder.value = AnimalSortOrder.NAME_ASC
             }
         }
@@ -408,7 +414,7 @@ class AnimalListViewModel(
         viewModelScope.launch {
             try {
                 preferencesStorage.saveString(KEY_ANIMAL_SORT_ORDER, sortOrder.name)
-            } catch (_: Exception) {}
+            } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("AnimalListViewModel", "Exception ignorée : ${ignored.message}") }
         }
     }
 
@@ -424,6 +430,7 @@ class AnimalListViewModel(
                         ImportResult.Success(importResult.importedCount + importResult.updatedCount)
                 loadAnimals() // Refresh the list after import
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _importResult.value = ImportResult.Error(e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR))
             }
         }
@@ -464,7 +471,8 @@ class AnimalListViewModel(
             appendApiImportLog(translate(LocalizationKeys.AnimalList.IMPORT_LOG_START))
             val preImportIds = try {
                 animalRepository.getAllAnimals().map { it.uuid }.toSet()
-            } catch (_: Exception) {
+            } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
                 emptySet()
             }
 
@@ -510,7 +518,8 @@ class AnimalListViewModel(
                             obj["uuid"]?.jsonPrimitive?.content
                         }
                     ids
-                } catch (_: Exception) {
+                } catch (ignored: Exception) {
+                    ignored.rethrowIfCancellation()
                     emptyList()
                 }
 
@@ -556,7 +565,8 @@ class AnimalListViewModel(
             ).requireComplete()
             val postImportIds = try {
                 animalRepository.getAllAnimals().map { it.uuid }.toSet()
-            } catch (_: Exception) {
+            } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
                 emptySet()
             }
             val newIds = (postImportIds - preImportIds).toList()
@@ -587,6 +597,7 @@ class AnimalListViewModel(
                 animalIds = resolvedAnimalIds
             )
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             finishApiImport()
             appendApiImportLog(translate(LocalizationKeys.AnimalList.IMPORT_LOG_ERROR, e.message ?: ""))
             ImportResult.Error(translate(LocalizationKeys.AnimalList.IMPORT_JSONBIN_ERROR, e.message ?: ""))
@@ -651,14 +662,16 @@ class AnimalListViewModel(
                                             foodImportResult.importedCount +
                                                     foodImportResult.updatedCount > 0
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    e.rethrowIfCancellation()
+                                    AppLog.e("AnimalListViewModel", e.message ?: "Erreur", e)
                                     // Continuer l'importation des animaux même si l'importation des
                                     // aliments échoue
                                 }
                             } else {
                             }
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            e.rethrowIfCancellation()
+                            AppLog.e("AnimalListViewModel", e.message ?: "Erreur", e)
                         }
                     }
 
@@ -685,19 +698,21 @@ class AnimalListViewModel(
                                     ImportResult.Error(translate(LocalizationKeys.AnimalList.IMPORT_ANIMALS_FAILED))
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         _importResult.value =
                                 ImportResult.Error(
                                         translate(LocalizationKeys.AnimalList.IMPORT_ANIMALS_ERROR, e.message ?: "")
                                 )
-                        e.printStackTrace()
+                        AppLog.e("AnimalListViewModel", e.message ?: "Erreur", e)
                     }
                 } else {
                     _importResult.value =
                             ImportResult.Error(translate(LocalizationKeys.AnimalList.IMPORT_NO_ANIMAL_FOUND))
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _importResult.value = ImportResult.Error(e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR))
-                e.printStackTrace()
+                AppLog.e("AnimalListViewModel", e.message ?: "Erreur", e)
             } finally {
                 _isImportingAnimals.value = false
             }

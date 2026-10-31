@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.DataBase
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvLight
@@ -82,11 +84,13 @@ class LocalAlimentDataSource(
         if (date.isEmpty()) return null
         return try {
             Instant.parse(date)
-        } catch (_: Exception) {
+        } catch (ignored: Exception) {
+            ignored.rethrowIfCancellation()
             val datePart = if (date.length >= 10) date.substring(0, 10) else date
             try {
                 Instant.parse("${LocalDate.parse(datePart)}T00:00:00Z")
-            } catch (_: Exception) {
+            } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
                 null
             }
         }
@@ -146,7 +150,8 @@ class LocalAlimentDataSource(
                 }
                 count++
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("LocalAlimentDataSource", e.message ?: "Erreur", e)
                 errors++
             }
         }

@@ -2,6 +2,7 @@
 
 package fr.vetbrain.vetnutri_mp
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.createExportJson
@@ -111,7 +112,8 @@ actual suspend fun exportJsonToFile(content: String, defaultFileName: String): B
         }
     } catch (e: CancellationException) {
         throw e
-    } catch (_: Exception) {
+    } catch (ignored: Exception) {
+        ignored.rethrowIfCancellation()
         false
     }
 }

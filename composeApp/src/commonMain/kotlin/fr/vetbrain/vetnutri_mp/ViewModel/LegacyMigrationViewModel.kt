@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.detectLegacyV2DbFolder
 import fr.vetbrain.vetnutri_mp.previewLegacyV2Migration
 import fr.vetbrain.vetnutri_mp.runLegacyV2Migration
@@ -65,6 +66,7 @@ class LegacyMigrationViewModel(
                 val counts = previewLegacyV2Migration(dbFolderPath)
                 _step.value = Step.Preview(dbFolderPath, counts)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _step.value = Step.Error("Erreur lors de la lecture : ${e.message}")
             }
         }
@@ -80,6 +82,7 @@ class LegacyMigrationViewModel(
                 }
                 _step.value = Step.Done(result)
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _step.value = Step.Error("Erreur lors de la migration : ${e.message}")
             }
         }

@@ -66,28 +66,25 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
-            // implementation(libs.androidx.sqlite.sqlite.ktx)
             implementation(libs.ktor.client.android)
             implementation(libs.qr.kit)
             
             // Forcer la mise à jour de androidx.graphics pour compatibilité 16KB
             // Cette dépendance est transitive de androidx.compose.ui:ui-graphics-android
             // Les versions récentes devraient être compatibles 16KB
-            implementation("androidx.graphics:graphics-path:1.0.1") {
-                // Forcer la résolution pour éviter les conflits
-            }
+            implementation(libs.androidx.graphics.path)
         }
 
         commonMain.dependencies {
-            implementation("io.github.koalaplot:koalaplot-core:0.8.0")
-            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
+            implementation(libs.koalaPlot.core)
+            implementation(libs.compose.material.icons.extended)
             implementation(libs.androidx.sqlite.bundled)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
             implementation(compose.material3)
             implementation(compose.ui)
-            implementation("org.jetbrains.compose.ui:ui-util:1.7.0")
+            implementation(libs.compose.ui.util)
             implementation(libs.kotlinx.coroutines.core)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
@@ -95,7 +92,6 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
-            implementation(libs.okio)
             implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
@@ -112,17 +108,15 @@ kotlin {
                 implementation(compose.desktop.currentOs) // ✅ auto-resolve skiko
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.coroutines.swing)
-                //  implementation(libs.junit.jupiter)
-                // implementation(libs.junit.junit)
 
                 implementation(libs.xerial.sqlite.jdbc)
-                implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
-                implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
-                implementation("com.openhtmltopdf:openhtmltopdf-svg-support:1.0.10")
+                implementation(libs.openhtmltopdf.core)
+                implementation(libs.openhtmltopdf.pdfbox)
+                implementation(libs.openhtmltopdf.svg.support)
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.slf4j.simple)
-                implementation("io.github.g0dkar:qrcode-kotlin:4.5.0")
+                implementation(libs.qrcode.kotlin)
             }
         }
 
@@ -191,6 +185,33 @@ val generateSecrets by tasks.registering {
 kotlin.sourceSets["commonMain"].kotlin
     .srcDir(generateSecrets.map { it.outputs.files })
 
+// ---------------------------------------------------------------------------
+// Données initiales : source unique dans src/commonMain/resources/data.
+// Android les lit dans ses assets, iOS dans le bundle Xcode : les copies sont
+// produites ici au build au lieu d'être maintenues à la main.
+// ---------------------------------------------------------------------------
+val initialDataFile = layout.projectDirectory.file("src/commonMain/resources/data/vetnutri_export_init.json")
+val initialDataAndroidAssetsDir = layout.buildDirectory.dir("generated/initialDataAssets").get().asFile
+
+val syncInitialDataAndroidAssets by tasks.registering(Sync::class) {
+    from(initialDataFile)
+    into(File(initialDataAndroidAssetsDir, "data"))
+}
+
+val syncInitialDataIos by tasks.registering(Copy::class) {
+    description = "Copie vetnutri_export_init.json dans le bundle de l'app iOS (iosApp/iosApp)."
+    from(initialDataFile)
+    into(rootProject.layout.projectDirectory.dir("iosApp/iosApp"))
+}
+
+tasks.matching {
+    it.name == "preBuild" || (it.name.startsWith("merge") && it.name.endsWith("Assets")) ||
+        (it.name.startsWith("lint") && it.name != "lint")
+}.configureEach { dependsOn(syncInitialDataAndroidAssets) }
+
+tasks.matching { it.name == "embedAndSignAppleFrameworkForXcode" }
+    .configureEach { dependsOn(syncInitialDataIos) }
+
 android {
     namespace = "fr.vetbrain.vetnutri_mp"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -202,6 +223,7 @@ android {
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     sourceSets["main"].res.srcDirs("src/androidMain/res")
     sourceSets["main"].resources.srcDirs("src/commonMain/resources")
+    sourceSets["main"].assets.srcDirs("src/androidMain/assets", initialDataAndroidAssetsDir)
 
     defaultConfig {
         applicationId = "fr.vetbrain.vetnutri_mp"
@@ -315,18 +337,16 @@ compose.desktop {
 }
 
 dependencies {
-    implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
-
     implementation(libs.androidx.sqlite.bundled)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
-    implementation("io.github.kevinnzou:compose-webview-multiplatform:1.9.40")
+    implementation(libs.compose.webview.multiplatform)
 
     // Reorderable - Drag and Drop pour Compose
-    implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
+    implementation(libs.reorderable)
 }
 
 room { schemaDirectory("$projectDir/schemas") }

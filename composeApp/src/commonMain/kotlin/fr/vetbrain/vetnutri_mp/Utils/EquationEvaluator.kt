@@ -24,13 +24,26 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 object EquationEvaluator {
 
     /** Variables de base toujours disponibles dans les équations vétérinaires */
-    private var variablesDeBase: Set<String>? = null
+    private val variablesDeBase: Set<String> by lazy {
+        setOf(
+                "BW", // Body Weight - Poids corporel
+                "BEE", // Basic Energy Expenditure - Besoin énergétique de base
+                "MW", // Metabolic Weight - Poids métabolique
+                "iBW" // Ideal Body Weight - Poids corporel idéal
+        )
+    }
 
     /** Variables supplémentaires disponibles selon le contexte */
-    private var variablesSupplementaires: Set<String>? = null
+    private val variablesSupplementaires: Set<String> by lazy {
+        VariableKind.entries.map { it.variable }.toSet()
+    }
 
-    /** Toutes les variables disponibles dans le système */
-    var toutesLesVariables: Set<String>? = null
+    /**
+     * Toutes les variables disponibles dans le système. Initialisée à la première lecture
+     * (auparavant nullable et remplie seulement par une validation : l'éditeur d'équations
+     * pouvait la lire avant et planter).
+     */
+    val toutesLesVariables: Set<String> by lazy { variablesDeBase + variablesSupplementaires }
 
     private const val MAX_CACHE_SIZE = 1000
     private val expressionCache = LruMap<String, Double?>(MAX_CACHE_SIZE)
@@ -78,25 +91,6 @@ object EquationEvaluator {
         }
     }
 
-    /** Initialise les variables de base de manière paresseuse */
-    private fun initializeVariables() {
-        if (variablesDeBase == null) {
-            variablesDeBase =
-                    setOf(
-                            "BW", // Body Weight - Poids corporel
-                            "BEE", // Basic Energy Expenditure - Besoin énergétique de base
-                            "MW", // Metabolic Weight - Poids métabolique
-                            "iBW" // Ideal Body Weight - Poids corporel idéal
-                    )
-        }
-        if (variablesSupplementaires == null) {
-            variablesSupplementaires = VariableKind.entries.map { it.variable }.toSet()
-        }
-        if (toutesLesVariables == null) {
-            toutesLesVariables = variablesDeBase!! + variablesSupplementaires!!
-        }
-    }
-
     /**
      * Évalue une équation pour un animal donné
      *
@@ -110,7 +104,6 @@ object EquationEvaluator {
             poidsCorps: Double,
             variablesSupp: List<SupplementalvariableP> = emptyList()
     ): Double? {
-        initializeVariables()
         val variables = mutableMapOf<String, Double>()
 
         // Ajouter le poids corporel
@@ -460,7 +453,7 @@ object EquationEvaluator {
                 if (enaFromRefEv != null && enaFromRefEv > 0.0) {
                     variables[NutrientMain.ENA.label] = enaFromRefEv
                 }
-            } catch (_: Throwable) {}
+            } catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
         }
 
         injecterNutrimentsDepuisReference(variables = variables, referenceEv = referenceEv)
@@ -552,7 +545,7 @@ object EquationEvaluator {
             if (variablesSupp.isNotEmpty()) {
                 val supp = variablesSupp.joinToString { v -> "${v.variable?.variable}=${v.varue}" }
             }
-        } catch (_: Throwable) {}
+        } catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
 
         // Injecter les nutriments agrégés de la ration (avec compléments si disponibles)
         suspend fun sommeRation(n: Nutrient): Double {
@@ -582,7 +575,7 @@ object EquationEvaluator {
             val dbg = debugKeys.map { k -> "$k=${variables[k] ?: 0.0}" }.joinToString(", ")
             // Log complet des variables (peut être volumineux)
             val all = variables.entries.sortedBy { it.key }.joinToString(", ") { (k, v) -> "$k=$v" }
-        } catch (_: Throwable) {}
+        } catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
 
         var total = 0.0
         for (ref in referencesMaladies) {
@@ -594,21 +587,21 @@ object EquationEvaluator {
                     }
             if (eqs.isEmpty()) continue
             for (eq in eqs) {
-                try {} catch (_: Throwable) {}
+                try {} catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
                 val res = ExpressionMathematique.evaluer(eq.equationScript, variables)
-                try {} catch (_: Throwable) {}
+                try {} catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
                 if (res != null && !res.isNaN() && !res.isInfinite()) total += res
             }
         }
         if (total.isNaN() || total.isInfinite()) {
-            try {} catch (_: Throwable) {}
+            try {} catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
             return 0.0
         }
         if (total < 0.0) {
-            try {} catch (_: Throwable) {}
+            try {} catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
             return 0.0
         }
-        try {} catch (_: Throwable) {}
+        try {} catch (ignored: Throwable) { ignored.rethrowIfCancellation(); AppLog.d("EquationEvaluator", "Exception ignorée : ${ignored.message}") }
         return total
     }
 
@@ -713,19 +706,17 @@ object EquationEvaluator {
         // Extraire les variables utilisées
         val variablesUtilisees = ExpressionMathematique.extraireVariables(expression)
 
-        // Initialiser les variables si nécessaire
-        initializeVariables()
 
         // Déterminer les variables disponibles selon le type d'équation
         val variablesDisponibles =
                 when (typeEquation) {
                     TypeEquationValidation.BESOIN_ENERGETIQUE ->
-                            variablesDeBase!! + variablesSupplementaires!!
+                            variablesDeBase + variablesSupplementaires
                     TypeEquationValidation.BESOIN_NUTRITIONNEL ->
-                            toutesLesVariables!! + getNutrientsVariables()
+                            toutesLesVariables + getNutrientsVariables()
                     TypeEquationValidation.DENSITE_ENERGETIQUE -> getNutrientsVariables()
                     TypeEquationValidation.GENERALE ->
-                            toutesLesVariables!! + getNutrientsVariables()
+                            toutesLesVariables + getNutrientsVariables()
                 }
 
         // Vérifier les variables manquantes

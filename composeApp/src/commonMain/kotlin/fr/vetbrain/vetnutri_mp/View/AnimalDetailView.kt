@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -440,87 +442,10 @@ private suspend fun exporterAnimalComplet(
         snackbarHostState: SnackbarHostState
 ) {
         try {
-                // Créer le repository d'export/import avec tous les repositories nécessaires depuis settingsViewModel (sur IO)
-                val exportImportRepository = withContext(AppDispatchers.IO) {
-                        ExportImportRepository(
-                                animalRepository = settingsViewModel.animalRepository,
-                                foodRepository = settingsViewModel.foodRepository,
-                                equationRepository = settingsViewModel.equationRepository ?: equationRepository,
-                                referenceRepository = settingsViewModel.referenceEvRepository,
-                                biblioRepository = settingsViewModel.biblioRefRepository,
-                                consultationRepository = settingsViewModel.consultationRepository,
-                                recipeRepository = settingsViewModel.recipeRepository ?: recipeRepository,
-                                conseilRepository = settingsViewModel.conseilRepository ?: conseilRepository
-                        )
-                }
-                
-                // Collecter tous les aliments utilisés dans les rations de l'animal (sur IO)
-                val foodIds = withContext(AppDispatchers.IO) {
-                        val ids = mutableSetOf<String>()
-                        animal.consultations.forEach { consultation ->
-                                consultation.rations.forEach { ration ->
-                                        ration.alimentMutableList.forEach { alimentRation ->
-                                                // Collecter l'ID depuis refAlimUnif ou depuis l'aliment complet
-                                                alimentRation.refAlimUnif?.takeIf { it.isNotBlank() }?.let { ids.add(it) }
-                                                alimentRation.aliment?.uuid?.takeIf { it.isNotBlank() }?.let { ids.add(it) }
-                                        }
-                                }
-                        }
-                        ids
-                }
-                
-                // Collecter toutes les références nutritionnelles utilisées dans les consultations (sur IO)
-                val (referenceIds, equationIds) = withContext(AppDispatchers.IO) {
-                        val refIds = mutableSetOf<String>()
-                        val eqIds = mutableSetOf<String>()
-                        
-                        animal.consultations.forEach { consultation ->
-                                // Référence générale
-                                consultation.referenceGeneraleId?.let { refId ->
-                                        refIds.add(refId)
-                                        // Charger la référence pour obtenir ses équations
-                                        val reference = settingsViewModel.referenceEvRepository?.getReferenceEvById(refId)
-                                        reference?.let { ref ->
-                                                // Collecter toutes les équations de la référence
-                                                ref.obtenirToutesEquations().forEach { equation ->
-                                                        eqIds.add(equation.uuid)
-                                                }
-                                        }
-                                }
-                                // Références maladies
-                                consultation.referencesMaladies.forEach { refId ->
-                                        refIds.add(refId)
-                                        // Charger la référence pour obtenir ses équations
-                                        val reference = settingsViewModel.referenceEvRepository?.getReferenceEvById(refId)
-                                        reference?.let { ref ->
-                                                // Collecter toutes les équations de la référence
-                                                ref.obtenirToutesEquations().forEach { equation ->
-                                                        eqIds.add(equation.uuid)
-                                                }
-                                        }
-                                }
-                        }
-                        Pair(refIds, eqIds)
-                }
-                
-                // Exporter avec sélection (sur IO)
-                // Note: Les références bibliographiques sont automatiquement incluses dans l'export
-                // car elles sont liées aux références nutritionnelles et équations exportées
-                val envelope = withContext(AppDispatchers.IO) {
-                        val exportOptions = ExportImportRepository.ExportSelectionOptions(
-                                includeAnimals = true,
-                                includeFoods = true,
-                                includeRations = true,
-                                includeRecipes = false,
-                                includeEquations = true,
-                                includeConseils = false,
-                                animalIds = setOf(animal.uuid),
-                                foodIds = foodIds,
-                                referenceIds = referenceIds,
-                                equationIds = equationIds
-                        )
-                        exportImportRepository.exportWithSelectionEnvelope(exportOptions)
-                }
+                // Animal, aliments de ses rations, référentiels et équations utilisés
+                val envelope = settingsViewModel.exportAnimalEnvelope(
+                        animal, equationRepository, recipeRepository, conseilRepository
+                )
                 
                 // Générer le nom de fichier
                 val fileName = "${animal.id ?: animal.uuid}_${animal.nom}_export.json"
@@ -544,7 +469,8 @@ private suspend fun exporterAnimalComplet(
                         )
                 }
         } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
                 snackbarHostState.showSnackbar(
                         message = "${translate(AnimalDetail.EXPORT_ERROR)}${e.message}",
                         duration = SnackbarDuration.Long
@@ -570,78 +496,10 @@ private suspend fun partagerAnimalEnLigne(
         shouldEncrypt: Boolean = true
 ) {
         try {
-                // Créer le repository d'export/import avec tous les repositories nécessaires depuis settingsViewModel (sur IO)
-                val exportImportRepository = withContext(AppDispatchers.IO) {
-                        ExportImportRepository(
-                                animalRepository = settingsViewModel.animalRepository,
-                                foodRepository = settingsViewModel.foodRepository,
-                                equationRepository = settingsViewModel.equationRepository ?: equationRepository,
-                                referenceRepository = settingsViewModel.referenceEvRepository,
-                                biblioRepository = settingsViewModel.biblioRefRepository,
-                                consultationRepository = settingsViewModel.consultationRepository,
-                                recipeRepository = settingsViewModel.recipeRepository ?: recipeRepository,
-                                conseilRepository = settingsViewModel.conseilRepository ?: conseilRepository
-                        )
-                }
-                
-                // Collecter tous les aliments utilisés dans les rations de l'animal (sur IO)
-                val foodIds = withContext(AppDispatchers.IO) {
-                        val ids = mutableSetOf<String>()
-                        animal.consultations.forEach { consultation ->
-                                consultation.rations.forEach { ration ->
-                                        ration.alimentMutableList.forEach { alimentRation ->
-                                                alimentRation.refAlimUnif?.takeIf { it.isNotBlank() }?.let { ids.add(it) }
-                                                alimentRation.aliment?.uuid?.takeIf { it.isNotBlank() }?.let { ids.add(it) }
-                                        }
-                                }
-                        }
-                        ids
-                }
-                
-                // Collecter toutes les références nutritionnelles utilisées dans les consultations (sur IO)
-                val (referenceIds, equationIds) = withContext(AppDispatchers.IO) {
-                        val refIds = mutableSetOf<String>()
-                        val eqIds = mutableSetOf<String>()
-                        
-                        animal.consultations.forEach { consultation ->
-                                consultation.referenceGeneraleId?.let { refId ->
-                                        refIds.add(refId)
-                                        val reference = settingsViewModel.referenceEvRepository?.getReferenceEvById(refId)
-                                        reference?.let { ref ->
-                                                ref.obtenirToutesEquations().forEach { equation ->
-                                                        eqIds.add(equation.uuid)
-                                                }
-                                        }
-                                }
-                                consultation.referencesMaladies.forEach { refId ->
-                                        refIds.add(refId)
-                                        val reference = settingsViewModel.referenceEvRepository?.getReferenceEvById(refId)
-                                        reference?.let { ref ->
-                                                ref.obtenirToutesEquations().forEach { equation ->
-                                                        eqIds.add(equation.uuid)
-                                                }
-                                        }
-                                }
-                        }
-                        Pair(refIds, eqIds)
-                }
-                
-                // Exporter avec sélection (sur IO)
-                var jsonContent = withContext(AppDispatchers.IO) {
-                        val exportOptions = ExportImportRepository.ExportSelectionOptions(
-                                includeAnimals = true,
-                                includeFoods = true,
-                                includeRations = true,
-                                includeRecipes = false,
-                                includeEquations = true,
-                                includeConseils = false,
-                                animalIds = setOf(animal.uuid),
-                                foodIds = foodIds,
-                                referenceIds = referenceIds,
-                                equationIds = equationIds
-                        )
-                        exportImportRepository.exportWithSelection(exportOptions)
-                }
+                // Animal, aliments de ses rations, référentiels et équations utilisés
+                var jsonContent = settingsViewModel.exportAnimalJson(
+                        animal, equationRepository, recipeRepository, conseilRepository
+                )
                 
                 // Anonymiser le JSON si demandé
                 if (shouldAnonymize) {
@@ -654,9 +512,7 @@ private suspend fun partagerAnimalEnLigne(
                 val fileName = "${animal.id ?: animal.uuid}_${animal.nom}_export.json"
                 
                 // IMPORTANT: Recharger l'animal depuis la BDD pour s'assurer d'avoir le jsonbinId à jour
-                val animalFromDb: AnimalEv? = withContext(AppDispatchers.IO) {
-                        settingsViewModel.animalRepository.getAnimalById(animal.uuid)
-                }
+                val animalFromDb: AnimalEv? = settingsViewModel.reloadAnimal(animal.uuid)
                 
                 // Utiliser l'animal de la BDD si disponible, sinon l'animal du ViewModel
                 val animalToUse = animalFromDb ?: animal
@@ -695,7 +551,7 @@ private suspend fun partagerAnimalEnLigne(
                                                 viewModel.updateAnimal(animalToUpdate)
                                                 
                                                 // Recharger l'animal depuis la BDD pour s'assurer que le jsonbinId est bien présent
-                                                val updatedAnimal: AnimalEv? = settingsViewModel.animalRepository.getAnimalById(animalToUse.uuid)
+                                                val updatedAnimal: AnimalEv? = settingsViewModel.reloadAnimal(animalToUse.uuid)
                                                 if (updatedAnimal != null) {
                                                         withContext(AppDispatchers.Main) {
                                                                 viewModel.setAnimal(updatedAnimal)
@@ -717,7 +573,8 @@ private suspend fun partagerAnimalEnLigne(
                         )
                 }
         } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
                 withContext(AppDispatchers.Main) {
                         snackbarHostState.showSnackbar(
                                 message = "${translate(AnimalDetail.SHARE_ERROR)}${e.message}",
@@ -791,6 +648,7 @@ private fun handlePdfExport(
                     defaultFileName = generateDefaultPdfFileName(animalDetails, selectedConsultation)
                 )
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 fr.vetbrain.vetnutri_mp.exportPdfDocument(
                     documentType = DocumentType.PRESCRIPTION,
                     data = ExportData(
@@ -1201,7 +1059,8 @@ private fun WideScreenLayout(
                                 availableConseils = result.getOrThrow()
                         }
                 } catch (e: Exception) {
-                        e.printStackTrace()
+                        e.rethrowIfCancellation()
+                        AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
                 } finally {
                         isLoadingConseils = false
                 }
@@ -1222,7 +1081,7 @@ private fun WideScreenLayout(
                                         telephone = prefs.telephone,
                                         email = prefs.email
                                 )
-                } catch (_: Exception) {}
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("AnimalDetailView", "Exception ignorée : ${ignored.message}") }
         }
         
         // Variables pour la prévisualisation et l'export
@@ -1617,8 +1476,9 @@ private fun WideScreenLayout(
                                                                                                 ) // Fallback
                                                                                 }
                                                                         } catch (e: Exception) {
+                                                                                e.rethrowIfCancellation()
 
-                                                                                e.printStackTrace()
+                                                                                AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
                                                                                 alimentsAvecValeurs
                                                                                         .add(
                                                                                                 aliment
@@ -2023,6 +1883,7 @@ private fun WideScreenLayout(
                                                                                 previewCompteRenduText = ""
                                                                                 showPreview = true
                                                                         } catch (e: Exception) {
+                                                                                e.rethrowIfCancellation()
                                                                                 val selectedRationsForPrescription: List<Ration> =
                                                                                         selectedConsultation?.rations
                                                                                                 ?.filter { ration: Ration ->
@@ -2270,7 +2131,8 @@ private fun NarrowScreenLayout(
                                 availableConseils = result.getOrThrow()
                         }
                 } catch (e: Exception) {
-                        e.printStackTrace()
+                        e.rethrowIfCancellation()
+                        AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
                 } finally {
                         isLoadingConseils = false
                 }
@@ -2291,7 +2153,7 @@ private fun NarrowScreenLayout(
                                         telephone = prefs.telephone,
                                         email = prefs.email
                                 )
-                } catch (_: Exception) {}
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("AnimalDetailView", "Exception ignorée : ${ignored.message}") }
         }
 
         // Variables pour la prévisualisation et l'export
@@ -2750,8 +2612,9 @@ private fun NarrowScreenLayout(
                                                                                         } catch (
                                                                                                 e:
                                                                                                         Exception) {
+                                                                                                e.rethrowIfCancellation()
 
-                                                                                                e.printStackTrace()
+                                                                                                AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
                                                                                                 alimentsAvecValeurs
                                                                                                         .add(
                                                                                                                 aliment
@@ -3222,6 +3085,7 @@ private fun NarrowScreenLayout(
                                                                                                 previewCompteRenduText = ""
                                                                                                 showPreview = true
                                                                                         } catch (e: Exception) {
+                                                                                                e.rethrowIfCancellation()
                                                                                                 val selectedRationsForPrescription: List<Ration> =
                                                                                                         selectedConsultation?.rations
                                                                                                                 ?.filter { ration: Ration ->

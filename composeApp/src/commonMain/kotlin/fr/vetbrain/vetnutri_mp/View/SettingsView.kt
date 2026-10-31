@@ -1,5 +1,8 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
+
 // Import délégué via SettingsViewModel.importApiFromFileUI()
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -182,6 +185,7 @@ fun SettingsView(
                                 viewModel.conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
                         conseilsCount = count
                 } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         // En cas d'erreur, garder 0
                         conseilsCount = 0
                 }
@@ -456,6 +460,7 @@ fun SettingsView(
                                                                                                         .animalRepository
                                                                                                         .getAllAnimals()
                                                                                 } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement animaux: ${e.message}"
                                                                                 } finally {
@@ -485,6 +490,7 @@ fun SettingsView(
                                                                                                         .foodRepository
                                                                                                         .getAllFoods()
                                                                                 } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement aliments: ${e.message}"
                                                                                 } finally {
@@ -515,6 +521,7 @@ fun SettingsView(
                                                                                                         ?.getAllRecipesAsRecette()
                                                                                                         ?: emptyList()
                                                                                 } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement recettes: ${e.message}"
                                                                                 } finally {
@@ -541,6 +548,7 @@ fun SettingsView(
                                                                                                         ?.getAllEquations()
                                                                                                         ?: emptyList()
                                                                                 } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement equations: ${e.message}"
                                                                                 } finally {
@@ -567,6 +575,7 @@ fun SettingsView(
                                                                                                         ?.getAllReferenceEv()
                                                                                                         ?: emptyList()
                                                                                 } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement references: ${e.message}"
                                                                                 } finally {
@@ -594,6 +603,7 @@ fun SettingsView(
                                                                                                         ?.getOrThrow()
                                                                                                         ?: emptyList()
                                                                                 } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
                                                                                         selectionLoadError =
                                                                                                 "Erreur chargement conseils: ${e.message}"
                                                                                 } finally {
@@ -2189,11 +2199,7 @@ fun SettingsView(
                                                                                 // terminé,
                                                                                 // résultat
                                                                                 // : $ok
-                                                                        } catch (e: Exception) {
-                                                                                // Erreur
-                                                                                // d'export
-                                                                                // gérée
-                                                                        }
+                                                                        } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("SettingsView", "Exception ignorée : ${e.message}") }
                                                                 }
                                                         },
                                                         colors =
@@ -2499,9 +2505,7 @@ fun SettingsView(
                                                                                                         .importFoodsFromFileUI()
                                                                                         } catch (
                                                                                                 e: Exception
-                                                                                        ) {
-                                                                                                // Les erreurs sont gérées par le ViewModel
-                                                                                        }
+                                                                                        ) { e.rethrowIfCancellation(); AppLog.d("SettingsView", "Exception ignorée : ${e.message}") }
                                                                                 }
                                                                         ) { Text(translate("startup.continue")) }
                                                                 },
@@ -2546,11 +2550,7 @@ fun SettingsView(
                                                                         // nutritionnelles
                                                                         importViewModel
                                                                                 .importNutritionalRequirementsFromFileUI()
-                                                                } catch (e: Exception) {
-                                                                        // Les erreurs sont
-                                                                        // gérées par le
-                                                                        // ViewModel
-                                                                }
+                                                                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("SettingsView", "Exception ignorée : ${e.message}") }
                                                         },
                                                         colors =
                                                                 ButtonDefaults.buttonColors(
@@ -2693,6 +2693,7 @@ private fun PreferencesSection(
                         // Utiliser la fonction helper createPreferencesStorage
                         fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage()
                 } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                 }
         }
@@ -2738,6 +2739,7 @@ private fun PreferencesContentWithPersistence(
                         currentPreferences = preferencesRepository.preferences
                         preferencesLoaded = true
                 } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         // Utiliser des préférences par défaut
                         currentPreferences = fr.vetbrain.vetnutri_mp.Data.PreferencesApplication()
                         preferencesLoaded = true
@@ -2874,7 +2876,7 @@ private fun PreferencesContentWithPersistence(
                                                                                                 updated
                                                                                 } catch (
                                                                                         e:
-                                                                                                Exception) {} finally {
+                                                                                                Exception) { e.rethrowIfCancellation(); AppLog.d("SettingsView", "Exception ignorée : ${e.message}") } finally {
                                                                                         isSavingUser =
                                                                                                 false
                                                                                 }
@@ -3085,7 +3087,7 @@ private fun SpeciesPreferenceCardWithPersistence(
                                                                                                         )
                                                                                                 } catch (
                                                                                                         e:
-                                                                                                                Exception) {} finally {
+                                                                                                                Exception) { e.rethrowIfCancellation(); AppLog.d("SettingsView", "Exception ignorée : ${e.message}") } finally {
                                                                                                         isSaving =
                                                                                                                 false
                                                                                                 }
@@ -3234,8 +3236,10 @@ private fun PreferencesContentSimplified(modifier: Modifier = Modifier) {
                                                         ?: fr.vetbrain.vetnutri_mp.Enumer
                                                                 .TypeExpressionBesoin.DEFAULT,
                                         onExpressionTypeChanged = { newType ->
+                                                // Repli sans PreferencesStorage disponible : le choix
+                                                // ne vaut que pour la session (la persistance est
+                                                // assurée par PreferencesContentWithPersistence).
                                                 speciesExpressionTypes[espece] = newType
-                                                // TODO: Sauvegarder dans PreferencesStorage
                                         }
                                 )
                         }

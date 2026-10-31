@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -242,8 +244,9 @@ class EquationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur lors du chargement des équations: ${e.message}"
-                e.printStackTrace()
+                AppLog.e("EquationViewModel", e.message ?: "Erreur", e)
             } finally {
                 _isLoading.value = false
             }
@@ -255,7 +258,7 @@ class EquationViewModel(
         coroutineScope.launch(AppDispatchers.IO) {
             try {
                 _allReferences.value = referenceRepository.getAll()
-            } catch (_: Exception) { }
+            } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("EquationViewModel", "Exception ignorée : ${ignored.message}") }
         }
     }
 
@@ -271,7 +274,7 @@ class EquationViewModel(
                     // Utiliser le repository si le DAO n'est pas disponible
                     biblioRepository.getAllBiblioRefs().collect { refs -> _biblioRefs.value = refs }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("EquationViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -307,6 +310,7 @@ class EquationViewModel(
                 loadEquations()
                 _operationMessage.value = "Équation dupliquée avec succès"
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur lors de la duplication: ${e.message}"
             }
         }
@@ -340,6 +344,7 @@ class EquationViewModel(
                     _operationMessage.value = "Erreur: Équation non trouvée"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur: ${e.message}"
             } finally {
                 _isLoading.value = false
@@ -467,12 +472,12 @@ class EquationViewModel(
         val typeValidation = mapEquationKindToValidationType(equation.kind)
 
         return when (typeValidation) {
-            TypeEquationValidation.BESOIN_ENERGETIQUE -> EquationEvaluator.toutesLesVariables!!
+            TypeEquationValidation.BESOIN_ENERGETIQUE -> EquationEvaluator.toutesLesVariables
             TypeEquationValidation.BESOIN_NUTRITIONNEL ->
-                    EquationEvaluator.toutesLesVariables!! + getNutrientsVariables()
+                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
             TypeEquationValidation.DENSITE_ENERGETIQUE -> getNutrientsVariables()
             TypeEquationValidation.GENERALE ->
-                    EquationEvaluator.toutesLesVariables!! + getNutrientsVariables()
+                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
         }
     }
 
@@ -611,6 +616,7 @@ class EquationViewModel(
                 referenceRepository.update(updated)
                 loadAllReferences()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur références: ${e.message}"
             }
         }
@@ -677,6 +683,7 @@ class EquationViewModel(
                 loadEquations()
                 loadBiblioRefs()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
                 _saveSuccessful.value = false
             } finally {
@@ -777,6 +784,7 @@ class EquationViewModel(
 
             return isEvaluable
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return false
         }
     }
@@ -796,6 +804,7 @@ class EquationViewModel(
                 _currentEquation.value = Equation()
                 loadEquations()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur lors de la suppression: ${e.message}"
                 _saveSuccessful.value = false
             } finally {
@@ -818,6 +827,7 @@ class EquationViewModel(
                 _saveSuccessful.value = true
                 loadEquations()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur lors de la suppression: ${e.message}"
                 _saveSuccessful.value = false
             } finally {
@@ -862,6 +872,7 @@ class EquationViewModel(
                     _operationMessage.value = "Référence ou équation non trouvée"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -906,6 +917,7 @@ class EquationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -933,6 +945,7 @@ class EquationViewModel(
                     _operationMessage.value = "Référence ou équation non trouvée"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -978,6 +991,7 @@ class EquationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -1005,6 +1019,7 @@ class EquationViewModel(
                     _operationMessage.value = "Référence ou équation non trouvée"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -1050,6 +1065,7 @@ class EquationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -1077,6 +1093,7 @@ class EquationViewModel(
                     _operationMessage.value = "Référence ou équation non trouvée"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -1123,6 +1140,7 @@ class EquationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -1168,6 +1186,7 @@ class EquationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {

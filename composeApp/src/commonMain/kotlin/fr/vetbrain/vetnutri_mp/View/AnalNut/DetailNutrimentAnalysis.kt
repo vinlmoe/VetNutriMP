@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -130,6 +131,7 @@ fun NutrientDetailDialog(
                         val preferences = preferencesRepo.getPreferencesForSpecies(espece)
                         typeExpressionBesoin = preferences.getTypeExpressionBesoinEnum()
                 } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         typeExpressionBesoin = TypeExpressionBesoin.DEFAULT
                 }
         }
@@ -828,7 +830,8 @@ private fun ContributionsList(
                                         )
                                 }
                         contributionsTriees = list.sortedByDescending { it.contributionAbsolue }
-                } catch (_: Exception) {
+                } catch (ignored: Exception) {
+                        ignored.rethrowIfCancellation()
                         contributionsTriees = emptyList()
                 } finally {
                         isLoading = false

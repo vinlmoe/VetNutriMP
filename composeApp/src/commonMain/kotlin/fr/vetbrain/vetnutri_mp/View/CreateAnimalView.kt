@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -72,6 +73,7 @@ fun CreateAnimalView(
                         try {
                                 availableRaces = viewModel.getRacesBySpecies(animal.specieId)
                         } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 availableRaces = emptyList()
                         }
                 }
@@ -274,6 +276,7 @@ fun CreateAnimalView(
                                                 )
                                                 showDateError = false
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 showDateError = true
                                         }
                                 },

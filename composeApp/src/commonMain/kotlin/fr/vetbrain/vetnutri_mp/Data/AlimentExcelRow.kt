@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.serialization.builtins.ListSerializer
@@ -324,7 +325,8 @@ data class AlimentExcelRow(
             if (value.isNullOrBlank()) return emptyList()
             return try {
                 Json.decodeFromString(ListSerializer(BiblioRef.serializer()), value)
-            } catch (_: Exception) {
+            } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
                 value.split(';')
                     .mapNotNull(::decodeLegacyBiblioRef)
                     .distinctBy { it.uuid }
