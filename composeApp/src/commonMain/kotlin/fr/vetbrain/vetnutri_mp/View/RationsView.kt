@@ -81,6 +81,8 @@ fun RationsView(
         recipeRepository: RecipeRepository,
         isExamMode: Boolean = false
 ) {
+        // Dialogues et sélections de l'onglet, partagés avec la grille de cartes
+        val dialogues = remember { RationsDialogState() }
         val animal by viewModel.animal.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
         // Troupeau : consultation vue depuis un animal du type analysé (poids, référentiel, K du
@@ -92,7 +94,7 @@ fun RationsView(
         // Troupeau analysé dans son ensemble : pas de besoins d'un individu (poids, référentiel,
         // K), mais l'analyse des apports au troupeau entier
         val troupeauEntier = animal?.estTroupeau == true && typeTroupeauAnalyse == null
-        var showCopyRationDialog by remember { mutableStateOf(false) }
+        var showCopyRationDialog by dialogues.showCopyRationDialog
         if (showCopyRationDialog && !isExamMode) {
                 CopyRationDialog(
                         consultations = animal?.consultations.orEmpty().filter {
@@ -147,9 +149,9 @@ fun RationsView(
                         } ?: emptyList()
                 }
         // Plan évolutif : dialogues d'étape (création / édition) et de synthèse
-        var parentNouvelleEtape by remember { mutableStateOf<Ration?>(null) }
-        var etapeAEditer by remember { mutableStateOf<Ration?>(null) }
-        var parentSynthese by remember { mutableStateOf<Ration?>(null) }
+        var parentNouvelleEtape by dialogues.parentNouvelleEtape
+        var etapeAEditer by dialogues.etapeAEditer
+        var parentSynthese by dialogues.parentSynthese
         val bilansEtapes by viewModel.bilansEtapes.collectAsState()
         // Étape du plan évolutif actuellement sélectionnée (null hors plan)
         val etapeSelectionnee =
@@ -291,10 +293,10 @@ fun RationsView(
         }
 
         // États pour les dialogues et navigation
-        var showRationEditDialog by remember { mutableStateOf(false) }
-        var showAddAlimentView by remember { mutableStateOf(false) }
-        var rationToEdit by remember { mutableStateOf<Ration?>(null) }
-        var rationForAddAliment by remember { mutableStateOf<Ration?>(null) }
+        var showRationEditDialog by dialogues.showRationEditDialog
+        var showAddAlimentView by dialogues.showAddAlimentView
+        var rationToEdit by dialogues.rationToEdit
+        var rationForAddAliment by dialogues.rationForAddAliment
         var editingAlimentId by remember { mutableStateOf<String?>(null) }
 
         // Scope pour les coroutines locales dans le composable
@@ -302,14 +304,12 @@ fun RationsView(
         val focusManager = LocalFocusManager.current
 
         // États pour les dialogues de section agrandie
-        var showMetabolicValuesDialog by remember { mutableStateOf(false) }
-        var showCoefficientsDialog by remember { mutableStateOf(false) }
+        var showMetabolicValuesDialog by dialogues.showMetabolicValuesDialog
+        var showCoefficientsDialog by dialogues.showCoefficientsDialog
 
         // États pour le dialog détaillé de nutriment
-        var showNutrimentDetailDialog by remember { mutableStateOf(false) }
-        var selectedNutrimentData by remember {
-                mutableStateOf<Triple<String, ValeurNutritionnelle, Ration>?>(null)
-        }
+        var showNutrimentDetailDialog by dialogues.showNutrimentDetailDialog
+        var selectedNutrimentData by dialogues.selectedNutrimentData
 
         // Sélection locale (non sauvegardée) du type d'expression des besoins
         val typeExpressionBesoinFromPrefs by viewModel.typeExpressionBesoin.collectAsState()
@@ -321,7 +321,7 @@ fun RationsView(
                 typeExpressionBesoinOverride
                         ?: typeExpressionBesoinFromPrefs
                         ?: TypeExpressionBesoin.DEFAULT
-        var showRationNutrientInspector by remember { mutableStateOf(false) }
+        var showRationNutrientInspector by dialogues.showRationNutrientInspector
 
         val nutrimentsSelectionnesPreferences =
                 remember(animal, preferencesApplication) {
@@ -396,10 +396,6 @@ fun RationsView(
                         }
                 }
 
-        fun formatNutrientNameForDisplay(nutrientCode: String): String {
-                val nutrient = NutrientResolver.resolveStoredLabel(nutrientCode)
-                return if (nutrient is CustomNutrient) nutrient.nameToString() else nutrientCode
-        }
 
         val typeExpressionSelector: @Composable RowScope.() -> Unit = {
                 Box {
@@ -543,14 +539,14 @@ fun RationsView(
         }
 
         // État pour le dialog d'ajustement multi-nutriments
-        var showMultiNutrientAdjustmentDialog by remember { mutableStateOf(false) }
-        var showRecipeDialog by remember { mutableStateOf(false) }
-        var showSaveRecipeDialog by remember { mutableStateOf(false) }
-        var newRecipeName by remember { mutableStateOf("") }
+        var showMultiNutrientAdjustmentDialog by dialogues.showMultiNutrientAdjustmentDialog
+        var showRecipeDialog by dialogues.showRecipeDialog
+        var showSaveRecipeDialog by dialogues.showSaveRecipeDialog
+        var newRecipeName by dialogues.newRecipeName
 
         // État pour le dialog de confirmation de suppression de ration
-        var showDeleteRationDialog by remember { mutableStateOf(false) }
-        var rationToDelete by remember { mutableStateOf<Ration?>(null) }
+        var showDeleteRationDialog by dialogues.showDeleteRationDialog
+        var rationToDelete by dialogues.rationToDelete
 
         // Dialog de gestion des recettes
         if (!isExamMode && showRecipeDialog) {
@@ -705,961 +701,78 @@ fun RationsView(
                 val scrollState = rememberScrollState()
 
                 Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
-                        if (selectedConsultation == null) {
-                                Box(
-                                        modifier =
-                                                Modifier.fillMaxSize()
-                                                        .padding(AppSizes.paddingLarge),
-                                        contentAlignment = Alignment.Center
-                                ) {
-                                        Text(
-                                                translate(Consultation.SELECT_HINT),
-                                                textAlign = TextAlign.Center
-                                        )
-                                }
-                        } else {
-                                // En-tête avec nom de la consultation
-                                Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        elevation = AppSizes.elevationSmall
-                                ) {
-                                        Column(
-                                                modifier =
-                                                        Modifier.fillMaxWidth()
-                                                                .padding(AppSizes.paddingMedium),
-                                                verticalArrangement =
-                                                        Arrangement.spacedBy(AppSizes.paddingXSmall)
-                                        ) {
-                                                Text(
-                                                        text =
-                                                                "${translate(Consultation.OF_DATE)} " +
-                                                                        (selectedConsultation?.date
-                                                                                ?: ""),
-                                                        style =
-                                                                MaterialTheme.typography
-                                                                        .subtitle1, // taille
-                                                        // réduite
-                                                        color = VetNutriColors.Primary
-                                                )
-                                                if (!selectedConsultation?.objectConsult
-                                                                .isNullOrBlank()
-                                                ) {
-                                                        Text(
-                                                                text =
-                                                                        selectedConsultation
-                                                                                ?.objectConsult
-                                                                                ?: "",
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .body2,
-                                                                color =
-                                                                        MaterialTheme.colors
-                                                                                .onSurface.copy(
-                                                                                alpha = 0.7f
-                                                                        )
-                                                        )
-                                                }
-                                        }
-                                }
-                                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                                // Troupeau : paramètres de chaque type, répartition de la ration
-                                // du groupe et choix du type analysé
-                                if (animal?.estTroupeau == true) {
-                                        PanneauTroupeauConsultation(
-                                                viewModel = viewModel,
-                                                showSnackbar = showSnackbar,
-                                                modifier = Modifier.fillMaxWidth()
-                                        )
-                                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                                }
-                                // Section responsive dans une Card
-                                BoxWithConstraints(
-                                        modifier =
-                                                Modifier.fillMaxWidth()
-                                                        .padding(AppSizes.paddingMedium)
-                                ) {
-                                        val isCompact = maxWidth < 600.dp // seuil abaissé à 600
-                                        if (isCompact) {
-                                                // Vue compacte : une seule colonne, scroll global
-                                                Column(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        verticalArrangement =
-                                                                Arrangement.spacedBy(
-                                                                        AppSizes.paddingSmall
-                                                                )
-                                                ) {
-                                                        if (!troupeauEntier) {
-                                                        // Section 1: Valeurs métaboliques
-                                                        SectionValeursMetaboliques(
-                                                                selectedConsultation =
-                                                                        consultationAnalysee,
-                                                                poidsMetabolique = poidsMetabolique,
-                                                                besoinEnergetiqueStandard =
-                                                                        besoinEnergetiqueStandard,
-                                                                besoinEnergetiqueTotal =
-                                                                        besoinEnergetiqueTotal,
-                                                                kObserve = kObserve,
-                                                                kCalcule = kCalcule,
-                                                               energieAdditionnelle = energieAdditionnelle,
-                                                                referenceUtilisee = referenceUtilisee,
-                                                                onUpdateWeights = if (typeTroupeauAnalyse != null) null else { currentWeight: Double, idealWeight: Double ->
-                                                                        selectedConsultation?.let { consultation ->
-                                                                                viewModel.updateConsultationWeights(
-                                                                                        consultation.uuid,
-                                                                                        currentWeight,
-                                                                                        idealWeight
-                                                                                )
-                                                                        }
-                                                                },
-                                                                onExpand = {
-                                                                        showMetabolicValuesDialog =
-                                                                                true
-                                                                },
-                                                                // Étape de plan évolutif : poids de l'étape affiché et éditable
-                                                                estEtape = etapeSelectionnee != null,
-                                                                poidsEtape = etapeSelectionnee?.poids,
-                                                                onUpdatePoidsEtape = { poids, poidsReel ->
-                                                                        etapeSelectionnee?.let { etape ->
-                                                                                viewModel.mettreAJourEtape(etape, poids, etape.suppVarp, poidsReel)
-                                                                        }
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        )
-                                                        Divider()
-
-                                                        // Section 2: Coefficients
-                                                        SectionCoefficients(
-                                                                selectedConsultation =
-                                                                        consultationAnalysee,
-                                                                showCoefficientsDialog = {
-                                                                        showCoefficientsDialog =
-                                                                                true
-                                                                },
-                                                                viewModel = viewModel,
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        )
-                                                        Divider()
-
-                                                        // Section 3: Bilan énergétique
-                                                        SectionBilanEnergetique(
-                                                                energieApportee = energieApportee,
-                                                                pourcentageCouverture =
-                                                                        pourcentageCouverture,
-                                                                kObserve = kObserve,
-                                                                kCalcule = kCalcule,
-                                                        
-                                                                beFinal = besoinEnergetiqueTotal,
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        )
-                                                        Divider()
-                                                        }
-
-                                                        // Section 4: Liste des rations
-                                                        Card(
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                elevation =
-                                                                        AppSizes.elevationMedium,
-                                                                backgroundColor =
-                                                                        MaterialTheme.colors.surface
-                                                        ) {
-                                                                Column(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth()
-                                                                                        .padding(
-                                                                                                AppSizes.paddingMedium
-                                                                                        ),
-                                                                        verticalArrangement =
-                                                                                Arrangement
-                                                                                        .spacedBy(
-                                                                                                AppSizes.paddingSmall
-                                                                                        )
-                                                                ) {
-                                                                        Row(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxWidth(),
-                                                                                horizontalArrangement =
-                                                                                        Arrangement
-                                                                                                .SpaceBetween,
-                                                                                verticalAlignment =
-                                                                                        Alignment
-                                                                                                .CenterVertically
-                                                                        ) {
-                                                                                Text(
-                                                                                        text =
-                                                                                                translate(RationKeys.CONSULTATION_RATIONS),
-                                                                                modifier = Modifier.weight(1f),
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .subtitle2,
-                                                                                        color =
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                )
-                                                                                Row(
-                                                                                    verticalAlignment = Alignment.CenterVertically,
-                                                                                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
-                                                                                ) {
-                                                                                    if (!isExamMode) {
-                                                                                        IconWithTooltip(
-                                                                                            imageVector = Icons.Filled.ContentCopy,
-                                                                                            contentDescription = "Reprendre une ration",
-                                                                                            tooltip = "Reprendre une ration d’une autre consultation",
-                                                                                            onClick = { showCopyRationDialog = true },
-                                                                                            enabled = selectedConsultation != null,
-                                                                                            tint = VetNutriColors.Primary,
-                                                                                            modifier = Modifier.size(AppSizes.iconSizeXSmall)
-                                                                                        )
-                                                                                    }
-                                                                                    IconWithTooltip(
-                                                                                        imageVector = Icons.Filled.Add,
-                                                                                        contentDescription = translate(AnalNut.ADD_RATION),
-                                                                                        tooltip = translate(AnalNut.ADD_RATION),
-                                                                                        onClick = {
-                                                                                            rationToEdit = null
-                                                                                            showRationEditDialog = true
-                                                                                        },
-                                                                                        tint = VetNutriColors.Primary,
-                                                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall)
-                                                                                    )
-                                                                                }
-                                                                        }
-                                                                        Divider()
-                                                                        if (rationsAffichees.isEmpty()
-                                                                        ) {
-                                                                                CenteredMessage(
-                                                                                        message =
-                                                                                                translate(RationKeys.NO_RATION_AVAILABLE),
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxWidth()
-                                                                                )
-                                                                        } else {
-                                                                                Column(
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxWidth(),
-                                                                                        verticalArrangement =
-                                                                                                Arrangement
-                                                                                                        .spacedBy(
-                                                                                                                8.dp
-                                                                                                        )
-                                                                                ) {
-                                                                                        GroupesRationsItems(
-                                                                                                rationsActuelles = rationsActuelles,
-                                                                                                rationsProposees = rationsProposees,
-                                                                                                scopeCourant = rationAnalysisScope,
-                                                                                                onSelectGroupe = { scope ->
-                                                                                                        focusManager.clearFocus(force = true)
-                                                                                                        viewModel.setRationAnalysisScope(scope)
-                                                                                                }
-                                                                                        )
-                                                                                        rationsAffichees
-                                                                                                ?.forEach {
-                                                                                                        ration
-                                                                                                        ->
-                                                                                                        RationItem(
-                                                                                                                // Plan évolutif : étapes en retrait sous leur ration, actions sur la ration
-                                                                                                                estEtape = ration.refRationParente != null,
-                                                                                                                modifier =
-                                                                                                                        if (ration.refRationParente != null) Modifier.padding(start = 24.dp)
-                                                                                                                        else Modifier,
-                                                                                                                onAjouterEtape =
-                                                                                                                        if (ration.refRationParente == null) { { parentNouvelleEtape = ration } }
-                                                                                                                        else null,
-                                                                                                                onSynthesePlan =
-                                                                                                                        if (selectedConsultation?.let { PlanEvolutif.aUnPlan(it, ration) } == true)
-                                                                                                                                { { parentSynthese = ration } }
-                                                                                                                        else null,
-                                                                                                                ration =
-                                                                                                                        ration,
-                                                                                                                isSelected =
-                                                                                                                        ration.uuid ==
-                                                                                                                                selectedRation
-                                                                                                                                        ?.uuid,
-                                                                                                                onClick = {
-                                                                                                                        focusManager.clearFocus(
-                                                                                                                                force = true
-                                                                                                                        )
-                                                                                                                        viewModel
-                                                                                                                                .selectRation(
-                                                                                                                                        ration
-                                                                                                                                )
-                                                                                                                },
-                                                                                                                onEdit = {
-                                                                                                        // Étape : édition du poids et des variables (nom fixe)
-                                                                                                        if (ration.refRationParente != null) {
-                                                                                                                etapeAEditer = ration
-                                                                                                        } else {
-                                                                                                                rationToEdit = ration
-                                                                                                                showRationEditDialog = true
-                                                                                                        }
-                                                                                                },
-                                                                                                                onDuplicate = {
-                                                                                                                        viewModel
-                                                                                                                                .duplicateRation(
-                                                                                                                                        ration
-                                                                                                                                )
-                                                                                                                        showSnackbar(
-                                                                                                                                "${translate(RationKeys.DUPLICATED)} '${ration.name}'"
-                                                                                                                        )
-                                                                                                                },
-                                                                                                                onDelete = {
-                                                                                                                        rationToDelete =
-                                                                                                                                ration
-                                                                                                                        showDeleteRationDialog =
-                                                                                                                                true
-                                                                                                                }
-                                                                                                        )
-                                                                                                }
-                                                                                }
-                                                                        }
-                                                                }
-                                                        }
-                                                        Divider()
-
-                                                        // Section 5: Liste des aliments de la
-                                                        // ration sélectionnée
-                                                        if (selectedRation != null) {
-                                                                SectionAlimentsRation(
-                                                                        selectedRation = selectedRation,
-                                                                        referenceUtilisee =
-                                                                                referenceUtilisee,
-                                                                        besoinEnergetiqueTotal =
-                                                                                besoinEnergetiqueTotal,
-                                                                        besoinEnergetiqueStandard =
-                                                                                besoinEnergetiqueStandard,
-                                                                        viewModel = viewModel,
-                                                                        equationRepository = equationRepository,
-                                                                        onAddAliment = {
-                                                                                rationForAddAliment =
-                                                                                        selectedRation
-                                                                                showAddAlimentView =
-                                                                                        true
-                                                                        },
-                                                                        onMultiNutrientAdjustment = {
-                                                                                showMultiNutrientAdjustmentDialog =
-                                                                                        true
-                                                                        },
-                                                                        onOpenRecipeDialog = {
-                                                                                showRecipeDialog = true
-                                                                        },
-                                                                        onSaveRecipe = {
-                                                                                selectedRation?.let { r ->
-                                                                                        newRecipeName =
-                                                                                                r.name
-                                                                                        showSaveRecipeDialog =
-                                                                                                true
-                                                                                }
-                                                                        },
-                                                                        isExamMode = isExamMode,
-                                                                        showSnackbar = showSnackbar,
-                                                                        isCompact = isCompact,
-                                                                        isReadOnly = analyseGroupee,
-                                                                        modifier = Modifier.fillMaxWidth()
-                                                                )
-                                                        } else {
-                                                                Card(
-                                                                        modifier = Modifier.fillMaxWidth(),
-                                                                        elevation = AppSizes.elevationMedium
-                                                                ) {
-                                                                        Box(
-                                                                                modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
-                                                                                contentAlignment = Alignment.Center
-                                                                        ) {
-                                                                                Text(
-                                                                                        translate(RationKeys.SELECT_RATION_HINT),
-                                                                                        style = MaterialTheme.typography.body1,
-                                                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                                                                                )
-                                                                        }
-                                                                }
-                                                        }
-
-                                                        if (selectedRation != null && showRationNutrientInspector) {
-                                                                Divider()
-                                                                AnalyseQuantitativeRationSection(
-                                                                        ration = selectedRation!!,
-                                                                        referenceUtilisee = referenceUtilisee,
-                                                                        equationRepository = equationRepository,
-                                                                        nutrimentsSelectionnes =
-                                                                                nutrimentsSelectionnesPreferences,
-                                                                        energieTotaleKcal = energieApportee,
-                                                                        isLargeView = !isCompact,
-                                                                        onContextBadgeClick = {
-                                                                                showRationNutrientInspector =
-                                                                                        false
-                                                                        },
-                                                                        modifier = Modifier.fillMaxWidth()
-                                                                )
-                                                        }
-
-                                                        // Section 6: Analyse nutritionnelle (si une
-                                                        // ration est sélectionnée)
-                                                        if (selectedRation != null && !showRationNutrientInspector) {
-                                                                Divider()
-                                                                if (troupeauEntier) {
-                                                                        AnalyseApportsTroupeau(
-                                                                                analyse = analyseTroupeau,
-                                                                                lignes = apportsTroupeauEntier,
-                                                                                modifier = Modifier.fillMaxWidth()
-                                                                        )
-                                                                } else if (referenceUtilisee != null) {
-                                                                        // Utiliser la version existante de
-                                                                        // AnalyseNutritionnelleCard
-                                                                        AnalyseNutritionnelleCard(
-                                                                                ration = selectedRation!!,
-                                                                                poidsMetabolique =
-                                                                                        poidsMetabolique,
-                                                                                referenceUtilisee =
-                                                                                        referenceUtilisee,
-                                                                                besoinEnergetiqueEntretien =
-                                                                                        besoinEnergetiqueStandard,
-                                                                                besoinEnergetiqueCible =
-                                                                                        besoinEnergetiqueTotal,
-                                                                                poidsAnimal =
-                                                                                        consultationAnalysee
-                                                                                                ?.weight
-                                                                                                ?.toDouble(),
-                                                                                modifier =
-                                                                                        Modifier.fillMaxWidth(),
-                                                                                nutrimentsSelectionnes =
-                                                                                        nutrimentsSelectionnesPreferences,
-                                                                                onNutrimentClick = {
-                                                                                        nom,
-                                                                                        valeurNutritionnelle
-                                                                                        ->
-                                                                                        val displayName =
-                                                                                                formatNutrientNameForDisplay(
-                                                                                                        nom
-                                                                                                )
-                                                                                        selectedNutrimentData =
-                                                                                        selectedRation
-                                                                                                .orUserError("aucune ration n'est sélectionnée")
-                                                                                                ?.let { ration -> Triple(displayName, valeurNutritionnelle, ration) }
-                                                                                        showNutrimentDetailDialog =
-                                                                                                true
-                                                                                },
-                                                                                animal = animal,
-                                                                                preferences =
-                                                                                        preferencesApplication,
-                                                                                equationRepository =
-                                                                                        equationRepository,
-                                                                        // Utiliser les préférences
-                                                                        // pré-chargées du ViewModel
-                                                                        typeExpressionBesoin =
-                                                                                effectiveTypeExpressionBesoin,
-                                                                        headerActions =
-                                                                                typeExpressionSelector,
-                                                                        titleOverride = "",
-                                                                        contextBadgeLabel =
-                                                                                translate(
-                                                                                        AnalNut
-                                                                                                .BADGE_INTAKES
-                                                                                ),
-                                                                        contextBadgeColor =
-                                                                                Color(0xFF3558A8),
-                                                                        contextBadgeOnClick = {
-                                                                                showRationNutrientInspector =
-                                                                                        true
-                                                                        },
-                                                                        contextBadgeTooltip =
-                                                                                translate(
-                                                                                        AnalNut
-                                                                                                .TOOLTIP_SWITCH_TO_COMPOSITION
-                                                                                ),
-                                                                        showDisplayModeText = false,
-                                                                        isLargeView = !isCompact,
-                                                                        referencesMaladies =
-                                                                                referencesMaladiesResolues
-                                                                )
-                                                                } else {
-                                                                        Card(
-                                                                                modifier = Modifier.fillMaxWidth(),
-                                                                                elevation = AppSizes.elevationMedium
-                                                                        ) {
-                                                                                Box(
-                                                                                        modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
-                                                                                        contentAlignment = Alignment.Center
-                                                                                ) {
-                                                                                        Text(
-                                                                                                translate(AnalNut.SELECT_REFERENCE_FOR_ANALYSIS),
-                                                                                                style = MaterialTheme.typography.body1,
-                                                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                                                                                        )
-                                                                                }
-                                                                        }
-                                                                }
-                                                        }
-                                                }
-                                        } else {
-                                                if (selectedConsultation == null) {
-                                                        Box(
-                                                                modifier = Modifier.fillMaxSize(),
-                                                                contentAlignment = Alignment.Center
-                                                        ) { 
-                                                                Text(translate(Consultation.SELECT_HINT))
-                                                        }
-                                                } else if (!troupeauEntier) {
-                                                        Row(
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                horizontalArrangement =
-                                                                        Arrangement.spacedBy(
-                                                                                AppSizes.paddingMedium
-                                                                        )
-                                                        ) {
-                                                                SectionValeursMetaboliques(
-                                                                        selectedConsultation =
-                                                                                consultationAnalysee,
-                                                                        poidsMetabolique = poidsMetabolique,
-                                                                        besoinEnergetiqueStandard =
-                                                                                besoinEnergetiqueStandard,
-                                                                        besoinEnergetiqueTotal =
-                                                                                besoinEnergetiqueTotal,
-                                                                        kObserve = kObserve,
-                                                                        kCalcule = kCalcule,
-                                                                         energieAdditionnelle = energieAdditionnelle,
-                                                                        referenceUtilisee = referenceUtilisee,
-                                                                        onUpdateWeights = if (typeTroupeauAnalyse != null) null else { currentWeight: Double, idealWeight: Double ->
-                                                                                selectedConsultation?.let { consultation ->
-                                                                                        viewModel.updateConsultationWeights(
-                                                                                                consultation.uuid,
-                                                                                                currentWeight,
-                                                                                                idealWeight
-                                                                                        )
-                                                                                }
-                                                                        },
-                                                                        onExpand = {
-                                                                                showMetabolicValuesDialog =
-                                                                                        true
-                                                                        },
-                                                                        // Étape de plan évolutif : poids de l'étape affiché et éditable
-                                                                        estEtape = etapeSelectionnee != null,
-                                                                        poidsEtape = etapeSelectionnee?.poids,
-                                                                        onUpdatePoidsEtape = { poids, poidsReel ->
-                                                                                etapeSelectionnee?.let { etape ->
-                                                                                        viewModel.mettreAJourEtape(etape, poids, etape.suppVarp, poidsReel)
-                                                                                }
-                                                                        },
-                                                                        modifier = Modifier.weight(1f)
-                                                                )
-                                                                Divider(
-                                                                        modifier =
-                                                                                Modifier.width(1.dp)
-                                                                                        .fillMaxHeight()
-                                                                )
-                                                                SectionCoefficients(
-                                                                        selectedConsultation =
-                                                                                consultationAnalysee,
-                                                                        showCoefficientsDialog = {
-                                                                                showCoefficientsDialog =
-                                                                                        true
-                                                                        },
-                                                                        viewModel = viewModel,
-                                                                        modifier = Modifier.weight(1f)
-                                                                )
-                                                                Divider(
-                                                                        modifier =
-                                                                                Modifier.width(1.dp)
-                                                                                        .fillMaxHeight()
-                                                                )
-                                                                SectionBilanEnergetique(
-                                                                        energieApportee = energieApportee,
-                                                                        pourcentageCouverture =
-                                                                                pourcentageCouverture,
-                                                                        kObserve = kObserve,
-                                                                        kCalcule = kCalcule,
-                                                                       
-                                                                        beFinal = besoinEnergetiqueTotal,
-                                                                        modifier = Modifier.weight(1f)
-                                                                )
-                                                        }
-                                                }
-                                        }
-                                }
-                                // ... le reste du contenu de la vue ...
-                        }
+                        EnTeteRations(
+                                dialogues = dialogues,
+                                analyseGroupee = analyseGroupee,
+                                analyseTroupeau = analyseTroupeau,
+                                animal = animal,
+                                apportsTroupeauEntier = apportsTroupeauEntier,
+                                besoinEnergetiqueStandard = besoinEnergetiqueStandard,
+                                besoinEnergetiqueTotal = besoinEnergetiqueTotal,
+                                consultationAnalysee = consultationAnalysee,
+                                effectiveTypeExpressionBesoin = effectiveTypeExpressionBesoin,
+                                energieAdditionnelle = energieAdditionnelle,
+                                energieApportee = energieApportee,
+                                equationRepository = equationRepository,
+                                etapeSelectionnee = etapeSelectionnee,
+                                focusManager = focusManager,
+                                isExamMode = isExamMode,
+                                kCalcule = kCalcule,
+                                kObserve = kObserve,
+                                modifier = modifier,
+                                nutrimentsSelectionnesPreferences = nutrimentsSelectionnesPreferences,
+                                poidsMetabolique = poidsMetabolique,
+                                pourcentageCouverture = pourcentageCouverture,
+                                preferencesApplication = preferencesApplication,
+                                rationAnalysisScope = rationAnalysisScope,
+                                rationsActuelles = rationsActuelles,
+                                rationsAffichees = rationsAffichees,
+                                rationsProposees = rationsProposees,
+                                referenceUtilisee = referenceUtilisee,
+                                referencesMaladiesResolues = referencesMaladiesResolues,
+                                selectedConsultation = selectedConsultation,
+                                selectedRation = selectedRation,
+                                showSnackbar = showSnackbar,
+                                troupeauEntier = troupeauEntier,
+                                typeExpressionSelector = typeExpressionSelector,
+                                typeTroupeauAnalyse = typeTroupeauAnalyse,
+                                viewModel = viewModel
+                        )
 
                         // Contenu principal - grille 2x2 de cartes (colonnes fixes 50/50).
                         // Sans consultation, seules des cartes vides seraient affichées : le
                         // message de sélection suffit (et la grille serait illisible sur téléphone)
-                        if (selectedConsultation != null) Box(
-                                modifier =
-                                        Modifier.weight(1f)
-                                                .padding(
-                                                        horizontal = AppSizes.paddingMedium,
-                                                        vertical = AppSizes.paddingSmall
-                                                )
-                        ) {
-                                Row(
-                                        modifier = Modifier.fillMaxSize(),
-                                        horizontalArrangement =
-                                                Arrangement.spacedBy(AppSizes.paddingMedium)
-                                ) {
-                                        // Colonne gauche (listes) - 50% de l'espace
-                                        Column(
-                                                modifier = Modifier.weight(0.5f),
-                                                verticalArrangement =
-                                                        Arrangement.spacedBy(AppSizes.paddingMedium)
-                                        ) {
-                                                // Segment 2: Liste des rations de la
-                                                // consultation
-                                                Card(
-                                                        modifier =
-                                                                Modifier.weight(1f).fillMaxWidth(),
-                                                        elevation = AppSizes.elevationMedium,
-                                                        backgroundColor =
-                                                                MaterialTheme.colors.surface
-                                                ) {
-                                                        Column(
-                                                                modifier =
-                                                                        Modifier.fillMaxSize()
-                                                                                .padding(
-                                                                                        AppSizes.paddingMedium
-                                                                                ),
-                                                                verticalArrangement =
-                                                                        Arrangement.spacedBy(
-                                                                                AppSizes.paddingSmall
-                                                                        )
-                                                        ) {
-                                                                // En-tête avec titre et
-                                                                // bouton
-                                                                // d'ajout
-                                                                Row(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        horizontalArrangement =
-                                                                                Arrangement
-                                                                                        .SpaceBetween,
-                                                                        verticalAlignment =
-                                                                                Alignment
-                                                                                        .CenterVertically
-                                                                ) {
-                                                                        // Titre "Rations de la
-                                                                        // consultation" (dans la
-                                                                        // Card en-tête)
-                                                                        Text(
-                                                                                text =
-                                                                                        translate(RationKeys.CONSULTATION_RATIONS),
-                                                                                modifier = Modifier.weight(1f),
-                                                                                style =
-                                                                                        MaterialTheme
-                                                                                                .typography
-                                                                                                .subtitle2, // taille réduite
-                                                                                color =
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                        )
-
-                                                                        // Bouton pour
-                                                                        // ajouter une
-                                                                        // nouvelle ration
-                                                                        Row(
-                                                                            verticalAlignment = Alignment.CenterVertically,
-                                                                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
-                                                                        ) {
-                                                                            if (!isExamMode) {
-                                                                                IconWithTooltip(
-                                                                                    imageVector = Icons.Filled.ContentCopy,
-                                                                                    contentDescription = "Reprendre une ration",
-                                                                                    tooltip = "Reprendre une ration d’une autre consultation",
-                                                                                    onClick = { showCopyRationDialog = true },
-                                                                                    enabled = selectedConsultation != null,
-                                                                                    tint = VetNutriColors.Primary,
-                                                                                    modifier = Modifier.size(AppSizes.iconSizeXSmall)
-                                                                                )
-                                                                            }
-                                                                            IconWithTooltip(
-                                                                                imageVector = Icons.Filled.Add,
-                                                                                contentDescription = translate(AnalNut.ADD_RATION),
-                                                                                tooltip = translate(AnalNut.ADD_RATION),
-                                                                                onClick = {
-                                                                                    rationToEdit = null
-                                                                                    showRationEditDialog = true
-                                                                                },
-                                                                                tint = VetNutriColors.Primary,
-                                                                                modifier = Modifier.size(AppSizes.iconSizeXSmall)
-                                                                            )
-                                                                        }
-                                                                }
-
-                                                                Divider()
-
-                                                                if (rationsAffichees.isEmpty()
-                                                                ) {
-                                                                        CenteredMessage(
-                                                                                message =
-                                                                                        translate(RationKeys.NO_RATION_AVAILABLE),
-                                                                                modifier =
-                                                                                        Modifier.weight(
-                                                                                                1f
-                                                                                        )
-                                                                        )
-                                                                } else {
-                                                                        LazyColumn(
-                                                                                modifier =
-                                                                                        Modifier.weight(
-                                                                                                1f
-                                                                                        ),
-                                                                                verticalArrangement =
-                                                                                        Arrangement
-                                                                                                .spacedBy(
-                                                                                                        8.dp
-                                                                                                )
-                                                                        ) {
-                                                                                item(key = "groupes-rations") {
-                                                                                        GroupesRationsItems(
-                                                                                                rationsActuelles = rationsActuelles,
-                                                                                                rationsProposees = rationsProposees,
-                                                                                                scopeCourant = rationAnalysisScope,
-                                                                                                onSelectGroupe = { scope ->
-                                                                                                        focusManager.clearFocus(force = true)
-                                                                                                        viewModel.setRationAnalysisScope(scope)
-                                                                                                }
-                                                                                        )
-                                                                                }
-                                                                                items(
-                                                                                        rationsAffichees,
-                                                                                        key = { ration -> ration.uuid }
-                                                                                ) { ration ->
-                                                                                        RationItem(
-                                                                                                // Plan évolutif : étapes en retrait sous leur ration, actions sur la ration
-                                                                                                estEtape = ration.refRationParente != null,
-                                                                                                modifier =
-                                                                                                        if (ration.refRationParente != null) Modifier.padding(start = 24.dp)
-                                                                                                        else Modifier,
-                                                                                                onAjouterEtape =
-                                                                                                        if (ration.refRationParente == null) { { parentNouvelleEtape = ration } }
-                                                                                                        else null,
-                                                                                                onSynthesePlan =
-                                                                                                        if (selectedConsultation?.let { PlanEvolutif.aUnPlan(it, ration) } == true)
-                                                                                                                { { parentSynthese = ration } }
-                                                                                                        else null,
-                                                                                                ration =
-                                                                                                        ration,
-                                                                                                isSelected =
-                                                                                                        ration.uuid ==
-                                                                                                                selectedRation
-                                                                                                                        ?.uuid,
-                                                                                                onClick = {
-                                                                                                        focusManager.clearFocus(
-                                                                                                                force = true
-                                                                                                        )
-                                                                                                        viewModel
-                                                                                                                .selectRation(
-                                                                                                                        ration
-                                                                                                                )
-                                                                                                },
-                                                                                                onEdit = {
-                                                                                                        // Étape : édition du poids et des variables (nom fixe)
-                                                                                                        if (ration.refRationParente != null) {
-                                                                                                                etapeAEditer = ration
-                                                                                                        } else {
-                                                                                                                rationToEdit = ration
-                                                                                                                showRationEditDialog = true
-                                                                                                        }
-                                                                                                },
-                                                                                                onDuplicate = {
-                                                                                                        viewModel
-                                                                                                                .duplicateRation(
-                                                                                                                        ration
-                                                                                                                )
-                                                                                                        showSnackbar(
-                                                                                                                "${translate(RationKeys.DUPLICATED)} '${ration.name}'"
-                                                                                                        )
-                                                                                                },
-                                                                                                onDelete = {
-                                                                                                        rationToDelete =
-                                                                                                                ration
-                                                                                                        showDeleteRationDialog =
-                                                                                                                true
-                                                                                                }
-                                                                                        )
-                                                                                }
-                                                                        }
-                                                                }
-                                                        }
-                                                }
-
-                                                // Segment 3: Liste des aliments de la ration
-                                                // sélectionnée
-                                                if (selectedRation != null) {
-                                                        SectionAlimentsRation(
-                                                                selectedRation = selectedRation,
-                                                                referenceUtilisee = referenceUtilisee,
-                                                                besoinEnergetiqueTotal =
-                                                                        besoinEnergetiqueTotal,
-                                                                besoinEnergetiqueStandard =
-                                                                        besoinEnergetiqueStandard,
-                                                                viewModel = viewModel,
-                                                                equationRepository = equationRepository,
-                                                                onAddAliment = {
-                                                                        rationForAddAliment =
-                                                                                selectedRation
-                                                                        showAddAlimentView = true
-                                                                },
-                                                                onMultiNutrientAdjustment = {
-                                                                        showMultiNutrientAdjustmentDialog =
-                                                                                true
-                                                                },
-                                                                onOpenRecipeDialog = {
-                                                                        showRecipeDialog = true
-                                                                },
-                                                                onSaveRecipe = {
-                                                                        selectedRation?.let { r ->
-                                                                                newRecipeName = r.name
-                                                                                showSaveRecipeDialog = true
-                                                                        }
-                                                                },
-                                                                isExamMode = isExamMode,
-                                                                showSnackbar = showSnackbar,
-                                                                isReadOnly = analyseGroupee,
-                                                                modifier =
-                                                                        Modifier.weight(1f).fillMaxWidth()
-                                                        )
-                                                } else {
-                                                        Card(
-                                                                modifier = Modifier.weight(1f).fillMaxWidth(),
-                                                                elevation = AppSizes.elevationMedium
-                                                        ) {
-                                                                Box(
-                                                                        modifier = Modifier.fillMaxSize(),
-                                                                        contentAlignment = Alignment.Center
-                                                                ) {
-                                                                        Text(
-                                                                                translate(RationKeys.SELECT_RATION_HINT),
-                                                                                style = MaterialTheme.typography.body1,
-                                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                                                                        )
-                                                                }
-                                                        }
-                                                }
-                                        }
-
-                                        // Colonne droite (analyses) - 50% de l'espace
-                                        Column(
-                                                modifier = Modifier.weight(0.5f),
-                                                verticalArrangement =
-                                                        Arrangement.spacedBy(AppSizes.paddingMedium)
-                                        ) {
-
-                                                // Analyse nutritionnelle de la ration
-                                                // sélectionnée
-                                                if (selectedRation != null) {
-                                                        if (showRationNutrientInspector) {
-                                                                AnalyseQuantitativeRationSection(
-                                                                        ration = selectedRation!!,
-                                                                        referenceUtilisee = referenceUtilisee,
-                                                                        equationRepository = equationRepository,
-                                                                        nutrimentsSelectionnes =
-                                                                                nutrimentsSelectionnesPreferences,
-                                                                        energieTotaleKcal = energieApportee,
-                                                                        isLargeView = true,
-                                                                        onContextBadgeClick = {
-                                                                                showRationNutrientInspector =
-                                                                                        false
-                                                                        },
-                                                                        modifier = Modifier.fillMaxSize()
-                                                                )
-                                                        } else if (troupeauEntier) {
-                                                                AnalyseApportsTroupeau(
-                                                                        analyse = analyseTroupeau,
-                                                                        lignes = apportsTroupeauEntier,
-                                                                        modifier = Modifier.fillMaxSize(),
-                                                                        defilementVertical = true
-                                                                )
-                                                        } else if (referenceUtilisee != null) {
-                                                                AnalyseNutritionnelleCard(
-                                                                        ration = selectedRation!!,
-                                                                        poidsMetabolique = poidsMetabolique,
-                                                                        referenceUtilisee =
-                                                                                referenceUtilisee,
-                                                                        besoinEnergetiqueEntretien =
-                                                                                besoinEnergetiqueStandard,
-                                                                        besoinEnergetiqueCible =
-                                                                                besoinEnergetiqueTotal,
-                                                                        poidsAnimal = poidsEffectif,
-                                                                        modifier = Modifier.fillMaxWidth(),
-                                                                        nutrimentsSelectionnes =
-                                                                                nutrimentsSelectionnesPreferences,
-                                                                        onNutrimentClick = {
-                                                                                nom,
-                                                                                valeurNutritionnelle ->
-                                                                                selectedNutrimentData =
-                                                                                        selectedRation
-                                                                                                .orUserError("aucune ration n'est sélectionnée")
-                                                                                                ?.let { ration -> Triple(nom, valeurNutritionnelle, ration) }
-                                                                                showNutrimentDetailDialog =
-                                                                                        true
-                                                                        },
-                                                                        animal = animal,
-                                                                        preferences =
-                                                                                preferencesApplication,
-                                                                        equationRepository =
-                                                                                equationRepository,
-                                                                        typeExpressionBesoin =
-                                                                                effectiveTypeExpressionBesoin,
-                                                                        headerActions =
-                                                                                typeExpressionSelector,
-                                                                        titleOverride = "",
-                                                                        contextBadgeLabel =
-                                                                                translate(
-                                                                                        AnalNut
-                                                                                                .BADGE_INTAKES
-                                                                                ),
-                                                                        contextBadgeColor =
-                                                                                Color(0xFF3558A8),
-                                                                        contextBadgeOnClick = {
-                                                                                showRationNutrientInspector =
-                                                                                        true
-                                                                        },
-                                                                        contextBadgeTooltip =
-                                                                                translate(
-                                                                                        AnalNut
-                                                                                                .TOOLTIP_SWITCH_TO_COMPOSITION
-                                                                                ),
-                                                                        showDisplayModeText = false,
-                                                                        isLargeView = true,
-                                                                        referencesMaladies =
-                                                                                referencesMaladiesResolues
-                                                                )
-                                                        } else {
-                                                                Card(
-                                                                        modifier = Modifier.fillMaxSize(),
-                                                                        elevation = AppSizes.elevationMedium
-                                                                ) {
-                                                                        Box(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxSize(),
-                                                                                contentAlignment =
-                                                                                        Alignment.Center
-                                                                        ) {
-                                                                                Text(
-                                                                                        translate(AnalNut.SELECT_REFERENCE_FOR_ANALYSIS),
-                                                                                        style = MaterialTheme.typography.body1,
-                                                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                                                                                )
-                                                                        }
-                                                                }
-                                                        }
-                                                } else {
-                                                        Card(
-                                                                modifier = Modifier.fillMaxSize(),
-                                                                elevation = AppSizes.elevationMedium
-                                                        ) {
-                                                                Box(
-                                                                        modifier =
-                                                                                Modifier.fillMaxSize(),
-                                                                        contentAlignment =
-                                                                                Alignment.Center
-                                                                ) {
-                                                                        Text(
-                                                                                translate(AnalNut.SELECT_RATION_FOR_ANALYSIS)
-                                                                        )
-                                                                }
-                                                        }
-                                                }
-                                        }
-                                }
-                        }
+                        GrilleRations(
+                                dialogues = dialogues,
+                                analyseGroupee = analyseGroupee,
+                                analyseTroupeau = analyseTroupeau,
+                                animal = animal,
+                                apportsTroupeauEntier = apportsTroupeauEntier,
+                                besoinEnergetiqueStandard = besoinEnergetiqueStandard,
+                                besoinEnergetiqueTotal = besoinEnergetiqueTotal,
+                                effectiveTypeExpressionBesoin = effectiveTypeExpressionBesoin,
+                                energieApportee = energieApportee,
+                                equationRepository = equationRepository,
+                                focusManager = focusManager,
+                                isExamMode = isExamMode,
+                                modifier = modifier,
+                                nutrimentsSelectionnesPreferences = nutrimentsSelectionnesPreferences,
+                                poidsEffectif = poidsEffectif,
+                                poidsMetabolique = poidsMetabolique,
+                                preferencesApplication = preferencesApplication,
+                                rationAnalysisScope = rationAnalysisScope,
+                                rationsActuelles = rationsActuelles,
+                                rationsAffichees = rationsAffichees,
+                                rationsProposees = rationsProposees,
+                                referenceUtilisee = referenceUtilisee,
+                                referencesMaladiesResolues = referencesMaladiesResolues,
+                                selectedConsultation = selectedConsultation,
+                                selectedRation = selectedRation,
+                                showSnackbar = showSnackbar,
+                                troupeauEntier = troupeauEntier,
+                                typeExpressionSelector = typeExpressionSelector,
+                                viewModel = viewModel
+                        )
 
                         // Afficher le dialogue d'édition de ration si nécessaire
                         // Plan évolutif : nouvelle étape sous une ration
