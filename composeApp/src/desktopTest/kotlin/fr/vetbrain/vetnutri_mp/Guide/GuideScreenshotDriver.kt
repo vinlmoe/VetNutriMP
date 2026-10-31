@@ -15,6 +15,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.getDatabaseBuilder
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabasePath
 import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
 import java.io.File
+import kotlinx.coroutines.runBlocking
 import javax.imageio.ImageIO
 import kotlin.test.Test
 
@@ -49,7 +50,7 @@ class GuideScreenshotDriver {
         val outDir = File(System.getenv("VETNUTRI_GUIDE_OUT") ?: "build/guide").apply { mkdirs() }
         val lines = File(scriptPath).readLines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
 
-        val db = getRoomDatabase(getDatabaseBuilder(), getDatabasePath())
+        val db = runBlocking { getRoomDatabase(getDatabaseBuilder(), getDatabasePath()) }
 
         val (width, height) = (System.getenv("VETNUTRI_GUIDE_SIZE") ?: "1400x900")
             .split('x').map { it.trim().toInt() }

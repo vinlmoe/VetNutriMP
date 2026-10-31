@@ -1,7 +1,7 @@
 # VetNutriMP — Guide Architecture
 
 Application Kotlin Compose Multiplatform de nutrition vétérinaire.
-Cibles : Android, iOS, Desktop (JVM), Windows.
+Cibles : Android, iOS, Desktop (JVM ; Windows et macOS sont des paquets de la cible JVM).
 
 ---
 
@@ -194,6 +194,8 @@ Vérifier une mise en page : `GuideScreenshotDriver` avec `VETNUTRI_GUIDE_SIZE=4
 (voir `docs/guide_utilisateur/README.md`).
 
 ### Threads
+- Pas de `runBlocking` hors des tests. `getRoomDatabase` est `suspend` (sauvegarde `.bak` et
+  migrations sur IO) ; Android et iOS l'ouvrent via `AppWithDatabase`, une fois par processus.
 - `AppDispatchers.IO` → opérations DB et réseau
 - `AppDispatchers.Main` → mise à jour UI (StateFlow)
 - `withContext(AppDispatchers.IO)` **obligatoire** dans toutes les `suspend fun` de Repository

@@ -35,10 +35,8 @@ class MainActivity : ComponentActivity() {
         
         LocalizationManager.initialize(primaryLanguage)
 
-        // Initialisation de la base de données
-        val appDatabase = getRoomDatabase(getDatabaseBuilder(this), getDatabasePath(this))
-
-        setContent { App(appDatabase) }
+        val context = applicationContext
+        setContent { AppWithDatabase { getRoomDatabase(getDatabaseBuilder(context), getDatabasePath(context)) } }
     }
 
     override fun onDestroy() {

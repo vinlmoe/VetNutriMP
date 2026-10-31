@@ -11,10 +11,7 @@ fun MainViewController(): UIViewController {
     // Initialisation de la localisation
     LocalizationManager.initialize()
 
-    // Initialisation de la base de données
-    val appDatabase = getRoomDatabase(getDatabaseBuilder(), getDatabasePath())
-
     return ComposeUIViewController {
-        App(appDatabase)
+        AppWithDatabase { getRoomDatabase(getDatabaseBuilder(), getDatabasePath()) }
     }
 }

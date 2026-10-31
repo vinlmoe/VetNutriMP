@@ -14,7 +14,6 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import fr.vetbrain.vetnutri_mp.DataBase.*
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
-import fr.vetbrain.vetnutri_mp.Utils.runBlockingOnPlatform
 import kotlinx.coroutines.withContext
 
 /** Version du schéma Room ; à incrémenter avec chaque nouvelle migration. */
@@ -95,8 +94,14 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
  *
  * IMPORTANT: Cette configuration remplace la stratégie destructive précédente qui détruisait toutes
  * les données en cas d'erreur de migration.
+ *
+ * Copie de sauvegarde, contrôle du fichier et migrations s'exécutent sur [AppDispatchers.IO] :
+ * jamais sur le thread de l'interface.
  */
-fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String): AppDatabase {
+suspend fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String): AppDatabase =
+        withContext(AppDispatchers.IO) { openRoomDatabase(builder, dbPath) }
+
+private suspend fun openRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String): AppDatabase {
     // Base créée par une version plus récente (ou retour sur une branche plus ancienne) : la mettre
     // de côté AVANT la sauvegarde .bak et l'ouverture Room, pour ne jamais la perdre.
     protectDatabaseAgainstVersionChange(dbPath, DATABASE_SCHEMA_VERSION)?.let { message ->
@@ -180,10 +185,8 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String):
         // Room n'ouvre la base (et ne lance les migrations) qu'à la première requête : l'ouvrir ici
         // pour qu'un échec de migration soit traité par ce catch, et non par l'écran de démarrage
         // qui proposait alors une réinitialisation.
-        runBlockingOnPlatform {
-            database.useReaderConnection { connection ->
-                connection.usePrepared("PRAGMA user_version") { it.step() }
-            }
+        database.useReaderConnection { connection ->
+            connection.usePrepared("PRAGMA user_version") { it.step() }
         }
         database
     } catch (e: Exception) {

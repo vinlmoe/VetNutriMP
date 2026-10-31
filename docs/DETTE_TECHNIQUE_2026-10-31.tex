@@ -274,6 +274,15 @@ Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pa
            de composition. Les 7 qui héritaient déjà de \code{ViewModel} étaient créés par
            \code{remember} hors de tout \code{ViewModelStore} : leur \code{onCleared()} n'était jamais
            appelé. Plus aucun \code{clear()} manuel dans \code{App.kt}. \\
+-- & fait & \textbf{Code bloquant (A6)} : plus aucun \code{runBlocking} hors des tests.
+           L'ouverture de la base (copie \code{.bak}, contrôle du fichier, migrations) bloquait le
+           thread de l'interface sur Android (\code{onCreate}) et iOS : \code{getRoomDatabase} devient
+           \code{suspend} sur \code{AppDispatchers.IO} et \code{AppWithDatabase} affiche un indicateur
+           pendant l'ouverture, faite une seule fois par processus (une rotation Android rouvrait et
+           resauvegardait la base). \code{BlockingRunner} supprimé ; dossier d'enregistrement de
+           \code{FileUtils} lu et écrit en arrière-plan. \code{windowsMain} (289 l.), déclaré dans aucune
+           cible Gradle donc jamais compilé (Windows est servi par la cible JVM), et
+           \code{DatabaseModule} (interface et 4 implémentations sans appelant) supprimés. \\
 \bottomrule
 \end{longtable}
 

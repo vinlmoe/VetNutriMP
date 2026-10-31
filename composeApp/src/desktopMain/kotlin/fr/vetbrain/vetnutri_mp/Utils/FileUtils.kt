@@ -2,7 +2,9 @@ package fr.vetbrain.vetnutri_mp.Utils
 
 import java.io.File
 import java.io.OutputStream
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
@@ -10,9 +12,15 @@ import javax.swing.filechooser.FileNameExtensionFilter
 object FileUtils {
     private const val LAST_SAVE_DIR_KEY = "last_save_directory"
     private val preferencesStorage: PreferencesStorage = createPreferencesStorage()
-    private var lastSaveDirectory: File? = run {
-        val saved = runBlocking { preferencesStorage.getString(LAST_SAVE_DIR_KEY, "") }
-        if (saved.isNullOrBlank()) null else File(saved)
+    // Lecture et écriture du dossier en arrière-plan : les dialogues s'ouvrent sur le thread de l'interface
+    private val scope = CoroutineScope(SupervisorJob() + AppDispatchers.IO)
+    @Volatile private var lastSaveDirectory: File? = null
+
+    init {
+        scope.launch {
+            val saved = preferencesStorage.getString(LAST_SAVE_DIR_KEY, "")
+            if (lastSaveDirectory == null && saved.isNotBlank()) lastSaveDirectory = File(saved)
+        }
     }
 
     private fun applyLastDirectory(fileChooser: JFileChooser) {
@@ -26,7 +34,7 @@ object FileUtils {
         val dir = if (file?.isDirectory == true) file else file?.parentFile
         if (dir != null && dir.exists() && dir.isDirectory) {
             lastSaveDirectory = dir
-            runBlocking { preferencesStorage.saveString(LAST_SAVE_DIR_KEY, dir.absolutePath) }
+            scope.launch { preferencesStorage.saveString(LAST_SAVE_DIR_KEY, dir.absolutePath) }
         }
     }
     /**
