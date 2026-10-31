@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -503,17 +504,31 @@ private fun BarreActions(
         onPreviewPrescription: () -> Unit
 ) {
     Surface(elevation = 8.dp, color = MaterialTheme.colors.surface) {
-        val boutons: @Composable RowScope.(Modifier) -> Unit = { mod ->
+        val boutonsCompteRendu: @Composable RowScope.(Modifier) -> Unit = { mod ->
             OutlinedButton(onClick = onCopyCompteRendu, shape = FormeLigne, modifier = mod) {
                 Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(translate(AnimalDetail.PRESCRIPTION_COPY_REPORT), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                        translate(AnimalDetail.PRESCRIPTION_COPY_REPORT),
+                        // Téléphone : deux lignes plutôt qu'un libellé tronqué
+                        maxLines = if (large) 1 else 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                )
             }
             OutlinedButton(onClick = onPreviewCompteRendu, shape = FormeLigne, modifier = mod) {
                 Icon(Icons.Filled.Visibility, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(translate(AnimalDetail.PRESCRIPTION_PREVIEW_REPORT), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                        translate(AnimalDetail.PRESCRIPTION_PREVIEW_REPORT),
+                        // Téléphone : deux lignes plutôt qu'un libellé tronqué
+                        maxLines = if (large) 1 else 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                )
             }
+        }
+        val boutonOrdonnance: @Composable (Modifier) -> Unit = { mod ->
             Button(
                     onClick = onPreviewPrescription,
                     enabled = ordonnanceActive,
@@ -542,7 +557,8 @@ private fun BarreActions(
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                         modifier = Modifier.weight(1f)
                 )
-                boutons(Modifier)
+                boutonsCompteRendu(Modifier)
+                boutonOrdonnance(Modifier)
             }
         } else {
             Column(
@@ -554,8 +570,11 @@ private fun BarreActions(
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
+                // Téléphone : l'ordonnance sur toute la largeur, les deux actions du compte rendu
+                // dessous, pour que les libellés ne soient pas tronqués
+                boutonOrdonnance(Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)) {
-                    boutons(Modifier.weight(1f))
+                    boutonsCompteRendu(Modifier.weight(1f))
                 }
             }
         }

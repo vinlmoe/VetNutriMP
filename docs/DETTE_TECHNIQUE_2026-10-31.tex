@@ -243,9 +243,18 @@ Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pa
            Reste : \code{equationRepository} transmis aux fonctions de calcul du domaine
            (\code{getEnergie}, \code{getNutrientWithComplementary}) --- à remplacer par une
            interface de résolution d'équations dédiée. \\
-8 & non fait & Les gros fichiers contiennent chacun une fonction \code{@Composable} de 2\,000 à
-           3\,000 lignes : un découpage utile demande d'extraire des sous-composants avec leur état,
-           ce qui ne peut pas se faire mécaniquement sans risque de régression visuelle. \\
+8 & partiel & Découpage vérifié par captures (400\,×\,800, 800\,×\,1000, 1400\,×\,900).
+           \code{AnimalDetailView} 3\,287\,$\to$\,1\,343 l. : \code{WideScreenLayout} et
+           \code{NarrowScreenLayout} (1\,040 et 1\,130 l., identiques à 92\,\%) fusionnés en
+           \code{AnimalDetailLayout} (menu et contenu décrits une fois, barre latérale ou tiroir) ;
+           compte rendu et export PDF dans \code{AnimalDetailExport.kt}.
+           \code{SettingsView} 3\,386\,$\to$\,1\,381 l. : six dialogues de sélection d'export
+           (\code{SettingsExportSelectionDialogs.kt}, état passé en \code{MutableState}, corps inchangé)
+           et onglet Préférences (\code{SettingsPreferencesSection.kt}).
+           \code{RationsView} 2\,981\,$\to$\,2\,005 l. : dialogues dans \code{RationsDialogs.kt}.
+           Restent au-delà de 2\,000 l. : \code{AnalyseGraphiqueAlimentsView},
+           \code{NewReferenceEvEditView}, \code{ConsultationFullScreenEditView},
+           \code{MultiNutrientAdjustmentDialog}, \code{StartupScreen}, \code{RationsView}. \\
 -- & partiel & \code{!!} : 104 restants dans \code{commonMain} (142 à l'audit). Revue des sites
            exécutés après un clic ou une attente : un seul non gardé, corrigé
            (\code{besoinEnergetiqueStandard!!} dans l'ajustement multi-nutriments, plantage tant que le BEE
@@ -302,6 +311,9 @@ Suites traitées :
         générées au build ; copies iOS \code{strings\_fr/en/zh.json} (10 clés manquantes : clés brutes
         affichées) resynchronisées par \code{syncInitialDataIos} et vérifiées par
         \code{InitialDataSyncTest}.
+  \item Libellés français sans accents (sélection d'export : « Selection des equations »,
+        « toggle tout », « Selectionnes ») corrigés ; barre d'actions de l'Ordonnance sur téléphone :
+        ordonnance pleine largeur, libellés du compte rendu sur deux lignes au lieu d'être tronqués.
   \item Fichiers morts retirés : \code{AnimalDetailView.kt.old}, \code{RationsView.kt.bak2},
         \code{View/oza2.json}, \code{View/vetfood.json} (1,9\,Mo), \code{PreferencesView.kt} (jamais appelé).
 \end{itemize}

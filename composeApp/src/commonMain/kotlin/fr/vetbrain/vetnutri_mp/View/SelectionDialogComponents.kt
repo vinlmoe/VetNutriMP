@@ -60,7 +60,7 @@ fun SelectionDialog(
         onConfirm: (Set<String>) -> Unit,
         onDismiss: () -> Unit,
         confirmLabel: String = "Valider",
-        emptyLabel: String = "Aucun element disponible.",
+        emptyLabel: String = "Aucun élément disponible.",
         filtersContent: (@Composable () -> Unit)? = null,
         filterPredicate: (SelectionItem) -> Boolean = { true }
 ) {
@@ -209,7 +209,7 @@ fun SelectionDialog(
 
                                                                 SelectionListCard(
                                                                         title =
-                                                                                "Selectionnes (${selectedItems.size})",
+                                                                                "Sélectionnés (${selectedItems.size})",
                                                                         items = selectedItems,
                                                                         showRemove = true,
                                                                         onRemove = { item ->
@@ -271,7 +271,7 @@ fun SelectionDialog(
                                                                                         1f
                                                                                 ),
                                                                         title =
-                                                                                "Selectionnes (${selectedItems.size})",
+                                                                                "Sélectionnés (${selectedItems.size})",
                                                                         items = selectedItems,
                                                                         showRemove = true,
                                                                         onRemove = { item ->
