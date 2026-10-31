@@ -258,9 +258,11 @@ Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pa
            (1\,265 l., sans UI) passe dans \code{Data/AjustementMultiNutriments.kt}, ce qui supprime
            les imports \code{Data} $\to$ \code{View.AnalNut} (\code{RationConstraintAdjuster},
            \code{ExplorationMultiration}) et \code{ViewModel} $\to$ \code{View}.
-           Les composables principaux restent longs (\code{RationsView} $\approx$ 1\,880 l.,
-           \code{StartupScreen} $\approx$ 1\,700, éditeur de consultation $\approx$ 1\,400) : les
-           découper demande d'extraire leur état. \\
+           Puis découpage des composables eux-mêmes (blocs extraits corps inchangé, dépendances en
+           paramètres typés, état modifié en \code{MutableState}) : \code{RationsView}
+           1\,947\,$\to$\,1\,060 (en-tête, grille, \code{RationsDialogState} regroupant 19 états de
+           dialogue), \code{StartupScreen} 1\,716\,$\to$\,1\,162 (état de la base),
+           éditeur de consultation 1\,403\,$\to$\,746 (cinq sections). \\
 -- & partiel & \code{!!} : 104 restants dans \code{commonMain} (142 à l'audit). Revue des sites
            exécutés après un clic ou une attente : un seul non gardé, corrigé
            (\code{besoinEnergetiqueStandard!!} dans l'ajustement multi-nutriments, plantage tant que le BEE
@@ -320,6 +322,12 @@ Suites traitées :
   \item Libellés français sans accents (sélection d'export : « Selection des equations »,
         « toggle tout », « Selectionnes ») corrigés ; barre d'actions de l'Ordonnance sur téléphone :
         ordonnance pleine largeur, libellés du compte rendu sur deux lignes au lieu d'être tronqués.
+  \item \textbf{Dialogues défilants} : l'\code{AlertDialog} de Material 2 aligne son contenu sur la
+        première ligne de base du texte ; une liste qui défile change cette ligne et la boîte
+        changeait de hauteur à chaque défilement (artefacts signalés). 22 dialogues passent par
+        \code{AppAlertDialog} (titre, contenu, boutons empilés) : hauteur constante vérifiée.
+  \item Données : mots-clés de consultation en double avec fautes (« Cardiomyopathie dilaté »,
+        « Insufisance hépatique ») à fusionner.
   \item Quatre fichiers Kotlin vides et suivis supprimés (\code{BackupViewModel},
         \code{TestApiEnvelope}, \code{FullscreenToggle}, \code{GenericGraphComponent}).
   \item Filtres de la sélection d'aliments (Graphique Aliments) : un par ligne sur téléphone.
