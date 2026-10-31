@@ -210,4 +210,40 @@ logée dans les Composables (A2) échappe mécaniquement aux tests.
 \bottomrule
 \end{longtable}
 
+\section{État après corrections (branche \code{ccr-757b66d9-sd7476})}
+Chaque étape a été validée par la CI GitHub (tests JVM common + desktop, tests unitaires
+Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pas été exécutée.
+
+\begin{longtable}{p{0.5cm}p{3.2cm}p{11cm}}
+\toprule
+ & Statut & Détail \\
+\midrule
+1 & fait & \code{.aab}, journaux, fichiers \code{test\_*}/temporaires, JSON de travail, copie de
+           koalaplot, icônes « copie » retirés ; code d'exemple et 5 ViewModels jamais instanciés
+           supprimés. L'historique Git n'a \emph{pas} été réécrit (les 59\,Mo restent dans
+           \code{.git}). \\
+2 & fait & Catalogue unique ; Room 2.7.0 ; coroutines 1.10.2 ; entrées mortes retirées. \\
+3 & fait & Source unique ; assets Android générés au build ; copie iOS resynchronisée (elle
+           avait divergé) et vérifiée par \code{InitialDataSyncTest}. \\
+4 & fait & \code{AppLog}, \code{rethrowIfCancellation()} dans 688 \code{catch}, 88 \code{catch}
+           vides journalisés, 156 \code{println}/\code{printStackTrace} remplacés. \\
+5 & fait & TODO résolus ou code mort supprimé (\code{RationCalculator},
+           \code{NutrientQuantityExt}, \code{createDatabaseBackup} qui renvoyait \code{true}
+           sans rien faire) ; sélecteurs de référentiels et création depuis un modèle de conseil
+           implémentés. Plus aucun \code{TODO} dans le code. \\
+6 & fait & \code{withContext(IO)} dans 6 Repository ; scopes nommés avec \code{SupervisorJob} ;
+           références bibliographiques fictives insérées dans les bases vides supprimées. \\
+7 & partiel & Conseils, écran de démarrage et export d'animal passent par des ViewModels.
+           Restent : le chargement des préférences recréé dans plusieurs vues, et
+           \code{equationRepository} transmis aux fonctions de calcul du domaine
+           (\code{getEnergie}, \code{getNutrientWithComplementary}) --- à remplacer par une
+           interface de résolution d'équations dédiée. \\
+8 & non fait & Les gros fichiers contiennent chacun une fonction \code{@Composable} de 2\,000 à
+           3\,000 lignes : un découpage utile demande d'extraire des sous-composants avec leur état,
+           ce qui ne peut pas se faire mécaniquement sans risque de régression visuelle. \\
+-- & non fait & Les 142 \code{!!} et le cycle de vie manuel des ViewModels (\code{clear()} appelé
+           depuis \code{App.kt}) sont inchangés : chaque cas demande une décision métier. \\
+\bottomrule
+\end{longtable}
+
 \end{document}
