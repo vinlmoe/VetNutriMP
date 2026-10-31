@@ -30,6 +30,9 @@ class StartupService(
 
             // Démarrer la sauvegarde automatique
             backupService.startAutomaticBackup()
+
+            // Mots-clés de consultation livrés en double jusqu'aux données 3.3.18
+            exportImportRepository.mergeDuplicateKeywords()
         } catch (e: Exception) {
             e.rethrowIfCancellation()
             AppLog.e("StartupService", e.message ?: "Erreur", e)

@@ -29,7 +29,7 @@ enum class AlimIndic(val coef: Int, override val label: String) : Labelable {
     GI(35, "Affections gastro-intestinales"),
     CAR(36, "Affections cardiaques"),
     END(37, "Affections endocriniennes"),
-    IPE(38, "Insufisance pancréatique"),
+    IPE(38, "Insuffisance pancréatique"),
     DISTRU(39, "Dissolution struvites"),
     REDSTRU(40, "Réduction struvites"),
     REDURA(41, "Réduction urates"),
@@ -71,7 +71,8 @@ enum class AlimIndic(val coef: Int, override val label: String) : Labelable {
             } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AlimIndic", "Exception ignorée : ${e.message}") }
 
             // Vérifier si c'est un label par nom - déjà insensible à la casse via byName
-            val byLabel = byName(cleanedValue)
+            // (ancienne orthographe « Insufisance » des fichiers exportés acceptée)
+            val byLabel = byName(cleanedValue.replace("Insufisance", "Insuffisance", ignoreCase = true))
             if (byLabel != AUTRE) {
                 return byLabel
             }

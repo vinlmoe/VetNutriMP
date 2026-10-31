@@ -1167,6 +1167,9 @@ class ExportImportRepository(
                         listener?.onLog?.invoke("Conseils importés=$conseilsImported")
                 }
 
+                // Une ancienne sauvegarde peut ramener des mots-clés livrés en double
+                mergeDuplicateKeywords()
+
                 return ImportCounts(
                         animals = animalsImported,
                         foods = foodsImported,
@@ -1178,6 +1181,19 @@ class ExportImportRepository(
                         conseils = conseilsImported,
                         errorCount = errorCount
                 )
+        }
+
+        /** Fusionne les mots-clés de consultation en double (sans effet sur une base propre). */
+        suspend fun mergeDuplicateKeywords() {
+                try {
+                        val modifiees = consultationRepository?.mergeDuplicateKeywords() ?: return
+                        if (modifiees > 0) {
+                                AppLog.w("ExportImportRepository", "Mots-clés fusionnés dans $modifiees consultation(s)")
+                        }
+                } catch (e: Exception) {
+                        e.rethrowIfCancellation()
+                        AppLog.e("ExportImportRepository", "Fusion des mots-clés impossible", e)
+                }
         }
 
         data class ImportCounts(

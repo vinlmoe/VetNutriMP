@@ -4,6 +4,7 @@ import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
+import fr.vetbrain.vetnutri_mp.Data.FusionMotsClesConsultation
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.DataBase.ConsultationDao
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toData
@@ -21,6 +22,9 @@ interface ConsultationRepository {
     suspend fun applyRecipeToRation(recipe: Ration, rationId: String)
     suspend fun getAllKeywords(): List<ConsultationKeyword>
     suspend fun saveKeyword(keyword: ConsultationKeyword)
+
+    /** Fusionne les mots-clés livrés en double ; renvoie le nombre de consultations modifiées. */
+    suspend fun mergeDuplicateKeywords(): Int
 }
 
 class DatabaseConsultationRepository(
@@ -209,4 +213,13 @@ class DatabaseConsultationRepository(
             consultationDao.insertConsultationKeyword(keyword.toEntity())
         }
     }
+
+    override suspend fun mergeDuplicateKeywords(): Int =
+            withContext(AppDispatchers.IO) {
+                consultationDao.mergeConsultationKeywords(
+                        remplacements =
+                                FusionMotsClesConsultation.remplacements.mapValues { it.value.toEntity() },
+                        libellesCorriges = FusionMotsClesConsultation.libellesCorriges
+                )
+            }
 }

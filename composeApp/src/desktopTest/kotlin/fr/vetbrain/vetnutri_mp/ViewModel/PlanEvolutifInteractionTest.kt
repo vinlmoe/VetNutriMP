@@ -60,6 +60,10 @@ private class FakeConsultationDao : ConsultationDao {
     override suspend fun getAllConsultationKeywords() = emptyList<ConsultationKeywordEntity>()
     override suspend fun getConsultationKeywordByLabel(label: String): ConsultationKeywordEntity? = null
     override suspend fun insertConsultationKeyword(keyword: ConsultationKeywordEntity) {}
+    override suspend fun getConsultationKeywordLinks(): List<ConsultationKeywordLink> = emptyList()
+    override suspend fun updateConsultationKeywords(consultationId: String, keywordsJson: String) {}
+    override suspend fun deleteConsultationKeywords(uuids: List<String>) {}
+    override suspend fun renameConsultationKeyword(uuid: String, label: String) {}
 }
 
 /** Proxy d'interface : répond aux méthodes nommées, valeurs neutres sinon (suspend compris). */

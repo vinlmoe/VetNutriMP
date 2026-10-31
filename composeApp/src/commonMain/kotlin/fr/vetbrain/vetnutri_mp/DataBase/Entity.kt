@@ -189,6 +189,9 @@ data class ConsultationKeywordEntity(
         val label: String
 )
 
+/** Mots-clés d'une consultation (identifiants séparés par des virgules), pour les fusionner. */
+data class ConsultationKeywordLink(val uuid: String, val keywordsJson: String)
+
 @Serializable
 @Entity(
         tableName = "WEIGHT",

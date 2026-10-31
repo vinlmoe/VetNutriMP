@@ -827781,10 +827781,6 @@
       "label": "Cachexie"
     },
     {
-      "uuid": "d25cccb6-a493-4184-b717-f1ab78793e18",
-      "label": "Cardiomyopathie dilaté"
-    },
-    {
       "uuid": "d246fef7-d50a-4507-b949-455af945b480",
       "label": "Cardiomyopathie dilatée"
     },
@@ -827829,16 +827825,12 @@
       "label": "Insuffisance hépatique"
     },
     {
-      "uuid": "0e83dbdd-007b-4c1c-a702-141e2f130cf6",
-      "label": "Insufisance hépatique"
-    },
-    {
       "uuid": "39c911ef-8e0d-4078-9ea5-79eabe177753",
       "label": "MRC"
     },
     {
       "uuid": "053e3e77-361d-48ae-9aaa-49f9e2e283d1",
-      "label": "Maladie celiaque"
+      "label": "Maladie cœliaque"
     },
     {
       "uuid": "d8241881-83f4-4749-bcc3-f636903af458",
@@ -827846,7 +827838,7 @@
     },
     {
       "uuid": "d6403d98-2746-4fcb-817b-5300c54f1a2d",
-      "label": "Mucocoele Biliaire"
+      "label": "Mucocèle biliaire"
     },
     {
       "uuid": "ae5d72e2-a931-44f8-b4f9-929aea403ca6",
@@ -827863,34 +827855,6 @@
     {
       "uuid": "fc8f3436-18fa-4692-b0af-4f02bf8ffa80",
       "label": "Urolithiases"
-    },
-    {
-      "uuid": "24e9c1ee-485a-4818-b71c-5fda60fee7ff",
-      "label": "cardiomyopathie hypertrophique"
-    },
-    {
-      "uuid": "082071ee-b748-47c7-a8d7-6737b36e45fd",
-      "label": "diabète insipide"
-    },
-    {
-      "uuid": "340bd6f5-b5d7-4635-8696-c0c7103df4d0",
-      "label": "diabète sucré"
-    },
-    {
-      "uuid": "6af3a494-32c9-42cc-9e14-b49065e84708",
-      "label": "hyperthyroidie"
-    },
-    {
-      "uuid": "d71402be-600d-4bcd-bde0-9eeeecd2a2fb",
-      "label": "hypothyroidie"
-    },
-    {
-      "uuid": "9d715287-df1f-468a-a3c4-0cbd4f1544d9",
-      "label": "maladie valvulaire dégénérative"
-    },
-    {
-      "uuid": "6e9ea780-709f-493c-8eab-93dd91589aae",
-      "label": "shunt portosystémique"
     }
   ]
 }

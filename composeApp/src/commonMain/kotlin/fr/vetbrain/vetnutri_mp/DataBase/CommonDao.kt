@@ -178,6 +178,61 @@ interface ConsultationDao {
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertConsultationKeyword(keyword: ConsultationKeywordEntity)
 
+        @Query("SELECT uuid, keywordsJson FROM CONSULTATIONS WHERE keywordsJson IS NOT NULL AND keywordsJson != ''")
+        suspend fun getConsultationKeywordLinks(): List<ConsultationKeywordLink>
+
+        @Query("UPDATE CONSULTATIONS SET keywordsJson = :keywordsJson WHERE uuid = :consultationId")
+        suspend fun updateConsultationKeywords(consultationId: String, keywordsJson: String)
+
+        @Query("DELETE FROM CONSULTATION_KEYWORDS WHERE uuid IN (:uuids)")
+        suspend fun deleteConsultationKeywords(uuids: List<String>)
+
+        @Query("UPDATE OR IGNORE CONSULTATION_KEYWORDS SET label = :label WHERE uuid = :uuid")
+        suspend fun renameConsultationKeyword(uuid: String, label: String)
+
+        /**
+         * Fusionne les mots-clés en double (`remplacements` : doublon → mot-clé conservé) en une
+         * transaction : crée le mot-clé conservé s'il manque, réaffecte les consultations, supprime
+         * les doublons et corrige les libellés. Renvoie le nombre de consultations modifiées.
+         */
+        @Transaction
+        suspend fun mergeConsultationKeywords(
+                remplacements: Map<String, ConsultationKeywordEntity>,
+                libellesCorriges: Map<String, String>
+        ): Int {
+                val presents = getAllConsultationKeywords()
+                val uuidsPresents = presents.map { it.uuid }.toSet()
+                val doublons = remplacements.keys.filter { it in uuidsPresents }
+                // Cible effective : le mot-clé conservé, ou celui qui porte déjà son libellé
+                val cibles =
+                        doublons.associateWith { ancien ->
+                                val conserve = remplacements.getValue(ancien)
+                                if (conserve.uuid in uuidsPresents) conserve.uuid
+                                else {
+                                        val homonyme = getConsultationKeywordByLabel(conserve.label)
+                                        if (homonyme != null) homonyme.uuid
+                                        else {
+                                                insertConsultationKeyword(conserve)
+                                                conserve.uuid
+                                        }
+                                }
+                        }
+                var modifiees = 0
+                if (cibles.isNotEmpty()) {
+                        for (lien in getConsultationKeywordLinks()) {
+                                val ids = lien.keywordsJson.split(",").filter { it.isNotBlank() }
+                                val fusion = ids.map { cibles[it] ?: it }.distinct()
+                                if (fusion != ids) {
+                                        updateConsultationKeywords(lien.uuid, fusion.joinToString(","))
+                                        modifiees++
+                                }
+                        }
+                        deleteConsultationKeywords(doublons)
+                }
+                libellesCorriges.forEach { (uuid, label) -> renameConsultationKeyword(uuid, label) }
+                return modifiees
+        }
+
         /**
          * Remplace atomiquement toutes les relations d'une consultation (rations, aliments,
          * variables de consultation et variables par étape). Sans atomicité, un échec partiel
