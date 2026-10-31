@@ -83,7 +83,9 @@ class AnimalDetailViewModel(
         private val databaseReferenceEvRepository: DatabaseReferenceEvRepository,
         private val preferencesRepository: PreferencesRepository,
         val foodRepository: FoodRepository,
-        private val equationRepository: EquationRepository? = null
+        private val equationRepository: EquationRepository? = null,
+        private val recipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository? = null,
+        private val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null
 ) {
     private val job = SupervisorJob()
     private val viewModelScope = CoroutineScope(AppDispatchers.Main + job)
@@ -99,6 +101,42 @@ class AnimalDetailViewModel(
     /** Préférences courantes, lues sur le stockage si ce n'est pas encore fait */
     suspend fun getLoadedPreferences(): PreferencesApplication =
             preferencesRepository.getLoadedPreferences()
+
+    /** Enregistre les aliments de [ration] comme nouvelle recette nommée [nom]. */
+    suspend fun saveRationAsRecipe(ration: Ration, nom: String) {
+        val depot = recipeRepository ?: error("dépôt des recettes non fourni")
+        val recette = depot.createRecipe(name = nom, espece = ration.espece, description = null)
+        depot.replaceAliments(recette.uuid, ration.alimentMutableList)
+    }
+
+    /** Recettes de l'utilisateur, pour le dialogue de recettes de l'onglet Rations. */
+    val recipeLibrary: RecipeLibrary =
+            object : RecipeLibrary {
+                private val depot get() = recipeRepository ?: error("dépôt des recettes non fourni")
+
+                override suspend fun loadRecipes(): List<Ration> =
+                        depot.getAllRecipes().map { recette ->
+                            val aliments =
+                                    recette.alimentMutableList.map { aliment ->
+                                        aliment.copy(aliment = aliment.refAlimUnif?.let { foodRepository.getFoodById(it) })
+                                    }
+                            recette.copy(alimentMutableList = aliments.toMutableList())
+                        }
+
+                override suspend fun cloneRecipe(recipeId: String) {
+                    depot.cloneRecipe(recipeId)
+                }
+
+                override suspend fun deleteRecipe(recipeId: String) = depot.deleteRecipe(recipeId)
+
+                override suspend fun createRecipe(name: String) {
+                    depot.createRecipe(name, null, null)
+                }
+            }
+
+    /** Conseils actifs proposés pour l'ordonnance (liste vide sans dépôt de conseils). */
+    suspend fun getActiveAdvices(): Result<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>> =
+            conseilRepository?.getConseilsActifs() ?: Result.success(emptyList())
 
     private val _selectedConsultation = MutableStateFlow<ConsultationEv?>(null)
     val selectedConsultation: StateFlow<ConsultationEv?> = _selectedConsultation.asStateFlow()

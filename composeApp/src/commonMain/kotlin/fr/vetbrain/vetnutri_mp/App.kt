@@ -133,7 +133,9 @@ fun App(appDatabase: AppDatabase) {
             databaseReferenceEvRepository,
             preferencesRepository,
             foodRepository,
-            equationRepository
+            equationRepository,
+            recipeRepository,
+            conseilRepository
         )
     }
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }

@@ -43,7 +43,7 @@ data class AlimentRation(
          * Cache le résultat du calcul d'énergie pour éviter la redondance
          */
         private var cachedEnergie: Double? = null
-        private var cachedEnergieParams: Pair<ReferenceEv?, fr.vetbrain.vetnutri_mp.Repository.EquationRepository?>? = null
+        private var cachedEnergieParams: Pair<ReferenceEv?, EquationSource?>? = null
 
         /**
          * Calcule la quantité d'énergie fournie par cet aliment avec cache
@@ -54,7 +54,7 @@ data class AlimentRation(
          */
         suspend fun getEnergieWithCache(
                 referenceEv: ReferenceEv? = null,
-                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+                equationRepository: EquationSource? = null
         ): Double {
                 val currentParams = Pair(referenceEv, equationRepository)
 
@@ -86,7 +86,7 @@ data class AlimentRation(
          */
         suspend fun getNutrientWithComplementary(
                 nutrient: Nutrient,
-                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
+                equationRepository: EquationSource? = null,
                 referenceEv: ReferenceEv? = null
         ): Double? {
                 // D'abord, essayer d'obtenir la valeur directement (avec calcul d'énergie si
@@ -160,7 +160,7 @@ data class AlimentRation(
          */
         suspend fun getEnergie(
                 referenceEv: ReferenceEv? = null,
-                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+                equationRepository: EquationSource? = null
         ): Double {
                 // Si on a le référentiel et le repository, utiliser
                 // EquationEvaluator.calculerEnergiePour100g() qui utilise correctement

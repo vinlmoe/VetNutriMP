@@ -13,7 +13,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientOther
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.NutrientUtils
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
@@ -36,7 +35,7 @@ private fun estNutrimentRatio(nutriment: Nutrient): Boolean {
 private suspend fun calculerQuantiteTotaleNutriment(
     ration: Ration,
     nutriment: Nutrient,
-    equationRepository: EquationRepository? = null,
+    equationRepository: EquationSource? = null,
     referenceEv: ReferenceEv? = null
 ): Double {
     var total = 0.0
@@ -90,7 +89,7 @@ private fun estNutrimentRatio(
 private suspend fun calculerRatioGlobalRation(
     ration: Ration,
     nutriment: Nutrient,
-    equationRepository: EquationRepository,
+    equationRepository: EquationSource,
     referenceEv: ReferenceEv?
 ): Double {
     // Trouver l'équation complémentaire de type ratio pour ce nutriment
@@ -209,7 +208,7 @@ fun analyserValeursNutritionnellesRation(ration: Ration): Map<String, ValeurNutr
  */
 suspend fun analyserValeursNutritionnellesRationAvecEquations(
         ration: Ration,
-        equationRepository: EquationRepository,
+        equationRepository: EquationSource,
         referenceEv: ReferenceEv? = null
 ): Map<String, ValeurNutritionnelle> {
     val resultat = mutableMapOf<String, ValeurNutritionnelle>()
@@ -515,7 +514,7 @@ fun obtenirNutrimentsSelonPreferencesParNom(nutrimentsSelectionnes: List<String>
 suspend fun analyserValeursNutritionnellesRationSelective(
         ration: Ration,
         nutrimentsSelectionnes: List<String>,
-        equationRepository: EquationRepository? = null,
+        equationRepository: EquationSource? = null,
         referenceEv: ReferenceEv? = null
 ): Map<String, ValeurNutritionnelle> {
     val resultat = mutableMapOf<String, ValeurNutritionnelle>()

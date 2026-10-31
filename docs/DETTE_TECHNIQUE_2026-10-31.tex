@@ -233,16 +233,15 @@ Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pa
            implémentés. Plus aucun \code{TODO} dans le code. \\
 6 & fait & \code{withContext(IO)} dans 6 Repository ; scopes nommés avec \code{SupervisorJob} ;
            références bibliographiques fictives insérées dans les bases vides supprimées. \\
-7 & partiel & Conseils, écran de démarrage et export d'animal passent par des ViewModels.
-           \textbf{Préférences} : 12 instances de \code{PreferencesRepository} construites dans les vues
-           (fiche animal, rations, détail de nutriment, carte d'analyse, Paramètres) remplacées par
-           l'instance d'\code{AppContainer}, exposée en \code{StateFlow} par
-           \code{AnimalDetailViewModel}, \code{MultiRationViewModel} et \code{SettingsViewModel} :
-           une préférence enregistrée dans Paramètres est vue sans rechargement (test
-           \code{PreferencesRepositorySharedStateTest}) ; 3 blocs de chargement morts supprimés.
-           Reste : \code{equationRepository} transmis aux fonctions de calcul du domaine
-           (\code{getEnergie}, \code{getNutrientWithComplementary}) --- à remplacer par une
-           interface de résolution d'équations dédiée. \\
+7 & fait & Plus aucun appel de dépôt dans \code{View/} (il en restait 21) : listes de la sélection
+           d'export, préférences, bibliothèque de recettes (\code{RecipeLibrary}), enregistrement d'une
+           ration en recette, conseils passent par \code{SettingsViewModel},
+           \code{AnimalDetailViewModel}, \code{ConseilsViewModel}, \code{RecipeEditViewModel}.
+           Préférences : une seule instance partagée (12 instances locales supprimées).
+           Équations : le domaine (\code{Data/}, \code{Export/}, \code{EquationEvaluator}) dépend de
+           l'interface de lecture \code{EquationSource} et non plus du dépôt ; \code{Data} n'importe
+           plus rien de \code{Repository} ni de \code{View}, \code{ViewModel} rien de \code{View}.
+           Les vues transmettent encore des dépôts à leurs enfants (paramètres), sans les appeler. \\
 8 & fait & Plus aucun fichier de \code{View/} au-delà de 2\,000 lignes ; découpage vérifié par
            captures (400\,×\,800, 800\,×\,1000, 1400\,×\,900).
            \code{AnimalDetailView} 3\,287\,$\to$\,1\,343 l. (\code{WideScreenLayout} et

@@ -7,7 +7,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.math.abs
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
@@ -243,7 +242,7 @@ fun intervalleExploration(debut: Double, fin: Double, pas: Double): List<Double>
     return valeurs.distinct()
 }
 
-class ExplorateurMultiration(private val equationRepository: EquationRepository) {
+class ExplorateurMultiration(private val equationRepository: EquationSource) {
 
     // Teneurs pour 100 g et énergie pour 100 g, par (aliment, référentiel, nutriment).
     private val cacheTeneurs = mutableMapOf<Triple<String, String, String>, Double>()

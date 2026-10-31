@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.clickable
@@ -27,14 +28,14 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 /** Composant pour la section des préférences */
 @Composable
 internal fun PreferencesSection(
-        preferencesRepository: fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository?,
+        viewModel: SettingsViewModel,
         modifier: Modifier = Modifier,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {}
 ) {
-        if (preferencesRepository != null) {
+        if (viewModel.preferencesAvailable) {
                 // Utiliser le vrai système de persistance
                 PreferencesContentWithPersistence(
-                        preferencesRepository = preferencesRepository,
+                        settingsViewModel = viewModel,
                         modifier = modifier,
                         onSpeciesClick = onSpeciesClick
                 )
@@ -47,7 +48,7 @@ internal fun PreferencesSection(
 /** Contenu des préférences avec persistance réelle */
 @Composable
 private fun PreferencesContentWithPersistence(
-        preferencesRepository: fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository,
+        settingsViewModel: SettingsViewModel,
         modifier: Modifier = Modifier,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {}
 ) {
@@ -63,8 +64,7 @@ private fun PreferencesContentWithPersistence(
         LaunchedEffect(Unit) {
                 try {
                         isLoading = true
-                        preferencesRepository.loadPreferences()
-                        currentPreferences = preferencesRepository.preferences
+                        currentPreferences = settingsViewModel.getLoadedPreferences()
                         preferencesLoaded = true
                 } catch (e: Exception) {
                         e.rethrowIfCancellation()
@@ -196,7 +196,7 @@ private fun PreferencesContentWithPersistence(
                                                                                                                 email =
                                                                                                                         email
                                                                                                         )
-                                                                                        preferencesRepository
+                                                                                        settingsViewModel
                                                                                                 .savePreferences(
                                                                                                         updated
                                                                                                 )
@@ -254,7 +254,7 @@ private fun PreferencesContentWithPersistence(
                                 ) { espece ->
                                         SpeciesPreferenceCardWithPersistence(
                                                 species = espece,
-                                                preferencesRepository = preferencesRepository,
+                                                settingsViewModel = settingsViewModel,
                                                 currentPreferences = currentPreferences!!,
                                                 onPreferencesChanged = { newPreferences ->
                                                         currentPreferences = newPreferences
@@ -302,7 +302,7 @@ private fun PreferencesContentWithPersistence(
 @Composable
 private fun SpeciesPreferenceCardWithPersistence(
         species: fr.vetbrain.vetnutri_mp.Enumer.Espece,
-        preferencesRepository: fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository,
+        settingsViewModel: SettingsViewModel,
         currentPreferences: fr.vetbrain.vetnutri_mp.Data.PreferencesApplication,
         onPreferencesChanged: (fr.vetbrain.vetnutri_mp.Data.PreferencesApplication) -> Unit,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit
@@ -404,7 +404,7 @@ private fun SpeciesPreferenceCardWithPersistence(
                                                                                                                         )
 
                                                                                                         // Sauvegarder dans PreferencesStorage
-                                                                                                        preferencesRepository
+                                                                                                        settingsViewModel
                                                                                                                 .savePreferences(
                                                                                                                         updatedPrefs
                                                                                                                 )

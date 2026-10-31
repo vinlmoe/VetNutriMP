@@ -48,7 +48,6 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKey
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
-import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseNutritionnelleCard
@@ -78,7 +77,6 @@ fun RationsView(
         showSnackbar: (String) -> Unit,
         modifier: Modifier = Modifier,
         equationRepository: EquationRepository,
-        recipeRepository: RecipeRepository,
         isExamMode: Boolean = false
 ) {
         // Dialogues et sélections de l'onglet, partagés avec la grille de cartes
@@ -551,8 +549,7 @@ fun RationsView(
         // Dialog de gestion des recettes
         if (!isExamMode && showRecipeDialog) {
                 RecipeDialog(
-                        repository = recipeRepository,
-                        foodRepository = viewModel.foodRepository,
+                        library = viewModel.recipeLibrary,
                         onApply = { recette ->
                                 viewModel.applyRecipeToRation(recette)
                                 showRecipeDialog = false
@@ -589,21 +586,7 @@ fun RationsView(
                                                 if (ration != null && newRecipeName.isNotBlank()) {
                                                         coroutineScope.launch {
                                                                 try {
-                                                                        val recette =
-                                                                                recipeRepository
-                                                                                        .createRecipe(
-                                                                                                name =
-                                                                                                        newRecipeName,
-                                                                                                espece =
-                                                                                                        ration.espece,
-                                                                                                description =
-                                                                                                        null
-                                                                                        )
-                                                                        recipeRepository
-                                                                                .replaceAliments(
-                                                                                        recette.uuid,
-                                                                                        ration.alimentMutableList
-                                                                                )
+                                                                        viewModel.saveRationAsRecipe(ration, newRecipeName)
                                                                         showSnackbar(
                                                                                 "${translate(RationKeys.RECIPE_CREATED)} $newRecipeName"
                                                                         )

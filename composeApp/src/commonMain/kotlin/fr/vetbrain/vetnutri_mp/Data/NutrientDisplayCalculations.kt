@@ -17,7 +17,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
@@ -658,7 +657,7 @@ suspend fun calculerContributionIngredient(
     alimentRation: AlimentRation,
     nutriment: Nutrient,
     reference: ReferenceEv?,
-    equationRepository: EquationRepository?
+    equationRepository: EquationSource?
 ): Double {
     val quantiteIngredient = alimentRation.quantite
     if (quantiteIngredient <= 0.0) return 0.0
@@ -695,7 +694,7 @@ suspend fun calculerContributionsIngredients(
     ration: Ration,
     nutriment: Nutrient,
     reference: ReferenceEv?,
-    equationRepository: EquationRepository?
+    equationRepository: EquationSource?
 ): List<ContributionIngredient> {
     if (estNutrimentAnalysisRatio(nutriment)) return emptyList()
     return ration.alimentMutableList.mapIndexedNotNull { index, alimentRation ->

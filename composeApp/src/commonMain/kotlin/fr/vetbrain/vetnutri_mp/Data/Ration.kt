@@ -106,7 +106,7 @@ data class Ration(
          */
         suspend fun getDensiteEnergetiqueMoyenne(
                 referenceEv: ReferenceEv? = null,
-                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+                equationRepository: EquationSource? = null
         ): Double {
                 val quantiteTotale = getQuantiteTotale()
 

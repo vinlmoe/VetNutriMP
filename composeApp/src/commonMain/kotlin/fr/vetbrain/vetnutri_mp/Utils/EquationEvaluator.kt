@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Utils
 
+import fr.vetbrain.vetnutri_mp.Data.EquationSource
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.Ration
@@ -15,7 +16,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 
 /**
  * Évaluateur spécialisé pour les équations vétérinaires Facilite l'utilisation du parser
@@ -312,7 +312,7 @@ object EquationEvaluator {
             poidsMetabolique: Double,
             variablesSupp: List<SupplementalvariableP> = emptyList(),
             ration: Ration,
-            equationRepository: EquationRepository,
+            equationRepository: EquationSource,
             referenceEv: ReferenceEv? = null
     ): Double? {
         val variables: MutableMap<String, Double> = mutableMapOf()
@@ -397,7 +397,7 @@ object EquationEvaluator {
      */
     suspend fun calculerEnergiePour100g(
             aliment: fr.vetbrain.vetnutri_mp.Data.AlimentRation,
-            equationRepository: EquationRepository,
+            equationRepository: EquationSource,
             referenceEv: ReferenceEv? = null
     ): Double {
         val variables: MutableMap<String, Double> = mutableMapOf()
@@ -492,7 +492,7 @@ object EquationEvaluator {
      */
     suspend fun calculerApportEnergetiqueRation(
             ration: fr.vetbrain.vetnutri_mp.Data.Ration,
-            equationRepository: EquationRepository,
+            equationRepository: EquationSource,
             referenceEv: ReferenceEv? = null
     ): Double {
         var total = 0.0
@@ -523,7 +523,7 @@ object EquationEvaluator {
             variablesSupp: List<SupplementalvariableP> = emptyList(),
             ration: Ration,
             referenceEv: ReferenceEv? = null,
-            equationRepository: EquationRepository? = null
+            equationRepository: EquationSource? = null
     ): Double {
         if (referencesMaladies.isEmpty()) return 0.0
 
@@ -638,7 +638,7 @@ object EquationEvaluator {
             poidsMetabolique: Double = 0.0,
             variablesSupp: List<SupplementalvariableP> = emptyList(),
             aliment: AlimentRation,
-            equationRepository: EquationRepository? = null,
+            equationRepository: EquationSource? = null,
             referenceEv: ReferenceEv? = null
     ): Double? {
         val variables = mutableMapOf<String, Double>()

@@ -476,4 +476,7 @@ class RecipeEditViewModel(
     fun clear() {
         scope.cancel()
     }
+
+    /** Aliments disponibles pour l'ajout à la recette, mis à jour en continu */
+    fun observeAllFoods() = foodRepository.observeAllFoods()
 }

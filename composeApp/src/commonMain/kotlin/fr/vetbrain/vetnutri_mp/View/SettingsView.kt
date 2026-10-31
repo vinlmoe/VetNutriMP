@@ -176,7 +176,7 @@ fun SettingsView(
         LaunchedEffect(Unit) {
                 try {
                         val count =
-                                viewModel.conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+                                viewModel.getAdviceCount()
                         conseilsCount = count
                 } catch (e: Exception) {
                         e.rethrowIfCancellation()
@@ -233,7 +233,7 @@ fun SettingsView(
                                 }
                                 1 -> { // Préférences
                                         PreferencesSection(
-                                                preferencesRepository = viewModel.preferencesRepository,
+                                                viewModel = viewModel,
                                                 modifier = Modifier.fillMaxWidth(),
                                                 onSpeciesClick = onSpeciesClick
                                         )
@@ -470,9 +470,7 @@ fun SettingsView(
                                                                                 selectionLoadError = null
                                                                                 try {
                                                                                         availableAnimals =
-                                                                                                viewModel
-                                                                                                        .animalRepository
-                                                                                                        .getAllAnimals()
+                                                                                                viewModel.getAllAnimals()
                                                                                 } catch (e: Exception) {
                                                                                         e.rethrowIfCancellation()
                                                                                         selectionLoadError =
@@ -500,9 +498,7 @@ fun SettingsView(
                                                                                 selectionLoadError = null
                                                                                 try {
                                                                                         availableFoods =
-                                                                                                viewModel
-                                                                                                        .foodRepository
-                                                                                                        .getAllFoods()
+                                                                                                viewModel.getAllFoods()
                                                                                 } catch (e: Exception) {
                                                                                         e.rethrowIfCancellation()
                                                                                         selectionLoadError =
@@ -530,10 +526,7 @@ fun SettingsView(
                                                                                 selectionLoadError = null
                                                                                 try {
                                                                                         availableRecipes =
-                                                                                                viewModel
-                                                                                                        .recipeRepository
-                                                                                                        ?.getAllRecipesAsRecette()
-                                                                                                        ?: emptyList()
+                                                                                                viewModel.getAllRecipes()
                                                                                 } catch (e: Exception) {
                                                                                         e.rethrowIfCancellation()
                                                                                         selectionLoadError =
@@ -557,10 +550,7 @@ fun SettingsView(
                                                                                 selectionLoadError = null
                                                                                 try {
                                                                                         availableEquations =
-                                                                                                viewModel
-                                                                                                        .equationRepository
-                                                                                                        ?.getAllEquations()
-                                                                                                        ?: emptyList()
+                                                                                                viewModel.getAllEquations()
                                                                                 } catch (e: Exception) {
                                                                                         e.rethrowIfCancellation()
                                                                                         selectionLoadError =
@@ -584,10 +574,7 @@ fun SettingsView(
                                                                                 selectionLoadError = null
                                                                                 try {
                                                                                         availableReferences =
-                                                                                                viewModel
-                                                                                                        .referenceEvRepository
-                                                                                                        ?.getAllReferenceEv()
-                                                                                                        ?: emptyList()
+                                                                                                viewModel.getAllReferences()
                                                                                 } catch (e: Exception) {
                                                                                         e.rethrowIfCancellation()
                                                                                         selectionLoadError =
@@ -611,11 +598,7 @@ fun SettingsView(
                                                                                 selectionLoadError = null
                                                                                 try {
                                                                                         availableConseils =
-                                                                                                viewModel
-                                                                                                        .conseilRepository
-                                                                                                        ?.getConseilsActifs()
-                                                                                                        ?.getOrThrow()
-                                                                                                        ?: emptyList()
+                                                                                                viewModel.getActiveAdvices()
                                                                                 } catch (e: Exception) {
                                                                                         e.rethrowIfCancellation()
                                                                                         selectionLoadError =
@@ -1277,7 +1260,7 @@ fun SettingsView(
                                         ExcelImportExportSection(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 excelFoodService = excelFoodService,
-                                                foodRepository = viewModel.foodRepository
+                                                loadFoods = viewModel::getAllFoods
                                         )
                                 }
                                 4 -> { // Recettes

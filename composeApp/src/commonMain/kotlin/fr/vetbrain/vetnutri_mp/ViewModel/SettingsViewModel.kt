@@ -53,6 +53,41 @@ class SettingsViewModel(
     // Instance statique de Json pour éviter la création redondante
     private val json = Json { ignoreUnknownKeys = true }
 
+    // --- Listes proposées par la sélection d'export (Paramètres > Import/Export) ---
+
+    suspend fun getAllAnimals(): List<fr.vetbrain.vetnutri_mp.Data.AnimalEv> = animalRepository.getAllAnimals()
+
+    suspend fun getAllFoods(): List<fr.vetbrain.vetnutri_mp.Data.AlimentEv> = foodRepository.getAllFoods()
+
+    suspend fun getAllRecipes(): List<fr.vetbrain.vetnutri_mp.Data.Recette> =
+            recipeRepository?.getAllRecipesAsRecette() ?: emptyList()
+
+    suspend fun getAllEquations(): List<fr.vetbrain.vetnutri_mp.Data.Equation> =
+            equationRepository?.getAllEquations() ?: emptyList()
+
+    suspend fun getAllReferences(): List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> =
+            referenceEvRepository?.getAllReferenceEv() ?: emptyList()
+
+    suspend fun getActiveAdvices(): List<fr.vetbrain.vetnutri_mp.Export.HtmlSection> =
+            conseilRepository?.getConseilsActifs()?.getOrThrow() ?: emptyList()
+
+    suspend fun getAdviceCount(): Int = conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+
+    // --- Préférences (instance partagée avec la fiche animal) ---
+
+    /** false dans les aperçus et tests construits sans dépôt de préférences */
+    val preferencesAvailable: Boolean
+        get() = preferencesRepository != null
+
+    /** Préférences courantes ; défaut si le dépôt n'est pas fourni (aperçus, tests). */
+    suspend fun getLoadedPreferences(): fr.vetbrain.vetnutri_mp.Data.PreferencesApplication =
+            preferencesRepository?.getLoadedPreferences()
+                    ?: fr.vetbrain.vetnutri_mp.Data.PreferencesApplication()
+
+    suspend fun savePreferences(preferences: fr.vetbrain.vetnutri_mp.Data.PreferencesApplication) {
+        preferencesRepository?.savePreferences(preferences)
+    }
+
     // Options d'import des aliments (configurées depuis l'UI)
     var importMergeNutrients: Boolean = false
     var importOnlyIfNewer: Boolean = false

@@ -398,7 +398,7 @@ private fun AnimalDetailLayout(
                         return@LaunchedEffect
                 }
                 try {
-                        val result = conseilRepository.getConseilsActifs()
+                        val result = viewModel.getActiveAdvices()
                         if (result.isSuccess) {
                                 availableConseils = result.getOrThrow()
                         }
@@ -673,7 +673,6 @@ private fun AnimalDetailLayout(
                                         viewModel = viewModel,
                                         showSnackbar = { message -> },
                                         equationRepository = equationRepository,
-                                        recipeRepository = recipeRepository,
                                         isExamMode = isExamMode
                                 )
                         }

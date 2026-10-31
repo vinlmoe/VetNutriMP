@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.clickable
@@ -24,14 +25,13 @@ import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
-import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.coroutines.launch
 
 @Composable
 fun SpeciesPreferencesView(
         species: Espece,
-        preferencesRepository: PreferencesRepository,
+        settingsViewModel: SettingsViewModel,
         modifier: Modifier = Modifier
 ) {
         var currentPreferences by remember {
@@ -45,8 +45,7 @@ fun SpeciesPreferencesView(
         // Charger les préférences au démarrage
         LaunchedEffect(Unit) {
                 try {
-                        preferencesRepository.loadPreferences()
-                        currentPreferences = preferencesRepository.preferences
+                        currentPreferences = settingsViewModel.getLoadedPreferences()
                 } catch (e: Exception) {
                         e.rethrowIfCancellation()
                         currentPreferences = fr.vetbrain.vetnutri_mp.Data.PreferencesApplication()
@@ -173,7 +172,7 @@ fun SpeciesPreferencesView(
                                                                                                                                                                 updatedSpeciesPrefs
                                                                                                                                                         )
 
-                                                                                                                                                preferencesRepository
+                                                                                                                                                settingsViewModel
                                                                                                                                                         .savePreferences(
                                                                                                                                                                 updatedPrefs
                                                                                                                                                         )
@@ -293,7 +292,7 @@ fun SpeciesPreferencesView(
                                                 scope.launch {
                                                         try {
                                                                 isSaving = true
-                                                                preferencesRepository
+                                                                settingsViewModel
                                                                         .savePreferences(
                                                                                 updatedPrefs
                                                                         )

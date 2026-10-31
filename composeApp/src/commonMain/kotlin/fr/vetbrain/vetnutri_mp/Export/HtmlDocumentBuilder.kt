@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Export
 
+import fr.vetbrain.vetnutri_mp.Data.EquationSource
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
@@ -33,7 +34,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Evolutive
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
@@ -363,7 +363,7 @@ object HtmlDocumentBuilder {
             kCalcule: Double? = null,
             kObserve: Double? = null,
             pourcentageCouverture: Double? = null,
-            equationRepository: EquationRepository? = null,
+            equationRepository: EquationSource? = null,
             referencesMaladies: List<ReferenceEv> = emptyList(),
             typeExpressionBesoin: TypeExpressionBesoin? = null
     ): String {
@@ -475,7 +475,7 @@ object HtmlDocumentBuilder {
     private suspend fun buildNutrientTableBlock(
             ration: Ration,
             reference: ReferenceEv?,
-            equationRepository: EquationRepository?,
+            equationRepository: EquationSource?,
             poidsAnimal: Double?,
             poidsMetabolique: Double?,
             besoinEnergetiqueEntretien: Double?,
@@ -732,7 +732,7 @@ object HtmlDocumentBuilder {
             besoinEnergetiqueEntretien: Double? = null,
             bulletGraphImages: Map<String, Map<String, String>> = emptyMap(),
             consultation: ConsultationEv? = null,
-            equationRepository: EquationRepository? = null,
+            equationRepository: EquationSource? = null,
             isLandscape: Boolean = false
     ): String {
         // Seules les rations principales sélectionnées sont exportées ; celle qui porte un plan
@@ -775,7 +775,7 @@ object HtmlDocumentBuilder {
             consultation: ConsultationEv,
             parent: Ration,
             reference: ReferenceEv?,
-            equationRepository: EquationRepository?
+            equationRepository: EquationSource?
     ): String {
         val etapes = PlanEvolutif.planTrie(consultation, parent)
         val distinctives = PlanEvolutif.variablesDistinctives(consultation, parent)

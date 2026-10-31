@@ -147,6 +147,12 @@ class ConseilsViewModel(
         }
     }
 
+    /** Conseils actifs (édition d'un conseil existant) */
+    suspend fun getActiveAdvices(): Result<List<HtmlSection>> = conseilRepository.getConseilsActifs()
+
+    /** Crée ou met à jour un conseil */
+    suspend fun saveAdvice(conseil: HtmlSection) = conseilRepository.sauvegarderConseil(conseil)
+
     fun clearError() {
         _error.value = null
     }

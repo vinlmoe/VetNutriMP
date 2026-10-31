@@ -1,11 +1,11 @@
 package fr.vetbrain.vetnutri_mp.Export
 
+import fr.vetbrain.vetnutri_mp.Data.EquationSource
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 
 enum class DocumentType {
     RATION_ANALYSIS,
@@ -49,7 +49,7 @@ data class ExportData(
         val kCalcule: Double? = null,
         val kObserve: Double? = null,
         val pourcentageCouverture: Double? = null,
-        val equationRepository: EquationRepository? = null,
+        val equationRepository: EquationSource? = null,
         val referencesMaladies: List<ReferenceEv> = emptyList(),
         // Consultation (PRESCRIPTION) : si elle est évolutive, son plan est exporté en tableau
         // ingrédients × étapes à la place des étapes individuelles.

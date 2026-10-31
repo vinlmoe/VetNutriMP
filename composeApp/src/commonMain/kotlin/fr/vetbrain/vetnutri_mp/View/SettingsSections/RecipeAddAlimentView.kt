@@ -47,7 +47,7 @@ fun RecipeAddAlimentView(
     var quantite by remember { mutableStateOf("100") }
     var quantiteError by remember { mutableStateOf(false) }
     // Aliments observés via le Flow du repository pour éviter les problèmes de chargement manuel
-    val foodsFlow = remember { recipeEditViewModel.foodRepository.observeAllFoods() }
+    val foodsFlow = remember { recipeEditViewModel.observeAllFoods() }
     val allFoods by foodsFlow.collectAsState(initial = emptyList())
     val isLoading = allFoods.isEmpty()
     

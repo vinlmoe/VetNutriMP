@@ -192,7 +192,7 @@ suspend fun calculerAjustement(
         besoinEnergetiqueStandard: Double,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
-        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?,
+        equationRepository: EquationSource?,
         pourcentageEnergieAlimentsComplets: Double? = null
 ): RationAdjustmentResult {
         try {
@@ -811,7 +811,7 @@ private suspend fun ajusterAlimentsPourNutriment(
         alimentsVerrouilles: Set<String>,
         constraints: Map<String, AlimentConstraint> = emptyMap(),
         referenceUtilisee: ReferenceEv? = null,
-        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
+        equationRepository: EquationSource? = null,
         roundQuantities: Boolean = true
 ): RationAdjustmentResult {
         try {
@@ -1045,7 +1045,7 @@ private suspend fun adjustRationForMultipleNutrients(
         alimentsParNutriment: Map<String, List<AlimentAdjustmentData>>,
         adjustedAliments: MutableList<AlimentRation>,
         referenceUtilisee: ReferenceEv,
-        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+        equationRepository: EquationSource? = null
 ): RationAdjustmentResult {
         try {
                 // Étape 1: Mettre tous les aliments à 0 (sauf ceux verrouillés)

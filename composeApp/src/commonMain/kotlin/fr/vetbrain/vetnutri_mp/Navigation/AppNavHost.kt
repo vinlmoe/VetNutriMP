@@ -1,5 +1,8 @@
 package fr.vetbrain.vetnutri_mp.Navigation
 
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import fr.vetbrain.vetnutri_mp.ViewModel.ConseilsViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -317,8 +320,12 @@ internal fun AppNavHost(
         }
 
         Screen.ConseilEdit -> {
+            val conseilScope = rememberCoroutineScope()
+            val conseilsViewModel = remember(repos.conseilRepository) {
+                ConseilsViewModel(repos.conseilRepository, conseilScope)
+            }
             ConseilEditView(
-                conseilRepository = repos.conseilRepository,
+                viewModel = conseilsViewModel,
                 conseilId = nav.selectedConseilId,
                 onNavigateBack = {
                     nav.selectedConseilId = null
@@ -379,7 +386,7 @@ internal fun AppNavHost(
                 ) { paddingValues ->
                     fr.vetbrain.vetnutri_mp.View.SpeciesPreferencesView(
                         species = species,
-                        preferencesRepository = repos.preferencesRepository,
+                        settingsViewModel = models.settingsViewModel,
                         modifier = Modifier.padding(paddingValues)
                     )
                 }

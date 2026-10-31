@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Data.EquationSource
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import kotlinx.coroutines.withContext
@@ -21,25 +22,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /** Interface définissant les opérations disponibles pour la gestion des équations */
-interface EquationRepository {
-    /**
-     * Récupère toutes les équations
-     * @return Une liste de toutes les équations
-     */
-    suspend fun getAllEquations(): List<Equation>
-
+interface EquationRepository : EquationSource {
     /**
      * Récupère toutes les équations sous forme de Flow
      * @return Un Flow de liste d'équations
      */
     fun observeAllEquations(): Flow<List<Equation>>
-
-    /**
-     * Récupère une équation par son UUID
-     * @param uuid L'UUID de l'équation à récupérer
-     * @return L'équation si trouvée, null sinon
-     */
-    suspend fun getEquationById(uuid: String): Equation?
 
     /**
      * Sauvegarde une équation

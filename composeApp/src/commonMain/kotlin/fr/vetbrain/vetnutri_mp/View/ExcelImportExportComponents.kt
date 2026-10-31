@@ -30,7 +30,6 @@ import fr.vetbrain.vetnutri_mp.ExcelPlatform.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
-import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import kotlinx.coroutines.launch
 
 /**
@@ -40,7 +39,8 @@ import kotlinx.coroutines.launch
 fun ExcelImportExportSection(
         modifier: Modifier = Modifier,
         excelFoodService: ExcelFoodService? = null,
-        foodRepository: FoodRepository? = null
+        // Aliments proposés à la sélection d'export ; null : export de tous les aliments
+        loadFoods: (suspend () -> List<AlimentEv>)? = null
 ) {
         // États pour la gestion des dialogues
         var showPreviewDialog by remember { mutableStateOf(false) }
@@ -182,7 +182,7 @@ fun ExcelImportExportSection(
 
                                 Button(
                                         onClick = {
-                                                if (foodRepository == null) {
+                                                if (loadFoods == null) {
                                                         exportFoods(emptySet())
                                                 } else {
                                                         showExportSelectionDialog = true
@@ -194,8 +194,7 @@ fun ExcelImportExportSection(
                                                                         selectionLoadError = null
                                                                         try {
                                                                                 availableFoods =
-                                                                                        foodRepository
-                                                                                                .getAllFoods()
+                                                                                        loadFoods()
                                                                         } catch (e: Exception) {
                                                                                 e.rethrowIfCancellation()
                                                                                 selectionLoadError =

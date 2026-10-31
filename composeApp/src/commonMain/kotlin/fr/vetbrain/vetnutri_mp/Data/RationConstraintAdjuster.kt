@@ -7,7 +7,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.LinearProgrammingSolver
 import fr.vetbrain.vetnutri_mp.Utils.LpConstraint
 import fr.vetbrain.vetnutri_mp.Utils.LpConstraintSense
@@ -91,7 +90,7 @@ suspend fun adjustRationByConstraints(
         besoinEnergetiqueStandard: Double,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
-        equationRepository: EquationRepository?,
+        equationRepository: EquationSource?,
         pourcentageEnergieAlimentsComplets: Double? = null
 ): ConstraintAdjustmentResult {
         try {

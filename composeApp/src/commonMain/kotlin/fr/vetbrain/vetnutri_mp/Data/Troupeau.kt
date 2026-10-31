@@ -7,7 +7,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
-import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.serialization.Serializable
@@ -399,7 +398,7 @@ private fun nutrimentsAvecSeuil(reference: ReferenceEv): List<Nutrient> =
  * type i reçoit la quantité du groupe × Bᵢ / Σ nⱼ·Bⱼ de chaque aliment ; ses apports sont comparés
  * aux seuils de son référentiel (mêmes fonctions que l'analyse de ration).
  */
-class AnalyseurTroupeau(private val equationRepository: EquationRepository?) {
+class AnalyseurTroupeau(private val equationRepository: EquationSource?) {
 
     suspend fun analyser(
             types: List<TypeAnimalTroupeau>,
