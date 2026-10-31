@@ -23,13 +23,13 @@ Cibles : Android, iOS, Desktop (JVM), Windows.
 ## Architecture — couches
 
 ```
-View/          ← Composables @Composable (51 fichiers)
+View/          ← Composables @Composable (99 fichiers)
   ↓
-ViewModel/     ← StateFlow, coroutineScope, logique présentation (23 fichiers)
+ViewModel/     ← StateFlow, coroutineScope, logique présentation (26 fichiers)
   ↓
-Repository/    ← Interfaces + implémentations Room (19 fichiers)
+Repository/    ← Interfaces + implémentations Room (18 fichiers)
   ↓
-DataBase/      ← DAO Room, Entity, Mappers (8 fichiers)
+DataBase/      ← DAO Room, Entity, Mappers (9 fichiers)
   ↓
 Room/SQLite    ← ~29 tables, 24 migrations, schéma v41
 ```
@@ -47,7 +47,7 @@ La navigation est manuelle (sans Voyager/Decompose). Les écrans sont décrits d
 
 | Fichier | Rôle |
 |---------|------|
-| `Screen.kt` | 23 destinations (sealed objects) |
+| `Screen.kt` | 26 destinations (sealed objects) |
 | `AppNavController.kt` | État mutable de navigation (`screen`, `selectedXxxId`, etc.) |
 | `AppNavHost.kt` | `when(nav.screen)` — dispatch vers les Composables d'écran |
 | `AppNavModels.kt` | `AppNavModels` (ViewModels) + `AppNavRepositories` (repos directs) |
@@ -115,7 +115,7 @@ Trois caches utilisent le pattern `LinkedHashMap` LRU (eviction automatique de l
 - `AnimalDetailViewModel.rationAnalysisCache` — 50 entrées + TTL 2 minutes
 
 ### AppContainer (DI manuel)
-`AppContainer` est un data class avec 14 dépendances construit dans `rememberAppContainer(appDatabase)`. Il n'est pas lazy. Pour ajouter une dépendance, l'ajouter dans `AppContainer.kt` **et** dans `rememberAppContainer`.
+`AppContainer` est un data class avec 15 dépendances construit dans `rememberAppContainer(appDatabase)`. Il n'est pas lazy. Pour ajouter une dépendance, l'ajouter dans `AppContainer.kt` **et** dans `rememberAppContainer`.
 
 ### Résolveur de nutriments
 `NutrientResolver.AllNutrientResolver(label)` est le point d'entrée unique pour résoudre un label textuel vers un `Nutrient`. Ne pas appeler `getByLabel()` directement sur les enums individuels depuis les couches Repository/Service — passer par `NutrientResolver`.
@@ -151,6 +151,23 @@ ration affichée devient celle d'un individu (quantités × Bᵢ / Σ nⱼBⱼ, 
 virtuelle et en lecture seule) et la consultation d'analyse `consultationAnalysee` (`pourTypeTroupeau` :
 poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existante. Moteur pur dans
 `Data/Troupeau.kt` (`facteursRepartitionTroupeau`, `AnalyseurTroupeau`).
+
+### Erreurs et journalisation
+- Jamais de `println` ni de `printStackTrace` : passer par `Utils/AppLog` (`d` = debug uniquement, `w`, `e`).
+- Tout `catch (e: Exception)` / `catch (e: Throwable)` commence par `e.rethrowIfCancellation()` :
+  sinon l'annulation d'une coroutine est avalée et la tâche continue sur un écran fermé.
+- Pas de `catch` vide : journaliser au minimum avec `AppLog.d`.
+
+### Dépendances
+Toutes les versions sont dans `gradle/libs.versions.toml` ; aucune version codée en dur dans
+`build.gradle.kts`, aucune entrée de catalogue inutilisée.
+
+### Données initiales
+`commonMain/resources/data/vetnutri_export_init.json` est la **source unique**. Les assets Android sont
+générés au build (`syncInitialDataAndroidAssets`) ; la copie du bundle iOS (`iosApp/iosApp/`) est
+rafraîchie par `syncInitialDataIos` (appelée avant `embedAndSignAppleFrameworkForXcode`).
+`InitialDataSyncTest` échoue si elle diverge : après modification de la source, lancer
+`./gradlew :composeApp:syncInitialDataIos` et commiter la copie.
 
 ### Threads
 - `AppDispatchers.IO` → opérations DB et réseau
@@ -192,8 +209,8 @@ poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existan
 
 | Fichier | Taille | Usage |
 |---------|--------|-------|
-| `food.json` | ~15 MB | Base aliments initiale (racine projet) |
-| `commonMain/resources/data/vetnutri_export_init.json` | ~11 MB | Export init complet (refs + aliments) |
+| `commonMain/resources/data/vetnutri_export_init.json` | ~20 MB | Export init complet (refs + aliments) — source unique |
 | `androidMain/assets/data/vetfood.json` | ~1.7 MB | Aliments Android spécifiques |
+| `iosApp/iosApp/vetnutri_export_init.json` | ~20 MB | Copie générée de l'export init (bundle iOS) |
 
 Ces fichiers sont chargés via `StartupService` au premier lancement, pas à chaque démarrage.
