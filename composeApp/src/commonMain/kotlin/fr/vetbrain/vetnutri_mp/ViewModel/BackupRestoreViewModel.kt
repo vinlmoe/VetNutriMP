@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.cancel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Service.BackupService
 import fr.vetbrain.vetnutri_mp.Service.BackupService.BackupMetadata
@@ -21,7 +23,7 @@ import kotlinx.datetime.toLocalDateTime
 class BackupRestoreViewModel(
     private val backupService: BackupService,
     private val platformDispatcher: PlatformDispatcher
-) {
+) : ViewModel() {
     private val coroutineScope: CoroutineScope = kotlinx.coroutines.CoroutineScope(platformDispatcher.provideIODispatcher())
     
     private val _backups = MutableStateFlow<List<BackupMetadata>>(emptyList())
@@ -200,5 +202,10 @@ class BackupRestoreViewModel(
             e.rethrowIfCancellation()
             "Date inconnue"
         }
+    }
+
+    // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
+    override fun onCleared() {
+        coroutineScope.cancel()
     }
 }

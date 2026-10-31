@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.mutableStateListOf
@@ -27,7 +28,7 @@ class FoodEditViewModel(
         private val foodRepository: FoodRepository,
         private val alimentUuid: String? = null,
         private val biblioRefRepository: BiblioRefRepository? = null
-) {
+) : ViewModel() {
     private val job = SupervisorJob()
     private val coroutineScope = CoroutineScope(AppDispatchers.Main + job)
 
@@ -339,7 +340,9 @@ class FoodEditViewModel(
         }
     }
 
-    fun clear() {
+    // Appelé par le ViewModelStore quand l\'écran est quitté (rememberViewModel)
+
+    override fun onCleared() {
         job.cancel()
     }
 }

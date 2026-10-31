@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
@@ -26,7 +27,7 @@ class ImportViewModel(
         val databaseReferenceEvRepository: DatabaseReferenceEvRepository? = null,
         val equationRepository: EquationRepository? = null,
         val biblioRefRepository: BiblioRefRepository? = null
-) {
+) : ViewModel() {
     // Scope des coroutines pour les opérations suspend
     private val job = SupervisorJob()
     private val coroutineScope = CoroutineScope(AppDispatchers.Main + job)
@@ -207,7 +208,9 @@ class ImportViewModel(
         _nutritionalRequirementImportResultMessage.value = message
     }
 
-    fun clear() {
+    // Appelé par le ViewModelStore quand l\'écran est quitté (rememberViewModel)
+
+    override fun onCleared() {
         coroutineScope.cancel()
     }
 }

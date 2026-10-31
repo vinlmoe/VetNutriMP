@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.ViewModel.rememberViewModel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.background
@@ -1274,7 +1275,7 @@ fun SettingsView(
                                                         )
                                                 }
                                         } else {
-                                                val recipeEditViewModel = remember(
+                                                val recipeEditViewModel = rememberViewModel(
                                                         viewModel.recipeRepository,
                                                         viewModel.foodRepository
                                                 ) {
@@ -1290,9 +1291,6 @@ fun SettingsView(
                                                                                         "FoodRepository not available"
                                                                                 )
                                                         )
-                                                }
-                                                DisposableEffect(recipeEditViewModel) {
-                                                        onDispose { recipeEditViewModel.clear() }
                                                 }
                                                 RecipeEditView(
                                                         viewModel = recipeEditViewModel,

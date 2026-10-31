@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.ViewModel.rememberViewModel
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -47,7 +48,7 @@ fun ReferenceEvNutrientView(
                 referenceEvViewModel.currentReferenceEv.collectAsState(initial = ReferenceEv())
 
         // Créer le ViewModel spécifique pour les besoins nutritionnels
-        val nutrientRefViewModel = remember {
+        val nutrientRefViewModel = rememberViewModel {
                 NutrientRefViewModel(
                         referenceEvRepository = referenceEvRepository,
                         biblioRefRepository = biblioRefRepository,

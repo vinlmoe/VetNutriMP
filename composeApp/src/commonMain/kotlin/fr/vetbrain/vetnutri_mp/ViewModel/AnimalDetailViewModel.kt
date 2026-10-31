@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.getValue
@@ -86,7 +87,7 @@ class AnimalDetailViewModel(
         private val equationRepository: EquationRepository? = null,
         private val recipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository? = null,
         private val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null
-) {
+) : ViewModel() {
     private val job = SupervisorJob()
     private val viewModelScope = CoroutineScope(AppDispatchers.Main + job)
     private val _animal = MutableStateFlow<AnimalEv?>(null)
@@ -2734,7 +2735,9 @@ class AnimalDetailViewModel(
         return true
     }
 
-    fun clear() {
+    // Appelé par le ViewModelStore quand l\'écran est quitté (rememberViewModel)
+
+    override fun onCleared() {
         rationAnalysisCache.clear()
         analysisCacheTime.clear()
         viewModelScope.cancel()

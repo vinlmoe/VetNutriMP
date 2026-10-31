@@ -267,9 +267,13 @@ Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pa
            (\code{besoinEnergetiqueStandard!!} dans l'ajustement multi-nutriments, plantage tant que le BEE
            n'est pas calculé) ; un autre réécrit sans \code{!!}. Les autres suivent une garde
            (\code{contains}, \code{isEmpty}, test de nullité sur un état Compose délégué, qui empêche le
-           smart-cast). Cycle de vie manuel des ViewModels (\code{clear()} depuis \code{App.kt})
-           inchangé : \code{MultiRationViewModel} et \code{SettingsViewModel} héritent déjà de
-           \code{ViewModel}, les autres non. \\
+           smart-cast). \\
+-- & fait & \textbf{Cycle de vie des ViewModels} : les 12 ViewModels à scope propre héritent de
+           \code{androidx.lifecycle.ViewModel} (\code{clear()} $\to$ \code{onCleared()}) ; tous sont
+           créés par \code{rememberViewModel(clés)} : un \code{ViewModelStore} par clé, vidé à la sortie
+           de composition. Les 7 qui héritaient déjà de \code{ViewModel} étaient créés par
+           \code{remember} hors de tout \code{ViewModelStore} : leur \code{onCleared()} n'était jamais
+           appelé. Plus aucun \code{clear()} manuel dans \code{App.kt}. \\
 \bottomrule
 \end{longtable}
 
@@ -327,6 +331,8 @@ Suites traitées :
         \code{AppAlertDialog} (titre, contenu, boutons empilés) : hauteur constante vérifiée.
   \item Données : mots-clés de consultation en double avec fautes (« Cardiomyopathie dilaté »,
         « Insufisance hépatique ») à fusionner.
+  \item \textbf{Ration} : ajouter un aliment déjà présent créait une seconde ligne à l'écran, perdue à
+        l'enregistrement (index unique aliment + ration) ; la quantité est désormais cumulée.
   \item Quatre fichiers Kotlin vides et suivis supprimés (\code{BackupViewModel},
         \code{TestApiEnvelope}, \code{FullscreenToggle}, \code{GenericGraphComponent}).
   \item Filtres de la sélection d'aliments (Graphique Aliments) : un par ligne sur téléphone.

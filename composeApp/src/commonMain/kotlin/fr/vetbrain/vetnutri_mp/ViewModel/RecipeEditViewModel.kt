@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.State
@@ -26,7 +27,7 @@ import kotlinx.datetime.Clock
 class RecipeEditViewModel(
     private val recipeRepository: RecipeRepository,
     val foodRepository: FoodRepository
-) {
+) : ViewModel() {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(AppDispatchers.IO + job)
 
@@ -473,7 +474,9 @@ class RecipeEditViewModel(
                }
     }
 
-    fun clear() {
+    // Appelé par le ViewModelStore quand l\'écran est quitté (rememberViewModel)
+
+    override fun onCleared() {
         scope.cancel()
     }
 

@@ -174,6 +174,13 @@ du bundle iOS (`iosApp/iosApp/` : données et `strings_fr/en/zh.json`) sont rafr
 si elles divergent : après modification d'une source, lancer `./gradlew :composeApp:syncInitialDataIos`
 et commiter les copies.
 
+### ViewModels
+Tous héritent de `androidx.lifecycle.ViewModel` et sont créés par `rememberViewModel(clés) { … }`
+(`ViewModel/RememberViewModel.kt`) : un `ViewModelStore` par clé, vidé quand la clé change ou que
+l'appelant quitte la composition, ce qui appelle `onCleared()`. Pas de `clear()` public à appeler
+à la main ; un scope propre (dispatcher injecté pour les tests) s'annule dans `onCleared()`.
+Exceptions : `ConseilsViewModel` et `LegacyMigrationViewModel` reçoivent un scope de composition.
+
 ### Préférences
 Une seule instance de `PreferencesRepository` (celle d'`AppContainer`). Les vues lisent
 `viewModel.preferences` (`StateFlow`, null avant la première lecture) ou appellent

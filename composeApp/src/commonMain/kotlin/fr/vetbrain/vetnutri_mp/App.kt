@@ -107,7 +107,7 @@ fun App(appDatabase: AppDatabase) {
     var showFoodImportResult by remember { mutableStateOf(false) }
 
     // ViewModels
-    val animalListViewModel = remember {
+    val animalListViewModel = rememberViewModel {
         AnimalListViewModel(
             animalRepository = animalRepository,
             foodRepository = foodRepository,
@@ -119,14 +119,14 @@ fun App(appDatabase: AppDatabase) {
             conseilRepository = conseilRepository
         )
     }
-    val examGradingViewModel = remember {
+    val examGradingViewModel = rememberViewModel {
         ExamGradingViewModel(
             repository = examGradingRepository,
             exportImportRepository = exportImportRepository,
             fileService = fileService
         )
     }
-    val animalDetailViewModel = remember {
+    val animalDetailViewModel = rememberViewModel {
         AnimalDetailViewModel(
             consultationRepository,
             animalRepository,
@@ -138,8 +138,8 @@ fun App(appDatabase: AppDatabase) {
             conseilRepository
         )
     }
-    val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
-    val settingsViewModel = remember {
+    val createAnimalViewModel = rememberViewModel { CreateAnimalViewModel(animalRepository) }
+    val settingsViewModel = rememberViewModel {
         SettingsViewModel(
             animalRepository = animalRepository,
             foodRepository = foodRepository,
@@ -152,16 +152,16 @@ fun App(appDatabase: AppDatabase) {
             preferencesRepository = preferencesRepository
         )
     }
-    val foodListViewModel = remember { FoodListViewModel(foodRepository) }
-    val biblioRefViewModel = remember { BiblioRefViewModel(biblioRefRepository) }
-    val referenceEvViewModel = remember {
+    val foodListViewModel = rememberViewModel { FoodListViewModel(foodRepository) }
+    val biblioRefViewModel = rememberViewModel { BiblioRefViewModel(biblioRefRepository) }
+    val referenceEvViewModel = rememberViewModel {
         ReferenceEvViewModel(
             repository = databaseReferenceEvRepository,
             equationRepository = equationRepository,
             platformDispatcher = platformDispatcher
         )
     }
-    val equationViewModel = remember {
+    val equationViewModel = rememberViewModel {
         EquationViewModel(
             equationRepository = equationRepository,
             biblioRefDao = appDatabase.biblioRefDao(),
@@ -169,33 +169,31 @@ fun App(appDatabase: AppDatabase) {
             referenceRepository = databaseReferenceEvRepository
         )
     }
-    val foodEditViewModel = remember(nav.selectedFoodUuid) {
+    val foodEditViewModel = rememberViewModel(nav.selectedFoodUuid) {
         FoodEditViewModel(
             foodRepository = foodRepository,
             alimentUuid = nav.selectedFoodUuid,
             biblioRefRepository = biblioRefRepository
         )
     }
-    DisposableEffect(foodEditViewModel) { onDispose { foodEditViewModel.clear() } }
 
-    val newReferenceEvViewModel = remember {
+    val newReferenceEvViewModel = rememberViewModel {
         NewReferenceEvViewModel(
             repository = databaseReferenceEvRepository,
             equationRepository = equationRepository,
             biblioRefRepository = biblioRefRepository
         )
     }
-    val backupRestoreViewModel = remember(backupService) {
-        backupService?.let { BackupRestoreViewModel(it, platformDispatcher) }
-    }
-    val bulkReferenceEditorViewModel = remember {
+    val backupRestoreViewModel =
+        backupService?.let { service -> rememberViewModel(service) { BackupRestoreViewModel(service, platformDispatcher) } }
+    val bulkReferenceEditorViewModel = rememberViewModel {
         BulkReferenceEditorViewModel(
             referenceEvRepository = databaseReferenceEvRepository,
             biblioRefRepository = biblioRefRepository,
             platformDispatcher = platformDispatcher
         )
     }
-    val importViewModel = remember {
+    val importViewModel = rememberViewModel {
         ImportViewModel(
             animalListViewModel = animalListViewModel,
             databaseReferenceEvRepository = databaseReferenceEvRepository,
@@ -207,14 +205,14 @@ fun App(appDatabase: AppDatabase) {
     val legacyMigrationViewModel = remember(legacyMigrationScope) {
         LegacyMigrationViewModel(scope = legacyMigrationScope)
     }
-    val bulkAddBiblioToFoodsViewModel = remember {
+    val bulkAddBiblioToFoodsViewModel = rememberViewModel {
         BulkAddBiblioToFoodsViewModel(
             foodRepository = foodRepository,
             biblioRefRepository = biblioRefRepository,
             platformDispatcher = platformDispatcher
         )
     }
-    val multiRationViewModel = remember {
+    val multiRationViewModel = rememberViewModel {
         MultiRationViewModel(
             foodRepository = foodRepository,
             referenceEvRepository = databaseReferenceEvRepository,
@@ -223,7 +221,7 @@ fun App(appDatabase: AppDatabase) {
             preferencesRepository = preferencesRepository
         )
     }
-    val crossAnalysisViewModel = remember {
+    val crossAnalysisViewModel = rememberViewModel {
         CrossConsultationAnalysisViewModel(
             animalRepository = animalRepository,
             consultationRepository = consultationRepository,
@@ -232,16 +230,8 @@ fun App(appDatabase: AppDatabase) {
         )
     }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            animalDetailViewModel.clear()
-            foodListViewModel.clear()
-            biblioRefViewModel.clear()
-            referenceEvViewModel.clear()
-            newReferenceEvViewModel.clear()
-            importViewModel.clear()
-        }
-    }
+    // Les ViewModels sont détruits par leur ViewModelStore (rememberViewModel) quand App quitte la
+    // composition : onCleared() annule leurs coroutines, plus de clear() à appeler ici.
 
     // Résultats d'importation (déclarés après les ViewModels)
     val animalImportResult = animalListViewModel.importResult.collectAsState().value

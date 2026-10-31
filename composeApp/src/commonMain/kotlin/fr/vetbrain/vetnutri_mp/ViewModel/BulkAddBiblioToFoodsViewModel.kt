@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.cancel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
@@ -26,7 +28,7 @@ class BulkAddBiblioToFoodsViewModel(
         private val biblioRefRepository: BiblioRefRepository,
         private val platformDispatcher: PlatformDispatcher = PlatformDispatcher(),
         private val coroutineContext: CoroutineContext = platformDispatcher.provideMainDispatcher()
-) {
+) : ViewModel() {
         private val scope = CoroutineScope(coroutineContext)
 
         private val _allFoods = MutableStateFlow<List<AlimentEv>>(emptyList())
@@ -118,4 +120,9 @@ class BulkAddBiblioToFoodsViewModel(
                         }
                 }
         }
+
+    // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
+    override fun onCleared() {
+        scope.cancel()
+    }
 }

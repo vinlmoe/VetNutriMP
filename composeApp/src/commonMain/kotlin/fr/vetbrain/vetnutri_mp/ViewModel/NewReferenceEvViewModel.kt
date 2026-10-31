@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
@@ -37,7 +38,7 @@ class NewReferenceEvViewModel(
         private val repository: DatabaseReferenceEvRepository,
         private val equationRepository: EquationRepository? = null,
         private val biblioRefRepository: BiblioRefRepository? = null
-) {
+) : ViewModel() {
 
     // État pour la référence en cours d'édition
     private val _currentReference = MutableStateFlow(ReferenceEv())
@@ -954,7 +955,9 @@ class NewReferenceEvViewModel(
         }
     }
 
-    fun clear() {
+    // Appelé par le ViewModelStore quand l\'écran est quitté (rememberViewModel)
+
+    override fun onCleared() {
         coroutineScope.cancel()
     }
 }

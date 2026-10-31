@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.cancel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
@@ -25,7 +27,7 @@ class NutrientRefViewModel(
         private val biblioRefRepository: BiblioRefRepository,
         private val platformDispatcher: PlatformDispatcher = PlatformDispatcher(),
         private val coroutineContext: CoroutineContext = platformDispatcher.provideMainDispatcher()
-) {
+) : ViewModel() {
     private val scope = CoroutineScope(coroutineContext)
 
     // Référence en cours d'édition
@@ -543,5 +545,10 @@ class NutrientRefViewModel(
         var result = 1.0
         repeat(n) { result *= this }
         return result
+    }
+
+    // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
+    override fun onCleared() {
+        scope.cancel()
     }
 }

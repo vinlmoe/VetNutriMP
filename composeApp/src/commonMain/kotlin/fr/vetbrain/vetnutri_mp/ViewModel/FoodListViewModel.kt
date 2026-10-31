@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
@@ -25,7 +26,7 @@ import kotlinx.coroutines.launch
  * - S'abonne au flow `observeAllFoods` et dérive les filtres en mémoire.
  * - N'étend pas `ViewModel` pour rester multiplateforme; utilise un scope dédié.
  */
-class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
+class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) : ViewModel() {
         // Scope dédié (pas de ViewModel Android ici)
         private val job = SupervisorJob()
         private val viewModelScope = CoroutineScope(AppDispatchers.Main + job)
@@ -292,7 +293,9 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                 return foodRepository.loadNutrientsForFoods(foodUuids, nutrients)
         }
 
-        fun clear() {
+        // Appelé par le ViewModelStore quand l\'écran est quitté (rememberViewModel)
+
+        override fun onCleared() {
                 viewModelScope.cancel()
         }
 }

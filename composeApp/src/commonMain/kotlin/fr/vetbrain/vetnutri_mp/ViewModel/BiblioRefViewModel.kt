@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.mutableStateOf
@@ -19,7 +20,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** ViewModel pour la gestion des références bibliographiques */
-class BiblioRefViewModel(private val repository: BiblioRefRepository) {
+class BiblioRefViewModel(private val repository: BiblioRefRepository) : ViewModel() {
     // Utilisation du dispatcher de la plateforme
     private val dispatcher = PlatformDispatcher().provideMainDispatcher()
     private val job = SupervisorJob()
@@ -304,7 +305,9 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
         _operationMessage.value = null
     }
 
-    fun clear() {
+    // Appelé par le ViewModelStore quand l\'écran est quitté (rememberViewModel)
+
+    override fun onCleared() {
         viewModelScope.cancel()
     }
 }

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.getValue
@@ -31,7 +32,7 @@ class ReferenceEvViewModel(
         private val equationRepository: EquationRepository? = null,
         private val platformDispatcher: PlatformDispatcher = PlatformDispatcher(),
         private val coroutineContext: CoroutineContext = platformDispatcher.provideMainDispatcher()
-) {
+) : ViewModel() {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(coroutineContext + job)
 
@@ -683,7 +684,9 @@ class ReferenceEvViewModel(
         }
     }
 
-    fun clear() {
+    // Appelé par le ViewModelStore quand l\'écran est quitté (rememberViewModel)
+
+    override fun onCleared() {
         scope.cancel()
     }
 }
