@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Data.PreferencesApplication
 import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
@@ -53,7 +55,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     }
 
     /** Charge les préférences depuis le stockage */
-    suspend fun loadPreferences() {
+    suspend fun loadPreferences(): Unit = withContext(AppDispatchers.IO) {
         try {
             val jsonString = preferencesStorage.getString(PREFERENCES_KEY, "{}")
 
@@ -70,7 +72,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     }
 
     /** Sauvegarde les préférences dans le stockage */
-    suspend fun savePreferences(preferences: PreferencesApplication) {
+    suspend fun savePreferences(preferences: PreferencesApplication): Unit = withContext(AppDispatchers.IO) {
         try {
             val jsonString = serializePreferencesToJson(preferences)
 
@@ -83,18 +85,18 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     }
 
     /** Obtient les préférences pour une espèce */
-    suspend fun getPreferencesForSpecies(species: Espece): PreferencesEspece {
-        return _preferences.getPreferencesEspece(species)
+    suspend fun getPreferencesForSpecies(species: Espece): PreferencesEspece = withContext(AppDispatchers.IO) {
+        return@withContext _preferences.getPreferencesEspece(species)
     }
 
     /** Met à jour les préférences pour une espèce */
     suspend fun updatePreferencesForSpecies(
             species: Espece,
             preferences: PreferencesEspece
-    ): PreferencesApplication {
+    ): PreferencesApplication = withContext(AppDispatchers.IO) {
         val updatedPreferences = _preferences.updatePreferencesEspece(preferences)
         savePreferences(updatedPreferences)
-        return updatedPreferences
+        return@withContext updatedPreferences
     }
 
     /** Obtient toutes les espèces disponibles */
@@ -325,8 +327,8 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     }
 
     /** Importe les préférences depuis un JSON */
-    suspend fun importerPreferences(preferencesJson: String): Boolean {
-        return try {
+    suspend fun importerPreferences(preferencesJson: String): Boolean = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val nouvellesPreferences = parsePreferencesFromJson(preferencesJson)
             savePreferences(nouvellesPreferences)
             true

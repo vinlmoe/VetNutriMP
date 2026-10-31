@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.DataBase.HtmlSectionDao
 import fr.vetbrain.vetnutri_mp.DataBase.HtmlSectionEntity
 import fr.vetbrain.vetnutri_mp.Export.*
@@ -15,8 +17,8 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     private val json = Json { prettyPrint = isDebugBuild() }
 
     /** Récupère tous les conseils actifs */
-    suspend fun getConseilsActifs(): Result<List<HtmlSection>> {
-        return try {
+    suspend fun getConseilsActifs(): Result<List<HtmlSection>> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             // Récupérer toutes les sections qui commencent par "CONSEIL"
             val allEntities = dao.getAllSections()
             val conseilEntities =
@@ -29,8 +31,8 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Récupère les conseils par espèce */
-    suspend fun getConseilsParEspece(espece: String): Result<List<HtmlSection>> {
-        return try {
+    suspend fun getConseilsParEspece(espece: String): Result<List<HtmlSection>> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val allConseils = getConseilsActifs().getOrThrow()
             val conseilsFiltres =
                     allConseils.filter {
@@ -43,11 +45,11 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Incrémente le compteur d'utilisation d'un conseil */
-    suspend fun incrementerUsage(conseilId: String): Result<Unit> {
-        return try {
+    suspend fun incrementerUsage(conseilId: String): Result<Unit> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entity =
                     dao.getSectionById(conseilId)
-                            ?: return Result.failure(Exception("Conseil non trouvé"))
+                            ?: return@withContext Result.failure(Exception("Conseil non trouvé"))
             val conseil = entity.toDomain()
             val conseilMisAJour =
                     conseil.copy(usageCount = conseil.usageCount + 1, lastUsed = Clock.System.now())
@@ -59,8 +61,8 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Récupère les conseils les plus utilisés */
-    suspend fun getConseilsPopulaires(limit: Int = 10): Result<List<HtmlSection>> {
-        return try {
+    suspend fun getConseilsPopulaires(limit: Int = 10): Result<List<HtmlSection>> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entities = dao.getConseilsPopulaires(limit)
             val conseils = entities.map { it.toDomain() }
             Result.success(conseils)
@@ -70,8 +72,8 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Récupère les conseils récemment utilisés */
-    suspend fun getConseilsRecents(limit: Int = 20): Result<List<HtmlSection>> {
-        return try {
+    suspend fun getConseilsRecents(limit: Int = 20): Result<List<HtmlSection>> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entities = dao.getConseilsRecents(limit)
             val conseils = entities.map { it.toDomain() }
             Result.success(conseils)
@@ -81,8 +83,8 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Recherche de conseils par mot-clé */
-    suspend fun rechercherConseils(query: String, limit: Int = 50): Result<List<HtmlSection>> {
-        return try {
+    suspend fun rechercherConseils(query: String, limit: Int = 50): Result<List<HtmlSection>> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entities = dao.searchConseils(query, limit)
             val conseils = entities.map { it.toDomain() }
             Result.success(conseils)
@@ -92,8 +94,8 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Récupère les conseils par catégorie */
-    suspend fun getConseilsByCategory(category: SectionCategory): Result<List<HtmlSection>> {
-        return try {
+    suspend fun getConseilsByCategory(category: SectionCategory): Result<List<HtmlSection>> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entities = dao.getSectionsByCategory(category.name)
             val conseils = entities.map { it.toDomain() }
             Result.success(conseils)
@@ -107,11 +109,11 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
             templateId: String,
             titre: String,
             modifications: Map<String, String> = emptyMap()
-    ): Result<HtmlSection> {
-        return try {
+    ): Result<HtmlSection> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val template =
                     dao.getSectionById(templateId)?.toDomain()
-                            ?: return Result.failure(Exception("Template non trouvé"))
+                            ?: return@withContext Result.failure(Exception("Template non trouvé"))
 
             val nouveauConseil =
                     template.copy(
@@ -135,8 +137,8 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Récupère le nombre total de conseils actifs */
-    suspend fun getConseilsCount(): Result<Int> {
-        return try {
+    suspend fun getConseilsCount(): Result<Int> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val count = dao.getConseilsCount()
             Result.success(count)
         } catch (e: Exception) {
@@ -145,8 +147,8 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Sauvegarde un conseil (insert ou update) */
-    suspend fun saveConseil(conseil: fr.vetbrain.vetnutri_mp.Export.HtmlSection): Result<Unit> {
-        return try {
+    suspend fun saveConseil(conseil: fr.vetbrain.vetnutri_mp.Export.HtmlSection): Result<Unit> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             dao.insertSection(conseil.toEntity())
             Result.success(Unit)
         } catch (e: Exception) {
@@ -155,8 +157,8 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Récupère tous les templates de conseils */
-    suspend fun getTemplatesConseils(): Result<List<HtmlSection>> {
-        return try {
+    suspend fun getTemplatesConseils(): Result<List<HtmlSection>> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entities = dao.getTemplateSections()
             val templates =
                     entities.map { it.toDomain() }.filter { it.category.name.startsWith("CONSEIL") }
@@ -170,11 +172,11 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     suspend fun sauvegarderCommeTemplate(
             conseilId: String,
             nomTemplate: String
-    ): Result<HtmlSection> {
-        return try {
+    ): Result<HtmlSection> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val conseil =
                     dao.getSectionById(conseilId)?.toDomain()
-                            ?: return Result.failure(Exception("Conseil non trouvé"))
+                            ?: return@withContext Result.failure(Exception("Conseil non trouvé"))
 
             val template =
                     conseil.copy(
@@ -193,8 +195,8 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Sauvegarde un nouveau conseil */
-    suspend fun sauvegarderConseil(conseil: HtmlSection): Result<Unit> {
-        return try {
+    suspend fun sauvegarderConseil(conseil: HtmlSection): Result<Unit> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             dao.insertSection(conseil.toEntity())
             Result.success(Unit)
         } catch (e: Exception) {
@@ -203,8 +205,8 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Met à jour un conseil existant */
-    suspend fun mettreAJourConseil(conseil: HtmlSection): Result<Unit> {
-        return try {
+    suspend fun mettreAJourConseil(conseil: HtmlSection): Result<Unit> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val conseilMisAJour = conseil.copy(updatedAt = Clock.System.now())
             dao.updateSection(conseilMisAJour.toEntity())
             Result.success(Unit)
@@ -214,11 +216,11 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Supprime un conseil */
-    suspend fun supprimerConseil(conseilId: String): Result<Unit> {
-        return try {
+    suspend fun supprimerConseil(conseilId: String): Result<Unit> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entity =
                     dao.getSectionById(conseilId)
-                            ?: return Result.failure(Exception("Conseil non trouvé"))
+                            ?: return@withContext Result.failure(Exception("Conseil non trouvé"))
             dao.deleteSection(entity)
             Result.success(Unit)
         } catch (e: Exception) {

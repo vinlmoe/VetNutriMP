@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.AnimalApi
@@ -71,24 +73,24 @@ class ExportImportRepository(
          * Exporte l'ensemble des données (animaux, aliments, rations, équations, recettes) au
          * format API.
          */
-        suspend fun exportAll(): String {
-                return jsonPretty.encodeToString(buildEnvelopeAll())
+        suspend fun exportAll(): String = withContext(AppDispatchers.IO) {
+                return@withContext jsonPretty.encodeToString(buildEnvelopeAll())
         }
 
-        suspend fun exportAllEnvelope(): ApiEnvelope {
-                return buildEnvelopeAll()
+        suspend fun exportAllEnvelope(): ApiEnvelope = withContext(AppDispatchers.IO) {
+                return@withContext buildEnvelopeAll()
         }
 
-        suspend fun writeEnvelopeToFile(envelope: ApiEnvelope, file: PlatformFile): Result<Unit> {
-                return jsonPretty.encodeEnvelopeToFile(envelope, file)
+        suspend fun writeEnvelopeToFile(envelope: ApiEnvelope, file: PlatformFile): Result<Unit> = withContext(AppDispatchers.IO) {
+                return@withContext jsonPretty.encodeEnvelopeToFile(envelope, file)
         }
 
-        suspend fun writeAllToFile(file: PlatformFile): Result<Unit> {
+        suspend fun writeAllToFile(file: PlatformFile): Result<Unit> = withContext(AppDispatchers.IO) {
                 val envelope = buildEnvelopeAll()
-                return jsonPretty.encodeEnvelopeToFile(envelope, file)
+                return@withContext jsonPretty.encodeEnvelopeToFile(envelope, file)
         }
 
-        private suspend fun buildEnvelopeAll(): ApiEnvelope {
+        private suspend fun buildEnvelopeAll(): ApiEnvelope = withContext(AppDispatchers.IO) {
                 val domainAnimals = animalRepository.getAllAnimals()
                 // Do not turn a repository failure into an apparently complete backup.
                 val animalsWithConsultations = if (consultationRepository != null) {
@@ -98,7 +100,7 @@ class ExportImportRepository(
                         }
                 } else domainAnimals
                 if (foodRepository is DatabaseFoodRepository) foodRepository.forceRefresh()
-                return ApiEnvelope(
+                return@withContext ApiEnvelope(
                         version = "2.0.0",
                         generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
                         animals = animalsWithConsultations.map { it.toApi() },
@@ -120,25 +122,25 @@ class ExportImportRepository(
         }
 
         /** Export avec filtres et sélections par type/identifiants. */
-        suspend fun exportWithSelection(options: ExportSelectionOptions): String {
-                return jsonPretty.encodeToString(buildEnvelopeWithSelection(options))
+        suspend fun exportWithSelection(options: ExportSelectionOptions): String = withContext(AppDispatchers.IO) {
+                return@withContext jsonPretty.encodeToString(buildEnvelopeWithSelection(options))
         }
 
-        suspend fun exportWithSelectionEnvelope(options: ExportSelectionOptions): ApiEnvelope {
-                return buildEnvelopeWithSelection(options)
+        suspend fun exportWithSelectionEnvelope(options: ExportSelectionOptions): ApiEnvelope = withContext(AppDispatchers.IO) {
+                return@withContext buildEnvelopeWithSelection(options)
         }
 
         suspend fun writeSelectionToFile(
                 options: ExportSelectionOptions,
                 file: PlatformFile
-        ): Result<Unit> {
+        ): Result<Unit> = withContext(AppDispatchers.IO) {
                 val envelope = buildEnvelopeWithSelection(options)
-                return jsonPretty.encodeEnvelopeToFile(envelope, file)
+                return@withContext jsonPretty.encodeEnvelopeToFile(envelope, file)
         }
 
         private suspend fun buildEnvelopeWithSelection(
                 options: ExportSelectionOptions
-        ): ApiEnvelope {
+        ): ApiEnvelope = withContext(AppDispatchers.IO) {
                 val allDomainAnimals =
                         if (options.includeAnimals) animalRepository.getAllAnimals()
                         else emptyList()
@@ -480,7 +482,7 @@ class ExportImportRepository(
                                 emptyList()
                         }
 
-                return ApiEnvelope(
+                return@withContext ApiEnvelope(
                         version = "2.0.0",
                         generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
                         animals = animals,
@@ -499,11 +501,11 @@ class ExportImportRepository(
         suspend fun importAll(
                 apiJson: String,
                 listener: ImportProgressListener? = null
-        ): ImportCounts {
+        ): ImportCounts = withContext(AppDispatchers.IO) {
                 listener?.onProgress?.invoke(0.02)
                 listener?.onLog?.invoke("Lecture/Parsing du JSON…")
                 val envelope = jsonPretty.decodeFromString<ApiEnvelope>(apiJson)
-                return importAll(envelope, listener)
+                return@withContext importAll(envelope, listener)
         }
 
         suspend fun importAll(

@@ -8,13 +8,13 @@ import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 object LocalizationManager {
     private const val KEY_LOCALE = "selected_locale"
-    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val scope = CoroutineScope(AppDispatchers.Main + SupervisorJob())
     private var strings by mutableStateOf<LocalizedStrings?>(null)
     private var currentLocaleState by mutableStateOf("fr")
     val currentLocale: String

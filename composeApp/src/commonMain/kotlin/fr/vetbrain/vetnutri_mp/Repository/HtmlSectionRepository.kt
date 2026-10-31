@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.DataBase.HtmlSectionDao
 import fr.vetbrain.vetnutri_mp.DataBase.HtmlSectionEntity
 import fr.vetbrain.vetnutri_mp.Export.*
@@ -15,8 +17,8 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
     private val json = Json { prettyPrint = isDebugBuild() }
 
     /** Sauvegarde une section HTML */
-    suspend fun saveSection(section: HtmlSection): Result<Unit> {
-        return try {
+    suspend fun saveSection(section: HtmlSection): Result<Unit> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entity = section.toEntity()
             dao.insertSection(entity)
             Result.success(Unit)
@@ -26,8 +28,8 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Met à jour une section HTML */
-    suspend fun updateSection(section: HtmlSection): Result<Unit> {
-        return try {
+    suspend fun updateSection(section: HtmlSection): Result<Unit> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entity = section.toEntity()
             dao.updateSection(entity)
             Result.success(Unit)
@@ -37,8 +39,8 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Supprime une section HTML */
-    suspend fun deleteSection(sectionId: String): Result<Unit> {
-        return try {
+    suspend fun deleteSection(sectionId: String): Result<Unit> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entity = dao.getSectionById(sectionId)
             if (entity != null) {
                 dao.deleteSection(entity)
@@ -52,8 +54,8 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Récupère une section HTML par son ID */
-    suspend fun getSectionById(id: String): Result<HtmlSection?> {
-        return try {
+    suspend fun getSectionById(id: String): Result<HtmlSection?> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entity = dao.getSectionById(id)
             Result.success(entity?.toDomain())
         } catch (e: Exception) {
@@ -62,8 +64,8 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Récupère toutes les sections HTML */
-    suspend fun getAllSections(): Result<List<HtmlSection>> {
-        return try {
+    suspend fun getAllSections(): Result<List<HtmlSection>> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entities = dao.getAllSections()
             val sections = entities.map { it.toDomain() }
             Result.success(sections)
@@ -73,8 +75,8 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Récupère les sections par catégorie */
-    suspend fun getSectionsByCategory(category: SectionCategory): Result<List<HtmlSection>> {
-        return try {
+    suspend fun getSectionsByCategory(category: SectionCategory): Result<List<HtmlSection>> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entities = dao.getSectionsByCategory(category.name)
             val sections = entities.map { it.toDomain() }
             Result.success(sections)
@@ -84,8 +86,8 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Récupère les sections modèles */
-    suspend fun getTemplateSections(): Result<List<HtmlSection>> {
-        return try {
+    suspend fun getTemplateSections(): Result<List<HtmlSection>> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entities = dao.getTemplateSections()
             val sections = entities.map { it.toDomain() }
             Result.success(sections)
@@ -95,8 +97,8 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Recherche des sections HTML */
-    suspend fun searchSections(query: String): Result<List<HtmlSection>> {
-        return try {
+    suspend fun searchSections(query: String): Result<List<HtmlSection>> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val entities = dao.searchSections(query)
             val sections = entities.map { it.toDomain() }
             Result.success(sections)
@@ -106,8 +108,8 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Crée une nouvelle section à partir d'un modèle */
-    suspend fun createFromTemplate(templateId: String, newTitle: String): Result<HtmlSection> {
-        return try {
+    suspend fun createFromTemplate(templateId: String, newTitle: String): Result<HtmlSection> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val templateEntity = dao.getSectionById(templateId)
             if (templateEntity != null) {
                 val template = templateEntity.toDomain()
@@ -130,8 +132,8 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
     }
 
     /** Duplique une section existante */
-    suspend fun duplicateSection(sectionId: String, newTitle: String): Result<HtmlSection> {
-        return try {
+    suspend fun duplicateSection(sectionId: String, newTitle: String): Result<HtmlSection> = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val originalEntity = dao.getSectionById(sectionId)
             if (originalEntity != null) {
                 val original = originalEntity.toDomain()

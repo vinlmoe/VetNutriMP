@@ -34,6 +34,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.LruMap
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -64,7 +65,9 @@ class DatabaseFoodRepository(
 
     // Flow réactif pour notifier les changements
     private val _foodsFlow = MutableStateFlow<List<AlimentEv>>(emptyList())
-    private val coroutineScope = CoroutineScope(AppDispatchers.Main)
+    // Portée de vie de l'application (singleton d'AppContainer) ; travail en IO,
+    // un échec isolé ne doit pas annuler les rafraîchissements suivants.
+    private val coroutineScope = CoroutineScope(SupervisorJob() + AppDispatchers.IO)
 
     // Cache en mémoire pour les aliments avec métadonnées améliorées
     private var cachedFoods: List<AlimentEv>? = null
