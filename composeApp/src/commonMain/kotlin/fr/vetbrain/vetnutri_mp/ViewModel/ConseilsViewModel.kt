@@ -21,7 +21,7 @@ class ConseilsViewModel(
     private val _conseils = MutableStateFlow<List<HtmlSection>>(emptyList())
     val conseils: StateFlow<List<HtmlSection>> = _conseils.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
+    private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
@@ -32,10 +32,6 @@ class ConseilsViewModel(
 
     var selectedCategory by mutableStateOf<SectionCategory?>(null)
         private set
-
-    init {
-        loadConseils()
-    }
 
     fun loadConseils() {
         coroutineScope.launch {
@@ -153,5 +149,37 @@ class ConseilsViewModel(
 
     fun clearError() {
         _error.value = null
+    }
+
+    private val _templates = MutableStateFlow<List<HtmlSection>>(emptyList())
+    val templates: StateFlow<List<HtmlSection>> = _templates.asStateFlow()
+
+    private val _templatesLoading = MutableStateFlow(false)
+    val templatesLoading: StateFlow<Boolean> = _templatesLoading.asStateFlow()
+
+    fun loadTemplates() {
+        coroutineScope.launch {
+            _templatesLoading.value = true
+            try {
+                conseilRepository.getTemplatesConseils()
+                        .onSuccess { _templates.value = it }
+                        .onFailure { _error.value = "Erreur: ${it.message}" }
+            } finally {
+                _templatesLoading.value = false
+            }
+        }
+    }
+
+    /** Crée un conseil à partir d'un modèle puis le transmet à [onCreated] (ouverture en édition). */
+    fun createFromTemplate(template: HtmlSection, onCreated: (HtmlSection) -> Unit) {
+        coroutineScope.launch {
+            conseilRepository
+                    .creerConseilDepuisTemplate(templateId = template.id, titre = template.title)
+                    .onSuccess { nouveau ->
+                        _conseils.value = _conseils.value + nouveau
+                        onCreated(nouveau)
+                    }
+                    .onFailure { _error.value = "Erreur: ${it.message}" }
+        }
     }
 }

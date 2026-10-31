@@ -762,4 +762,89 @@ class SettingsViewModel(
             onResult(result)
         }
     }
+
+    // ---------------------------------------------------------------------------------
+    // Export d'un animal complet (fichier ou partage en ligne)
+    // ---------------------------------------------------------------------------------
+
+    private fun animalExportRepository(
+            fallbackEquationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository,
+            fallbackRecipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository,
+            fallbackConseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+    ) =
+            fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
+                    animalRepository = animalRepository,
+                    foodRepository = foodRepository,
+                    equationRepository = equationRepository ?: fallbackEquationRepository,
+                    referenceRepository = referenceEvRepository,
+                    biblioRepository = biblioRefRepository,
+                    consultationRepository = consultationRepository,
+                    recipeRepository = recipeRepository ?: fallbackRecipeRepository,
+                    conseilRepository = conseilRepository ?: fallbackConseilRepository
+            )
+
+    /**
+     * Sélection d'export d'un animal : l'animal, les aliments de ses rations, les référentiels
+     * de ses consultations et les équations de ces référentiels (les références
+     * bibliographiques liées suivent automatiquement).
+     */
+    private suspend fun animalExportSelection(
+            animal: fr.vetbrain.vetnutri_mp.Data.AnimalEv
+    ): fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ExportSelectionOptions =
+            withContext(AppDispatchers.IO) {
+                val foodIds = mutableSetOf<String>()
+                val referenceIds = mutableSetOf<String>()
+                val equationIds = mutableSetOf<String>()
+                animal.consultations.forEach { consultation ->
+                    consultation.rations.forEach { ration ->
+                        ration.alimentMutableList.forEach { alimentRation ->
+                            alimentRation.refAlimUnif?.takeIf { it.isNotBlank() }?.let { foodIds.add(it) }
+                            alimentRation.aliment?.uuid?.takeIf { it.isNotBlank() }?.let { foodIds.add(it) }
+                        }
+                    }
+                    val refs = listOfNotNull(consultation.referenceGeneraleId) + consultation.referencesMaladies
+                    refs.forEach { refId ->
+                        referenceIds.add(refId)
+                        referenceEvRepository?.getReferenceEvById(refId)
+                                ?.obtenirToutesEquations()
+                                ?.forEach { equation -> equationIds.add(equation.uuid) }
+                    }
+                }
+                fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ExportSelectionOptions(
+                        includeAnimals = true,
+                        includeFoods = true,
+                        includeRations = true,
+                        includeRecipes = false,
+                        includeEquations = true,
+                        includeConseils = false,
+                        animalIds = setOf(animal.uuid),
+                        foodIds = foodIds,
+                        referenceIds = referenceIds,
+                        equationIds = equationIds
+                )
+            }
+
+    /** Enveloppe d'export complète d'un animal (export fichier). */
+    suspend fun exportAnimalEnvelope(
+            animal: fr.vetbrain.vetnutri_mp.Data.AnimalEv,
+            fallbackEquationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository,
+            fallbackRecipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository,
+            fallbackConseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+    ): fr.vetbrain.vetnutri_mp.Data.ApiEnvelope =
+            animalExportRepository(fallbackEquationRepository, fallbackRecipeRepository, fallbackConseilRepository)
+                    .exportWithSelectionEnvelope(animalExportSelection(animal))
+
+    /** JSON d'export complet d'un animal (partage en ligne). */
+    suspend fun exportAnimalJson(
+            animal: fr.vetbrain.vetnutri_mp.Data.AnimalEv,
+            fallbackEquationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository,
+            fallbackRecipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository,
+            fallbackConseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+    ): String =
+            animalExportRepository(fallbackEquationRepository, fallbackRecipeRepository, fallbackConseilRepository)
+                    .exportWithSelection(animalExportSelection(animal))
+
+    /** Relit un animal en base (ex. pour obtenir un jsonbinId à jour). */
+    suspend fun reloadAnimal(uuid: String): fr.vetbrain.vetnutri_mp.Data.AnimalEv? =
+            withContext(AppDispatchers.IO) { animalRepository.getAnimalById(uuid) }
 }

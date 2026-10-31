@@ -310,14 +310,22 @@ fun App(appDatabase: AppDatabase) {
         preferencesRepository = preferencesRepository
     )
 
+    val startupViewModel = remember {
+        fr.vetbrain.vetnutri_mp.ViewModel.StartupViewModel(
+            foodRepository = settingsViewModel.foodRepository,
+            animalRepository = settingsViewModel.animalRepository,
+            referenceRepository = databaseReferenceEvRepository,
+            conseilRepository = settingsViewModel.conseilRepository
+        )
+    }
+
     VetNutriTheme {
         Box(modifier = Modifier.fillMaxSize().imePadding()) {
             when {
                 showStartupScreen -> StartupScreen(
-                    referenceRepository = databaseReferenceEvRepository,
+                    startupViewModel = startupViewModel,
                     settingsViewModel = settingsViewModel,
                     onDatabaseReady = { showStartupScreen = false },
-                    conseilRepository = settingsViewModel.conseilRepository,
                     onShowBackupDialog = { showStartupBackupDialog = true },
                     onStartExam = { session -> examSession = session },
                     findRecoveryBackup = { startupService.findRecoveryBackup() },
