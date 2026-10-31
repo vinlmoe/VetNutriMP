@@ -51,6 +51,14 @@ fun AppConsultationDetailView(
         var showWeightError by remember(consultation) { mutableStateOf(false) }
         var dateErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
         var weightErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
+        var showRefGeneraleMenu by remember(consultation) { mutableStateOf(false) }
+        var showRefMaladieMenu by remember(consultation) { mutableStateOf(false) }
+        val referencesGenerales = remember(availableReferences) {
+                availableReferences.filter { !it.maladie }.sortedBy { it.nom.lowercase() }
+        }
+        val referencesMaladiesDisponibles = remember(availableReferences) {
+                availableReferences.filter { it.maladie }.sortedBy { it.nom.lowercase() }
+        }
 
         // Collecter les valeurs métaboliques calculées depuis le ViewModel
         val poidsMetabolique by
@@ -634,25 +642,43 @@ fun AppConsultationDetailView(
                                                         value =
                                                                 editedConsultation
                                                                         .referenceGeneraleId
+                                                                        ?.takeIf { it.isNotBlank() }
+                                                                        ?.let { getReferenceNameById(it, availableReferences) }
                                                                         ?: ConsultationEdit.REF_GENERAL_NONE.translate(),
                                                         onValueChange = {},
                                                         label = { Text(ConsultationEdit.REF_GENERAL_SUBTITLE.translate()) },
                                                         readOnly = true,
                                                         modifier = Modifier.fillMaxWidth(),
                                                         trailingIcon = {
+                                                                Box {
                                                                 IconButton(
-                                                                        onClick = {
-                                                                                // TODO: Ouvrir le
-                                                                                // sélecteur
-                                                                                // de
-                                                                                // références
-                                                                        }
+                                                                        onClick = { showRefGeneraleMenu = true }
                                                                 ) {
                                                                         Icon(
                                                                                 AppIcons.ArrowDropDown,
                                                                                 contentDescription =
                                                                                         ConsultationEdit.REF_SELECT_TOOLTIP.translate()
                                                                         )
+                                                                }
+                                                                DropdownMenu(
+                                                                        expanded = showRefGeneraleMenu,
+                                                                        onDismissRequest = { showRefGeneraleMenu = false }
+                                                                ) {
+                                                                        DropdownMenuItem(
+                                                                                onClick = {
+                                                                                        editedConsultation = editedConsultation.copy(referenceGeneraleId = null)
+                                                                                        showRefGeneraleMenu = false
+                                                                                }
+                                                                        ) { Text(ConsultationEdit.REF_GENERAL_NONE.translate()) }
+                                                                        referencesGenerales.forEach { reference ->
+                                                                                DropdownMenuItem(
+                                                                                        onClick = {
+                                                                                                editedConsultation = editedConsultation.copy(referenceGeneraleId = reference.uuid)
+                                                                                                showRefGeneraleMenu = false
+                                                                                        }
+                                                                                ) { Text(reference.nom) }
+                                                                        }
+                                                                }
                                                                 }
                                                         }
                                                 )
@@ -714,7 +740,7 @@ fun AppConsultationDetailView(
                                                                                 ) {
                                                                                         Text(
                                                                                                 text =
-                                                                                                        translate("consultationDetail.referenceIdFormat", referenceId),
+                                                                                                        translate("consultationDetail.referenceIdFormat", getReferenceNameById(referenceId, availableReferences)),
                                                                                                 style =
                                                                                                         MaterialTheme
                                                                                                                 .typography
@@ -726,10 +752,12 @@ fun AppConsultationDetailView(
                                                                                         )
                                                                                         IconButton(
                                                                                                 onClick = {
-                                                                                                        editedConsultation
-                                                                                                                .supprimerReferenceMaladie(
-                                                                                                                        referenceId
-                                                                                                                )
+                                                                                                        // Copie : muter la liste en place ne déclenchait pas de recomposition
+                                                                                                        editedConsultation = editedConsultation.copy(
+                                                                                                                referencesMaladies = editedConsultation.referencesMaladies
+                                                                                                                        .filter { it != referenceId }
+                                                                                                                        .toMutableList()
+                                                                                                        )
                                                                                                 }
                                                                                         ) {
                                                                                                 Icon(
@@ -746,13 +774,35 @@ fun AppConsultationDetailView(
                                                 }
 
                                                 // Bouton pour ajouter une référence complémentaire
+                                                Box(modifier = Modifier.fillMaxWidth()) {
+                                                DropdownMenu(
+                                                        expanded = showRefMaladieMenu,
+                                                        onDismissRequest = { showRefMaladieMenu = false }
+                                                ) {
+                                                        val choix = referencesMaladiesDisponibles.filter {
+                                                                it.uuid !in editedConsultation.referencesMaladies
+                                                        }
+                                                        if (choix.isEmpty()) {
+                                                                DropdownMenuItem(
+                                                                        onClick = { showRefMaladieMenu = false },
+                                                                        enabled = false
+                                                                ) { Text(translate("consultationDetail.noComplementaryReference")) }
+                                                        }
+                                                        choix.forEach { reference ->
+                                                                DropdownMenuItem(
+                                                                        onClick = {
+                                                                                editedConsultation = editedConsultation.copy(
+                                                                                        referencesMaladies = (editedConsultation.referencesMaladies + reference.uuid)
+                                                                                                .distinct()
+                                                                                                .toMutableList()
+                                                                                )
+                                                                                showRefMaladieMenu = false
+                                                                        }
+                                                                ) { Text(reference.nom) }
+                                                        }
+                                                }
                                                 OutlinedButton(
-                                                        onClick = {
-                                                                // TODO: Ouvrir le sélecteur de
-                                                                // références
-                                                                // de
-                                                                // maladies
-                                                        },
+                                                        onClick = { showRefMaladieMenu = true },
                                                         modifier = Modifier.fillMaxWidth(),
                                                         colors =
                                                                 ButtonDefaults.outlinedButtonColors(
@@ -777,6 +827,7 @@ fun AppConsultationDetailView(
                                                                         )
                                                         )
                                                         Text(ConsultationEdit.REF_ADD_DISEASE.translate())
+                                                }
                                                 }
                                         } else {
                                                 // Mode affichage des références pour consultation

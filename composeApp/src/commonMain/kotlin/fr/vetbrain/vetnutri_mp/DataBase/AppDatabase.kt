@@ -223,25 +223,6 @@ suspend fun AppDatabase.checkIntegrity(): Boolean = withContext(AppDispatchers.I
 }
 
 /**
- * TODO: Implémenter une stratégie de sauvegarde automatique
- *
- * Cette fonction devrait être appelée périodiquement pour sauvegarder les données importantes de
- * l'utilisateur.
- */
-fun createDatabaseBackup(database: AppDatabase): Boolean {
-    return try {
-        // TODO: Implémenter l'export JSON des données critiques
-        // - Exporter tous les animaux avec leurs consultations
-        // - Exporter les rations personnalisées
-        // - Exporter les références nutritionnelles custom
-        true
-    } catch (e: Exception) {
-        e.rethrowIfCancellation()
-        false
-    }
-}
-
-/**
  * Migration sécurisée de la version 17 à 18
  *
  * Cette migration teste notre système de montée de version sans destruction de données. Aucune

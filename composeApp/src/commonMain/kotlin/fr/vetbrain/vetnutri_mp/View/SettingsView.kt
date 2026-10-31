@@ -3236,8 +3236,10 @@ private fun PreferencesContentSimplified(modifier: Modifier = Modifier) {
                                                         ?: fr.vetbrain.vetnutri_mp.Enumer
                                                                 .TypeExpressionBesoin.DEFAULT,
                                         onExpressionTypeChanged = { newType ->
+                                                // Repli sans PreferencesStorage disponible : le choix
+                                                // ne vaut que pour la session (la persistance est
+                                                // assurée par PreferencesContentWithPersistence).
                                                 speciesExpressionTypes[espece] = newType
-                                                // TODO: Sauvegarder dans PreferencesStorage
                                         }
                                 )
                         }

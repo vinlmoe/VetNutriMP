@@ -215,8 +215,21 @@ fun ConseilsPersonnalisesView(
                 conseilRepository = conseilRepository,
                 onDismiss = { showTemplates = false },
                 onSelectTemplate = { template ->
-                    // TODO: Créer un conseil à partir du template
                     showTemplates = false
+                    scope.launch {
+                        conseilRepository
+                                .creerConseilDepuisTemplate(
+                                        templateId = template.id,
+                                        titre = template.title
+                                )
+                                .onSuccess { nouveau ->
+                                    conseils = conseils + nouveau
+                                    onEditConseil(nouveau.id)
+                                }
+                                .onFailure { e ->
+                                    AppLog.e("ConseilsPersonnalisesView", "Création depuis le modèle impossible", e)
+                                }
+                    }
                 }
         )
     }

@@ -66,8 +66,7 @@ data class AlimentConstraint(
 /** Paramètres de l'algorithme d'ajustement */
 data class AdjustmentParams(
         val toleranceGrams: Double = 0.1,
-        val roundTo: Double = 0.1,
-        val energyLastRebalance: Boolean = true
+        val roundTo: Double = 0.1
 )
 
 /** La cellulose est ajustée à un objectif clinique de cinq fois le besoin de référence. */
@@ -1418,19 +1417,8 @@ suspend fun calculerAjustement(
                         }
                 }
 
-                // Rééquilibrage énergie final désactivé car l'énergie est maintenant traitée comme
-                // les
-                // autres nutriments
-                // L'énergie est ajustée dans la boucle principale des nutriments
-                /*
-                /*
-                // Code commenté pour éviter les erreurs de compilation
-                // TODO: Implémenter la logique d'ajustement énergétique final
-                if (params.energyLastRebalance) {
-                    // Logique d'ajustement énergétique final à implémenter
-                }
-                */
-                */
+                // Pas de rééquilibrage énergétique final : l'énergie est ajustée dans la boucle
+                // principale, comme les autres nutriments.
 
                 // TROISIÈME ÉTAPE : Ajustement final du ratio CAP après tous les ajustements
                 val calciumSelectionne: Boolean = remainingAdjustmentData.any { it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked }

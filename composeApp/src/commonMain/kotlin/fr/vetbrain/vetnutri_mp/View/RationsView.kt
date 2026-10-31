@@ -1757,8 +1757,6 @@ fun RationsView(
                                 }
                         }
 
-                        // TODO: Réimplémentez les dialogues d'édition ici quand nécessaire
-
                         // Afficher le dialogue d'édition de ration si nécessaire
                         // Plan évolutif : nouvelle étape sous une ration
                         parentNouvelleEtape?.let { parent ->
