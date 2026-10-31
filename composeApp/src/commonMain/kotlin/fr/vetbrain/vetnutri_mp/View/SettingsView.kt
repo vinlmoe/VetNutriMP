@@ -239,6 +239,7 @@ fun SettingsView(
                                 }
                                 1 -> { // Préférences
                                         PreferencesSection(
+                                                preferencesRepository = viewModel.preferencesRepository,
                                                 modifier = Modifier.fillMaxWidth(),
                                                 onSpeciesClick = onSpeciesClick
                                         )
@@ -2684,26 +2685,11 @@ enum class SettingsSection(val title: String) {
 /** Composant pour la section des préférences */
 @Composable
 private fun PreferencesSection(
+        preferencesRepository: fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository?,
         modifier: Modifier = Modifier,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {}
 ) {
-        // Créer l'instance PreferencesStorage pour Desktop
-        val preferencesStorage = remember {
-                try {
-                        // Utiliser la fonction helper createPreferencesStorage
-                        fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage()
-                } catch (e: Exception) {
-                        e.rethrowIfCancellation()
-                        null
-                }
-        }
-
-        if (preferencesStorage != null) {
-                // Créer le repository des préférences
-                val preferencesRepository = remember {
-                        fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository(preferencesStorage)
-                }
-
+        if (preferencesRepository != null) {
                 // Utiliser le vrai système de persistance
                 PreferencesContentWithPersistence(
                         preferencesRepository = preferencesRepository,

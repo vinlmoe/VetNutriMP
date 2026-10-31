@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
 import fr.vetbrain.vetnutri_mp.Utils.orUserError
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Components.BufferedNumberTextField
@@ -200,7 +201,11 @@ fun CrossConsultationGradingView(
                 ) { Text(translate("auto.view.crossconsultationgradingview.sauver_regles")) }
             }
 
-            TabRow(selectedTabIndex = selectedStep.ordinal) {
+            AdaptiveTabRow(
+                tabCount = GradingWorkflowStep.entries.size,
+                selectedTabIndex = selectedStep.ordinal,
+                backgroundColor = MaterialTheme.colors.primary
+            ) {
                 GradingWorkflowStep.entries.forEach { step ->
                     Tab(
                         selected = selectedStep == step,

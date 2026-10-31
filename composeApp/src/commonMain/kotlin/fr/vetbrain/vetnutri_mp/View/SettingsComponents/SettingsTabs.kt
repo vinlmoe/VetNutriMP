@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.SettingsComponents
 
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
@@ -67,8 +68,9 @@ fun SettingsTabs(
 
     Column(modifier = modifier) {
         // Navigation par onglets avec animations
-        TabRow(
+        AdaptiveTabRow(
                 selectedTabIndex = selectedTab,
+                tabCount = tabs.size,
                 backgroundColor = MaterialTheme.colors.surface,
                 contentColor = VetNutriColors.Primary
         ) {
@@ -89,6 +91,8 @@ fun SettingsTabs(
                         modifier = Modifier.padding(vertical = 8.dp).scale(scale)
                 ) {
                     Row(
+                            // Marge latérale : en mode défilant, les onglets ne se touchent pas
+                            modifier = Modifier.padding(horizontal = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {

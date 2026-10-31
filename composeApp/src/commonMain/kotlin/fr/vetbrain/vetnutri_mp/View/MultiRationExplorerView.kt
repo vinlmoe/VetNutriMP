@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -167,7 +168,7 @@ private fun PanneauConfiguration(viewModel: MultiRationViewModel, modifier: Modi
                     }
                 }
             }
-            TabRow(selectedTabIndex = onglet, backgroundColor = Color.White) {
+            AdaptiveTabRow(tabCount = 4, selectedTabIndex = onglet, backgroundColor = Color.White) {
                 listOf("Animaux", "Ingrédients", "Options", "Enregistrées").forEachIndexed { i, titre ->
                     Tab(selected = onglet == i, onClick = { onglet = i }, text = { Text(titre, fontSize = 13.sp) })
                 }

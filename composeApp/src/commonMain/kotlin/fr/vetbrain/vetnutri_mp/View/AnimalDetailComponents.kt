@@ -48,12 +48,20 @@ fun InfoRow(label: String, value: String) {
                 modifier = Modifier.fillMaxWidth().padding(vertical = AppSizes.paddingXSmall),
                 horizontalArrangement = Arrangement.Start
         ) {
+                // Étiquette atténuée et décollée de la valeur, même pour « Date de naissance »
                 Text(
                         text = "$label :",
                         style = MaterialTheme.typography.subtitle1,
-                        modifier = Modifier.width(AppSizes.textFieldHeight.times(2.7f))
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                        modifier =
+                                Modifier.width(AppSizes.textFieldHeight.times(3.2f))
+                                        .padding(end = AppSizes.paddingSmall)
                 )
-                Text(text = value, style = MaterialTheme.typography.body1)
+                Text(
+                        text = value,
+                        style = MaterialTheme.typography.body1,
+                        modifier = Modifier.weight(1f)
+                )
         }
 }
 

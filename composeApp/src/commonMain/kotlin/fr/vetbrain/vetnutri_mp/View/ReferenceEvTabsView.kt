@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -89,8 +90,9 @@ fun ReferenceEvTabsView(
     val content: @Composable (PaddingValues) -> Unit = { paddingValues ->
         Column(modifier = modifier.fillMaxSize().padding(paddingValues)) {
             // Barre d'onglets
-            TabRow(
+            AdaptiveTabRow(
                     selectedTabIndex = selectedTabIndex,
+                    tabCount = tabs.size,
                     backgroundColor = MaterialTheme.colors.surface,
                     contentColor = VetNutriColors.Primary
             ) {

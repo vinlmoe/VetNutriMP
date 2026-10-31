@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -148,8 +149,9 @@ fun CalculationTabsView(
                         contentColor = VetNutriColors.OnPrimary
                 )
 
-                TabRow(
+                AdaptiveTabRow(
                         selectedTabIndex = selectedTab,
+                        tabCount = 4,
                         backgroundColor = VetNutriColors.Primary,
                         contentColor = VetNutriColors.OnPrimary
                 ) {

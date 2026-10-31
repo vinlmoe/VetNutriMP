@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontStyle
 import fr.vetbrain.vetnutri_mp.Components.IconWithTooltip
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.input.KeyboardType
@@ -60,13 +61,10 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
-import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
-import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.normalizeDecimalInput
 import fr.vetbrain.vetnutri_mp.Utils.parsePositiveDecimal
 import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseNutritionnelleCard
@@ -276,14 +274,8 @@ fun RationsView(
                         RationAnalysisCalculations.calculerCoefficientGlobal(consultationAnalysee)
                 }
 
-        // Système de préférences pour le filtrage des nutriments
-        val preferencesStorage: PreferencesStorage = remember { createPreferencesStorage() }
-        val preferencesRepository: PreferencesRepository = remember { PreferencesRepository(preferencesStorage) }
-        var preferencesApplication by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null) }
-        LaunchedEffect(Unit) {
-                preferencesRepository.loadPreferences()
-                preferencesApplication = preferencesRepository.preferences
-        }
+        // Préférences partagées (filtrage des nutriments, mode d'affichage), chargées par le ViewModel
+        val preferencesApplication by viewModel.preferences.collectAsState()
 
         // Énergie additionnelle issue des références maladies (calculée dans le ViewModel)
         val energieAdditionnelle by viewModel.energieAdditionnelle.collectAsState()
@@ -789,9 +781,16 @@ fun RationsView(
                 Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                         if (selectedConsultation == null) {
                                 Box(
-                                        modifier = Modifier.fillMaxSize(),
+                                        modifier =
+                                                Modifier.fillMaxSize()
+                                                        .padding(AppSizes.paddingLarge),
                                         contentAlignment = Alignment.Center
-                                ) { Text(translate(Consultation.SELECT_HINT)) }
+                                ) {
+                                        Text(
+                                                translate(Consultation.SELECT_HINT),
+                                                textAlign = TextAlign.Center
+                                        )
+                                }
                         } else {
                                 // En-tête avec nom de la consultation
                                 Card(
@@ -1214,8 +1213,8 @@ fun RationsView(
                                                                                                 true
                                                                                 },
                                                                                 animal = animal,
-                                                                                preferencesRepository =
-                                                                                        preferencesRepository,
+                                                                                preferences =
+                                                                                        preferencesApplication,
                                                                                 equationRepository =
                                                                                         equationRepository,
                                                                         // Utiliser les préférences
@@ -1353,8 +1352,17 @@ fun RationsView(
                                 // ... le reste du contenu de la vue ...
                         }
 
-                        // Contenu principal - grille 2x2 de cartes (colonnes fixes 50/50)
-                        Box(modifier = Modifier.weight(1f)) {
+                        // Contenu principal - grille 2x2 de cartes (colonnes fixes 50/50).
+                        // Sans consultation, seules des cartes vides seraient affichées : le
+                        // message de sélection suffit (et la grille serait illisible sur téléphone)
+                        if (selectedConsultation != null) Box(
+                                modifier =
+                                        Modifier.weight(1f)
+                                                .padding(
+                                                        horizontal = AppSizes.paddingMedium,
+                                                        vertical = AppSizes.paddingSmall
+                                                )
+                        ) {
                                 Row(
                                         modifier = Modifier.fillMaxSize(),
                                         horizontalArrangement =
@@ -1657,8 +1665,8 @@ fun RationsView(
                                                                                         true
                                                                         },
                                                                         animal = animal,
-                                                                        preferencesRepository =
-                                                                                preferencesRepository,
+                                                                        preferences =
+                                                                                preferencesApplication,
                                                                         equationRepository =
                                                                                 equationRepository,
                                                                         typeExpressionBesoin =
@@ -1895,7 +1903,7 @@ fun RationsView(
                                 besoinEnergetiqueCible = besoinEnergetiqueTotal,
                                 poidsAnimal = poidsEffectif,
                                 espece = animal?.getEspece() ?: Espece.CHIEN,
-                                preferencesStorage = preferencesStorage,
+                                preferences = preferencesApplication,
                                 equationRepository = equationRepository,
                                 referencesMaladies = referencesMaladiesResolues,
                                 onDismiss = {
@@ -1909,7 +1917,10 @@ fun RationsView(
                 if (showMultiNutrientAdjustmentDialog &&
                                 selectedRation != null &&
                                 referenceUtilisee != null &&
-                                besoinEnergetiqueTotal != null
+                                besoinEnergetiqueTotal != null &&
+                                // Lu plus bas avec !! : sans ce test, plantage tant que le BEE
+                                // n'est pas calculé
+                                besoinEnergetiqueStandard != null
                 ) {
                         val ration = selectedRation!!
                         val reference = referenceUtilisee!!

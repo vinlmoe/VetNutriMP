@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.layout.*
@@ -417,8 +418,9 @@ fun FoodEditView(
                         }
 
                         // Onglets
-                        TabRow(
+                        AdaptiveTabRow(
                                 selectedTabIndex = selectedTabIndex,
+                                tabCount = tabTitles.size,
                                 backgroundColor = MaterialTheme.colors.surface,
                                 contentColor = VetNutriColors.Primary
                         ) {

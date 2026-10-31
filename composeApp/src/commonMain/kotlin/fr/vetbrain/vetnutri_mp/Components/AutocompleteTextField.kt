@@ -114,7 +114,8 @@ fun <T> AutocompleteTextField(
                         isError = isError,
                         colors = TextFieldDefaults.outlinedTextFieldColors(
                                 focusedBorderColor = VetNutriColors.Primary,
-                                unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                                // Bordure des OutlinedTextField standard : 0,12 faisait paraître le champ désactivé
+                                unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = ContentAlpha.disabled),
                                 errorBorderColor = MaterialTheme.colors.error
                         )
                 )

@@ -45,10 +45,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
-import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import io.github.koalaplot.core.bar.BulletGraphs
 import io.github.koalaplot.core.bar.FixedFraction
@@ -114,27 +112,17 @@ fun NutrientDetailDialog(
         besoinEnergetiqueCible: Double? = besoinEnergetiqueEntretien,
         poidsAnimal: Double?,
         espece: Espece,
-        preferencesStorage: PreferencesStorage,
+        preferences: PreferencesApplication?,
         equationRepository: EquationRepository? = null,
         referencesMaladies: List<ReferenceEv> = emptyList(),
         onDismiss: () -> Unit
 ) {
-        // Récupération des préférences de l'espèce (mode d'affichage uniquement)
-        val preferencesRepo = remember { PreferencesRepository(preferencesStorage) }
-        var typeExpressionBesoin by remember { mutableStateOf(TypeExpressionBesoin.DEFAULT) }
-
-        LaunchedEffect(espece) {
-                try {
-                        // IMPORTANT: Charger les préférences depuis le stockage avant de les
-                        // utiliser
-                        preferencesRepo.loadPreferences()
-                        val preferences = preferencesRepo.getPreferencesForSpecies(espece)
-                        typeExpressionBesoin = preferences.getTypeExpressionBesoinEnum()
-                } catch (e: Exception) {
-                        e.rethrowIfCancellation()
-                        typeExpressionBesoin = TypeExpressionBesoin.DEFAULT
+        // Mode d'affichage de l'espèce, tiré des préférences déjà chargées par le ViewModel
+        val typeExpressionBesoin =
+                remember(preferences, espece) {
+                        preferences?.getPreferencesEspece(espece)?.getTypeExpressionBesoinEnum()
+                                ?: TypeExpressionBesoin.DEFAULT
                 }
-        }
 
         AlertDialog(
                 modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
@@ -274,7 +262,6 @@ fun NutrientDetailDialog(
                                                         valeurNutritionnelle = valeurNutritionnelle,
                                                         referenceUtilisee = referenceUtilisee,
                                                         espece = espece,
-                                                        preferencesRepo = preferencesRepo,
                                                         equationRepository = equationRepository
                                                 )
                                         }
@@ -734,7 +721,6 @@ private fun ContributionsList(
         valeurNutritionnelle: ValeurNutritionnelle,
         referenceUtilisee: ReferenceEv?,
         espece: Espece,
-        preferencesRepo: PreferencesRepository,
         equationRepository: EquationRepository?
 ) {
         Text(
@@ -855,7 +841,6 @@ private fun ContributionsList(
                                         alimentRation = data.alimentRation,
                                         valeurNutritionnelle = valeurNutritionnelle,
                                         espece = espece,
-                                        preferencesRepo = preferencesRepo,
                                         equationRepository = equationRepository,
                                         referenceUtilisee = referenceUtilisee,
                                         contributionAbsolue = data.contributionAbsolue,
@@ -958,7 +943,6 @@ private fun ContributionItem(
         alimentRation: fr.vetbrain.vetnutri_mp.Data.AlimentRation,
         valeurNutritionnelle: ValeurNutritionnelle,
         espece: Espece,
-        preferencesRepo: PreferencesRepository,
         equationRepository: EquationRepository?,
         referenceUtilisee: ReferenceEv?,
         contributionAbsolue: Double,

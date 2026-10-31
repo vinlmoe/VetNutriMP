@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -157,8 +158,9 @@ fun BulkReferenceEditorView(
 
             // --- Onglets niveaux ---
             val levelIndex = LEVELS.indexOf(selectedLevel).coerceAtLeast(0)
-            TabRow(
+            AdaptiveTabRow(
                     selectedTabIndex = levelIndex,
+                    tabCount = LEVELS.size,
                     backgroundColor = MaterialTheme.colors.surface,
                     contentColor = VetNutriColors.Primary
             ) {

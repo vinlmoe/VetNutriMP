@@ -157,25 +157,15 @@ private fun ConsultationsMainView(
         )
     }
 
-    Scaffold(
-            floatingActionButton = {
-                FloatingActionButton(
-                        onClick = { viewModel.createNewConsultationFullScreen() },
-                        backgroundColor = VetNutriColors.Primary
-                ) {
-                    Icon(
-                            imageVector = AppIcons.Add,
-                            contentDescription = translate(Consultation.ADD),
-                            tint = VetNutriColors.OnPrimary
-                    )
-                }
-            }
-    ) { paddingValues ->
-        Row(modifier = modifier.fillMaxSize().padding(paddingValues)) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        // Téléphone : la liste occupe tout l'écran, le détail la remplace une fois ouvert
+        val isCompact = maxWidth < AppSizes.breakpointCompact
+        val showDetailOnly = isCompact && showConsultationDetail && selectedConsultation != null
+
+        val listePane: @Composable (Modifier) -> Unit = { paneModifier ->
             // Liste des consultations
             Column(
-                    modifier =
-                            Modifier.weight(0.4f).fillMaxHeight().padding(AppSizes.paddingMedium),
+                    modifier = paneModifier.fillMaxHeight().padding(AppSizes.paddingMedium),
                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
             ) {
                 // FAB remplace le bouton d'ajout; laisser l'espace entête
@@ -237,16 +227,12 @@ private fun ConsultationsMainView(
                     }
                 }
             }
+        }
 
-            // Séparateur vertical
-            Divider(
-                    modifier = Modifier.fillMaxHeight().width(AppSizes.dividerWidth),
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
-            )
-
+        val detailPane: @Composable (Modifier) -> Unit = { paneModifier ->
             // Détail de la consultation
             if (showConsultationDetail) {
-                Box(modifier = Modifier.weight(0.6f).fillMaxHeight()) {
+                Box(modifier = paneModifier.fillMaxHeight()) {
                     selectedConsultation?.let { consultation ->
                         val availableReferences by viewModel.availableReferences.collectAsState()
 
@@ -295,8 +281,42 @@ private fun ConsultationsMainView(
                 // Message indiquant de sélectionner une consultation
                 CenteredMessage(
                         message = translate(Consultation.SELECT_DETAIL_HINT),
-                        modifier = Modifier.weight(0.6f).fillMaxHeight()
+                        modifier = paneModifier.fillMaxHeight()
                 )
+            }
+        }
+
+        Scaffold(
+                floatingActionButton = {
+                    if (!showDetailOnly) {
+                        FloatingActionButton(
+                                onClick = { viewModel.createNewConsultationFullScreen() },
+                                backgroundColor = VetNutriColors.Primary
+                        ) {
+                            Icon(
+                                    imageVector = AppIcons.Add,
+                                    contentDescription = translate(Consultation.ADD),
+                                    tint = VetNutriColors.OnPrimary
+                            )
+                        }
+                    }
+                }
+        ) { paddingValues ->
+            val contentModifier = Modifier.fillMaxSize().padding(paddingValues)
+            when {
+                showDetailOnly -> Box(contentModifier) { detailPane(Modifier.fillMaxWidth()) }
+                isCompact -> Box(contentModifier) { listePane(Modifier.fillMaxWidth()) }
+                else -> Row(modifier = contentModifier) {
+                    listePane(Modifier.weight(0.4f))
+
+                    // Séparateur vertical
+                    Divider(
+                            modifier = Modifier.fillMaxHeight().width(AppSizes.dividerWidth),
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
+                    )
+
+                    detailPane(Modifier.weight(0.6f))
+                }
             }
         }
     }

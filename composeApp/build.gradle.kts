@@ -186,21 +186,27 @@ kotlin.sourceSets["commonMain"].kotlin
     .srcDir(generateSecrets.map { it.outputs.files })
 
 // ---------------------------------------------------------------------------
-// Données initiales : source unique dans src/commonMain/resources/data.
+// Données initiales et traductions : source unique dans src/commonMain/resources.
 // Android les lit dans ses assets, iOS dans le bundle Xcode : les copies sont
 // produites ici au build au lieu d'être maintenues à la main.
 // ---------------------------------------------------------------------------
-val initialDataFile = layout.projectDirectory.file("src/commonMain/resources/data/vetnutri_export_init.json")
+val commonResourcesDir = layout.projectDirectory.dir("src/commonMain/resources")
+val initialDataFile = commonResourcesDir.file("data/vetnutri_export_init.json")
 val initialDataAndroidAssetsDir = layout.buildDirectory.dir("generated/initialDataAssets").get().asFile
 
 val syncInitialDataAndroidAssets by tasks.registering(Sync::class) {
-    from(initialDataFile)
-    into(File(initialDataAndroidAssetsDir, "data"))
+    from(initialDataFile) { into("data") }
+    from(commonResourcesDir) { include("strings_*.json") }
+    into(initialDataAndroidAssetsDir)
 }
 
+// Langues proposées par l'application et référencées dans le projet Xcode
+val iosStringsFiles = listOf("strings_fr.json", "strings_en.json", "strings_zh.json")
+
 val syncInitialDataIos by tasks.registering(Copy::class) {
-    description = "Copie vetnutri_export_init.json dans le bundle de l'app iOS (iosApp/iosApp)."
+    description = "Copie vetnutri_export_init.json et les traductions dans le bundle de l'app iOS (iosApp/iosApp)."
     from(initialDataFile)
+    from(commonResourcesDir) { include(iosStringsFiles) }
     into(rootProject.layout.projectDirectory.dir("iosApp/iosApp"))
 }
 

@@ -584,6 +584,7 @@ private fun SearchBar(
 }
 
 /** Section des filtres */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FiltersSection(
         foods: List<AlimentEv>,
@@ -591,14 +592,13 @@ private fun FiltersSection(
         onFiltersChange: (FoodSearchFilters) -> Unit,
         modifier: Modifier = Modifier
 ) {
-        Column(
-                modifier = modifier,
-                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-        ) {
-                // Première ligne : Type d'aliment et Indications
-                Row(
+        // Deux filtres par ligne, un seul sur téléphone pour que les valeurs restent lisibles
+        BoxWithConstraints(modifier = modifier) {
+                FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        maxItemsInEachRow = if (maxWidth < AppSizes.breakpointCompact) 1 else 2
                 ) {
                         // Type d'aliment
                         Box(modifier = Modifier.weight(1f)) {
@@ -643,13 +643,7 @@ private fun FiltersSection(
                                         borderWidth = 0.5.dp
                                 )
                         }
-                }
 
-                // Deuxième ligne : Espèce et Base de données
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                ) {
                         // Espèce
                         Box(modifier = Modifier.weight(1f)) {
                                 DropdownField(

@@ -90,6 +90,16 @@ class AnimalDetailViewModel(
     private val _animal = MutableStateFlow<AnimalEv?>(null)
     val animal: StateFlow<AnimalEv?> = _animal.asStateFlow()
 
+    /**
+     * Préférences de l'application (praticien, nutriments affichés), partagées avec l'écran
+     * Paramètres : une modification y est visible ici sans recharger. null avant la première lecture.
+     */
+    val preferences: StateFlow<PreferencesApplication?> = preferencesRepository.preferencesFlow
+
+    /** Préférences courantes, lues sur le stockage si ce n'est pas encore fait */
+    suspend fun getLoadedPreferences(): PreferencesApplication =
+            preferencesRepository.getLoadedPreferences()
+
     private val _selectedConsultation = MutableStateFlow<ConsultationEv?>(null)
     val selectedConsultation: StateFlow<ConsultationEv?> = _selectedConsultation.asStateFlow()
 
@@ -295,6 +305,7 @@ class AnimalDetailViewModel(
     init {
         // Démarrer automatiquement l'observation des aliments
         loadAvailableFoods()
+        viewModelScope.launch { getLoadedPreferences() }
     }
 
     /**
@@ -614,8 +625,8 @@ class AnimalDetailViewModel(
 
                 // Si aucune ration n'est sélectionnée mais qu'il y en a dans la consultation, en
                 // sélectionner une
-                if (_selectedRation.value == null && !fullConsultation?.rations.isNullOrEmpty()) {
-                    selectRation(fullConsultation!!.rations.first())
+                if (_selectedRation.value == null) {
+                    fullConsultation?.rations?.firstOrNull()?.let { selectRation(it) }
                 }
             }
 

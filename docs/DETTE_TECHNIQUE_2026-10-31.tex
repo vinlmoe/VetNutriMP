@@ -234,16 +234,77 @@ Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pa
 6 & fait & \code{withContext(IO)} dans 6 Repository ; scopes nommés avec \code{SupervisorJob} ;
            références bibliographiques fictives insérées dans les bases vides supprimées. \\
 7 & partiel & Conseils, écran de démarrage et export d'animal passent par des ViewModels.
-           Restent : le chargement des préférences recréé dans plusieurs vues, et
-           \code{equationRepository} transmis aux fonctions de calcul du domaine
+           \textbf{Préférences} : 12 instances de \code{PreferencesRepository} construites dans les vues
+           (fiche animal, rations, détail de nutriment, carte d'analyse, Paramètres) remplacées par
+           l'instance d'\code{AppContainer}, exposée en \code{StateFlow} par
+           \code{AnimalDetailViewModel}, \code{MultiRationViewModel} et \code{SettingsViewModel} :
+           une préférence enregistrée dans Paramètres est vue sans rechargement (test
+           \code{PreferencesRepositorySharedStateTest}) ; 3 blocs de chargement morts supprimés.
+           Reste : \code{equationRepository} transmis aux fonctions de calcul du domaine
            (\code{getEnergie}, \code{getNutrientWithComplementary}) --- à remplacer par une
            interface de résolution d'équations dédiée. \\
 8 & non fait & Les gros fichiers contiennent chacun une fonction \code{@Composable} de 2\,000 à
            3\,000 lignes : un découpage utile demande d'extraire des sous-composants avec leur état,
            ce qui ne peut pas se faire mécaniquement sans risque de régression visuelle. \\
--- & non fait & Les 142 \code{!!} et le cycle de vie manuel des ViewModels (\code{clear()} appelé
-           depuis \code{App.kt}) sont inchangés : chaque cas demande une décision métier. \\
+-- & partiel & \code{!!} : 104 restants dans \code{commonMain} (142 à l'audit). Revue des sites
+           exécutés après un clic ou une attente : un seul non gardé, corrigé
+           (\code{besoinEnergetiqueStandard!!} dans l'ajustement multi-nutriments, plantage tant que le BEE
+           n'est pas calculé) ; un autre réécrit sans \code{!!}. Les autres suivent une garde
+           (\code{contains}, \code{isEmpty}, test de nullité sur un état Compose délégué, qui empêche le
+           smart-cast). Cycle de vie manuel des ViewModels (\code{clear()} depuis \code{App.kt})
+           inchangé : \code{MultiRationViewModel} et \code{SettingsViewModel} héritent déjà de
+           \code{ViewModel}, les autres non. \\
 \bottomrule
 \end{longtable}
+
+\section{Interface et petits écrans (vérification visuelle)}
+Rendu réel de l'application desktop, hors écran, avec le pilote
+\code{GuideScreenshotDriver} (nouvelle variable \code{VETNUTRI\_GUIDE\_SIZE}) en
+400\,×\,800 (téléphone), 800\,×\,1000 (tablette) et 1400\,×\,900 (bureau), sur une base
+jetable : accueil, ajout d'animal, aliments, données de calcul, paramètres, fiche animal,
+consultations, rations.
+
+\begin{longtable}{p{3.2cm}p{11.5cm}}
+\toprule
+Écran & Défaut constaté $\to$ correction \\
+\midrule
+Consultations & Liste de 160\,px et détail côte à côte sur téléphone (« Consultation s ») $\to$
+  une seule colonne sous 600\,dp : liste, puis détail en plein écran
+  (\code{AppSizes.breakpointCompact}). \\
+Détail de consultation & Coefficients K1--K5 sur deux colonnes écrasés lettre par lettre
+  (« N on dé fi ni ») $\to$ une colonne quand la place manque ; bloc dupliqué factorisé
+  (\code{CoefficientsConsultation}). \\
+Paramètres, Calculs et 7 autres barres d'onglets & Libellés coupés en milieu de mot
+  (« Équatio ns », « Inter face ») $\to$ \code{AdaptiveTabRow} : onglets défilants quand ils
+  ne tiennent pas. \\
+Liste des aliments & Filtres tronqués (« Sélection ner », « Tout es »), indication de recherche
+  coupée en hauteur $\to$ un filtre par ligne sur téléphone, indication sur une ligne avec
+  « … ». \\
+Rations & Badge « APPORTS » coupé en « APP/ORT/S » $\to$ en-tête de la carte d'analyse en
+  \code{FlowRow} ; grille collée aux bords $\to$ marges ; grille de cartes vides sans
+  consultation $\to$ seul le message de sélection reste. \\
+Ajout d'animal & Listes Espèce/Sexe à 280\,dp avec double bordure, champ Race à bordure
+  pâle (air désactivé), boutons de date empilés $\to$ \code{ComboBox} pleine largeur,
+  bordure standard, boutons côte à côte. \\
+Fiche animal & « Date de naissance :2026-10-31 » collés ; icône d'Ordonnance identique à
+  Paramètres $\to$ colonne d'étiquettes élargie et atténuée ; icône document. \\
+Éditeur de consultation & Flèche retour annoncée « Rechercher » (accessibilité) $\to$
+  « Retour ». \\
+\bottomrule
+\end{longtable}
+
+Suites traitées :
+\begin{itemize}
+  \item \textbf{Couleur secondaire} : \code{\#80A9A9} avec texte noir (boutons Retour, Partager,
+        Import rapide, \textminus/+ à l'air désactivé) remplacé par \code{\#4E7D7D} avec texte
+        blanc (contraste $\approx$ 4,7:1). Trois boutons qui forçaient déjà du blanc deviennent lisibles.
+  \item \textbf{Traductions} : \code{androidMain/assets/strings\_*.json} (1 clé manquante) supprimées,
+        générées au build ; copies iOS \code{strings\_fr/en/zh.json} (10 clés manquantes : clés brutes
+        affichées) resynchronisées par \code{syncInitialDataIos} et vérifiées par
+        \code{InitialDataSyncTest}.
+  \item Fichiers morts retirés : \code{AnimalDetailView.kt.old}, \code{RationsView.kt.bak2},
+        \code{View/oza2.json}, \code{View/vetfood.json} (1,9\,Mo), \code{PreferencesView.kt} (jamais appelé).
+\end{itemize}
+
 
 \end{document}

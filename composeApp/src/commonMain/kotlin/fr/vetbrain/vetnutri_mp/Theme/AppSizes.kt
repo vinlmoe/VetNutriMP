@@ -104,6 +104,8 @@ object AppSizes {
 
     // Breakpoints
     val breakpointWideScreen = 900.dp
+    /** En dessous : téléphone, une seule colonne (liste puis détail). */
+    val breakpointCompact = 600.dp
 
     // Tailles spécifiques de dialogue
     val dialogMaxHeight

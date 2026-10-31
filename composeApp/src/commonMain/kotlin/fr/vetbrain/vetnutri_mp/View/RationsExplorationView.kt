@@ -14,7 +14,6 @@ import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
-import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseNutritionnelleCard
 import fr.vetbrain.vetnutri_mp.View.AnalNut.MultiNutrientAdjustmentView
 import fr.vetbrain.vetnutri_mp.View.AnalNut.NutrientDetailDialog
@@ -42,7 +41,7 @@ internal fun RationsExplorationView(
     val scope = rememberCoroutineScope()
     val enregistrement by viewModel.enregistrementCorrections.collectAsState()
     val erreur by viewModel.erreur.collectAsState()
-    val preferencesStorage = remember { createPreferencesStorage() }
+    val preferences by viewModel.preferences.collectAsState()
     fun modifierAliments(aliments: List<AlimentRation>) {
         viewModel.modifierRationExploration(scenario.id, aliments)
     }
@@ -122,7 +121,7 @@ internal fun RationsExplorationView(
                 poidsMetabolique = scenario.poidsMetabolique, referenceUtilisee = scenario.reference,
                 besoinEnergetiqueEntretien = scenario.besoinStandard, besoinEnergetiqueCible = scenario.besoinTotal,
                 poidsAnimal = scenario.poids, espece = scenario.reference.espece,
-                preferencesStorage = preferencesStorage, equationRepository = viewModel.equationRepository,
+                preferences = preferences, equationRepository = viewModel.equationRepository,
                 onDismiss = { detail = null }
         )
     }

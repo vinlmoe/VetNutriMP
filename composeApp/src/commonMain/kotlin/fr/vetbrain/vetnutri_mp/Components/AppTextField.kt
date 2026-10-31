@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Components
 
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -400,7 +401,10 @@ fun BasicAppTextField(
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
-                                                                                        .body2
+                                                                                        .body2,
+                                                                        // Un champ d'une ligne ne doit pas couper son indication en hauteur
+                                                                        maxLines = if (singleLine) 1 else Int.MAX_VALUE,
+                                                                        overflow = TextOverflow.Ellipsis
                                                                 )
                                                         }
                                                         innerTextField()

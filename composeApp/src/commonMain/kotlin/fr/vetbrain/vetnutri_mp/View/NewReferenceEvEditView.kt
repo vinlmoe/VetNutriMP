@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -154,8 +155,9 @@ fun NewReferenceEvEditView(
         ) { paddingValues ->
                 Column(modifier = modifier.fillMaxSize().padding(paddingValues)) {
                         // Onglets
-                        TabRow(
+                        AdaptiveTabRow(
                                 selectedTabIndex = selectedTabIndex,
+                                tabCount = tabs.size,
                                 backgroundColor = MaterialTheme.colors.surface,
                                 contentColor = VetNutriColors.Primary
                         ) {
@@ -401,8 +403,9 @@ fun ReferenceEvNutrientsTab(viewModel: NewReferenceEvViewModel, currentReference
                                                 translate(LocalizationKeys.NewReference.NUTRIENT_CATEGORY_ANALYSIS)
                                         )
 
-                                TabRow(
+                                AdaptiveTabRow(
                                         selectedTabIndex = selectedNutrientType,
+                                        tabCount = nutrientTypes.size,
                                         backgroundColor = MaterialTheme.colors.surface,
                                         contentColor = VetNutriColors.Primary
                                 ) {
@@ -1159,8 +1162,9 @@ fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentRefere
                                 Column(modifier = Modifier.padding(16.dp)) {
                                         Spacer(modifier = Modifier.height(8.dp))
 
-                                        TabRow(
+                                        AdaptiveTabRow(
                                                 selectedTabIndex = selectedGroupIndex,
+                                                tabCount = groupNames.size,
                                                 backgroundColor = MaterialTheme.colors.surface,
                                                 contentColor = VetNutriColors.Primary
                                         ) {

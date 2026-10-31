@@ -815,7 +815,7 @@ private fun AnimalCard(
                                                         if (animal.estTroupeau)
                                                                 "${Animal.SPECIES.translate()}: ${animal.especesTroupeau().joinToString(", ") { it.translateEnum() }}"
                                                         else "${Animal.SPECIES.translate()}: ${animal.getEspece().translateEnum()}",
-                                                style = MaterialTheme.typography.body1
+                                                style = MaterialTheme.typography.body2
                                         )
                                         if (animal.race.isNotEmpty()) {
                                                 Text(

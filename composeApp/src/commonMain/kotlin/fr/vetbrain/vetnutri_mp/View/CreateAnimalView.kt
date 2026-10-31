@@ -287,10 +287,6 @@ fun CreateAnimalView(
                                 isError = showDateError
                         )
 
-                        TextButton(onClick = { isDatePickerVisible = true }) {
-                                Text("general.selectDate".translate())
-                        }
-
                         if (showDateError) {
                                 Text(
                                         text = "error.invalidValue".translate(),
@@ -299,21 +295,30 @@ fun CreateAnimalView(
                                 )
                         }
 
-                        // Bouton pour définir la date à aujourd'hui
-                        TextButton(
-                                onClick = {
-                                        val today =
-                                                kotlinx.datetime.Clock.System.now()
-                                                        .toLocalDateTime(
-                                                                kotlinx.datetime.TimeZone
-                                                                        .currentSystemDefault()
-                                                        )
-                                                        .date
-                                        dateText = today.toString()
-                                        viewModel.updateAnimal(animal.copy(birthdate = today))
-                                        showDateError = false
+                        // Choix de la date : calendrier ou aujourd'hui, côte à côte sous le champ
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                        ) {
+                                TextButton(onClick = { isDatePickerVisible = true }) {
+                                        Text("general.selectDate".translate())
                                 }
-                        ) { Text("general.today".translate()) }
+
+                                TextButton(
+                                        onClick = {
+                                                val today =
+                                                        kotlinx.datetime.Clock.System.now()
+                                                                .toLocalDateTime(
+                                                                        kotlinx.datetime.TimeZone
+                                                                                .currentSystemDefault()
+                                                                )
+                                                                .date
+                                                dateText = today.toString()
+                                                viewModel.updateAnimal(animal.copy(birthdate = today))
+                                                showDateError = false
+                                        }
+                                ) { Text("general.today".translate()) }
+                        }
 
                         if (isDatePickerVisible) {
                                 val pickerState = rememberDatePickerState()

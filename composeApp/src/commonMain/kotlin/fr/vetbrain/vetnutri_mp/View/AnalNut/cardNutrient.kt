@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import fr.vetbrain.vetnutri_mp.Data.PreferencesApplication
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,7 +25,6 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
-import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
@@ -76,6 +76,7 @@ private sealed class GridItem {
 }
 
 /** Composant pour afficher l'analyse nutritionnelle d'une ration */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AnalyseNutritionnelleCard(
         ration: Ration,
@@ -89,7 +90,7 @@ fun AnalyseNutritionnelleCard(
         onNutrimentClick: (String, ValeurNutritionnelle) -> Unit,
         // Paramètres pour les préférences (maintenant optionnels)
         animal: AnimalEv? = null,
-        preferencesRepository: PreferencesRepository? = null,
+        preferences: PreferencesApplication? = null,
         equationRepository: EquationRepository? = null,
         // Nouveau paramètre pour les préférences pré-chargées
         typeExpressionBesoin: TypeExpressionBesoin? = null,
@@ -119,7 +120,7 @@ fun AnalyseNutritionnelleCard(
     // Priorité aux préférences pré-chargées
     val finalTypeExpressionBesoin = typeExpressionBesoin ?: localTypeExpressionBesoin
 
-    LaunchedEffect(animal, preferencesRepository, typeExpressionBesoin) {
+    LaunchedEffect(animal, preferences, typeExpressionBesoin) {
         // Si les préférences sont déjà fournies, les utiliser
         if (typeExpressionBesoin != null) {
             localTypeExpressionBesoin = typeExpressionBesoin
@@ -129,16 +130,10 @@ fun AnalyseNutritionnelleCard(
 
         // Sinon, charger les préférences localement (fallback)
         animal?.let { animalData ->
-            preferencesRepository?.let { repo ->
-                try {
-                    val preferences = repo.getPreferencesForSpecies(animalData.getEspece())
-                    localTypeExpressionBesoin = preferences.getTypeExpressionBesoinEnum()
-                    preferencesLoaded = true
-                } catch (e: Exception) {
-                    e.rethrowIfCancellation()
-                    localTypeExpressionBesoin = TypeExpressionBesoin.DEFAULT
-                    preferencesLoaded = false
-                }
+            preferences?.let { prefs ->
+                localTypeExpressionBesoin =
+                        prefs.getPreferencesEspece(animalData.getEspece()).getTypeExpressionBesoinEnum()
+                preferencesLoaded = true
             }
                     ?: run {
                         localTypeExpressionBesoin = TypeExpressionBesoin.DEFAULT
@@ -290,13 +285,13 @@ fun AnalyseNutritionnelleCard(
                     CircularProgressIndicator()
                 }
             } else {
-                // En-tête avec titre et bouton toggle
-                Row(
+                // En-tête avec titre et bouton toggle : les actions passent à la ligne quand la
+                // carte est étroite plutôt que d'écraser le titre et son badge
+                FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.align(Alignment.CenterVertically)) {
                         val resolvedTitle =
                                 titleOverride
                                         ?: translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE)
@@ -339,7 +334,9 @@ fun AnalyseNutritionnelleCard(
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                                 style = MaterialTheme.typography.overline,
                                                 fontWeight = FontWeight.Bold,
-                                                color = contextBadgeColor
+                                                color = contextBadgeColor,
+                                                maxLines = 1,
+                                                softWrap = false
                                         )
                                     }
                                 }
@@ -362,6 +359,7 @@ fun AnalyseNutritionnelleCard(
                     }
 
                     Row(
+                            modifier = Modifier.align(Alignment.CenterVertically),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
                     ) {

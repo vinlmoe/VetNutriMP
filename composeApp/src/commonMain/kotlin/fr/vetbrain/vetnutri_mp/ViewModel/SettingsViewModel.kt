@@ -45,7 +45,10 @@ class SettingsViewModel(
         internal val consultationRepository:
                 fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository? =
                 null,
-        internal val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null
+        internal val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null,
+        // Instance partagée : une préférence enregistrée ici est vue par la fiche animal
+        internal val preferencesRepository: fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository? =
+                null
 ) : ViewModel() {
     // Instance statique de Json pour éviter la création redondante
     private val json = Json { ignoreUnknownKeys = true }

@@ -146,7 +146,8 @@ fun App(appDatabase: AppDatabase) {
             equationRepository = equationRepository,
             biblioRefRepository = biblioRefRepository,
             consultationRepository = consultationRepository,
-            conseilRepository = conseilRepository
+            conseilRepository = conseilRepository,
+            preferencesRepository = preferencesRepository
         )
     }
     val foodListViewModel = remember { FoodListViewModel(foodRepository) }
@@ -216,7 +217,8 @@ fun App(appDatabase: AppDatabase) {
             foodRepository = foodRepository,
             referenceEvRepository = databaseReferenceEvRepository,
             equationRepository = equationRepository,
-            explorationRepository = multiRationExplorationRepository
+            explorationRepository = multiRationExplorationRepository,
+            preferencesRepository = preferencesRepository
         )
     }
     val crossAnalysisViewModel = remember {

@@ -29,6 +29,9 @@ VETNUTRI_GUIDE_OUT=/tmp/guide/out \
 ./gradlew :composeApp:desktopTest --tests '*GuideScreenshotDriver*' --rerun
 ```
 
+`VETNUTRI_GUIDE_SIZE=400x800` (par défaut `1400x900`) change la taille de rendu, pour vérifier
+la mise en page sur téléphone ou tablette.
+
 La base persiste entre deux exécutions : un premier script installe les données et accepte les
 CGU, les suivants commencent par `scrollto Continuer` / `click Continuer`. `dump <nom>` écrit les
 libellés visibles (et leur position) pour trouver quoi cliquer.

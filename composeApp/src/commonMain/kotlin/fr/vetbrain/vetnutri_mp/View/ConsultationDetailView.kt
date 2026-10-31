@@ -363,72 +363,7 @@ fun AppConsultationDetailView(
                                                                 )
                                                 )
 
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement =
-                                                                Arrangement.SpaceBetween
-                                                ) {
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                                InfoRow(
-                                                                        label = translate("consultationDetail.coefficientLabelFormat", "1"),
-                                                                        value =
-                                                                                consultation
-                                                                                        ?.k1Value
-                                                                                        ?.let {
-                                                                                                NumberUtils.format(it, 2)
-                                                                                        }
-                                                                                        ?: Reference.NOT_DEFINED.translate()
-                                                                )
-                                                                InfoRow(
-                                                                        label = translate("consultationDetail.coefficientLabelFormat", "2"),
-                                                                        value =
-                                                                                consultation
-                                                                                        ?.k2Value
-                                                                                        ?.let {
-                                                                                                NumberUtils.format(it, 2)
-                                                                                        }
-                                                                                        ?: Reference.NOT_DEFINED.translate()
-                                                                )
-                                                                InfoRow(
-                                                                        label = translate("consultationDetail.coefficientLabelFormat", "3"),
-                                                                        value =
-                                                                                consultation
-                                                                                        ?.k3Value
-                                                                                        ?.let {
-                                                                                                NumberUtils.format(it, 2)
-                                                                                        }
-                                                                                        ?: Reference.NOT_DEFINED.translate()
-                                                                )
-                                                        }
-                                                        Spacer(
-                                                                modifier =
-                                                                        Modifier.width(
-                                                                                AppSizes.paddingMedium
-                                                                        )
-                                                        )
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                                InfoRow(
-                                                                        label = translate("consultationDetail.coefficientLabelFormat", "4"),
-                                                                        value =
-                                                                                consultation
-                                                                                        ?.k4Value
-                                                                                        ?.let {
-                                                                                                NumberUtils.format(it, 2)
-                                                                                        }
-                                                                                        ?: Reference.NOT_DEFINED.translate()
-                                                                )
-                                                                InfoRow(
-                                                                        label = translate("consultationDetail.coefficientLabelFormat", "5"),
-                                                                        value =
-                                                                                consultation
-                                                                                        ?.k5Value
-                                                                                        ?.let {
-                                                                                                NumberUtils.format(it, 2)
-                                                                                        }
-                                                                                        ?: Reference.NOT_DEFINED.translate()
-                                                                )
-                                                        }
-                                                }
+                                                CoefficientsConsultation(consultation)
                                         } else {
                                                 // Mode affichage - valeurs en lecture seule
                                                 InfoRow(
@@ -467,72 +402,7 @@ fun AppConsultationDetailView(
                                                                 )
                                                 )
 
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement =
-                                                                Arrangement.SpaceBetween
-                                                ) {
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                                InfoRow(
-                                                                        label = translate("consultationDetail.coefficientLabelFormat", "1"),
-                                                                        value =
-                                                                                consultation
-                                                                                        ?.k1Value
-                                                                                        ?.let {
-                                                                                                NumberUtils.format(it, 2)
-                                                                                        }
-                                                                                        ?: Reference.NOT_DEFINED.translate()
-                                                                )
-                                                                InfoRow(
-                                                                        label = translate("consultationDetail.coefficientLabelFormat", "2"),
-                                                                        value =
-                                                                                consultation
-                                                                                        ?.k2Value
-                                                                                        ?.let {
-                                                                                                NumberUtils.format(it, 2)
-                                                                                        }
-                                                                                        ?: Reference.NOT_DEFINED.translate()
-                                                                )
-                                                                InfoRow(
-                                                                        label = translate("consultationDetail.coefficientLabelFormat", "3"),
-                                                                        value =
-                                                                                consultation
-                                                                                        ?.k3Value
-                                                                                        ?.let {
-                                                                                                NumberUtils.format(it, 2)
-                                                                                        }
-                                                                                        ?: Reference.NOT_DEFINED.translate()
-                                                                )
-                                                        }
-                                                        Spacer(
-                                                                modifier =
-                                                                        Modifier.width(
-                                                                                AppSizes.paddingMedium
-                                                                        )
-                                                        )
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                                InfoRow(
-                                                                        label = translate("consultationDetail.coefficientLabelFormat", "4"),
-                                                                        value =
-                                                                                consultation
-                                                                                        ?.k4Value
-                                                                                        ?.let {
-                                                                                                NumberUtils.format(it, 2)
-                                                                                        }
-                                                                                        ?: Reference.NOT_DEFINED.translate()
-                                                                )
-                                                                InfoRow(
-                                                                        label = translate("consultationDetail.coefficientLabelFormat", "5"),
-                                                                        value =
-                                                                                consultation
-                                                                                        ?.k5Value
-                                                                                        ?.let {
-                                                                                                NumberUtils.format(it, 2)
-                                                                                        }
-                                                                                        ?: Reference.NOT_DEFINED.translate()
-                                                                )
-                                                        }
-                                                }
+                                                CoefficientsConsultation(consultation)
                                         }
                                 }
                         }
@@ -987,4 +857,45 @@ private fun getReferenceNameById(
         availableReferences: List<ReferenceEv>
 ): String {
         return availableReferences.find { it.uuid == referenceId }?.nom ?: ConsultationEdit.REF_UNKNOWN.translate()
+}
+
+/** Coefficients K1 à K5 : deux colonnes si la place le permet, une seule sinon. */
+@Composable
+private fun CoefficientsConsultation(consultation: ConsultationEv?) {
+        val coefficients =
+                listOf(
+                        consultation?.k1Value,
+                        consultation?.k2Value,
+                        consultation?.k3Value,
+                        consultation?.k4Value,
+                        consultation?.k5Value
+                )
+        val ligne: @Composable (Int) -> Unit = { index ->
+                InfoRow(
+                        label =
+                                translate(
+                                        "consultationDetail.coefficientLabelFormat",
+                                        (index + 1).toString()
+                                ),
+                        value =
+                                coefficients[index]?.let { NumberUtils.format(it, 2) }
+                                        ?: Reference.NOT_DEFINED.translate()
+                )
+        }
+
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                if (maxWidth < AppSizes.breakpointCompact) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                                coefficients.indices.forEach { ligne(it) }
+                        }
+                } else {
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                        ) {
+                                Column(modifier = Modifier.weight(1f)) { (0..2).forEach { ligne(it) } }
+                                Column(modifier = Modifier.weight(1f)) { (3..4).forEach { ligne(it) } }
+                        }
+                }
+        }
 }

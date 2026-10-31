@@ -5,13 +5,15 @@ import androidx.compose.ui.graphics.Color
 object VetNutriColors {
     val Primary = Color(0xFF008B8B) // Turquoise foncé
     val PrimaryVariant = Color(0xFF006666) // Turquoise très foncé
-    val Secondary = Color(0xFF80A9A9) // Gris turquoise
+    // Gris turquoise soutenu : l'ancien 0xFF80A9A9 avec texte noir faisait paraître les boutons
+    // secondaires (Retour, Partager, Import rapide…) désactivés. Contraste avec le blanc ≈ 4,7:1.
+    val Secondary = Color(0xFF4E7D7D) // Gris turquoise
     val Background = Color(0xFFF5FDFF) // Turquoise extrêmement clair
     val Surface = Color(0xFFF5FDFF) // Turquoise extrêmement clair
     val Error = Color(0xFFB00020) // Rouge erreur
 
     val OnPrimary = Color(0xFFFFFFFF) // Blanc
-    val OnSecondary = Color(0xFF000000) // Noir
+    val OnSecondary = Color(0xFFFFFFFF) // Blanc
     val OnBackground = Color(0xFF000000) // Noir
     val OnSurface = Color(0xFF000000) // Noir
     val OnError = Color(0xFFFFFFFF) // Blanc

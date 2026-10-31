@@ -60,15 +60,10 @@ fun ComboBox(
         }
 
         Column(modifier = modifier) {
+                // Même largeur et même bordure que les autres champs du formulaire
                 Box(
                         contentAlignment = Alignment.CenterStart,
-                        modifier =
-                                Modifier.clip(RoundedCornerShape(AppSizes.cornerRadius))
-                                        .border(
-                                                BorderStroke(AppSizes.borderWidth, Color.LightGray),
-                                                RoundedCornerShape(AppSizes.cornerRadius)
-                                        )
-                                        .clickable { expanded = !expanded }
+                        modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
                 ) {
                         OutlinedTextField(
                                 value = selectedText,
@@ -76,14 +71,15 @@ fun ComboBox(
                                 readOnly = true,
                                 label = { Text(label.translate()) },
                                 placeholder = { Text(label.translate()) },
-                                modifier = Modifier.clickable { expanded = !expanded }
-                        )
-                        Icon(
-                                Icons.Filled.ArrowDropDown,
-                                General.VALIDATE.translate(),
-                                Modifier.align(Alignment.CenterEnd).clickable {
-                                        expanded = !expanded
-                                }
+                                trailingIcon = {
+                                        Icon(
+                                                Icons.Filled.ArrowDropDown,
+                                                contentDescription = label.translate(),
+                                                modifier =
+                                                        Modifier.clickable { expanded = !expanded }
+                                        )
+                                },
+                                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
                         )
                 }
 

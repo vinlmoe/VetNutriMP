@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
@@ -52,14 +53,12 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Settings
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
-import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.copyToClipboardComposable
-import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailSection
 import fr.vetbrain.vetnutri_mp.exportApiEnvelopeToFile
 import kotlinx.coroutines.withContext
@@ -596,6 +595,7 @@ private fun handlePdfExport(
     referenceUtilisee: fr.vetbrain.vetnutri_mp.Data.ReferenceEv?,
     additionalText: String,
     getSelectedConseils: () -> List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>,
+    loadPreferences: suspend () -> fr.vetbrain.vetnutri_mp.Data.PreferencesApplication,
     scope: CoroutineScope
 ) {
     if (previewMode == "CR") {
@@ -612,12 +612,9 @@ private fun handlePdfExport(
     if (isPrescription) {
         val rationsForPrescription: List<Ration> = selectedRationsForPrescription ?: selectedConsultation?.rations?.toList()
                 ?: emptyList()
-        val prefsStorage = createPreferencesStorage()
-        val prefsRepo = PreferencesRepository(prefsStorage)
         scope.launch(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.IO) {
             try {
-                prefsRepo.loadPreferences()
-                val prefs = prefsRepo.preferences
+                val prefs = loadPreferences()
                 val practitioner = fr.vetbrain.vetnutri_mp.Export.PractitionerInfo(
                     nom = prefs.nomUtilisateur,
                     numeroOrdre = prefs.numeroOrdre,
@@ -704,23 +701,6 @@ fun AnimalDetailView(
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
         var showConsultationDetail by remember { mutableStateOf(false) }
 
-        // Récupération des préférences pour l'espèce
-        val preferencesStorage: fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage = remember {
-                createPreferencesStorage()
-        }
-        val preferencesRepository: PreferencesRepository = remember {
-                PreferencesRepository(preferencesStorage)
-        }
-        var preferencesApplication by remember {
-                mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null)
-        }
-
-        // Charger les préférences au démarrage
-        LaunchedEffect(Unit) {
-                preferencesRepository.loadPreferences()
-                preferencesApplication = preferencesRepository.preferences
-        }
-
         // État du drawer pour les écrans étroits
         val drawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
@@ -800,7 +780,7 @@ fun AnimalDetailView(
                         MenuOption(
                                 section = AnimalDetailSection.EXPORT,
                                 title = translate(AnimalDetail.EXPORT),
-                                icon = Icons.Default.Settings
+                                icon = Icons.Default.Description
                         )
                 )
 
@@ -1067,10 +1047,7 @@ private fun WideScreenLayout(
         }
         LaunchedEffect(Unit) {
                 try {
-                        val prefsStorage = createPreferencesStorage()
-                        val prefsRepo = PreferencesRepository(prefsStorage)
-                        prefsRepo.loadPreferences()
-                        val prefs = prefsRepo.preferences
+                        val prefs = viewModel.getLoadedPreferences()
                         practitionerContact =
                                 PractitionerContact(
                                         nom = prefs.nomUtilisateur,
@@ -1352,33 +1329,6 @@ private fun WideScreenLayout(
                                                 viewModel.availableFoods.collectAsState()
                                         val isLoadingFoods by
                                                 viewModel.isLoadingFoods.collectAsState()
-
-                                        // Récupération des préférences pour l'espèce dans ce
-                                        // contexte
-                                        val preferencesStorageLocal:
-                                                fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage =
-                                                remember {
-                                                        createPreferencesStorage()
-                                                }
-                                        val preferencesRepositoryLocal: PreferencesRepository =
-                                                remember {
-                                                        PreferencesRepository(
-                                                                preferencesStorageLocal
-                                                        )
-                                                }
-                                        var preferencesApplicationLocal by remember {
-                                                mutableStateOf<
-                                                        fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(
-                                                        null
-                                                )
-                                        }
-
-                                        // Charger les préférences au démarrage
-                                        LaunchedEffect(Unit) {
-                                                preferencesRepositoryLocal.loadPreferences()
-                                                preferencesApplicationLocal =
-                                                        preferencesRepositoryLocal.preferences
-                                        }
 
                                         if (isLoadingFoods) {
                                                 Column(
@@ -1823,12 +1773,9 @@ private fun WideScreenLayout(
                                                                 showPreview = true
                                                         },
                                                         onPreviewPrescription = {
-                                                                val prefsStorage = createPreferencesStorage()
-                                                                val prefsRepo = PreferencesRepository(prefsStorage)
                                                                 scope.launch {
                                                                         try {
-                                                                                prefsRepo.loadPreferences()
-                                                                                val prefs = prefsRepo.preferences
+                                                                                val prefs = viewModel.getLoadedPreferences()
                                                                                 val practitioner = fr.vetbrain.vetnutri_mp.Export.PractitionerInfo(
                                                                                         nom = prefs.nomUtilisateur,
                                                                                         numeroOrdre = prefs.numeroOrdre,
@@ -1946,6 +1893,7 @@ private fun WideScreenLayout(
                                                                                 referenceUtilisee = referenceUtilisee,
                                                                                 additionalText = additionalText,
                                                                                 getSelectedConseils = getSelectedConseils,
+                                                                                loadPreferences = viewModel::getLoadedPreferences,
                                                                                 scope = scope
                                                                         )
                                                                         showPreview = false
@@ -2139,10 +2087,7 @@ private fun NarrowScreenLayout(
         }
         LaunchedEffect(Unit) {
                 try {
-                        val prefsStorage = createPreferencesStorage()
-                        val prefsRepo = PreferencesRepository(prefsStorage)
-                        prefsRepo.loadPreferences()
-                        val prefs = prefsRepo.preferences
+                        val prefs = viewModel.getLoadedPreferences()
                         practitionerContact =
                                 PractitionerContact(
                                         nom = prefs.nomUtilisateur,
@@ -2469,37 +2414,6 @@ private fun NarrowScreenLayout(
                                                                 viewModel.isLoadingFoods
                                                                         .collectAsState()
 
-                                                        // 🔧 Récupération des préférences pour
-                                                        // l'espèce dans ce contexte (même logique
-                                                        // que layout large)
-                                                        val preferencesStorageLocal:
-                                                                fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage =
-                                                                remember {
-                                                                        createPreferencesStorage()
-                                                                }
-                                                        val preferencesRepositoryLocal:
-                                                                PreferencesRepository =
-                                                                remember {
-                                                                        PreferencesRepository(
-                                                                                preferencesStorageLocal
-                                                                        )
-                                                                }
-                                                        var preferencesApplicationLocal by remember {
-                                                                mutableStateOf<
-                                                                        fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(
-                                                                        null
-                                                                )
-                                                        }
-
-                                                        // Charger les préférences au démarrage
-                                                        LaunchedEffect(Unit) {
-                                                                preferencesRepositoryLocal
-                                                                        .loadPreferences()
-                                                                preferencesApplicationLocal =
-                                                                        preferencesRepositoryLocal
-                                                                                .preferences
-                                                        }
-
                                                         if (isLoadingFoods) {
                                                                 Column(
                                                                         modifier =
@@ -2820,6 +2734,7 @@ private fun NarrowScreenLayout(
                                                                                 referenceUtilisee = referenceUtilisee,
                                                                                 additionalText = additionalText,
                                                                                 getSelectedConseils = getSelectedConseils,
+                                                                                loadPreferences = viewModel::getLoadedPreferences,
                                                                                 scope = scope
                                                                         )
                                                                         showPreview = false
@@ -3037,10 +2952,7 @@ private fun NarrowScreenLayout(
                                                                         onPreviewPrescription = {
                                                                                 scope.launch {
                                                                                         try {
-                                                                                                val prefsStorage = createPreferencesStorage()
-                                                                                                val prefsRepo = PreferencesRepository(prefsStorage)
-                                                                                                prefsRepo.loadPreferences()
-                                                                                                val prefs = prefsRepo.preferences
+                                                                                                val prefs = viewModel.getLoadedPreferences()
                                                                                                 val practitioner = fr.vetbrain.vetnutri_mp.Export.PractitionerInfo(
                                                                                                         nom = prefs.nomUtilisateur,
                                                                                                         numeroOrdre = prefs.numeroOrdre,

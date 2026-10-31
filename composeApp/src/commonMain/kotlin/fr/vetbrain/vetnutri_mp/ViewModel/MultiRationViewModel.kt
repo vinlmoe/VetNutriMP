@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -54,8 +55,16 @@ class MultiRationViewModel(
         private val foodRepository: FoodRepository,
         private val referenceEvRepository: DatabaseReferenceEvRepository,
         val equationRepository: EquationRepository,
-        private val explorationRepository: MultiRationExplorationRepository
+        private val explorationRepository: MultiRationExplorationRepository,
+        preferencesRepository: PreferencesRepository
 ) : ViewModel() {
+
+    /** Préférences de l'application (mode d'affichage des besoins dans le détail d'un nutriment) */
+    val preferences: StateFlow<PreferencesApplication?> = preferencesRepository.preferencesFlow
+
+    init {
+        viewModelScope.launch { preferencesRepository.getLoadedPreferences() }
+    }
 
     data class Progression(val faits: Int, val total: Int)
 

@@ -166,12 +166,26 @@ poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existan
 Toutes les versions sont dans `gradle/libs.versions.toml` ; aucune version codée en dur dans
 `build.gradle.kts`, aucune entrée de catalogue inutilisée.
 
-### Données initiales
-`commonMain/resources/data/vetnutri_export_init.json` est la **source unique**. Les assets Android sont
-générés au build (`syncInitialDataAndroidAssets`) ; la copie du bundle iOS (`iosApp/iosApp/`) est
-rafraîchie par `syncInitialDataIos` (appelée avant `embedAndSignAppleFrameworkForXcode`).
-`InitialDataSyncTest` échoue si elle diverge : après modification de la source, lancer
-`./gradlew :composeApp:syncInitialDataIos` et commiter la copie.
+### Données initiales et traductions
+`commonMain/resources/data/vetnutri_export_init.json` et `commonMain/resources/strings_*.json` sont la
+**source unique**. Les assets Android sont générés au build (`syncInitialDataAndroidAssets`) ; les copies
+du bundle iOS (`iosApp/iosApp/` : données et `strings_fr/en/zh.json`) sont rafraîchies par
+`syncInitialDataIos` (appelée avant `embedAndSignAppleFrameworkForXcode`). `InitialDataSyncTest` échoue
+si elles divergent : après modification d'une source, lancer `./gradlew :composeApp:syncInitialDataIos`
+et commiter les copies.
+
+### Préférences
+Une seule instance de `PreferencesRepository` (celle d'`AppContainer`). Les vues lisent
+`viewModel.preferences` (`StateFlow`, null avant la première lecture) ou appellent
+`viewModel.getLoadedPreferences()` ; ne jamais construire un `PreferencesRepository` dans une vue,
+sinon une modification faite dans Paramètres n'y est pas vue.
+
+### Petits écrans
+`AppSizes.breakpointCompact` (600 dp) : en dessous, une seule colonne (liste puis détail).
+`AppSizes.breakpointWideScreen` (900 dp) : barre latérale permanente de la fiche animal au-dessus, tiroir
+en dessous. Barres d'onglets : `AdaptiveTabRow` (défilante quand les onglets ne tiennent pas).
+Vérifier une mise en page : `GuideScreenshotDriver` avec `VETNUTRI_GUIDE_SIZE=400x800`
+(voir `docs/guide_utilisateur/README.md`).
 
 ### Threads
 - `AppDispatchers.IO` → opérations DB et réseau

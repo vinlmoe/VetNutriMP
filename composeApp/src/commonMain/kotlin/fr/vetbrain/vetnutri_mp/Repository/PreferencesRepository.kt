@@ -2,6 +2,9 @@ package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Data.PreferencesApplication
 import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
@@ -34,10 +37,25 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         return -1
     }
 
+    // Préférences partagées par toutes les vues : null tant qu'elles n'ont pas été lues sur le
+    // stockage, puis mises à jour à chaque chargement et à chaque sauvegarde
+    private val _preferencesFlow = MutableStateFlow<PreferencesApplication?>(null)
+    val preferencesFlow: StateFlow<PreferencesApplication?> = _preferencesFlow.asStateFlow()
+
     // État des préférences
     private var _preferences = PreferencesApplication.createDefault()
+        set(value) {
+            field = value
+            _preferencesFlow.value = value
+        }
     val preferences: PreferencesApplication
         get() = _preferences
+
+    /** Préférences courantes, lues sur le stockage au premier appel seulement */
+    suspend fun getLoadedPreferences(): PreferencesApplication {
+        if (_preferencesFlow.value == null) loadPreferences()
+        return _preferences
+    }
 
     /** Obtient les unités valides pour l'expression des besoins (excluant UnitType.AUTRE) */
     fun getValidUnits(): List<UnitReqEnum> {

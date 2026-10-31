@@ -257,8 +257,8 @@ fun ConsultationFullScreenEditView(
                                                         showExitConfirmationDialog = true
                                                 },
                                                 imageVector = AppIcons.ArrowBack,
-                                                contentDescription = ConsultationEdit.REF_SEARCH_TOOLTIP.translate(), // Using search tooltip for back for now if no generic back
-                                                tooltip = ConsultationEdit.REF_SEARCH_TOOLTIP.translate(),
+                                                contentDescription = LocalizationKeys.AnimalDetail.BACK.translate(),
+                                                tooltip = LocalizationKeys.AnimalDetail.BACK.translate(),
                                                 tint = VetNutriColors.OnPrimary
                                         )
                                 },

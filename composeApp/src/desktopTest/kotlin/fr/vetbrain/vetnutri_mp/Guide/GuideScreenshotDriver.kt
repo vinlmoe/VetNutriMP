@@ -25,6 +25,9 @@ import kotlin.test.Test
  * Lancer avec VETNUTRI_TEST_DATABASE_DIR et VETNUTRI_GUIDE_HOME pointant vers des dossiers
  * jetables pour ne jamais toucher à la base ni aux préférences de l'utilisateur.
  *
+ * VETNUTRI_GUIDE_SIZE=<largeur>x<hauteur> change la taille de rendu (1400x900 par défaut),
+ * par exemple 400x800 pour vérifier la mise en page sur un téléphone.
+ *
  * Commandes du script (une par ligne, `#` = commentaire) :
  *   wait <texte>        attend qu'un nœud contienne ce texte (120 s max)
  *   click <texte>       clique le premier nœud au texte exact
@@ -48,7 +51,10 @@ class GuideScreenshotDriver {
 
         val db = getRoomDatabase(getDatabaseBuilder(), getDatabasePath())
 
-        runDesktopComposeUiTest(width = 1400, height = 900) {
+        val (width, height) = (System.getenv("VETNUTRI_GUIDE_SIZE") ?: "1400x900")
+            .split('x').map { it.trim().toInt() }
+
+        runDesktopComposeUiTest(width = width, height = height) {
             mainClock.autoAdvance = true
             setContent {
                 Box(Modifier.fillMaxSize().background(Color.White)) { App(db) }

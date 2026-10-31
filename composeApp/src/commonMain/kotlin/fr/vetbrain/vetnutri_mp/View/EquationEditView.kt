@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -110,8 +111,9 @@ fun EquationEditView(
         Box(modifier = modifier.fillMaxSize().padding(paddingValues)) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Onglets
-                TabRow(
+                AdaptiveTabRow(
                         selectedTabIndex = selectedTabIndex,
+                        tabCount = 4,
                         backgroundColor = VetNutriColors.Surface,
                         contentColor = VetNutriColors.Primary
                 ) {
