@@ -593,7 +593,7 @@ internal fun ConsultationKeywordDialog(
                         }
                 }
 
-        AlertDialog(
+        AppAlertDialog(
                 onDismissRequest = onDismiss,
                 title = { Text(ConsultationEdit.KEYWORDS_DIALOG_TITLE.translate()) },
                 text = {

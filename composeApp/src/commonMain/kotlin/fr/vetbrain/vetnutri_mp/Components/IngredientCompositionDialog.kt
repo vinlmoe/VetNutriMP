@@ -61,7 +61,7 @@ fun IngredientCompositionDialog(
                                 }
                 }
 
-        AlertDialog(
+        AppAlertDialog(
                 modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
                 onDismissRequest = onDismiss,
                 title = {

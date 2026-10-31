@@ -901,7 +901,7 @@ private fun FilterSortDialog(
         val includeLabel = translate(AnimalList.KEYWORD_FILTER_INCLUDE)
         val excludeLabel = translate(AnimalList.KEYWORD_FILTER_EXCLUDE)
 
-        AlertDialog(
+        AppAlertDialog(
                 onDismissRequest = onDismiss,
                 title = { Text(translate(AnimalList.SORT_AND_FILTERS)) },
                 text = {
