@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Data.ajouterOuCumulerAliment
 import fr.vetbrain.vetnutri_mp.Utils.UserErrors
 import fr.vetbrain.vetnutri_mp.Utils.orUserError
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
@@ -833,8 +834,9 @@ fun AnalyseGraphiqueAlimentsView(
                                         aliment = alimentComplet,
                                         refRation = ration.uuid
                                     )
-                                    val updatedAliments = ration.alimentMutableList.toMutableList()
-                                    updatedAliments.add(newAlimentRation)
+                                    // Aliment déjà présent : quantité cumulée (une ligne par aliment en base)
+                                    val updatedAliments =
+                                        ajouterOuCumulerAliment(ration.alimentMutableList, newAlimentRation).toMutableList()
                                     val updatedRation = ration.copy(alimentMutableList = updatedAliments)
 
                                     val updatedRations = consultation.rations.toMutableList()

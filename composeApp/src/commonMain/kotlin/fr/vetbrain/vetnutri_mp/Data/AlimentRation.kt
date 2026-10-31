@@ -227,3 +227,17 @@ data class AlimentRation(
                 // les densités par équation
         }
 }
+
+/**
+ * Ajoute [nouveau] aux aliments d'une ration. Si le même aliment y figure déjà, sa quantité est
+ * cumulée sur la ligne existante : la base n'accepte qu'une ligne par aliment et par ration
+ * (index unique refAlimUnif + refRation), une seconde ligne serait écrasée à l'enregistrement.
+ */
+fun ajouterOuCumulerAliment(aliments: List<AlimentRation>, nouveau: AlimentRation): List<AlimentRation> {
+    val cle = nouveau.refAlimUnif ?: return aliments + nouveau
+    val index = aliments.indexOfFirst { it.refAlimUnif == cle }
+    if (index < 0) return aliments + nouveau
+    return aliments.toMutableList().also {
+        it[index] = it[index].copy(quantite = it[index].quantite + nouveau.quantite)
+    }
+}

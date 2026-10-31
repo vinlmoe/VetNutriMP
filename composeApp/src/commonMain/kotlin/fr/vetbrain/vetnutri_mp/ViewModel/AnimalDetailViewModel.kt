@@ -447,9 +447,14 @@ class AnimalDetailViewModel(
                                 refAlimUnif = alimentComplet.uuid
                         )
 
-                // Créer une copie de la ration courante avec le nouvel aliment
-                val updatedRation = rationCourante.copy()
-                updatedRation.alimentMutableList.add(alimentRation)
+                // Copie de la ration avec l'aliment ; déjà présent, sa quantité est cumulée (la base
+                // n'accepte qu'une ligne par aliment et par ration : une seconde ligne serait perdue)
+                val updatedRation =
+                        rationCourante.copy(
+                                alimentMutableList =
+                                        ajouterOuCumulerAliment(rationCourante.alimentMutableList, alimentRation)
+                                                .toMutableList()
+                        )
 
                 // Mettre à jour la ration dans la consultation
                 updateRationInConsultation(updatedRation)

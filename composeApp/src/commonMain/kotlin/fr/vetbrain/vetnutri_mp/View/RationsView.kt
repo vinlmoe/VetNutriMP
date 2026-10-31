@@ -648,9 +648,13 @@ fun RationsView(
                                                         aliment = alimentComplet,
                                                         refRation = ration.uuid
                                                 )
+                                        // Aliment déjà présent : quantité cumulée (une ligne par aliment en base)
                                         val updatedAliments =
-                                                ration.alimentMutableList.toMutableList()
-                                        updatedAliments.add(newAlimentRation)
+                                                ajouterOuCumulerAliment(
+                                                                ration.alimentMutableList,
+                                                                newAlimentRation
+                                                        )
+                                                        .toMutableList()
                                         val updatedRation =
                                                 ration.copy(alimentMutableList = updatedAliments)
 

@@ -84,6 +84,10 @@ class GuideScreenshotDriver {
                                 .performTouchInput { swipeUp(startY = bottom - 10f, endY = top + 10f) }
                         }
                         "clickdesc" ->onAllNodesWithContentDescription(arg, useUnmergedTree = true)[0].performClick()
+                        "clickdescn" -> {
+                            val n = arg.substringBefore(' ').toInt()
+                            onAllNodesWithContentDescription(arg.substringAfter(' '), useUnmergedTree = true)[n].performClick()
+                        }
                         "clickn" -> {
                             val n = arg.substringBefore(' ').toInt()
                             onAllNodesWithText(arg.substringAfter(' '), useUnmergedTree = true)[n].performClick()
