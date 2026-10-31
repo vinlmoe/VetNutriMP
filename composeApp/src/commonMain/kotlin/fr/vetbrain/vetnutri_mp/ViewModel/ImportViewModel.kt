@@ -199,15 +199,6 @@ class ImportViewModel(
         fr.vetbrain.vetnutri_mp.importNutritionalRequirementsFromFile(this)
     }
 
-    /**
-     * Met à jour le message de résultat d'importation des références nutritionnelles
-     *
-     * @param message Le nouveau message à afficher
-     */
-    fun updateNutritionalRequirementImportResultMessage(message: String) {
-        _nutritionalRequirementImportResultMessage.value = message
-    }
-
     // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
 
     override fun onCleared() {

@@ -338,6 +338,13 @@ Suites traitées :
   \item \textbf{Tests ViewModel} (T1) : ajout d'aliment (cumul jusqu'en base, nouvelle ligne),
         recettes et conseils sans dépôt, arrêt du travail après \code{onCleared} (vérifié par mutation) ;
         fusion des mots-clés et préférences partagées testées sur base Room.
+  \item \textbf{ViewModels (A3)} : 141 membres morts retirés (fonctions publiques jamais appelées,
+        flux écrits mais jamais lus, champs orphelins ; vérification automatique membre par membre),
+        dont une analyse complète recalculée à chaque sélection de ration sans être affichée et son
+        cache LRU. \code{AnimalDetailViewModel} 2\,699\,$\to$\,2\,157 l. : référentiels et mots-clés
+        délégués à \code{ReferencesConsultation}, ajout et suppression de poids factorisés,
+        calculs de besoin énergétique déplacés dans \code{Data/RationAnalysisCalculations}.
+        Restent couplés à l'état central : plan évolutif et troupeau.
   \item Quatre fichiers Kotlin vides et suivis supprimés (\code{BackupViewModel},
         \code{TestApiEnvelope}, \code{FullscreenToggle}, \code{GenericGraphComponent}).
   \item Filtres de la sélection d'aliments (Graphique Aliments) : un par ligne sur téléphone.

@@ -272,11 +272,6 @@ class CrossConsultationAnalysisViewModel(
         _selectedIds.value = (_selectedIds.value + ids).toSet()
     }
 
-    fun getSelectedConsultations(): List<ConsultationItem> {
-        val ids: Set<String> = _selectedIds.value
-        return consultations.value.filter { ids.contains(it.consultationId) }
-    }
-
     /**
      * Récupère les rations des consultations sélectionnées.
      *
@@ -290,11 +285,6 @@ class CrossConsultationAnalysisViewModel(
                 .flatMap { it.rations }
                 .filter { ration -> actualOnly == null || ration.actual == actualOnly }
     }
-
-    /**
-     * Placeholder : à remplacer par une logique de recommandations.
-     */
-    fun getProposedConsultations(): List<ConsultationItem> = emptyList()
 
     /** Calcule les statistiques descriptives sur les nutriments des rations sélectionnées. */
     fun computeNutrientStats(actualOnly: Boolean?): List<NutrientStat> {

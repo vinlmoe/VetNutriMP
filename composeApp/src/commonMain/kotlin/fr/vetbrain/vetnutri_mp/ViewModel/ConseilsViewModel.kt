@@ -58,68 +58,6 @@ class ConseilsViewModel(
         searchQuery = query
     }
 
-    fun filterByCategory(category: SectionCategory?) {
-        selectedCategory = category
-    }
-
-    fun getFilteredConseils(): List<HtmlSection> {
-        return _conseils.value.filter { conseil ->
-            val matchesSearch =
-                    searchQuery.isEmpty() ||
-                            conseil.title.contains(searchQuery, ignoreCase = true) ||
-                            conseil.tags.any { it.contains(searchQuery, ignoreCase = true) }
-
-            val matchesCategory = selectedCategory == null || conseil.category == selectedCategory
-
-            matchesSearch && matchesCategory
-        }
-    }
-
-    fun createConseil(title: String, category: SectionCategory) {
-        coroutineScope.launch {
-            try {
-                val nouveauConseil =
-                        HtmlSection(
-                                id = "conseil_${Clock.System.now().toEpochMilliseconds()}",
-                                title = title,
-                                content =
-                                        fr.vetbrain.vetnutri_mp.Export.RichTextContent(
-                                                blocks =
-                                                        listOf(
-                                                                fr.vetbrain.vetnutri_mp.Export
-                                                                        .TextBlock.Paragraph(
-                                                                        id = "p1",
-                                                                        text =
-                                                                                "Contenu du conseil...",
-                                                                        formatting =
-                                                                                fr.vetbrain
-                                                                                        .vetnutri_mp
-                                                                                        .Export
-                                                                                        .TextFormatting()
-                                                                )
-                                                        )
-                                        ),
-                                category = category,
-                                tags = emptyList(),
-                                priority = 0,
-                                isActive = true,
-                                targetSpecies = emptyList(),
-                                targetAgeGroups = emptyList()
-                        )
-
-                val result = conseilRepository.sauvegarderConseil(nouveauConseil)
-                if (result.isSuccess) {
-                    loadConseils() // Recharger la liste
-                } else {
-                    _error.value = "Erreur lors de la création du conseil"
-                }
-            } catch (e: Exception) {
-                e.rethrowIfCancellation()
-                _error.value = "Erreur: ${e.message}"
-            }
-        }
-    }
-
     fun deleteConseil(conseilId: String) {
         coroutineScope.launch {
             try {
@@ -129,17 +67,6 @@ class ConseilsViewModel(
                 } else {
                     _error.value = "Erreur lors de la suppression du conseil"
                 }
-            } catch (e: Exception) {
-                e.rethrowIfCancellation()
-                _error.value = "Erreur: ${e.message}"
-            }
-        }
-    }
-
-    fun incrementUsage(conseilId: String) {
-        coroutineScope.launch {
-            try {
-                conseilRepository.incrementerUsage(conseilId)
             } catch (e: Exception) {
                 e.rethrowIfCancellation()
                 _error.value = "Erreur: ${e.message}"

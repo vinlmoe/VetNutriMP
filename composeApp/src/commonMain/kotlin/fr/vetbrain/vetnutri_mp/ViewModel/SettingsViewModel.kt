@@ -114,35 +114,6 @@ class SettingsViewModel(
     val nutritionalRequirementMessage: StateFlow<String?> =
             _nutritionalRequirementMessage.asStateFlow()
 
-    // Menu latéral
-    private val _isDrawerOpen = MutableStateFlow(false)
-    val isDrawerOpen: StateFlow<Boolean> = _isDrawerOpen.asStateFlow()
-
-    // Préférences des nutriments par catégorie
-    private val _selectedMainNutrients =
-            MutableStateFlow<List<NutrientMain>>(NutrientMain.entries.toList())
-    val selectedMainNutrients: StateFlow<List<NutrientMain>> = _selectedMainNutrients.asStateFlow()
-
-    private val _selectedMinerals =
-            MutableStateFlow<List<NutrientMin>>(NutrientMin.entries.toList())
-    val selectedMinerals: StateFlow<List<NutrientMin>> = _selectedMinerals.asStateFlow()
-
-    private val _selectedVitamins =
-            MutableStateFlow<List<NutrientVitam>>(NutrientVitam.entries.toList())
-    val selectedVitamins: StateFlow<List<NutrientVitam>> = _selectedVitamins.asStateFlow()
-
-    private val _selectedLipids =
-            MutableStateFlow<List<NutrientLipid>>(NutrientLipid.entries.toList())
-    val selectedLipids: StateFlow<List<NutrientLipid>> = _selectedLipids.asStateFlow()
-
-    private val _selectedAminoAcids = MutableStateFlow<List<AAEnum>>(AAEnum.entries.toList())
-    val selectedAminoAcids: StateFlow<List<AAEnum>> = _selectedAminoAcids.asStateFlow()
-
-    private val _selectedOtherNutrients =
-            MutableStateFlow<List<NutrientOther>>(NutrientOther.entries.toList())
-    val selectedOtherNutrients: StateFlow<List<NutrientOther>> =
-            _selectedOtherNutrients.asStateFlow()
-
     /** Résultat d'une importation */
     sealed class ImportResult {
         /**
@@ -186,59 +157,6 @@ class SettingsViewModel(
     /** Diminue l'échelle de l'interface utilisateur */
     fun decrementUiScale() {
         setUiScale(_uiScale.value - 0.1)
-    }
-
-    /** Ouvre le menu latéral */
-    fun openDrawer() {
-        _isDrawerOpen.value = true
-    }
-
-    /** Ferme le menu latéral */
-    fun closeDrawer() {
-        _isDrawerOpen.value = false
-    }
-
-    /** Met à jour l'ordre et la sélection des nutriments principaux */
-    fun updateMainNutrients(nutrients: List<NutrientMain>) {
-        _selectedMainNutrients.value = nutrients
-    }
-
-    /** Met à jour l'ordre et la sélection des minéraux */
-    fun updateMinerals(minerals: List<NutrientMin>) {
-        _selectedMinerals.value = minerals
-    }
-
-    /** Met à jour l'ordre et la sélection des vitamines */
-    fun updateVitamins(vitamins: List<NutrientVitam>) {
-        _selectedVitamins.value = vitamins
-    }
-
-    /** Met à jour l'ordre et la sélection des lipides */
-    fun updateLipids(lipids: List<NutrientLipid>) {
-        _selectedLipids.value = lipids
-    }
-
-    /** Met à jour l'ordre et la sélection des acides aminés */
-    fun updateAminoAcids(aminoAcids: List<AAEnum>) {
-        _selectedAminoAcids.value = aminoAcids
-    }
-
-    /** Met à jour l'ordre et la sélection des autres nutriments */
-    fun updateOtherNutrients(otherNutrients: List<NutrientOther>) {
-        _selectedOtherNutrients.value = otherNutrients
-    }
-
-    /** Obtient tous les nutriments disponibles pour une catégorie spécifique */
-    fun getAllNutrientsForCategory(category: MainNutrientEnum): List<Nutrient> {
-        return when (category) {
-            MainNutrientEnum.BASE -> NutrientMain.entries.toList()
-            MainNutrientEnum.MIN -> NutrientMin.entries.toList()
-            MainNutrientEnum.VITAM -> NutrientVitam.entries.toList()
-            MainNutrientEnum.LIPID -> NutrientLipid.entries.toList()
-            MainNutrientEnum.AMA -> AAEnum.entries.toList()
-            MainNutrientEnum.OTHER -> NutrientOther.entries.toList()
-            else -> emptyList()
-        }
     }
 
     /** Réinitialise le résultat de l'importation */
@@ -424,16 +342,6 @@ class SettingsViewModel(
         }
     }
 
-    /** Définit le message de résultat d'importation des références nutritionnelles */
-    fun setNutritionalRequirementMessage(message: String) {
-        _nutritionalRequirementMessage.value = message
-    }
-
-    /** Efface le message de résultat d'importation des références nutritionnelles */
-    fun clearNutritionalRequirementMessage() {
-        _nutritionalRequirementMessage.value = null
-    }
-
     /**
      * Supprime tous les aliments de la base de données
      * @return Le nombre d'aliments supprimés
@@ -531,66 +439,6 @@ class SettingsViewModel(
             result
         } else {
             0
-        }
-    }
-
-    /**
-     * Tente une récupération après erreur de lecture/migration de la base.
-     *
-     * La stratégie est volontairement best-effort:
-     * - vider les tables critiques quand c'est encore possible
-     * - ignorer les erreurs de purge individuelle
-     * - relancer ensuite un import complet
-     */
-    suspend fun recoverDatabaseByResettingContent(): ImportResult {
-        val resetErrors = mutableListOf<String>()
-
-        suspend fun attemptReset(step: String, action: suspend () -> Unit) {
-            try {
-                action()
-            } catch (e: Exception) {
-                e.rethrowIfCancellation()
-                resetErrors += "$step: ${e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR)}"
-            }
-        }
-
-        attemptReset(translate("settings.resetStepAnimals")) { clearAllAnimals() }
-        attemptReset(translate("settings.resetStepFoods")) { clearAllFoods() }
-        attemptReset(translate("settings.resetStepReferences")) { clearAllReferences() }
-        attemptReset(translate("settings.resetStepEquations")) { clearAllEquations() }
-        attemptReset(translate("settings.resetStepBiblio")) { clearAllBiblioRefs() }
-
-        val importResult = relaunchAutomaticImport(forceImport = true)
-
-        return when (importResult) {
-            is ImportResult.Success -> {
-                if (resetErrors.isEmpty()) {
-                    importResult
-                } else {
-                    ImportResult.Success(
-                        count = importResult.count,
-                        importedCount = importResult.importedCount,
-                        updatedCount = importResult.updatedCount,
-                        deletedCount = importResult.deletedCount,
-                        errorCount = importResult.errorCount + resetErrors.size,
-                        nonResolvedNutrients = importResult.nonResolvedNutrients,
-                        conseils = importResult.conseils
-                    )
-                }
-            }
-            is ImportResult.Error -> {
-                if (resetErrors.isEmpty()) {
-                    importResult
-                } else {
-                    ImportResult.Error(
-                        buildString {
-                            append(importResult.message)
-                            append(translate("settings.resetPartialSuffix"))
-                            append(resetErrors.joinToString("; "))
-                        }
-                    )
-                }
-            }
         }
     }
 

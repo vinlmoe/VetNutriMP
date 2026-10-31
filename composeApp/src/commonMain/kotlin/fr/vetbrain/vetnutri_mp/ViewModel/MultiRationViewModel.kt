@@ -179,10 +179,6 @@ class MultiRationViewModel(
         p.copy(listes = p.listes + (role to p.listes[role].orEmpty().filterNot { it.uuid == alimentId }))
     }
 
-    fun modifierCible(role: RoleExploration, cible: CibleExploration) = modifierParametres { p ->
-        p.copy(cibles = p.cibles + (role to cible))
-    }
-
     /** Changer le nutriment des fibres remet le facteur par défaut (×5 pour la cellulose). */
     fun modifierNutrimentCible(role: RoleExploration, nutriment: Nutrient) = modifierParametres { p ->
         val actuelle = p.cibles[role] ?: CibleExploration(role.nutrimentParDefaut)

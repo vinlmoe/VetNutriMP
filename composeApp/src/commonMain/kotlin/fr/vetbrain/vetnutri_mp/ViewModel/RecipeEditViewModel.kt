@@ -77,19 +77,15 @@ class RecipeEditViewModel(
     
     // État de l'aliment en cours d'ajout
     private val _alimentToAdd = mutableStateOf<AlimentEv?>(null)
-    val alimentToAdd: State<AlimentEv?> = _alimentToAdd
     
     // État de la quantité pour l'aliment à ajouter
     private val _quantityToAdd = mutableStateOf("100")
-    val quantityToAdd: State<String> = _quantityToAdd
     
     // État de la cible pour l'aliment à ajouter
     private val _targetToAdd = mutableStateOf(0)
-    val targetToAdd: State<Int> = _targetToAdd
     
     // État de l'erreur de quantité
     private val _quantityError = mutableStateOf(false)
-    val quantityError: State<Boolean> = _quantityError
     
     // État de la confirmation de suppression
     private val _showDeleteConfirmation = mutableStateOf<Ration?>(null)
@@ -218,13 +214,6 @@ class RecipeEditViewModel(
     }
     
     /**
-     * Met à jour la cible à ajouter
-     */
-    fun updateTargetToAdd(target: Int) {
-        _targetToAdd.value = target
-    }
-    
-    /**
      * Ajoute l'aliment sélectionné à la recette
      */
     fun addAlimentToRecipe() {
@@ -289,17 +278,6 @@ class RecipeEditViewModel(
             } catch (e: NumberFormatException) {
                 // Ignore les valeurs invalides
             }
-        }
-    }
-    
-    /**
-     * Met à jour la cible d'un aliment dans la recette
-     */
-    fun updateAlimentTarget(alimentRation: AlimentRation, newTarget: Int) {
-        val index = _selectedIngredients.indexOf(alimentRation)
-        if (index != -1) {
-            val updatedAliment = alimentRation.copy(refTarget = newTarget)
-            _selectedIngredients[index] = updatedAliment
         }
     }
     
@@ -457,23 +435,6 @@ class RecipeEditViewModel(
                !_quantityError.value
     }
     
-    /**
-     * Vérifie si la recette a été modifiée
-     */
-    fun hasRecipeChanged(): Boolean {
-        val originalRecipe = _editingRecipe.value
-        if (originalRecipe == null) return true // Nouvelle recette
-        
-        return originalRecipe.name != _newRecipeName.value ||
-               originalRecipe.alimentMutableList.size != _selectedIngredients.size ||
-               originalRecipe.alimentMutableList.any { original ->
-                   val matching = _selectedIngredients.find { it.uuidUnif == original.uuidUnif }
-                   matching == null || 
-                   matching.quantite != original.quantite ||
-                   matching.refTarget != original.refTarget
-               }
-    }
-
     // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
 
     override fun onCleared() {

@@ -90,10 +90,6 @@ class ExamGradingViewModel(
 
     fun clearMessage() { _message.value = null }
 
-    fun clearImportLogs() {
-        _importLogs.value = emptyList()
-    }
-
     fun loadRule(examId: String, exerciseId: String) {
         viewModelScope.launch {
             val existing = repository.getRule(examId, exerciseId)

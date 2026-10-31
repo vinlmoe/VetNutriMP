@@ -94,7 +94,6 @@ class ReferenceEvViewModel(
 
     // États pour les équations disponibles
     private val _loadingEquations = MutableStateFlow(false)
-    val loadingEquations: StateFlow<Boolean> = _loadingEquations.asStateFlow()
 
     private val _availableEquations = MutableStateFlow<List<Equation>>(emptyList())
     val availableEquations: StateFlow<List<Equation>> = _availableEquations.asStateFlow()
@@ -152,16 +151,6 @@ class ReferenceEvViewModel(
                 _loading.value = false
             }
         }
-    }
-
-    /** Met à jour le texte de recherche */
-    fun updateSearchText(text: String) {
-        _searchText.value = text
-    }
-
-    /** Met à jour l'espèce sélectionnée pour le filtrage */
-    fun updateSelectedEspece(espece: Espece?) {
-        _selectedEspece.value = espece
     }
 
     /** Crée une nouvelle référence */
@@ -373,18 +362,6 @@ class ReferenceEvViewModel(
 
     // Méthode cloneCoefP supprimée - on référence directement les coefficients existants
 
-    /** Obtient une référence par son identifiant */
-    suspend fun getReferenceById(referenceId: String): ReferenceEv? {
-        return try {
-            repository.getById(referenceId)
-        } catch (e: Exception) {
-            e.rethrowIfCancellation()
-            _error.value =
-                    "Erreur lors de la récupération de la référence: ${e.message ?: "Erreur inconnue"}"
-            null
-        }
-    }
-
     // Initialiser pour l'édition
     fun initForEdit() {
         _currentReferenceEv.value = ReferenceEv()
@@ -465,39 +442,8 @@ class ReferenceEvViewModel(
         }
     }
 
-    // Mettre à jour les champs du formulaire
-    fun updateNom(value: String) {
-        _nom.value = value
-        validateForm()
-    }
-
     fun updateDescription(value: String) {
         _description.value = value
-        validateForm()
-    }
-
-    fun updateNomEnergie(value: String) {
-        _nomEnergie.value = value
-        validateForm()
-    }
-
-    fun updateEspece(value: Espece) {
-        _espece.value = value
-        validateForm()
-    }
-
-    fun updateStadePhysio(value: StadePhysio) {
-        _stadePhysio.value = value
-        validateForm()
-    }
-
-    fun updateIsMaladie(value: Boolean) {
-        _isMaladie.value = value
-        validateForm()
-    }
-
-    fun updateNomMaladie(value: String) {
-        _nomMaladie.value = value
         validateForm()
     }
 

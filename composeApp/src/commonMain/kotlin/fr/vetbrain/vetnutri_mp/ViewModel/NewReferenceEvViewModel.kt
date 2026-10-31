@@ -59,8 +59,6 @@ class NewReferenceEvViewModel(
     // État pour les nutriments définis
     private val _definedNutrients =
             MutableStateFlow<Map<Nutrient, Map<Reflevel, Double>>>(emptyMap())
-    val definedNutrients: StateFlow<Map<Nutrient, Map<Reflevel, Double>>> =
-            _definedNutrients.asStateFlow()
 
     // État pour les erreurs
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -81,10 +79,6 @@ class NewReferenceEvViewModel(
     // État pour les équations
     private val _equations = MutableStateFlow<List<Equation>>(emptyList())
     val equations: StateFlow<List<Equation>> = _equations.asStateFlow()
-
-    // État pour les erreurs de chargement des équations
-    private val _equationsError = MutableStateFlow<String?>(null)
-    val equationsError: StateFlow<String?> = _equationsError.asStateFlow()
 
     // Exposer la référence courante en tant qu'équations courantes pour l'onglet équations
     val currentEquations: StateFlow<ReferenceEv> = _currentReference.asStateFlow()
@@ -440,24 +434,6 @@ class NewReferenceEvViewModel(
     }
 
     /**
-     * Associe une équation à la référence
-     *
-     * @param equation L'équation à associer
-     * @param type Le type d'équation (BEE, BW, DEcom, DEraw)
-     */
-    fun setEquation(equation: Equation, type: String) {
-        val reference = _currentReference.value
-        when (type) {
-            "BEE" -> reference.equationBEE = equation
-            "BW" -> reference.equationBW = equation
-            "DEcom" -> reference.equationDEcom = equation
-            "DEraw" -> reference.equationDEraw = equation
-            else -> reference.equationsNut.add(equation)
-        }
-        _currentReference.value = reference
-    }
-
-    /**
      * Définit l'équation de poids corporel pour la référence
      *
      * @param equation L'équation à définir ou null pour supprimer l'équation
@@ -677,11 +653,6 @@ class NewReferenceEvViewModel(
         }
     }
 
-    /** Indique si une équation complémentaire est déjà sélectionnée sur la référence. */
-    fun isComplementaryEquationSelected(equation: Equation): Boolean {
-        return _currentReference.value.equationsNut.any { it.uuid == equation.uuid }
-    }
-
     /** Ajoute/retire une équation complémentaire à la référence et persiste. */
     fun toggleComplementaryEquation(equation: Equation) {
         coroutineScope.launch {
@@ -717,11 +688,6 @@ class NewReferenceEvViewModel(
                 _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
-    }
-
-    /** Efface les messages d'erreur */
-    fun clearErrorMessage() {
-        _errorMessage.value = null
     }
 
     /** Réinitialise l'état de succès de l'opération */
@@ -831,16 +797,6 @@ class NewReferenceEvViewModel(
                     MutableStateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>>(emptyList())
                             .asStateFlow()
         }
-    }
-
-    /**
-     * Récupère le nom d'un groupe de coefficients
-     *
-     * @param groupIndex Index du groupe (0-4 pour k1-k5)
-     * @return Nom du groupe
-     */
-    fun getCoefficientGroupName(groupIndex: Int): String {
-        return _groupNames.value.getOrElse(groupIndex) { "" }
     }
 
     /**

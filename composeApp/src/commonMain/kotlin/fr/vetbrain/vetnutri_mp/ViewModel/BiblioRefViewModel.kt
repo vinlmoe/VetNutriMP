@@ -155,11 +155,6 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) : ViewMode
         comments.value = value
     }
 
-    /** Met à jour la valeur du champ bibtex */
-    fun updateBibtex(value: String) {
-        bibtex.value = value
-    }
-
     /** Pré-remplit le formulaire depuis un DOI via l'API CrossRef */
     fun importFromDoi(doi: String) {
         if (doi.isBlank()) return

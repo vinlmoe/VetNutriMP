@@ -69,7 +69,6 @@ class EquationViewModel(
 
     // État de sélection d'une référence bibliographique
     private val _selectedBiblioRef = MutableStateFlow<BiblioRef?>(null)
-    val selectedBiblioRef: StateFlow<BiblioRef?> = _selectedBiblioRef.asStateFlow()
 
     // Messages d'opération
     private val _operationMessage = MutableStateFlow<String?>(null)
@@ -111,10 +110,6 @@ class EquationViewModel(
 
     private val _equationDEraw = MutableStateFlow<Equation?>(null)
     val equationDEraw: StateFlow<Equation?> = _equationDEraw.asStateFlow()
-
-    // Script coloré
-    private val _coloredScript = MutableStateFlow<String>("")
-    val coloredScript: StateFlow<String> = _coloredScript.asStateFlow()
 
     // Variables d'état privées
     private val _unrecognizedVariables = MutableStateFlow<List<String>>(emptyList())
@@ -196,7 +191,6 @@ class EquationViewModel(
 
     // État pour la référence courante
     private val _currentReferenceId = MutableStateFlow<String?>(null)
-    val currentReferenceId: StateFlow<String?> = _currentReferenceId.asStateFlow()
 
     init {
         loadEquations()
@@ -452,35 +446,6 @@ class EquationViewModel(
         }
     }
 
-    /** Valide l'expression mathématique de l'équation courante */
-    fun validerExpressionCourante(): ResultatValidation {
-        val equation = _currentEquation.value
-        val typeValidation = mapEquationKindToValidationType(equation.kind)
-        return EquationEvaluator.validerExpression(equation.equationScript, typeValidation)
-    }
-
-    /** Teste l'expression courante avec des valeurs d'exemple */
-    fun testerExpressionCourante(): Double? {
-        val equation = _currentEquation.value
-        val typeValidation = mapEquationKindToValidationType(equation.kind)
-        return EquationEvaluator.testerExpression(equation.equationScript, typeValidation)
-    }
-
-    /** Obtient la liste de toutes les variables disponibles selon le type d'équation */
-    fun getVariablesDisponibles(): Set<String> {
-        val equation = _currentEquation.value
-        val typeValidation = mapEquationKindToValidationType(equation.kind)
-
-        return when (typeValidation) {
-            TypeEquationValidation.BESOIN_ENERGETIQUE -> EquationEvaluator.toutesLesVariables
-            TypeEquationValidation.BESOIN_NUTRITIONNEL ->
-                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
-            TypeEquationValidation.DENSITE_ENERGETIQUE -> getNutrientsVariables()
-            TypeEquationValidation.GENERALE ->
-                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
-        }
-    }
-
     /** Obtient la liste des variables de nutriments disponibles */
     private fun getNutrientsVariables(): Set<String> {
         val nutrientsMain = NutrientMain.entries.map { it.label }
@@ -504,19 +469,6 @@ class EquationViewModel(
         val currentValue = _currentEquation.value
         val updatedBib = currentValue.bib.copy(comments = note)
         _currentEquation.value = currentValue.copy(bib = updatedBib)
-    }
-
-    /** Met à jour la référence bibliographique */
-    fun updateBibRef(ref: String) {
-        val currentValue = _currentEquation.value
-        val updatedBib = currentValue.bib.copy(completeRef = ref)
-        _currentEquation.value = currentValue.copy(bib = updatedBib)
-    }
-
-    /** Met à jour le facteur de correction */
-    fun updateCorrectionFactor(factor: Double) {
-        val currentValue = _currentEquation.value
-        _currentEquation.value = currentValue.copy(correctionFactor = factor)
     }
 
     /** Met à jour l'espèce d'application de l'équation */
@@ -564,31 +516,6 @@ class EquationViewModel(
                 nutrientAnalysis +
                 acideAmines +
                 CustomNutrientRegistry.all()
-    }
-
-    /** Ajoute une variable à l'équation */
-    fun addVariable(variableKind: VariableKind) {
-        val currentValue = _currentEquation.value
-        // Vérifier si la variable existe déjà
-        if (!currentValue.variables.contains(variableKind)) {
-            val updatedVariables = currentValue.variables.toMutableList()
-            updatedVariables.add(variableKind)
-            _currentEquation.value = currentValue.copy(variables = updatedVariables)
-        }
-    }
-
-    /** Supprime une variable de l'équation */
-    fun removeVariable(variableKind: VariableKind) {
-        val currentValue = _currentEquation.value
-        val updatedVariables = currentValue.variables.toMutableList()
-        updatedVariables.remove(variableKind)
-        _currentEquation.value = currentValue.copy(variables = updatedVariables)
-    }
-
-    /** Efface toutes les variables sélectionnées */
-    fun clearSelectedVariables() {
-        val currentValue = _currentEquation.value
-        _currentEquation.value = currentValue.copy(variables = mutableListOf())
     }
 
     /** Efface le message d'opération */
@@ -834,12 +761,6 @@ class EquationViewModel(
                 _isLoading.value = false
             }
         }
-    }
-
-    /** Réinitialise l'équation en cours d'édition */
-    fun clearCurrentEquation() {
-        _currentEquation.value = Equation()
-        _saveSuccessful.value = false
     }
 
     /** Sélectionne une référence bibliographique existante */

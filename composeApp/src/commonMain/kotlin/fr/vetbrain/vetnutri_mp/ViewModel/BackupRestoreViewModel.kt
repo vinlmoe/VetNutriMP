@@ -171,13 +171,6 @@ class BackupRestoreViewModel(
     }
     
     /**
-     * Effacer le log de restauration
-     */
-    fun clearRestoreLog() {
-        _restoreLog.value = ""
-    }
-    
-    /**
      * Formater la taille de fichier en format lisible
      */
     fun formatFileSize(bytes: Long): String {

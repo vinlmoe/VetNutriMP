@@ -210,8 +210,6 @@ class AnimalDetailViewModel(
     private val _isLoadingFoods = MutableStateFlow(false)
     val isLoadingFoods: StateFlow<Boolean> = _isLoadingFoods.asStateFlow()
 
-    private val cacheValidityDuration = 2 * 60 * 1000L
-    private val analysisCacheMutex = Mutex()
     // Sérialise les enregistrements de consultation : sans cela, deux sauvegardes lancées coup sur
     // coup (ex. éditions rapides d'un plan évolutif) peuvent se terminer dans le désordre et la
     // plus ancienne écraser la plus récente.
