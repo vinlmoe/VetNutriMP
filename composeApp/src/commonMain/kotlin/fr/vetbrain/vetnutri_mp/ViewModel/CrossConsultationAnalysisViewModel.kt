@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlin.math.pow
 import kotlin.math.sqrt
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /**
  * Énergie totale (kcal) d'une ration à partir de sa densité énergétique. `Ration.getDensiteEnergetiqueMoyenne()`
@@ -174,19 +175,24 @@ class CrossConsultationAnalysisViewModel(
                         state.copy(examExerciseId = exerciseId)
                     }
                     .map { state ->
-                        val q = state.query.trim().lowercase()
+                        val mots = Recherche.mots(state.query)
                         val qExamId = state.examId.trim()
                         val qExerciseId = state.examExerciseId.trim()
                         state.items.filter { item ->
                             val matchText =
-                                    q.isBlank() ||
-                                            item.animalName.lowercase().contains(q) ||
-                                            item.dateLabel.lowercase().contains(q) ||
-                                            item.objective.lowercase().contains(q) ||
-                                            (item.referenceLabel?.lowercase()?.contains(q) == true) ||
-                                            (item.examId?.lowercase()?.contains(q) == true) ||
-                                            (item.studentIdentifier?.lowercase()?.contains(q) == true) ||
-                                            (item.examExerciseId?.lowercase()?.contains(q) == true)
+                                    mots.isEmpty() ||
+                                            Recherche.correspond(
+                                                    mots,
+                                                    Recherche.indexer(
+                                                            item.animalName,
+                                                            item.dateLabel,
+                                                            item.objective,
+                                                            item.referenceLabel,
+                                                            item.examId,
+                                                            item.studentIdentifier,
+                                                            item.examExerciseId
+                                                    )
+                                            )
                             val matchSpecies = state.specie == null || item.espece == state.specie
                             val matchKeywords =
                                     state.keywords.isEmpty() ||

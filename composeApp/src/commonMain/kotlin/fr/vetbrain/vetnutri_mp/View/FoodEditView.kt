@@ -39,6 +39,7 @@ import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodEditViewModel
 import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -614,9 +615,7 @@ private fun BiblioRefTab(
                         selectedRefs.none { it.uuid == avail.uuid }
                 }
                 val filtered = if (searchQuery.isBlank()) unselected else unselected.filter { ref ->
-                        ref.firstAuthor.contains(searchQuery, ignoreCase = true) ||
-                                ref.completeRef.contains(searchQuery, ignoreCase = true) ||
-                                ref.year.toString().contains(searchQuery)
+                        Recherche.correspond(searchQuery, ref.firstAuthor, ref.completeRef, ref.year.toString())
                 }
                 AppAlertDialog(
                         onDismissRequest = { showPicker = false; searchQuery = "" },

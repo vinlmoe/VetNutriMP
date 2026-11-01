@@ -16,6 +16,7 @@ import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /**
  * Vue affichant la liste des équations disponibles
@@ -50,13 +51,15 @@ fun EquationListView(
                 if (searchQuery.value.isBlank()) {
                     equations
                 } else {
-                    val query = searchQuery.value.lowercase()
                     equations.filter { equation ->
-                        equation.name.lowercase().contains(query) ||
-                                equation.description.lowercase().contains(query) ||
-                                equation.equationScript.lowercase().contains(query) ||
-                                equation.kind.toString().lowercase().contains(query) ||
-                                equation.specie.toString().lowercase().contains(query)
+                        Recherche.correspond(
+                                searchQuery.value,
+                                equation.name,
+                                equation.description,
+                                equation.equationScript,
+                                equation.kind.toString(),
+                                equation.specie.toString()
+                        )
                     }
                 }
             }

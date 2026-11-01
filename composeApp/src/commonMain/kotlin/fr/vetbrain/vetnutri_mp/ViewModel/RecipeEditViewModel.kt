@@ -20,6 +20,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /**
  * ViewModel pour l'édition des recettes
@@ -133,15 +134,16 @@ class RecipeEditViewModel(
      * Filtre les recettes selon la recherche
      */
     fun getFilteredRecipes(): List<Ration> {
-        val query = _searchQuery.value.lowercase()
-        return if (query.isEmpty()) {
+        val query = _searchQuery.value
+        return if (query.isBlank()) {
             _recipes.toList()
         } else {
             _recipes.filter { recipe ->
-                recipe.name.lowercase().contains(query) ||
-                recipe.alimentMutableList.any { aliment ->
-                    aliment.aliment?.nom?.lowercase()?.contains(query) == true
-                }
+                Recherche.correspond(
+                    query,
+                    recipe.name,
+                    *recipe.alimentMutableList.map { it.aliment?.nom }.toTypedArray()
+                )
             }
         }
     }

@@ -13,6 +13,7 @@ import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.BulkAddBiblioToFoodsViewModel
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /**
  * Module d'ajout en masse de bibliographie aux aliments, accessible depuis Settings.
@@ -38,9 +39,7 @@ fun BulkAddBiblioToFoodsView(
             remember(availableBiblioRefs, biblioFilter) {
                 if (biblioFilter.isBlank()) availableBiblioRefs
                 else availableBiblioRefs.filter { ref ->
-                    ref.firstAuthor.contains(biblioFilter, ignoreCase = true) ||
-                            ref.completeRef.contains(biblioFilter, ignoreCase = true) ||
-                            ref.year.toString().contains(biblioFilter)
+                    Recherche.correspond(biblioFilter, ref.firstAuthor, ref.completeRef, ref.year.toString())
                 }
             }
 

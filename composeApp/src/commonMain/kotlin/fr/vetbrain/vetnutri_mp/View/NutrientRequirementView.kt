@@ -21,6 +21,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
 import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 @Composable
 fun NutrientRequirementView(
@@ -64,13 +65,14 @@ fun NutrientRequirementView(
                 if (searchQuery.value.isBlank()) {
                     allReferences
                 } else {
-                    val query = searchQuery.value.lowercase()
                     allReferences.filter { reference ->
-                        reference.nom.lowercase().contains(query) ||
-                                reference.espece.toString().lowercase().contains(query) ||
-                                reference.stadePhysio.toString().lowercase().contains(query) ||
-                                (reference.maladie &&
-                                        reference.nomMaladie.lowercase().contains(query))
+                        Recherche.correspond(
+                                searchQuery.value,
+                                reference.nom,
+                                reference.espece.toString(),
+                                reference.stadePhysio.toString(),
+                                reference.nomMaladie.takeIf { reference.maladie }
+                        )
                     }
                 }
             }

@@ -34,6 +34,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /**
  * ViewModel liste animaux.
@@ -243,13 +244,14 @@ class AnimalListViewModel(
                             }
 
                     val matchesQuery =
-                            trimmedQuery.isBlank() ||
-                                    animal.id.orEmpty().contains(trimmedQuery, ignoreCase = true) ||
-                                    animal.nom.contains(trimmedQuery, ignoreCase = true) ||
-                                    animal.ownerName.contains(trimmedQuery, ignoreCase = true) ||
-                                    animal.race.contains(trimmedQuery, ignoreCase = true) ||
-                                    (showExamDossiers &&
-                                        animal.examStudentId.orEmpty().contains(trimmedQuery, ignoreCase = true))
+                            Recherche.correspond(
+                                    trimmedQuery,
+                                    animal.id,
+                                    animal.nom,
+                                    animal.ownerName,
+                                    animal.race,
+                                    animal.examStudentId.takeIf { showExamDossiers }
+                            )
 
                     val matchesEspece = espece == null || animal.getEspece() == espece
                     val animalKeywords = keywordMap[animal.uuid] ?: emptySet()

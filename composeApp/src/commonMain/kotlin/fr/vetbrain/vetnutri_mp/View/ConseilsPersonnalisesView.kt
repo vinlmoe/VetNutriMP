@@ -25,6 +25,7 @@ import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -51,9 +52,7 @@ fun ConseilsPersonnalisesView(
             remember(conseils, searchQuery, selectedCategory) {
                 conseils.filter { conseil ->
                     val matchesSearch =
-                            searchQuery.isEmpty() ||
-                                    conseil.title.contains(searchQuery, ignoreCase = true) ||
-                                    conseil.tags.any { it.contains(searchQuery, ignoreCase = true) }
+                            Recherche.correspond(searchQuery, conseil.title, *conseil.tags.toTypedArray())
 
                     val matchesCategory =
                             selectedCategory == null || conseil.category == selectedCategory

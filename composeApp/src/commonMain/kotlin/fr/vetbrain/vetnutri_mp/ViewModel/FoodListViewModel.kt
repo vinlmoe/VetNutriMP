@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /**
  * Liste des aliments avec filtres réactifs.
@@ -31,13 +32,10 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) : Vi
         private val job = SupervisorJob()
         private val viewModelScope = CoroutineScope(AppDispatchers.Main + job)
 
-        // Index normalisé pour la recherche textuelle (champs lowercase pré-calculés)
+        // Index normalisé pour la recherche textuelle (sans casse, accents ni ligatures, pré-calculé)
         private data class NormalizedFood(
                 val aliment: AlimentEv,
-                val nomLower: String,
-                val brandLower: String,
-                val gammeLower: String,
-                val ingredientsLower: String,
+                val texteRecherche: String,
                 val especeStrings: Set<String>  // valeurs lowercase préparées pour le match espèce
         )
         private var normalizedIndex: List<NormalizedFood> = emptyList()
@@ -114,15 +112,12 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) : Vi
                         .launchIn(viewModelScope)
         }
 
-        /** Construit un index avec champs lowercase pré-calculés pour le filtrage rapide */
+        /** Construit un index avec texte de recherche pré-calculé pour le filtrage rapide */
         private fun buildNormalizedIndex(foods: List<AlimentEv>): List<NormalizedFood> =
                 foods.map { a ->
                         NormalizedFood(
                                 aliment = a,
-                                nomLower = a.nom?.lowercase() ?: "",
-                                brandLower = a.brand?.lowercase() ?: "",
-                                gammeLower = a.gamme?.lowercase() ?: "",
-                                ingredientsLower = a.ingredients?.lowercase() ?: "",
+                                texteRecherche = Recherche.indexer(a.nom, a.brand, a.gamme, a.ingredients),
                                 especeStrings = a.especes.map { it.lowercase() }.toSet()
                         )
                 }
@@ -218,9 +213,7 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) : Vi
 
         /** Filtre les aliments selon les critères de recherche — utilise l'index normalisé */
         private fun filterFoods(foods: List<AlimentEv>): List<AlimentEv> {
-                val query = searchQuery.value
-                val searchWords = if (query.isBlank()) emptyList()
-                else query.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }.map { it.lowercase() }
+                val searchWords = Recherche.mots(searchQuery.value)
 
                 val targetEspece = selectedEspece.value
                 val filterEspece = targetEspece != null && targetEspece != Espece.CH
@@ -241,13 +234,8 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) : Vi
                         .filter { norm ->
                                 val aliment = norm.aliment
 
-                                // Filtre textuel sur champs pré-normalisés
-                                val matchesSearch = searchWords.isEmpty() || searchWords.any { word ->
-                                        norm.nomLower.contains(word) ||
-                                        norm.brandLower.contains(word) ||
-                                        norm.gammeLower.contains(word) ||
-                                        norm.ingredientsLower.contains(word)
-                                }
+                                // Filtre textuel sur champs pré-normalisés : chaque mot doit figurer
+                                val matchesSearch = Recherche.correspond(searchWords, norm.texteRecherche)
 
                                 val matchesFoodType = selectedFoodType.value == null ||
                                         selectedFoodType.value == FoodKind.ALL ||

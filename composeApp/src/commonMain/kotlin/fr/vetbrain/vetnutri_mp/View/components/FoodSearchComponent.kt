@@ -50,6 +50,7 @@ import fr.vetbrain.vetnutri_mp.Utils.DataB
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /** Configuration du composant de recherche d'aliments */
 data class FoodSearchConfig(
@@ -144,6 +145,11 @@ fun FoodSearchComponent(
                 }
         }
 
+        // Texte de recherche normalisé, calculé une fois par liste plutôt qu'à chaque frappe
+        val textesRecherche = remember(foods) {
+                foods.associate { it.uuid to Recherche.indexer(it.nom, it.brand, it.gamme, it.ingredients) }
+        }
+
         // Filtrer les aliments selon les critères
         val filteredFoods =
                 remember(
@@ -162,48 +168,23 @@ fun FoodSearchComponent(
                         filters.sortOrder,
                         config.referenceEv
                 ) {
+                        val motsRecherche = Recherche.mots(filters.searchQuery)
                         var result =
                                 enrichedFoods.filter { aliment ->
-                                        // Filtre par recherche textuelle avec recherche multi-mots
-                                        // (AND)
+                                        // Recherche multi-mots (chaque mot dans au moins un champ),
+                                        // sans casse, accents ni ligatures
                                         val matchesSearch =
-                                                if (filters.searchQuery.isEmpty()) true
-                                                else {
-                                                        val searchWords =
-                                                                filters.searchQuery
-                                                                        .trim()
-                                                                        .split("\\s+".toRegex())
-                                                                        .filter { it.isNotEmpty() }
-                                                                        .map { it.lowercase() }
-
-                                                        if (searchWords.isEmpty()) true
-                                                        else {
-                                                                // Chaque mot doit être trouvé dans
-                                                                // au moins un des
-                                                                // champs
-                                                                searchWords.all { word ->
-                                                                        aliment.nom
-                                                                                ?.lowercase()
-                                                                                ?.contains(word) ==
-                                                                                true ||
-                                                                                aliment.brand
-                                                                                        ?.lowercase()
-                                                                                        ?.contains(
-                                                                                                word
-                                                                                        ) == true ||
-                                                                                aliment.gamme
-                                                                                        ?.lowercase()
-                                                                                        ?.contains(
-                                                                                                word
-                                                                                        ) == true ||
+                                                motsRecherche.isEmpty() ||
+                                                        Recherche.correspond(
+                                                                motsRecherche,
+                                                                textesRecherche[aliment.uuid]
+                                                                        ?: Recherche.indexer(
+                                                                                aliment.nom,
+                                                                                aliment.brand,
+                                                                                aliment.gamme,
                                                                                 aliment.ingredients
-                                                                                        ?.lowercase()
-                                                                                        ?.contains(
-                                                                                                word
-                                                                                        ) == true
-                                                                }
-                                                        }
-                                                }
+                                                                        )
+                                                        )
 
                                         // Filtre par type d'aliment (ALL = pas de filtre)
                                         val matchesType =

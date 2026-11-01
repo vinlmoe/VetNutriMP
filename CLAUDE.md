@@ -113,6 +113,12 @@ composeApp/src/commonMain/kotlin/fr/vetbrain/vetnutri_mp/
 Les évaluations d'équations n'ont pas de cache : `ExpressionMathematique` crée un `MathParser` par
 appel (le parseur garde son état de lecture ; partagé entre threads, il donnait des résultats faux).
 
+### Recherche textuelle
+Tout filtre de liste par texte passe par `Utils/Recherche` (`Recherche.correspond(requete, champs…)`) :
+insensible à la casse, aux accents et aux ligatures (« oeuf » trouve « Œuf »), chaque mot de la requête
+doit figurer dans au moins un champ. Pour une longue liste, pré-calculer `Recherche.indexer(...)` par
+élément et comparer avec `Recherche.mots(requete)`.
+
 ### AppContainer (DI manuel)
 `AppContainer` est un data class avec 15 dépendances construit dans `rememberAppContainer(appDatabase)`. Il n'est pas lazy. Pour ajouter une dépendance, l'ajouter dans `AppContainer.kt` **et** dans `rememberAppContainer`.
 

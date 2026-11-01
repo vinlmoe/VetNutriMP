@@ -18,6 +18,7 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.BiblioRefViewModel
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /** Vue pour afficher et gérer la liste des références bibliographiques */
 @Composable
@@ -51,12 +52,14 @@ fun BiblioRefListView(
                 if (searchQuery.value.isBlank()) {
                     biblioRefs
                 } else {
-                    val query = searchQuery.value.lowercase()
                     biblioRefs.filter { biblioRef ->
-                        biblioRef.firstAuthor.lowercase().contains(query) ||
-                                biblioRef.year.toString().contains(query) ||
-                                biblioRef.completeRef.lowercase().contains(query) ||
-                                biblioRef.comments.lowercase().contains(query)
+                        Recherche.correspond(
+                                searchQuery.value,
+                                biblioRef.firstAuthor,
+                                biblioRef.year.toString(),
+                                biblioRef.completeRef,
+                                biblioRef.comments
+                        )
                     }
                 }
             }

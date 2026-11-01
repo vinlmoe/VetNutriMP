@@ -22,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /**
  * Composant d'autocomplétion générique et réutilisable
@@ -60,7 +61,7 @@ fun <T> AutocompleteTextField(
                         items
                 } else {
                         items.filter { suggestion ->
-                                toStringFn(suggestion).contains(query, ignoreCase = true)
+                                Recherche.correspond(query, toStringFn(suggestion))
                         }
                 }
         }
@@ -197,7 +198,7 @@ fun AutocompleteTextField(
                 if (query.isBlank()) {
                         items
                 } else {
-                        items.filter { it.contains(query, ignoreCase = true) }
+                        items.filter { Recherche.correspond(query, it) }
                 }
         },
         onSuggestionSelected: ((String) -> Unit)? = null

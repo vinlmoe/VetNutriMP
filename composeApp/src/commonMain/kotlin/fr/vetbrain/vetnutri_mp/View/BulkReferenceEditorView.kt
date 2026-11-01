@@ -28,6 +28,7 @@ import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 import fr.vetbrain.vetnutri_mp.ViewModel.BULK_EDITABLE_CATEGORIES
 import fr.vetbrain.vetnutri_mp.ViewModel.BulkReferenceEditorViewModel
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 private val NUTRIENT_COL_WIDTH = 170.dp
 private val REF_COL_WIDTH = 130.dp
@@ -62,7 +63,7 @@ fun BulkReferenceEditorView(
     LaunchedEffect(selectedCategory) { nutrientFilter = "" }
     val filteredNutrients = remember(nutrients, nutrientFilter) {
         if (nutrientFilter.isBlank()) nutrients
-        else nutrients.filter { it.label.lowercase().contains(nutrientFilter.lowercase()) }
+        else nutrients.filter { Recherche.correspond(nutrientFilter, it.label) }
     }
 
     // F1 — UUID de la colonne source pour le dropdown de copie

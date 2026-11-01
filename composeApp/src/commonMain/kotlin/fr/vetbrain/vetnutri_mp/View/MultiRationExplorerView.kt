@@ -53,6 +53,7 @@ import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchLayout
 import fr.vetbrain.vetnutri_mp.ViewModel.MultiRationViewModel
 import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /** Nombre maximal de rations d'une case ouvertes ensemble dans une consultation. */
 private const val MAX_RATIONS_PAR_CASE = 20
@@ -247,7 +248,7 @@ private fun OngletAnimaux(viewModel: MultiRationViewModel, p: ParametresExplorat
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
     )
-    val visibles = references.filter { filtre.isBlank() || it.nom.contains(filtre, ignoreCase = true) || it.uuid in p.referenceIds }
+    val visibles = references.filter { filtre.isBlank() || Recherche.correspond(filtre, it.nom) || it.uuid in p.referenceIds }
     Column(Modifier.fillMaxWidth().heightIn(max = 260.dp).verticalScroll(rememberScrollState())) {
         visibles.forEach { ref ->
             Row(

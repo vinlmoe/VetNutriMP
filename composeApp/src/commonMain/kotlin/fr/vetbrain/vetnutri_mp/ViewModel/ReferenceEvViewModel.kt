@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /** ViewModel pour la gestion des références évaluées (ReferenceEv). */
 class ReferenceEvViewModel(
@@ -105,17 +106,15 @@ class ReferenceEvViewModel(
 
                 // Filtre par texte de recherche
                 if (search.isNotBlank()) {
-                    val searchLower = search.lowercase()
                     filtered =
                             filtered.filter { reference ->
-                                reference.nom.lowercase().contains(searchLower) ||
-                                        reference.description.lowercase().contains(searchLower) ||
-                                        reference.nomEnergie.lowercase().contains(searchLower) ||
-                                        (reference.maladie &&
-                                                reference
-                                                        .nomMaladie
-                                                        .lowercase()
-                                                        .contains(searchLower))
+                                Recherche.correspond(
+                                        search,
+                                        reference.nom,
+                                        reference.description,
+                                        reference.nomEnergie,
+                                        reference.nomMaladie.takeIf { reference.maladie }
+                                )
                             }
                 }
 

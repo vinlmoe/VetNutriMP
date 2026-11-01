@@ -23,6 +23,7 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 // Éditeur de consultation : sélecteurs (score, coefficients), choix des référentiels et mots-clés, variables
 
@@ -282,11 +283,7 @@ internal fun ReferenceGeneraleDialog(
                                 referencesGenerales
                         } else {
                                 referencesGenerales.filter { reference ->
-                                        reference.nom.contains(searchText, ignoreCase = true) ||
-                                                reference.description?.contains(
-                                                        searchText,
-                                                        ignoreCase = true
-                                                ) == true
+                                        Recherche.correspond(searchText, reference.nom, reference.description)
                                 }
                         }
                 }
@@ -438,11 +435,7 @@ internal fun ReferenceMaladieDialog(
                                 availableReferences
                         } else {
                                 availableReferences.filter { reference ->
-                                        reference.nom.contains(searchText, ignoreCase = true) ||
-                                                reference.description?.contains(
-                                                        searchText,
-                                                        ignoreCase = true
-                                                ) == true
+                                        Recherche.correspond(searchText, reference.nom, reference.description)
                                 }
                         }
                 }
@@ -577,7 +570,7 @@ internal fun ConsultationKeywordDialog(
                                 availableKeywords
                         } else {
                                 availableKeywords.filter { keyword ->
-                                        keyword.label.contains(searchText, ignoreCase = true)
+                                        Recherche.correspond(searchText, keyword.label)
                                 }
                         }
                 }

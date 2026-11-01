@@ -45,6 +45,7 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /** Couleur des rations actuelles, comme dans la liste des rations. */
 private val CouleurRationActuelle = Color(0xFFFF9800)
@@ -596,8 +597,7 @@ fun ConseilPickerDialog(
     val idsSelectionnes = selectedConseils.map { it.id }.toSet()
     val filtres =
             availableConseils.filter {
-                it.title.contains(recherche, ignoreCase = true) ||
-                        it.category.name.contains(recherche, ignoreCase = true)
+                Recherche.correspond(recherche, it.title, it.category.name)
             }
 
     Dialog(onDismissRequest = onDismiss) {
