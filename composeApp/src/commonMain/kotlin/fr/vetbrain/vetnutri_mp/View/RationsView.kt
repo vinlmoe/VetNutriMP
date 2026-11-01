@@ -696,6 +696,7 @@ fun RationsView(
 
                 BoxWithConstraints(Modifier.fillMaxSize()) {
                 val hauteurGrille = maxOf(maxHeight - with(densite) { hauteurEnTete.toDp() }, AppSizes.hauteurMinGrilleRations)
+                val grilleVisible = maxWidth - AppSizes.paddingMedium * 2 >= 600.dp
                 Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                         Column(Modifier.onSizeChanged { hauteurEnTete = it.height }) {
                         EnTeteRations(
@@ -739,8 +740,10 @@ fun RationsView(
 
                         // Contenu principal - grille 2x2 de cartes (colonnes fixes 50/50).
                         // Sans consultation, seules des cartes vides seraient affichées : le
-                        // message de sélection suffit (et la grille serait illisible sur téléphone)
-                        GrilleRations(
+                        // message de sélection suffit (et la grille serait illisible sur téléphone).
+                        // Écran étroit : l'en-tête affiche déjà rations, aliments et apports en une
+                        // colonne (même seuil que EnTeteRations, marges comprises)
+                        if (grilleVisible) GrilleRations(
                                 dialogues = dialogues,
                                 analyseGroupee = analyseGroupee,
                                 analyseTroupeau = analyseTroupeau,
