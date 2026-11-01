@@ -2,6 +2,7 @@
 
 - `guide_utilisateur.tex` : source LaTeX ; `guide_utilisateur.pdf` : version compilée.
 - `captures/` : captures d'écran de l'application desktop (base de démonstration, données fictives).
+  Elles ne sont pas versionnées : `python3 extraire_captures.py` les recrée à partir du PDF.
 
 ## Compiler
 

@@ -639,6 +639,29 @@ Dans l'exemple, le poids idéal n'a pas été recopié : les calculs portent sur
 26,67~kg, le BEE tomberait à $130 \times 26{,}67^{0{,}75} \approx 1525$~kcal/j.
 \end{aretenir}
 
+\subsection{L'énergie apportée par les aliments}
+
+L'énergie d'un aliment vient, dans l'ordre :
+\begin{enumerate}
+  \item de la valeur saisie pour l'espèce dans la fiche de l'aliment ;
+  \item sinon de l'équation de densité énergétique du référentiel : pour le chien,
+        l'équation des aliments commerciaux (aliments complets ou complémentaires), sinon
+        l'équation d'Atwater (aliments bruts).
+\end{enumerate}
+L'équation des aliments commerciaux du chien tient compte des fibres :
+\[
+  \text{EM (kcal/100 g)} = \bigl(5{,}7\,P + 9{,}4\,L + 4{,}1\,(\text{ENA} + C)\bigr)
+  \times \frac{91{,}2 - 1{,}43\,\dfrac{100\,C}{100 - H}}{100} - 1{,}04\,P
+\]
+avec $P$ les protéines, $L$ les lipides, $C$ la cellulose brute et $H$ l'humidité, en \%.
+\begin{itemize}
+  \item Si la cellulose brute n'est pas renseignée, la \textbf{fibre totale} la remplace.
+  \item Si l'ENA n'est pas renseigné, il est calculé : $100 - P - H - C - \text{cendres} - L$.
+        La cellulose approchée y est retirée, pour ne pas compter les fibres deux fois.
+\end{itemize}
+Exemple : un lait pour chiot à 33~\% de protéines, 39~\% de lipides, 19,5~\% d'ENA, 3~\%
+d'humidité et 0,5~\% de fibre totale apporte 541,7~kcal/100~g, soit 1083~kcal pour 200~g.
+
 \subsection{Le bilan énergétique}
 
 \[
@@ -652,10 +675,13 @@ coefficient la ration applique réellement ; comparez-le au K calculé.
 \subsection{Les apports}
 
 Les apports sont exprimés dans l'unité du référentiel. En \og par 1000 kcal\fg, l'apport
-journalier est rapporté au besoin énergétique :
+journalier est rapporté au \textbf{besoin énergétique standard} (BEE), et non à l'énergie de la
+ration :
 \[
-  \text{apport (g/1000 kcal)} = \frac{\text{apport journalier (g/j)}}{\text{BE (kcal/j)}} \times 1000
+  \text{apport (g/1000 kcal)} = \frac{\text{apport journalier (g/j)}}{\text{BEE (kcal/j)}} \times 1000
 \]
+Les seuils du référentiel étant exprimés de la même façon, la comparaison revient à confronter
+l'apport journalier au besoin journalier de l'animal.
 Filou, avec 675~g d'un aliment à 30~\% de protéines : $202{,}5 / 1749 \times 1000 = 116$~g/1000~kcal.
 
 \begin{aretenir}
@@ -678,7 +704,8 @@ nutriment : l'apport réel peut être plus élevé. \\
 \bottomrule
 \end{tabularx}
 
-La section \ui{Analyses et ratios} donne les rapports K/Na, Ca/P, oméga-6/oméga-3 et Zn/Cu.
+La section \ui{Analyses et ratios} donne les rapports K/Na, Ca/P, oméga-6/oméga-3 et Zn/Cu,
+calculés sur la ration entière et arrondis au centième (Ca/P = 1,1 / 0,8 = 1,38).
 
 % ================================================================== 6
 \section{Aller plus loin avec les rations}
@@ -704,6 +731,7 @@ L'onglet \ui{Graphique} propose quatre vues : \ui{Évolution du poids}, \ui{Rép
 
 \capture{19_graphique_poids.png}{Évolution du poids et courbes de référence.}{graphique-poids}
 
+
 La vue du poids place chaque pesée en fonction de l'âge. Sous le graphique, l'\ui{Historique
 des poids} permet d'ajouter une pesée et de fixer un objectif de perte de poids (perte minimale
 et maximale en \% par semaine).
@@ -719,6 +747,16 @@ poids. Cette classe est fixée, dans l'ordre :
 Un animal en surpoids n'est ainsi pas classé trop haut. Le bouton au-dessus du graphique permet
 de choisir une autre courbe.
 \end{pourquoi}
+
+Dans les vues de rations, chaque ration porte un numéro, repris dans la légende sous le
+graphique : 1, 2\ldots{} pour les rations de la première consultation, 101, 102\ldots{} pour la
+suivante. Deux options règlent l'affichage :
+\begin{itemize}
+  \item \ui{Consultation actuelle uniquement} limite le graphique à la consultation affichée ;
+  \item \ui{Aire des possibilités et sommes} entoure les rations de chaque consultation
+        (orange pour les rations actuelles, bleu pour les propositions) et ajoute leur moyenne
+        pondérée par les coefficients, notée \textbf{$\Sigma$}. Les numéros des rations ne changent pas.
+\end{itemize}
 
 L'onglet \ui{Graphique Aliments} compare des aliments entre eux : ajoutez-les avec \ui{+} dans
 la liste de gauche, puis cliquez sur \ui{Voir l'analyse graphique}.
@@ -873,6 +911,11 @@ L'onglet \ui{Import/Export} exporte et importe des données au format API, avec 
 avancée, et importe des aliments, des animaux ou des références nutritionnelles
 (\texttt{.vbnr.json}).
 
+Dans un fichier de références, chaque besoin indique son unité : par Mcal (par 1000 kcal), par
+kg de poids, par kg de poids métabolique, en valeur absolue ou en ratio. Un besoin dont l'unité
+n'est pas reconnue (par exemple \og DM\fg) n'est pas importé : il apparaît dans le compte rendu
+de l'import, pour que vous corrigiez le fichier.
+
 \capture{31_param_import_export.png}{Import et export de données.}{param-import}
 
 L'onglet \ui{Excel} exporte et importe les aliments en CSV : séparateur point-virgule,
@@ -943,6 +986,10 @@ consultations, puis ouvrez l'analyse ou la notation.
     autre courbe avec le bouton au-dessus du graphique.
   \item[Le bouton \ui{Exploration multiration} n'apparaît pas.]
     Activez-le dans \ui{Paramètres} > \ui{Administration}.
+  \item[L'énergie d'un aliment riche en fibres me paraît basse.]
+    Sans cellulose brute renseignée, la fibre totale, souvent plus élevée, est utilisée à sa
+    place dans l'équation (section~\ref{sec:calculs}). Saisissez la cellulose brute dans la
+    fiche de l'aliment si vous la connaissez.
   \item[Un aliment manque dans la base.]
     Créez-le depuis la \ui{Liste des aliments}, ou directement depuis la recherche d'aliments
     d'une ration (\ui{+} en haut à droite).
@@ -956,7 +1003,9 @@ consultations, puis ouvrez l'analyse ou la notation.
 \midrule
 BEE & Besoin énergétique standard, calculé par l'équation du référentiel (kcal/j). \\
 BE & Besoin énergétique de l'animal : BEE × K, plus l'énergie liée aux maladies. \\
+Cellulose brute & Fraction des fibres utilisée par l'équation d'énergie ; à défaut, la fibre totale. \\
 Couverture & Part du BE apportée par la ration (\%). \\
+ENA & Extractif non azoté (glucides digestibles), en \% ; calculé par différence s'il manque. \\
 K, K1 à K5 & Coefficients qui modulent le besoin énergétique (activité, stérilisation\ldots). \\
 K observé & Énergie apportée divisée par le BEE : le coefficient réellement appliqué. \\
 NEC & Note d'état corporel, de 1 (très maigre) à 9 (très obèse) ; 4 et 5 correspondent à l'état idéal. \\
