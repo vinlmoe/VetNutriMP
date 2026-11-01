@@ -882,7 +882,12 @@ fun SettingsView(
                                                                                 // terminé,
                                                                                 // résultat
                                                                                 // : $ok
-                                                                        } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("SettingsView", "Exception ignorée : ${e.message}") }
+                                                                        } catch (e: Exception) {
+                                                                                e.rethrowIfCancellation()
+                                                                                fr.vetbrain.vetnutri_mp.Utils.UserErrors.report(
+                                                                                        "Export impossible : ${e.message ?: "erreur de lecture des données"}", e
+                                                                                )
+                                                                        }
                                                                 }
                                                         },
                                                         colors =

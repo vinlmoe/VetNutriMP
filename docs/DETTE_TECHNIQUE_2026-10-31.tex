@@ -313,6 +313,17 @@ Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pa
            maintenant reconnu. 5 tests de plus, dont l'analyse d'une ration type (chien de 30\,kg)
            sur chaque base de calcul ; \code{docs/import\_besoin.md} corrigé (numérotation et
            exemple \code{DM} erronés). \\
+-- & fait & \textbf{Sauvegarde et restauration (T1)} : test d'aller-retour sur base Room réelle
+           (jeu initial complet : 11\,474 aliments, 27 référentiels, équations, bibliographie,
+           recettes, conseils, mots-clés ; un chien avec consultation, ration et étape de plan
+           évolutif ; un troupeau avec ses groupes) : export, restauration sur base vide ou sur la
+           même base, nouvel export identique au premier. Export d'un seul animal rechargé seul.
+           Corrigé : identifiants des ingrédients de recette régénérés à chaque import ; aliment
+           absent cité par deux recettes recréé deux fois (liste des aliments connus jamais mise à
+           jour) ; export sélectif (Paramètres, export d'un animal, examen) qui exportait sans
+           consultations, conseils, bibliographie ni mots-clés quand leur lecture échouait (il
+           échoue désormais, et l'export des Paramètres affiche l'erreur au lieu de la journaliser
+           seulement). \code{ExportImportRepository.kt.disabled} (906 l., non compilé) supprimé. \\
 \bottomrule
 \end{longtable}
 

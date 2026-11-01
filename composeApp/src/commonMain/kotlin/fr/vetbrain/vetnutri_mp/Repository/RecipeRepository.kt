@@ -28,7 +28,8 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
                 ),
                 recipe.aliments.map { ingredient ->
                     AlimentRecetteEntity(
-                        uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(),
+                        // Identifiant conservé : une restauration redonne la même recette
+                        uuid = ingredient.uuid.ifBlank { fr.vetbrain.vetnutri_mp.Utils.genUUID() },
                         refAlimUnif = ingredient.refAlimUnif,
                         refRecipe = recipe.uuid,
                         quantity = ingredient.quantity,

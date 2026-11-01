@@ -149,18 +149,11 @@ class ExportImportRepository(
                 // Charger les consultations/rations sur les animaux retenus
                 val allDomainAnimalsWithConsultations: List<AnimalEv> =
                         if (consultationRepository != null) {
+                                // Une lecture en échec fait échouer l'export : un animal sans
+                                // ses consultations ne doit pas passer pour un export complet.
                                 allDomainAnimals.map { animal ->
-                                        val cons =
-                                                try {
-                                                        consultationRepository
-                                                                .getConsultationsForAnimal(
-                                                                        animal.uuid
-                                                                )
-                                                } catch (ignored: Exception) {
-                                                        ignored.rethrowIfCancellation()
-                                                        emptyList()
-                                                }
-                                        animal.copy(consultations = cons.toMutableList())
+                                        animal.copy(consultations = consultationRepository
+                                                .getConsultationsForAnimal(animal.uuid).toMutableList())
                                 }
                         } else allDomainAnimals
                 val filteredDomainAnimals =
@@ -216,22 +209,20 @@ class ExportImportRepository(
                                 if (options.includeLinkedFromAnimals) linkedReferenceIds
                                 else emptySet()
                         referenceIdsToScan.forEach { refId ->
-                                try {
-                                        val ref =
-                                                referenceRepository.getReferenceEvById(refId)
-                                        if (ref != null) {
-                                                listOfNotNull(
-                                                                ref.equationBW,
-                                                                ref.equationBEE,
-                                                                ref.equationDEcom,
-                                                                ref.equationDEraw,
-                                                                ref.equationME
-                                                ).forEach { linkedEquationIds.add(it.uuid) }
-                                                ref.equationsNut.forEach {
-                                                        linkedEquationIds.add(it.uuid)
-                                                }
+                                val ref =
+                                        referenceRepository.getReferenceEvById(refId)
+                                if (ref != null) {
+                                        listOfNotNull(
+                                                        ref.equationBW,
+                                                        ref.equationBEE,
+                                                        ref.equationDEcom,
+                                                        ref.equationDEraw,
+                                                        ref.equationME
+                                        ).forEach { linkedEquationIds.add(it.uuid) }
+                                        ref.equationsNut.forEach {
+                                                linkedEquationIds.add(it.uuid)
                                         }
-                                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("ExportImportRepository", "Exception ignorée : ${ignored.message}") }
+                                }
                         }
                 }
 
@@ -249,24 +240,22 @@ class ExportImportRepository(
                                 referenceRepository != null
                 ) {
                         effectiveReferenceIds.forEach { refId ->
-                                try {
-                                        val ref =
-                                                referenceRepository.getReferenceEvById(refId)
-                                        if (ref != null) {
-                                                listOfNotNull(
-                                                                ref.equationBW,
-                                                                ref.equationBEE,
-                                                                ref.equationDEcom,
-                                                                ref.equationDEraw,
-                                                                ref.equationME
-                                                ).forEach {
-                                                        equationIdsFromReferences.add(it.uuid)
-                                                }
-                                                ref.equationsNut.forEach {
-                                                        equationIdsFromReferences.add(it.uuid)
-                                                }
+                                val ref =
+                                        referenceRepository.getReferenceEvById(refId)
+                                if (ref != null) {
+                                        listOfNotNull(
+                                                        ref.equationBW,
+                                                        ref.equationBEE,
+                                                        ref.equationDEcom,
+                                                        ref.equationDEraw,
+                                                        ref.equationME
+                                        ).forEach {
+                                                equationIdsFromReferences.add(it.uuid)
                                         }
-                                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("ExportImportRepository", "Exception ignorée : ${ignored.message}") }
+                                        ref.equationsNut.forEach {
+                                                equationIdsFromReferences.add(it.uuid)
+                                        }
+                                }
                         }
                 }
 
@@ -294,9 +283,7 @@ class ExportImportRepository(
 
                 // Forcer le chargement frais des aliments (avec nutriments) avant export filtré
                 if (shouldIncludeFoods && foodRepository is DatabaseFoodRepository) {
-                        try {
-                                foodRepository.forceRefresh()
-                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("ExportImportRepository", "Exception ignorée : ${ignored.message}") }
+                        foodRepository.forceRefresh()
                 }
                 val allFoods =
                         if (shouldIncludeFoods)
@@ -394,26 +381,21 @@ class ExportImportRepository(
                 // Récupérer les conseils selon les options
                 val conseils =
                         if (options.includeConseils) {
-                                try {
-                                        val allConseils =
-                                                conseilRepository?.getConseilsActifs()?.getOrThrow()
-                                                        ?: emptyList()
-                                        allConseils
-                                                .asSequence()
-                                                .filter {
-                                                        when {
-                                                                options.conseilIds.isNotEmpty() ->
-                                                                        options.conseilIds.contains(it.id)
-                                                                options.animalIds.isEmpty() -> true
-                                                                else -> false
-                                                        }
+                                val allConseils =
+                                        conseilRepository?.getConseilsActifs()?.getOrThrow()
+                                                ?: emptyList()
+                                allConseils
+                                        .asSequence()
+                                        .filter {
+                                                when {
+                                                        options.conseilIds.isNotEmpty() ->
+                                                                options.conseilIds.contains(it.id)
+                                                        options.animalIds.isEmpty() -> true
+                                                        else -> false
                                                 }
-                                                .map { it.toApi() }
-                                                .toList()
-                                } catch (ignored: Exception) {
-                                        ignored.rethrowIfCancellation()
-                                        emptyList()
-                                }
+                                        }
+                                        .map { it.toApi() }
+                                        .toList()
                         } else emptyList()
 
                 // Collecter les UUIDs des biblioRefs utilisées par les références et équations exportées
@@ -439,54 +421,23 @@ class ExportImportRepository(
                         }
                 }
 
+                val allBiblioRefs = biblioRepository?.getAllBiblioRefs()?.first() ?: emptyList()
+                // Export sélectif (animalIds non vide) : seulement celles utilisées ; sinon toutes
                 val biblioRefs =
-                        try {
-                                val allBiblioRefs =
-                                        biblioRepository?.getAllBiblioRefs()?.first() ?: emptyList()
-
-                                // Filtrer les biblioRefs selon le contexte d'export
-                                val filteredBiblioRefs = when {
-                                        // Export sélectif (animalIds non vide) : seulement celles utilisées
-                                        options.animalIds.isNotEmpty() -> {
-                                                allBiblioRefs.filter { it.uuid in biblioRefIdsToExport }
-                                        }
-                                        // Export général (animalIds vide) : toutes les biblioRefs
-                                        else -> allBiblioRefs
-                                }
-
-                                filteredBiblioRefs.map { it.toApi() }
-                        } catch (ignored: Exception) {
-                                ignored.rethrowIfCancellation()
-                                emptyList()
-                        }
+                        (if (options.animalIds.isNotEmpty()) {
+                                allBiblioRefs.filter { it.uuid in biblioRefIdsToExport }
+                        } else allBiblioRefs).map { it.toApi() }
+                val allKeywords = consultationRepository?.getAllKeywords() ?: emptyList()
+                val usedKeywords =
+                        if (options.animalIds.isNotEmpty()) {
+                                val usedKeywordIds =
+                                        filteredDomainAnimals
+                                                .flatMap { animal -> animal.consultations.flatMap { it.keywordIds } }
+                                                .toSet()
+                                allKeywords.filter { it.uuid in usedKeywordIds }
+                        } else allKeywords
                 val consultationKeywords: List<ConsultationKeywordApi> =
-                        try {
-                                val allKeywords =
-                                        consultationRepository?.getAllKeywords() ?: emptyList()
-                                val filteredKeywords =
-                                        when {
-                                                options.animalIds.isNotEmpty() -> {
-                                                        val usedKeywordIds =
-                                                                filteredDomainAnimals
-                                                                        .flatMap { animal ->
-                                                                                animal.consultations
-                                                                                        .flatMap {
-                                                                                                consult ->
-                                                                                                consult.keywordIds
-                                                                                        }
-                                                                        }
-                                                                        .toSet()
-                                                        allKeywords.filter { it.uuid in usedKeywordIds }
-                                                }
-                                                else -> allKeywords
-                                        }
-                                filteredKeywords.map {
-                                        ConsultationKeywordApi(uuid = it.uuid, label = it.label)
-                                }
-                        } catch (ignored: Exception) {
-                                ignored.rethrowIfCancellation()
-                                emptyList()
-                        }
+                        usedKeywords.map { ConsultationKeywordApi(uuid = it.uuid, label = it.label) }
 
                 return@withContext ApiEnvelope(
                         version = "2.0.0",
@@ -1077,17 +1028,17 @@ class ExportImportRepository(
                         listener?.onLog?.invoke("Import des recettes (${envelope.recipes.size})…")
 
                         // Construire un cache des aliments existants pour vérifier les références
-                        val existingFoodIds: Set<String> =
+                        val existingFoodIds: MutableSet<String> =
                                 if (foodRepository != null) {
                                         try {
-                                                foodRepository.getAllFoods().map { it.uuid }.toSet()
+                                                foodRepository.getAllFoods().map { it.uuid }.toMutableSet()
                                         } catch (e: Exception) {
                                                 e.rethrowIfCancellation()
                                                 if (e is kotlinx.coroutines.CancellationException) throw e
                                                 errorCount++
-                                                emptySet()
+                                                mutableSetOf()
                                         }
-                                } else emptySet()
+                                } else mutableSetOf()
 
                         for (recipeApi in envelope.recipes) {
                                 try {
@@ -1115,9 +1066,7 @@ class ExportImportRepository(
                                                                 foodRepository?.insertFood(
                                                                         placeholder
                                                                 )
-                                                                existingFoodIds
-                                                                        .toMutableSet()
-                                                                        .add(foodId)
+                                                                existingFoodIds.add(foodId)
                                                                 foodsImported++
                                                         } catch (e: Exception) {
                                                                 e.rethrowIfCancellation()

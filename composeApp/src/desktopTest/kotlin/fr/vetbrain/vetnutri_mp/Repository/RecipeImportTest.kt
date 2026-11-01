@@ -55,4 +55,30 @@ class RecipeImportTest {
             db.close()
         }
     }
+
+    @Test
+    fun alimentAbsentCiteParDeuxRecettes_creeUneSeuleFois() = runTest {
+        val db = Room.inMemoryDatabaseBuilder<AppDatabase>()
+            .setDriver(BundledSQLiteDriver()).build()
+        try {
+            val foods = DatabaseFoodRepository(foodDao = db.foodDao(), nutrientValueDao = db.nutrientValueDao())
+            val importer = ExportImportRepository(
+                InMemoryAnimalRepository(), foodRepository = foods,
+                recipeRepository = RecipeRepository(db.recipeDao(), db.foodDao())
+            )
+            val recettes = listOf("r1", "r2").map { id ->
+                RecipeApi(id, "Recette $id", aliments = listOf(RecipeIngredientApi("ing-$id", "absent", 10.0)))
+            }
+
+            val compte = importer.importAll(ApiEnvelope("test", 0, emptyList(), recipes = recettes)).requireComplete()
+
+            assertEquals(2, compte.recipes)
+            assertEquals(1, compte.foods)
+            assertEquals(listOf("absent"), foods.getAllFoods().map { it.uuid })
+            // Identifiants d'ingrédients conservés
+            assertEquals("ing-r1", db.recipeDao().getAlimentsForRecipe("r1").single().uuid)
+        } finally {
+            db.close()
+        }
+    }
 }
