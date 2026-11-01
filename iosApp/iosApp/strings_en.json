@@ -2234,6 +2234,8 @@
         "troupeau.aChoisir": "to be chosen",
         "troupeau.introuvable": "not found",
         "troupeau.besoinEnergetiqueTroupeau": "Herd energy requirement",
-        "troupeau.besoinIncomplet": "incomplete (reference or weight missing)"
+        "troupeau.besoinIncomplet": "incomplete (reference or weight missing)",
+        "troupeau.autresGroupes": "Show the other %1$s groups",
+        "troupeau.moinsDeGroupes": "Show fewer"
     }
 }

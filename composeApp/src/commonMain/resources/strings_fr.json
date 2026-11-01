@@ -2234,6 +2234,8 @@
         "troupeau.aChoisir": "à choisir",
         "troupeau.introuvable": "introuvable",
         "troupeau.besoinEnergetiqueTroupeau": "Besoin énergétique du troupeau",
-        "troupeau.besoinIncomplet": "incomplet (référentiel ou poids manquant)"
+        "troupeau.besoinIncomplet": "incomplet (référentiel ou poids manquant)",
+        "troupeau.autresGroupes": "Voir les %1$s autres groupes",
+        "troupeau.moinsDeGroupes": "Réduire la liste"
     }
 }

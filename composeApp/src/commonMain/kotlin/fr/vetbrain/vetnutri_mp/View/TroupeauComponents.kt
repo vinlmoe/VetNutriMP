@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -480,18 +481,24 @@ fun AnalyseApportsTroupeau(
                 Modifier.padding(14.dp).then(if (defilementVertical) Modifier.verticalScroll(rememberScrollState()) else Modifier),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(translate("troupeau.apportsTroupeauEntier"), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = VetNutriColors.Primary)
-                Spacer(Modifier.weight(1f))
-                if (analyse != null && lignes.isNotEmpty()) {
-                    Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { seulementHorsNormes = !seulementHorsNormes }
-                    ) {
-                        Checkbox(checked = seulementHorsNormes, onCheckedChange = { seulementHorsNormes = it })
-                        Text(translate("troupeau.seulementHorsNormes"), fontSize = 12.sp, modifier = Modifier.padding(end = 6.dp))
+            // Titre et filtre côte à côte, ou le filtre sous le titre en écran étroit
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val titre = @Composable {
+                    Text(translate("troupeau.apportsTroupeauEntier"), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = VetNutriColors.Primary)
+                }
+                val filtre = @Composable {
+                    if (analyse != null && lignes.isNotEmpty()) {
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { seulementHorsNormes = !seulementHorsNormes }
+                        ) {
+                            Checkbox(checked = seulementHorsNormes, onCheckedChange = { seulementHorsNormes = it })
+                            Text(translate("troupeau.seulementHorsNormes"), fontSize = 12.sp, modifier = Modifier.padding(end = 6.dp))
+                        }
                     }
                 }
+                if (maxWidth < 460.dp) Column { titre(); filtre() }
+                else Row(verticalAlignment = Alignment.CenterVertically) { titre(); Spacer(Modifier.weight(1f)); filtre() }
             }
             if (analyse == null || lignes.isEmpty()) {
                 Text(translate("troupeau.analyseIndisponible"), fontSize = 12.sp, color = Color.Gray)
@@ -518,7 +525,7 @@ fun AnalyseApportsTroupeau(
                         niveaux.forEach { CelluleEntete(it.name, 72.dp) }
                         Spacer(Modifier.width(12.dp))
                         CelluleEntete(translate("troupeau.colTroupeau"), 140.dp, alignerADroite = false)
-                        CelluleEntete(translate("troupeau.colGroupesHorsNormes"), 260.dp, alignerADroite = false)
+                        CelluleEntete(translate("troupeau.colGroupesHorsNormes"), 340.dp, alignerADroite = false)
                     }
                     affichees.forEachIndexed { i, l ->
                         val unite = if (l.nutriment == fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE) "kcal" else l.unite.displayName
@@ -563,15 +570,20 @@ fun AnalyseApportsTroupeau(
                                     )
                                 }
                             }
+                            // Deux groupes nommés au plus, puis « +N » : une ligne de tableau par nutriment
+                            val groupes = l.groupesHorsNormes.map { (nom, c) ->
+                                val sens = if (c.status == fr.vetbrain.vetnutri_mp.Data.ConformiteStatus.CARENCE ||
+                                                c.status == fr.vetbrain.vetnutri_mp.Data.ConformiteStatus.CARENCE_MALADIE) translate("troupeau.carenceMin") else translate("troupeau.excesMin")
+                                "$nom ($sens${if (c.isCritical) "" else ", optimum"})"
+                            }
                             Text(
-                                    l.groupesHorsNormes.joinToString(" · ") { (nom, c) ->
-                                        val sens = if (c.status == fr.vetbrain.vetnutri_mp.Data.ConformiteStatus.CARENCE ||
-                                                        c.status == fr.vetbrain.vetnutri_mp.Data.ConformiteStatus.CARENCE_MALADIE) translate("troupeau.carenceMin") else translate("troupeau.excesMin")
-                                        "$nom ($sens${if (c.isCritical) "" else ", optimum"})"
-                                    }.ifEmpty { "—" },
+                                    if (groupes.isEmpty()) "—"
+                                    else groupes.take(2).joinToString(" · ") + if (groupes.size > 2) "  +${groupes.size - 2}" else "",
                                     fontSize = 12.sp,
-                                    color = if (l.groupesHorsNormes.isEmpty()) Color.Gray else couleurAlerteTroupeau,
-                                    modifier = Modifier.width(260.dp)
+                                    color = if (groupes.isEmpty()) Color.Gray else couleurAlerteTroupeau,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.width(340.dp)
                             )
                         }
                     }
@@ -627,9 +639,19 @@ private fun SyntheseTroupeau(
     }
     a.problemes.forEach { Text("• $it", fontSize = 12.sp, color = couleurAlerteTroupeau) }
     if (etroit) {
-        a.types.forEach { t ->
+        var tousLesGroupes by remember { mutableStateOf(false) }
+        val visibles = if (tousLesGroupes) a.types else a.types.take(3)
+        visibles.forEach { t ->
             key(t.type.id) { CarteGroupeTroupeau(t, t.type.id == typeAnalyse, onAnalyser) }
         }
+        if (a.types.size > 3)
+                TextButton(onClick = { tousLesGroupes = !tousLesGroupes }) {
+                    Text(
+                            if (tousLesGroupes) translate("troupeau.moinsDeGroupes")
+                            else translate("troupeau.autresGroupes", (a.types.size - 3).toString()),
+                            fontSize = 12.sp
+                    )
+                }
         return
     }
 
@@ -645,6 +667,7 @@ private fun SyntheseTroupeau(
                 Text(titre, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = VetNutriColors.PrimaryVariant, maxLines = 1, modifier = Modifier.weight(poids))
             }
         }
+        Column(Modifier.heightIn(max = 190.dp).verticalScroll(rememberScrollState())) {
         a.types.forEachIndexed { i, t ->
             key(t.type.id) {
                 val choisi = t.type.id == typeAnalyse
@@ -692,6 +715,7 @@ private fun SyntheseTroupeau(
                     )
                 }
             }
+        }
         }
     }
 }
