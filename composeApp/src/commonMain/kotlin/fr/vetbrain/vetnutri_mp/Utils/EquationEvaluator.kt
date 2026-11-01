@@ -45,8 +45,6 @@ object EquationEvaluator {
      */
     val toutesLesVariables: Set<String> by lazy { variablesDeBase + variablesSupplementaires }
 
-    private const val MAX_CACHE_SIZE = 1000
-    private val expressionCache = LruMap<String, Double?>(MAX_CACHE_SIZE)
 
     /**
      * Injecte dans la map de variables certains nutriments calculés à partir des équations
@@ -162,38 +160,7 @@ object EquationEvaluator {
             }
         }
 
-        val cacheKey = "${expression}:${variables.hashCode()}"
-        return expressionCache.getOrPut(cacheKey) {
-            ExpressionMathematique.evaluer(expression, variables)
-        }
-    }
-
-    /** Version avec cache optimisée pour les évaluations répétées */
-    fun evaluerPourAnimalAvecCache(
-            expression: String,
-            poidsCorps: Double,
-            variablesSupp: List<SupplementalvariableP> = emptyList()
-    ): Double? {
-        val variables = mutableMapOf<String, Double>()
-
-        // Ajouter le poids corporel
-        variables["BW"] = poidsCorps
-
-        // Ajouter les variables supplémentaires
-        for (variable in variablesSupp) {
-            variable.variable?.let { varKind ->
-                val v = variable.varue?.toDouble() ?: 0.0
-                // Nom long (ex: "Distance", "CarriedWeiht")
-                variables[varKind.variable] = v
-                // Alias court (ex: "D", "CW")
-                variables[varKind.label] = v
-            }
-        }
-
-        val cacheKey = "${expression}:${variables.hashCode()}"
-        return expressionCache.getOrPut(cacheKey) {
-            ExpressionMathematique.evaluer(expression, variables)
-        }
+        return ExpressionMathematique.evaluer(expression, variables)
     }
 
     /**

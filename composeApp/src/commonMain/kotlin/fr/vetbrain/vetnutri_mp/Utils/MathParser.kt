@@ -467,19 +467,16 @@ class MathParser {
 /** Exception levée lors d'erreurs de parsing ou d'évaluation d'expressions mathématiques */
 class MathParserException(message: String) : Exception(message)
 
-/** Objet singleton pour faciliter l'utilisation du parser */
+/**
+ * Point d'entrée des évaluations. Un [MathParser] garde son état de lecture (expression, position,
+ * variables) : une instance partagée faisait échouer ou fausser les évaluations lancées en même
+ * temps sur plusieurs threads (analyse du troupeau et de la ration, par exemple). Une instance par
+ * appel, peu coûteuse, et aucun cache partagé.
+ */
 object ExpressionMathematique {
-    private val parser = MathParser()
-
-    // Cache des variables extraites par expression (l'expression est immuable, seules les valeurs varient)
-    private val variablesCache = HashMap<String, List<String>>(64)
-
-    // Cache des expressions nettoyées (suppression des espaces, coûteux sur les longues expressions)
-    private val cleanedExprCache = HashMap<String, String>(64)
-
     fun evaluer(expression: String, variables: Map<String, Double> = emptyMap()): Double? {
         return try {
-            parser.evaluer(expression, variables)
+            MathParser().evaluer(expression, variables)
         } catch (ignored: Exception) {
             ignored.rethrowIfCancellation()
             null
@@ -487,12 +484,10 @@ object ExpressionMathematique {
     }
 
     fun estValide(expression: String, variables: Map<String, Double> = emptyMap()): Boolean {
-        return parser.estValide(expression, variables)
+        return MathParser().estValide(expression, variables)
     }
 
     fun extraireVariables(expression: String): List<String> {
-        return variablesCache.getOrPut(expression) {
-            parser.extraireVariables(expression)
-        }
+        return MathParser().extraireVariables(expression)
     }
 }
