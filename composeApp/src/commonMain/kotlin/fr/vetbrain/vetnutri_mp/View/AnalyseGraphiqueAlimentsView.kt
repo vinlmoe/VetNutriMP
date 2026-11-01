@@ -186,6 +186,10 @@ fun AnalyseGraphiqueAlimentsView(
         isLoading = false
     }
 
+    LaunchedEffect(alimentsComparaison.isEmpty()) {
+        if (ongletActif == "comparaison" && alimentsComparaison.isEmpty()) ongletActif = "densite_energetique"
+    }
+
     // Groupe B : mêmes calculs, pour les boîtes à moustaches
     var analysesComparaison by remember { mutableStateOf<List<AlimentAnalyseData>>(emptyList()) }
     LaunchedEffect(alimentsComparaison, referenceEv, equationRepository, useDryMatterPer100g) {
@@ -356,8 +360,8 @@ fun AnalyseGraphiqueAlimentsView(
                             )
             ) { Text(translate("auto.view.analysegraphiquealimentsview.heatmap"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
 
-            // Comparaison avec le groupe B (boîtes à moustaches)
-            Button(
+            // Comparaison avec le groupe B (boîtes à moustaches) : seulement si un groupe B est choisi
+            if (alimentsComparaison.isNotEmpty()) Button(
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                     modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "comparaison" },

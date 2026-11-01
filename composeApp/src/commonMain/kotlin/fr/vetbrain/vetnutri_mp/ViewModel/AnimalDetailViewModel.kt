@@ -292,6 +292,14 @@ class AnimalDetailViewModel(
     private val _alimentsGroupeB = MutableStateFlow<List<AlimentEv>>(emptyList())
     val alimentsGroupeB: StateFlow<List<AlimentEv>> = _alimentsGroupeB.asStateFlow()
 
+    /** Comparaison A/B activée par l'utilisateur (désactivée par défaut, pour alléger la vue). */
+    private val _comparaisonActive = MutableStateFlow(false)
+    val comparaisonActive: StateFlow<Boolean> = _comparaisonActive.asStateFlow()
+
+    fun setComparaisonActive(active: Boolean) {
+        _comparaisonActive.value = active
+    }
+
     /** Noms donnés aux groupes A et B (vide = « Groupe A », « Groupe B »). */
     private val _nomGroupeA = MutableStateFlow("")
     val nomGroupeA: StateFlow<String> = _nomGroupeA.asStateFlow()

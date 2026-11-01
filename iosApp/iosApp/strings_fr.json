@@ -2287,6 +2287,8 @@
         "graph.stats.foods": "Aliments",
         "graph.stats.exportTitle": "Exporter la comparaison",
         "graph.stats.exportInfo": "Une archive ZIP : l'image des boîtes à moustaches (JPEG), le tableau des statistiques de chaque mesure (n, moyenne, écart-type, min, quartiles, médiane, max) et la liste des aliments des deux groupes.",
-        "graph.groupe.nameLabel": "Nom du groupe %1$s (facultatif)"
+        "graph.groupe.nameLabel": "Nom du groupe %1$s (facultatif)",
+        "graph.comparaison.enable": "Comparer avec un groupe B",
+        "graph.comparaison.disable": "Arrêter la comparaison"
     }
 }

@@ -12,7 +12,9 @@ import androidx.compose.material.DrawerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
@@ -733,6 +735,7 @@ private fun AnimalDetailLayout(
                                         val alimentsGroupeB by
                                                 viewModel.alimentsGroupeB
                                                         .collectAsState()
+                                        val comparaisonActive by viewModel.comparaisonActive.collectAsState()
                                         val nomGroupeA by viewModel.nomGroupeA.collectAsState()
                                         val nomGroupeB by viewModel.nomGroupeB.collectAsState()
                                         val analyseSelectionFilters by
@@ -852,7 +855,7 @@ private fun AnimalDetailLayout(
                                                                 },
                                                                 modifier =
                                                                         Modifier.fillMaxSize(),
-                                                                alimentsComparaison = groupeBComplet,
+                                                                alimentsComparaison = if (comparaisonActive) groupeBComplet else emptyList(),
                                                                 nomGroupeA = nomGroupeA,
                                                                 nomGroupeB = nomGroupeB
                                                         )
@@ -861,9 +864,24 @@ private fun AnimalDetailLayout(
                                                 // Deux groupes : A (analysé) et B (facultatif, comparé à A par
                                                 // des boîtes à moustaches) ; une vue de sélection par onglet
                                                 var ongletGroupe by remember { mutableStateOf(0) }
-                                                val groupeA = ongletGroupe == 0
+                                                // Sans comparaison, seul le groupe A existe : pas d'onglets ni de noms
+                                                val groupeA = !comparaisonActive || ongletGroupe == 0
                                                 Column(modifier = Modifier.fillMaxSize()) {
+                                                        if (!comparaisonActive) {
+                                                                Row(
+                                                                        modifier = Modifier.fillMaxWidth(),
+                                                                        horizontalArrangement = Arrangement.End
+                                                                ) {
+                                                                        TextButton(onClick = { viewModel.setComparaisonActive(true) }) {
+                                                                                Icon(Icons.Default.Add, contentDescription = null)
+                                                                                Spacer(Modifier.width(AppSizes.paddingSmall))
+                                                                                Text(translate("graph.comparaison.enable"))
+                                                                        }
+                                                                }
+                                                        } else {
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
                                                         TabRow(
+                                                                modifier = Modifier.weight(1f),
                                                                 selectedTabIndex = ongletGroupe,
                                                                 backgroundColor = MaterialTheme.colors.surface
                                                         ) {
@@ -877,6 +895,10 @@ private fun AnimalDetailLayout(
                                                                         onClick = { ongletGroupe = 1 },
                                                                         text = { Text(libelleGroupe("B", nomGroupeB, alimentsGroupeB.size), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
                                                                 )
+                                                        }
+                                                        IconButton(onClick = { viewModel.setComparaisonActive(false) }) {
+                                                                Icon(Icons.Default.Close, contentDescription = translate("graph.comparaison.disable"))
+                                                        }
                                                         }
                                                         // Nom du groupe de l'onglet (facultatif), repris dans la comparaison et l'export
                                                         OutlinedTextField(
@@ -893,7 +915,8 @@ private fun AnimalDetailLayout(
                                                                         modifier = Modifier.padding(AppSizes.paddingSmall)
                                                                 )
                                                         }
-                                                        key(ongletGroupe) {
+                                                        }
+                                                        key(groupeA) {
                                                 AnalyseSelectionAlimentsView(
                                                         aliments = availableFoods,
                                                         onClose = { /* Retour à la section précédente */
