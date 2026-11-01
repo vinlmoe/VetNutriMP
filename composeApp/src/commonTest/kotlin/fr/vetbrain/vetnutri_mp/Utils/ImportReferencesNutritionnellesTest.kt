@@ -1,13 +1,20 @@
 package fr.vetbrain.vetnutri_mp.Utils
 
+import fr.vetbrain.vetnutri_mp.Data.ConformiteStatus
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
+import fr.vetbrain.vetnutri_mp.Data.calculerConformite
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import kotlin.test.AfterTest
+import kotlin.math.pow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -219,5 +226,110 @@ class ImportReferencesNutritionnellesTest {
         assertTrue(ref.uuid.isNotBlank())
         assertEquals("Référence importée 1", ref.nom)
         assertNull(ref.equationBEE)
+    }
+
+    @Test
+    fun uniteDeBesoinInconnue_besoinEcarteEtSignale() {
+        // « DM » n'est pas une base de calcul de l'application : le besoin n'est plus rangé
+        // « par kg de poids métabolique » (ni un code inconnu en valeur absolue)
+        val ref = lire(referentiel(besoins = listOf(
+            besoin("PROTEINE", 18.0, unitRequirement = "DM"),
+            besoin("CA", 1.0, unitRequirement = "XYZ"),
+            besoin("NA", 0.2)
+        ))).single()
+
+        assertNull(ref.obtenirNutrimentRef(NutrientMain.PROTEINE, Reflevel.MIN))
+        assertNull(ref.obtenirNutrimentRef(NutrientMacro.CAL, Reflevel.MIN))
+        assertEquals(0.2, ref.obtenirNutriment(NutrientMacro.NA, Reflevel.MIN))
+        val rapport = ImportUtils.genererRapportResolutionsProblematiques()
+        assertTrue(rapport.contains("unité de besoin inconnue : DM") && rapport.contains("XYZ"), rapport)
+    }
+
+    @Test
+    fun uniteDeBesoinNumerique_codesV2() {
+        // Numéros V2 : 0 MCAL, 1 KGBW, 2 KGMW, 3 NO, 4 PERC (comme la migration V2)
+        val ref = lire(referentiel(besoins = listOf(
+            besoin("PROTEINE", 1.0, unitRequirement = "0"),
+            besoin("CA", 1.0, unitRequirement = "1"),
+            besoin("NA", 1.0, unitRequirement = "2"),
+            besoin("K", 1.0, unitRequirement = "3"),
+            besoin("P", 1.0, unitRequirement = "4"),
+            besoin("MG", 1.0, unitRequirement = "9")
+        ))).single()
+
+        assertEquals(UnitReqEnum.PERKCAL, ref.obtenirNutrimentRef(NutrientMain.PROTEINE, Reflevel.MIN)?.uniteReq)
+        assertEquals(UnitReqEnum.PERKG, ref.obtenirNutrimentRef(NutrientMacro.CAL, Reflevel.MIN)?.uniteReq)
+        assertEquals(UnitReqEnum.PERMS, ref.obtenirNutrimentRef(NutrientMacro.NA, Reflevel.MIN)?.uniteReq)
+        assertEquals(UnitReqEnum.ABSOLUTE, ref.obtenirNutrimentRef(NutrientMacro.K, Reflevel.MIN)?.uniteReq)
+        assertEquals(UnitReqEnum.RATIO, ref.obtenirNutrimentRef(NutrientMacro.PHOS, Reflevel.MIN)?.uniteReq)
+        assertNull(ref.obtenirNutrimentRef(NutrientMacro.MG, Reflevel.MIN))
+    }
+
+    @Test
+    fun nutrimentParNomEnumV2_rapportProteinesPhosphore() {
+        // Les fichiers V2 écrivent « PhosphProt » (nom d'énumération, libellé « PROTP ») : il était
+        // rangé sous le potassium, dont il écrasait le minimum
+        val ref = lire(referentiel(besoins = listOf(
+            besoin("PhosphProt", 25.0, unit = "NO", unitRequirement = "NO"),
+            besoin("K", 1.0, level = "OPTIMIN")
+        ))).single()
+
+        assertEquals(25.0, ref.obtenirNutriment(NutrientAnalysis.PhosphProt, Reflevel.MIN))
+        assertNull(ref.obtenirNutrimentRef(NutrientMacro.K, Reflevel.MIN))
+        assertEquals(1.0, ref.obtenirNutriment(NutrientMacro.K, Reflevel.OPTIMIN))
+    }
+
+    // Exemple de ration : chien de 30 kg, poids métabolique 30^0,75 = 12,82 kg, BEE 1 600 kcal
+    private val poids = 30.0
+    private val poidsMetabolique = poids.pow(0.75)
+    private val bee = 1600.0
+
+    private val referentielRation by lazy {
+        lire(referentiel(besoins = listOf(
+            besoin("PROTEINE", 4.95, unitRequirement = "KGMW"), // 63,5 g
+            besoin("CA", 0.13, unitRequirement = "KGBW"), // 3,9 g
+            besoin("NA", 0.2, unitRequirement = "MCAL"), // 0,32 g
+            besoin("K", 2000.0, unit = "MG", unitRequirement = "NO"), // 2 g
+            besoin("PhosphProt", 25.0, unit = "NO", unitRequirement = "NO")
+        ))).single()
+    }
+
+    private fun analyser(nutriment: Nutrient, apport: Double, ref: ReferenceEv = referentielRation) =
+        calculerConformite(
+            valeurNutritionnelle = ValeurNutritionnelle(
+                nutriment = nutriment, unite = nutriment.ue, valeur = apport, description = "", complete = true
+            ),
+            referenceUtilisee = ref,
+            besoinEnergetiqueEntretien = bee,
+            poidsAnimal = poids,
+            poidsMetabolique = poidsMetabolique
+        )?.status
+
+    @Test
+    fun exempleRation_besoinsImportesAppliquesALAnalyse() {
+        // Protéines par kg de poids métabolique : 70 g couvrent 63,5 g (l'ancien import par kg de
+        // poids vif exigeait 148,5 g et signalait une carence)
+        assertNull(analyser(NutrientMain.PROTEINE, 70.0))
+        assertEquals(ConformiteStatus.CARENCE, analyser(NutrientMain.PROTEINE, 60.0))
+        // Calcium par kg de poids vif
+        assertNull(analyser(NutrientMacro.CAL, 4.0))
+        assertEquals(ConformiteStatus.CARENCE, analyser(NutrientMacro.CAL, 3.5))
+        // Sodium pour 1 000 kcal de BEE
+        assertNull(analyser(NutrientMacro.NA, 0.35))
+        assertEquals(ConformiteStatus.CARENCE, analyser(NutrientMacro.NA, 0.3))
+        // Potassium saisi en mg, valeur absolue : 2 g (et non 2 000 g)
+        assertNull(analyser(NutrientMacro.K, 2.5))
+        assertEquals(ConformiteStatus.CARENCE, analyser(NutrientMacro.K, 1.5))
+        // Rapport protéines/phosphore
+        assertNull(analyser(NutrientAnalysis.PhosphProt, 28.0))
+        assertEquals(ConformiteStatus.CARENCE, analyser(NutrientAnalysis.PhosphProt, 20.0))
+    }
+
+    @Test
+    fun exempleRation_besoinEnUniteInconnue_neJugePasLaRation() {
+        // Un besoin « DM » écarté : la ration n'est ni conforme ni en carence sur ce nutriment
+        val ref = lire(referentiel(besoins = listOf(besoin("PROTEINE", 18.0, unitRequirement = "DM")))).single()
+        assertNull(analyser(NutrientMain.PROTEINE, 1.0, ref))
+        assertNull(analyser(NutrientMain.PROTEINE, 1000.0, ref))
     }
 }

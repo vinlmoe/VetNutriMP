@@ -303,6 +303,16 @@ Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pa
            d'être jetées, lecture dédoublée (versions \code{suspend} et non \code{suspend} copiées)
            fusionnée. 6 fonctions publiques et 2 privées sans appelant retirées :
            \code{ImportUtils} 3\,086\,$\to$\,2\,577 l. \\
+-- & fait & \textbf{Unités de besoin à l'import (T1)} : le code \code{DM} (matière sèche) était
+           compté « par kg de poids métabolique », et tout code inconnu en valeur absolue ; un tel
+           besoin est désormais écarté et signalé. Codes numériques V2 lus comme la migration.
+           Rétrocompatibilité vérifiée sur \code{references.json} (24 référentiels, 1\,092 besoins,
+           tous importés à l'identique du fichier) : elle a révélé que \code{PhosphProt} (nom
+           d'énumération V2 du rapport protéines/phosphore) était rangé sous le potassium, dont il
+           écrasait le minimum (K = 25 en valeur absolue dans 4 référentiels) ; il est
+           maintenant reconnu. 5 tests de plus, dont l'analyse d'une ration type (chien de 30\,kg)
+           sur chaque base de calcul ; \code{docs/import\_besoin.md} corrigé (numérotation et
+           exemple \code{DM} erronés). \\
 \bottomrule
 \end{longtable}
 

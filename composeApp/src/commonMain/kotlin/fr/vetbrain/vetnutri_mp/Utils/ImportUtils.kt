@@ -1614,6 +1614,13 @@ object ImportUtils {
 
             val unit = convertirStringVersUnitEnum(unitStr)
             val unitRequirement = convertirStringVersUnitReqEnum(unitRequirementStr)
+            if (unitRequirement == null) {
+                // Base de calcul inconnue : mieux vaut écarter le besoin que le deviner
+                resolutionsProblematiques.add(
+                        "ECHEC_TOTAL: '$nutrientString (unité de besoin inconnue : $unitRequirementStr)'"
+                )
+                return null
+            }
 
             // Extraire la référence bibliographique
             val biblioRefBrut = nutrientObj["bibliographicReference"]
@@ -1684,7 +1691,29 @@ object ImportUtils {
         val connu =
                 normalise in libellesNutrimentsStandards ||
                         fr.vetbrain.vetnutri_mp.Enumer.CustomNutrientRegistry.getByLabel(normalise) != null
-        return if (connu) fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(libelle) else null
+        if (connu) return fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(libelle)
+        // Fichiers V2 : nutriment désigné par son nom d'énumération (PhosphProt pour « PROTP »)
+        return nutrimentsParNomEnum[libelle.trim().uppercase()]
+    }
+
+    /** Nutriments standard par nom d'énumération (sans casse), sauf ceux qui coïncident avec un libellé. */
+    private val nutrimentsParNomEnum: Map<String, fr.vetbrain.vetnutri_mp.Enumer.Nutrient> by lazy {
+        listOf<List<Enum<*>>>(
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientOther.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.AAEnum.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientEnergy.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.entries
+                )
+                .flatten()
+                .filter { it.name.uppercase() !in libellesNutrimentsStandards }
+                .groupBy { it.name.uppercase() }
+                .filterValues { it.size == 1 } // nom porté par deux énumérations : ambigu
+                .mapValues { it.value.single() as fr.vetbrain.vetnutri_mp.Enumer.Nutrient }
     }
 
     /** Normalise le nom d'un nutriment pour une meilleure résolution */
@@ -2076,20 +2105,25 @@ object ImportUtils {
     }
 
     /**
-     * Convertit une chaîne en énumération UnitReqEnum - amélioration pour les unités de besoin JSON
-     * réelles
+     * Base de calcul d'un besoin : codes V2 (MCAL, KGBW, KGMW, NO, PERC, ou leur numéro, comme
+     * LegacyV2Mappings) ou noms de UnitReqEnum ; null pour un code inconnu.
      */
     private fun convertirStringVersUnitReqEnum(
             unitReq: String
-    ): fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum {
-        // Codes V2 (MCAL, KGBW, KGMW, NO, PERC) : même correspondance que LegacyV2Mappings
+    ): fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum? {
+        unitReq.trim().toIntOrNull()?.let { id ->
+            return LegacyV2Mappings.unitRequirementIds[id]?.let {
+                fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.getById(it)
+            }
+        }
         return when (unitReq.trim().uppercase()) {
             "KGBW", "PERKG" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKG
-            "KGMW", "PERMS", "DM" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERMS
+            "KGMW", "PERMS" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERMS
             "MCAL", "PERKCAL" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKCAL
             "PERKJ" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKJ
             "PERC", "PERCENT", "%", "RATIO" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.RATIO
-            else -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.ABSOLUTE
+            "NO", "ABSOLUTE" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.ABSOLUTE
+            else -> null
         }
     }
 

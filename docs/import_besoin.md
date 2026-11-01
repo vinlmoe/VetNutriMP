@@ -165,11 +165,14 @@ Le fichier JSON racine contient un tableau d'objets `NutritionalRequirementData`
 - **OPTIMAX** (3) : Optimal maximum
 
 ### Types de besoins (UnitReqEnum) :
-- **NO** (0) : Aucune unité relative
+- **MCAL** (0) : Pour 1 000 kcal de besoin énergétique d'entretien
 - **KGBW** (1) : Par kg de poids corporel
-- **KGMW** (2) : Par kg de poids métabolique  
-- **MCAL** (3) : Par Mcal d'énergie métabolisable
-- **DM** (4) : Base sèche (Dry Matter)
+- **KGMW** (2) : Par kg de poids métabolique
+- **NO** (3) : Valeur absolue
+- **PERC** (4) : Ratio
+
+Les noms de l'application (PERKG, PERKCAL, PERMS, PERKJ, RATIO, ABSOLUTE) sont aussi acceptés.
+Un autre code est refusé : le besoin est écarté et signalé dans le rapport d'import.
 
 ### Types de nutriments :
 - **NutrientBase** : Protéines, lipides, glucides, fibres, etc.
@@ -247,9 +250,9 @@ Les références peuvent inclure des besoins spécifiques liés à des pathologi
       "consistent": 1,
       "refMapMin": {
         "PROTEINE": {
-          "quantity": 18.0,
-          "unit": "PERCENT",
-          "UnitReq": "DM",
+          "quantity": 45.0,
+          "unit": "BUg",
+          "UnitReq": "MCAL",
           "Biblio": {
             "author": "FEDIAF",
             "title": "Nutritional Guidelines",
@@ -289,9 +292,9 @@ Les références peuvent inclure des besoins spécifiques liés à des pathologi
           "ue": "PERCENT"
         },
         "referenceLevel": "MIN",
-        "quantity": 18.0,
-        "unit": "PERCENT",
-        "unitRequirement": "DM",
+        "quantity": 45.0,
+        "unit": "BUg",
+        "unitRequirement": "MCAL",
         "bibliographicReference": {
           "author": "FEDIAF",
           "title": "Nutritional Guidelines",
@@ -311,6 +314,7 @@ Le système calcule automatiquement les besoins totaux selon l'unité de référ
 - **KGMW** : quantity × poids métabolique (MW)  
 - **MCAL** : quantity × énergie basale (BEE) / 1000
 - **NO** : quantity (valeur absolue)
+- **PERC** : ratio, comparé tel quel au rapport de la ration
 
 ### Variables d'équations :
 Les équations utilisent des variables prédéfinies et peuvent inclure des variables supplémentaires définies par l'utilisateur dans le champ `var`.
@@ -354,7 +358,7 @@ Points critiques de compatibilité :
 - Reconstruire la hiérarchie des nutriments (MainNutrientEnum, types de nutriments)
 - Gérer la classe interne Nut4Ref avec ses champs : relativekind, nutrient, quantity, unit, UnitReq, Biblio
 - Supporter les coefficients de modification (modk1-5) et leurs noms associés
-- Calculer automatiquement les besoins totaux selon UnitReqEnum (KGBW, KGMW, MCAL, NO, DM)
+- Calculer automatiquement les besoins totaux selon UnitReqEnum (MCAL, KGBW, KGMW, NO, PERC)
 
 Structure attendue : 
 - Fichier JSON racine = Array de NutritionalRequirementData
