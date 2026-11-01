@@ -19,6 +19,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 class ExamGradingViewModel(
     private val repository: ExamGradingRepository,
@@ -738,13 +739,14 @@ class ExamGradingViewModel(
         rule: ExamGradingRuleSet,
         item: CrossConsultationAnalysisViewModel.ConsultationItem
     ): ExamGradeDetail {
-        val ingredientSet = item.rations.flatMap { it.ingredients }.map { it.name.lowercase() }.toSet()
+        // Comparaisons de textes sans casse, accents ni ligatures (« oeuf » = « œuf »)
+        val ingredientSet = item.rations.flatMap { it.ingredients }.map { Recherche.normaliser(it.name) }.toSet()
 
         val ingredientOk =
             if (!rule.ingredientRule.enabled) false
             else {
-                val required = rule.ingredientRule.required.map { it.lowercase().trim() }.filter { it.isNotBlank() }
-                val forbidden = rule.ingredientRule.forbidden.map { it.lowercase().trim() }.filter { it.isNotBlank() }
+                val required = rule.ingredientRule.required.map { Recherche.normaliser(it) }.filter { it.isNotBlank() }
+                val forbidden = rule.ingredientRule.forbidden.map { Recherche.normaliser(it) }.filter { it.isNotBlank() }
                 val requiredOk = required.isEmpty() || required.all { ingredientSet.contains(it) }
                 val forbiddenOk = forbidden.isEmpty() || forbidden.none { ingredientSet.contains(it) }
                 requiredOk && forbiddenOk && (required.isNotEmpty() || forbidden.isNotEmpty())
@@ -810,12 +812,12 @@ class ExamGradingViewModel(
             }
         val referencePoints = if (referenceOk) rule.referenceRule.points else 0
 
-        val adviceText = item.adviceText.lowercase()
+        val adviceText = Recherche.normaliser(item.adviceText)
         val adviceOk =
             if (!rule.adviceRule.enabled) false
             else {
-                val required = rule.adviceRule.requiredWords.map { it.lowercase().trim() }.filter { it.isNotBlank() }
-                val forbidden = rule.adviceRule.forbiddenWords.map { it.lowercase().trim() }.filter { it.isNotBlank() }
+                val required = rule.adviceRule.requiredWords.map { Recherche.normaliser(it) }.filter { it.isNotBlank() }
+                val forbidden = rule.adviceRule.forbiddenWords.map { Recherche.normaliser(it) }.filter { it.isNotBlank() }
                 val requiredOk = required.isEmpty() || required.all { adviceText.contains(it) }
                 val forbiddenOk = forbidden.isEmpty() || forbidden.none { adviceText.contains(it) }
                 requiredOk && forbiddenOk && (required.isNotEmpty() || forbidden.isNotEmpty())
@@ -959,9 +961,9 @@ class ExamGradingViewModel(
         sourceText: String,
         exactTokenMatch: Boolean = false
     ): FlexibleCriterionResult {
-        val normalizedText = sourceText.lowercase()
-        val includes = criterion.includes.map { it.trim().lowercase() }.filter { it.isNotBlank() }
-        val excludes = criterion.excludes.map { it.trim().lowercase() }.filter { it.isNotBlank() }
+        val normalizedText = Recherche.normaliser(sourceText)
+        val includes = criterion.includes.map { Recherche.normaliser(it) }.filter { it.isNotBlank() }
+        val excludes = criterion.excludes.map { Recherche.normaliser(it) }.filter { it.isNotBlank() }
         val includesOk =
             when {
                 includes.isEmpty() -> true
