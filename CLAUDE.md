@@ -31,7 +31,7 @@ Repository/    ← Interfaces + implémentations Room (18 fichiers)
   ↓
 DataBase/      ← DAO Room, Entity, Mappers (9 fichiers)
   ↓
-Room/SQLite    ← ~29 tables, 24 migrations, schéma v41
+Room/SQLite    ← ~29 tables, 25 migrations, schéma v42
 ```
 
 Règles à respecter :

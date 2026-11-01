@@ -17,7 +17,7 @@ import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.withContext
 
 /** Version du schéma Room ; à incrémenter avec chaque nouvelle migration. */
-const val DATABASE_SCHEMA_VERSION = 41
+const val DATABASE_SCHEMA_VERSION = 42
 
 /**
  * Base de données Room pour KMP. Cette classe définit la structure de la base de données et ses
@@ -172,7 +172,9 @@ private suspend fun openRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>,
                         // Migration 39→40 : configurations d'exploration multiration enregistrées
                         createMigration39to40(),
                         // Migration 40→41 : troupeaux (types d'animaux, paramètres par consultation)
-                        createMigration40to41()
+                        createMigration40to41(),
+                        // Migration 41→42 : cellulose approchée par la fibre totale
+                        createMigration41to42()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -878,6 +880,25 @@ fun createMigration40to41(): Migration {
         }
     }
 }
+
+/**
+ * Migration 41→42 : l'équation « Fibretotale approximation sur cellulose » se citait elle-même
+ * (`CELLULOSE`) et valait donc 0 ; elle approche la cellulose par la fibre totale. Une équation
+ * modifiée par l'utilisateur n'est pas touchée.
+ */
+fun createMigration41to42(): Migration {
+    return object : Migration(41, 42) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            connection.prepare(
+                    "UPDATE EQUATIONS SET equationScript = 'FIBRETOT' " +
+                            "WHERE uuid = '$EQUATION_CELLULOSE_APPROCHEE' AND equationScript = 'CELLULOSE'"
+            ).use { it.step() }
+        }
+    }
+}
+
+/** Équation complémentaire des données initiales : cellulose approchée par la fibre totale. */
+const val EQUATION_CELLULOSE_APPROCHEE = "fa47fac5-0423-483e-9e1a-87416ed2f942"
 
 private fun runStatementIgnoreIfExists(
         connection: androidx.sqlite.SQLiteConnection,

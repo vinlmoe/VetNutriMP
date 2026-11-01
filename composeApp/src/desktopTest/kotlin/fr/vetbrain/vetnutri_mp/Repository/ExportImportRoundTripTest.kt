@@ -57,11 +57,13 @@ class ExportImportRoundTripTest {
             db.biblioRefDao(), db.energyPerSpeciesDao()
         )
         val consultations = DatabaseConsultationRepository(db.consultationDao(), aliments)
+        val equations = DatabaseEquationRepository(db.equationDao(), db.biblioRefDao())
+        val referentiels = DatabaseReferenceEvRepository(db.referenceEvDao(), db.equationDao(), db.biblioRefDao())
         val exportImport = ExportImportRepository(
             animalRepository = animaux,
             foodRepository = aliments,
-            equationRepository = DatabaseEquationRepository(db.equationDao(), db.biblioRefDao()),
-            referenceRepository = DatabaseReferenceEvRepository(db.referenceEvDao(), db.equationDao(), db.biblioRefDao()),
+            equationRepository = equations,
+            referenceRepository = referentiels,
             biblioRepository = DatabaseBiblioRefRepository(db.biblioRefDao()),
             consultationRepository = consultations,
             recipeRepository = RecipeRepository(db.recipeDao(), db.foodDao()),
@@ -244,5 +246,22 @@ class ExportImportRoundTripTest {
         assertFailsWith<IllegalStateException> {
             export.exportWithSelectionEnvelope(ExportImportRepository.ExportSelectionOptions(animalIds = setOf("a1")))
         }
+    }
+
+    @Test
+    fun donneesInitiales_energieDUneRationAvecCelluloseApprochee() = runTest {
+        // Chien adulte > 25 kg, 200 g de Baby dog milk (fibre totale 0,5 %, cellulose absente) :
+        // cellulose approchée par la fibre totale dans DEcom → 541,66 kcal/100 g, soit 1083,3 kcal.
+        // Les équations complémentaires relues en base doivent garder leur nutriment.
+        val init = json.decodeFromString(ApiEnvelope.serializer(), donneesInitiales)
+        val base = nouvelleBase()
+        base.exportImport.importAll(init).requireComplete()
+
+        val reference = assertNotNull(base.referentiels.getReferenceEvById("105a39b1-c797-4b72-a4db-79035df1c19d"))
+        assertEquals("Adulte >25kg", reference.nom)
+        assertTrue(reference.equationsNut.any { it.nutrient?.label == "CELLULOSE" && it.equationScript == "FIBRETOT" })
+        val lait = assertNotNull(base.aliments.getFoodById("RC-23-002"))
+        val energie = AlimentRation(aliment = lait, quantite = 200.0, weight = 1.0).getEnergie(reference, base.equations)
+        assertTrue(kotlin.math.abs(energie - 1083.31) < 0.01, "énergie $energie")
     }
 }

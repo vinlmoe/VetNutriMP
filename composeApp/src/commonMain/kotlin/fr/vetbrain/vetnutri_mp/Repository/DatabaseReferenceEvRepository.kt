@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.DataBase.*
@@ -599,7 +600,9 @@ class DatabaseReferenceEvRepository(
         for (relation in equationRelations) {
             val equation = equationDao.getEquationById(relation.equationId)
             if (equation != null) {
-                val equationObj = convertEquationEntityToEquation(equation)
+                // Mappeur commun : garde le nutriment et `ratio` des équations complémentaires,
+                // dont dépend l'injection de la cellulose et de l'ENA dans le calcul d'énergie
+                val equationObj = equation.toDomain()
                 when (relation.equationType) {
                     "BW" -> referenceEv.equationBW = equationObj
                     "BEE" -> referenceEv.equationBEE = equationObj
@@ -802,22 +805,6 @@ class DatabaseReferenceEvRepository(
     }
 
     // Méthodes utilitaires pour les conversions
-
-    private fun convertEquationEntityToEquation(entity: EquationEntity): Equation {
-        return Equation(
-                uuid = entity.uuid,
-                name = entity.name,
-                description = entity.description,
-                equationScript = entity.equationScript,
-                specie = entity.specie?.let { s ->
-                        runCatching { Espece.valueOf(s) }.getOrNull()
-                                ?: Espece.entries.firstOrNull { it.label.equals(s, ignoreCase = true) }
-                },
-                kind = EquationKind.valueOf(entity.kind),
-                consistent = entity.consistent,
-                bib = BiblioRef() // Temporairement vide pour éviter l'erreur suspend
-        )
-    }
 
     private suspend fun convertBiblioRefEntityToBiblioRef(entity: BiblioRefEntity?): BiblioRef {
         return if (entity != null) {

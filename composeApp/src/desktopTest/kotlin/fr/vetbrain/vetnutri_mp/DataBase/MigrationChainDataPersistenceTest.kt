@@ -204,4 +204,28 @@ class MigrationChainDataPersistenceTest {
 
         db.close()
     }
+
+    @Test
+    fun getRoomDatabase_migratingFromV17_approcheLaCelluloseParLaFibreTotale() = runTest {
+        // La migration 41->42 corrige l'équation qui se citait elle-même (CELLULOSE → FIBRETOT),
+        // sans toucher une équation déjà modifiée par l'utilisateur
+        seedV17Database()
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.execute(
+                    "INSERT INTO EQUATIONS (uuid, name, description, equationScript, specie, kind, consistent, bibRef, variables) " +
+                        "VALUES ('$EQUATION_CELLULOSE_APPROCHEE', 'Fibretotale approximation sur cellulose', '', 'CELLULOSE', 'CH', 'COMPLEMENTARY_NUTRIENT', 1, NULL, '')"
+                )
+                stmt.execute(
+                    "INSERT INTO EQUATIONS (uuid, name, description, equationScript, specie, kind, consistent, bibRef, variables) " +
+                        "VALUES ('eq-autre', 'Autre', '', 'CELLULOSE', 'CH', 'COMPLEMENTARY_NUTRIENT', 1, NULL, '')"
+                )
+            }
+        }
+
+        val db = getRoomDatabase(Room.databaseBuilder<AppDatabase>(name = dbPath), dbPath)
+        assertEquals("FIBRETOT", db.equationDao().getEquationById(EQUATION_CELLULOSE_APPROCHEE)?.equationScript)
+        assertEquals("CELLULOSE", db.equationDao().getEquationById("eq-autre")?.equationScript)
+        db.close()
+    }
 }

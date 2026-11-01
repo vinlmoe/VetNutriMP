@@ -52,12 +52,14 @@ object EquationEvaluator {
      * Injecte dans la map de variables certains nutriments calculés à partir des équations
      * complémentaires de la `ReferenceEv` lorsque leur valeur n'est pas renseignée.
      *
-     * Actuellement, cette fonction est utilisée surtout pour l'ENA dans les équations énergétiques.
+     * La cellulose (approchée par la fibre totale) passe avant l'ENA, dont l'équation la
+     * soustrait : sinon la fibre serait comptée deux fois dans l'énergie (ENA + CELLULOSE).
      * Elle n'utilise que les équations portées par `ReferenceEv` (et pas les préférences d'espèce).
      */
     private fun injecterNutrimentsDepuisReference(
             variables: MutableMap<String, Double>,
-            referenceEv: ReferenceEv?
+            referenceEv: ReferenceEv?,
+            nutrimentsCibles: List<String> = listOf(NutrientMain.CELLULOSE.label, NutrientMain.ENA.label)
     ) {
         if (referenceEv == null) return
         val equationsComplementaires =
@@ -66,7 +68,6 @@ object EquationEvaluator {
                             it.equationScript.isNotBlank()
                 }
         if (equationsComplementaires.isEmpty()) return
-        val nutrimentsCibles = setOf(NutrientMain.ENA.label)
         val equationsParNutriment =
                 equationsComplementaires.groupBy { eq -> eq.nutrient?.label ?: "" }
         nutrimentsCibles.forEach { label ->
@@ -683,6 +684,9 @@ object EquationEvaluator {
             }
             addCustomNutrientVarsFromAliment(alim, variables)
         }
+        // Cellulose absente : approchée comme dans le calcul d'énergie (l'équation de l'ENA la
+        // soustrait). Évaluation directe des scripts du référentiel, sans récursivité.
+        injecterNutrimentsDepuisReference(variables, referenceEv, listOf(NutrientMain.CELLULOSE.label))
 
         val r = ExpressionMathematique.evaluer(expression, variables)
         return if (r == null || r.isNaN() || r.isInfinite()) null else r

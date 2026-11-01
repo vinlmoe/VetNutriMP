@@ -815873,7 +815873,7 @@
       "specie": "CH",
       "kind": "COMPLEMENTARY_NUTRIENT",
       "nutrient": "CELLULOSE",
-      "script": "CELLULOSE",
+      "script": "FIBRETOT",
       "variables": [],
       "ratio": false
     },
