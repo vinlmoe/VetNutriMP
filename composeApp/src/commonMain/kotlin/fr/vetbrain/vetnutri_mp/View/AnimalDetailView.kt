@@ -843,9 +843,11 @@ private fun AnimalDetailLayout(
                                                 } else {
                                                         AnalyseGraphiqueAlimentsView(
                                                                 aliments = alimentsComplets,
+                                                                // Suivre la référence : elle peut être chargée après l'ouverture
                                                                 referenceEv =
                                                                         viewModel
                                                                                 .referenceUtilisee
+                                                                                .collectAsState()
                                                                                 .value,
                                                                 equationRepository =
                                                                         equationRepository,

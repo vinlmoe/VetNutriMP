@@ -4,7 +4,6 @@ import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
@@ -245,20 +244,11 @@ fun NutrimentsRationsChart(
                                         // Calculer la plage adaptative
                                         val valeursValides =
                                                 valeurs.filter { it.isFinite() && !it.isNaN() }
-                                        val yRange =
-                                                if (valeursValides.isNotEmpty()) {
-                                                        val range = calculateAdaptiveRange(
-                                                                valeursValides,
-                                                                paddingPercent = 0.06f
-                                                        )
-                                                        arrondirPlage(range)
-                                                } else {
-                                                        0f..1f
-                                                }
+                                        val yRange = plageBarres(valeursValides)
 
                                         // Box wrapper : permet l'overlay des labels directement
                                         // sur le graphique avec maxHeight contraint à 400dp
-                                        Box(modifier = Modifier.height(400.dp)) {
+                                        Box(modifier = Modifier.height(LocalHauteurGraphique.current)) {
                                                 XYGraph(
                                                         yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
                                                         xAxisModel = remember(categories) { CategoryAxisModel(categories) },
@@ -274,6 +264,7 @@ fun NutrimentsRationsChart(
                                                 ) {
                                                         VerticalBarPlot(
                                                                 xData = categories,
+                                                                barWidth = largeurBarres(categories.size),
                                                                 yData = valeurs,
                                                                 bar = { index ->
                                                                         val ration = rationsNutrimentData[index]
@@ -465,7 +456,7 @@ fun NutrimentsRationsChart(
                                         }
 
                                         // Box wrapper : overlay des labels avec maxHeight contraint à 400dp
-                                        Box(modifier = Modifier.height(400.dp)) {
+                                        Box(modifier = Modifier.height(LocalHauteurGraphique.current)) {
                                                 XYGraph(
                                                         xAxisLabels = { GraphFormattingUtils.formatAxisTick(it, xRange) },
                                                         yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
@@ -474,8 +465,7 @@ fun NutrimentsRationsChart(
                                                         xAxisTitle = "${xOption?.let { translate(it.displayName) }} (${xOption?.unit})",
                                                         yAxisTitle = "${yOption?.let { translate(it.displayName) }} (${yOption?.unit})",
                                                         modifier = Modifier.fillMaxSize().clipToBounds()
-                                                                .pointerInput(Unit) {
-                                                                        detectTransformGestures { _, pan, zoom, _ ->
+                                                                .zoomDeplacementGraphique { pan, zoom, size ->
                                                                                 val newScaleX = (zoomPanState.scaleX * zoom).coerceIn(0.5f, 5f)
                                                                                 val newScaleY = (zoomPanState.scaleY * zoom).coerceIn(0.5f, 5f)
                                                                                 val currentXRange = calculateZoomedRangeView(originalRanges.first, zoomPanState, isXAxis = true)
@@ -488,7 +478,6 @@ fun NutrimentsRationsChart(
                                                                                         panY = zoomPanState.panY + panYDelta
                                                                                 )
                                                                         }
-                                                                }
                                                 ) {
                                         if (showRationArea) RationPossibilityAreas(
                                                 points, rationsNutrimentData.map { it.consultationId to it.isRationActuelle },

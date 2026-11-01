@@ -208,17 +208,7 @@ fun DensiteRationsChart(
 
                 // Calculer la plage adaptative
                 val valeursValides = densiteEnergetique.filter { it.isFinite() && !it.isNaN() }
-                val yRange =
-                        if (valeursValides.isNotEmpty()) {
-                                // Calcul adaptatif simple
-                                val min = valeursValides.minOf { it }
-                                val max = valeursValides.maxOf { it }
-                                val range = max - min
-                                val padding = maxOf(range * 0.1f, 10f)
-                                arrondirPlage((maxOf(0f, min - padding))..(max + padding))
-                        } else {
-                                0f..1f
-                        }
+                val yRange = plageBarres(valeursValides)
 
                 // Graphique d'histogramme
                 GraphCard(
@@ -236,10 +226,11 @@ fun DensiteRationsChart(
                                         if (useDryMatterPer100g)
                                                 translate(LocalizationKeys.Graph.DENSITY_AXIS_DM)
                                         else translate(LocalizationKeys.Graph.DENSITY_AXIS_CAL),
-                                modifier = Modifier.height(400.dp)
+                                modifier = Modifier.height(LocalHauteurGraphique.current)
                         ) {
                                 VerticalBarPlot(
                                         xData = categories,
+                                        barWidth = largeurBarres(categories.size),
                                         yData = densiteEnergetique,
                                         bar = { index ->
                                                 val ration = rationsEnergieData[index]

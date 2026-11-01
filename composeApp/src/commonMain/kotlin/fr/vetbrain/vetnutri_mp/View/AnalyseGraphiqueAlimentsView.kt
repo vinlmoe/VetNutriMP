@@ -1,5 +1,8 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.LocalHauteurGraphique
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.hauteurGraphiquePour
+
 import fr.vetbrain.vetnutri_mp.Data.ajouterOuCumulerAliment
 import fr.vetbrain.vetnutri_mp.Utils.UserErrors
 import fr.vetbrain.vetnutri_mp.Utils.orUserError
@@ -100,6 +103,7 @@ private fun NutrimentSelector(
 }
 
 /** Vue d'analyse graphique des aliments sélectionnés */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AnalyseGraphiqueAlimentsView(
         aliments: List<AlimentEv>,
@@ -400,15 +404,16 @@ fun AnalyseGraphiqueAlimentsView(
             }
         }
 
-        // Onglets pour choisir le type de graphique
-        Row(
-                modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        // Onglets pour choisir le type de graphique : tous visibles, sur plusieurs lignes si besoin
+        FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             // ✨ Onglet Histogramme Densité Énergétique (PREMIER)
             Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "densite_energetique" },
                     colors =
                             ButtonDefaults.buttonColors(
@@ -420,10 +425,12 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "densite_energetique") Color.White
                                             else Color.Black
                             )
-            ) { Text(translate("chart.energyDensityLabel")) }
+            ) { Text(translate("chart.energyDensityLabel"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
 
             // Onglet Protéines/Lipides
             Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "protein_lipid" },
                     colors =
                             ButtonDefaults.buttonColors(
@@ -435,10 +442,12 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "protein_lipid") Color.White
                                             else Color.Black
                             )
-            ) { Text(translate("auto.view.analysegraphiquealimentsview.proteines_lipides")) }
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.proteines_lipides"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
 
             // Onglet Phosphore/Protéines
             Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "phosphore_protein" },
                     colors =
                             ButtonDefaults.buttonColors(
@@ -450,10 +459,12 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "phosphore_protein") Color.White
                                             else Color.Black
                             )
-            ) { Text(translate("auto.view.analysegraphiquealimentsview.phosphore_proteines")) }
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.phosphore_proteines"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
 
             // Onglet Calcium/Phosphore
             Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "calcium_phosphore" },
                     colors =
                             ButtonDefaults.buttonColors(
@@ -465,10 +476,12 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "calcium_phosphore") Color.White
                                             else Color.Black
                             )
-            ) { Text(translate("auto.view.analysegraphiquealimentsview.calcium_phosphore")) }
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.calcium_phosphore"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
 
             // ✨ Nouvel onglet Nutriments personnalisés
             Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "nutriments_perso" },
                     colors =
                             ButtonDefaults.buttonColors(
@@ -480,10 +493,12 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "nutriments_perso") Color.White
                                             else Color.Black
                             )
-            ) { Text(translate("auto.view.analysegraphiquealimentsview.nutriments_personnalisas")) }
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.nutriments_personnalisas"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
 
             // ✨ Nouvel onglet Analyse détaillée
             Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "analyse_detaillee" },
                     colors =
                             ButtonDefaults.buttonColors(
@@ -495,10 +510,12 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "analyse_detaillee") Color.White
                                             else Color.Black
                             )
-            ) { Text(translate("auto.view.analysegraphiquealimentsview.analyse_dataillae")) }
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.analyse_dataillae"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
 
             // ✨ Nouvel onglet HeatMap
             Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "heatmap" },
                     colors =
                             ButtonDefaults.buttonColors(
@@ -510,7 +527,7 @@ fun AnalyseGraphiqueAlimentsView(
                                             if (ongletActif == "heatmap") Color.White
                                             else Color.Black
                             )
-            ) { Text(translate("auto.view.analysegraphiquealimentsview.heatmap")) }
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.heatmap"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
         }
 
         // Toggle pour /1000 kcal vs /100g MS (pas pour les ratios énergétiques, l'analyse détaillée et la heatmap)
@@ -600,6 +617,9 @@ fun AnalyseGraphiqueAlimentsView(
 
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val isCompact = maxWidth < 800.dp
+                CompositionLocalProvider(
+                        LocalHauteurGraphique provides hauteurGraphiquePour(maxWidth, maxHeight)
+                ) {
 
                 if (isCompact) {
                     // Vue compacte : graphiques puis liste avec bouton retour plus visible ET
@@ -918,6 +938,7 @@ fun AnalyseGraphiqueAlimentsView(
                         )
                     }
                 }
+            }
             }
         }
     }

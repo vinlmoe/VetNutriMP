@@ -41,6 +41,9 @@ fun AnalyseGraphiqueView(
                 val verticalSpacing =
                         if (isCompact) AppSizes.paddingSmall else AppSizes.paddingMedium
 
+                CompositionLocalProvider(
+                        LocalHauteurGraphique provides hauteurGraphiquePour(maxWidth, maxHeight)
+                ) {
                 Column(
                         modifier =
                                 Modifier.fillMaxSize()
@@ -152,6 +155,7 @@ fun AnalyseGraphiqueView(
 
                         // Légende et informations
                         GraphiqueLegend(selectedChart)
+                }
                 }
         }
 }
