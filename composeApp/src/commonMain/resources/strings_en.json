@@ -2264,9 +2264,8 @@
         "graph.groupe.info": "Group B (optional): foods compared with group A in the “A/B comparison” tab.",
         "graph.comparaison.tab": "A/B comparison",
         "graph.comparaison.title": "Food group comparison",
-        "graph.comparaison.subtitle": "Box plots: median (line), quartiles (box), whiskers up to 1.5 × the interquartile range, dots = outliers.",
+        "graph.comparaison.subtitle": "Box plots: median (line), mean (diamond), quartiles (box), whiskers up to 1.5 × the interquartile range, dots = outliers.",
         "graph.comparaison.empty": "Select foods in group B to compare them with group A.",
-        "graph.comparaison.median": "median %1$s (n = %2$s)",
         "graph.comparaison.density": "Energy density",
         "graph.comparaison.protein": "Protein",
         "graph.comparaison.fat": "Fat",
@@ -2275,6 +2274,18 @@
         "graph.comparaison.calcium": "Calcium",
         "graph.comparaison.caP": "Ca/P ratio",
         "graph.comparaison.proteinEnergy": "Protein energy",
-        "graph.comparaison.fatEnergy": "Fat energy"
+        "graph.comparaison.fatEnergy": "Fat energy",
+        "graph.comparaison.summary": "median %1$s · mean %2$s (n = %3$s)",
+        "graph.stats.title": "Statistics",
+        "graph.stats.measure": "Measure",
+        "graph.stats.group": "Group",
+        "graph.stats.mean": "Mean",
+        "graph.stats.sd": "SD",
+        "graph.stats.min": "Min",
+        "graph.stats.median": "Median",
+        "graph.stats.max": "Max",
+        "graph.stats.foods": "Foods",
+        "graph.stats.exportTitle": "Export the comparison",
+        "graph.stats.exportInfo": "A ZIP archive: the box plot image (JPEG), the statistics of each measure (n, mean, SD, min, quartiles, median, max) and the foods of both groups."
     }
 }

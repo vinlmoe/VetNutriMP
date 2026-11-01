@@ -730,6 +730,9 @@ private fun AnimalDetailLayout(
                                         val alimentsSelectionnes by
                                                 viewModel.alimentsSelectionnes
                                                         .collectAsState()
+                                        val alimentsGroupeB by
+                                                viewModel.alimentsGroupeB
+                                                        .collectAsState()
                                         val analyseSelectionFilters by
                                                 viewModel.analyseSelectionFilters
                                                         .collectAsState()
@@ -771,6 +774,22 @@ private fun AnimalDetailLayout(
                                                         alimentsComplets =
                                                                 alimentsAvecValeurs
                                                         isLoadingAlimentsComplets = false
+                                                }
+
+                                                // Groupe B complet (comparaison), chargé de la même façon
+                                                var groupeBComplet by remember {
+                                                        mutableStateOf<List<fr.vetbrain.vetnutri_mp.Data.AlimentEv>>(emptyList())
+                                                }
+                                                LaunchedEffect(alimentsGroupeB) {
+                                                        groupeBComplet =
+                                                                try {
+                                                                        val complets = viewModel.getAlimentsComplets(alimentsGroupeB.map { it.uuid })
+                                                                        alimentsGroupeB.map { complets[it.uuid] ?: it }
+                                                                } catch (e: Exception) {
+                                                                        e.rethrowIfCancellation()
+                                                                        AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
+                                                                        alimentsGroupeB
+                                                                }
                                                 }
 
                                                 if (isLoadingAlimentsComplets) {
@@ -830,12 +849,39 @@ private fun AnimalDetailLayout(
                                                                                 .hideAnalyseGraphique()
                                                                 },
                                                                 modifier =
-                                                                        Modifier.fillMaxSize()
+                                                                        Modifier.fillMaxSize(),
+                                                                alimentsComparaison = groupeBComplet
                                                         )
                                                 }
                                         } else {
-                                                // Utiliser la vue de sélection des aliments
-                                                // avec possibilité d'analyse graphique
+                                                // Deux groupes : A (analysé) et B (facultatif, comparé à A par
+                                                // des boîtes à moustaches) ; une vue de sélection par onglet
+                                                var ongletGroupe by remember { mutableStateOf(0) }
+                                                val groupeA = ongletGroupe == 0
+                                                Column(modifier = Modifier.fillMaxSize()) {
+                                                        TabRow(
+                                                                selectedTabIndex = ongletGroupe,
+                                                                backgroundColor = MaterialTheme.colors.surface
+                                                        ) {
+                                                                Tab(
+                                                                        selected = groupeA,
+                                                                        onClick = { ongletGroupe = 0 },
+                                                                        text = { Text(translate("graph.groupe.a", alimentsSelectionnes.size.toString())) }
+                                                                )
+                                                                Tab(
+                                                                        selected = !groupeA,
+                                                                        onClick = { ongletGroupe = 1 },
+                                                                        text = { Text(translate("graph.groupe.b", alimentsGroupeB.size.toString())) }
+                                                                )
+                                                        }
+                                                        if (!groupeA) {
+                                                                Text(
+                                                                        translate("graph.groupe.info"),
+                                                                        style = MaterialTheme.typography.caption,
+                                                                        modifier = Modifier.padding(AppSizes.paddingSmall)
+                                                                )
+                                                        }
+                                                        key(ongletGroupe) {
                                                 AnalyseSelectionAlimentsView(
                                                         aliments = availableFoods,
                                                         onClose = { /* Retour à la section précédente */
@@ -843,22 +889,18 @@ private fun AnimalDetailLayout(
                                                         onAlimentSelected = { /* Gestion de la sélection */
                                                         },
                                                         onPrimaryAction = { aliments ->
-                                                                viewModel
-                                                                        .lancerAnalyseGraphique(
-                                                                                aliments
-                                                                        )
+                                                                // Depuis le groupe B, l'analyse porte toujours sur le groupe A
+                                                                viewModel.lancerAnalyseGraphique(
+                                                                        if (groupeA) aliments else alimentsSelectionnes
+                                                                )
                                                         },
                                                         primaryActionLabel = translate(Chart.VIEW_GRAPHIC_ANALYSIS_ACTION),
                                                         alimentsInitialementSelectionnes =
-                                                                alimentsSelectionnes,
-                                                        onSelectionChanged = {
-                                                                nouvelleSelection ->
-                                                                viewModel
-                                                                        .setAlimentsSelectionnes(
-                                                                                nouvelleSelection
-                                                                        )
-                                                        }, // ✨ Synchroniser avec le
-                                                        // ViewModel
+                                                                if (groupeA) alimentsSelectionnes else alimentsGroupeB,
+                                                        onSelectionChanged = { nouvelleSelection ->
+                                                                if (groupeA) viewModel.setAlimentsSelectionnes(nouvelleSelection)
+                                                                else viewModel.setAlimentsGroupeB(nouvelleSelection)
+                                                        },
                                                         filtersInitial =
                                                                 analyseSelectionFilters,
                                                         onFiltersChange = {
@@ -870,8 +912,10 @@ private fun AnimalDetailLayout(
                                                         onLoadNutrients = { foodUuids, nutrients ->
                                                                 viewModel.loadNutrientsForFoods(foodUuids, nutrients)
                                                         },
-                                                        modifier = Modifier.fillMaxSize()
+                                                        modifier = Modifier.weight(1f).fillMaxWidth()
                                                 )
+                                                        }
+                                                }
                                         }
                                 } else {
                                         Column(

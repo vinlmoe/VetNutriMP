@@ -114,7 +114,9 @@ fun AnalyseGraphiqueAlimentsView(
         equationRepository: EquationRepository?,
         viewModel: fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel? = null,
         onClose: () -> Unit,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        /** Groupe B comparé aux [aliments] dans l'onglet « Comparaison A/B » (vide = pas de comparaison). */
+        alimentsComparaison: List<AlimentEv> = emptyList()
 ) {
     // États pour les données d'analyse
     var alimentsAnalyses by remember { mutableStateOf<List<AlimentAnalyseData>>(emptyList()) }
@@ -177,202 +179,16 @@ fun AnalyseGraphiqueAlimentsView(
     // Calculer les données d'analyse pour chaque aliment filtré de manière asynchrone
     LaunchedEffect(alimentsFiltres, referenceEv, equationRepository, useDryMatterPer100g) {
         isLoading = true
-        // Hors du fil de l'interface (qui reste fluide), équations lues une fois pour toute la liste
-        val equationRepository = equationRepository?.let { EquationsMemorisees(it) }
-        val resultat = withContext(AppDispatchers.Default) {
-        val resultat = mutableListOf<AlimentAnalyseData>()
-
-        for (aliment in alimentsFiltres) {
-            try {
-                // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs de base de l'aliment
-
-                // ✅ CRÉER UN ALIMENTRATION TRANSITOIRE POUR UTILISER getNutrientWithComplementary
-                val alimentRation =
-                        AlimentRation(
-                                aliment = aliment,
-                                quantite = 100.0, // 100g pour les calculs
-                                weight = 1.0
-                        )
-
-                // Utiliser getNutrientWithComplementary de manière asynchrone
-                val _proteines =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMain.PROTEINE,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                val _lipides =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMain.LIPIDE,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                val _glucides =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMain.GLUCIDE,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
-                // quand tous les paramètres sont disponibles, garantissant l'utilisation
-                // de l'équation énergétique du référentiel
-                val _energie =
-                        alimentRation.getEnergie(
-                                referenceEv = referenceEv,
-                                equationRepository = equationRepository
-                        )
-
-                // Récupération du phosphore pour le second graphique
-                val phosphore =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMacro.PHOS,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                // Récupération du calcium pour le troisième graphique
-                val calcium =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMacro.CAL,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                // Récupération des autres nutriments pour le graphique personnalisé
-                // Note: Seuls CAL, PHOS, MG, NA, K, CHL sont disponibles dans NutrientMacro
-                val magnesium =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMacro.MG,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                val sodium =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMacro.NA,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                val potassium =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMacro.K,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                // Obtenir l'humidité pour la conversion en matière sèche
-                val humidite =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMain.HUMIDITE,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-                val matiereSeche = 100.0 - humidite
-
-                val densiteEnergetiqueBase =
-                        calculerDensiteEnergetiqueAsync(
-                                aliment,
-                                referenceEv,
-                                equationRepository,
-                                false
-                        )
-                val densiteEnergetique = if (useDryMatterPer100g && matiereSeche > 0)
-                        densiteEnergetiqueBase * 100.0 / matiereSeche else densiteEnergetiqueBase
-                val (pourcentageProteines, pourcentageLipides) =
-                        calculerPourcentagesEnergieAlimentAsync(
-                                aliment,
-                                equationRepository,
-                                referenceEv
-                        )
-
-                // Fonction helper pour convertir en matière sèche si nécessaire
-                fun convertirEnMatiereSeche(valeurAsFed: Double): Double {
-                        return if (useDryMatterPer100g) {
-                                // /100g MS : convertir de g/100g as fed vers g/100g MS
-                                if (matiereSeche > 0) {
-                                        (valeurAsFed * 100.0) / matiereSeche
-                        } else {
-                                        valeurAsFed // Fallback si pas de matière sèche
-                                }
-                        } else {
-                                // /1000 kcal : calculer par 1000 kcal
-                        if (densiteEnergetique > 0) {
-                                        (valeurAsFed * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                                }
-                        }
-                }
-
-                // Calculs pour le graphique Phosphore/Protéines (par 1000 kcal ou /100g MS)
-                val proteinePer1000Kcal = convertirEnMatiereSeche(_proteines)
-                val phosphorePer1000Kcal = convertirEnMatiereSeche(phosphore)
-                val calciumPer1000Kcal = convertirEnMatiereSeche(calcium)
-
-                // Calculs pour tous les nutriments en g/1000kcal ou /100g MS
-                val energiePer1000Kcal = convertirEnMatiereSeche(_energie)
-                val lipidePer1000Kcal = convertirEnMatiereSeche(_lipides)
-                val glucidePer1000Kcal = convertirEnMatiereSeche(_glucides)
-                val magnesiumPer1000Kcal = convertirEnMatiereSeche(magnesium)
-                val sodiumPer1000Kcal = convertirEnMatiereSeche(sodium)
-                val potassiumPer1000Kcal = convertirEnMatiereSeche(potassium)
-
-                // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs calculées
-
-                resultat.add(
-                        AlimentAnalyseData(
-                                aliment = aliment,
-                                numero = 0, // Numéro temporaire, sera réassigné après le tri
-                                densiteEnergetique = densiteEnergetique,
-                                energyAsFed = densiteEnergetiqueBase,
-                                pourcentageProteines = pourcentageProteines,
-                                pourcentageLipides = pourcentageLipides,
-                                phosphorePer1000Kcal = phosphorePer1000Kcal,
-                                proteinePer1000Kcal = proteinePer1000Kcal,
-                                calciumPer1000Kcal = calciumPer1000Kcal,
-                                energiePer1000Kcal = energiePer1000Kcal,
-                                lipidePer1000Kcal = lipidePer1000Kcal,
-                                glucidePer1000Kcal = glucidePer1000Kcal,
-                                fibrePer1000Kcal =
-                                        magnesiumPer1000Kcal, // Utilisation de magnesium à la place
-                                // de fibre
-                                cendrePer1000Kcal =
-                                        sodiumPer1000Kcal, // Utilisation de sodium à la place de
-                                // cendre
-                                eauPer1000Kcal =
-                                        potassiumPer1000Kcal // Utilisation de potassium à la place
-                                // d'eau
-                                )
-                )
-            } catch (e: Exception) {
-                e.rethrowIfCancellation()
-
-                AppLog.e("AnalyseGraphiqueAlimentsView", e.message ?: "Erreur", e)
-            }
-        }
-        resultat
-        }
-
-        // Mettre à jour l'état avec les résultats triés par densité énergétique décroissante
-        // et réassigner les numéros dans l'ordre du tri
-        alimentsAnalyses =
-                resultat.sortedByDescending { it.densiteEnergetique }.mapIndexed { index, data ->
-                    data.copy(numero = index + 1)
-                }
+        alimentsAnalyses = analyserAliments(alimentsFiltres, referenceEv, equationRepository, useDryMatterPer100g)
         isLoading = false
+    }
+
+    // Groupe B : mêmes calculs, pour les boîtes à moustaches
+    var analysesComparaison by remember { mutableStateOf<List<AlimentAnalyseData>>(emptyList()) }
+    LaunchedEffect(alimentsComparaison, referenceEv, equationRepository, useDryMatterPer100g) {
+        analysesComparaison =
+                if (alimentsComparaison.isEmpty()) emptyList()
+                else analyserAliments(alimentsComparaison, referenceEv, equationRepository, useDryMatterPer100g)
     }
 
     Column(
@@ -536,6 +352,23 @@ fun AnalyseGraphiqueAlimentsView(
                                             else Color.Black
                             )
             ) { Text(translate("auto.view.analysegraphiquealimentsview.heatmap"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
+
+            // Comparaison avec le groupe B (boîtes à moustaches)
+            Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
+                    onClick = { ongletActif = "comparaison" },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    backgroundColor =
+                                            if (ongletActif == "comparaison")
+                                                    VetNutriColors.Primary
+                                            else Color.Gray.copy(alpha = 0.3f),
+                                    contentColor =
+                                            if (ongletActif == "comparaison") Color.White
+                                            else Color.Black
+                            )
+            ) { Text(translate("graph.comparaison.tab"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
         }
 
         // Toggle pour /1000 kcal vs /100g MS (pas pour les ratios énergétiques, l'analyse détaillée et la heatmap)
@@ -645,6 +478,13 @@ fun AnalyseGraphiqueAlimentsView(
                                 onAlimentSelected = { uuid -> alimentSelectionne = uuid },
                                 onUseDryMatterPer100gChange = { newValue -> useDryMatterPer100g = newValue },
                                 modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (ongletActif == "comparaison") {
+                        ComparaisonBoitesAMoustaches(
+                                groupeA = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
+                                groupeB = analysesComparaison,
+                                useDryMatterPer100g = useDryMatterPer100g,
+                                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                         )
                     } else if (ongletActif == "heatmap") {
                         // ✨ Vue HeatMap - pas de scroll parent, le LazyColumn gère le scroll
@@ -773,6 +613,16 @@ fun AnalyseGraphiqueAlimentsView(
                                     modifier = Modifier
                                             .weight(1f)
                                             .fillMaxHeight()
+                            )
+                        } else if (ongletActif == "comparaison") {
+                            ComparaisonBoitesAMoustaches(
+                                    groupeA = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
+                                    groupeB = analysesComparaison,
+                                    useDryMatterPer100g = useDryMatterPer100g,
+                                    modifier = Modifier
+                                            .weight(0.75f)
+                                            .fillMaxHeight()
+                                            .verticalScroll(rememberScrollState())
                             )
                         } else if (ongletActif == "heatmap") {
                             // ✨ Vue HeatMap - pas de scroll parent, le LazyColumn gère le scroll
@@ -1111,5 +961,208 @@ private fun ListeAlimentsAnalyse(
                 )
             }
         }
+    }
+}
+
+/**
+ * Valeurs d'analyse de chaque aliment (densité, énergie des macronutriments, nutriments pour
+ * 1000 kcal ou pour 100 g de MS), triées par densité énergétique décroissante et numérotées.
+ */
+internal suspend fun analyserAliments(
+        aliments: List<AlimentEv>,
+        referenceEv: ReferenceEv?,
+        equationRepository: EquationRepository?,
+        useDryMatterPer100g: Boolean
+): List<AlimentAnalyseData> {
+        // Hors du fil de l'interface (qui reste fluide), équations lues une fois pour toute la liste
+        val equationRepository = equationRepository?.let { EquationsMemorisees(it) }
+        val resultat = withContext(AppDispatchers.Default) {
+        val resultat = mutableListOf<AlimentAnalyseData>()
+
+        for (aliment in aliments) {
+            try {
+                // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs de base de l'aliment
+
+                // ✅ CRÉER UN ALIMENTRATION TRANSITOIRE POUR UTILISER getNutrientWithComplementary
+                val alimentRation =
+                        AlimentRation(
+                                aliment = aliment,
+                                quantite = 100.0, // 100g pour les calculs
+                                weight = 1.0
+                        )
+
+                // Utiliser getNutrientWithComplementary de manière asynchrone
+                val _proteines =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMain.PROTEINE,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+
+                val _lipides =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMain.LIPIDE,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+
+                val _glucides =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMain.GLUCIDE,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+
+                // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                // quand tous les paramètres sont disponibles, garantissant l'utilisation
+                // de l'équation énergétique du référentiel
+                val _energie =
+                        alimentRation.getEnergie(
+                                referenceEv = referenceEv,
+                                equationRepository = equationRepository
+                        )
+
+                // Récupération du phosphore pour le second graphique
+                val phosphore =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMacro.PHOS,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+
+                // Récupération du calcium pour le troisième graphique
+                val calcium =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMacro.CAL,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+
+                // Récupération des autres nutriments pour le graphique personnalisé
+                // Note: Seuls CAL, PHOS, MG, NA, K, CHL sont disponibles dans NutrientMacro
+                val magnesium =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMacro.MG,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+
+                val sodium =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMacro.NA,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+
+                val potassium =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMacro.K,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+
+                // Obtenir l'humidité pour la conversion en matière sèche
+                val humidite =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMain.HUMIDITE,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+                val matiereSeche = 100.0 - humidite
+
+                val densiteEnergetiqueBase =
+                        calculerDensiteEnergetiqueAsync(
+                                aliment,
+                                referenceEv,
+                                equationRepository,
+                                false
+                        )
+                val densiteEnergetique = if (useDryMatterPer100g && matiereSeche > 0)
+                        densiteEnergetiqueBase * 100.0 / matiereSeche else densiteEnergetiqueBase
+                val (pourcentageProteines, pourcentageLipides) =
+                        calculerPourcentagesEnergieAlimentAsync(
+                                aliment,
+                                equationRepository,
+                                referenceEv
+                        )
+
+                // Fonction helper pour convertir en matière sèche si nécessaire
+                fun convertirEnMatiereSeche(valeurAsFed: Double): Double {
+                        return if (useDryMatterPer100g) {
+                                // /100g MS : convertir de g/100g as fed vers g/100g MS
+                                if (matiereSeche > 0) {
+                                        (valeurAsFed * 100.0) / matiereSeche
+                        } else {
+                                        valeurAsFed // Fallback si pas de matière sèche
+                                }
+                        } else {
+                                // /1000 kcal : calculer par 1000 kcal
+                        if (densiteEnergetique > 0) {
+                                        (valeurAsFed * 1000.0) / densiteEnergetique
+                        } else {
+                            0.0
+                                }
+                        }
+                }
+
+                // Calculs pour le graphique Phosphore/Protéines (par 1000 kcal ou /100g MS)
+                val proteinePer1000Kcal = convertirEnMatiereSeche(_proteines)
+                val phosphorePer1000Kcal = convertirEnMatiereSeche(phosphore)
+                val calciumPer1000Kcal = convertirEnMatiereSeche(calcium)
+
+                // Calculs pour tous les nutriments en g/1000kcal ou /100g MS
+                val energiePer1000Kcal = convertirEnMatiereSeche(_energie)
+                val lipidePer1000Kcal = convertirEnMatiereSeche(_lipides)
+                val glucidePer1000Kcal = convertirEnMatiereSeche(_glucides)
+                val magnesiumPer1000Kcal = convertirEnMatiereSeche(magnesium)
+                val sodiumPer1000Kcal = convertirEnMatiereSeche(sodium)
+                val potassiumPer1000Kcal = convertirEnMatiereSeche(potassium)
+
+                // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs calculées
+
+                resultat.add(
+                        AlimentAnalyseData(
+                                aliment = aliment,
+                                numero = 0, // Numéro temporaire, sera réassigné après le tri
+                                densiteEnergetique = densiteEnergetique,
+                                energyAsFed = densiteEnergetiqueBase,
+                                pourcentageProteines = pourcentageProteines,
+                                pourcentageLipides = pourcentageLipides,
+                                phosphorePer1000Kcal = phosphorePer1000Kcal,
+                                proteinePer1000Kcal = proteinePer1000Kcal,
+                                calciumPer1000Kcal = calciumPer1000Kcal,
+                                energiePer1000Kcal = energiePer1000Kcal,
+                                lipidePer1000Kcal = lipidePer1000Kcal,
+                                glucidePer1000Kcal = glucidePer1000Kcal,
+                                fibrePer1000Kcal =
+                                        magnesiumPer1000Kcal, // Utilisation de magnesium à la place
+                                // de fibre
+                                cendrePer1000Kcal =
+                                        sodiumPer1000Kcal, // Utilisation de sodium à la place de
+                                // cendre
+                                eauPer1000Kcal =
+                                        potassiumPer1000Kcal // Utilisation de potassium à la place
+                                // d'eau
+                                )
+                )
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+
+                AppLog.e("AnalyseGraphiqueAlimentsView", e.message ?: "Erreur", e)
+            }
+        }
+        resultat
+        }
+    return resultat.sortedByDescending { it.densiteEnergetique }.mapIndexed { index, data ->
+        data.copy(numero = index + 1)
     }
 }

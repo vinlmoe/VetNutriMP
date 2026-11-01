@@ -2264,9 +2264,8 @@
         "graph.groupe.info": "Groupe B (facultatif) : aliments comparés au groupe A dans l'onglet « Comparaison A/B ».",
         "graph.comparaison.tab": "Comparaison A/B",
         "graph.comparaison.title": "Comparaison des groupes d'aliments",
-        "graph.comparaison.subtitle": "Boîtes à moustaches : médiane (trait), quartiles (boîte), moustaches jusqu'à 1,5 × l'écart interquartile, points = valeurs isolées.",
+        "graph.comparaison.subtitle": "Boîtes à moustaches : médiane (trait), moyenne (losange), quartiles (boîte), moustaches jusqu'à 1,5 × l'écart interquartile, points = valeurs isolées.",
         "graph.comparaison.empty": "Sélectionnez des aliments dans le groupe B pour les comparer au groupe A.",
-        "graph.comparaison.median": "médiane %1$s (n = %2$s)",
         "graph.comparaison.density": "Densité énergétique",
         "graph.comparaison.protein": "Protéines",
         "graph.comparaison.fat": "Lipides",
@@ -2275,6 +2274,18 @@
         "graph.comparaison.calcium": "Calcium",
         "graph.comparaison.caP": "Rapport Ca/P",
         "graph.comparaison.proteinEnergy": "Énergie des protéines",
-        "graph.comparaison.fatEnergy": "Énergie des lipides"
+        "graph.comparaison.fatEnergy": "Énergie des lipides",
+        "graph.comparaison.summary": "médiane %1$s · moyenne %2$s (n = %3$s)",
+        "graph.stats.title": "Statistiques",
+        "graph.stats.measure": "Mesure",
+        "graph.stats.group": "Groupe",
+        "graph.stats.mean": "Moyenne",
+        "graph.stats.sd": "Écart-type",
+        "graph.stats.min": "Min",
+        "graph.stats.median": "Médiane",
+        "graph.stats.max": "Max",
+        "graph.stats.foods": "Aliments",
+        "graph.stats.exportTitle": "Exporter la comparaison",
+        "graph.stats.exportInfo": "Une archive ZIP : l'image des boîtes à moustaches (JPEG), le tableau des statistiques de chaque mesure (n, moyenne, écart-type, min, quartiles, médiane, max) et la liste des aliments des deux groupes."
     }
 }

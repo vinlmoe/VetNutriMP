@@ -288,6 +288,10 @@ class AnimalDetailViewModel(
     private val _alimentsSelectionnes = MutableStateFlow<List<AlimentEv>>(emptyList())
     val alimentsSelectionnes: StateFlow<List<AlimentEv>> = _alimentsSelectionnes.asStateFlow()
 
+    /** Groupe B (facultatif) comparé aux aliments sélectionnés par des boîtes à moustaches. */
+    private val _alimentsGroupeB = MutableStateFlow<List<AlimentEv>>(emptyList())
+    val alimentsGroupeB: StateFlow<List<AlimentEv>> = _alimentsGroupeB.asStateFlow()
+
     private val _showAnalyseGraphique = MutableStateFlow(false)
     val showAnalyseGraphique: StateFlow<Boolean> = _showAnalyseGraphique.asStateFlow()
 
@@ -1876,6 +1880,11 @@ class AnimalDetailViewModel(
     /** Définit la liste des aliments sélectionnés pour l'analyse graphique */
     fun setAlimentsSelectionnes(aliments: List<AlimentEv>) {
         _alimentsSelectionnes.value = aliments
+    }
+
+    /** Définit le groupe B de la comparaison */
+    fun setAlimentsGroupeB(aliments: List<AlimentEv>) {
+        _alimentsGroupeB.value = aliments
     }
 
     /** Affiche l'analyse graphique avec les aliments sélectionnés */
