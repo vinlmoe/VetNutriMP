@@ -2,9 +2,8 @@
 
 - `guide_utilisateur.tex` : source LaTeX ; `guide_utilisateur.pdf` : version compilée.
 - `user_guide_en.tex` / `user_guide_en.pdf` : traduction anglaise. Mêmes captures (interface
-  française) ; les libellés cités sont ceux de l'interface anglaise, et ceux qui ne sont pas encore
-  traduits dans l'application sont donnés en français avec leur sens (`\uifr`). Toute modification
-  du guide français est à reporter dans la version anglaise.
+  française) ; les libellés cités sont ceux de l'interface anglaise. Toute modification du guide
+  français est à reporter dans la version anglaise.
 - `captures/` : captures d'écran de l'application desktop (base de démonstration, données fictives).
   Elles ne sont pas versionnées : `python3 extraire_captures.py` les recrée à partir du PDF.
 

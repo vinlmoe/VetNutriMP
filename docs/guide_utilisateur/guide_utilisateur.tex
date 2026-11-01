@@ -116,6 +116,8 @@
   {\large De la prise en main à la première ordonnance\par}
   \vspace{0.4cm}
   {\large Version de l'application : 3.3.18\par}
+  \vspace{1.2cm}
+  {\large Sébastien Lefebvre\par}
   \vfill
   {\small Les captures d'écran ont été réalisées sur une base de démonstration.
   Les animaux, propriétaires et valeurs saisies sont fictifs.\par}
@@ -311,7 +313,20 @@ grâce à l'analyse, puis préparer l'ordonnance.
   \item Validez avec le bouton coché en bas à droite.
 \end{enumerate}
 
-\capture{06_creation_individu.png}{Le formulaire de création d'un individu.}{creation-individu}
+\captureannotee{06_creation_individu.png}{Le formulaire de création d'un individu.}{creation-individu}{%
+  \repere{545}{152}{1}
+  \repere{318}{465}{2}
+  \repere{850}{697}{3}
+  \repere{318}{833}{4}
+  \repere{1290}{856}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Individu} pour un animal seul, \ui{Troupeau / groupe d'animaux} pour un groupe. \\
+\rep{2} & L'espèce : elle filtre les référentiels et les courbes de croissance proposés. \\
+\rep{3} & La date de naissance : saisie directe, \ui{Sélectionner une date} ou \ui{Aujourd'hui}. \\
+\rep{4} & Le sexe et le statut reproducteur. \\
+\rep{5} & Le bouton coché enregistre le dossier. \\
+\end{tabularx}
 
 \begin{pourquoi}
 L'espèce est déterminante : elle filtre les référentiels et les courbes de croissance
@@ -553,7 +568,20 @@ L'interrupteur \ui{Cartes} / \ui{Bullet} du panneau \ui{Apports} affiche la comp
 ration, l'origine de l'énergie et, pour chaque nutriment, une barre comparée aux seuils du
 référentiel. \ui{Cliquer pour plus de détails} ouvre le détail d'un nutriment.
 
-\capture{18_analyse_graphique.png}{Analyse de la ration en vue graphique.}{analyse-graphique}
+\captureannotee{18_analyse_graphique.png}{Analyse de la ration en vue graphique.}{analyse-graphique}{%
+  \repere{1380}{240}{1}
+  \repere{862}{256}{2}
+  \repere{1135}{256}{3}
+  \repere{1030}{700}{4}
+  \repere{1190}{595}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & L'interrupteur \ui{Cartes} / \ui{Bullet} bascule entre la vue en cartes et cette vue graphique. \\
+\rep{2} & \ui{Composition} : la part de chaque constituant dans la ration, en masse. \\
+\rep{3} & \ui{Origine Énergie} : la part de l'énergie apportée par les protéines, les lipides et l'ENA. \\
+\rep{4} & Pour chaque nutriment, une barre situe l'apport par rapport aux seuils du référentiel. \\
+\rep{5} & \ui{Cliquer pour plus de détails} ouvre le détail du nutriment. \\
+\end{tabularx}
 
 % ------------------------------------------------------------------
 \etape{Étape 8 — Préparer l'ordonnance}{remettre au propriétaire une ration claire et des conseils.}
@@ -729,7 +757,24 @@ propositions, pour les comparer.
 L'onglet \ui{Graphique} propose quatre vues : \ui{Évolution du poids}, \ui{Répartition
 énergétique}, \ui{Densité énergétique des rations} et \ui{Nutriments des rations}.
 
-\capture{19_graphique_poids.png}{Évolution du poids et courbes de référence.}{graphique-poids}
+\captureannotee{19_graphique_poids.png}{Évolution du poids et courbes de référence.}{graphique-poids}{%
+  \repere{440}{176}{1}
+  \repere{900}{176}{2}
+  \repere{1095}{176}{3}
+  \repere{895}{506}{4}
+  \repere{265}{830}{5}
+  \repere{745}{862}{6}
+  \repere{1245}{857}{7}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & La courbe de référence proposée (sexe et classe de poids) ; un clic en choisit une autre. \\
+\rep{2} & L'agrandissement des courbes de croissance et leur export en PDF. \\
+\rep{3} & Afficher ou masquer les courbes de référence. \\
+\rep{4} & Chaque pesée, placée selon l'âge. \\
+\rep{5} & L'\ui{Historique des poids} de l'animal. \\
+\rep{6} & L'objectif de perte de poids : perte minimale et maximale en \% par semaine, poids visé. \\
+\rep{7} & \ui{+ Poids} ajoute une pesée. \\
+\end{tabularx}
 
 
 La vue du poids place chaque pesée en fonction de l'âge. Sous le graphique, l'\ui{Historique
@@ -761,7 +806,20 @@ suivante. Deux options règlent l'affichage :
 L'onglet \ui{Graphique Aliments} compare des aliments entre eux : ajoutez-les avec \ui{+} dans
 la liste de gauche, puis cliquez sur \ui{Voir l'analyse graphique}.
 
-\capture{20_graphique_aliments.png}{Sélection d'aliments à comparer.}{graphique-aliments}
+\captureannotee{20_graphique_aliments.png}{Sélection d'aliments à comparer.}{graphique-aliments}{%
+  \repere{268}{57}{1}
+  \repere{495}{272}{2}
+  \repere{752}{324}{3}
+  \repere{1112}{272}{4}
+  \repere{1125}{860}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & La recherche et les filtres (type, espèce, base de données, indications). \\
+\rep{2} & Les aliments trouvés ; le \ui{+} d'une ligne ajoute l'aliment à la comparaison. \\
+\rep{3} & \ui{Tout ajouter} et \ui{Tout retirer}. \\
+\rep{4} & Les aliments sélectionnés. \\
+\rep{5} & \ui{Voir l'analyse graphique} ouvre les graphiques de comparaison. \\
+\end{tabularx}
 
 \subsection{Transmettre un dossier}
 
@@ -783,21 +841,86 @@ un chenil, une chatterie, un lot d'animaux de rente.
 
 À la création du dossier, choisissez \ui{Troupeau / groupe d'animaux}. Le troupeau n'a pas
 d'espèce, de race ni de sexe propres : il est décrit par des groupes d'individus (nom,
-effectif, poids moyen, espèce, race, sexe). Il peut mêler plusieurs espèces.
+effectif, poids moyen, espèce, race, sexe). Il peut mêler plusieurs espèces ; le référentiel et le
+K de chaque groupe se choisissent dans chaque consultation.
 
-\capture{07_creation_troupeau.png}{Création d'un troupeau de douze individus.}{creation-troupeau}
+\captureannotee{07_creation_troupeau.png}{Création d'un troupeau de douze individus.}{creation-troupeau}{%
+  \repere{545}{152}{1}
+  \repere{345}{441}{2}
+  \repere{1105}{448}{3}
+  \repere{474}{612}{4}
+  \repere{305}{636}{5}
+  \repere{1290}{856}{6}}
 
-Le dossier d'un troupeau fonctionne comme celui d'un individu, avec trois différences.
-\begin{itemize}
-  \item Dans la consultation, l'\ui{État du troupeau} remplace le poids, la NEC, le référentiel
-        et les K : pour chaque groupe, on saisit effectif, poids moyen, NEC, référentiel (de
-        l'espèce du groupe) et K.
-  \item Les rations sont saisies en quantités pour tout le troupeau.
-  \item Dans l'onglet \ui{Rations}, un panneau choisit ce qui est analysé.
-        \ui{Troupeau entier} compare l'apport total à la somme des besoins. La sélection d'un
-        groupe affiche la ration d'un individu de ce groupe, au prorata des besoins, analysée
-        avec le référentiel du groupe.
-\end{itemize}
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Troupeau / groupe d'animaux} est choisi. \\
+\rep{2} & L'effectif total du troupeau, somme des groupes. \\
+\rep{3} & Pour chaque groupe : son nom, le nombre d'individus et leur poids moyen ; la croix retire le groupe. \\
+\rep{4} & L'espèce, la race et le sexe du groupe. \\
+\rep{5} & \ui{Ajouter un groupe d'individus} ; un nouveau groupe reprend l'espèce du précédent. \\
+\rep{6} & Le bouton coché enregistre le troupeau. \\
+\end{tabularx}
+
+\subsubsection{La consultation}
+
+L'\ui{État du troupeau} remplace le poids, la NEC, le référentiel et les K de l'individu. Pour
+chaque groupe, saisissez l'effectif et le poids moyen à la date de la consultation, la note
+d'état corporel moyenne, le référentiel (de l'espèce du groupe) et le K du groupe, ainsi que les
+variables éventuelles des équations du référentiel. Le besoin d'un individu vaut le besoin
+standard du référentiel multiplié par le K du groupe.
+
+\subsubsection{La ration et son analyse}
+
+Les rations d'un troupeau sont saisies en quantités pour tout le troupeau, par jour. L'onglet
+\ui{Rations} affiche au-dessus des rations le panneau du troupeau.
+
+\captureannotee{37_troupeau_rations.png}{La ration d'un troupeau de douze chiens en deux groupes.}{troupeau-rations}{%
+  \repere{1190}{128}{1}
+  \repere{675}{145}{2}
+  \repere{250}{168}{3}
+  \repere{252}{275}{4}
+  \repere{840}{398}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Ajuster la ration au besoin énergétique du troupeau} multiplie toutes les quantités
+          par le facteur affiché (ici $\times 0{,}988$) pour que l'énergie apportée égale le besoin
+          du troupeau. \\
+\rep{2} & Ce qui est analysé : \ui{Troupeau entier}, ou un groupe (son nom et son effectif). \\
+\rep{3} & La ration du troupeau par jour, le besoin du troupeau, l'énergie apportée et la
+          couverture (verte de 90 à 110~\%, orange jusqu'à 80 et 120~\%, rouge au-delà). \\
+\rep{4} & Une ligne par groupe : part de la ration, besoin et énergie d'un individu,
+          couverture, nombre de nutriments hors normes et ration d'un individu. \\
+\rep{5} & \ui{Apports au troupeau entier}, nutriment par nutriment. \\
+\end{tabularx}
+
+\begin{pourquoi}
+La ration du troupeau est répartie entre les groupes au prorata de leur besoin énergétique :
+un individu du groupe $i$ reçoit
+\[
+  \text{quantité} \times \frac{B_i}{\sum_j n_j\,B_j}
+\]
+où $n_j$ est l'effectif du groupe $j$ et $B_j$ le besoin énergétique d'un de ses individus. Dans
+l'exemple, un adulte de 25~kg reçoit 271,6~g et un senior de 20~kg (K = 0,9) 206,8~g.
+\end{pourquoi}
+
+\textbf{Analyser un groupe.} Cliquez sur la ligne d'un groupe (ou sur sa puce) : la ration
+affichée devient celle d'un individu de ce groupe, analysée comme celle d'un animal seul, avec
+le poids, le référentiel et le K du groupe. Cette ration est en lecture seule ; cliquez à
+nouveau sur la ligne, ou sur \ui{Troupeau entier}, pour revenir à la ration du troupeau et la
+modifier.
+
+\textbf{Le troupeau entier.} Le tableau \ui{Apports au troupeau entier} compare l'apport total
+par jour à la somme des besoins des individus (effectif $\times$ besoin d'un individu, groupe par
+groupe), pour chaque nutriment : énergie d'abord, puis les nutriments hors normes, puis les
+autres par ordre alphabétique. \ui{Seulement les nutriments hors normes} réduit la liste.
+Un astérisque signale une valeur incomplète : la composition d'au moins un aliment ne renseigne
+pas ce nutriment.
+
+\begin{attention}
+Une somme conforme peut masquer la carence d'un groupe : un groupe trop nourri compense, dans le
+total, un groupe qui manque. Regardez toujours la dernière colonne, \ui{Groupes hors normes}, et
+le nombre d'écarts de chaque groupe dans le tableau du haut.
+\end{attention}
 
 \subsection{L'exploration multiration}
 \label{sec:multiration}
@@ -808,7 +931,22 @@ de poids, plutôt qu'une ration pour un animal précis.
 Activez-la d'abord dans \ui{Paramètres} > \ui{Administration} > \ui{Activer l'analyse
 multiration} ; le bouton \ui{Exploration multiration} apparaît dans la liste des animaux.
 
-\capture{28_multiration.png}{Configuration d'une exploration multiration.}{multiration}
+\captureannotee{28_multiration.png}{Configuration d'une exploration multiration.}{multiration}{%
+  \repere{455}{150}{1}
+  \repere{440}{191}{2}
+  \repere{440}{250}{3}
+  \repere{440}{343}{4}
+  \repere{440}{724}{5}
+  \repere{440}{815}{6}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & Le nombre de scénarios à calculer et ce qui empêche encore le calcul. \\
+\rep{2} & \ui{Calculer toutes les rations}, actif une fois la configuration complète. \\
+\rep{3} & Les onglets : \ui{Animaux}, \ui{Ingrédients}, \ui{Options}, \ui{Enregistrées}. \\
+\rep{4} & L'espèce et les référentiels généraux à croiser. \\
+\rep{5} & La grille des poids (de, à, pas). \\
+\rep{6} & La grille du coefficient K (de, à, pas). \\
+\end{tabularx}
 
 \begin{enumerate}
   \item Choisissez l'espèce et cochez un ou plusieurs référentiels généraux.
@@ -833,13 +971,37 @@ chaque ouverture.
 recherche d'aliments d'une ration. Le crayon modifie un aliment, la corbeille le supprime,
 \ui{+} en crée un.
 
-\capture{22_liste_aliments.png}{Liste des aliments.}{aliments}
+\captureannotee{22_liste_aliments.png}{Liste des aliments.}{aliments}{%
+  \repere{690}{121}{1}
+  \repere{700}{196}{2}
+  \repere{72}{295}{3}
+  \repere{780}{280}{4}
+  \repere{1300}{856}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & La recherche par nom, marque ou ingrédient. \\
+\rep{2} & Les filtres : type, indications, espèce, base de données. \\
+\rep{3} & Le crayon modifie l'aliment, la corbeille le supprime. \\
+\rep{4} & Le type d'aliment, les espèces et les indications. \\
+\rep{5} & \ui{+} crée un aliment. \\
+\end{tabularx}
 
 La fiche d'un aliment a trois onglets : \ui{Informations générales} (nom, marque, gamme, base
 de données, prix, conditionnement, type), \ui{Composition nutritionnelle} et
 \ui{Bibliographie}. Enregistrez avec \ui{Sauvegarder}.
 
-\capture{23_aliment_edition.png}{Modification d'un aliment.}{aliment-edition}
+\captureannotee{23_aliment_edition.png}{Modification d'un aliment.}{aliment-edition}{%
+  \repere{615}{104}{1}
+  \repere{480}{169}{2}
+  \repere{1385}{500}{3}
+  \repere{1385}{880}{4}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Sauvegarder} enregistre les modifications. \\
+\rep{2} & Les trois onglets : \ui{Informations générales}, \ui{Composition nutritionnelle}, \ui{Bibliographie}. \\
+\rep{3} & La base de données d'origine de l'aliment. \\
+\rep{4} & Le type d'aliment : complet ou complémentaire (énergie par l'équation des aliments commerciaux), sinon aliment brut (équation d'Atwater), voir section~\ref{sec:calculs}. \\
+\end{tabularx}
 
 \begin{aretenir}
 Une composition incomplète produit des alertes \og Informations incomplètes\fg{} dans l'analyse.
@@ -866,7 +1028,22 @@ analyses de toutes les consultations qui les utilisent.
 \bottomrule
 \end{tabularx}
 
-\capture{26_referentiels.png}{Les référentiels nutritionnels (onglet Systèmes de calcul).}{referentiels}
+\captureannotee{26_referentiels.png}{Les référentiels nutritionnels (onglet Systèmes de calcul).}{referentiels}{%
+  \repere{700}{56}{1}
+  \repere{650}{156}{2}
+  \repere{190}{257}{3}
+  \repere{275}{489}{4}
+  \repere{1222}{274}{5}
+  \repere{1300}{856}{6}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & Les quatre onglets des données de calcul. \\
+\rep{2} & La recherche d'un référentiel. \\
+\rep{3} & Nom, espèce et stade physiologique du référentiel. \\
+\rep{4} & Une ligne rouge signale un référentiel de maladie, à ajouter en référence complémentaire. \\
+\rep{5} & Modifier, dupliquer ou supprimer le référentiel. \\
+\rep{6} & \ui{+} crée un référentiel. \\
+\end{tabularx}
 \capture{24_equations.png}{Les équations.}{equations}
 \capture{25_bibliographie.png}{La bibliographie.}{bibliographie}
 \capture{27_conseils.png}{La bibliothèque de conseils.}{conseils}
@@ -899,7 +1076,20 @@ Saisissez vos informations (nom, numéro d'ordre, adresse, téléphone, e-mail),
 l'ordonnance, puis cliquez sur \ui{Enregistrer}. La section \ui{Expression des besoins par
 espèce} fixe l'unité d'expression des besoins (par exemple \og par 1000 kcal\fg).
 
-\capture{30_param_preferences.png}{Préférences.}{param-preferences}
+\captureannotee{30_param_preferences.png}{Préférences.}{param-preferences}{%
+  \repere{700}{58}{1}
+  \repere{290}{145}{2}
+  \repere{190}{645}{3}
+  \repere{395}{713}{4}
+  \repere{1300}{812}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & Les six onglets des paramètres. \\
+\rep{2} & Les coordonnées du praticien, reprises sur l'ordonnance. \\
+\rep{3} & \ui{Enregistrer} les coordonnées. \\
+\rep{4} & \ui{Expression des besoins par espèce} : l'unité dans laquelle les besoins sont affichés. \\
+\rep{5} & Cliquez sur une espèce pour changer son unité (par exemple \og par 1000 kcal\fg). \\
+\end{tabularx}
 
 \subsection{Interface}
 
@@ -930,7 +1120,22 @@ Une prévisualisation permet de vérifier les données avant de confirmer l'impo
 
 \subsection{Administration}
 
-\capture{34_param_administration.png}{Administration de la base.}{param-admin}
+\captureannotee{34_param_administration.png}{Administration de la base.}{param-admin}{%
+  \repere{1285}{272}{1}
+  \repere{40}{338}{2}
+  \repere{40}{402}{3}
+  \repere{40}{466}{4}
+  \repere{40}{530}{5}
+  \repere{40}{603}{6}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Activer l'analyse multiration} affiche le bouton \ui{Exploration multiration} dans la liste des animaux. \\
+\rep{2} & Relancer l'import automatique des données initiales (aliments, référentiels, conseils). \\
+\rep{3} & \ui{Gérer les sauvegardes} (section~\ref{sec:sauvegardes}). \\
+\rep{4} & Importer les données d'une installation VetNutri~2. \\
+\rep{5} & Ajouter une même référence bibliographique à de nombreux aliments. \\
+\rep{6} & Les actions irréversibles : vider une base de données. \\
+\end{tabularx}
 
 \begin{attention}
 Les boutons rouges \ui{Vider la base de données\ldots} suppriment définitivement les aliments,
@@ -945,7 +1150,20 @@ de les utiliser.
 contenu et leur taille. \ui{Nouvelle sauvegarde} en crée une ; sur chaque ligne, une icône la
 restaure et une autre la supprime.
 
-\capture{35_sauvegardes.png}{Gestion des sauvegardes.}{sauvegardes}
+\captureannotee{35_sauvegardes.png}{Gestion des sauvegardes.}{sauvegardes}{%
+  \repere{1140}{40}{1}
+  \repere{320}{121}{2}
+  \repere{700}{176}{3}
+  \repere{1270}{120}{4}
+  \repere{1375}{120}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Nouvelle sauvegarde}. \\
+\rep{2} & La date et le fichier de la sauvegarde. \\
+\rep{3} & Son contenu : animaux, aliments, équations, conseils, et sa taille. \\
+\rep{4} & Restaurer cette sauvegarde : ses données sont fusionnées avec les données actuelles, après une sauvegarde automatique préalable. \\
+\rep{5} & Supprimer la sauvegarde. \\
+\end{tabularx}
 
 \begin{aretenir}
 Faites une sauvegarde avant toute opération importante : import massif, vidage d'une base,

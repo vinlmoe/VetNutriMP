@@ -98,8 +98,6 @@
 
 % Interface label (button or element)
 \newcommand{\ui}[1]{\textsf{\textbf{#1}}}
-% Label not yet translated in the English interface: \uifr{French label}{English meaning}
-\newcommand{\uifr}[2]{\ui{#1} (\emph{#2})}
 
 \begin{document}
 
@@ -117,6 +115,8 @@
   {\large From first steps to the first prescription\par}
   \vspace{0.4cm}
   {\large Application version: 3.3.18\par}
+  \vspace{1.2cm}
+  {\large Sébastien Lefebvre\par}
   \vfill
   {\small Screenshots were taken on a demonstration database, with the French interface.
   The animals, owners and values shown are fictitious.\par}
@@ -177,8 +177,6 @@ calculated for that consultation.
 
 \begin{itemize}
   \item Interface labels are written \ui{like this}, as they appear in the English interface.
-  \item A few screens are not translated yet: their labels appear in French, followed by their
-        meaning, for example \uifr{Troupeau entier}{whole herd}.
   \item The screenshots show the French interface; the buttons and their positions are the
         same in English.
   \item On the screenshots, the markers \rep{1} \rep{2} \rep{3} refer to the explanations that
@@ -282,7 +280,7 @@ The main screen is the list of animals. Everything starts from here.
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & \ui{Food list}: browse and edit the food database (section~\ref{sec:aliments}). \\
 \rep{2} & \ui{Calculation data}: equations, bibliography, references, advice (section~\ref{sec:donnees}). \\
-\rep{3} & \uifr{Exploration multiration}{multi-ration exploration}: calculate rations in series (section~\ref{sec:multiration}). This button only appears when the feature is enabled. \\
+\rep{3} & \ui{Multi-ration exploration}: calculate rations in series (section~\ref{sec:multiration}). This button only appears when the feature is enabled. \\
 \rep{4} & \ui{Quick Import}: import animal records. \\
 \rep{5} & Search by ID, name, owner or breed. \\
 \rep{6} & Filter by species. \\
@@ -311,7 +309,7 @@ analysis, then prepare the prescription.
 
 \begin{enumerate}
   \item In the animal list, click \ui{+} at the bottom right.
-  \item Leave \uifr{Dossier : Individu}{record: individual} selected.
+  \item Leave \ui{Record: Individual} selected.
   \item Enter the \ui{ID} (for example the clinic's file number), the \ui{Name} and the
         \ui{Owner}.
   \item Choose the \ui{Species} (\emph{Dog}), then enter the \ui{Breed}, the
@@ -319,12 +317,25 @@ analysis, then prepare the prescription.
   \item Confirm with the tick button at the bottom right.
 \end{enumerate}
 
-\capture{06_creation_individu.png}{The form for creating an individual.}{creation-individu}
+\captureannotee{06_creation_individu.png}{The form for creating an individual.}{creation-individu}{%
+  \repere{545}{152}{1}
+  \repere{318}{465}{2}
+  \repere{850}{697}{3}
+  \repere{318}{833}{4}
+  \repere{1290}{856}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Individual} for a single animal, \ui{Herd / group of animals} for a group. \\
+\rep{2} & The species: it filters the references and growth curves offered. \\
+\rep{3} & The birth date: type it, or use \ui{Select a date} or \ui{Today}. \\
+\rep{4} & Sex and reproductive status. \\
+\rep{5} & The tick button saves the record. \\
+\end{tabularx}
 
 \begin{pourquoi}
 The species matters: it filters the references and growth curves on offer. Sex and birth date
 are used for the growth curves and to calculate age. For a group of animals, choose
-\uifr{Troupeau}{herd} instead (section~\ref{sec:troupeau}).
+\ui{Herd / group of animals} instead (section~\ref{sec:troupeau}).
 \end{pourquoi}
 
 % ------------------------------------------------------------------
@@ -556,7 +567,20 @@ The \ui{Cards} / \ui{Bullet} switch of the \ui{INTAKES} panel shows the composit
 ration, where the energy comes from and, for each nutrient, a bar compared with the
 reference's thresholds. \ui{Click for more details} opens the detail of a nutrient.
 
-\capture{18_analyse_graphique.png}{Ration analysis in chart view.}{analyse-graphique}
+\captureannotee{18_analyse_graphique.png}{Ration analysis in chart view.}{analyse-graphique}{%
+  \repere{1380}{240}{1}
+  \repere{862}{256}{2}
+  \repere{1135}{256}{3}
+  \repere{1030}{700}{4}
+  \repere{1190}{595}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & The \ui{Cards} / \ui{Bullet} switch toggles between the card view and this chart view. \\
+\rep{2} & \ui{Composition}: the share of each constituent in the ration, by mass. \\
+\rep{3} & \ui{Energy Origin}: the share of energy supplied by protein, fat and NFE. \\
+\rep{4} & For each nutrient, a bar places the intake against the reference's thresholds. \\
+\rep{5} & \ui{Click for more details} opens the nutrient's detail. \\
+\end{tabularx}
 
 % ------------------------------------------------------------------
 \etape{Step 8 — Prepare the prescription}{give the owner a clear ration and advice.}
@@ -568,8 +592,7 @@ reference's thresholds. \ui{Click for more details} opens the detail of a nutrie
   \item Fill in the report \rep{3}: history, clinical examination, key nutritional factor,
         additional text.
   \item Use the buttons at the bottom \rep{4}: \ui{Copy report} (to paste into your practice
-        software), \ui{Preview report}, \uifr{Prévisualiser l'ordonnance}{preview the
-        prescription}.
+        software), \ui{Preview report}, \ui{Preview prescription}.
 \end{enumerate}
 
 \captureannotee{21_ordonnance.png}{Preparing the prescription and the report.}{ordonnance}{%
@@ -729,7 +752,24 @@ A consultation can hold the owner's current ration and one or more proposals, to
 The \ui{Graph} tab offers four views: \ui{Weight evolution}, \ui{Energy distribution},
 \ui{Energy density of rations} and \ui{Ration nutrients}.
 
-\capture{19_graphique_poids.png}{Weight evolution and reference curves.}{graphique-poids}
+\captureannotee{19_graphique_poids.png}{Weight evolution and reference curves.}{graphique-poids}{%
+  \repere{440}{176}{1}
+  \repere{900}{176}{2}
+  \repere{1095}{176}{3}
+  \repere{895}{506}{4}
+  \repere{265}{830}{5}
+  \repere{745}{862}{6}
+  \repere{1245}{857}{7}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & The suggested reference curve (sex and weight class); click to choose another one. \\
+\rep{2} & Enlarging the growth curves and exporting them to PDF. \\
+\rep{3} & Show or hide the reference curves. \\
+\rep{4} & Each weighing, plotted against age. \\
+\rep{5} & The animal's \ui{Weight history}. \\
+\rep{6} & The weight-loss target: minimum and maximum loss in \% per week, target weight. \\
+\rep{7} & The \ui{+} button adds a weighing. \\
+\end{tabularx}
 
 The weight view plots each weighing against age. Below the graph, the \ui{Weight history} lets
 you add a weighing and set a weight-loss target (minimum and maximum loss in \% per week).
@@ -750,9 +790,9 @@ In the ration views, each ration has a number, repeated in the legend below the 
 2\ldots{} for the rations of the first consultation, 101, 102\ldots{} for the next one. Two
 options control the display:
 \begin{itemize}
-  \item \uifr{Consultation actuelle uniquement}{current consultation only} limits the graph to
+  \item \ui{Current consultation only} limits the graph to
         the consultation on display;
-  \item \uifr{Aire des possibilités et sommes}{area of possibilities and sums} outlines the
+  \item \ui{Area of possibilities and sums} outlines the
         rations of each consultation (orange for current rations, blue for proposals) and adds
         their mean weighted by the coefficients, marked \textbf{$\Sigma$}. Ration numbers do
         not change.
@@ -761,7 +801,20 @@ options control the display:
 The \ui{Food Graph} tab compares foods with each other: add them with \ui{+} in the list on the
 left, then click \ui{View graphic analysis}.
 
-\capture{20_graphique_aliments.png}{Selecting foods to compare.}{graphique-aliments}
+\captureannotee{20_graphique_aliments.png}{Selecting foods to compare.}{graphique-aliments}{%
+  \repere{268}{57}{1}
+  \repere{495}{272}{2}
+  \repere{752}{324}{3}
+  \repere{1112}{272}{4}
+  \repere{1125}{860}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & Search and filters (type, species, database, indications). \\
+\rep{2} & The foods found; the \ui{+} on a row adds the food to the comparison. \\
+\rep{3} & \ui{Add all} and \ui{Remove all}. \\
+\rep{4} & The selected foods. \\
+\rep{5} & \ui{View graphic analysis} opens the comparison charts. \\
+\end{tabularx}
 
 \subsection{Sending a record}
 
@@ -781,23 +834,86 @@ From the record's left-hand menu:
 \textbf{When to use it?} To work out a ration for a whole facility or group of animals: a
 kennel, a cattery, a batch of farm animals.
 
-When creating the record, choose \uifr{Troupeau / groupe d'animaux}{herd / group of animals}.
-A herd has no species, breed or sex of its own: it is described by groups of individuals (name,
-headcount, mean weight, species, breed, sex). It can mix several species.
+When creating the record, choose \ui{Herd / group of animals}. A herd has no species, breed or
+sex of its own: it is described by groups of individuals (name, number, mean weight, species,
+breed, sex). It can mix several species; each group's reference and K are chosen in each
+consultation.
 
-\capture{07_creation_troupeau.png}{Creating a herd of twelve individuals.}{creation-troupeau}
+\captureannotee{07_creation_troupeau.png}{Creating a herd of twelve individuals.}{creation-troupeau}{%
+  \repere{545}{152}{1}
+  \repere{345}{441}{2}
+  \repere{1105}{448}{3}
+  \repere{474}{612}{4}
+  \repere{305}{636}{5}
+  \repere{1290}{856}{6}}
 
-A herd record works like an individual's, with three differences.
-\begin{itemize}
-  \item In the consultation, the \uifr{État du troupeau}{herd status} replaces the weight, BCS,
-        reference and K: for each group, enter headcount, mean weight, BCS, reference (for the
-        group's species) and K.
-  \item Rations are entered as amounts for the whole herd.
-  \item In the \ui{Rations} tab, a panel chooses what is analysed.
-        \uifr{Troupeau entier}{whole herd} compares the total intake with the sum of the
-        requirements. Selecting a group shows the ration of one individual of that group, in
-        proportion to the requirements, analysed with the group's reference.
-\end{itemize}
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Herd / group of animals} is selected. \\
+\rep{2} & The herd's total number of animals, the sum of the groups. \\
+\rep{3} & For each group: its name, the number of animals and their mean weight; the cross removes the group. \\
+\rep{4} & The group's species, breed and sex. \\
+\rep{5} & \ui{Add a group of animals}; a new group takes the species of the previous one. \\
+\rep{6} & The tick button saves the herd. \\
+\end{tabularx}
+
+\subsubsection{The consultation}
+
+The \ui{Herd status} replaces the individual's weight, BCS, reference and K. For each group,
+enter the number of animals and their mean weight on the date of the consultation, the mean body
+condition score, the reference (for the group's species) and the group's K, together with any
+variables of the reference's equations. The requirement of one animal is the reference's
+standard requirement multiplied by the group's K.
+
+\subsubsection{The ration and its analysis}
+
+A herd's rations are entered as daily amounts for the whole herd. The \ui{Rations} tab shows the
+herd panel above the rations.
+
+\captureannotee{37_troupeau_rations.png}{The ration of a herd of twelve dogs in two groups.}{troupeau-rations}{%
+  \repere{1190}{128}{1}
+  \repere{675}{145}{2}
+  \repere{250}{168}{3}
+  \repere{252}{275}{4}
+  \repere{840}{398}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Adjust the ration to the herd's energy requirement} multiplies every amount by the
+          factor shown (here $\times 0.988$) so that the energy supplied equals the herd's
+          requirement. \\
+\rep{2} & What is analysed: \ui{Whole herd}, or one group (its name and number of animals). \\
+\rep{3} & The herd's daily ration, the herd's requirement, the energy supplied and the coverage
+          (green from 90 to 110~\%, orange up to 80 and 120~\%, red beyond). \\
+\rep{4} & One row per group: share of the ration, requirement and energy of one animal,
+          coverage, number of out-of-range nutrients and ration of one animal. \\
+\rep{5} & \ui{Whole-herd intakes}, nutrient by nutrient. \\
+\end{tabularx}
+
+\begin{pourquoi}
+The herd ration is shared between the groups in proportion to their energy requirement: one
+animal of group $i$ receives
+\[
+  \text{amount} \times \frac{B_i}{\sum_j n_j\,B_j}
+\]
+where $n_j$ is the number of animals in group $j$ and $B_j$ the energy requirement of one of
+them. In the example, a 25~kg adult receives 271.6~g and a 20~kg senior (K = 0.9) 206.8~g.
+\end{pourquoi}
+
+\textbf{Analysing a group.} Click a group's row (or its chip): the ration shown becomes that of
+one animal of the group, analysed like a single animal's ration, with the group's weight,
+reference and K. This ration is read-only; click the row again, or \ui{Whole herd}, to return
+to the herd ration and edit it.
+
+\textbf{The whole herd.} The \ui{Whole-herd intakes} table compares the total daily intake with
+the sum of the animals' requirements (number $\times$ requirement of one animal, group by group),
+for each nutrient: energy first, then out-of-range nutrients, then the others in alphabetical
+order. \ui{Only out-of-range nutrients} shortens the list. An asterisk marks an incomplete
+value: the composition of at least one food does not give this nutrient.
+
+\begin{attention}
+A compliant total can hide a deficiency in one group: an over-fed group makes up, in the total,
+for a group that falls short. Always check the last column, \ui{Out-of-range groups}, and the
+number of deviations of each group in the upper table.
+\end{attention}
 
 \subsection{Multi-ration exploration}
 \label{sec:multiration}
@@ -805,11 +921,24 @@ A herd record works like an individual's, with three differences.
 \textbf{When to use it?} To prepare standard rations, for example for a whole range of weights,
 rather than a ration for one specific animal.
 
-First enable it in \ui{Settings} > \ui{Administration} > \uifr{Activer l'analyse
-multiration}{enable multi-ration analysis}; the \uifr{Exploration multiration}{multi-ration
-exploration} button then appears in the animal list.
+First enable it in \ui{Settings} > \ui{Administration} > \ui{Enable multi-ration analysis}; the \ui{Multi-ration exploration} button then appears in the animal list.
 
-\capture{28_multiration.png}{Setting up a multi-ration exploration.}{multiration}
+\captureannotee{28_multiration.png}{Setting up a multi-ration exploration.}{multiration}{%
+  \repere{455}{150}{1}
+  \repere{440}{191}{2}
+  \repere{440}{250}{3}
+  \repere{440}{343}{4}
+  \repere{440}{724}{5}
+  \repere{440}{815}{6}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & The number of scenarios to calculate and what still blocks the calculation. \\
+\rep{2} & \ui{Calculate all rations}, active once the configuration is complete. \\
+\rep{3} & The tabs: \ui{Animals}, \ui{Ingredients}, \ui{Options}, \ui{Saved}. \\
+\rep{4} & The species and the general references to combine. \\
+\rep{5} & The weight grid (from, to, step). \\
+\rep{6} & The K coefficient grid (from, to, step). \\
+\end{tabularx}
 
 \begin{enumerate}
   \item Choose the species and tick one or more general references.
@@ -817,11 +946,11 @@ exploration} button then appears in the animal list.
         of scenarios is shown.
   \item In the \ui{Ingredients} tab, build the lists of foods supplying protein, fibre,
         calcium, omega-6, salt and energy. The adjustment follows this order.
-  \item Click \uifr{Calculer toutes les rations}{calculate all rations}. Clicking a cell of the
+  \item Click \ui{Calculate all rations}. Clicking a cell of the
         map shows its rations, which can be opened in the usual analysis to edit and export
         them.
 \end{enumerate}
-The \uifr{Enregistrées}{saved} tab keeps named configurations; results are recalculated each
+The \ui{Saved} tab keeps named configurations; results are recalculated each
 time they are opened.
 
 % ================================================================== 8
@@ -833,12 +962,36 @@ time they are opened.
 \ui{Food list} (main screen) shows the whole database, with the same filters as the food search
 of a ration. The pencil edits a food, the bin deletes it, \ui{+} creates one.
 
-\capture{22_liste_aliments.png}{Food list.}{aliments}
+\captureannotee{22_liste_aliments.png}{Food list.}{aliments}{%
+  \repere{690}{121}{1}
+  \repere{700}{196}{2}
+  \repere{72}{295}{3}
+  \repere{780}{280}{4}
+  \repere{1300}{856}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & Search by name, brand or ingredient. \\
+\rep{2} & Filters: type, indications, species, database. \\
+\rep{3} & The pencil edits the food, the bin deletes it. \\
+\rep{4} & Food type, species and indications. \\
+\rep{5} & \ui{+} creates a food. \\
+\end{tabularx}
 
 A food record has three tabs: \ui{General information} (name, brand, range, database, price,
 packaging, type), \ui{Nutritional Composition} and \ui{Bibliography}. Save with \ui{Save}.
 
-\capture{23_aliment_edition.png}{Editing a food.}{aliment-edition}
+\captureannotee{23_aliment_edition.png}{Editing a food.}{aliment-edition}{%
+  \repere{615}{104}{1}
+  \repere{480}{169}{2}
+  \repere{1385}{500}{3}
+  \repere{1385}{880}{4}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Save} records the changes. \\
+\rep{2} & The three tabs: \ui{General information}, \ui{Nutritional Composition}, \ui{Bibliography}. \\
+\rep{3} & The food's source database. \\
+\rep{4} & The food type: complete or complementary (energy from the commercial-food equation), otherwise raw food (Atwater equation), see section~\ref{sec:calculs}. \\
+\end{tabularx}
 
 \begin{aretenir}
 An incomplete composition produces ``Incomplete information'' warnings in the analysis. For a
@@ -864,7 +1017,22 @@ example \texttt{130*BW\^{}0.75}) \\
 \bottomrule
 \end{tabularx}
 
-\capture{26_referentiels.png}{Nutritional references (Calculation systems tab).}{referentiels}
+\captureannotee{26_referentiels.png}{Nutritional references (Calculation systems tab).}{referentiels}{%
+  \repere{700}{56}{1}
+  \repere{650}{156}{2}
+  \repere{190}{257}{3}
+  \repere{275}{489}{4}
+  \repere{1222}{274}{5}
+  \repere{1300}{856}{6}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & The four tabs of the calculation data. \\
+\rep{2} & Searching for a reference. \\
+\rep{3} & Name, species and physiological stage of the reference. \\
+\rep{4} & A red line marks a disease reference, to be added as a complementary reference. \\
+\rep{5} & Edit, duplicate or delete the reference. \\
+\rep{6} & \ui{+} creates a reference. \\
+\end{tabularx}
 \capture{24_equations.png}{Equations.}{equations}
 \capture{25_bibliographie.png}{Bibliography.}{bibliographie}
 \capture{27_conseils.png}{The advice library.}{conseils}
@@ -893,11 +1061,23 @@ maintenance \\
 \subsection{Preferences: to do right after installation}
 
 Enter your details (name, registration number, address, phone, e-mail), printed on the
-prescription, then click \uifr{Enregistrer}{save}. The \uifr{Expression des besoins par
-espèce}{requirement expression by species} section sets the unit in which requirements are
+prescription, then click \ui{Save}. The \ui{Requirement expression by species} section sets the unit in which requirements are
 expressed (for example ``per 1000 kcal'').
 
-\capture{30_param_preferences.png}{Preferences.}{param-preferences}
+\captureannotee{30_param_preferences.png}{Preferences.}{param-preferences}{%
+  \repere{700}{58}{1}
+  \repere{290}{145}{2}
+  \repere{190}{645}{3}
+  \repere{395}{713}{4}
+  \repere{1300}{812}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & The six settings tabs. \\
+\rep{2} & The practitioner's details, printed on the prescription. \\
+\rep{3} & \ui{Save} the details. \\
+\rep{4} & \ui{Requirement expression by species}: the unit in which requirements are shown. \\
+\rep{5} & Click a species to change its unit (for example ``per 1000 kcal''). \\
+\end{tabularx}
 
 \subsection{Interface}
 
@@ -927,7 +1107,22 @@ data before confirming the import.
 
 \subsection{Administration}
 
-\capture{34_param_administration.png}{Database administration.}{param-admin}
+\captureannotee{34_param_administration.png}{Database administration.}{param-admin}{%
+  \repere{1285}{272}{1}
+  \repere{40}{338}{2}
+  \repere{40}{402}{3}
+  \repere{40}{466}{4}
+  \repere{40}{530}{5}
+  \repere{40}{603}{6}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{Enable multi-ration analysis} shows the \ui{Multi-ration exploration} button in the animal list. \\
+\rep{2} & Rerun the automatic import of the initial data (foods, references, advice). \\
+\rep{3} & \ui{Manage backups} (section~\ref{sec:sauvegardes}). \\
+\rep{4} & Import the data of a VetNutri~2 installation. \\
+\rep{5} & Add the same bibliographic reference to many foods. \\
+\rep{6} & Irreversible actions: clearing a database. \\
+\end{tabularx}
 
 \begin{attention}
 The red \ui{Clear \ldots{} database} buttons permanently delete the foods, animals, references,
@@ -938,10 +1133,23 @@ equations or bibliographies. Make a backup before using them.
 \label{sec:sauvegardes}
 
 \ui{Administration} > \ui{Manage backups} lists the backups with their date, content and size.
-\uifr{Nouvelle sauvegarde}{new backup} creates one; on each row, one icon restores it and
+\ui{New backup} creates one; on each row, one icon restores it and
 another deletes it.
 
-\capture{35_sauvegardes.png}{Managing backups.}{sauvegardes}
+\captureannotee{35_sauvegardes.png}{Managing backups.}{sauvegardes}{%
+  \repere{1140}{40}{1}
+  \repere{320}{121}{2}
+  \repere{700}{176}{3}
+  \repere{1270}{120}{4}
+  \repere{1375}{120}{5}}
+
+\begin{tabularx}{\linewidth}{@{}c X@{}}
+\rep{1} & \ui{New backup}. \\
+\rep{2} & The backup's date and file. \\
+\rep{3} & Its content: animals, foods, equations, advice, and its size. \\
+\rep{4} & Restore this backup: its data is merged with the current data, after an automatic backup is made first. \\
+\rep{5} & Delete the backup. \\
+\end{tabularx}
 
 \begin{aretenir}
 Make a backup before any major operation: bulk import, clearing a database, changing computer.
