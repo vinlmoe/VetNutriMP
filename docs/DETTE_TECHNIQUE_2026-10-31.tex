@@ -324,6 +324,14 @@ Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pa
            consultations, conseils, bibliographie ni mots-clés quand leur lecture échouait (il
            échoue désormais, et l'export des Paramètres affiche l'erreur au lieu de la journaliser
            seulement). \code{ExportImportRepository.kt.disabled} (906 l., non compilé) supprimé. \\
+-- & préparé & \textbf{Historique Git (B3)} : \code{.git} pèse 445\,Mo (pack 293\,Mo et cache LFS
+           local 143\,Mo), dont 220\,Mo de \code{.aab} de release. \code{docs/nettoyage\_historique.sh}
+           produit une copie miroir nettoyée sans toucher au dépôt de travail : pack 293\,$\to$\,30\,Mo,
+           1\,352 commits et 95 références conservés, contenu des branches à jour (\code{main},
+           \code{Work-fine-}, branche courante) strictement identique (vérifié par le script). Les
+           données initiales des anciennes versions sont gardées : un tag reste reconstructible.
+           Reste à décider l'envoi forcé sur GitHub (tous les identifiants de commits changent,
+           chaque poste doit recloner, les tags de version perdent leurs \code{.aab}). \\
 \bottomrule
 \end{longtable}
 
