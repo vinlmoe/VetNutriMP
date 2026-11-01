@@ -16,6 +16,7 @@ import io.github.koalaplot.core.bar.VerticalBarPlot
 // Import des modèles de données depuis le fichier parent
 import fr.vetbrain.vetnutri_mp.View.AlimentAnalyseData
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 
 /**
  * Composant graphique pour afficher un histogramme de densité énergétique
@@ -58,6 +59,7 @@ fun HistogrammeEnergieAliments(
 
     // Créer le graphique
     XYGraph(
+        yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
         xAxisModel = remember { CategoryAxisModel(categories) },
         yAxisModel = remember { FloatLinearAxisModel(yRange) },
         yAxisTitle = translate("graph.densityAxisKcal100g"),
@@ -108,6 +110,7 @@ fun HistogrammeGenerique(
     val yRange = (minVal - minVal * 0.05f).coerceAtLeast(0f)..(maxVal + maxVal * 0.1f)
 
     XYGraph(
+        yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
         xAxisModel = remember { CategoryAxisModel(categories) },
         yAxisModel = remember { FloatLinearAxisModel(yRange) },
         yAxisTitle = uniteY,

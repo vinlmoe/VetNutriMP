@@ -290,6 +290,8 @@ fun RationsEnergieChart(
                         BoxWithConstraints(modifier = Modifier.height(400.dp).clipToBounds()) {
                                 // Graphique principal
                                 XYGraph(
+                                        xAxisLabels = { GraphFormattingUtils.formatAxisTick(it, xRange) },
+                                        yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
                                         xAxisModel =
                                                 KoalaPlotExtensions.createSmartPercentageAxisModel(
                                                         xRange

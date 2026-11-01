@@ -4,23 +4,19 @@ package fr.vetbrain.vetnutri_mp.Utils
 object NumberUtils {
     /** Formate un nombre avec un nombre de décimales donné */
     fun format(number: Double, digits: Int): String {
-        return if (digits == 0) {
-            number.toLong().toString()
+        // Découpage sur l'entier arrondi : recalculer la partie décimale en Double la tronquait
+        // ((1,38 − 1) × 100 = 37,999… → « 1.37 »)
+        val multiplier = 10.0.pow(digits).toLong()
+        val scaled = kotlin.math.round(kotlin.math.abs(number) * multiplier).toLong()
+        val signe = if (number < 0 && scaled != 0L) "-" else ""
+        val decimalPart = scaled % multiplier
+        return if (decimalPart == 0L) {
+            "$signe${scaled / multiplier}"
         } else {
-            val multiplier = 10.0.pow(digits)
-            val rounded = kotlin.math.round(number * multiplier) / multiplier
-            val integerPart = rounded.toLong()
-            val decimalPart = ((rounded - integerPart) * multiplier).toLong()
-            
-            if (decimalPart == 0L) {
-                integerPart.toString()
-            } else {
-                val decimalStr = decimalPart.toString().padStart(digits, '0')
-                "$integerPart.$decimalStr"
-            }
+            "$signe${scaled / multiplier}.${decimalPart.toString().padStart(digits, '0')}"
         }
     }
-    
+
     private fun Double.pow(n: Int): Double {
         var result = 1.0
         repeat(n) { result *= this }

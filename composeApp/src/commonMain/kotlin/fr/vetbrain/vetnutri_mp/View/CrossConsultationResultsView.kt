@@ -76,6 +76,7 @@ import io.github.koalaplot.core.xygraph.CategoryAxisModel
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.XYGraph
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
+import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 
 private data class MetricOption(
         val key: String,
@@ -408,6 +409,7 @@ private fun ConsultationBarChart(
     var selectedBarIndex by remember { mutableStateOf<Int?>(null) }
     Box(modifier = modifier.padding(horizontal = AppSizes.paddingMedium)) {
         XYGraph(
+                yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, 0f..maxY) },
                 xAxisModel = CategoryAxisModel(categories),
                 yAxisModel = FloatLinearAxisModel(0f..maxY),
                 yAxisTitle = metricTitle(metric, expression),

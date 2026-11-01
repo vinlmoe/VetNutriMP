@@ -38,6 +38,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Color
+import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 
 private enum class GradingWorkflowStep(val title: String) {
     LOT("Lot"),
@@ -1061,6 +1062,8 @@ private fun HistogramBars(
     }
 
     XYGraph(
+        xAxisLabels = { GraphFormattingUtils.formatAxisTick(it, xRange) },
+        yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
         xAxisModel = FloatLinearAxisModel(xRange, minimumMajorTickIncrement = ((maxX - minX) / 5f).coerceAtLeast(0.1f)),
         yAxisModel = FloatLinearAxisModel(yRange, minimumMajorTickIncrement = 1f),
         xAxisTitle = distribution.label,

@@ -231,6 +231,7 @@ fun DensiteRationsChart(
                                 else translate(LocalizationKeys.Graph.DENSITY_SUBTITLE_CAL)
                 ) {
                         XYGraph(
+                                yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
                                 xAxisModel = remember(categories) { CategoryAxisModel(categories) },
                                 yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartDensityAxisModel(yRange) },
                                 yAxisTitle =
@@ -396,13 +397,13 @@ fun DensiteRationsChart(
                                                                                                 GraphFormattingUtils.formatEnergyDensity(data.energieTotale / data.matiereSeche * 100.0)
                                                                                             else
                                                                                                 GraphFormattingUtils.formatEnergyDensity(0.0)
-                                                                                        }"
+                                                                                        } MS"
                                                                                 else
                                                                                         "${translate(LocalizationKeys.Graph.DENSITY_LABEL)}${
                                                                                             if (data.energieTotale > 0)
-                                                                                                GraphFormattingUtils.formatEnergyDensity(data.poidsTotal / data.energieTotale * 1000.0)
+                                                                                                GraphFormattingUtils.formatNutrientPer1000Kcal(data.poidsTotal / data.energieTotale * 1000.0)
                                                                                             else
-                                                                                                GraphFormattingUtils.formatEnergyDensity(0.0)
+                                                                                                GraphFormattingUtils.formatNutrientPer1000Kcal(0.0)
                                                                                         }",
                                                                         style =
                                                                                 MaterialTheme

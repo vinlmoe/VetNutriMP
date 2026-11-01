@@ -29,4 +29,18 @@ class GraphFormattingUtilsTest {
         assertEquals("0", GraphFormattingUtils.formatAxisTick(-0.00000004f, range))
         assertEquals("0", GraphFormattingUtils.formatAxisTick(0f, range))
     }
+
+    @Test
+    fun formatDecimal_partieDecimaleSansTroncatureBinaire() {
+        // (6,8 − 6) × 100 = 79,999… en Double : le rapport O6/O3 d'une ration s'affichait « 6.79 »
+        assertEquals("6.80", GraphFormattingUtils.formatDecimal(3.4 / 0.5, 2))
+        assertEquals("1.38", GraphFormattingUtils.formatDecimal(1.1 / 0.8, 2))
+        assertEquals("12.67", GraphFormattingUtils.formatDecimal(19.0 / 1.5, 2))
+        assertEquals("2.3", GraphFormattingUtils.formatDecimal(2.3, 1))
+        assertEquals("0.05", GraphFormattingUtils.formatDecimal(0.05, 2))
+        assertEquals("-1.5", GraphFormattingUtils.formatDecimal(-1.5, 1))
+        assertEquals("-0.5", GraphFormattingUtils.formatDecimal(-0.5, 1))
+        assertEquals("0.0", GraphFormattingUtils.formatDecimal(-0.001, 1))
+        assertEquals("1667", GraphFormattingUtils.formatDecimal(1666.5, 0))
+    }
 }

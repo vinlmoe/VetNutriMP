@@ -85,19 +85,15 @@ object GraphFormattingUtils {
             return "N/A"
         }
 
-        val multiplier = 10.0.pow(decimals)
-        val rounded = (value * multiplier).let { 
-            if (it >= 0) kotlin.math.floor(it + 0.5) else kotlin.math.ceil(it - 0.5)
-        } / multiplier
-
+        // Arrondi (demi vers l'extérieur) puis découpage en entiers : (6,8 − 6) × 100 vaut
+        // 79,999…, tronqué en 79, d'où « 6.79 » quand on recalculait la partie décimale en Double
+        val multiplier = 10.0.pow(decimals).toLong()
+        val scaled = kotlin.math.floor(abs(value) * multiplier + 0.5).toLong()
+        val signe = if (value < 0 && scaled != 0L) "-" else ""
         return if (decimals == 0) {
-            rounded.toInt().toString()
+            "$signe$scaled"
         } else {
-            // Approche compatible iOS - formatage manuel
-            val integerPart = rounded.toInt()
-            val fractionalPart = ((rounded - integerPart) * multiplier).toInt()
-            val fractionalString = fractionalPart.toString().padStart(decimals, '0')
-            "$integerPart.$fractionalString"
+            "$signe${scaled / multiplier}.${(scaled % multiplier).toString().padStart(decimals, '0')}"
         }
     }
 

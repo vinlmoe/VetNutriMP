@@ -6,9 +6,19 @@ import kotlin.test.assertEquals
 class NumberUtilsTest {
 
     @Test
-    fun format_zeroDigits_truncatesToInteger() {
-        // Implementation uses toLong() which truncates (not rounds)
-        assertEquals("42", NumberUtils.format(42.7, 0))
+    fun format_zeroDigits_arrondit() {
+        assertEquals("43", NumberUtils.format(42.7, 0))
+        assertEquals("1666", NumberUtils.format(1666.46, 0))
+    }
+
+    @Test
+    fun format_partieDecimaleSansTroncatureBinaire() {
+        // (1,38 − 1) × 100 = 37,999… en Double : affichait « 1.37 »
+        assertEquals("1.38", NumberUtils.format(1.38, 2))
+        assertEquals("6.8", NumberUtils.format(3.4 / 0.5, 1))
+        assertEquals("2.3", NumberUtils.format(2.3, 1))
+        assertEquals("-1.5", NumberUtils.format(-1.5, 1))
+        assertEquals("0", NumberUtils.format(-0.001, 2))
     }
 
     @Test

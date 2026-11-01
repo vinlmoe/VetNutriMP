@@ -262,6 +262,7 @@ fun NutrimentsRationsChart(
                                         // sur le graphique avec maxHeight contraint à 400dp
                                         Box(modifier = Modifier.height(400.dp)) {
                                                 XYGraph(
+                                                        yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
                                                         xAxisModel = remember(categories) { CategoryAxisModel(categories) },
                                                         xAxisLabels = { category ->
                                                                 // Axis ticks can still refer to the previous filtered data.
@@ -468,6 +469,8 @@ fun NutrimentsRationsChart(
                                         // Box wrapper : overlay des labels avec maxHeight contraint à 400dp
                                         Box(modifier = Modifier.height(400.dp)) {
                                                 XYGraph(
+                                                        xAxisLabels = { GraphFormattingUtils.formatAxisTick(it, xRange) },
+                                                        yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
                                                         xAxisModel = KoalaPlotExtensions.createSmartXAxisModel(xRange),
                                                         yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(yRange),
                                                         xAxisTitle = "${xOption?.let { translate(it.displayName) }} (${xOption?.unit})",

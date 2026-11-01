@@ -500,6 +500,8 @@ fun EvolutionPoidsChart(
                 ) {
                         Column {
                                 XYGraph(
+                                        xAxisLabels = { GraphFormattingUtils.formatAxisTick(it, xRangeFloat) },
+                                        yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRangeFloat) },
                                         xAxisModel =
                                                 KoalaPlotExtensions.createSmartXAxisModel(
                                                         range = xRangeFloat
@@ -1083,6 +1085,8 @@ fun ConeZoomView(
             sousTitre = "${translate(LocalizationKeys.Graph.ZOOM_CONE_SUBTITLE)} (${coneState.startDate})"
         ) {
             XYGraph(
+                xAxisLabels = { GraphFormattingUtils.formatAxisTick(it, xRange) },
+                yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
                 xAxisModel = FloatLinearAxisModel(xRange, minimumMajorTickIncrement = 2f),
                 yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(yRange),
                 xAxisTitle = translate(LocalizationKeys.Graph.AXIS_WEEKS),
@@ -1471,6 +1475,8 @@ fun GrowthZoomView(
                 sousTitre = translate(LocalizationKeys.Graph.GROWTH_ZOOM_SUBTITLE)
         ) {
                 XYGraph(
+                        xAxisLabels = { GraphFormattingUtils.formatAxisTick(it, xRange) },
+                        yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
                         xAxisModel = FloatLinearAxisModel(
                                 range = xRange,
                                 minimumMajorTickIncrement = 2f
