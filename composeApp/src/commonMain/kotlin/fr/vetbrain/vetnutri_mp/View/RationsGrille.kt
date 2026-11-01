@@ -97,6 +97,8 @@ internal fun ColumnScope.GrilleRations(
         showSnackbar: (String) -> Unit,
         troupeauEntier: Boolean,
         typeExpressionSelector: @Composable RowScope.() -> Unit,
+        /** Hauteur de la grille : place restante de la fenêtre, avec un minimum lisible. */
+        hauteur: androidx.compose.ui.unit.Dp,
         viewModel: AnimalDetailViewModel
 ) {
         var etapeAEditer by dialogues.etapeAEditer
@@ -118,7 +120,7 @@ internal fun ColumnScope.GrilleRations(
         var showSaveRecipeDialog by dialogues.showSaveRecipeDialog
         if (selectedConsultation != null) Box(
                 modifier =
-                        Modifier.weight(1f)
+                        Modifier.height(hauteur)
                                 .padding(
                                         horizontal = AppSizes.paddingMedium,
                                         vertical = AppSizes.paddingSmall
@@ -137,9 +139,10 @@ internal fun ColumnScope.GrilleRations(
                         ) {
                                 // Segment 2: Liste des rations de la
                                 // consultation
+                                // Rations 40 %, aliments 60 % : la liste des aliments s'allonge plus
                                 Card(
                                         modifier =
-                                                Modifier.weight(1f).fillMaxWidth(),
+                                                Modifier.weight(0.4f).fillMaxWidth(),
                                         elevation = AppSizes.elevationMedium,
                                         backgroundColor =
                                                 MaterialTheme.colors.surface
@@ -348,11 +351,11 @@ internal fun ColumnScope.GrilleRations(
                                                 showSnackbar = showSnackbar,
                                                 isReadOnly = analyseGroupee,
                                                 modifier =
-                                                        Modifier.weight(1f).fillMaxWidth()
+                                                        Modifier.weight(0.6f).fillMaxWidth()
                                         )
                                 } else {
                                         Card(
-                                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                                modifier = Modifier.weight(0.6f).fillMaxWidth(),
                                                 elevation = AppSizes.elevationMedium
                                         ) {
                                                 Box(

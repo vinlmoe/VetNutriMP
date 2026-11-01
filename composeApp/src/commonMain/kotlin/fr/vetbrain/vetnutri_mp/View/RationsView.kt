@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -686,8 +688,16 @@ fun RationsView(
                 )
         } else {
                 val scrollState = rememberScrollState()
+                // Hauteur de l'en-tête mesurée : la grille prend la place restante de la fenêtre,
+                // sans descendre sous une hauteur lisible (la page défile alors, par exemple sous
+                // le panneau d'un troupeau)
+                var hauteurEnTete by remember { mutableStateOf(0) }
+                val densite = LocalDensity.current
 
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                val hauteurGrille = maxOf(maxHeight - with(densite) { hauteurEnTete.toDp() }, AppSizes.hauteurMinGrilleRations)
                 Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
+                        Column(Modifier.onSizeChanged { hauteurEnTete = it.height }) {
                         EnTeteRations(
                                 dialogues = dialogues,
                                 analyseGroupee = analyseGroupee,
@@ -725,6 +735,7 @@ fun RationsView(
                                 typeTroupeauAnalyse = typeTroupeauAnalyse,
                                 viewModel = viewModel
                         )
+                        }
 
                         // Contenu principal - grille 2x2 de cartes (colonnes fixes 50/50).
                         // Sans consultation, seules des cartes vides seraient affichées : le
@@ -758,6 +769,7 @@ fun RationsView(
                                 showSnackbar = showSnackbar,
                                 troupeauEntier = troupeauEntier,
                                 typeExpressionSelector = typeExpressionSelector,
+                                hauteur = hauteurGrille,
                                 viewModel = viewModel
                         )
 
@@ -914,6 +926,7 @@ fun RationsView(
                                         onDismiss = { showCoefficientsDialog = false }
                                 )
                         }
+                }
                 }
 
                 // Dialog détaillé de nutriment
