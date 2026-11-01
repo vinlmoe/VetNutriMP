@@ -96,8 +96,12 @@ internal fun ComparaisonBoitesAMoustaches(
         groupeA: List<AlimentAnalyseData>,
         groupeB: List<AlimentAnalyseData>,
         useDryMatterPer100g: Boolean,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        nomGroupeA: String = "",
+        nomGroupeB: String = ""
 ) {
+    val libelleA = libelleGroupe("A", nomGroupeA, groupeA.size)
+    val libelleB = libelleGroupe("B", nomGroupeB, groupeB.size)
     val mesures = remember(useDryMatterPer100g) { mesuresComparees(useDryMatterPer100g) }
     val statistiques = remember(groupeA, groupeB, mesures) {
         mesures.map { m ->
@@ -116,8 +120,8 @@ internal fun ComparaisonBoitesAMoustaches(
             try {
                 val image = couche.toImageBitmap()
                 val jpeg = withContext(AppDispatchers.Default) { encoderJpeg(image) }
-                val nomA = translate("graph.groupe.a", groupeA.size.toString())
-                val nomB = translate("graph.groupe.b", groupeB.size.toString())
+                val nomA = libelleA
+                val nomB = libelleB
                 val document = DocumentComparaison(
                         titre = translate("graph.comparaison.title"),
                         sousTitre = "$nomA / $nomB",
@@ -197,8 +201,8 @@ internal fun ComparaisonBoitesAMoustaches(
         ) {
             Text(translate("graph.comparaison.subtitle"), style = MaterialTheme.typography.caption)
             Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)) {
-                PastilleGroupe(couleurGroupeA, translate("graph.groupe.a", groupeA.size.toString()))
-                PastilleGroupe(couleurGroupeB, translate("graph.groupe.b", groupeB.size.toString()))
+                PastilleGroupe(couleurGroupeA, libelleA)
+                PastilleGroupe(couleurGroupeB, libelleB)
             }
             if (groupeB.isEmpty()) {
                 Text(
@@ -270,6 +274,14 @@ private fun DialogueFormatExport(onDismiss: () -> Unit, onExport: (FormatExport)
             dismissButton = { TextButton(onClick = onDismiss) { Text(translate("general.cancel")) } }
     )
 }
+
+/**
+ * Libellé d'un groupe : « Groupe A (32) », ou « A — Croquettes rénales (32) » quand il a un nom
+ * (la lettre reste celle des lignes des boîtes).
+ */
+internal fun libelleGroupe(lettre: String, nom: String, nombre: Int): String =
+        if (nom.isBlank()) translate(if (lettre == "A") "graph.groupe.a" else "graph.groupe.b", nombre.toString())
+        else "$lettre — ${nom.trim()} ($nombre)"
 
 @Composable
 private fun PastilleGroupe(couleur: Color, libelle: String) {

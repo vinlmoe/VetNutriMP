@@ -116,7 +116,10 @@ fun AnalyseGraphiqueAlimentsView(
         onClose: () -> Unit,
         modifier: Modifier = Modifier,
         /** Groupe B comparé aux [aliments] dans l'onglet « Comparaison A/B » (vide = pas de comparaison). */
-        alimentsComparaison: List<AlimentEv> = emptyList()
+        alimentsComparaison: List<AlimentEv> = emptyList(),
+        /** Noms donnés aux groupes (vide = « Groupe A », « Groupe B »). */
+        nomGroupeA: String = "",
+        nomGroupeB: String = ""
 ) {
     // États pour les données d'analyse
     var alimentsAnalyses by remember { mutableStateOf<List<AlimentAnalyseData>>(emptyList()) }
@@ -484,6 +487,8 @@ fun AnalyseGraphiqueAlimentsView(
                                 groupeA = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
                                 groupeB = analysesComparaison,
                                 useDryMatterPer100g = useDryMatterPer100g,
+                                nomGroupeA = nomGroupeA,
+                                nomGroupeB = nomGroupeB,
                                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                         )
                     } else if (ongletActif == "heatmap") {
@@ -619,6 +624,8 @@ fun AnalyseGraphiqueAlimentsView(
                                     groupeA = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
                                     groupeB = analysesComparaison,
                                     useDryMatterPer100g = useDryMatterPer100g,
+                                    nomGroupeA = nomGroupeA,
+                                    nomGroupeB = nomGroupeB,
                                     modifier = Modifier
                                             .weight(0.75f)
                                             .fillMaxHeight()

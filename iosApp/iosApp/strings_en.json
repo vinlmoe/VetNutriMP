@@ -2286,6 +2286,7 @@
         "graph.stats.max": "Max",
         "graph.stats.foods": "Foods",
         "graph.stats.exportTitle": "Export the comparison",
-        "graph.stats.exportInfo": "A ZIP archive: the box plot image (JPEG), the statistics of each measure (n, mean, SD, min, quartiles, median, max) and the foods of both groups."
+        "graph.stats.exportInfo": "A ZIP archive: the box plot image (JPEG), the statistics of each measure (n, mean, SD, min, quartiles, median, max) and the foods of both groups.",
+        "graph.groupe.nameLabel": "Group %1$s name (optional)"
     }
 }

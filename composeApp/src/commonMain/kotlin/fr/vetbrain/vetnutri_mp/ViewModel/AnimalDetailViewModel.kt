@@ -292,6 +292,12 @@ class AnimalDetailViewModel(
     private val _alimentsGroupeB = MutableStateFlow<List<AlimentEv>>(emptyList())
     val alimentsGroupeB: StateFlow<List<AlimentEv>> = _alimentsGroupeB.asStateFlow()
 
+    /** Noms donnés aux groupes A et B (vide = « Groupe A », « Groupe B »). */
+    private val _nomGroupeA = MutableStateFlow("")
+    val nomGroupeA: StateFlow<String> = _nomGroupeA.asStateFlow()
+    private val _nomGroupeB = MutableStateFlow("")
+    val nomGroupeB: StateFlow<String> = _nomGroupeB.asStateFlow()
+
     private val _showAnalyseGraphique = MutableStateFlow(false)
     val showAnalyseGraphique: StateFlow<Boolean> = _showAnalyseGraphique.asStateFlow()
 
@@ -1880,6 +1886,11 @@ class AnimalDetailViewModel(
     /** Définit la liste des aliments sélectionnés pour l'analyse graphique */
     fun setAlimentsSelectionnes(aliments: List<AlimentEv>) {
         _alimentsSelectionnes.value = aliments
+    }
+
+    /** Nomme le groupe A ou B ([groupeA] = false pour B) */
+    fun setNomGroupe(groupeA: Boolean, nom: String) {
+        if (groupeA) _nomGroupeA.value = nom else _nomGroupeB.value = nom
     }
 
     /** Définit le groupe B de la comparaison */

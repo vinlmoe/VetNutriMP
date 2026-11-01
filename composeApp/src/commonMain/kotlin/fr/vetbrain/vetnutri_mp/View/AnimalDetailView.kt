@@ -733,6 +733,8 @@ private fun AnimalDetailLayout(
                                         val alimentsGroupeB by
                                                 viewModel.alimentsGroupeB
                                                         .collectAsState()
+                                        val nomGroupeA by viewModel.nomGroupeA.collectAsState()
+                                        val nomGroupeB by viewModel.nomGroupeB.collectAsState()
                                         val analyseSelectionFilters by
                                                 viewModel.analyseSelectionFilters
                                                         .collectAsState()
@@ -850,7 +852,9 @@ private fun AnimalDetailLayout(
                                                                 },
                                                                 modifier =
                                                                         Modifier.fillMaxSize(),
-                                                                alimentsComparaison = groupeBComplet
+                                                                alimentsComparaison = groupeBComplet,
+                                                                nomGroupeA = nomGroupeA,
+                                                                nomGroupeB = nomGroupeB
                                                         )
                                                 }
                                         } else {
@@ -866,14 +870,22 @@ private fun AnimalDetailLayout(
                                                                 Tab(
                                                                         selected = groupeA,
                                                                         onClick = { ongletGroupe = 0 },
-                                                                        text = { Text(translate("graph.groupe.a", alimentsSelectionnes.size.toString())) }
+                                                                        text = { Text(libelleGroupe("A", nomGroupeA, alimentsSelectionnes.size), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
                                                                 )
                                                                 Tab(
                                                                         selected = !groupeA,
                                                                         onClick = { ongletGroupe = 1 },
-                                                                        text = { Text(translate("graph.groupe.b", alimentsGroupeB.size.toString())) }
+                                                                        text = { Text(libelleGroupe("B", nomGroupeB, alimentsGroupeB.size), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
                                                                 )
                                                         }
+                                                        // Nom du groupe de l'onglet (facultatif), repris dans la comparaison et l'export
+                                                        OutlinedTextField(
+                                                                value = if (groupeA) nomGroupeA else nomGroupeB,
+                                                                onValueChange = { viewModel.setNomGroupe(groupeA, it) },
+                                                                label = { Text(translate("graph.groupe.nameLabel", if (groupeA) "A" else "B")) },
+                                                                singleLine = true,
+                                                                modifier = Modifier.fillMaxWidth().padding(horizontal = AppSizes.paddingSmall)
+                                                        )
                                                         if (!groupeA) {
                                                                 Text(
                                                                         translate("graph.groupe.info"),
