@@ -9,6 +9,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import fr.vetbrain.vetnutri_mp.Export.ArchiveZip
+import fr.vetbrain.vetnutri_mp.Export.DocumentGraphiques
+import fr.vetbrain.vetnutri_mp.Export.DocumentGraphiquesRations
+import fr.vetbrain.vetnutri_mp.Export.GraphiqueExporte
+import fr.vetbrain.vetnutri_mp.Export.encoderJpeg
+import fr.vetbrain.vetnutri_mp.Export.exporterZip
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -34,6 +50,92 @@ fun AnalyseGraphiqueView(
                 mutableStateOf(false)
         } // Toggle pour /1000 kcal vs /100g MS
 
+        // Export : capture de la zone du graphique affiché (le graphique change pendant l'export)
+        val scope = rememberCoroutineScope()
+        val coucheGraphique = rememberGraphicsLayer()
+        var dialogueExport by remember { mutableStateOf(false) }
+        var exportEnCours by remember { mutableStateOf(false) }
+        var messageExport by remember { mutableStateOf<String?>(null) }
+        val animal by viewModel.animal.collectAsState()
+        val consultationAffichee by viewModel.selectedConsultation.collectAsState()
+
+        fun exporter(format: FormatExport, types: List<ChartType>) {
+                scope.launch {
+                        exportEnCours = true
+                        val graphiqueInitial = selectedChart
+                        try {
+                                val images = mutableListOf<Pair<GraphiqueExporte, ByteArray>>()
+                                types.forEachIndexed { index, type ->
+                                        selectedChart = type
+                                        // Laisser le graphique calculer ses données et se dessiner
+                                        delay(1500)
+                                        withFrameNanos {}
+                                        val image = coucheGraphique.toImageBitmap()
+                                        val jpeg = withContext(AppDispatchers.Default) { encoderJpeg(image) }
+                                        images += GraphiqueExporte(
+                                                fichier = "images/${index + 1}_${type.name.lowercase()}.jpg",
+                                                titre = translate(type.displayName)
+                                        ) to jpeg
+                                }
+                                selectedChart = graphiqueInitial
+                                val rations = rationsPourExport(
+                                        prepareGraphConsultations(
+                                                animal?.consultations.orEmpty(), consultationAffichee,
+                                                currentConsultationOnly, true
+                                        )
+                                )
+                                val nom = animal?.nom.orEmpty()
+                                val document = DocumentGraphiques(
+                                        titre = translate("graph.export.doc.title", nom),
+                                        sousTitre = consultationAffichee?.date?.toString().orEmpty(),
+                                        graphiques = images.map { it.first },
+                                        rations = rations
+                                )
+                                val texte = when (format) {
+                                        FormatExport.MARKDOWN -> DocumentGraphiquesRations.markdown(document, libellesExport())
+                                        FormatExport.LATEX -> DocumentGraphiquesRations.latex(document, libellesExport())
+                                }
+                                val base = "graphiques_${nomFichierSur(nom)}"
+                                val archive = withContext(AppDispatchers.Default) {
+                                        ArchiveZip.creer(
+                                                listOf("$base.${format.extension}" to texte.encodeToByteArray()) +
+                                                        images.map { (g, octets) -> g.fichier to octets }
+                                        )
+                                }
+                                // Le dialogue d'enregistrement de bureau doit être ouvert hors du fil de Compose
+                                val enregistre = withContext(AppDispatchers.IO) { exporterZip(archive, "$base.zip") }
+                                messageExport =
+                                        if (enregistre) translate("graph.export.success", "$base.zip")
+                                        else translate("graph.export.cancelled")
+                        } catch (e: Exception) {
+                                e.rethrowIfCancellation()
+                                AppLog.e("AnalyseGraphiqueView", e.message ?: "Erreur", e)
+                                messageExport = translate("graph.export.error", e.message.orEmpty())
+                        } finally {
+                                selectedChart = graphiqueInitial
+                                exportEnCours = false
+                        }
+                }
+        }
+
+        if (dialogueExport) {
+                DialogueExportGraphiques(
+                        onDismiss = { dialogueExport = false },
+                        onExport = { format, types ->
+                                dialogueExport = false
+                                exporter(format, types)
+                        }
+                )
+        }
+        if (exportEnCours) DialogueExportEnCours()
+        messageExport?.let { message ->
+                AlertDialog(
+                        onDismissRequest = { messageExport = null },
+                        text = { Text(message) },
+                        confirmButton = { TextButton(onClick = { messageExport = null }) { Text(translate("general.close")) } }
+                )
+        }
+
         BoxWithConstraints(modifier = modifier.fillMaxSize()) {
                 val isCompact = maxWidth < 600.dp
                 val contentPadding =
@@ -56,7 +158,8 @@ fun AnalyseGraphiqueView(
                         GraphiqueHeader(
                                 selectedChart = selectedChart,
                                 onChartSelected = { selectedChart = it },
-                                isCompact = isCompact
+                                isCompact = isCompact,
+                                onExport = { dialogueExport = true }
                         )
 
                         if (selectedChart != ChartType.EVOLUTION_POIDS) {
@@ -126,7 +229,16 @@ fun AnalyseGraphiqueView(
                                 }
                         }
 
-                        // Affichage du graphique sélectionné
+                        // Affichage du graphique sélectionné (enregistré dans coucheGraphique pour l'export)
+                        // Colonne : certains graphiques émettent plusieurs blocs (carte, sélecteurs, légende)
+                        Column(
+                                modifier = Modifier.fillMaxWidth().drawWithContent {
+                                        coucheGraphique.record { this@drawWithContent.drawContent() }
+                                        drawLayer(coucheGraphique)
+                                },
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(verticalSpacing)
+                        ) {
                         when (selectedChart) {
                                 ChartType.EVOLUTION_POIDS -> EvolutionPoidsChart(
                                         viewModel,
@@ -151,6 +263,7 @@ fun AnalyseGraphiqueView(
                                         )
                                 ChartType.NUTRIMENTS_RATIONS ->
                                         NutrimentsRationsChart(viewModel, equationRepository, currentConsultationOnly, showRationArea)
+                        }
                         }
 
                         // Légende et informations

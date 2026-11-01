@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -71,11 +72,13 @@ fun GraphCard(titre: String, sousTitre: String? = null, content: @Composable () 
 fun GraphiqueHeader(
         selectedChart: ChartType,
         onChartSelected: (ChartType) -> Unit,
-        isCompact: Boolean = false
+        isCompact: Boolean = false,
+        onExport: (() -> Unit)? = null
 ) {
         Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationSmall) {
                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                         Row(
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
@@ -88,8 +91,16 @@ fun GraphiqueHeader(
                                         text = translate(LocalizationKeys.Graph.GRAPHIC_ANALYSIS_TITLE),
                                         style = MaterialTheme.typography.h6,
                                         fontWeight = FontWeight.Bold,
-                                        color = VetNutriColors.Primary
+                                        color = VetNutriColors.Primary,
+                                        modifier = Modifier.weight(1f)
                                 )
+                                if (onExport != null) {
+                                        OutlinedButton(onClick = onExport) {
+                                                Icon(Icons.Default.FileDownload, contentDescription = null)
+                                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                                Text(translate("graph.export.button"))
+                                        }
+                                }
                         }
 
                         Spacer(modifier = Modifier.height(AppSizes.paddingMedium))

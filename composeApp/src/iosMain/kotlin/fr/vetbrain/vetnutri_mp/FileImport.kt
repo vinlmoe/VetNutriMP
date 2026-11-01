@@ -29,7 +29,7 @@ actual fun importFoodsFromFile(viewModel: SettingsViewModel) = importFoodJsonFil
 actual fun importApiFromFile(viewModel: SettingsViewModel) = importApiJsonFile(viewModel)
 actual fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel) = viewModel.pickNutritionalRequirementsFile()
 
-private fun jsonPresenter(): UIViewController? {
+internal fun jsonPresenter(): UIViewController? {
     val window = UIApplication.sharedApplication.keyWindow
         ?: UIApplication.sharedApplication.windows.firstOrNull() as? UIWindow
     var controller = window?.rootViewController ?: return null
@@ -122,3 +122,4 @@ actual suspend fun exportApiEnvelopeToFile(envelope: ApiEnvelope, defaultFileNam
     val content = withContext(AppDispatchers.IO) { createExportJson().encodeToString(ApiEnvelope.serializer(), envelope) }
     return exportJsonToFile(content, defaultFileName)
 }
+
