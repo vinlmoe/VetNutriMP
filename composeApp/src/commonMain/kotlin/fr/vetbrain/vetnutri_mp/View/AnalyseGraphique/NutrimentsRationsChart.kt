@@ -75,7 +75,7 @@ fun NutrimentsRationsChart(
                 val resultat = mutableListOf<RationNutrimentData>()
 
                 consultations.forEachIndexed { consultationIndex, consultation ->
-                        consultation.rations.forEachIndexed { rationIndex, ration ->
+                        consultation.rations.forEach { ration ->
                                 try {
                                         val rationData =
                                                 calculerNutrimentsRation(
@@ -93,9 +93,7 @@ fun NutrimentsRationsChart(
                                                                 consultationDate =
                                                                         consultation.date,
                                                                 numero =
-                                                                        consultationIndex * 100 +
-                                                                                rationIndex +
-                                                                                1
+                                                                        numeroRationGraphique(consultationIndex, consultation.rations, ration)
                                                         )
                                                 resultat.add(dataWithDate)
                                         }

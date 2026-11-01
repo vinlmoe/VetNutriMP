@@ -58,7 +58,7 @@ fun DensiteRationsChart(
                 val resultat = mutableListOf<RationEnergyData>()
 
                 consultations.forEachIndexed { consultationIndex, consultation ->
-                        consultation.rations.forEachIndexed { rationIndex, ration ->
+                        consultation.rations.forEach { ration ->
                                 try {
                                         val rationData =
                                                 calculerPourcentagesEnergieRation(
@@ -74,9 +74,7 @@ fun DensiteRationsChart(
                                                                 consultationDate =
                                                                         consultation.date,
                                                                 numero =
-                                                                        consultationIndex * 100 +
-                                                                                rationIndex +
-                                                                                1
+                                                                        numeroRationGraphique(consultationIndex, consultation.rations, ration)
                                                         )
                                                 resultat.add(dataWithDate)
                                         }

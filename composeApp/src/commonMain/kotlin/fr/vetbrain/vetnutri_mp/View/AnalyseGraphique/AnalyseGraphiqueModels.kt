@@ -3,13 +3,29 @@ package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
+import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.RationAggregator
 
-internal fun graphRationLabel(rationId: String, numero: Int): String =
-        if (RationAggregator.estRationGroupee(rationId) ||
+/** Somme ajoutée par [prepareGraphConsultations] (ou groupe de rations), affichée « Σ ». */
+internal fun estSommeGraphique(rationId: String): Boolean =
+        RationAggregator.estRationGroupee(rationId) ||
                 rationId.startsWith(RationAggregator.UUID_GROUPE_ACTUELLES + "-") ||
-                rationId.startsWith(RationAggregator.UUID_GROUPE_PROPOSEES + "-")) "Σ"
-        else numero.toString()
+                rationId.startsWith(RationAggregator.UUID_GROUPE_PROPOSEES + "-")
+
+internal fun graphRationLabel(rationId: String, numero: Int): String =
+        if (estSommeGraphique(rationId)) "Σ" else numero.toString()
+
+/**
+ * Numéro d'une ration dans les graphiques (consultation × 100 + rang) : les vraies rations sont
+ * numérotées 1, 2… comme sans les sommes, qui prennent les rangs suivants (numéros distincts,
+ * utilisés comme catégories des histogrammes).
+ */
+internal fun numeroRationGraphique(consultationIndex: Int, rations: List<Ration>, ration: Ration): Int {
+    val (sommes, reelles) = rations.partition { estSommeGraphique(it.uuid) }
+    val rang = reelles.indexOfFirst { it.uuid == ration.uuid }.takeIf { it >= 0 }
+            ?: (reelles.size + sommes.indexOfFirst { it.uuid == ration.uuid })
+    return consultationIndex * 100 + rang + 1
+}
 
 internal fun graphRationLegend(rationId: String, numero: Int, name: String): String =
         if (graphRationLabel(rationId, numero) == "Σ") "Σ " + name.removePrefix("Σ").trimStart()

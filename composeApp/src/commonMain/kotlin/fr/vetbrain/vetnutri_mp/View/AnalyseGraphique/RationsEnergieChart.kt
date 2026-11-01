@@ -69,7 +69,7 @@ fun RationsEnergieChart(
                 val resultat = mutableListOf<RationEnergyData>()
 
                 consultations.forEachIndexed { consultationIndex, consultation ->
-                        consultation.rations.forEachIndexed { rationIndex, ration ->
+                        consultation.rations.forEach { ration ->
                                 try {
                                         // 🔍 LOG DIAGNOSTIC : Vérifier les données de la ration
 
@@ -89,8 +89,7 @@ fun RationsEnergieChart(
                                                                 consultationDate =
                                                                         consultation.date,
                                                                 numero =
-                                                                        consultationIndex * 100 +
-                                                                                rationIndex + 1,
+                                                                        numeroRationGraphique(consultationIndex, consultation.rations, ration),
                                                                 isRationActuelle =
                                                                         PlanEvolutif.estActuelle(
                                                                                 consultation,

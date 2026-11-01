@@ -43,4 +43,26 @@ class RationPossibilityAreasTest {
         assertEquals(4, result.flatMap { it.rations.take(2) }.map { it.uuid }.distinct().size)
         assertEquals(3, consultation.rations.size)
     }
+
+    @Test
+    fun numerotation_sommesAffichees_vraiesRationsGardentLeurNumero() {
+        // Les sommes (Σ) insérées en tête ne décalent plus les numéros : la seule ration
+        // s'appelait « 2 » quand les sommes étaient affichées, « 1 » sinon
+        fun ration(id: String, actual: Boolean) = Ration(
+            uuid = id, actual = actual,
+            alimentMutableList = mutableListOf(AlimentRation(uuidUnif = "food", quantite = 100.0))
+        )
+        val consultation = ConsultationEv(uuid = "c", rations = mutableListOf(ration("a", true), ration("b", false)))
+        fun numeros(includeSums: Boolean) = prepareGraphConsultations(listOf(consultation), null, false, includeSums)
+            .flatMapIndexed { i, c -> c.rations.map { it.uuid to numeroRationGraphique(i, c.rations, it) } }.toMap()
+
+        val sansSommes = numeros(false)
+        val avecSommes = numeros(true)
+        assertEquals(mapOf("a" to 1, "b" to 2), sansSommes)
+        assertEquals(1, avecSommes["a"])
+        assertEquals(2, avecSommes["b"])
+        // Sommes : numéros suivants, tous distincts (catégories des histogrammes)
+        assertEquals(4, avecSommes.values.distinct().size)
+        assertTrue(avecSommes.filterKeys { estSommeGraphique(it) }.values.all { it > 2 })
+    }
 }
