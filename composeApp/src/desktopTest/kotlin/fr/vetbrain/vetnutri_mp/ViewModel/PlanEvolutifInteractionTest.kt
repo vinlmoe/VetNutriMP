@@ -384,4 +384,46 @@ class PlanEvolutifInteractionTest {
         vm.addAlimentToRation(ration("actuelle"), huile, 20.0); idle()
         assertEquals(listOf<Pair<String?, Double>>("croq" to 100.0), quantitesEnBase("actuelle"))
     }
+
+    @Test
+    fun troupeau_analyseDuGroupePuisRationParAnimalDUnType() = run {
+        // Deux types : 4 adultes de 20 kg et 6 jeunes de 5 kg (AW 25), ration de 1 000 g pour tous
+        val troupeau = AnimalEv(uuid = "a", nom = "Chenil", typesTroupeau = mutableListOf(
+            TypeAnimalTroupeau(id = "adultes", nom = "Adultes", nombre = 4, poids = 20.0, espece = "CHIEN"),
+            TypeAnimalTroupeau(id = "jeunes", nom = "Jeunes", nombre = 6, poids = 5.0, espece = "CHIEN")
+        ))
+        val c = ConsultationEv(
+            uuid = "c", idAnim = "a",
+            parametresTroupeau = mutableListOf(
+                ParametresTypeTroupeau("adultes", nombre = 4, poids = 20.0, referenceId = refId, variables = mapOf("AW" to 25.0)),
+                ParametresTypeTroupeau("jeunes", nombre = 6, poids = 5.0, referenceId = refId, variables = mapOf("AW" to 25.0))
+            ),
+            rations = mutableListOf(Ration(uuid = "groupe", idConsult = "c", name = "Chenil", actual = true,
+                alimentMutableList = mutableListOf(AlimentRation(uuid = "a1", refAlimUnif = "croq", quantite = 1000.0, aliment = croq))))
+        )
+        repo.saveConsultation(c)
+        vm.setAnimal(troupeau); idle()
+        vm.chargerReferencesDisponibles(); idle()
+        vm.selectConsultation(c); idle()
+
+        val analyse = assertNotNull(vm.analyseTroupeau.value, "analyse du groupe calculée")
+        assertEquals("groupe", analyse.rationId)
+        assertEquals(10, analyse.effectif)
+        assertProche(4 * bee(20.0, 25.0) + 6 * bee(5.0, 25.0), analyse.besoinGroupe, "besoin du groupe")
+
+        // Un type : ration d'un adulte = 1 000 × B_adulte / Σ nⱼ·Bⱼ, virtuelle
+        vm.selectTypeTroupeau("adultes"); idle()
+        val facteur = bee(20.0, 25.0) / (4 * bee(20.0, 25.0) + 6 * bee(5.0, 25.0))
+        assertProche(1000.0 * facteur, vm.selectedRation.value?.alimentMutableList?.single()?.quantite, "ration d'un adulte")
+        assertProche(20.0, vm.consultationAnalysee.value?.weight, "consultation vue d'un adulte")
+        assertProche(1000.0, ration("groupe").alimentMutableList.single().quantite, "ration du groupe inchangée")
+
+        // Retour au groupe
+        vm.selectTypeTroupeau(null); idle()
+        assertProche(1000.0, vm.selectedRation.value?.alimentMutableList?.single()?.quantite, "ration du groupe")
+
+        // Effectif modifié : analyse recalculée
+        vm.updateParametresTroupeau(c.parametresTroupeau[1].copy(nombre = 2)); idle()
+        assertEquals(6, vm.analyseTroupeau.value?.effectif)
+    }
 }

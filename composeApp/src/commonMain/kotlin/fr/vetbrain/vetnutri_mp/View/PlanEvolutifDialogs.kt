@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import fr.vetbrain.vetnutri_mp.Data.BilanEtape
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.LigneSynthese
 import fr.vetbrain.vetnutri_mp.Data.NiveauBorne
@@ -178,7 +179,7 @@ fun EtapeEditDialog(
 fun SynthesePlanDialog(
         consultation: ConsultationEv,
         parent: Ration,
-        bilans: Map<String, AnimalDetailViewModel.BilanEtape>,
+        bilans: Map<String, BilanEtape>,
         onQuantite: (Ration, String, Double) -> Unit,
         onPropager: () -> Unit,
         onDismiss: () -> Unit

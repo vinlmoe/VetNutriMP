@@ -33,9 +33,7 @@ import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -160,15 +158,16 @@ class AnimalDetailViewModel(
     /** Type d'animaux analysé (null = ration du groupe). */
     val typeTroupeauAnalyse: StateFlow<String?> = _typeTroupeauAnalyse.asStateFlow()
 
-    private val _analyseTroupeau = MutableStateFlow<AnalyseTroupeau?>(null)
+    private val troupeau =
+            AnalyseTroupeauConsultation(
+                    databaseReferenceEvRepository, equationRepository,
+                    { references.availableReferences.value }, viewModelScope
+            )
     /** Répartition de la ration du groupe et synthèse des apports de chaque type. */
-    val analyseTroupeau: StateFlow<AnalyseTroupeau?> = _analyseTroupeau.asStateFlow()
+    val analyseTroupeau: StateFlow<AnalyseTroupeau?> = troupeau.analyse
 
     /** Apports au troupeau entier comparés aux besoins sommés (calculés une fois par analyse). */
-    val apportsTroupeauEntier: StateFlow<List<LigneApportTroupeau>> =
-            _analyseTroupeau
-                    .map { it?.apportsTroupeauEntier().orEmpty() }
-                    .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val apportsTroupeauEntier: StateFlow<List<LigneApportTroupeau>> = troupeau.apportsTroupeauEntier
 
     /**
      * Consultation utilisée par l'analyse : la consultation sélectionnée, ou pour un troupeau
@@ -183,7 +182,6 @@ class AnimalDetailViewModel(
 
     /** Dernière ration par animal publiée (pour la distinguer d'une ration réelle). */
     private var rationProjeteeTroupeau: Ration? = null
-    private var calculTroupeau: Job? = null
 
     // Section actuellement sélectionnée dans la vue détaillée
     private val _currentSection = MutableStateFlow(AnimalDetailSection.IDENTIFICATION)
@@ -420,7 +418,7 @@ class AnimalDetailViewModel(
             rationAvantGroupe = null
             if (!memeAnimal) _typeTroupeauAnalyse.value = null
             rationProjeteeTroupeau = null
-            _analyseTroupeau.value = null
+            troupeau.effacer()
             isEditingConsultation = false
             isEditingRation = false
             isEditingAnimal = false
@@ -1418,18 +1416,6 @@ class AnimalDetailViewModel(
 
     // ===== PLAN ÉVOLUTIF (une ration par étape) =====
 
-    /**
-     * Bilan d'une étape : poids utilisé, besoin total (K + complémentaire), apport énergétique, et
-     * apport en % des bornes basses (MIN/OPTIMIN) et hautes (MAX/OPTIMAX), par label de nutriment.
-     */
-    data class BilanEtape(
-            val poids: Double?,
-            val besoinTotal: Double?,
-            val energieApportee: Double,
-            val couverturesMin: Map<String, PositionReference> = emptyMap(),
-            val positionsMax: Map<String, PositionReference> = emptyMap()
-    )
-
     private val _bilansEtapes = MutableStateFlow<Map<String, BilanEtape>>(emptyMap())
     /** Bilans par UUID d'étape, pour la synthèse du plan évolutif. */
     val bilansEtapes: StateFlow<Map<String, BilanEtape>> = _bilansEtapes.asStateFlow()
@@ -1541,79 +1527,9 @@ class AnimalDetailViewModel(
             try {
                 val reference = obtenirReferenceActiveConsultation(consultation)
                 // Analyse de tous les nutriments de chaque étape : hors du thread UI
-                val bilans = withContext(AppDispatchers.Default) {
-                        // Toutes les rations des plans : rations parentes et étapes
-                        consultation.rations
-                                .filter { r ->
-                                    r.refRationParente != null ||
-                                            PlanEvolutif.aUnPlan(consultation, r)
-                                }
-                                .associate { etape ->
-                            val vue = VariablesEtape.consultationPourEtape(consultation, etape)
-                            val apport =
-                                    etape.getDensiteEnergetiqueMoyenne(
-                                            referenceEv = reference,
-                                            equationRepository = equationRepository
-                                    ) * etape.getQuantiteTotale()
-                            val besoin =
-                                    reference?.let { ref ->
-                                        val bee = calculerBesoinEnergetiqueStandard(vue, ref)
-                                        val mw = calculerPoidsMetabolique(vue, ref)
-                                        bee?.let { b ->
-                                            val beK = calculerBesoinEnergetiqueTotal(vue, b)
-                                            val additionnelle =
-                                                    if (mw != null) {
-                                                        EquationEvaluator.calculerEnergieAdditionnelle(
-                                                                referencesMaladies = maladies,
-                                                                poidsCorps = vue.effectiveWeight ?: 0.0,
-                                                                besoinEnergetiqueApresK = beK,
-                                                                besoinEnergetiqueStandard = b,
-                                                                poidsMetabolique = mw,
-                                                                variablesSupp = vue.suppVarp,
-                                                                ration = etape,
-                                                                referenceEv = ref,
-                                                                equationRepository = equationRepository
-                                                        )
-                                                    } else 0.0
-                                            beK + additionnelle
-                                        }
-                                    }
-                            // Nutriments : bornes converties avec le BEE brut (comme
-                            // l'écran d'analyse et le PDF), nutriments sans donnée ignorés
-                            val (couverturesMin, positionsMax) =
-                                    reference?.let { ref ->
-                                        val valeurs =
-                                                (equationRepository?.let { repository ->
-                                                                analyserValeursNutritionnellesRationAvecEquations(
-                                                                        ration = etape,
-                                                                        equationRepository = repository,
-                                                                        referenceEv = ref
-                                                                )
-                                                        }
-                                                        ?: analyserValeursNutritionnellesRation(etape))
-                                                        .values
-                                                        .filter { it.valeur > 0.0 }
-                                        calculerPositionsReferences(
-                                                valeurs = valeurs,
-                                                referenceUtilisee = ref,
-                                                besoinEnergetiqueEntretien =
-                                                        calculerBesoinEnergetiqueStandard(vue, ref),
-                                                poidsAnimal = vue.effectiveWeight,
-                                                poidsMetabolique = calculerPoidsMetabolique(vue, ref),
-                                                referencesMaladies = maladies
-                                        )
-                                    } ?: (emptyMap<String, PositionReference>() to emptyMap<String, PositionReference>())
-                            etape.uuid to
-                                    BilanEtape(
-                                            vue.effectiveWeight,
-                                            besoin,
-                                            apport,
-                                            couverturesMin,
-                                            positionsMax
-                                    )
-                        }
+                _bilansEtapes.value = withContext(AppDispatchers.Default) {
+                    BilanPlanEvolutif.calculer(consultation, reference, maladies, equationRepository)
                 }
-                _bilansEtapes.value = bilans
             } catch (e: Exception) {
                 e.rethrowIfCancellation()
                 AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
@@ -2015,8 +1931,6 @@ class AnimalDetailViewModel(
         return consultation?.rations?.firstOrNull { it.uuid == courante.uuid }
     }
 
-    private fun referencesParId(): Map<String, ReferenceEv> = references.availableReferences.value.associateBy { it.uuid }
-
     /**
      * Remplace la ration affichée par la ration d'un animal du type analysé. Si la répartition
      * n'est pas calculable (référentiel ou poids manquant), revient à la ration du groupe.
@@ -2028,7 +1942,7 @@ class AnimalDetailViewModel(
         val consultation = _selectedConsultation.value
         val facteur =
                 if (types != null && consultation != null)
-                        facteursRepartitionTroupeau(types, consultation, referencesParId())?.get(typeId)
+                        facteursRepartitionTroupeau(types, consultation, troupeau.referencesParId())?.get(typeId)
                 else null
         val type = types?.firstOrNull { it.id == typeId }
         if (facteur == null || type == null) {
@@ -2073,7 +1987,7 @@ class AnimalDetailViewModel(
         val typeId = _typeTroupeauAnalyse.value
         if (_animal.value?.estTroupeau != true) {
             if (typeId != null) quitterTypeTroupeau(rationGroupeTroupeau())
-            _analyseTroupeau.value = null
+            troupeau.effacer()
             return
         }
         if (typeId != null) {
@@ -2088,42 +2002,8 @@ class AnimalDetailViewModel(
     }
 
     /** Recalcule la répartition et la synthèse par type de la ration du groupe affichée. */
-    private fun recalculerAnalyseTroupeau(consultation: ConsultationEv? = _selectedConsultation.value) {
-        val types = _animal.value?.typesTroupeau
-        calculTroupeau?.cancel()
-        if (types == null || consultation == null) {
-            _analyseTroupeau.value = null
-            return
-        }
-        val rationGroupe = rationGroupeTroupeau()
-        calculTroupeau =
-                viewModelScope.launch {
-                    try {
-                        val dispo = referencesParId()
-                        val references =
-                                types.mapNotNull { consultation.parametresType(it).referenceId }
-                                        .distinct()
-                                        .mapNotNull { id ->
-                                            (dispo[id] ?: databaseReferenceEvRepository.getReferenceEvById(id))?.let { id to it }
-                                        }
-                                        .toMap()
-                        val maladies =
-                                consultation.referencesMaladies.distinct().mapNotNull { id ->
-                                    dispo[id] ?: databaseReferenceEvRepository.getReferenceEvById(id)
-                                }
-                        _analyseTroupeau.value =
-                                withContext(AppDispatchers.Default) {
-                                    AnalyseurTroupeau(equationRepository)
-                                            .analyser(types, consultation, rationGroupe, references, maladies)
-                                }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        e.rethrowIfCancellation()
-                        AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
-                    }
-                }
-    }
+    private fun recalculerAnalyseTroupeau(consultation: ConsultationEv? = _selectedConsultation.value) =
+            troupeau.recalculer(_animal.value?.typesTroupeau, consultation, rationGroupeTroupeau())
 
     /** Modifie l'effectif, le poids, le référentiel, K ou les variables d'un type pour la consultation. */
     fun updateParametresTroupeau(parametres: ParametresTypeTroupeau) {
@@ -2140,7 +2020,7 @@ class AnimalDetailViewModel(
      */
     fun ajusterRationTroupeauEnergie(): Boolean {
         if (_typeTroupeauAnalyse.value != null || _rationAnalysisScope.value.estGroupe) return false
-        val analyse = _analyseTroupeau.value ?: return false
+        val analyse = troupeau.analyse.value ?: return false
         val ration = _selectedRation.value ?: return false
         // Analyse encore en cours pour une autre ration : son facteur ne s'applique pas à celle-ci
         if (analyse.rationId != ration.uuid) return false

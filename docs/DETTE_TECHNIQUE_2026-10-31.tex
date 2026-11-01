@@ -394,7 +394,13 @@ Suites traitées :
         cache LRU. \code{AnimalDetailViewModel} 2\,699\,$\to$\,2\,157 l. : référentiels et mots-clés
         délégués à \code{ReferencesConsultation}, ajout et suppression de poids factorisés,
         calculs de besoin énergétique déplacés dans \code{Data/RationAnalysisCalculations}.
-        Restent couplés à l'état central : plan évolutif et troupeau.
+        Puis 2\,157\,$\to$\,2\,037 l. : bilan des étapes du plan évolutif en fonction pure
+        (\code{Data/BilanPlanEvolutif.kt}, \code{BilanEtape} sorti du ViewModel), chargement et
+        calcul de l'analyse du troupeau délégués à \code{AnalyseTroupeauConsultation} ; nouveau
+        test de bout en bout du troupeau (analyse du groupe, ration d'un animal d'un type,
+        effectif modifié). Les actions (étapes, choix du type) restent dans le ViewModel : elles
+        pilotent la ration sélectionnée et ne font qu'appeler les moteurs purs \code{PlanEvolutif}
+        et \code{Troupeau}.
   \item Quatre fichiers Kotlin vides et suivis supprimés (\code{BackupViewModel},
         \code{TestApiEnvelope}, \code{FullscreenToggle}, \code{GenericGraphComponent}).
   \item Filtres de la sélection d'aliments (Graphique Aliments) : un par ligne sur téléphone.
