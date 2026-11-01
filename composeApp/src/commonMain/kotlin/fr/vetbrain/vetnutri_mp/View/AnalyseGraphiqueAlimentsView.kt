@@ -1,6 +1,9 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.LocalHauteurGraphique
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.withContext
+import fr.vetbrain.vetnutri_mp.Repository.EquationsMemorisees
 import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.hauteurGraphiquePour
 
 import fr.vetbrain.vetnutri_mp.Data.ajouterOuCumulerAliment
@@ -174,6 +177,9 @@ fun AnalyseGraphiqueAlimentsView(
     // Calculer les données d'analyse pour chaque aliment filtré de manière asynchrone
     LaunchedEffect(alimentsFiltres, referenceEv, equationRepository, useDryMatterPer100g) {
         isLoading = true
+        // Hors du fil de l'interface (qui reste fluide), équations lues une fois pour toute la liste
+        val equationRepository = equationRepository?.let { EquationsMemorisees(it) }
+        val resultat = withContext(AppDispatchers.Default) {
         val resultat = mutableListOf<AlimentAnalyseData>()
 
         for (aliment in alimentsFiltres) {
@@ -356,6 +362,8 @@ fun AnalyseGraphiqueAlimentsView(
 
                 AppLog.e("AnalyseGraphiqueAlimentsView", e.message ?: "Erreur", e)
             }
+        }
+        resultat
         }
 
         // Mettre à jour l'état avec les résultats triés par densité énergétique décroissante

@@ -753,47 +753,20 @@ private fun AnimalDetailLayout(
 
                                                 LaunchedEffect(alimentsSelectionnes) {
                                                         isLoadingAlimentsComplets = true
+                                                        // Chargement groupé (quelques requêtes pour toute la
+                                                        // sélection) ; un aliment introuvable garde sa version légère
                                                         val alimentsAvecValeurs =
-                                                                mutableListOf<
-                                                                        fr.vetbrain.vetnutri_mp.Data.AlimentEv>()
-
-                                                        for (aliment in
-                                                                alimentsSelectionnes) {
                                                                 try {
-
-                                                                        // Récupérer
-                                                                        // l'aliment complet
-                                                                        // depuis le
-                                                                        // repository
-                                                                        val alimentComplet =
-                                                                                viewModel.getAlimentComplet(
-                                                                                        aliment.uuid
+                                                                        val complets =
+                                                                                viewModel.getAlimentsComplets(
+                                                                                        alimentsSelectionnes.map { it.uuid }
                                                                                 )
-
-                                                                        if (alimentComplet !=
-                                                                                        null
-                                                                        ) {
-                                                                                alimentsAvecValeurs
-                                                                                        .add(
-                                                                                                alimentComplet
-                                                                                        )
-                                                                        } else {
-
-                                                                                alimentsAvecValeurs
-                                                                                        .add(
-                                                                                                aliment
-                                                                                        ) // Fallback
-                                                                        }
+                                                                        alimentsSelectionnes.map { complets[it.uuid] ?: it }
                                                                 } catch (e: Exception) {
                                                                         e.rethrowIfCancellation()
-
                                                                         AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
-                                                                        alimentsAvecValeurs
-                                                                                .add(
-                                                                                        aliment
-                                                                                ) // Fallback
+                                                                        alimentsSelectionnes
                                                                 }
-                                                        }
 
                                                         alimentsComplets =
                                                                 alimentsAvecValeurs

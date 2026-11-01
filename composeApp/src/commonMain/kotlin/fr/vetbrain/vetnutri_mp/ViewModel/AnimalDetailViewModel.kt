@@ -1805,6 +1805,10 @@ class AnimalDetailViewModel(
         return foodRepository.getFoodById(uuid)
     }
 
+    /** Aliments complets (valeurs nutritionnelles comprises) en quelques requêtes groupées, par UUID. */
+    suspend fun getAlimentsComplets(uuids: List<String>): Map<String, AlimentEv> =
+        foodRepository.getFoodsByUuids(uuids)
+
     // MARK: - Gestion des poids supplémentaires
 
     /** Active le mode d'ajout de poids */
