@@ -283,6 +283,26 @@ Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pa
            \code{FileUtils} lu et écrit en arrière-plan. \code{windowsMain} (289 l.), déclaré dans aucune
            cible Gradle donc jamais compilé (Windows est servi par la cible JVM), et
            \code{DatabaseModule} (interface et 4 implémentations sans appelant) supprimés. \\
+-- & fait & \textbf{Import des référentiels (T1)} : 13 tests sur la lecture des \code{.vbnr.json}
+           (identité, besoins, niveaux, unités, équations, bibliographie, coefficients K, maladie et
+           stade, fichiers invalides), vérifiés par mutation. Ils ont révélé quatre erreurs qui
+           faussaient des besoins sans aucun signal :
+           \emph{(1)} un besoin « par kg de poids métabolique » (\code{KGMW}) était importé « par kg
+           de poids vif », et un pourcentage (\code{PERC}) en valeur absolue (correspondance désormais
+           identique à \code{LegacyV2Mappings}) ;
+           \emph{(2)} l'unité de la quantité était ignorée : 1\,500\,mg de potassium devenaient
+           1\,500\,g ; la quantité est ramenée à l'unité du nutriment ;
+           \emph{(3)} un libellé de nutriment inconnu ou mal orthographié était rapproché par
+           approximation d'un autre nutriment, dont il écrasait la valeur (\code{NutrientResolver},
+           zone protégée, n'est pas modifié : l'importeur n'accepte qu'un libellé exact et signale les
+           autres dans le rapport d'import) ;
+           \emph{(4)} les types d'équation écrits en toutes lettres \code{COMPLEMENTARY\_NUTRIENT} et
+           \code{ENERCOMP} devenaient des besoins énergétiques.
+           Aussi : bibliographie référencée par identifiant reconnue, niveaux \code{MINIMUM}/
+           \code{MAXIMUM} et codes numériques acceptés, erreurs d'enregistrement journalisées au lieu
+           d'être jetées, lecture dédoublée (versions \code{suspend} et non \code{suspend} copiées)
+           fusionnée. 6 fonctions publiques et 2 privées sans appelant retirées :
+           \code{ImportUtils} 3\,086\,$\to$\,2\,577 l. \\
 \bottomrule
 \end{longtable}
 
