@@ -1035,7 +1035,7 @@ private fun FoodListItem(
 
                                 if (!aliment.gamme.isNullOrEmpty()) {
                                         Text(
-                                                text = "Gamme: ${aliment.gamme}",
+                                                text = translate("aliment.gamme", aliment.gamme.toString()),
                                                 style = MaterialTheme.typography.caption,
                                                 color =
                                                         MaterialTheme.colors.onSurface.copy(

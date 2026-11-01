@@ -88,9 +88,9 @@ fun AdministrationSettings(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Activer l'analyse multiration")
+                                Text(translate("admin.activerMultiration"))
                                 Text(
-                                        "Affiche l'accès à l'exploration multiration dans la liste des animaux.",
+                                        translate("admin.activerMultirationAide"),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -210,7 +210,7 @@ fun AdministrationSettings(
                                     modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Ajouter une bibliographie en masse")
+                            Text(translate("admin.bibliographieEnMasse"))
                         }
 
                         // Affichage du résultat de l'import automatique

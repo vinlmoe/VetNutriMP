@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 private val couleursCourbes = listOf(
         Color(0xFF1565C0), Color(0xFF008577), Color(0xFFAD1457),
@@ -53,22 +54,22 @@ internal fun CourbesMultiration(resultat: ResultatExploration) {
             val ks = scenarios.map { it.k }.distinct().sorted()
             var poidsFixe by remember(resultat, referenceId, combinaison) { mutableStateOf(poids.first()) }
             var kFixe by remember(resultat, referenceId, combinaison) { mutableStateOf(ks.first()) }
-            DropdownField(label = "Référentiel", selectedValue = reference, options = references,
+            DropdownField(label = translate("multiration.courbes.referentiel"), selectedValue = reference, options = references,
                     onValueChange = { referenceId = it.uuid }, valueToString = { it.nom },
                     modifier = Modifier.fillMaxWidth())
-            DropdownField(label = "Combinaison d’aliments", selectedValue = combinaison, options = combinaisons,
+            DropdownField(label = translate("multiration.courbes.combinaison"), selectedValue = combinaison, options = combinaisons,
                     onValueChange = { combinaison = it }, valueToString = { "Combinaison $it" },
                     modifier = Modifier.fillMaxWidth())
             Text(scenarios.first().ration.alimentMutableList.joinToString(" + ") { it.aliment?.nom ?: "?" }, fontSize = 12.sp)
-            DropdownField(label = "Poids fixé (kg) — courbes selon K", selectedValue = poidsFixe, options = poids,
+            DropdownField(label = translate("multiration.courbes.poidsFixe"), selectedValue = poidsFixe, options = poids,
                     onValueChange = { poidsFixe = it }, valueToString = { formaterQuantite(it) },
                     modifier = Modifier.fillMaxWidth())
-            DropdownField(label = "K fixé — courbes selon le poids", selectedValue = kFixe, options = ks,
+            DropdownField(label = translate("multiration.courbes.kFixe"), selectedValue = kFixe, options = ks,
                     onValueChange = { kFixe = it }, valueToString = { formaterQuantite(it) },
                     modifier = Modifier.fillMaxWidth())
             val selonK = scenarios.filter { it.poids == poidsFixe }.sortedBy { it.k }
             val selonPoids = scenarios.filter { it.k == kFixe }.sortedBy { it.poids }
-            Text("Les courbes utilisent les scénarios du dernier calcul. Les scénarios non calculables ou sans cible sont laissés en interruption.", fontSize = 12.sp)
+            Text(translate("multiration.courbes.aide"), fontSize = 12.sp)
             CourbeDoses(selonK, true, "Doses selon K — poids fixé à ${formaterQuantite(poidsFixe)} kg")
             CourbeDoses(selonPoids, false, "Doses selon le poids — K fixé à ${formaterQuantite(kFixe)}")
             val nutriments = remember(resultat, referenceId) {
@@ -77,14 +78,14 @@ internal fun CourbesMultiration(resultat: ResultatExploration) {
                         .filter { it != NutrientMain.ENERGIE && it.label !in resultat.configuration.besoinsIgnores }.distinctBy { it.label }.sortedBy { nomTraduitNutriment(it) }
             }
             var choisis by remember(resultat, referenceId) { mutableStateOf(nutriments.take(4)) }
-            Text("Apports nutritionnels et normes", style = MaterialTheme.typography.h6)
-            Text("Jusqu’à quatre nutriments. Les apports incomplets sont interrompus ; les seuils utilisent le BEE standard comme l’analyse. Les ratios sont calculés sur la ration entière.", fontSize = 12.sp)
+            Text(translate("multiration.courbes.apportsNormes"), style = MaterialTheme.typography.h6)
+            Text(translate("multiration.courbes.nutrimentsAide"), fontSize = 12.sp)
             choisis.forEach { n ->
-                TextButton(onClick = { choisis = choisis - n }) { Text("Retirer : ${nomTraduitNutriment(n)}") }
+                TextButton(onClick = { choisis = choisis - n }) { Text(translate("multiration.courbes.retirer", nomTraduitNutriment(n))) }
             }
             val disponibles = nutriments.filterNot { it in choisis }
             if (choisis.size < 4 && disponibles.isNotEmpty()) {
-                DropdownField<Nutrient>(label = "Ajouter un nutriment", selectedValue = null, options = disponibles,
+                DropdownField<Nutrient>(label = translate("multiration.courbes.ajouterNutriment"), selectedValue = null, options = disponibles,
                         onValueChange = { choisis = choisis + it }, valueToString = { nomTraduitNutriment(it) },
                         modifier = Modifier.fillMaxWidth())
             }
@@ -133,7 +134,7 @@ private fun GraphiqueExploration(titre: String, unite: String, xs: List<Double>,
     Text(titre, style = MaterialTheme.typography.subtitle1, modifier = Modifier.padding(top = 16.dp))
     val valeurs = series.flatMap { it.valeurs }.filterNotNull().filter { it.isFinite() }
     if (valeurs.isEmpty()) {
-        Text("Aucune donnée calculable pour cette sélection.", fontSize = 12.sp)
+        Text(translate("multiration.courbes.aucuneDonnee"), fontSize = 12.sp)
         return
     }
     val ymax = (valeurs.maxOrNull() ?: 1.0).coerceAtLeast(0.001) * 1.08
@@ -168,14 +169,14 @@ private fun GraphiqueExploration(titre: String, unite: String, xs: List<Double>,
         }
     }
     Row(Modifier.fillMaxWidth().padding(start = 64.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        if (xmin == xmax) Text("$axe : ${chiffreCourbe(xmin)} (un seul point)", fontSize = 11.sp)
+        if (xmin == xmax) Text("$axe : ${chiffreCourbe(xmin)} " + translate("multiration.courbes.unPoint"), fontSize = 11.sp)
         else (0..4).forEach { Text(chiffreCourbe(xmin + (xmax - xmin) * it / 4), fontSize = 10.sp) }
     }
     if (xmin != xmax) Text(axe, fontSize = 11.sp)
     series.forEach { serie ->
         Row(Modifier.padding(top = 3.dp)) {
             Box(Modifier.padding(top = 4.dp).size(10.dp).background(serie.couleur))
-            Text(" ${serie.nom}${if (serie.pointilles) " (pointillés)" else ""}", fontSize = 11.sp)
+            Text(" ${serie.nom}${if (serie.pointilles) " " + translate("multiration.courbes.pointilles") else ""}", fontSize = 11.sp)
         }
     }
 }

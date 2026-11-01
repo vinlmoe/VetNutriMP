@@ -504,7 +504,7 @@ private fun RecipeListItem(
             
             // Informations de la recette
             Text(
-                text = "${recipe.alimentMutableList.size} aliments",
+                text = translate("recette.nbAliments", recipe.alimentMutableList.size.toString()),
                 style = MaterialTheme.typography.caption,
                 color = Color.Gray
             )
@@ -524,7 +524,7 @@ private fun RecipeListItem(
                 
                 if (recipe.alimentMutableList.size > 3) {
                     Text(
-                        text = "... et ${recipe.alimentMutableList.size - 3} autres",
+                        text = translate("recette.etAutres", (recipe.alimentMutableList.size - 3).toString()),
                         style = MaterialTheme.typography.caption,
                         color = Color.Gray
                     )

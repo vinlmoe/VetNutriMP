@@ -67,7 +67,7 @@ private fun NutrimentSelector(
         OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
             val selectedOption = NUTRIMENT_OPTIONS.find { it.key == selectedNutriment }
             Text(
-                    text = selectedOption?.displayName ?: "Sélectionner...",
+                    text = selectedOption?.displayName ?: translate("graphAliments.selectionner"),
                     style = MaterialTheme.typography.body2
             )
             Spacer(modifier = Modifier.weight(1f))
@@ -386,7 +386,7 @@ fun AnalyseGraphiqueAlimentsView(
                 )
                 Column {
                     Text(
-                            text = "Analyse graphique de ${aliments.size} aliment(s)",
+                            text = translate("graphAliments.titreAnalyse", aliments.size.toString()),
                             style = MaterialTheme.typography.h5,
                             fontWeight = FontWeight.Bold,
                             color = VetNutriColors.Primary

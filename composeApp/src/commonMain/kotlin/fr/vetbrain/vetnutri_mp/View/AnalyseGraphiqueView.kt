@@ -67,7 +67,7 @@ fun AnalyseGraphiqueView(
                                                 verticalAlignment = Alignment.CenterVertically
                                         ) {
                                                 Switch(currentConsultationOnly, { currentConsultationOnly = it })
-                                                Text("Consultation actuelle uniquement", style = MaterialTheme.typography.body2)
+                                                Text(translate("graph.consultationActuelleUniquement"), style = MaterialTheme.typography.body2)
                                         }
                                         if (selectedChart != ChartType.DENSITE_RATIONS) {
                                                 Row(
@@ -75,13 +75,13 @@ fun AnalyseGraphiqueView(
                                                         verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                         Switch(showRationArea, { showRationArea = it })
-                                                        Text("Aire des possibilités et sommes", style = MaterialTheme.typography.body2)
+                                                        Text(translate("graph.aireEtSommes"), style = MaterialTheme.typography.body2)
                                                 }
                                         }
                                 }
                                 if (selectedChart != ChartType.DENSITE_RATIONS) {
                                         if (showRationArea) Text(
-                                                "Zones séparées par consultation : orange pour les rations actuelles, bleu pour les proposées. Σ : moyenne pondérée par les coefficients. Pour les nutriments, sélectionnez deux axes pour voir l’aire.",
+                                                translate("graph.aireExplication"),
                                                 style = MaterialTheme.typography.caption
                                         )
                                 }

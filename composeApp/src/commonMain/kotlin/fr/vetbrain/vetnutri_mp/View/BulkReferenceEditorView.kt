@@ -74,7 +74,7 @@ fun BulkReferenceEditorView(
     Scaffold(
             topBar = {
                 TopBarSimple(
-                        title = "Édition groupée (${references.size} référence${if (references.size > 1) "s" else ""})",
+                        title = translate("reference.editionGroupee", references.size.toString()),
                         onNavigateBack = onNavigateBack
                 )
             }
@@ -119,7 +119,7 @@ fun BulkReferenceEditorView(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                                text = "${consistencyErrors.size} incohérence${if (consistencyErrors.size > 1) "s" else ""} détectée${if (consistencyErrors.size > 1) "s" else ""}",
+                                text = translate("reference.incoherences", consistencyErrors.size.toString()),
                                 color = VetNutriColors.Error,
                                 style = MaterialTheme.typography.caption,
                                 modifier = Modifier.weight(1f)
@@ -249,7 +249,7 @@ fun BulkReferenceEditorView(
                                                 }
                                         ) {
                                             Text(
-                                                    text = "Copier « ${ref.nom} » vers :",
+                                                    text = translate("reference.copierVers", ref.nom),
                                                     style = MaterialTheme.typography.caption,
                                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                                     color = Color.Gray

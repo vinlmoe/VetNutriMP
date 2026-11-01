@@ -133,7 +133,7 @@ internal fun GraphiqueNuagePoints(
                             if (nutrimentY != null && nutrimentY.isNotEmpty()) {
                                 "${xOption?.displayName ?: "X"} vs ${yOption?.displayName ?: "Y"} ($unit)"
                             } else {
-                                "Distribution de ${xOption?.displayName ?: "Nutriment"} ($unit)"
+                                translate("graphAliments.distribution", xOption?.displayName ?: "", unit)
                             }
                         }
                         else -> "Analyse nutritionnelle"
@@ -158,7 +158,7 @@ internal fun GraphiqueNuagePoints(
                 "densite_energetique" -> {
                     val avgDensity = alimentsAnalyses.map { it.densiteEnergetique }.average()
                     Text(
-                            text = "Densité moyenne: ${GraphFormattingUtils.formatEnergyDensity(avgDensity)}",
+                            text = translate("graphAliments.densiteMoyenne", GraphFormattingUtils.formatEnergyDensity(avgDensity)),
                             style = MaterialTheme.typography.caption,
                             color = VetNutriColors.Primary.copy(alpha = 0.8f),
                             fontWeight = FontWeight.Medium
@@ -168,7 +168,7 @@ internal fun GraphiqueNuagePoints(
                     val avgProtein = alimentsAnalyses.map { it.pourcentageProteines }.average()
                     val avgLipid = alimentsAnalyses.map { it.pourcentageLipides }.average()
                     Text(
-                            text = "Moyennes - Protéines: ${GraphFormattingUtils.formatPercentage(avgProtein)} | Lipides: ${GraphFormattingUtils.formatPercentage(avgLipid)}",
+                            text = translate("graphAliments.moyennesProtLip", GraphFormattingUtils.formatPercentage(avgProtein), GraphFormattingUtils.formatPercentage(avgLipid)),
                             style = MaterialTheme.typography.caption,
                             color = VetNutriColors.Primary.copy(alpha = 0.8f),
                             fontWeight = FontWeight.Medium
@@ -178,7 +178,7 @@ internal fun GraphiqueNuagePoints(
                     val avgPhosphore = alimentsAnalyses.map { it.phosphorePer1000Kcal }.average()
                     val avgProtein = alimentsAnalyses.map { it.proteinePer1000Kcal }.average()
                     Text(
-                            text = "Moyennes - Phosphore: ${GraphFormattingUtils.formatNutrientPer1000Kcal(avgPhosphore)} | Protéines: ${GraphFormattingUtils.formatNutrientPer1000Kcal(avgProtein)}",
+                            text = translate("graphAliments.moyennesPhosProt", GraphFormattingUtils.formatNutrientPer1000Kcal(avgPhosphore), GraphFormattingUtils.formatNutrientPer1000Kcal(avgProtein)),
                             style = MaterialTheme.typography.caption,
                             color = VetNutriColors.Primary.copy(alpha = 0.8f),
                             fontWeight = FontWeight.Medium
@@ -188,7 +188,7 @@ internal fun GraphiqueNuagePoints(
                     val avgCalcium = alimentsAnalyses.map { it.calciumPer1000Kcal }.average()
                     val avgPhosphore = alimentsAnalyses.map { it.phosphorePer1000Kcal }.average()
                     Text(
-                            text = "Moyennes - Calcium: ${GraphFormattingUtils.formatNutrientPer1000Kcal(avgCalcium)} | Phosphore: ${GraphFormattingUtils.formatNutrientPer1000Kcal(avgPhosphore)}",
+                            text = translate("graphAliments.moyennesCaPhos", GraphFormattingUtils.formatNutrientPer1000Kcal(avgCalcium), GraphFormattingUtils.formatNutrientPer1000Kcal(avgPhosphore)),
                             style = MaterialTheme.typography.caption,
                             color = VetNutriColors.Primary.copy(alpha = 0.8f),
                             fontWeight = FontWeight.Medium

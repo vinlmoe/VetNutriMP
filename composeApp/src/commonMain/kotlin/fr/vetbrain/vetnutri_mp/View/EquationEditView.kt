@@ -779,7 +779,7 @@ private fun EquationTestTab(
         } else if (variablesInExpression.isNotEmpty()) {
             // Interface de test avec variables reconnues
             Text(
-                    text = "Expression : ${currentEquation.equationScript}",
+                    text = translate("equation.expression", currentEquation.equationScript),
                     style = MaterialTheme.typography.body1,
                     modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -919,7 +919,7 @@ private fun EquationTestTab(
         } else {
             // Cas où l'expression ne contient aucune variable
             Text(
-                    text = "Expression : ${currentEquation.equationScript}",
+                    text = translate("equation.expression", currentEquation.equationScript),
                     style = MaterialTheme.typography.body1,
                     modifier = Modifier.padding(bottom = 16.dp)
             )

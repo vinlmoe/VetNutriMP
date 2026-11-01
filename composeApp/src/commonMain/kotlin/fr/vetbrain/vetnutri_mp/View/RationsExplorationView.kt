@@ -22,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.View.Components.*
 import fr.vetbrain.vetnutri_mp.ViewModel.MultiRationViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /** Réutilise les composants de la vue ration, sans contexte animal ni consultation. */
 @Composable
@@ -46,20 +47,20 @@ internal fun RationsExplorationView(
         viewModel.modifierRationExploration(scenario.id, aliments)
     }
     Column(modifier.fillMaxSize()) {
-        TopBarSimple(title = "Rations de l’exploration", onNavigateBack = { if (!enregistrement) confirmerRetour = true })
+        TopBarSimple(title = translate("explorationRations.titre"), onNavigateBack = { if (!enregistrement) confirmerRetour = true })
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Enregistrez les corrections pour actualiser les tableaux, la carte et les courbes de l’exploration.")
+            Text(translate("explorationRations.enregistrerAide"))
             Button(onClick = { viewModel.enregistrerCorrections() }, enabled = !enregistrement) {
                 Text(if (enregistrement) "Enregistrement…" else "Enregistrer les corrections et mettre à jour les résultats")
             }
             erreur?.let { Text(it, color = MaterialTheme.colors.error) }
-            DropdownField(label = "Ration", selectedValue = scenario.id, options = scenarios.map { it.id },
+            DropdownField(label = translate("explorationRations.ration"), selectedValue = scenario.id, options = scenarios.map { it.id },
                     onValueChange = { selection = it }, valueToString = { id ->
                         val s = scenarios.first { it.id == id }
                         "$id — ${s.reference.nom} — ${formaterQuantite(s.poids)} kg — K ${formaterQuantite(s.k)}"
                     }, modifier = Modifier.fillMaxWidth())
-            Text("Besoin standard : ${scenario.besoinStandard?.let { formaterQuantite(it) } ?: "—"} kcal ; besoin ajusté : ${scenario.besoinTotal?.let { formaterQuantite(it) } ?: "—"} kcal")
+            Text(translate("explorationRations.besoins", scenario.besoinStandard?.let { formaterQuantite(it) } ?: "—", scenario.besoinTotal?.let { formaterQuantite(it) } ?: "—"))
             if (message.isNotEmpty()) Text(message)
             key(selection) {
                 SectionAlimentsRation(
@@ -81,7 +82,7 @@ internal fun RationsExplorationView(
                         onRemoveAliment = { id -> modifierAliments(ration.alimentMutableList.filterNot { it.uuid == id }) }
                 )
             }
-            Text("Analyse détaillée selon l’ensemble des seuils du référentiel. Les exclusions de l’exploration restent propres à la carte des résultats.")
+            Text(translate("explorationRations.analyseAide"))
             AnalyseNutritionnelleCard(
                     ration = ration, referenceUtilisee = scenario.reference,
                     poidsMetabolique = scenario.poidsMetabolique, poidsAnimal = scenario.poids,
@@ -97,10 +98,10 @@ internal fun RationsExplorationView(
     }
     if (confirmerRetour) AlertDialog(
             onDismissRequest = { confirmerRetour = false },
-            title = { Text("Fermer les rations temporaires ?") },
-            text = { Text("Les corrections non enregistrées seront perdues. Vous pouvez annuler et les enregistrer pour mettre à jour les résultats.") },
-            confirmButton = { TextButton(onClick = { viewModel.fermerRations() }) { Text("Fermer") } },
-            dismissButton = { TextButton(onClick = { confirmerRetour = false }) { Text("Continuer l’édition") } }
+            title = { Text(translate("explorationRations.fermerTitre")) },
+            text = { Text(translate("explorationRations.fermerTexte")) },
+            confirmButton = { TextButton(onClick = { viewModel.fermerRations() }) { Text(translate("explorationRations.fermer")) } },
+            dismissButton = { TextButton(onClick = { confirmerRetour = false }) { Text(translate("explorationRations.continuer")) } }
     )
     if (ajustement && scenario.besoinTotal != null && scenario.besoinStandard != null) {
         MultiNutrientAdjustmentView(
@@ -132,7 +133,7 @@ internal fun RationsExplorationView(
         Dialog(onDismissRequest = { ajout = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Surface(Modifier.fillMaxWidth(0.85f).fillMaxHeight(0.85f)) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Ajouter un aliment à la ration")
+                    Text(translate("explorationRations.ajouterAliment"))
                     FoodSearchComponent(
                             foods = aliments, filters = filtres, onFiltersChange = { filtres = it },
                             config = FoodSearchConfig(layout = FoodSearchLayout.VERTICAL, isLoading = enCours,
@@ -162,7 +163,7 @@ internal fun RationsExplorationView(
                                         }
                                     }), modifier = Modifier.weight(1f).fillMaxWidth()
                     )
-                    TextButton(onClick = { ajout = false }) { Text("Fermer") }
+                    TextButton(onClick = { ajout = false }) { Text(translate("explorationRations.fermer")) }
                 }
             }
         }

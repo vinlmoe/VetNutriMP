@@ -1289,7 +1289,7 @@ private fun ReferenceLevelsList(
                                                 )
                                                 couverturePourcentage?.let { pct ->
                                                         Text(
-                                                                text = "${TextUtils.formatDecimal(pct, 0)} % couverts",
+                                                                text = translate("analyse.pourcentCouverts", TextUtils.formatDecimal(pct, 0)),
                                                                 style = MaterialTheme.typography.caption,
                                                                 color = couleurConformite
                                                         )

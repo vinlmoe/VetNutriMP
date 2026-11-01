@@ -404,20 +404,20 @@ private fun ReferenceNutrientCard(
                         }
 
                         Text(
-                                text = "Espèce: ${reference.espece}",
+                                text = translate("reference.espece", reference.espece.toString()),
                                 style = MaterialTheme.typography.body2,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
 
                         Text(
-                                text = "Stade: ${reference.stadePhysio}",
+                                text = translate("reference.stade", reference.stadePhysio.toString()),
                                 style = MaterialTheme.typography.body2,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
 
                         if (reference.maladie) {
                             Text(
-                                    text = "Maladie: ${reference.nomMaladie}",
+                                    text = translate("reference.maladie", reference.nomMaladie),
                                     style = MaterialTheme.typography.caption,
                                     color = MaterialTheme.colors.error
                             )

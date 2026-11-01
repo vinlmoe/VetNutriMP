@@ -172,7 +172,7 @@ fun AnimalListView(
                                                                 backgroundColor = VetNutriColors.Primary,
                                                                 contentColor = VetNutriColors.OnPrimary
                                                         )
-                                        ) { Text("Exploration multiration") }
+                                        ) { Text(translate("multiration.titre")) }
                                 }
 
                                 if (examSession == null) {
@@ -799,7 +799,7 @@ private fun AnimalCard(
                                         Text(text = animal.nom, style = MaterialTheme.typography.h6)
                                         if (animal.estTroupeau) {
                                                 Text(
-                                                        text = "Troupeau — ${animal.effectifTroupeau} animaux, ${animal.typesTroupeau.orEmpty().size} groupe(s)",
+                                                        text = translate("troupeau.resumeListe", animal.effectifTroupeau.toString(), animal.typesTroupeau.orEmpty().size.toString()),
                                                         style = MaterialTheme.typography.body2,
                                                         color = VetNutriColors.Primary
                                                 )

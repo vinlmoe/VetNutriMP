@@ -10,6 +10,8 @@ import kotlin.math.round
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Data.nomTraduitNutriment
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import io.github.koalaplot.core.*
@@ -171,9 +173,14 @@ internal suspend fun calculerPourcentagesEnergieAlimentAsync(
 /** Liste des nutriments disponibles pour les graphiques personnalisés */
 data class NutrimentOption(
         val key: String,
-        val displayName: String,
+        val libelle: String,
         val unit: String = "g/1000 kcal"
-)
+) {
+    /** Nom dans la langue de l'interface ; le libellé français sert de repli. */
+    val displayName: String
+        get() = if (key.isEmpty()) translate("graph.nutrimentNone")
+                else nutrimentDeCle(key)?.let { nomTraduitNutriment(it) } ?: libelle
+}
 
 /** Récupère la valeur d'un nutriment depuis AlimentAnalyseData */
 internal suspend fun AlimentAnalyseData.getNutrimentValue(
@@ -193,7 +200,35 @@ internal suspend fun AlimentAnalyseData.getNutrimentValue(
         densiteEnergetique = 0.0
     )
     
-    val nutrient = when (key) {
+    val nutrient = nutrimentDeCle(key) ?: return 0.0
+    val baseValue = if (rationActual != null) aliment.getNutrient(nutrient) ?: 0.0
+        else alimentRation.getNutrientWithComplementary(nutrient, equationRepository, referenceEv) ?: 0.0
+    
+    // Convertir selon le mode d'affichage
+    return if (useDryMatterPer100g) {
+        // Mode /100g MS : convertir de g/100g as fed vers g/100g MS
+        // Obtenir l'humidité pour calculer la matière sèche
+        val humidite = if (rationActual != null) aliment.getNutrient(NutrientMain.HUMIDITE) ?: 0.0
+            else alimentRation.getNutrientWithComplementary(NutrientMain.HUMIDITE, equationRepository, referenceEv) ?: 0.0
+        val matiereSeche = 100.0 - humidite
+        if (matiereSeche > 0) {
+            // Convertir : valeur_MS = (valeur_as_fed * 100) / matière_sèche
+            (baseValue * 100.0) / matiereSeche
+        } else {
+            baseValue // Fallback si pas de matière sèche
+        }
+    } else {
+        // Mode /1000 kcal : convertir en valeur par 1000 kcal
+        if ((energyAsFed ?: densiteEnergetique) > 0) {
+            (baseValue * 1000.0) / (energyAsFed ?: densiteEnergetique)
+        } else {
+            0.0
+        }
+    }
+}
+
+/** Nutriment correspondant à la clé d'une option de graphique (null : aucune ou inconnue). */
+internal fun nutrimentDeCle(key: String): Nutrient? = when (key) {
         // Nutriments principaux (NutrientMain)
         "humidite" -> NutrientMain.HUMIDITE
         "proteine" -> NutrientMain.PROTEINE
@@ -307,32 +342,7 @@ internal suspend fun AlimentAnalyseData.getNutrimentValue(
         "glucose" -> NutrientOther.GLUCOSE
         "dextrose" -> NutrientOther.DEXTROSE
         
-        else -> return 0.0
-    }
-    val baseValue = if (rationActual != null) aliment.getNutrient(nutrient) ?: 0.0
-        else alimentRation.getNutrientWithComplementary(nutrient, equationRepository, referenceEv) ?: 0.0
-    
-    // Convertir selon le mode d'affichage
-    return if (useDryMatterPer100g) {
-        // Mode /100g MS : convertir de g/100g as fed vers g/100g MS
-        // Obtenir l'humidité pour calculer la matière sèche
-        val humidite = if (rationActual != null) aliment.getNutrient(NutrientMain.HUMIDITE) ?: 0.0
-            else alimentRation.getNutrientWithComplementary(NutrientMain.HUMIDITE, equationRepository, referenceEv) ?: 0.0
-        val matiereSeche = 100.0 - humidite
-        if (matiereSeche > 0) {
-            // Convertir : valeur_MS = (valeur_as_fed * 100) / matière_sèche
-            (baseValue * 100.0) / matiereSeche
-        } else {
-            baseValue // Fallback si pas de matière sèche
-        }
-    } else {
-        // Mode /1000 kcal : convertir en valeur par 1000 kcal
-        if ((energyAsFed ?: densiteEnergetique) > 0) {
-            (baseValue * 1000.0) / (energyAsFed ?: densiteEnergetique)
-        } else {
-            0.0
-        }
-    }
+    else -> null
 }
 
 /** Options de nutriments disponibles - Tous les nutriments sauf NutrientAnalysis */

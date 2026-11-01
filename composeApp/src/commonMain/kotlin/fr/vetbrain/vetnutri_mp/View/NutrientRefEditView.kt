@@ -47,7 +47,7 @@ fun NutrientRefEditView(
     Scaffold(
             topBar = {
                 TopBarSimple(
-                        title = "Édition des besoins - ${nutrientType.name}",
+                        title = translate("reference.editionBesoins", nutrientType.name),
                         onNavigateBack = onNavigateBack
                 )
             }

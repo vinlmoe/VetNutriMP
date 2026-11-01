@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.sortedForDisplay
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 @Composable
 internal fun CopyRationDialog(
@@ -24,12 +25,12 @@ internal fun CopyRationDialog(
         val ration = consultation?.rations?.firstOrNull { it.uuid == selected?.second }
         AppAlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("Reprendre une ration d’une autre consultation") },
+                title = { Text(translate("copieRation.titre")) },
                 text = {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("Les aliments et leurs quantités seront ajoutés dans une nouvelle ration proposée. Vous pourrez ensuite les modifier.")
+                                Text(translate("copieRation.aide"))
                                 if (sources.isEmpty()) {
-                                        Text("Aucune ration disponible dans les autres consultations de cet animal.")
+                                        Text(translate("copieRation.aucune"))
                                 } else {
                                         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
                                                 sources.forEach { source ->
@@ -48,7 +49,7 @@ internal fun CopyRationDialog(
                                                                 ) {
                                                                         RadioButton(selected = selected == (source.uuid to candidate.uuid), onClick = null)
                                                                         Spacer(Modifier.width(8.dp))
-                                                                        Text("$label · ${if (candidate.actual) "Actuelle" else "Proposée"} · ${candidate.alimentMutableList.size} aliment(s)", modifier = Modifier.weight(1f))
+                                                                        Text("$label · ${if (candidate.actual) translate("copieRation.actuelle") else translate("copieRation.proposee")} · " + translate("copieRation.nbAliments", candidate.alimentMutableList.size.toString()), modifier = Modifier.weight(1f))
                                                                 }
                                                         }
                                                 }
@@ -59,8 +60,8 @@ internal fun CopyRationDialog(
                 confirmButton = {
                         Button(enabled = ration != null, onClick = {
                                 if (consultation != null && ration != null) onCopy(consultation, ration)
-                        }) { Text("Copier la ration") }
+                        }) { Text(translate("copieRation.copier")) }
                 },
-                dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } }
+                dismissButton = { TextButton(onClick = onDismiss) { Text(translate("copieRation.annuler")) } }
         )
 }

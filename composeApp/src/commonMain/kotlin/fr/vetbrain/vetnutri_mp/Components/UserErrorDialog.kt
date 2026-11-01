@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import fr.vetbrain.vetnutri_mp.Utils.UserErrors
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /** Affiche l'erreur courante de [UserErrors] ; à monter une seule fois, au niveau de l'application. */
 @Composable
@@ -16,7 +17,7 @@ fun UserErrorDialog() {
     val texte = message ?: return
     AlertDialog(
         onDismissRequest = { UserErrors.dismiss() },
-        title = { Text("Erreur", style = MaterialTheme.typography.h6) },
+        title = { Text(translate("erreur.titre"), style = MaterialTheme.typography.h6) },
         text = { Text(texte) },
         confirmButton = { TextButton(onClick = { UserErrors.dismiss() }) { Text("OK") } }
     )

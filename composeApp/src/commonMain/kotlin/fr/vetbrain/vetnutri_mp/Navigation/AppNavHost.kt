@@ -38,8 +38,8 @@ internal fun AppNavHost(
                     .padding(if (examSession != null) 2.dp else 0.dp)
             ) {
                 val examInfoTitle = examSession?.let { session ->
-                    "Liste des animaux — ID examen: ${session.studentNumber} | Étudiant: ${session.studentId}"
-                } ?: "Liste des animaux"
+                    translate("animalList.titreExamen", session.studentNumber.toString(), session.studentId.toString())
+                } ?: translate("animalList.titre")
                 TopBar(title = examInfoTitle, onSettingsClick = { nav.navigate(Screen.Settings) })
 
                 AnimalListView(
@@ -74,7 +74,7 @@ internal fun AppNavHost(
         Screen.Create -> {
             Column(modifier = Modifier.fillMaxSize()) {
                 TopBar(
-                    title = if (nav.isEditing) "Modifier un animal" else "Ajouter un animal",
+                    title = if (nav.isEditing) translate("animal.modifierTitre") else translate("animal.ajouterTitre"),
                     onBackClick = {
                         nav.isEditing = false
                         nav.selectedAnimal = null

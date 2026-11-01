@@ -323,7 +323,7 @@ internal fun ColumnScope.EnTeteRations(
                                                                     if (!isExamMode) {
                                                                         IconWithTooltip(
                                                                             imageVector = Icons.Filled.ContentCopy,
-                                                                            contentDescription = "Reprendre une ration",
+                                                                            contentDescription = translate("copieRation.reprendre"),
                                                                             tooltip = "Reprendre une ration d’une autre consultation",
                                                                             onClick = { showCopyRationDialog = true },
                                                                             enabled = selectedConsultation != null,

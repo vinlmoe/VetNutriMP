@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.BulkAddBiblioToFoodsViewModel
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Module d'ajout en masse de bibliographie aux aliments, accessible depuis Settings.
@@ -49,7 +50,7 @@ fun BulkAddBiblioToFoodsView(
     Scaffold(
             topBar = {
                 TopBarSimple(
-                        title = "Ajout en masse de bibliographie",
+                        title = translate("biblioMasse.titre"),
                         onNavigateBack = onNavigateBack
                 )
             }
@@ -60,11 +61,11 @@ fun BulkAddBiblioToFoodsView(
                     modifier = Modifier.weight(0.35f).fillMaxHeight().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Références à appliquer", style = MaterialTheme.typography.h6)
+                Text(translate("biblioMasse.references"), style = MaterialTheme.typography.h6)
                 OutlinedTextField(
                         value = biblioFilter,
                         onValueChange = { biblioFilter = it },
-                        label = { Text("Rechercher (auteur, année, référence)") },
+                        label = { Text(translate("biblioMasse.rechercher")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                 )

@@ -29,6 +29,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.round
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /** Nombre à la française, décimales selon l'ordre de grandeur (ou imposées). */
 internal fun formaterNombreTroupeau(v: Double?, decimalesImposees: Int? = null): String {
@@ -44,7 +45,9 @@ internal fun formaterNombreTroupeau(v: Double?, decimalesImposees: Int? = null):
     val facteur = 10.0.pow(decimales)
     val n = round(abs(v) * facteur).toLong()
     val diviseur = facteur.toLong()
-    val texte = if (decimales == 0) "$n" else "${n / diviseur}," + (n % diviseur).toString().padStart(decimales, '0')
+    // Virgule décimale en français, point dans les autres langues
+    val separateur = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.currentLocale == "fr") "," else "."
+    val texte = if (decimales == 0) "$n" else "${n / diviseur}$separateur" + (n % diviseur).toString().padStart(decimales, '0')
     return if (v < 0 && n != 0L) "-$texte" else texte
 }
 
@@ -92,8 +95,8 @@ internal fun ChampNombreTroupeau(
 @Composable
 fun SelecteurIndividuTroupeau(estTroupeau: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Text("Dossier :", fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 8.dp))
-        listOf(false to "Individu", true to "Troupeau / groupe d'animaux").forEach { (valeur, libelle) ->
+        Text(translate("troupeau.dossier"), fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 8.dp))
+        listOf(false to translate("troupeau.individu"), true to translate("troupeau.troupeauGroupe")).forEach { (valeur, libelle) ->
             Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clickable { onChange(valeur) }.padding(end = 16.dp)
@@ -125,12 +128,11 @@ fun EditeurTypesTroupeau(
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
-                "Individus du troupeau — ${types.sumOf { it.nombre.coerceAtLeast(0) }} animaux",
+                translate("troupeau.individusDuTroupeau", types.sumOf { it.nombre.coerceAtLeast(0) }.toString()),
                 fontWeight = FontWeight.Bold
         )
         Text(
-                "Décrire les individus par groupe (espèce, race, sexe, nombre, poids moyen). Le troupeau peut " +
-                        "mêler plusieurs espèces. Le référentiel et K de chaque groupe se choisissent dans chaque consultation.",
+                translate("troupeau.decrireGroupes"),
                 fontSize = 11.sp,
                 color = Color.Gray
         )
@@ -146,19 +148,19 @@ fun EditeurTypesTroupeau(
                                         nom = it
                                         majGroupe(type.id) { t -> t.copy(nom = it) }
                                     },
-                                    label = { Text("Groupe (ex. vaches en lactation)", fontSize = 11.sp) },
+                                    label = { Text(translate("troupeau.nomGroupe"), fontSize = 11.sp) },
                                     singleLine = true,
                                     modifier = Modifier.weight(1f)
                             )
                             ChampNombreTroupeau(
-                                    "Nombre",
+                                    translate("troupeau.nombre"),
                                     type.nombre.toDouble(),
                                     { v -> majGroupe(type.id) { t -> t.copy(nombre = v.toInt()) } },
                                     Modifier.width(90.dp),
                                     entier = true
                             )
                             ChampNombreTroupeau(
-                                    "Poids moyen (kg)",
+                                    translate("troupeau.poidsMoyen"),
                                     type.poids,
                                     { v -> majGroupe(type.id) { t -> t.copy(poids = v) } },
                                     Modifier.width(130.dp)
@@ -168,12 +170,12 @@ fun EditeurTypesTroupeau(
                                     enabled = types.size > 1,
                                     modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Default.Close, contentDescription = "Retirer le groupe", modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Close, contentDescription = translate("troupeau.retirerGroupe"), modifier = Modifier.size(16.dp))
                             }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Bottom) {
                             DropdownField(
-                                    label = "Espèce",
+                                    label = translate("troupeau.espece"),
                                     selectedValue = type.especeEnum(),
                                     options = Espece.valuesExcept(Espece.CH).toList(),
                                     onValueChange = { e -> majGroupe(type.id) { t -> t.copy(espece = e.name) } },
@@ -187,12 +189,12 @@ fun EditeurTypesTroupeau(
                                         race = it
                                         majGroupe(type.id) { t -> t.copy(race = it) }
                                     },
-                                    label = { Text("Race", fontSize = 11.sp) },
+                                    label = { Text(translate("troupeau.race"), fontSize = 11.sp) },
                                     singleLine = true,
                                     modifier = Modifier.weight(1f)
                             )
                             DropdownField(
-                                    label = "Sexe",
+                                    label = translate("troupeau.sexe"),
                                     selectedValue = type.sexe(),
                                     options = Sex.entries.toList(),
                                     onValueChange = { sx -> majGroupe(type.id) { t -> t.copy(sexId = sx.id) } },
@@ -207,18 +209,18 @@ fun EditeurTypesTroupeau(
         TextButton(
                 onClick = {
                     // Nouveau groupe : même espèce que le dernier groupe
-                    onChange(types + TypeAnimalTroupeau(nom = "Groupe ${types.size + 1}", espece = types.lastOrNull()?.espece))
+                    onChange(types + TypeAnimalTroupeau(nom = translate("troupeau.groupeNumero", (types.size + 1).toString()), espece = types.lastOrNull()?.espece))
                 }
         ) {
             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-            Text(" Ajouter un groupe d'individus")
+            Text(" " + translate("troupeau.ajouterGroupe"))
         }
     }
 }
 
 /** Groupe par défaut d'un nouveau troupeau, de l'espèce choisie jusque-là pour la fiche. */
 fun typesTroupeauParDefaut(espece: Espece? = null): MutableList<TypeAnimalTroupeau> =
-        mutableListOf(TypeAnimalTroupeau(nom = "Adultes", nombre = 1, poids = 0.0, espece = espece?.name))
+        mutableListOf(TypeAnimalTroupeau(nom = translate("troupeau.adultes"), nombre = 1, poids = 0.0, espece = espece?.name))
 
 private val couleurConformeTroupeau = Color(0xFF0CA30C)
 private val couleurAlerteTroupeau = Color(0xFFD03B3B)
@@ -246,11 +248,9 @@ fun PanneauTroupeauConsultation(
     Card(modifier = modifier, elevation = 2.dp) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val effectif = types.sumOf { c.parametresType(it).nombre.coerceAtLeast(0) }
-            Text("Troupeau — $effectif animaux", fontWeight = FontWeight.Bold, color = VetNutriColors.Primary)
+            Text(translate("troupeau.troupeauEffectif", effectif.toString()), fontWeight = FontWeight.Bold, color = VetNutriColors.Primary)
             Text(
-                    "Rations en quantités pour tout le troupeau, réparties entre les groupes au prorata du besoin " +
-                            "énergétique (un individu du groupe i reçoit quantité × Bᵢ / Σ nⱼ·Bⱼ). L'état du troupeau " +
-                            "(effectifs, poids, référentiels, K) se modifie dans la consultation.",
+                    translate("troupeau.explicationRations"),
                     fontSize = 11.sp,
                     color = Color.Gray
             )
@@ -262,12 +262,12 @@ fun PanneauTroupeauConsultation(
                     // Défilement horizontal si les groupes sont nombreux
                     modifier = Modifier.horizontalScroll(rememberScrollState())
             ) {
-                Text("Analyser :", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                BoutonTypeTroupeau("Troupeau entier", typeAnalyse == null, enabled = true) { viewModel.selectTypeTroupeau(null) }
+                Text(translate("troupeau.analyser"), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                BoutonTypeTroupeau(translate("troupeau.troupeauEntier"), typeAnalyse == null, enabled = true) { viewModel.selectTypeTroupeau(null) }
                 types.forEach { type ->
                     val repartissable = analyse?.type(type.id)?.facteur?.let { it > 0.0 } == true
                     BoutonTypeTroupeau(
-                            "${type.nom.ifBlank { "Groupe sans nom" }} (${c.parametresType(type).nombre})",
+                            "${type.nom.ifBlank { translate("troupeau.groupeSansNom") }} (${c.parametresType(type).nombre})",
                             typeAnalyse == type.id,
                             enabled = repartissable || typeAnalyse == type.id
                     ) { viewModel.selectTypeTroupeau(type.id) }
@@ -277,22 +277,19 @@ fun PanneauTroupeauConsultation(
             if (typeChoisi != null) {
                 val a = analyse?.type(typeChoisi.id)
                 Text(
-                        "Analyse ci-dessous : un individu du groupe « ${typeChoisi.nom} » (" +
-                                "${formaterNombreTroupeau((a?.facteur ?: 0.0) * 100.0)} % de la ration du troupeau), " +
-                                "avec le poids, le référentiel et le K du groupe. La composition est en lecture seule : " +
-                                "revenir à « Troupeau entier » pour la modifier.",
+                        translate("troupeau.analyseGroupe", typeChoisi.nom, formaterNombreTroupeau((a?.facteur ?: 0.0) * 100.0)),
                         fontSize = 12.sp,
                         color = VetNutriColors.Primary
                 )
             } else {
                 Text(
-                        "Analyse ci-dessous : apports à l'ensemble du troupeau comparés à la somme des besoins de ses individus.",
+                        translate("troupeau.analyseTroupeauEntier"),
                         fontSize = 12.sp,
                         color = VetNutriColors.Primary
                 )
             }
             if (types.isEmpty())
-                    Text("Aucun groupe d'individus : modifier la fiche pour décrire le troupeau.", fontSize = 12.sp, color = couleurAlerteTroupeau)
+                    Text(translate("troupeau.aucunGroupe"), fontSize = 12.sp, color = couleurAlerteTroupeau)
 
             // Répartition et synthèse par groupe
             val a = analyse
@@ -304,11 +301,11 @@ fun PanneauTroupeauConsultation(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(
                                 onClick = {
-                                    if (viewModel.ajusterRationTroupeauEnergie()) showSnackbar("Quantités ajustées au besoin énergétique du troupeau")
-                                    else showSnackbar("Analyse en cours de mise à jour : réessayer dans un instant")
+                                    if (viewModel.ajusterRationTroupeauEnergie()) showSnackbar(translate("troupeau.quantitesAjustees"))
+                                    else showSnackbar(translate("troupeau.analyseEnCours"))
                                 },
                                 enabled = facteur != null && a.quantiteTotale > 0.0
-                        ) { Text("Ajuster la ration au besoin énergétique du troupeau", fontSize = 12.sp) }
+                        ) { Text(translate("troupeau.ajusterRation"), fontSize = 12.sp) }
                         if (facteur != null) Text("(× ${formaterNombreTroupeau(facteur, 3)})", fontSize = 12.sp, color = Color.Gray)
                     }
                 }
@@ -345,15 +342,14 @@ fun EditeurEtatTroupeau(
     Card(modifier = modifier, elevation = 2.dp) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val effectif = types.sumOf { consultation.parametresType(it).nombre.coerceAtLeast(0) }
-            Text("État du troupeau — $effectif animaux", fontWeight = FontWeight.Bold, color = VetNutriColors.Primary)
+            Text(translate("troupeau.etatTroupeau", effectif.toString()), fontWeight = FontWeight.Bold, color = VetNutriColors.Primary)
             Text(
-                    "Pour chaque groupe d'individus : effectif et poids moyen à cette date, état corporel, référentiel et K. " +
-                            "Besoin d'un individu = besoin standard du référentiel × K du groupe.",
+                    translate("troupeau.explicationEtat"),
                     fontSize = 11.sp,
                     color = Color.Gray
             )
             if (types.isEmpty())
-                    Text("Aucun groupe d'individus : modifier la fiche pour décrire le troupeau.", fontSize = 12.sp, color = couleurAlerteTroupeau)
+                    Text(translate("troupeau.aucunGroupe"), fontSize = 12.sp, color = couleurAlerteTroupeau)
             types.forEach { type ->
                 key(consultation.uuid, type.id) {
                     LigneEtatGroupe(type, consultation.parametresType(type), referencesDuGroupe(type), onChange)
@@ -380,20 +376,20 @@ private fun LigneEtatGroupe(
                             type.sexe()?.translateEnum()
                     ).joinToString(", ")
             Text(
-                    type.nom.ifBlank { "Groupe sans nom" } + if (details.isNotEmpty()) " — $details" else "",
+                    type.nom.ifBlank { translate("troupeau.groupeSansNom") } + if (details.isNotEmpty()) " — $details" else "",
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
             )
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
-                ChampNombreTroupeau("Effectif", p.nombre.toDouble(), { onChange(p.copy(nombre = it.toInt())) },
+                ChampNombreTroupeau(translate("troupeau.effectif"), p.nombre.toDouble(), { onChange(p.copy(nombre = it.toInt())) },
                         Modifier.width(90.dp), entier = true)
-                ChampNombreTroupeau("Poids moyen (kg)", p.poids, { onChange(p.copy(poids = it)) }, Modifier.width(130.dp))
-                ChampNombreTroupeau("NEC moyenne", p.bcs ?: 0.0, { onChange(p.copy(bcs = it.takeIf { v -> v > 0.0 })) },
+                ChampNombreTroupeau(translate("troupeau.poidsMoyen"), p.poids, { onChange(p.copy(poids = it)) }, Modifier.width(130.dp))
+                ChampNombreTroupeau(translate("troupeau.necMoyenne"), p.bcs ?: 0.0, { onChange(p.copy(bcs = it.takeIf { v -> v > 0.0 })) },
                         Modifier.width(110.dp))
                 ChampNombreTroupeau("K", p.k, { onChange(p.copy(k = it)) }, Modifier.width(70.dp))
             }
             DropdownField(
-                    label = "Référentiel",
+                    label = translate("troupeau.referentiel"),
                     selectedValue = reference,
                     options = references,
                     onValueChange = { onChange(p.copy(referenceId = it.uuid)) },
@@ -401,11 +397,11 @@ private fun LigneEtatGroupe(
                     modifier = Modifier.fillMaxWidth()
             )
             if (p.referenceId == null)
-                    Text("Référentiel à choisir pour calculer les besoins de ce groupe.", fontSize = 11.sp, color = couleurAlerteTroupeau)
+                    Text(translate("troupeau.referentielAChoisir"), fontSize = 11.sp, color = couleurAlerteTroupeau)
             else if (reference == null)
-                    Text("Référentiel introuvable : en choisir un autre.", fontSize = 11.sp, color = couleurAlerteTroupeau)
+                    Text(translate("troupeau.referentielIntrouvable"), fontSize = 11.sp, color = couleurAlerteTroupeau)
             if (p.nombre > 0 && p.poids <= 0.0)
-                    Text("Poids moyen à renseigner.", fontSize = 11.sp, color = couleurAlerteTroupeau)
+                    Text(translate("troupeau.poidsARenseigner"), fontSize = 11.sp, color = couleurAlerteTroupeau)
             val variables = fr.vetbrain.vetnutri_mp.Data.variablesEquationsTroupeau(reference)
             if (variables.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -418,7 +414,7 @@ private fun LigneEtatGroupe(
                         )
                     }
                 }
-                Text("Variables des équations du référentiel (valeur par défaut si non saisie).", fontSize = 10.sp, color = Color.Gray)
+                Text(translate("troupeau.variables"), fontSize = 10.sp, color = Color.Gray)
             }
         }
     }
@@ -441,7 +437,7 @@ fun groupesIncompletsTroupeau(
                             (referencesConnues != null && p.referenceId !in referencesConnues) ||
                             p.poids <= 0.0 ||
                             p.k <= 0.0)
-        }.map { it.nom.ifBlank { "Groupe sans nom" } }
+        }.map { it.nom.ifBlank { translate("troupeau.groupeSansNom") } }
 
 /**
  * Analyse des apports au troupeau entier : apport total de la ration du troupeau et somme des
@@ -463,32 +459,30 @@ fun AnalyseApportsTroupeau(
                 Modifier.padding(12.dp).then(if (defilementVertical) Modifier.verticalScroll(rememberScrollState()) else Modifier),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text("Apports au troupeau entier", fontWeight = FontWeight.Bold, color = VetNutriColors.Primary)
+            Text(translate("troupeau.apportsTroupeauEntier"), fontWeight = FontWeight.Bold, color = VetNutriColors.Primary)
             if (analyse == null || lignes.isEmpty()) {
                 Text(
-                        "Analyse indisponible : compléter l'état du troupeau dans la consultation (référentiel et poids de chaque groupe) " +
-                                "et ajouter des aliments à la ration.",
+                        translate("troupeau.analyseIndisponible"),
                         fontSize = 12.sp,
                         color = Color.Gray
                 )
                 analyse?.problemes?.forEach { Text("• $it", fontSize = 12.sp, color = couleurAlerteTroupeau) }
             } else {
                 Text(
-                        "Apport total par jour comparé à la somme des besoins des individus (Σ effectif × besoin d'un individu). " +
-                                "Une somme conforme peut masquer la carence d'un groupe : voir la dernière colonne.",
+                        translate("troupeau.explicationApports"),
                         fontSize = 11.sp,
                         color = Color.Gray
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { seulementHorsNormes = !seulementHorsNormes }) {
                     Checkbox(checked = seulementHorsNormes, onCheckedChange = { seulementHorsNormes = it })
-                    Text("Seulement les nutriments hors normes", fontSize = 12.sp)
+                    Text(translate("troupeau.seulementHorsNormes"), fontSize = 12.sp)
                 }
                 val affichees =
                         if (seulementHorsNormes) lignes.filter { it.statutTroupeau != null || it.groupesHorsNormes.isNotEmpty() }
                         else lignes
                 Column(Modifier.horizontalScroll(rememberScrollState())) {
                     Row(Modifier.padding(vertical = 2.dp)) {
-                        listOf("Nutriment" to 180, "Apport troupeau" to 130, "MIN" to 90, "OPTIMIN" to 90, "OPTIMAX" to 90, "MAX" to 90, "Troupeau" to 150, "Groupes hors normes" to 280)
+                        listOf(translate("troupeau.colNutriment") to 180, translate("troupeau.colApport") to 130, "MIN" to 90, "OPTIMIN" to 90, "OPTIMAX" to 90, "MAX" to 90, translate("troupeau.colTroupeau") to 150, translate("troupeau.colGroupesHorsNormes") to 280)
                                 .forEach { (titre, largeur) ->
                                     Text(titre, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(largeur.dp))
                                 }
@@ -508,10 +502,10 @@ fun AnalyseApportsTroupeau(
                             val statut = l.statutTroupeau
                             Text(
                                     when {
-                                        l.ratio -> "Ratio (voir groupes)"
-                                        statut == null -> "Conforme"
-                                        statut == fr.vetbrain.vetnutri_mp.Data.ConformiteStatus.CARENCE -> if (l.critique) "Carence" else "Sous l'optimum"
-                                        else -> if (l.critique) "Excès" else "Au-dessus de l'optimum"
+                                        l.ratio -> translate("troupeau.ratioVoirGroupes")
+                                        statut == null -> translate("troupeau.conforme")
+                                        statut == fr.vetbrain.vetnutri_mp.Data.ConformiteStatus.CARENCE -> if (l.critique) translate("troupeau.carence") else translate("troupeau.sousOptimum")
+                                        else -> if (l.critique) translate("troupeau.exces") else translate("troupeau.dessusOptimum")
                                     },
                                     fontSize = 12.sp,
                                     color = if (l.ratio) Color.Gray else if (statut == null) couleurConformeTroupeau else couleurAlerteTroupeau,
@@ -520,7 +514,7 @@ fun AnalyseApportsTroupeau(
                             Text(
                                     l.groupesHorsNormes.joinToString(" · ") { (nom, c) ->
                                         val sens = if (c.status == fr.vetbrain.vetnutri_mp.Data.ConformiteStatus.CARENCE ||
-                                                        c.status == fr.vetbrain.vetnutri_mp.Data.ConformiteStatus.CARENCE_MALADIE) "carence" else "excès"
+                                                        c.status == fr.vetbrain.vetnutri_mp.Data.ConformiteStatus.CARENCE_MALADIE) translate("troupeau.carenceMin") else translate("troupeau.excesMin")
                                         "$nom ($sens${if (c.isCritical) "" else ", optimum"})"
                                     }.ifEmpty { "—" },
                                     fontSize = 12.sp,
@@ -529,7 +523,7 @@ fun AnalyseApportsTroupeau(
                             )
                         }
                     }
-                    Text("* valeur incomplète : composition absente pour au moins un aliment.", fontSize = 10.sp, color = Color.Gray)
+                    Text(translate("troupeau.valeurIncomplete"), fontSize = 10.sp, color = Color.Gray)
                 }
             }
         }
@@ -545,13 +539,13 @@ private fun SyntheseTroupeau(
     val couverture =
             if (a.besoinGroupe != null && a.energieGroupe != null && a.besoinGroupe > 0.0) a.energieGroupe / a.besoinGroupe * 100.0
             else null
-    Text("Répartition de la ration du troupeau", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+    Text(translate("troupeau.repartition"), fontWeight = FontWeight.Bold, fontSize = 13.sp)
     Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-        IndicateurTroupeau("Ration du troupeau", formaterGrammesTroupeau(a.quantiteTotale) + " / j")
-        IndicateurTroupeau("Besoin du troupeau", a.besoinGroupe?.let { "${formaterNombreTroupeau(it, 0)} kcal" } ?: "—")
-        IndicateurTroupeau("Énergie apportée", a.energieGroupe?.let { "${formaterNombreTroupeau(it, 0)} kcal" } ?: "—")
+        IndicateurTroupeau(translate("troupeau.rationTroupeau"), formaterGrammesTroupeau(a.quantiteTotale) + translate("troupeau.parJour"))
+        IndicateurTroupeau(translate("troupeau.besoinTroupeau"), a.besoinGroupe?.let { "${formaterNombreTroupeau(it, 0)} kcal" } ?: "—")
+        IndicateurTroupeau(translate("troupeau.energieApportee"), a.energieGroupe?.let { "${formaterNombreTroupeau(it, 0)} kcal" } ?: "—")
         IndicateurTroupeau(
-                "Couverture",
+                translate("troupeau.couverture"),
                 couverture?.let { "${formaterNombreTroupeau(it, 0)} %" } ?: "—",
                 couverture?.let { if (it in 90.0..110.0) couleurConformeTroupeau else couleurAlerteTroupeau }
         )
@@ -560,7 +554,7 @@ private fun SyntheseTroupeau(
 
     // En-tête du tableau
     Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
-        listOf("Groupe" to 1.4f, "Part" to 0.6f, "Besoin / individu" to 0.9f, "Énergie / individu" to 0.9f, "Couverture" to 0.7f, "Hors normes" to 0.8f, "Ration d'un individu" to 2.2f, "" to 0.8f)
+        listOf(translate("troupeau.colGroupe") to 1.4f, translate("troupeau.colPart") to 0.6f, translate("troupeau.colBesoinIndividu") to 0.9f, translate("troupeau.colEnergieIndividu") to 0.9f, translate("troupeau.couverture") to 0.7f, translate("troupeau.colHorsNormes") to 0.8f, translate("troupeau.colRationIndividu") to 2.2f, "" to 0.8f)
                 .forEach { (titre, poids) -> Text(titre, fontSize = 11.sp, color = Color.Gray, modifier = Modifier.weight(poids)) }
     }
     a.types.forEach { t ->
@@ -571,7 +565,7 @@ private fun SyntheseTroupeau(
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                        "${t.type.nom.ifBlank { "Groupe sans nom" }} (${t.parametres.nombre})",
+                        "${t.type.nom.ifBlank { translate("troupeau.groupeSansNom") }} (${t.parametres.nombre})",
                         fontSize = 12.sp,
                         fontWeight = if (choisi) FontWeight.Bold else FontWeight.Normal,
                         modifier = Modifier.weight(1.4f)
@@ -588,7 +582,7 @@ private fun SyntheseTroupeau(
                 )
                 val horsNormes = t.nonConformes
                 Text(
-                        if (t.rationParAnimal == null) "—" else if (horsNormes.isEmpty()) "Aucun" else horsNormes.size.toString(),
+                        if (t.rationParAnimal == null) "—" else if (horsNormes.isEmpty()) translate("troupeau.aucun") else horsNormes.size.toString(),
                         fontSize = 12.sp,
                         color = if (t.rationParAnimal == null) Color.Unspecified else if (horsNormes.isEmpty()) couleurConformeTroupeau else couleurAlerteTroupeau,
                         modifier = Modifier.weight(0.8f)
@@ -603,7 +597,7 @@ private fun SyntheseTroupeau(
                 )
                 Box(Modifier.weight(0.8f)) {
                     if (!choisi && (t.facteur ?: 0.0) > 0.0)
-                            TextButton(onClick = { onAnalyser(t.type.id) }) { Text("Analyser", fontSize = 11.sp) }
+                            TextButton(onClick = { onAnalyser(t.type.id) }) { Text(translate("troupeau.boutonAnalyser"), fontSize = 11.sp) }
                 }
             }
         }
@@ -648,7 +642,7 @@ fun DetailConsultationTroupeau(
         if (consultation.observation.isNotBlank()) Text("Observations : ${consultation.observation}")
 
         val effectif = types.sumOf { consultation.parametresType(it).nombre.coerceAtLeast(0) }
-        Text("État du troupeau — $effectif animaux", fontWeight = FontWeight.Bold, color = VetNutriColors.Primary)
+        Text(translate("troupeau.etatTroupeau", effectif.toString()), fontWeight = FontWeight.Bold, color = VetNutriColors.Primary)
         var besoinTotal = 0.0
         var besoinComplet = true
         types.forEach { type ->
@@ -660,7 +654,7 @@ fun DetailConsultationTroupeau(
             }
             Card(Modifier.fillMaxWidth(), elevation = 1.dp, backgroundColor = Color(0xFFFAFAFA)) {
                 Column(Modifier.padding(8.dp)) {
-                    Text(type.nom.ifBlank { "Groupe sans nom" }, fontWeight = FontWeight.Bold)
+                    Text(type.nom.ifBlank { translate("troupeau.groupeSansNom") }, fontWeight = FontWeight.Bold)
                     val details =
                             listOfNotNull(
                                     type.especeEnum()?.translateEnum(),

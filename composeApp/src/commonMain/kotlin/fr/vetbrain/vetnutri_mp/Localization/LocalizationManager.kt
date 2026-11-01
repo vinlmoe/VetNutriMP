@@ -18,6 +18,8 @@ object LocalizationManager {
     private const val KEY_LOCALE = "selected_locale"
     private val scope = CoroutineScope(AppDispatchers.Main + SupervisorJob())
     private var strings by mutableStateOf<LocalizedStrings?>(null)
+    // Langue de référence : une clé absente d'une autre langue s'affiche en français, pas brute
+    private var stringsFrancais: LocalizedStrings? = null
     private var currentLocaleState by mutableStateOf("fr")
     val currentLocale: String
         get() = currentLocaleState
@@ -76,6 +78,18 @@ object LocalizationManager {
     }
 
     fun translate(key: String): String {
-        return strings?.translations?.get(key) ?: key
+        return strings?.translations?.get(key) ?: francais()?.translations?.get(key) ?: key
+    }
+
+    private fun francais(): LocalizedStrings? {
+        if (currentLocaleState == "fr") return strings
+        return stringsFrancais ?: try {
+            json.decodeFromString<LocalizedStrings>(resourceReader.readResource("strings_fr.json"))
+                    .also { stringsFrancais = it }
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            AppLog.d("LocalizationManager", "Textes français illisibles : ${e.message}")
+            null
+        }
     }
 }

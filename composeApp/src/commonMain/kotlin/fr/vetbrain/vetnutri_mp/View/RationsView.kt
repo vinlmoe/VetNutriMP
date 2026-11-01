@@ -102,9 +102,9 @@ fun RationsView(
                         onCopy = { consultation, ration ->
                                 if (viewModel.copyRationFromConsultation(consultation.uuid, ration.uuid)) {
                                         showCopyRationDialog = false
-                                        showSnackbar("Ration reprise dans la consultation courante")
+                                        showSnackbar(translate("copieRation.reprise"))
                                 } else {
-                                        showSnackbar("Impossible de reprendre cette ration")
+                                        showSnackbar(translate("copieRation.impossible"))
                                 }
                         }
                 )

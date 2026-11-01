@@ -169,7 +169,7 @@ fun ConseilsPersonnalisesView(
                 }
             } else {
                 Text(
-                        text = "Liste des conseils (${filteredConseils.size})",
+                        text = translate("conseil.liste", filteredConseils.size.toString()),
                         style = MaterialTheme.typography.h6
                 )
 
@@ -331,7 +331,7 @@ private fun ConseilCard(
                     horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                        text = "Utilisé ${conseil.usageCount} fois",
+                        text = translate("conseil.utilise", conseil.usageCount.toString()),
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                 )
@@ -346,7 +346,7 @@ private fun ConseilCard(
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                         Text(
-                                text = "Priorité ${conseil.priority}",
+                                text = translate("conseil.priorite", conseil.priority.toString()),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )

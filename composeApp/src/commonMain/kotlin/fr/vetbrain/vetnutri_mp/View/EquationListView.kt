@@ -119,7 +119,7 @@ fun EquationListView(
                 }
             } else {
                 Text(
-                        text = "Liste des équations (${filteredEquations.size})",
+                        text = translate("equation.liste", filteredEquations.size.toString()),
                         style = MaterialTheme.typography.h6
                 )
 
@@ -279,7 +279,7 @@ private fun EquationCard(
 
                     // Type et espèce
                     Text(
-                            text = "Type: ${equation.kind} | Espèce: ${equation.specie}",
+                            text = translate("equation.typeEspece", equation.kind.toString(), equation.specie.toString()),
                             style = MaterialTheme.typography.caption,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                     )

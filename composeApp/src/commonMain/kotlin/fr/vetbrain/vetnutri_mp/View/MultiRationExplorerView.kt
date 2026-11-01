@@ -52,16 +52,17 @@ import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchConfig
 import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchLayout
 import fr.vetbrain.vetnutri_mp.ViewModel.MultiRationViewModel
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /** Nombre maximal de rations d'une case ouvertes ensemble dans une consultation. */
 private const val MAX_RATIONS_PAR_CASE = 20
 
 private val niveauxCible =
         listOf(
-                Reflevel.OPTIMIN to "Optimum minimum",
-                Reflevel.MIN to "Minimum",
-                Reflevel.OPTIMAX to "Optimum maximum",
-                Reflevel.MAX to "Maximum"
+                Reflevel.OPTIMIN to translate("multiration.niveau.OPTIMIN"),
+                Reflevel.MIN to translate("multiration.niveau.MIN"),
+                Reflevel.OPTIMAX to translate("multiration.niveau.OPTIMAX"),
+                Reflevel.MAX to translate("multiration.niveau.MAX")
         )
 
 internal fun couleurZone(case: CaseEquilibre): Color =
@@ -105,7 +106,7 @@ fun MultiRationExplorerView(
     Column(modifier = modifier.fillMaxSize()) {
         val courante by viewModel.explorationCourante.collectAsState()
         TopBarSimple(
-                title = "Exploration multiration" + (courante?.let { " — ${it.nom}" } ?: ""),
+                title = translate("multiration.titre") + (courante?.let { " — ${it.nom}" } ?: ""),
                 onNavigateBack = onNavigateBack
         )
         Row(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp)) {
@@ -130,17 +131,17 @@ private fun PanneauConfiguration(viewModel: MultiRationViewModel, modifier: Modi
             // Bloc de calcul toujours visible : ce qui sera calculé et ce qui le bloque
             Column(Modifier.fillMaxWidth().background(Color(0xFFF5F5F5)).padding(12.dp)) {
                 Text(
-                        "${viewModel.nombreScenarios(p)} scénarios",
+                        translate("multiration.nbScenarios", viewModel.nombreScenarios(p).toString()),
                         fontWeight = FontWeight.Bold
                 )
                 Text(
-                        "= combinaisons × poids × K × référentiels",
+                        translate("multiration.formuleScenarios"),
                         fontSize = 11.sp,
                         color = Color.Gray
                 )
                 Spacer(Modifier.height(4.dp))
                 if (problemes.isEmpty()) {
-                    Text("✓ Prêt à calculer.", color = Color(0xFF3C763D), fontSize = 12.sp)
+                    Text(translate("multiration.pret"), color = Color(0xFF3C763D), fontSize = 12.sp)
                 } else {
                     problemes.forEach { Text("• $it", color = Color(0xFFA94442), fontSize = 12.sp) }
                 }
@@ -156,7 +157,7 @@ private fun PanneauConfiguration(viewModel: MultiRationViewModel, modifier: Modi
                                             backgroundColor = VetNutriColors.Primary,
                                             contentColor = VetNutriColors.OnPrimary
                                     )
-                    ) { Text("Calculer toutes les rations") }
+                    ) { Text(translate("multiration.calculerTout")) }
                 } else {
                     LinearProgressIndicator(
                             progress = if (enCours.total > 0) enCours.faits.toFloat() / enCours.total else 0f,
@@ -164,12 +165,12 @@ private fun PanneauConfiguration(viewModel: MultiRationViewModel, modifier: Modi
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("${enCours.faits} / ${enCours.total}", fontSize = 12.sp, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { viewModel.annulerCalcul() }) { Text("Annuler") }
+                        TextButton(onClick = { viewModel.annulerCalcul() }) { Text(translate("multiration.annuler")) }
                     }
                 }
             }
             AdaptiveTabRow(tabCount = 4, selectedTabIndex = onglet, backgroundColor = Color.White) {
-                listOf("Animaux", "Ingrédients", "Options", "Enregistrées").forEachIndexed { i, titre ->
+                listOf(translate("multiration.onglet.animaux"), translate("multiration.onglet.ingredients"), translate("multiration.onglet.options"), translate("multiration.onglet.enregistrees")).forEachIndexed { i, titre ->
                     Tab(selected = onglet == i, onClick = { onglet = i }, text = { Text(titre, fontSize = 13.sp) })
                 }
             }
@@ -225,7 +226,7 @@ private fun OngletAnimaux(viewModel: MultiRationViewModel, p: ParametresExplorat
     val references = toutes.filter { it.espece == p.espece }
 
     DropdownField(
-            label = "Espèce",
+            label = translate("multiration.espece"),
             selectedValue = p.espece,
             options = especes.ifEmpty { listOf(p.espece) },
             onValueChange = { viewModel.choisirEspece(it) },
@@ -233,16 +234,16 @@ private fun OngletAnimaux(viewModel: MultiRationViewModel, p: ParametresExplorat
             modifier = Modifier.fillMaxWidth()
     )
     Spacer(Modifier.height(8.dp))
-    Text("Référentiels généraux — ${p.espece.translateEnum()}", fontWeight = FontWeight.Bold)
+    Text(translate("multiration.referentielsGeneraux", p.espece.translateEnum()), fontWeight = FontWeight.Bold)
     Text(
-            "Chaque référentiel est croisé avec tous les poids : aucun profil physiologique n'est déduit du poids.",
+            translate("multiration.referentielsAide"),
             fontSize = 11.sp,
             color = Color.Gray
     )
     OutlinedTextField(
             value = filtre,
             onValueChange = { filtre = it },
-            label = { Text("Filtrer", fontSize = 11.sp) },
+            label = { Text(translate("multiration.filtrer"), fontSize = 11.sp) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
     )
@@ -257,35 +258,33 @@ private fun OngletAnimaux(viewModel: MultiRationViewModel, p: ParametresExplorat
                 Text("${ref.nom} — ${ref.stadePhysio.label}", fontSize = 13.sp)
             }
         }
-        if (toutes.isEmpty()) Text("Chargement des référentiels…", fontSize = 12.sp, color = Color.Gray)
-        else if (references.isEmpty()) Text("Aucun référentiel général pour cette espèce.", fontSize = 12.sp, color = Color.Gray)
+        if (toutes.isEmpty()) Text(translate("multiration.chargementReferentiels"), fontSize = 12.sp, color = Color.Gray)
+        else if (references.isEmpty()) Text(translate("multiration.aucunReferentiel"), fontSize = 12.sp, color = Color.Gray)
     }
 
     Spacer(Modifier.height(12.dp))
-    Text("Poids (kg)", fontWeight = FontWeight.Bold)
+    Text(translate("multiration.poidsKg"), fontWeight = FontWeight.Bold)
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        ChampNombre("de", p.poidsDe, { v -> viewModel.modifierParametres { it.copy(poidsDe = v) } }, Modifier.weight(1f))
-        ChampNombre("à", p.poidsA, { v -> viewModel.modifierParametres { it.copy(poidsA = v) } }, Modifier.weight(1f))
-        ChampNombre("pas", p.poidsPas, { v -> viewModel.modifierParametres { it.copy(poidsPas = v) } }, Modifier.weight(1f))
+        ChampNombre(translate("multiration.de"), p.poidsDe, { v -> viewModel.modifierParametres { it.copy(poidsDe = v) } }, Modifier.weight(1f))
+        ChampNombre(translate("multiration.a"), p.poidsA, { v -> viewModel.modifierParametres { it.copy(poidsA = v) } }, Modifier.weight(1f))
+        ChampNombre(translate("multiration.pas"), p.poidsPas, { v -> viewModel.modifierParametres { it.copy(poidsPas = v) } }, Modifier.weight(1f))
     }
     Spacer(Modifier.height(8.dp))
-    Text("Coefficient K", fontWeight = FontWeight.Bold)
+    Text(translate("multiration.coefficientK"), fontWeight = FontWeight.Bold)
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        ChampNombre("de", p.kDe, { v -> viewModel.modifierParametres { it.copy(kDe = v) } }, Modifier.weight(1f))
-        ChampNombre("à", p.kA, { v -> viewModel.modifierParametres { it.copy(kA = v) } }, Modifier.weight(1f))
-        ChampNombre("pas", p.kPas, { v -> viewModel.modifierParametres { it.copy(kPas = v) } }, Modifier.weight(1f))
+        ChampNombre(translate("multiration.de"), p.kDe, { v -> viewModel.modifierParametres { it.copy(kDe = v) } }, Modifier.weight(1f))
+        ChampNombre(translate("multiration.a"), p.kA, { v -> viewModel.modifierParametres { it.copy(kA = v) } }, Modifier.weight(1f))
+        ChampNombre(translate("multiration.pas"), p.kPas, { v -> viewModel.modifierParametres { it.copy(kPas = v) } }, Modifier.weight(1f))
     }
     val (poids, k) = viewModel.grille(p)
     if (poids != null && k != null) {
         Text(
-                "${poids.size} poids (${poids.take(6).joinToString { formaterQuantite(it) }}${if (poids.size > 6) ", …" else ""}) × " +
-                        "${k.size} valeurs de K (${k.take(6).joinToString { formaterQuantite(it) }}${if (k.size > 6) ", …" else ""})",
+                translate("multiration.grille", poids.size.toString(), "${poids.take(6).joinToString { formaterQuantite(it) }}${if (poids.size > 6) ", …" else ""}", k.size.toString(), "${k.take(6).joinToString { formaterQuantite(it) }}${if (k.size > 6) ", …" else ""}"),
                 fontSize = 12.sp
         )
     }
     Text(
-            "Besoin énergétique total = besoin standard × K (enregistré comme coefficient d'ajustement à l'ouverture d'une ration). " +
-                    "Les seuils par 1000 kcal restent basés sur le besoin standard, comme dans l'analyse de ration.",
+            translate("multiration.besoinTotalAide"),
             fontSize = 11.sp,
             color = Color.Gray
     )
@@ -297,7 +296,7 @@ private fun OngletIngredients(viewModel: MultiRationViewModel, p: ParametresExpl
     var ouvert by remember { mutableStateOf(RoleExploration.PROTEINES) }
 
     Text(
-            "Une combinaison = un aliment de chaque liste. Ajustements successifs dans cet ordre ; l'énergie est complétée en dernier.",
+            translate("multiration.combinaisonAide"),
             fontSize = 11.sp,
             color = Color.Gray
     )
@@ -311,9 +310,9 @@ private fun OngletIngredients(viewModel: MultiRationViewModel, p: ParametresExpl
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().clickable { ouvert = role }
                 ) {
-                    Text("${i + 1}. ${if (role.supplementaire) nomTraduitNutriment((p.cibles[role] ?: CibleExploration(role.nutrimentParDefaut)).nutriment) else role.libelle}", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text("${i + 1}. ${if (role.supplementaire) nomTraduitNutriment((p.cibles[role] ?: CibleExploration(role.nutrimentParDefaut)).nutriment) else role.libelleTraduit()}", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Text(
-                            if (ignore) "(besoin ignoré)" else if (liste.isEmpty()) "(vide)" else "(${liste.size} aliment${if (liste.size > 1) "s" else ""})",
+                            if (ignore) translate("multiration.besoinIgnore") else if (liste.isEmpty()) translate("multiration.vide") else translate("multiration.nbAliments", liste.size.toString()),
                             color = if (liste.isEmpty() && !ignore) Color(0xFFA94442) else Color.Gray,
                             fontSize = 12.sp
                     )
@@ -324,19 +323,19 @@ private fun OngletIngredients(viewModel: MultiRationViewModel, p: ParametresExpl
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(aliment.nom ?: aliment.uuid, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 2)
                             IconButton(onClick = { viewModel.retirerAliment(role, aliment.uuid) }, modifier = Modifier.size(28.dp)) {
-                                Icon(Icons.Default.Close, contentDescription = "Retirer", modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Close, contentDescription = translate("multiration.retirer"), modifier = Modifier.size(16.dp))
                             }
                         }
                     }
                     TextButton(onClick = { roleAjout = role }) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Text(" Ajouter des aliments", fontSize = 12.sp)
+                        Text(" " + translate("multiration.ajouterAliments"), fontSize = 12.sp)
                     }
                     if (!role.estEnergie) {
                         val cible = p.cibles[role] ?: CibleExploration(role.nutrimentParDefaut)
                         if (role == RoleExploration.FIBRES || role.supplementaire) {
                             DropdownField(
-                                    label = "Nutriment cible",
+                                    label = translate("multiration.nutrimentCible"),
                                     selectedValue = cible.nutriment,
                                     options = if (role == RoleExploration.FIBRES) RoleExploration.nutrimentsFibres else
                                             fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.getAllNutrientLabels()
@@ -351,7 +350,7 @@ private fun OngletIngredients(viewModel: MultiRationViewModel, p: ParametresExpl
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
                             DropdownField(
-                                    label = "Cible (niveau du référentiel)",
+                                    label = translate("multiration.cibleNiveau"),
                                     selectedValue = niveauxCible.firstOrNull { it.first == cible.niveau },
                                     options = niveauxCible,
                                     onValueChange = { viewModel.modifierNiveauCible(role, it.first) },
@@ -359,7 +358,7 @@ private fun OngletIngredients(viewModel: MultiRationViewModel, p: ParametresExpl
                                     modifier = Modifier.weight(1f)
                             )
                             ChampDecimal(
-                                    "Facteur ×",
+                                    translate("multiration.facteur"),
                                     cible.facteur,
                                     cle = cible.nutriment.label,
                                     onValide = { f -> viewModel.modifierFacteurCible(role, f) },
@@ -368,38 +367,38 @@ private fun OngletIngredients(viewModel: MultiRationViewModel, p: ParametresExpl
                         }
                         if (role == RoleExploration.FIBRES)
                                 Text(
-                                        "Pour la cellulose, l'ajustement vise 5 × le seuil, comme l'ajustement multi-nutriments. La conformité reste évaluée sur les seuils du référentiel.",
+                                        translate("multiration.celluloseAide"),
                                         fontSize = 11.sp,
                                         color = Color.Gray
                                 )
                     } else {
                         Text(
-                                "Quantité calculée en dernier pour compléter l'énergie. Un excédent énergétique est signalé, sans quantité négative.",
+                                translate("multiration.energieAide"),
                                 fontSize = 11.sp,
                                 color = Color.Gray
                         )
                     }
                     if (role == RoleExploration.SODIUM || role.supplementaire) {
-                        Text("Arrondi au dixième de gramme, sauf conditionnement. La quantité couvre le manque après les ingrédients précédents.", fontSize = 11.sp, color = Color.Gray)
+                        Text(translate("multiration.selAide"), fontSize = 11.sp, color = Color.Gray)
                     }
                     if (role.supplementaire) {
-                        TextButton(onClick = { viewModel.retirerListe(role) }) { Text("Supprimer cette liste") }
+                        TextButton(onClick = { viewModel.retirerListe(role) }) { Text(translate("multiration.supprimerListe")) }
                     }
                     if (p.arrondir) {
                         ChampDecimal(
-                                "Pas d’arrondi manuel (g)",
+                                translate("multiration.pasManuel"),
                                 p.pasArrondiManuel[role] ?: 0.0,
                                 cle = "pas-${role.name}",
                                 onValide = { pas -> viewModel.modifierPasArrondi(role, pas) },
                                 modifier = Modifier.fillMaxWidth()
                         )
                         Text(
-                                "Le pas manuel remplace les règles 1 / 5 / 25 g ; un conditionnement garde la priorité. 0 = règles automatiques.",
+                                translate("multiration.pasManuelAide"),
                                 fontSize = 11.sp,
                                 color = Color.Gray
                         )
                         ChampDecimal(
-                                "Dose minimale si utilisé (g)",
+                                translate("multiration.doseMinimale"),
                                 p.doseMinimale[role] ?: role.doseParDefaut,
                                 cle = role,
                                 onValide = { d -> viewModel.modifierDoseMinimale(role, d) },
@@ -413,7 +412,7 @@ private fun OngletIngredients(viewModel: MultiRationViewModel, p: ParametresExpl
 
     TextButton(onClick = { ouvert = viewModel.ajouterListe() }) {
         Icon(Icons.Default.Add, contentDescription = null)
-        Text("Ajouter une liste d’ingrédients (EPA/DHA, autre nutriment)")
+        Text(translate("multiration.ajouterListe"))
     }
     roleAjout?.let { role -> DialogueAjoutAliments(viewModel, role, onDismiss = { roleAjout = null }) }
 }
@@ -430,9 +429,9 @@ private fun DialogueAjoutAliments(viewModel: MultiRationViewModel, role: RoleExp
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Card(modifier = Modifier.fillMaxWidth(0.85f).fillMaxHeight(0.85f), elevation = 8.dp) {
             Column(Modifier.fillMaxSize().padding(16.dp)) {
-                Text("Ajouter des aliments — ${role.libelle}", style = MaterialTheme.typography.h6)
+                Text(translate("multiration.ajouterAlimentsRole", role.libelleTraduit()), style = MaterialTheme.typography.h6)
                 Text(
-                        "Cliquer sur un aliment l'ajoute à la liste (${dejaChoisis.size} choisi${if (dejaChoisis.size > 1) "s" else ""}).",
+                        translate("multiration.cliquerAjoute", dejaChoisis.size.toString()),
                         fontSize = 12.sp,
                         color = Color.Gray
                 )
@@ -457,7 +456,7 @@ private fun DialogueAjoutAliments(viewModel: MultiRationViewModel, role: RoleExp
                         modifier = Modifier.weight(1f).fillMaxWidth()
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    Button(onClick = onDismiss) { Text("Fermer") }
+                    Button(onClick = onDismiss) { Text(translate("multiration.fermer")) }
                 }
             }
         }
@@ -473,31 +472,30 @@ private fun OngletOptions(viewModel: MultiRationViewModel, p: ParametresExplorat
             Text(texte, fontSize = 13.sp)
         }
     }
-    Option("Arrondir les quantités comme l'application", p.arrondir) { v -> viewModel.modifierParametres { it.copy(arrondir = v) } }
+    Option(translate("multiration.arrondir"), p.arrondir) { v -> viewModel.modifierParametres { it.copy(arrondir = v) } }
     if (p.arrondir) {
-        Option("Toujours arrondir au supérieur", p.arrondirAuSuperieur) { v ->
+        Option(translate("multiration.arrondirSup"), p.arrondirAuSuperieur) { v ->
             viewModel.modifierParametres { it.copy(arrondirAuSuperieur = v) }
         }
     }
     Text(
-            "Arrondi après chaque ajustement : ½ contenant (dosette, sachet, boîte), sinon 0,1 g pour le sel et les listes supplémentaires ; pour les autres listes, 1 g sous 20 g, 5 g sous 200 g, 25 g au-delà. " +
-                    (if (p.arrondirAuSuperieur) "Toute quantité positive atteint au moins la dose minimale. L’excédent énergétique dû à l’arrondi est accepté jusqu’à un pas de l’aliment énergétique."
-                    else "Sous la dose minimale, un aliment est omis (moins de la moitié) ou porté à cette dose. L’énergie est acceptée à ± ½ pas de l’aliment énergétique."),
+            translate("multiration.arrondiAide") + " " +
+                    (if (p.arrondirAuSuperieur) translate("multiration.arrondiSupAide")
+                    else translate("multiration.arrondiProcheAide")),
             fontSize = 11.sp,
             color = Color.Gray
     )
-    Option("Ignorer les OPTIMAX : seuls les MAX limitent les apports", p.ignorerOptimax) { v ->
+    Option(translate("multiration.ignorerOptimax"), p.ignorerOptimax) { v ->
         viewModel.modifierParametres { it.copy(ignorerOptimax = v) }
     }
     Text(
-            "Les valeurs absentes d'un aliment comptent pour 0, comme dans l'analyse de ration. Un scénario dont seuls des nutriments " +
-                    "non renseignés échouent est « conforme sous réserve ».",
+            translate("multiration.valeursAbsentesAide"),
             fontSize = 11.sp,
             color = Color.Gray
     )
     Spacer(Modifier.height(8.dp))
-    Text("Besoins à prendre en compte", fontWeight = FontWeight.Bold)
-    Text("Décochez un nutriment pour ignorer tous ses seuils et son ajustement. Sa liste d’ingrédients devient facultative. L’énergie reste prise en compte.", fontSize = 11.sp, color = Color.Gray)
+    Text(translate("multiration.besoins"), fontWeight = FontWeight.Bold)
+    Text(translate("multiration.besoinsAide"), fontSize = 11.sp, color = Color.Gray)
     val references by viewModel.references.collectAsState()
     val besoins = (references.filter { it.uuid in p.referenceIds }.flatMap {
         (it.getRefMapMin().keys + it.getRefMapOMin().keys + it.getRefMapMax().keys + it.getRefMapOMax().keys).toList()
@@ -513,7 +511,7 @@ private fun OngletOptions(viewModel: MultiRationViewModel, p: ParametresExplorat
         }
     }
     Spacer(Modifier.height(8.dp))
-    ChampNombre("Nombre maximal de scénarios", p.maxScenarios, { v -> viewModel.modifierParametres { it.copy(maxScenarios = v) } }, Modifier.fillMaxWidth())
+    ChampNombre(translate("multiration.maxScenarios"), p.maxScenarios, { v -> viewModel.modifierParametres { it.copy(maxScenarios = v) } }, Modifier.fillMaxWidth())
 }
 
 /** Configurations enregistrées en base : enregistrer, recharger, supprimer. */
@@ -524,17 +522,16 @@ private fun OngletEnregistrees(viewModel: MultiRationViewModel) {
     var nom by remember(courante?.uuid) { mutableStateOf(courante?.nom ?: "") }
     var aSupprimer by remember { mutableStateOf<String?>(null) }
 
-    Text("Enregistrer la configuration", fontWeight = FontWeight.Bold)
+    Text(translate("multiration.enregistrerConfig"), fontWeight = FontWeight.Bold)
     Text(
-            "Sont enregistrés : espèce, référentiels, grilles poids × K, listes d'ingrédients, cibles et options. " +
-                    "Les résultats se recalculent après chargement.",
+            translate("multiration.enregistrerAide"),
             fontSize = 11.sp,
             color = Color.Gray
     )
     OutlinedTextField(
             value = nom,
             onValueChange = { nom = it },
-            label = { Text("Nom", fontSize = 11.sp) },
+            label = { Text(translate("multiration.nom"), fontSize = 11.sp) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
     )
@@ -543,18 +540,18 @@ private fun OngletEnregistrees(viewModel: MultiRationViewModel) {
                 onClick = { viewModel.enregistrerExploration(nom) },
                 enabled = nom.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary, contentColor = VetNutriColors.OnPrimary)
-        ) { Text(if (courante != null) "Mettre à jour" else "Enregistrer", fontSize = 12.sp) }
+        ) { Text(if (courante != null) translate("multiration.mettreAJour") else translate("multiration.enregistrer"), fontSize = 12.sp) }
         if (courante != null) {
             OutlinedButton(onClick = { viewModel.enregistrerExploration(nom, commeNouvelle = true) }, enabled = nom.isNotBlank()) {
-                Text("Enregistrer comme nouvelle", fontSize = 12.sp)
+                Text(translate("multiration.enregistrerNouvelle"), fontSize = 12.sp)
             }
         }
     }
-    TextButton(onClick = { viewModel.nouvelleExploration() }) { Text("Nouvelle exploration (configuration vide)", fontSize = 12.sp) }
+    TextButton(onClick = { viewModel.nouvelleExploration() }) { Text(translate("multiration.nouvelle"), fontSize = 12.sp) }
 
     Divider(Modifier.padding(vertical = 8.dp))
-    Text("Explorations enregistrées", fontWeight = FontWeight.Bold)
-    if (explorations.isEmpty()) Text("Aucune exploration enregistrée.", fontSize = 12.sp, color = Color.Gray)
+    Text(translate("multiration.explorationsEnregistrees"), fontWeight = FontWeight.Bold)
+    if (explorations.isEmpty()) Text(translate("multiration.aucuneExploration"), fontSize = 12.sp, color = Color.Gray)
     explorations.forEach { e ->
         val espece = Espece.entries.firstOrNull { it.name == e.espece }
         Row(
@@ -568,9 +565,9 @@ private fun OngletEnregistrees(viewModel: MultiRationViewModel) {
                 Text(e.nom, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Text(espece?.translateEnum() ?: e.espece, fontSize = 11.sp, color = Color.Gray)
             }
-            TextButton(onClick = { viewModel.chargerExploration(e.uuid) }) { Text("Charger", fontSize = 12.sp) }
+            TextButton(onClick = { viewModel.chargerExploration(e.uuid) }) { Text(translate("multiration.charger"), fontSize = 12.sp) }
             IconButton(onClick = { aSupprimer = e.uuid }, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Close, contentDescription = "Supprimer", modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.Close, contentDescription = translate("multiration.supprimer"), modifier = Modifier.size(16.dp))
             }
         }
     }
@@ -579,15 +576,15 @@ private fun OngletEnregistrees(viewModel: MultiRationViewModel) {
         val e = explorations.firstOrNull { it.uuid == uuid }
         AlertDialog(
                 onDismissRequest = { aSupprimer = null },
-                title = { Text("Supprimer l'exploration ?") },
-                text = { Text("« ${e?.nom ?: ""} » sera supprimée. Les consultations déjà ouvertes depuis cette exploration sont conservées.") },
+                title = { Text(translate("multiration.supprimerTitre")) },
+                text = { Text(translate("multiration.supprimerTexte", e?.nom ?: "")) },
                 confirmButton = {
                     TextButton(onClick = {
                         viewModel.supprimerExploration(uuid)
                         aSupprimer = null
-                    }) { Text("Supprimer") }
+                    }) { Text(translate("multiration.supprimer")) }
                 },
-                dismissButton = { TextButton(onClick = { aSupprimer = null }) { Text("Annuler") } }
+                dismissButton = { TextButton(onClick = { aSupprimer = null }) { Text(translate("multiration.annuler")) } }
         )
     }
 }
@@ -617,8 +614,7 @@ private fun PanneauResultats(
         val r = resultat
         if (r == null) {
             Bandeau(
-                    "Choisir les référentiels, la grille et les listes d'ingrédients à gauche, puis « Calculer toutes les rations ». " +
-                            "Un clic sur une case de la carte affiche ses rations ; elles peuvent ensuite être ouvertes dans l'analyse de ration pour être analysées, éditées et exportées.",
+                    translate("multiration.introResultats"),
                     Color(0xFFD9EDF7),
                     Color(0xFF31708F)
             )
@@ -626,7 +622,7 @@ private fun PanneauResultats(
         }
         if (parametresDuResultat != null && parametresDuResultat != p) {
             Bandeau(
-                    "Paramètres modifiés depuis le dernier calcul : les résultats affichés ne les prennent pas encore en compte.",
+                    translate("multiration.parametresModifies"),
                     Color(0xFFFCF8E3),
                     Color(0xFF8A6D3B)
             )
@@ -635,17 +631,17 @@ private fun PanneauResultats(
             val noms = r.configuration.besoinsIgnores.map { label ->
                 fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(label)?.let { nomTraduitNutriment(it) } ?: label
             }
-            Text("Besoins ignorés : ${noms.joinToString()}. La conformité porte uniquement sur les besoins retenus.", fontSize = 12.sp)
+            Text(translate("multiration.besoinsIgnores", noms.joinToString()), fontSize = 12.sp)
         }
         val conformes = r.scenarios.count {
             it.statut == StatutScenario.CONFORME || it.statut == StatutScenario.CONFORME_SOUS_RESERVE
         }
         Text(
-                "${r.scenarios.size} scénarios ; $conformes conformes aux seuils renseignés retenus (valeurs inconnues incluses).",
+                translate("multiration.bilanScenarios", r.scenarios.size.toString(), conformes.toString()),
                 style = MaterialTheme.typography.h6
         )
         Text(
-                "Cliquer sur une case pour voir ses rations. Libellé : n/N combinaisons conformes aux seuils renseignés ; les valeurs inconnues restent signalées dans le détail.",
+                translate("multiration.cliquerCase"),
                 fontSize = 12.sp,
                 color = Color.Gray
         )
@@ -655,18 +651,17 @@ private fun PanneauResultats(
             CarteReference(cases, caseSelectionnee) { viewModel.selectionnerCase(it) }
         }
         Text(
-                "Une case est équilibrable si au moins une combinaison respecte tous les seuils. L'ajustement est séquentiel : " +
-                        "une case rouge signifie qu'aucune combinaison testée ne convient avec cette méthode, pas qu'aucune ration n'existe.",
+                translate("multiration.equilibrableAide"),
                 fontSize = 11.sp,
                 color = Color.Gray
         )
         if (isCsvFileOperationsSupported()) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
                 OutlinedButton(onClick = { scope.launch { saveCsvFileForExport(viewModel.csvScenarios(), "exploration-scenarios.csv") } }) {
-                    Text("Exporter les scénarios (CSV)", fontSize = 12.sp)
+                    Text(translate("multiration.exporterScenarios"), fontSize = 12.sp)
                 }
                 OutlinedButton(onClick = { scope.launch { saveCsvFileForExport(viewModel.csvCases(), "exploration-carte.csv") } }) {
-                    Text("Exporter la carte (CSV)", fontSize = 12.sp)
+                    Text(translate("multiration.exporterCarte"), fontSize = 12.sp)
                 }
             }
         }
@@ -684,7 +679,7 @@ private fun Bandeau(texte: String, fond: Color, couleur: Color, onClose: (() -> 
         Text(texte, color = couleur, fontSize = 13.sp, modifier = Modifier.weight(1f))
         if (onClose != null)
                 IconButton(onClick = onClose, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Close, contentDescription = "Fermer", tint = couleur)
+                    Icon(Icons.Default.Close, contentDescription = translate("multiration.fermer"), tint = couleur)
                 }
     }
 }
@@ -704,7 +699,7 @@ private fun LegendeZones() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(12.dp).background(couleur))
                 Text(
-                        " ${if (zone == ZoneEquilibre.SOUS_RESERVE) "Équilibrable avec données inconnues" else zone.libelle}${if (zone == ZoneEquilibre.SEUILS_NON_RESPECTES) " (clair = 1 seuil, foncé = 5 et plus)" else ""}",
+                        " ${if (zone == ZoneEquilibre.SOUS_RESERVE) translate("multiration.legendeSousReserve") else zone.libelleTraduit()}${if (zone == ZoneEquilibre.SEUILS_NON_RESPECTES) " " + translate("multiration.legendeNuances") else ""}",
                         fontSize = 11.sp
                 )
             }
@@ -770,30 +765,29 @@ private fun DetailCase(viewModel: MultiRationViewModel, case: CaseEquilibre) {
                     "${case.reference.nom} — ${formaterQuantite(case.poids)} kg — K ${formaterQuantite(case.k)}",
                     style = MaterialTheme.typography.h6
             )
-            Text("${case.zone.libelle} — ${case.conformes + case.sousReserve}/${case.combinaisons} combinaisons conformes aux seuils renseignés", fontSize = 13.sp)
-            if (case.seuilsLimitants.isNotEmpty()) Text("Seuils limitants : ${case.seuilsLimitants}", fontSize = 12.sp)
+            Text(translate("multiration.detailCase", case.zone.libelleTraduit(), "${case.conformes + case.sousReserve}", case.combinaisons.toString()), fontSize = 13.sp)
+            if (case.seuilsLimitants.isNotEmpty()) Text(translate("multiration.seuilsLimitants", case.seuilsLimitants.toString()), fontSize = 12.sp)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                         onClick = { scenario?.let { viewModel.ouvrirDansAnalyse(listOf(it)) } },
                         enabled = scenario != null,
                         colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary, contentColor = VetNutriColors.OnPrimary)
-                ) { Text("Analyser et éditer cette ration") }
+                ) { Text(translate("multiration.analyserEditer")) }
                 OutlinedButton(
                         onClick = { viewModel.ouvrirDansAnalyse(case.scenarios.take(MAX_RATIONS_PAR_CASE)) },
                         enabled = case.scenarios.isNotEmpty()
                 ) {
-                    Text("Ouvrir la case (${minOf(case.scenarios.size, MAX_RATIONS_PAR_CASE)} rations)")
+                    Text(translate("multiration.ouvrirCase", minOf(case.scenarios.size, MAX_RATIONS_PAR_CASE).toString()))
                 }
             }
             Text(
-                    "Les rations s’ouvrent dans une vue autonome avec le référentiel, le poids et K de la case. " +
-                            "Les corrections peuvent être enregistrées dans l’exploration ; aucun animal ni consultation n’est créé.",
+                    translate("multiration.ouvrirAide"),
                     fontSize = 11.sp,
                     color = Color.Gray
             )
             Spacer(Modifier.height(8.dp))
-            Text("Combinaisons de la case (la meilleure d'abord)", fontWeight = FontWeight.Bold)
+            Text(translate("multiration.combinaisonsCase"), fontWeight = FontWeight.Bold)
             case.scenarios.forEach { s ->
                 LigneScenario(s, choisi = s.id == scenario?.id) { viewModel.selectionnerScenario(s) }
             }
@@ -813,7 +807,7 @@ private fun LigneScenario(s: ScenarioExploration, choisi: Boolean, onClick: () -
                             .padding(vertical = 4.dp, horizontal = 4.dp)
     ) {
         Text(s.id, fontSize = 12.sp, modifier = Modifier.width(72.dp))
-        Text(s.statut.libelle, fontSize = 12.sp, color = couleurStatut(s.statut), modifier = Modifier.width(170.dp))
+        Text(s.statut.libelleTraduit(), fontSize = 12.sp, color = couleurStatut(s.statut), modifier = Modifier.width(170.dp))
         Text(
                 s.composition.ifEmpty { s.message },
                 fontSize = 12.sp,
@@ -822,7 +816,7 @@ private fun LigneScenario(s: ScenarioExploration, choisi: Boolean, onClick: () -
                 modifier = Modifier.weight(1f)
         )
         Text(
-                if (s.seuilsManques.isEmpty()) "" else "${s.seuilsManques.size} seuil(s)",
+                if (s.seuilsManques.isEmpty()) "" else translate("multiration.nbSeuils", s.seuilsManques.size.toString()),
                 fontSize = 12.sp,
                 modifier = Modifier.width(80.dp),
                 textAlign = TextAlign.End
@@ -833,10 +827,10 @@ private fun LigneScenario(s: ScenarioExploration, choisi: Boolean, onClick: () -
 @Composable
 private fun DetailScenario(s: ScenarioExploration) {
     Divider(Modifier.padding(vertical = 8.dp))
-    Text("Détail ${s.id}", fontWeight = FontWeight.Bold)
+    Text(translate("multiration.detail", s.id.toString()), fontWeight = FontWeight.Bold)
     s.ration.alimentMutableList.forEachIndexed { i, a ->
         Row {
-            Text(s.roles.getOrNull(i)?.libelle ?: "", fontSize = 12.sp, modifier = Modifier.width(130.dp))
+            Text(s.roles.getOrNull(i)?.libelleTraduit() ?: "", fontSize = 12.sp, modifier = Modifier.width(130.dp))
             Text(a.aliment?.nom ?: "?", fontSize = 12.sp, modifier = Modifier.weight(1f))
             Text("${formaterQuantite(a.quantite)} g", fontSize = 12.sp, modifier = Modifier.width(80.dp), textAlign = TextAlign.End)
         }
@@ -845,12 +839,20 @@ private fun DetailScenario(s: ScenarioExploration) {
     val besoin = s.besoinTotal
     if (energie != null && besoin != null && besoin > 0.0) {
         Text(
-                "Énergie ${energie.toInt()} / ${besoin.toInt()} kcal (${if (energie >= besoin) "+" else ""}${formaterQuantite(100.0 * (energie - besoin) / besoin)} %)",
+                translate("multiration.energieBilan", energie.toInt().toString(), besoin.toInt().toString(), "${if (energie >= besoin) "+" else ""}${formaterQuantite(100.0 * (energie - besoin) / besoin)}"),
                 fontSize = 12.sp
         )
     }
-    if (s.seuilsManques.isNotEmpty()) Text("Seuils non respectés : ${s.seuilsManques.joinToString()}", fontSize = 12.sp, color = Color(0xFFA94442))
+    if (s.seuilsManques.isNotEmpty()) Text(translate("multiration.seuilsNonRespectes", s.seuilsManques.joinToString()), fontSize = 12.sp, color = Color(0xFFA94442))
     if (s.seuilsNonRenseignes.isNotEmpty())
-            Text("Échecs sur données absentes : ${s.seuilsNonRenseignes.joinToString()}", fontSize = 12.sp, color = Color(0xFF8A6D3B))
+            Text(translate("multiration.echecsDonnees", s.seuilsNonRenseignes.joinToString()), fontSize = 12.sp, color = Color(0xFF8A6D3B))
     if (s.message.isNotEmpty()) Text(s.message, fontSize = 12.sp, color = Color.Gray)
 }
+
+/** Libellés des énumérations du moteur, dans la langue de l'interface. */
+private fun RoleExploration.libelleTraduit(): String =
+        translate("multiration.role." + if (supplementaire) "SUPPLEMENT" else name)
+
+private fun ZoneEquilibre.libelleTraduit(): String = translate("multiration.zone.$name")
+
+private fun StatutScenario.libelleTraduit(): String = translate("multiration.statut.$name")

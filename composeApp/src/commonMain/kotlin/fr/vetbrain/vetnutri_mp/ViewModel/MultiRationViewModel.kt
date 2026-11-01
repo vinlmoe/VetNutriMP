@@ -45,6 +45,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 
 /**
  * Exploration multiration : configuration de la grille (référentiels × poids × K), des six listes
@@ -225,16 +227,16 @@ class MultiRationViewModel(
     /** Ce qui empêche de lancer le calcul (vide = prêt). */
     fun problemes(p: ParametresExploration = _parametres.value): List<String> {
         val liste = mutableListOf<String>()
-        if (p.referenceIds.isEmpty()) liste += "Choisir au moins un référentiel (${p.espece.name.lowercase()})."
+        if (p.referenceIds.isEmpty()) liste += translate("multiration.probleme.referentiel", p.espece.translateEnum().lowercase())
         val (poids, k) = grille(p)
-        if (poids == null) liste += "Poids : bornes positives, maximum ≥ minimum, pas positif."
-        if (k == null) liste += "K : bornes positives, maximum ≥ minimum, pas positif."
+        if (poids == null) liste += translate("multiration.probleme.poids")
+        if (k == null) liste += translate("multiration.probleme.k")
         val vides = rolesExplorationActifs(p.listes, p.cibles, p.besoinsIgnores).filter { p.listes[it].isNullOrEmpty() }
-        if (vides.isNotEmpty()) liste += "Listes vides : ${vides.joinToString { it.libelle }}."
+        if (vides.isNotEmpty()) liste += translate("multiration.probleme.listesVides", vides.joinToString { translate("multiration.role." + if (it.supplementaire) "SUPPLEMENT" else it.name) })
         val limite = p.maxScenarios.toIntOrNull()
-        if (limite == null || limite <= 0) liste += "Limite de scénarios invalide."
+        if (limite == null || limite <= 0) liste += translate("multiration.probleme.limite")
         else if (nombreScenarios(p) > limite)
-            liste += "${nombreScenarios(p)} scénarios dépassent la limite de $limite : réduire les listes ou la grille, ou relever la limite."
+            liste += translate("multiration.probleme.depasse", nombreScenarios(p).toString(), limite.toString())
         return liste
     }
 

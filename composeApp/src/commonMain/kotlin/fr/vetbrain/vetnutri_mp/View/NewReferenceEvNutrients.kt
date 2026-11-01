@@ -473,7 +473,7 @@ fun CompactNutrientValueRow(
                                 horizontalArrangement = Arrangement.End
                         ) {
                                 Text(
-                                        text = "Réf: $biblio",
+                                        text = translate("reference.ref", biblio.toString()),
                                         style =
                                                 MaterialTheme.typography.caption.copy(
                                                         fontSize =
@@ -772,7 +772,7 @@ fun NutrientEditDialog(
 
         AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text(text = "Édition de ${getNutrientDisplayNameLocal(nutrient)}") },
+                title = { Text(text = translate("reference.editionNutriment", getNutrientDisplayNameLocal(nutrient))) },
                 text = {
                         Column(
                                 modifier = Modifier.width(800.dp).height(400.dp),

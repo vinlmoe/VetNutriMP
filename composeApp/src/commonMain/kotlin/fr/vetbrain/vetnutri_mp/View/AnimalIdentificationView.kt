@@ -74,7 +74,7 @@ fun AnimalIdentificationView(
             InfoRow(label = Animal.NAME.translate(), value = animal.nom)
             // Troupeau : pas d'espèce, race ni sexe propres ; ceux de chaque groupe d'individus
             animal.typesTroupeau?.let { types ->
-                InfoRow(label = "Troupeau", value = "${animal.effectifTroupeau} animaux")
+                InfoRow(label = translate("troupeau.colTroupeau"), value = translate("troupeau.nbAnimaux", animal.effectifTroupeau.toString()))
                 types.forEach { type ->
                     val details =
                             listOfNotNull(
@@ -83,7 +83,7 @@ fun AnimalIdentificationView(
                                     type.sexe()?.translateEnum()
                             ).joinToString(", ")
                     InfoRow(
-                            label = "  ${type.nom.ifBlank { "Groupe sans nom" }}",
+                            label = "  ${type.nom.ifBlank { translate("troupeau.groupeSansNom") }}",
                             value = "${type.nombre} × ${formaterNombreTroupeau(type.poids)} kg — $details"
                     )
                 }

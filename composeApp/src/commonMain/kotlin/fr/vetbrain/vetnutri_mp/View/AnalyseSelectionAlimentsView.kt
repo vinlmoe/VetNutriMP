@@ -695,7 +695,7 @@ private fun AlimentItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${aliment.brand ?: "Sans marque"} - ${aliment.gamme ?: "Sans gamme"}",
+                    text = "${aliment.brand ?: translate("aliment.sansMarque")} - ${aliment.gamme ?: translate("aliment.sansGamme")}",
                     style = MaterialTheme.typography.caption.copy(fontSize = 11.sp),
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                     maxLines = 1,
