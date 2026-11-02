@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -398,7 +399,7 @@ internal fun ReferenceGeneraleDialog(
                                                                 }
                                                                 Text(
                                                                         text =
-                                                                                ConsultationEdit.REF_SPECIES_LABEL.translate(reference.espece?.name ?: ConsultationEdit.REF_SPECIES_UNSPECIFIED.translate()),
+                                                                                ConsultationEdit.REF_SPECIES_LABEL.translate(reference.espece?.translateEnum() ?: ConsultationEdit.REF_SPECIES_UNSPECIFIED.translate()),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -536,7 +537,7 @@ internal fun ReferenceMaladieDialog(
                                                                 }
                                                                 Text(
                                                                         text =
-                                                                                ConsultationEdit.REF_SPECIES_LABEL.translate(reference.espece?.name ?: ConsultationEdit.REF_SPECIES_UNSPECIFIED.translate()),
+                                                                                ConsultationEdit.REF_SPECIES_LABEL.translate(reference.espece?.translateEnum() ?: ConsultationEdit.REF_SPECIES_UNSPECIFIED.translate()),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography

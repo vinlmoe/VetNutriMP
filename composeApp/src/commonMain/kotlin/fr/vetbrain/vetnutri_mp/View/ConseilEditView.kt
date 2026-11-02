@@ -149,9 +149,9 @@ fun ConseilEditView(
                                 label = translate("conseil.edit.categoryLabel"),
                                 options =
                                         SectionCategory.values().filter {
-                                            it.name.contains("CONSEIL")
+                                            it.name.startsWith("CONSEIL_")
                                         },
-                                valueToString = { cat -> cat.name.replace("CONSEIL_", "") },
+                                valueToString = { cat -> cat.libelle() },
                                 modifier = Modifier.fillMaxWidth()
                         )
 

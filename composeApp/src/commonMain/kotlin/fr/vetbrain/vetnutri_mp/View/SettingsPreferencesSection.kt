@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
@@ -328,7 +329,7 @@ private fun SpeciesPreferenceCardWithPersistence(
                         ) {
                                 Column {
                                         Text(
-                                                text = species.label,
+                                                text = species.translateEnum(),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold
                                         )
@@ -631,7 +632,7 @@ private fun SpeciesPreferenceCardSimplified(
                         ) {
                                 Column {
                                         Text(
-                                                text = species.label,
+                                                text = species.translateEnum(),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold
                                         )

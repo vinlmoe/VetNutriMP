@@ -237,7 +237,7 @@ private fun EquationEditTab(
                         },
                 options = EquationType.values().toList(),
                 onValueChange = { viewModel.updateKind(it.toEquationKind()) },
-                valueToString = { it.toString() }
+                valueToString = { it.translateEnum() }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -251,7 +251,7 @@ private fun EquationEditTab(
                 valueToString = { espece ->
                     when (espece) {
                         fr.vetbrain.vetnutri_mp.Enumer.Espece.CH -> "enum.Espece.ALL".translate()
-                        else -> "${espece.translateEnum()} (${espece.name})"
+                        else -> espece.translateEnum()
                     }
                 }
         )

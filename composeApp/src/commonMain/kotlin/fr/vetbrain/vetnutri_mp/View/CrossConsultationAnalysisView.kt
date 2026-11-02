@@ -27,14 +27,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.FilterChip
+import fr.vetbrain.vetnutri_mp.Components.PuceFiltre
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +48,6 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CrossConsultationAnalysisViewModel
-import kotlinx.coroutines.launch
 
 /**
  * Sélection multi-consultations (Phase 1) : recherche, filtre espèce, sélection, compteur.
@@ -70,8 +69,6 @@ fun CrossConsultationAnalysisView(
     val examIdFilter by viewModel.examIdFilter.collectAsState()
     val examExerciseIdFilter by viewModel.examExerciseIdFilter.collectAsState()
     val availableKeywords by viewModel.availableKeywords.collectAsState()
-    val scope = rememberCoroutineScope()
-    var aggregatesText by remember { mutableStateOf<String?>(null) }
     val summary by viewModel.summary.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.loadConsultations() }
@@ -138,19 +135,20 @@ fun CrossConsultationAnalysisView(
 
                 // Filtre espèce
                 Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                 ) {
-                    FilterChip(
-                            selected = speciesFilter == null,
-                            onClick = { viewModel.setSpeciesFilter(null) },
-                            label = { Text(CrossConsultationAnalysis.SPECIES_ALL.translate()) }
+                    PuceFiltre(
+                            CrossConsultationAnalysis.SPECIES_ALL.translate(),
+                            selectionnee = speciesFilter == null,
+                            onClick = { viewModel.setSpeciesFilter(null) }
                     )
-                    Espece.entries.forEach { e ->
-                        FilterChip(
-                                selected = speciesFilter == e,
-                                onClick = { viewModel.setSpeciesFilter(e) },
-                                label = { Text(e.label) }
+                    Espece.valuesExcept().forEach { e ->
+                        PuceFiltre(
+                                e.translateEnum(),
+                                selectionnee = speciesFilter == e,
+                                onClick = { viewModel.setSpeciesFilter(e) }
                         )
                     }
                 }
@@ -171,16 +169,16 @@ fun CrossConsultationAnalysisView(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
-                            FilterChip(
-                                    selected = keywordFilter.isEmpty(),
-                                    onClick = { viewModel.clearKeywordFilter() },
-                                    label = { Text(CrossConsultationAnalysis.KEYWORDS_ALL.translate()) }
+                            PuceFiltre(
+                                    CrossConsultationAnalysis.KEYWORDS_ALL.translate(),
+                                    selectionnee = keywordFilter.isEmpty(),
+                                    onClick = { viewModel.clearKeywordFilter() }
                             )
                             availableKeywords.forEach { keyword ->
-                                FilterChip(
-                                        selected = keywordFilter.contains(keyword.uuid),
-                                        onClick = { viewModel.toggleKeywordFilter(keyword.uuid) },
-                                        label = { Text(keyword.label) }
+                                PuceFiltre(
+                                        keyword.label,
+                                        selectionnee = keywordFilter.contains(keyword.uuid),
+                                        onClick = { viewModel.toggleKeywordFilter(keyword.uuid) }
                                 )
                             }
                         }
@@ -294,29 +292,6 @@ fun CrossConsultationAnalysisView(
                                 summary.totalRations.toString()
                         )
                 )
-
-                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                val agg = viewModel.computeEnergyAggregates()
-                                aggregatesText =
-                                        agg.joinToString("\n") {
-                                            "- ${it.animalName}: ${it.value} ${CrossConsultationAnalysis.ENERGY_PLACEHOLDER_SUFFIX.translate()}"
-                                        }
-                            }
-                        },
-                        enabled = selectedIds.isNotEmpty()
-                ) { Text(CrossConsultationAnalysis.QUICK_CALC.translate()) }
-
-                aggregatesText?.let { text ->
-                    Divider()
-                    Text(
-                            CrossConsultationAnalysis.CALC_PREVIEW_TITLE.translate(),
-                            style = androidx.compose.material.MaterialTheme.typography.subtitle1
-                    )
-                    Text(text, style = androidx.compose.material.MaterialTheme.typography.body2)
-                }
 
                 Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                 OutlinedButton(

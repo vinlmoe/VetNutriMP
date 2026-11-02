@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.Components
 
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -130,7 +131,7 @@ private fun ReferenceItem(
 
                 if (reference != null) {
                     Text(
-                            text = translate(LocalizationKeys.Reference.SPECIES_PREFIX, reference.espece.label),
+                            text = translate(LocalizationKeys.Reference.SPECIES_PREFIX, reference.espece.translateEnum()),
                             style = MaterialTheme.typography.body2,
                             color = Color.Gray
                     )

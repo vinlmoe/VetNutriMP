@@ -1,6 +1,8 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -279,7 +281,7 @@ private fun EquationCard(
 
                     // Type et espèce
                     Text(
-                            text = translate("equation.typeEspece", equation.kind.toString(), equation.specie.toString()),
+                            text = translate("equation.typeEspece", equation.kind.toEquationType().translateEnum(), (equation.specie ?: Espece.CH).translateEnum()),
                             style = MaterialTheme.typography.caption,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                     )

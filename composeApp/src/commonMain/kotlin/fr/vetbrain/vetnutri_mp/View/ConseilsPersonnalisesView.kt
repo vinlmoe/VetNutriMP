@@ -2,6 +2,9 @@ package fr.vetbrain.vetnutri_mp.View
 
 import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import fr.vetbrain.vetnutri_mp.Components.PuceFiltre
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -107,24 +110,16 @@ fun ConseilsPersonnalisesView(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Filtres par catégorie
+            // Filtres par catégorie : celles des conseils enregistrés
+            val categories = remember(conseils) { conseils.map { it.category }.distinct().sortedBy { it.libelle() } }
             Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Chip(onClick = { selectedCategory = null }, modifier = Modifier.height(32.dp)) {
-                    Text(translate("crossConsultation.speciesAll"))
+                PuceFiltre(translate("crossConsultation.speciesAll"), selectionnee = selectedCategory == null, onClick = { selectedCategory = null })
+                categories.forEach { category ->
+                    PuceFiltre(category.libelle(), selectionnee = selectedCategory == category, onClick = { selectedCategory = category })
                 }
-
-                SectionCategory.values()
-                        .filter { it.name.contains("CONSEIL") }
-                        .take(4) // Limiter à 4 catégories pour l'affichage
-                        .forEach { category ->
-                            Chip(
-                                    onClick = { selectedCategory = category },
-                                    modifier = Modifier.height(32.dp)
-                            ) { Text(category.name.replace("CONSEIL_", "")) }
-                        }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -270,7 +265,7 @@ private fun ConseilCard(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                            text = conseil.category.name.replace("CONSEIL_", ""),
+                            text = conseil.category.libelle(),
                             style = MaterialTheme.typography.caption,
                             color = VetNutriColors.Primary
                     )
@@ -396,7 +391,7 @@ private fun TemplatesDialog(
                                             fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                            text = template.category.name.replace("CONSEIL_", ""),
+                                            text = template.category.libelle(),
                                             style = MaterialTheme.typography.caption,
                                             color = MaterialTheme.colors.primary
                                     )
@@ -417,3 +412,6 @@ private fun TemplatesDialog(
             }
     )
 }
+
+/** Nom traduit d'une catégorie de conseil (« Hygiène », « Activité »…). */
+internal fun SectionCategory.libelle(): String = translate("sectionCategory.$name")
