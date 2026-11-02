@@ -266,28 +266,30 @@ The interface language is chosen on this welcome screen (\ui{Language}).
 The main screen is the list of animals. Everything starts from here.
 
 \captureannotee{05_liste_animaux.png}{The animal list and its controls.}{liste}{%
-  \repere{184}{84}{1}
-  \repere{528}{84}{2}
-  \repere{872}{84}{3}
-  \repere{1215}{84}{4}
-  \repere{40}{150}{5}
-  \repere{1000}{150}{6}
-  \repere{1358}{145}{7}
-  \repere{1296}{258}{8}
+  \repere{184}{100}{1}
+  \repere{528}{100}{2}
+  \repere{872}{100}{3}
+  \repere{1215}{100}{4}
+  \repere{40}{166}{5}
+  \repere{1000}{166}{6}
+  \repere{1358}{161}{7}
+  \repere{1296}{276}{8}
   \repere{1356}{815}{9}
-  \repere{1325}{32}{10}}
+  \repere{1368}{72}{10}
+  \repere{1320}{72}{11}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & \ui{Food list}: browse and edit the food database (section~\ref{sec:aliments}). \\
 \rep{2} & \ui{Calculation data}: equations, bibliography, references, advice (section~\ref{sec:donnees}). \\
 \rep{3} & \ui{Multi-ration exploration}: calculate rations in series (section~\ref{sec:multiration}). This button only appears when the feature is enabled. \\
-\rep{4} & \ui{Quick Import}: import animal records. \\
+\rep{4} & \ui{Quick import}: import animal records. \\
 \rep{5} & Search by ID, name, owner or breed. \\
 \rep{6} & Filter by species. \\
 \rep{7} & Sorting and advanced filters. \\
 \rep{8} & The arrow opens the animal's record; the red bin deletes it. \\
 \rep{9} & \ui{+} creates a new record. \\
 \rep{10} & Application settings (section~\ref{sec:parametres}). \\
+\rep{11} & \ui{Cross analysis}: compare the consultations of several animals (section~\ref{sec:analyses-croisees}). \\
 \end{tabularx}
 
 % ================================================================== 4
@@ -318,10 +320,10 @@ analysis, then prepare the prescription.
 \end{enumerate}
 
 \captureannotee{06_creation_individu.png}{The form for creating an individual.}{creation-individu}{%
-  \repere{545}{152}{1}
-  \repere{318}{465}{2}
-  \repere{850}{697}{3}
-  \repere{318}{833}{4}
+  \repere{545}{104}{1}
+  \repere{318}{412}{2}
+  \repere{1060}{649}{3}
+  \repere{318}{716}{4}
   \repere{1290}{856}{5}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
@@ -421,9 +423,9 @@ calculating requirements on the current weight would maintain the excess weight.
 \end{enumerate}
 
 \captureannotee{13_choix_referentiel.png}{Choosing the general reference.}{referentiel}{%
-  \repere{418}{263}{1}
-  \repere{418}{306}{2}
-  \repere{418}{462}{3}}
+  \repere{428}{284}{1}
+  \repere{428}{328}{2}
+  \repere{428}{483}{3}}
 
 \rep{2} The number of references matching the search.
 
@@ -464,8 +466,8 @@ The application has created a first, empty ration: the ``current ration''.
   \repere{270}{212}{2}
   \repere{258}{605}{3}
   \repere{940}{124}{4}
-  \repere{1295}{768}{5}
-  \repere{1295}{848}{6}}
+  \repere{1284}{808}{5}
+  \repere{1355}{808}{6}}
 
 To set the amount, click the pencil on the food's row, enter the amount in grams (here 380) and
 confirm with \ui{OK}.
@@ -476,14 +478,14 @@ confirm with \ui{OK}.
 With 380~g of the food, the \ui{Rations} tab looks like this.
 
 \captureannotee{15_ration_avant_ajustement.png}{Analysis of the 380~g ration.}{ration-avant}{%
-  \repere{252}{103}{1}
-  \repere{636}{103}{2}
-  \repere{1020}{101}{3}
-  \repere{252}{212}{4}
-  \repere{252}{576}{5}
-  \repere{836}{212}{6}
-  \repere{1180}{185}{7}
-  \repere{836}{248}{8}}
+  \repere{248}{104}{1}
+  \repere{632}{104}{2}
+  \repere{1016}{104}{3}
+  \repere{252}{224}{4}
+  \repere{252}{511}{5}
+  \repere{830}{223}{6}
+  \repere{1180}{195}{7}
+  \repere{836}{260}{8}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & \ui{Metabolic values}: weight, ideal weight, metabolic weight, standard energy
@@ -520,9 +522,9 @@ to the left of the book and the \ui{+}). The amounts are recalculated to meet th
 requirement.
 
 \captureannotee{17_ration_apres_ajustement.png}{The same ration after quick adjustment.}{ration-apres}{%
-  \repere{1160}{150}{1}
-  \repere{252}{646}{2}
-  \repere{1000}{406}{3}}
+  \repere{1160}{156}{1}
+  \repere{252}{581}{2}
+  \repere{950}{418}{3}}
 
 \begin{verifiez}
 \rep{1} Coverage rises to 99~\% and the observed K to 0.99. \rep{2} The amount rises to
@@ -569,10 +571,10 @@ reference's thresholds. \ui{Click for more details} opens the detail of a nutrie
 
 \captureannotee{18_analyse_graphique.png}{Ration analysis in chart view.}{analyse-graphique}{%
   \repere{1380}{240}{1}
-  \repere{862}{256}{2}
-  \repere{1135}{256}{3}
+  \repere{862}{268}{2}
+  \repere{1135}{268}{3}
   \repere{1030}{700}{4}
-  \repere{1190}{595}{5}}
+  \repere{1170}{607}{5}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & The \ui{Cards} / \ui{Bullet} switch toggles between the card view and this chart view. \\
@@ -753,26 +755,23 @@ The \ui{Graph} tab offers four views: \ui{Weight evolution}, \ui{Energy distribu
 \ui{Energy density of rations} and \ui{Ration nutrients}.
 
 \captureannotee{19_graphique_poids.png}{Weight evolution and reference curves.}{graphique-poids}{%
-  \repere{440}{176}{1}
-  \repere{900}{176}{2}
-  \repere{1095}{176}{3}
-  \repere{895}{506}{4}
-  \repere{265}{830}{5}
-  \repere{745}{862}{6}
-  \repere{1245}{857}{7}}
+  \repere{550}{232}{1}
+  \repere{758}{232}{2}
+  \repere{1040}{232}{3}
+  \repere{880}{550}{4}
+  \repere{1222}{56}{5}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & The suggested reference curve (sex and weight class); click to choose another one. \\
 \rep{2} & Enlarging the growth curves and exporting them to PDF. \\
 \rep{3} & Show or hide the reference curves. \\
 \rep{4} & Each weighing, plotted against age. \\
-\rep{5} & The animal's \ui{Weight history}. \\
-\rep{6} & The weight-loss target: minimum and maximum loss in \% per week, target weight. \\
-\rep{7} & The \ui{+} button adds a weighing. \\
+\rep{5} & \ui{Export}: the ration charts as images, with a Markdown or LaTeX document listing the foods of each ration. \\
 \end{tabularx}
 
-The weight view plots each weighing against age. Below the graph, the \ui{Weight history} lets
-you add a weighing and set a weight-loss target (minimum and maximum loss in \% per week).
+The weight view plots each weighing against age. Below the graph, the \ui{Weight history} lists
+the animal's weighings; the \ui{+} button adds one, and the fields next to it set the weight-loss
+target (minimum and maximum loss in \% per week, target weight).
 
 \begin{pourquoi}
 The reference curve offered by default matches the animal's sex and weight class. That class is
@@ -802,11 +801,12 @@ The \ui{Food Graph} tab compares foods with each other: add them with \ui{+} in 
 left, then click \ui{View graphic analysis}.
 
 \captureannotee{20_graphique_aliments.png}{Selecting foods to compare.}{graphique-aliments}{%
-  \repere{268}{57}{1}
-  \repere{495}{272}{2}
-  \repere{752}{324}{3}
-  \repere{1112}{272}{4}
-  \repere{1125}{860}{5}}
+  \repere{268}{105}{1}
+  \repere{495}{320}{2}
+  \repere{752}{372}{3}
+  \repere{1112}{320}{4}
+  \repere{1125}{860}{5}
+  \repere{1112}{25}{6}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & Search and filters (type, species, database, indications). \\
@@ -814,6 +814,8 @@ left, then click \ui{View graphic analysis}.
 \rep{3} & \ui{Add all} and \ui{Remove all}. \\
 \rep{4} & The selected foods. \\
 \rep{5} & \ui{View graphic analysis} opens the comparison charts. \\
+\rep{6} & \ui{Compare with a group B} adds a second selection: the two groups are compared with
+          box plots (energy density, protein\ldots), with export. \\
 \end{tabularx}
 
 \subsection{Sending a record}
@@ -840,11 +842,11 @@ breed, sex). It can mix several species; each group's reference and K are chosen
 consultation.
 
 \captureannotee{07_creation_troupeau.png}{Creating a herd of twelve individuals.}{creation-troupeau}{%
-  \repere{545}{152}{1}
-  \repere{345}{441}{2}
-  \repere{1105}{448}{3}
-  \repere{474}{612}{4}
-  \repere{305}{636}{5}
+  \repere{545}{104}{1}
+  \repere{345}{393}{2}
+  \repere{1105}{400}{3}
+  \repere{474}{564}{4}
+  \repere{305}{588}{5}
   \repere{1290}{856}{6}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
@@ -965,29 +967,29 @@ of a ration. The pencil edits a food, the bin deletes it, \ui{+} creates one.
 \captureannotee{22_liste_aliments.png}{Food list.}{aliments}{%
   \repere{690}{121}{1}
   \repere{700}{196}{2}
-  \repere{72}{295}{3}
-  \repere{780}{280}{4}
+  \repere{1278}{288}{3}
+  \repere{690}{294}{4}
   \repere{1300}{856}{5}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & Search by name, brand or ingredient. \\
 \rep{2} & Filters: type, indications, species, database. \\
-\rep{3} & The pencil edits the food, the bin deletes it. \\
+\rep{3} & On the right of each row, the pencil edits the food, the bin deletes it. \\
 \rep{4} & Food type, species and indications. \\
 \rep{5} & \ui{+} creates a food. \\
 \end{tabularx}
 
 A food record has three tabs: \ui{General information} (name, brand, range, database, price,
-packaging, type), \ui{Nutritional Composition} and \ui{Bibliography}. Save with \ui{Save}.
+packaging, type), \ui{Nutritional Composition} and \ui{Bibliography}. Save with the tick button at the bottom right.
 
 \captureannotee{23_aliment_edition.png}{Editing a food.}{aliment-edition}{%
-  \repere{615}{104}{1}
-  \repere{480}{169}{2}
-  \repere{1385}{500}{3}
-  \repere{1385}{880}{4}}
+  \repere{1300}{856}{1}
+  \repere{480}{89}{2}
+  \repere{1385}{420}{3}
+  \repere{1310}{804}{4}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
-\rep{1} & \ui{Save} records the changes. \\
+\rep{1} & The tick button records the changes. \\
 \rep{2} & The three tabs: \ui{General information}, \ui{Nutritional Composition}, \ui{Bibliography}. \\
 \rep{3} & The food's source database. \\
 \rep{4} & The food type: complete or complementary (energy from the commercial-food equation), otherwise raw food (Atwater equation), see section~\ref{sec:calculs}. \\
@@ -1047,7 +1049,7 @@ The gear icon on the main screen opens the settings, in six tabs.
 \toprule
 \textbf{Tab} & \textbf{Purpose} \\
 \midrule
-\ui{Interface} & interface size (50 to 200~\%); access to \ui{Cross analysis} \\
+\ui{Interface} & interface size (50 to 200~\%) \\
 \ui{Preferences} & practitioner's details for the prescription; unit used to express
 requirements, by species \\
 \ui{Import/Export} & data exchange (animals, foods, recipes, equations, references, advice) \\
@@ -1161,8 +1163,9 @@ From time to time, copy a backup off the computer.
 
 \textbf{When to use it?} To compare many consultations: tutorials, case series, exams.
 
-Filter by species, keywords, exam ID or exercise ID, select the consultations, then open the
-analysis or the grading.
+Open it with the \ui{Cross analysis} icon, to the left of the settings in the bar of the animal
+list (figure~\ref{fig:liste}). Filter by species, keywords, exam ID or exercise ID, select the
+consultations, then open the analysis or the grading.
 
 \capture{36_analyses_croisees.png}{Cross analysis.}{analyses-croisees}
 
