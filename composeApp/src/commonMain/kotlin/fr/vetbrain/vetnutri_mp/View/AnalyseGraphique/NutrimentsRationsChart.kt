@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.background
@@ -682,7 +683,7 @@ fun NutrimentsRationsChart(
                                                         )
                                                         Text(
                                                                 text =
-                                                                        "${translate(LocalizationKeys.Chart.PROTEIN)}: ${GraphFormattingUtils.formatDecimal(data.proteines, 1)}g | ${translate(LocalizationKeys.Chart.FAT)}: ${GraphFormattingUtils.formatDecimal(data.lipides, 1)}g",
+                                                                        "${translate(LocalizationKeys.Chart.PROTEIN)}${deuxPoints()} ${GraphFormattingUtils.formatDecimal(data.proteines, 1)}g | ${translate(LocalizationKeys.Chart.FAT)}${deuxPoints()} ${GraphFormattingUtils.formatDecimal(data.lipides, 1)}g",
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,

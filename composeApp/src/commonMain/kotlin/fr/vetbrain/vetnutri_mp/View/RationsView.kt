@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.UserErrors
 import fr.vetbrain.vetnutri_mp.Utils.orUserError
@@ -575,7 +576,7 @@ fun RationsView(
                                         val especeLabel = selectedRation?.espece ?: ""
                                         if (especeLabel.isNotEmpty()) {
                                                 Text(
-                                                        "${translate(Animal.SPECIES)}: $especeLabel",
+                                                        "${translate(Animal.SPECIES)}${deuxPoints()} $especeLabel",
                                                         style = MaterialTheme.typography.body2
                                                 )
                                         }
@@ -595,7 +596,7 @@ fun RationsView(
                                                                 } catch (err: Exception) {
                                                                         err.rethrowIfCancellation()
                                                                         showSnackbar(
-                                                                                "${translate(General.ERROR)}: ${err.message ?: translate(RationKeys.RECIPE_CREATE_ERROR_FALLBACK)}"
+                                                                                "${translate(General.ERROR)}${deuxPoints()} ${err.message ?: translate(RationKeys.RECIPE_CREATE_ERROR_FALLBACK)}"
                                                                         )
                                                                 } finally {
                                                                         showSaveRecipeDialog = false
@@ -990,7 +991,7 @@ fun RationsView(
                                                 }
                                         } else {
                                                 showSnackbar(
-                                                        "${translate(General.ERROR)}: ${result.message}"
+                                                        "${translate(General.ERROR)}${deuxPoints()} ${result.message}"
                                                 )
                                         }
                                         showMultiNutrientAdjustmentDialog = false

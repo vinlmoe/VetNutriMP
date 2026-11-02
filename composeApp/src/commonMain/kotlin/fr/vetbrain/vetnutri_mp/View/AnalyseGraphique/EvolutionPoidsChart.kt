@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Utils.enTexte
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -1050,7 +1051,7 @@ fun ConeZoomView(
                                     blocks = listOf(
                                         TextBlock.Paragraph(
                                             id = genUUID(), 
-                                            text = "${translate(LocalizationKeys.Graph.DIET_START)}: ${coneState.startDate} | ${translate(LocalizationKeys.Graph.INITIAL_WEIGHT)}: ${coneState.startWeight}kg${if(coneState.targetWeight != null) " | ${translate(LocalizationKeys.Graph.TARGET)}: ${coneState.targetWeight}kg" else ""}"
+                                            text = "${translate(LocalizationKeys.Graph.DIET_START)}${deuxPoints()} ${coneState.startDate} | ${translate(LocalizationKeys.Graph.INITIAL_WEIGHT)}${deuxPoints()} ${coneState.startWeight}kg${if(coneState.targetWeight != null) " | ${translate(LocalizationKeys.Graph.TARGET)}${deuxPoints()} ${coneState.targetWeight}kg" else ""}"
                                         ),
                                         TextBlock.TableBlock(
                                             id = genUUID(),

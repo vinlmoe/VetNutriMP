@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.border
@@ -464,7 +465,7 @@ private fun AnimalDetailLayout(
                                 if (isExamMode && !animalDetails.examExerciseId.isNullOrBlank()) {
                                         Text(
                                                 text =
-                                                        "${translate(Animal.EXAM_EXERCISE_ID)}: ${animalDetails.examExerciseId}",
+                                                        "${translate(Animal.EXAM_EXERCISE_ID)}${deuxPoints()} ${animalDetails.examExerciseId}",
                                                 style = MaterialTheme.typography.body2,
                                                 color = VetNutriColors.Primary
                                         )

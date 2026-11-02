@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -231,7 +232,7 @@ fun CrossConsultationAnalysisView(
                                                 item.referenceLabel
                                                         ?: CrossConsultationAnalysis.REF_NONE.translate()
                                         Text(
-                                                "${CrossConsultationAnalysis.REF_LABEL.translate()}: $refLabel | ${CrossConsultationAnalysis.SPECIES_LABEL.translate()}: ${item.speciesLabel} | ${CrossConsultationAnalysis.RATIONS_LABEL.translate()}: ${item.rationCount}",
+                                                "${CrossConsultationAnalysis.REF_LABEL.translate()}${deuxPoints()} $refLabel | ${CrossConsultationAnalysis.SPECIES_LABEL.translate()}${deuxPoints()} ${item.speciesLabel} | ${CrossConsultationAnalysis.RATIONS_LABEL.translate()}${deuxPoints()} ${item.rationCount}",
                                                 style = androidx.compose.material.MaterialTheme.typography.caption
                                         )
                                     }

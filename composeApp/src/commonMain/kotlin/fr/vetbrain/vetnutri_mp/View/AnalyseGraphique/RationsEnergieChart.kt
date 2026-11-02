@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.background
@@ -638,7 +639,7 @@ fun RationsEnergieChart(
                                                                 )
                                                                 Text(
                                                                         text =
-                                                                                "${translate(LocalizationKeys.Chart.PROTEIN)}: ${GraphFormattingUtils.formatPercentage(data.proteineEnergyPercentage)} | ${translate(LocalizationKeys.Chart.FAT)}: ${GraphFormattingUtils.formatPercentage(data.lipideEnergyPercentage)}",
+                                                                                "${translate(LocalizationKeys.Chart.PROTEIN)}${deuxPoints()} ${GraphFormattingUtils.formatPercentage(data.proteineEnergyPercentage)} | ${translate(LocalizationKeys.Chart.FAT)}${deuxPoints()} ${GraphFormattingUtils.formatPercentage(data.lipideEnergyPercentage)}",
                                                                         style =
                                                                                 MaterialTheme.typography
                                                                                         .caption,

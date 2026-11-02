@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -813,28 +814,28 @@ private fun AnimalCard(
                                                 text =
                                                         // Troupeau : espèces de ses individus
                                                         if (animal.estTroupeau)
-                                                                "${Animal.SPECIES.translate()}: ${animal.especesTroupeau().joinToString(", ") { it.translateEnum() }}"
-                                                        else "${Animal.SPECIES.translate()}: ${animal.getEspece().translateEnum()}",
+                                                                "${Animal.SPECIES.translate()}${deuxPoints()} ${animal.especesTroupeau().joinToString(", ") { it.translateEnum() }}"
+                                                        else "${Animal.SPECIES.translate()}${deuxPoints()} ${animal.getEspece().translateEnum()}",
                                                 style = MaterialTheme.typography.body2
                                         )
                                         if (animal.race.isNotEmpty()) {
                                                 Text(
                                                         text =
-                                                                "${Animal.BREED.translate()}: ${animal.race}",
+                                                                "${Animal.BREED.translate()}${deuxPoints()} ${animal.race}",
                                                         style = MaterialTheme.typography.body2
                                                 )
                                         }
                                         if (animal.ownerName.isNotEmpty()) {
                                                 Text(
                                                         text =
-                                                                "${Animal.OWNER.translate()}: ${animal.ownerName}",
+                                                                "${Animal.OWNER.translate()}${deuxPoints()} ${animal.ownerName}",
                                                         style = MaterialTheme.typography.body2
                                                 )
                                         }
                                         if ((isExamMode || showExamDossiers) && !animal.examExerciseId.isNullOrBlank()) {
                                                 Text(
                                                         text =
-                                                                "${Animal.EXAM_EXERCISE_ID.translate()}: ${animal.examExerciseId}",
+                                                                "${Animal.EXAM_EXERCISE_ID.translate()}${deuxPoints()} ${animal.examExerciseId}",
                                                         style = MaterialTheme.typography.body2,
                                                         color = if (showExamDossiers) VetNutriColors.Secondary else VetNutriColors.Primary
                                                 )

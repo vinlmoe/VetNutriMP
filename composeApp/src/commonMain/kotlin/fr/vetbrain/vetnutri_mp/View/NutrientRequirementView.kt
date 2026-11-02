@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -427,7 +428,7 @@ private fun ReferenceNutrientCard(
                         if (missingEquationLabels.isNotEmpty()) {
                             Text(
                                     text =
-                                            "${translate(LocalizationKeys.NewReference.NOT_DEFINED)}: ${missingEquationLabels.joinToString()}",
+                                            "${translate(LocalizationKeys.NewReference.NOT_DEFINED)}${deuxPoints()} ${missingEquationLabels.joinToString()}",
                                     style = MaterialTheme.typography.caption,
                                     color = VetNutriColors.Error
                             )
