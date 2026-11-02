@@ -679,7 +679,7 @@ fun RationsView(
                                         rationForAddAliment = updatedRation
 
                                         showSnackbar(
-                                                "${translate(RationKeys.ADD_FOOD_TO_RATION)} '${alimentComplet.nom}' (${quantite}g)"
+                                                "${translate(RationKeys.ADD_FOOD_TO_RATION)} '${alimentComplet.nom}' (${quantite} g)"
                                         )
                                         // Ne pas fermer la vue pour permettre l'ajout multiple
                                         // d'aliments

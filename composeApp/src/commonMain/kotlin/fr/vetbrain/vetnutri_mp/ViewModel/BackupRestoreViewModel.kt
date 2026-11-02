@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.ViewModel
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.cancel
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Service.BackupService
 import fr.vetbrain.vetnutri_mp.Service.BackupService.BackupMetadata
@@ -191,7 +192,7 @@ class BackupRestoreViewModel(
             val instant = kotlinx.datetime.Instant.fromEpochMilliseconds(timestamp)
             val tz = kotlinx.datetime.TimeZone.currentSystemDefault()
             val localDateTime = instant.toLocalDateTime(tz)
-            "${localDateTime.dayOfMonth}/${localDateTime.monthNumber}/${localDateTime.year} ${localDateTime.hour}:${localDateTime.minute.toString().padStart(2, '0')}"
+            "${localDateTime.date.enTexte()} ${localDateTime.hour.toString().padStart(2, '0')}:${localDateTime.minute.toString().padStart(2, '0')}"
         } catch (e: Exception) {
             e.rethrowIfCancellation()
             "Date inconnue"

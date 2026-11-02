@@ -116,7 +116,7 @@
         "consultation.missingRefMessage": "Please select a general reference before validating the consultation.",
         "animalList.foodList": "Food list",
         "animalList.calculationData": "Calculation data",
-        "animalList.quickImport": "Quick Import",
+        "animalList.quickImport": "Quick import",
         "animalList.crossAnalysis": "Cross analysis",
         "animalList.quickImportTitle": "Quick Import via Internet",
         "animalList.enterCode": "Enter share code or jsonbin.io URL:",

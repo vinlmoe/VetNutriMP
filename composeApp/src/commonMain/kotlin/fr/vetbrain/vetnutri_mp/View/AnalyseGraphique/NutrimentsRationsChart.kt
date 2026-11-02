@@ -683,7 +683,7 @@ fun NutrimentsRationsChart(
                                                         )
                                                         Text(
                                                                 text =
-                                                                        "${translate(LocalizationKeys.Chart.PROTEIN)}${deuxPoints()} ${GraphFormattingUtils.formatDecimal(data.proteines, 1)}g | ${translate(LocalizationKeys.Chart.FAT)}${deuxPoints()} ${GraphFormattingUtils.formatDecimal(data.lipides, 1)}g",
+                                                                        "${translate(LocalizationKeys.Chart.PROTEIN)}${deuxPoints()} ${GraphFormattingUtils.formatDecimal(data.proteines, 1)} g | ${translate(LocalizationKeys.Chart.FAT)}${deuxPoints()} ${GraphFormattingUtils.formatDecimal(data.lipides, 1)} g",
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,

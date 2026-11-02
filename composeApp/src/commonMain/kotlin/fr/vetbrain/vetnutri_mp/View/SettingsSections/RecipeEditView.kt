@@ -499,7 +499,7 @@ private fun RecipeListItem(
                 val alimentsText = recipe.alimentMutableList
                     .take(3)
                     .joinToString(", ") { 
-                        "${it.aliment?.nom ?: "Inconnu"} (${it.quantite}g)"
+                        "${it.aliment?.nom ?: "Inconnu"} (${it.quantite} g)"
                     }
                 Text(
                     text = alimentsText,
