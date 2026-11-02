@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -137,7 +139,7 @@ fun ConsultationCard(
                                                 modifier = Modifier.size(AppSizes.iconSizeSmall)
                                         )
                                         Text(
-                                                text = consultation.date?.toString()
+                                                text = consultation.date?.enTexte()
                                                                 ?: translate(LocalizationKeys.AnimalDetail.UNKNOWN_DATE),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 color = VetNutriColors.Primary

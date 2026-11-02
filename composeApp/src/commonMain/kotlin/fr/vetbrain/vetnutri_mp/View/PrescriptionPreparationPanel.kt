@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -183,8 +185,7 @@ private fun EnTetePanneau(consultation: ConsultationEv?) {
     }
 }
 
-private fun formatDate(date: kotlinx.datetime.LocalDate): String =
-        "${date.dayOfMonth.toString().padStart(2, '0')}/${date.monthNumber.toString().padStart(2, '0')}/${date.year}"
+private fun formatDate(date: kotlinx.datetime.LocalDate): String = date.enTexte()
 
 /** Carte de section : icône dans une pastille, titre, action facultative, contenu. */
 @Composable

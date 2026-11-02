@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -220,7 +222,7 @@ fun AppConsultationDetailView(
                                 // Mode affichage pour consultation existante
                                 InfoRow(
                                         label = Consultation.DATE.translate(),
-                                        value = consultation?.date?.toString() ?: translate("consultationDetail.dateNotSpecified")
+                                        value = consultation?.date?.enTexte() ?: translate("consultationDetail.dateNotSpecified")
                                 )
 
                                 InfoRow(

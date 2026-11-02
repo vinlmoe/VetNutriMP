@@ -438,7 +438,7 @@ fun SettingsView(
                                                                 )
                                                                 Spacer(modifier = Modifier.height(6.dp))
                                                                 Text(
-                                                                        "Sélection avancée: animaux ${selectedAnimalIds.size}, aliments ${selectedFoodIds.size}, recettes ${selectedRecipeIds.size}, équations ${selectedEquationIds.size}, références ${selectedReferenceIds.size}, conseils ${selectedConseilIds.size}",
+                                                                        "Sélection avancée : animaux ${selectedAnimalIds.size}, aliments ${selectedFoodIds.size}, recettes ${selectedRecipeIds.size}, équations ${selectedEquationIds.size}, références ${selectedReferenceIds.size}, conseils ${selectedConseilIds.size}",
                                                                         style = MaterialTheme.typography.body2,
                                                                         color = Color.Gray
                                                                 )
@@ -475,7 +475,7 @@ fun SettingsView(
                                                                                 } catch (e: Exception) {
                                                                                         e.rethrowIfCancellation()
                                                                                         selectionLoadError =
-                                                                                                "Erreur chargement animaux: ${e.message}"
+                                                                                                "Erreur chargement animaux : ${e.message}"
                                                                                 } finally {
                                                                                         isLoadingAnimals = false
                                                                                 }
@@ -503,7 +503,7 @@ fun SettingsView(
                                                                                 } catch (e: Exception) {
                                                                                         e.rethrowIfCancellation()
                                                                                         selectionLoadError =
-                                                                                                "Erreur chargement aliments: ${e.message}"
+                                                                                                "Erreur chargement aliments : ${e.message}"
                                                                                 } finally {
                                                                                         isLoadingFoods = false
                                                                                 }
@@ -531,7 +531,7 @@ fun SettingsView(
                                                                                 } catch (e: Exception) {
                                                                                         e.rethrowIfCancellation()
                                                                                         selectionLoadError =
-                                                                                                "Erreur chargement recettes: ${e.message}"
+                                                                                                "Erreur chargement recettes : ${e.message}"
                                                                                 } finally {
                                                                                         isLoadingRecipes = false
                                                                                 }
@@ -555,7 +555,7 @@ fun SettingsView(
                                                                                 } catch (e: Exception) {
                                                                                         e.rethrowIfCancellation()
                                                                                         selectionLoadError =
-                                                                                                "Erreur chargement equations: ${e.message}"
+                                                                                                "Erreur chargement equations : ${e.message}"
                                                                                 } finally {
                                                                                         isLoadingEquations = false
                                                                                 }
@@ -579,7 +579,7 @@ fun SettingsView(
                                                                                 } catch (e: Exception) {
                                                                                         e.rethrowIfCancellation()
                                                                                         selectionLoadError =
-                                                                                                "Erreur chargement references: ${e.message}"
+                                                                                                "Erreur chargement references : ${e.message}"
                                                                                 } finally {
                                                                                         isLoadingReferences = false
                                                                                 }
@@ -603,7 +603,7 @@ fun SettingsView(
                                                                                 } catch (e: Exception) {
                                                                                         e.rethrowIfCancellation()
                                                                                         selectionLoadError =
-                                                                                                "Erreur chargement conseils: ${e.message}"
+                                                                                                "Erreur chargement conseils : ${e.message}"
                                                                                 } finally {
                                                                                         isLoadingConseils = false
                                                                                 }
@@ -1021,28 +1021,28 @@ fun SettingsView(
                                                                                 is SettingsViewModel.ImportResult.Success -> {
                                                                                         Column {
                                                                                                 Text(
-                                                                                                        "Total pris en compte: ${r.count}"
+                                                                                                        "Total pris en compte : ${r.count}"
                                                                                                 )
                                                                                                 Text(
-                                                                                                        "Importés: ${r.importedCount}"
+                                                                                                        "Importés : ${r.importedCount}"
                                                                                                 )
                                                                                                 if (r.updatedCount >
                                                                                                                 0
                                                                                                 )
                                                                                                         Text(
-                                                                                                                "Mises à jour: ${r.updatedCount}"
+                                                                                                                "Mises à jour : ${r.updatedCount}"
                                                                                                         )
                                                                                                 if (r.deletedCount >
                                                                                                                 0
                                                                                                 )
                                                                                                         Text(
-                                                                                                                "Supprimés: ${r.deletedCount}"
+                                                                                                                "Supprimés : ${r.deletedCount}"
                                                                                                         )
                                                                                                 if (r.errorCount >
                                                                                                                 0
                                                                                                 )
                                                                                                         Text(
-                                                                                                                "Erreurs: ${r.errorCount}",
+                                                                                                                "Erreurs : ${r.errorCount}",
                                                                                                                 color =
                                                                                                                         MaterialTheme
                                                                                                                                 .colors
@@ -1052,13 +1052,13 @@ fun SettingsView(
                                                                                                                 0
                                                                                                 )
                                                                                                         Text(
-                                                                                                                "Conseils: ${r.conseils}"
+                                                                                                                "Conseils : ${r.conseils}"
                                                                                                         )
                                                                                         }
                                                                                 }
                                                                                 is SettingsViewModel.ImportResult.Error -> {
                                                                                         Text(
-                                                                                                "Erreur: ${r.message}",
+                                                                                                "Erreur : ${r.message}",
                                                                                                 color =
                                                                                                         MaterialTheme
                                                                                                                 .colors

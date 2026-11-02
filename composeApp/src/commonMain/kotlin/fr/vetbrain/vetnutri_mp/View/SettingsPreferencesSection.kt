@@ -336,7 +336,7 @@ private fun SpeciesPreferenceCardWithPersistence(
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Text(
                                                         text =
-                                                                "Expression: ${currentExpressionType.displayName}",
+                                                                "Expression : ${currentExpressionType.displayName}",
                                                         style = MaterialTheme.typography.body2,
                                                         color = VetNutriColors.Primary
                                                 )
@@ -638,7 +638,7 @@ private fun SpeciesPreferenceCardSimplified(
                                         )
                                         Text(
                                                 text =
-                                                        "Expression: ${currentExpressionType.displayName}",
+                                                        "Expression : ${currentExpressionType.displayName}",
                                                 style = MaterialTheme.typography.body2,
                                                 color = VetNutriColors.Primary
                                         )

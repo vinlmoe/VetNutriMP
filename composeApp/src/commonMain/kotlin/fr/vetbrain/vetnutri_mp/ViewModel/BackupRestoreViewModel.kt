@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.cancel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
@@ -175,10 +176,10 @@ class BackupRestoreViewModel(
      */
     fun formatFileSize(bytes: Long): String {
         return when {
-            bytes < 1024 -> "$bytes B"
-            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-            bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
-            else -> "${bytes / (1024 * 1024 * 1024)} MB"
+            bytes < 1024 -> "$bytes ${translate("unite.octet")}"
+            bytes < 1024 * 1024 -> "${bytes / 1024} ${translate("unite.kilooctet")}"
+            bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} ${translate("unite.megaoctet")}"
+            else -> "${bytes / (1024 * 1024 * 1024)} ${translate("unite.gigaoctet")}"
         }
     }
     

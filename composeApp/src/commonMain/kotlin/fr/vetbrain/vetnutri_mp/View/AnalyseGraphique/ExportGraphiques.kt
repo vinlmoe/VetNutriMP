@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
@@ -41,7 +43,7 @@ internal fun rationsPourExport(consultations: List<ConsultationEv>): List<Ration
                         RationExportee(
                                 repere = numeroRationGraphique(index, consultation.rations, ration).toString(),
                                 nom = ration.name,
-                                consultation = consultation.date?.toString().orEmpty(),
+                                consultation = consultation.date?.enTexte().orEmpty(),
                                 actuelle = ration.actual,
                                 aliments = ration.alimentMutableList.map { a ->
                                     AlimentExporte(

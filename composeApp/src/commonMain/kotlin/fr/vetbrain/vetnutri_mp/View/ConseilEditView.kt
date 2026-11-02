@@ -250,7 +250,7 @@ fun ConseilEditView(
                                         }
                                     } catch (e: Exception) {
                                         e.rethrowIfCancellation()
-                                        errorMessage = "Erreur: ${e.message}"
+                                        errorMessage = "Erreur : ${e.message}"
                                         showErrorDialog = true
                                     } finally {
                                         isSaving = false

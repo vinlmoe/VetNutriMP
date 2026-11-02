@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
 import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,7 +38,7 @@ internal fun CopyRationDialog(
                                                 sources.forEach { source ->
                                                         item(key = source.uuid) {
                                                                 Text(
-                                                                        listOfNotNull(source.date?.let { "${it.dayOfMonth.toString().padStart(2, '0')}/${it.monthNumber.toString().padStart(2, '0')}/${it.year}" } ?: "Date non renseignée", source.objectConsult.takeIf { it.isNotBlank() }).joinToString(" — "),
+                                                                        listOfNotNull(source.date?.enTexte() ?: "Date non renseignée", source.objectConsult.takeIf { it.isNotBlank() }).joinToString(" — "),
                                                                         style = MaterialTheme.typography.subtitle2,
                                                                         modifier = Modifier.padding(vertical = 8.dp)
                                                                 )

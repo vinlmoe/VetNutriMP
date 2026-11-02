@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.wrapContentSize
@@ -815,7 +816,7 @@ fun PoidsTableau(
                                                 verticalAlignment = Alignment.CenterVertically
                                         ) {
                                                 Text(
-                                                        text = consultationData.date.toString(),
+                                                        text = consultationData.date.enTexte(),
                                                         modifier = Modifier.weight(1f),
                                                         style = MaterialTheme.typography.caption
                                                 )
@@ -1056,7 +1057,7 @@ fun ConeZoomView(
                                             headers = listOf(translate(LocalizationKeys.Graph.HEADER_DATE), translate(LocalizationKeys.Graph.WEEK_LABEL), translate(LocalizationKeys.Graph.HEADER_WEIGHT)),
                                             rows = realPoints.map { (date, week, weight) ->
                                                 listOf(
-                                                    date.toString(),
+                                                    date.enTexte(),
                                                     GraphFormattingUtils.formatDecimal(week.toDouble(), 1),
                                                     GraphFormattingUtils.formatDecimal(weight, 2)
                                                 )
@@ -1143,7 +1144,7 @@ fun ConeZoomView(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(date.toString(), style = MaterialTheme.typography.body2)
+                        Text(date.enTexte(), style = MaterialTheme.typography.body2)
                         Text("${translate(LocalizationKeys.Graph.WEEK_LABEL)} ${GraphFormattingUtils.formatDecimal(week.toDouble(), 1)}", style = MaterialTheme.typography.body2)
                         Text(translate("animalDetail.weightKgFormat", (GraphFormattingUtils.formatDecimal(weight, 2)).toString()), style = MaterialTheme.typography.body2, fontWeight = FontWeight.Bold)
                     }
@@ -1440,7 +1441,7 @@ fun GrowthZoomView(
                                                                                                                                 realPoints
                                                                                                                                         .map {
                                                                                                                                                 listOf(
-                                                                                                                                                        it.date.toString(),
+                                                                                                                                                        it.date.enTexte(),
                                                                                                                                                         GraphFormattingUtils.formatDecimal(it.weeks.toDouble(), 1),
                                                                                                                                                         if (it.isConsultation)
                                                                                                                                                                 translate(LocalizationKeys.Graph.SOURCE_CONSULTATION)

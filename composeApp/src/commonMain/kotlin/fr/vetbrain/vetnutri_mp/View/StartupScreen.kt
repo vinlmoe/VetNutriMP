@@ -294,7 +294,7 @@ fun StartupScreen(
                                 // nécessaire
                                 jsonUpdateAvailable = false
                                 journaliserMiseAJour(
-                                        "Erreur lors de la lecture de la version JSON intégrée: ${e.message}"
+                                        "Erreur lors de la lecture de la version JSON intégrée : ${e.message}"
                                 )
                         }
 
@@ -455,7 +455,7 @@ fun StartupScreen(
                                                                 } ?: true
                                                         } ?: false
                                                 journaliserMiseAJour(
-                                                        "DATABASE_VERSION_UPDATED reçu: currentDatabaseVersion=" +
+                                                        "DATABASE_VERSION_UPDATED reçu : currentDatabaseVersion=" +
                                                                 currentDatabaseVersion +
                                                                 ", currentJsonVersion=" +
                                                                 (currentJsonVersion ?: "null") +
@@ -819,7 +819,7 @@ fun StartupScreen(
                                                                         // Marquer qu'un import vient d'être fait pour éviter le réaffichage
                                                                         hasJustImported = true
                                                                         journaliserMiseAJour(
-                                                                                "Import JSON réussi: foods=" +
+                                                                                "Import JSON réussi : foods=" +
                                                                                         refreshedFoodCount +
                                                                                         ", references=" +
                                                                                         refreshedReferenceCount +
@@ -915,7 +915,7 @@ fun StartupScreen(
                                                                                 } ?: false
                                                                         hasJustImported = true
                                                                         journaliserMiseAJour(
-                                                                                "Import base réussi: foods=" +
+                                                                                "Import base réussi : foods=" +
                                                                                         refreshedFoodCount +
                                                                                         ", references=" +
                                                                                         refreshedReferenceCount +

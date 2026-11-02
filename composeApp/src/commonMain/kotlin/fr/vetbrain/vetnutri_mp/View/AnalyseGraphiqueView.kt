@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -87,7 +89,7 @@ fun AnalyseGraphiqueView(
                                 val nom = animal?.nom.orEmpty()
                                 val document = DocumentGraphiques(
                                         titre = translate("graph.export.doc.title", nom),
-                                        sousTitre = consultationAffichee?.date?.toString().orEmpty(),
+                                        sousTitre = consultationAffichee?.date?.enTexte().orEmpty(),
                                         graphiques = images.map { it.first },
                                         rations = rations
                                 )

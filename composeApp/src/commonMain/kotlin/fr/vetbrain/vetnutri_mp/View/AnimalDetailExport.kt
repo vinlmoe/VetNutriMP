@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.border
@@ -89,7 +91,7 @@ internal fun formatAlimentDisplayName(aliment: AlimentEv?): String {
 private fun generateDefaultPdfFileName(animal: AnimalEv?, consultation: ConsultationEv?): String {
     val animalId = animal?.id ?: translate(AnimalDetail.UNKNOWN_ID)
     val animalName = animal?.nom ?: translate(AnimalDetail.UNKNOWN_NAME)
-    val consultationDate = consultation?.date?.toString() ?: translate(AnimalDetail.UNKNOWN_DATE)
+    val consultationDate = consultation?.date?.enTexte() ?: translate(AnimalDetail.UNKNOWN_DATE)
     return "${animalId}_${animalName}_${consultationDate}.pdf"
 }
 
@@ -110,7 +112,7 @@ internal fun buildCompteRenduText(
                 val ingredients = ration.alimentMutableList.joinToString("\n") { alimentRation ->
                         val ingredientName = formatAlimentDisplayName(alimentRation.aliment)
                         val quantity = (alimentRation.quantite * 10.0).roundToInt() / 10.0
-                        "- $ingredientName: $quantity g"
+                        "- $ingredientName : $quantity g"
                 }
                 val details = if (ingredients.isBlank()) "- ${translate(AnimalDetail.CR_NO_INGREDIENT)}" else ingredients
                 return "- $rationName\n$details"
@@ -160,7 +162,7 @@ internal fun buildCompteRenduText(
         return buildString {
                 appendLine(translate(AnimalDetail.CR_TITLE))
                 appendLine("${translate(AnimalDetail.CR_LABEL_ANIMAL_ID)}: ${animal?.id?.takeIf { it.isNotBlank() } ?: "-"}")
-                appendLine("${translate(AnimalDetail.CR_LABEL_CONSULT_DATE)}: ${consultation?.date?.toString() ?: "-"}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_CONSULT_DATE)}: ${consultation?.date?.enTexte() ?: "-"}")
                 appendLine("${translate(AnimalDetail.CR_LABEL_CONSULT_OBJECT)}: ${consultation?.objectConsult?.takeIf { it.isNotBlank() } ?: "-"}")
                 appendLine()
                 appendLine(translate(AnimalDetail.CR_SECTION_IDENTIFICATION))
@@ -169,7 +171,7 @@ internal fun buildCompteRenduText(
                 appendLine("${translate(AnimalDetail.CR_LABEL_SEX)}: ${text(animal?.getSex()?.displayName)}")
                 appendLine("${translate(AnimalDetail.CR_LABEL_SPECIES)}: ${text(animal?.getEspece()?.label)}")
                 appendLine("${translate(AnimalDetail.CR_LABEL_BREED)}: ${text(animal?.race)}")
-                appendLine("${translate(AnimalDetail.CR_LABEL_BIRTHDATE)}: ${text(animal?.birthdate?.toString())}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_BIRTHDATE)}: ${text(animal?.birthdate?.enTexte())}")
                 appendLine("${translate(AnimalDetail.CR_LABEL_CONSULT_WEIGHT)}: ${consultation?.effectiveWeight?.let { translate(AnimalDetail.WEIGHT_KG_FORMAT, ((it * 10.0).roundToInt() / 10.0).toString()) } ?: "-"}")
                 appendLine("${translate(AnimalDetail.CR_LABEL_UUID)}: ${text(animal?.uuid)}")
                 appendLine()
@@ -324,7 +326,7 @@ internal fun buildCompteRenduHtml(
             <body>
                 <h1>${translate(AnimalDetail.CR_TITLE)}</h1>
                 <div class='meta'><b>${translate(AnimalDetail.CR_LABEL_ANIMAL_ID)}:</b> ${escapeHtml(animal?.id?.takeIf { it.isNotBlank() } ?: "-")} | <b>${translate(AnimalDetail.CR_LABEL_NAME)}:</b> ${escapeHtml(animal?.nom ?: "-")}</div>
-                <div class='meta'><b>${translate(AnimalDetail.CR_LABEL_CONSULT_DATE)}:</b> ${escapeHtml(consultation?.date?.toString() ?: "-")} | <b>${translate(AnimalDetail.CR_LABEL_OBJECT_SHORT)}:</b> ${escapeHtml(consultation?.objectConsult?.takeIf { it.isNotBlank() } ?: "-")}</div>
+                <div class='meta'><b>${translate(AnimalDetail.CR_LABEL_CONSULT_DATE)}:</b> ${escapeHtml(consultation?.date?.enTexte() ?: "-")} | <b>${translate(AnimalDetail.CR_LABEL_OBJECT_SHORT)}:</b> ${escapeHtml(consultation?.objectConsult?.takeIf { it.isNotBlank() } ?: "-")}</div>
 
                 <div class='section'>
                     <h2>${translate(AnimalDetail.CR_SECTION_IDENTIFICATION)}</h2>
@@ -333,7 +335,7 @@ internal fun buildCompteRenduHtml(
                     <div><b>${translate(AnimalDetail.CR_LABEL_SEX)}:</b> ${escapeHtml(animal?.getSex()?.displayName?.ifBlank { "-" } ?: "-")}</div>
                     <div><b>${translate(AnimalDetail.CR_LABEL_SPECIES)}:</b> ${escapeHtml(animal?.getEspece()?.label?.ifBlank { "-" } ?: "-")}</div>
                     <div><b>${translate(AnimalDetail.CR_LABEL_BREED)}:</b> ${escapeHtml(animal?.race?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>${translate(AnimalDetail.CR_LABEL_BIRTHDATE)}:</b> ${escapeHtml(animal?.birthdate?.toString() ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_BIRTHDATE)}:</b> ${escapeHtml(animal?.birthdate?.enTexte() ?: "-")}</div>
                     <div><b>${translate(AnimalDetail.CR_LABEL_CONSULT_WEIGHT)}:</b> ${escapeHtml(consultation?.effectiveWeight?.let { translate(AnimalDetail.WEIGHT_KG_FORMAT, ((it * 10.0).roundToInt() / 10.0).toString()) } ?: "-")}</div>
                     <div><b>${translate(AnimalDetail.CR_LABEL_UUID)}:</b> ${escapeHtml(animal?.uuid ?: "-")}</div>
                 </div>

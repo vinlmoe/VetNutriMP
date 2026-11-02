@@ -66,12 +66,12 @@ class TroupeauComponentsTest {
     @Test
     fun formatage_nombresEtGrammes() {
         assertEquals("1235", formaterNombreTroupeau(1234.6))
-        assertEquals("12,5", formaterNombreTroupeau(12.5))
-        assertEquals("0,125", formaterNombreTroupeau(0.125))
+        assertEquals("12.5", formaterNombreTroupeau(12.5))
+        assertEquals("0.125", formaterNombreTroupeau(0.125))
         assertEquals("—", formaterNombreTroupeau(null))
         assertEquals("—", formaterNombreTroupeau(Double.NaN))
-        assertEquals("-2,50", formaterNombreTroupeau(-2.5))
-        assertEquals("250,0 g", formaterGrammesTroupeau(250.0))
-        assertEquals("1,50 kg", formaterGrammesTroupeau(1500.0))
+        assertEquals("-2.50", formaterNombreTroupeau(-2.5))
+        assertEquals("250.0 g", formaterGrammesTroupeau(250.0))
+        assertEquals("1.50 kg", formaterGrammesTroupeau(1500.0))
     }
 }

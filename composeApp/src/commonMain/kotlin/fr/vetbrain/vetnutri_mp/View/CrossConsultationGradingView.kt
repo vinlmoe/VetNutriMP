@@ -266,8 +266,8 @@ fun CrossConsultationGradingView(
                     }
                     Divider()
                     Text(
-                        if (readyToGrade) "Processus cohérent: prêt pour calcul des notes"
-                        else "Processus incomplet: compléter les points ⚠️ avant notation",
+                        if (readyToGrade) "Processus cohérent : prêt pour calcul des notes"
+                        else "Processus incomplet : compléter les points ⚠️ avant notation",
                         color = if (readyToGrade) Color(0xFF2E7D32) else MaterialTheme.colors.error,
                         style = MaterialTheme.typography.subtitle2
                     )
@@ -447,7 +447,7 @@ fun CrossConsultationGradingView(
                 ) {
                     Text(translate("auto.view.crossconsultationgradingview.analyse_type_rmd_distribution"), style = MaterialTheme.typography.subtitle1)
                     Text(
-                        "Base utilisée: ${filteredItems.size} consultation(s) filtrée(s), $distinctAnimalsCount animal(aux) distinct(s), $latestByAnimalCount dernière(s) consultation(s) retenue(s) pour les graphes.",
+                        "Base utilisée : ${filteredItems.size} consultation(s) filtrée(s), $distinctAnimalsCount animal(aux) distinct(s), $latestByAnimalCount dernière(s) consultation(s) retenue(s) pour les graphes.",
                         style = MaterialTheme.typography.body2
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

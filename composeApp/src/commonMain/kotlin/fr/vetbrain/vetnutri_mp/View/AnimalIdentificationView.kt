@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -110,7 +112,7 @@ fun AnimalIdentificationView(
                                         1
                                 else 0)
 
-                InfoRow(label = Animal.BIRTH_DATE.translate(), value = birthdate.toString())
+                InfoRow(label = Animal.BIRTH_DATE.translate(), value = birthdate.enTexte())
                 InfoRow(label = Animal.AGE.translate(), value = translate(Animal.AGE_YEARS_VALUE, age.toString()))
             }
 
@@ -137,7 +139,7 @@ fun AnimalIdentificationView(
                 lastWeight?.let { weight ->
                     InfoRow(
                             label = Animal.WEIGHT.translate(),
-                            value = translate(Animal.WEIGHT_VALUE_WITH_DATE, weight.value.toString(), weight.date.toString())
+                            value = translate(Animal.WEIGHT_VALUE_WITH_DATE, weight.value.toString(), weight.date.enTexte())
                     )
                 }
             }
