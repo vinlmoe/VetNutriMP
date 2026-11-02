@@ -59,7 +59,7 @@ fun AnimalIdentificationView(
                     Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = translate(General.DELETE),
-                            tint = Color.Red
+                            tint = VetNutriColors.Error
                     )
                 }
             }

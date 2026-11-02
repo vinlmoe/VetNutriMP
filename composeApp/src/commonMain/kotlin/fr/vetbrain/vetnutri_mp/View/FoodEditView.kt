@@ -162,53 +162,8 @@ fun FoodEditView(
                 }
         }
 
-        Scaffold(
-                topBar = {
-                        TopBar(
-                                title =
-                                        if (aliment.uuid.isBlank()) translate(LocalizationKeys.FoodEdit.TITLE_ADD)
-                                        else translate(LocalizationKeys.FoodEdit.TITLE_EDIT),
-                                onBackClick = onNavigateBack,
-                                onSettingsClick = onNavigateToSettings
-                        )
-                },
-                snackbarHost = {
-                        SnackbarHost(
-                                hostState =
-                                        remember { SnackbarHostState() }.apply {
-                                                if (showErrorMessage) {
-                                                        scope.launch {
-                                                                showSnackbar(
-                                                                         message = errorMessage,
-                                                                         actionLabel = translate(LocalizationKeys.General.OK),
-                                                                         duration =
-                                                                                 SnackbarDuration
-                                                                                         .Short
-                                                                )
-                                                                showErrorMessage = false
-                                                        }
-                                                }
-                                                if (showSuccessMessage) {
-                                                        scope.launch {
-                                                                showSnackbar(
-                                                                         message =
-                                                                                 translate(LocalizationKeys.FoodEdit.SUCCESS_SAVE),
-                                                                         actionLabel = translate(LocalizationKeys.General.OK),
-                                                                         duration =
-                                                                                 SnackbarDuration
-                                                                                         .Short
-                                                                )
-                                                                showSuccessMessage = false
-                                                        }
-                                                }
-                                        }
-                        )
-                }
-        ) { paddingValues ->
-                Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-                        // Bouton d'enregistrement
-                        Button(
-                                onClick = {
+        // Enregistrement : bouton rond ✓ en bas à droite, comme pour l'animal et la consultation
+        val enregistrer: () -> Unit = {
                                         scope.launch {
                                                 // Validation des champs obligatoires
                                                  if (nomState.value.isBlank()) {
@@ -410,13 +365,59 @@ fun FoodEditView(
                                                          showErrorMessage = true
                                                  }
                                         }
-                                },
-                                modifier = Modifier.fillMaxWidth().padding(16.dp)
-                        ) {
-                                 Icon(Icons.Default.Check, contentDescription = null)
-                                 Spacer(modifier = Modifier.width(8.dp))
-                                 Text(translate(LocalizationKeys.General.SAVE))
-                        }
+}
+
+        Scaffold(
+                floatingActionButton = {
+                        FloatingActionButton(
+                                onClick = enregistrer,
+                                backgroundColor = VetNutriColors.Primary,
+                                contentColor = VetNutriColors.OnPrimary
+                        ) { Icon(Icons.Default.Check, contentDescription = translate(LocalizationKeys.General.SAVE)) }
+                },
+                topBar = {
+                        TopBar(
+                                title =
+                                        if (aliment.uuid.isBlank()) translate(LocalizationKeys.FoodEdit.TITLE_ADD)
+                                        else translate(LocalizationKeys.FoodEdit.TITLE_EDIT),
+                                onBackClick = onNavigateBack,
+                                onSettingsClick = onNavigateToSettings
+                        )
+                },
+                snackbarHost = {
+                        SnackbarHost(
+                                hostState =
+                                        remember { SnackbarHostState() }.apply {
+                                                if (showErrorMessage) {
+                                                        scope.launch {
+                                                                showSnackbar(
+                                                                         message = errorMessage,
+                                                                         actionLabel = translate(LocalizationKeys.General.OK),
+                                                                         duration =
+                                                                                 SnackbarDuration
+                                                                                         .Short
+                                                                )
+                                                                showErrorMessage = false
+                                                        }
+                                                }
+                                                if (showSuccessMessage) {
+                                                        scope.launch {
+                                                                showSnackbar(
+                                                                         message =
+                                                                                 translate(LocalizationKeys.FoodEdit.SUCCESS_SAVE),
+                                                                         actionLabel = translate(LocalizationKeys.General.OK),
+                                                                         duration =
+                                                                                 SnackbarDuration
+                                                                                         .Short
+                                                                )
+                                                                showSuccessMessage = false
+                                                        }
+                                                }
+                                        }
+                        )
+                }
+        ) { paddingValues ->
+                Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
 
                         // Onglets
                         AdaptiveTabRow(

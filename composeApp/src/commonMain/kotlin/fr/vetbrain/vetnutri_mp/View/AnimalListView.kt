@@ -181,9 +181,8 @@ fun AnimalListView(
                                                 modifier = Modifier.weight(1f),
                                                 colors =
                                                         ButtonDefaults.buttonColors(
-                                                                backgroundColor =
-                                                                        VetNutriColors.Secondary,
-                                                                contentColor = Color.White
+                                                                backgroundColor = VetNutriColors.Primary,
+                                                                contentColor = VetNutriColors.OnPrimary
                                                         )
                                         ) { Text(translate(AnimalList.QUICK_IMPORT)) }
                                 } else {
@@ -860,7 +859,7 @@ private fun AnimalCard(
                                                 imageVector = Icons.Default.Delete,
                                                 contentDescription = translate(General.DELETE),
                                                 tooltip = translate(General.DELETE),
-                                                tint = Color.Red
+                                                tint = VetNutriColors.Error
                                         )
                                 }
                         }

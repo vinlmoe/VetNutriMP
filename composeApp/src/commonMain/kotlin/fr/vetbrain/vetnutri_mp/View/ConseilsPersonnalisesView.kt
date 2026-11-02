@@ -283,7 +283,7 @@ private fun ConseilCard(
                         Icon(
                                 imageVector = AppIcons.Delete,
                                 contentDescription = translate("general.delete"),
-                                tint = Color.Red
+                                tint = VetNutriColors.Error
                         )
                     }
                 }

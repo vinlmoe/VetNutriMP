@@ -235,7 +235,7 @@ fun ConsultationFullScreenEditView(
                                                                         ConsultationEdit.NEW_TITLE.translate()
                                                                 else ConsultationEdit.EDIT_TITLE.translate(),
                                                         style = MaterialTheme.typography.h6,
-                                                        color = VetNutriColors.OnPrimary
+                                                        color = MaterialTheme.colors.onSurface
                                                 )
                                                 if (animalName.isNotEmpty()) {
                                                         Text(
@@ -244,8 +244,8 @@ fun ConsultationFullScreenEditView(
                                                                         MaterialTheme.typography
                                                                                 .subtitle2,
                                                                 color =
-                                                                        VetNutriColors.OnPrimary
-                                                                                .copy(alpha = 0.8f)
+                                                                        MaterialTheme.colors.onSurface
+                                                                                .copy(alpha = 0.6f)
                                                         )
                                                 }
                                         }
@@ -259,12 +259,14 @@ fun ConsultationFullScreenEditView(
                                                 imageVector = AppIcons.ArrowBack,
                                                 contentDescription = LocalizationKeys.AnimalDetail.BACK.translate(),
                                                 tooltip = LocalizationKeys.AnimalDetail.BACK.translate(),
-                                                tint = VetNutriColors.OnPrimary
+                                                tint = MaterialTheme.colors.onSurface
                                         )
                                 },
                                 actions = {},
-                                backgroundColor = VetNutriColors.Primary,
-                                contentColor = VetNutriColors.OnPrimary
+                                // Barre claire, comme les autres écrans
+                                backgroundColor = MaterialTheme.colors.surface,
+                                contentColor = MaterialTheme.colors.onSurface,
+                                elevation = 0.dp
                         )
                 },
                 floatingActionButton = {

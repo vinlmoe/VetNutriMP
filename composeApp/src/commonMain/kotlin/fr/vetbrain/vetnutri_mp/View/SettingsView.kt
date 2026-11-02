@@ -894,7 +894,7 @@ fun SettingsView(
                                                                 ButtonDefaults.buttonColors(
                                                                         backgroundColor =
                                                                                 VetNutriColors
-                                                                                        .Secondary
+                                                                                        .Primary
                                                                 ),
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
@@ -914,7 +914,7 @@ fun SettingsView(
                                                                 ButtonDefaults.buttonColors(
                                                                         backgroundColor =
                                                                                 VetNutriColors
-                                                                                        .Secondary
+                                                                                        .Primary
                                                                 ),
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
@@ -1244,7 +1244,7 @@ fun SettingsView(
                                                                 ButtonDefaults.buttonColors(
                                                                         backgroundColor =
                                                                                 VetNutriColors
-                                                                                        .Secondary
+                                                                                        .Primary
                                                                 ),
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {

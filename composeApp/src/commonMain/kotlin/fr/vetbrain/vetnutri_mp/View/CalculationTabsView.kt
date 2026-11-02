@@ -145,15 +145,17 @@ fun CalculationTabsView(
                                         )
                                 }
                         },
-                        backgroundColor = VetNutriColors.Primary,
-                        contentColor = VetNutriColors.OnPrimary
+                        // Barre claire, comme Paramètres et les listes
+                        backgroundColor = MaterialTheme.colors.surface,
+                        contentColor = MaterialTheme.colors.onSurface,
+                        elevation = 0.dp
                 )
 
                 AdaptiveTabRow(
                         selectedTabIndex = selectedTab,
                         tabCount = 4,
-                        backgroundColor = VetNutriColors.Primary,
-                        contentColor = VetNutriColors.OnPrimary
+                        backgroundColor = MaterialTheme.colors.surface,
+                        contentColor = VetNutriColors.Primary
                 ) {
                         Tab(
                                 selected = selectedTab == 0,

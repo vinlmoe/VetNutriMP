@@ -60,8 +60,9 @@ fun RecipeAddAlimentView(
                         Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = translate(LocalizationKeys.AnimalDetail.BACK))
                     }
                 },
-                backgroundColor = VetNutriColors.Primary,
-                contentColor = VetNutriColors.OnPrimary
+                backgroundColor = MaterialTheme.colors.surface,
+                contentColor = MaterialTheme.colors.onSurface,
+                elevation = 0.dp
             )
         },
         floatingActionButton = {

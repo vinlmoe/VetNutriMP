@@ -55,7 +55,10 @@ fun ImportView(viewModel: ImportViewModel, onNavigateBack: () -> Unit) {
                             IconButton(onClick = onNavigateBack) {
                                 Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = translate("graph.back"))
                             }
-                        }
+                        },
+                        backgroundColor = MaterialTheme.colors.surface,
+                        contentColor = MaterialTheme.colors.onSurface,
+                        elevation = 0.dp
                 )
             }
     ) { paddingValues ->

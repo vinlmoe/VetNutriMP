@@ -481,7 +481,7 @@ internal fun ColumnScope.CarteReferencesConsultation(
                                                                                 imageVector = AppIcons.Delete,
                                                                                 contentDescription = ConsultationEdit.REF_DELETE_TOOLTIP.translate(),
                                                                                 tooltip = ConsultationEdit.REF_DELETE_TOOLTIP.translate(),
-                                                                                tint = Color.Red
+                                                                                tint = VetNutriColors.Error
                                                                         )
                                                                 }
                                                         }
@@ -618,7 +618,7 @@ internal fun ColumnScope.CarteMotsClesConsultation(
                                                                         imageVector = AppIcons.Delete,
                                                                         contentDescription = ConsultationEdit.KEYWORDS_DELETE_TOOLTIP.translate(),
                                                                         tooltip = ConsultationEdit.KEYWORDS_DELETE_TOOLTIP.translate(),
-                                                                        tint = Color.Red
+                                                                        tint = VetNutriColors.Error
                                                                 )
                                                         }
                                                 }

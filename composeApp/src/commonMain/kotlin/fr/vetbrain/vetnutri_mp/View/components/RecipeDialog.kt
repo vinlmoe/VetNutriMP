@@ -135,7 +135,7 @@ fun RecipeDialog(
                                             Icon(
                                                     imageVector = Icons.Default.Delete,
                                                     contentDescription = translate(LocalizationKeys.Recipe.CONTENT_DELETE),
-                                                    tint = Color.Red,
+                                                    tint = VetNutriColors.Error,
                                                     modifier =
                                                             Modifier.size(24.dp).clickable {
                                                                 scope.launch {

@@ -877,7 +877,7 @@ fun PoidsTableau(
                                                             imageVector = Icons.Default.Delete,
                                                             contentDescription = translate(LocalizationKeys.Graph.TOOLTIP_DELETE_WEIGHT),
                                                             tooltip = translate(LocalizationKeys.Graph.TOOLTIP_DELETE_WEIGHT),
-                                                            tint = Color.Red,
+                                                            tint = VetNutriColors.Error,
                                                             iconModifier = Modifier.size(20.dp)
                                                         )
                                                     }

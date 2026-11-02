@@ -538,7 +538,7 @@ fun AlimentItem(
                                         imageVector = AppIcons.Delete,
                                         contentDescription = translate(LocalizationKeys.General.DELETE),
                                         tooltip = translate(LocalizationKeys.General.DELETE),
-                                        tint = Color.Red.copy(alpha = 0.8f)
+                                        tint = VetNutriColors.Error
                                 )
                         }
                 }
