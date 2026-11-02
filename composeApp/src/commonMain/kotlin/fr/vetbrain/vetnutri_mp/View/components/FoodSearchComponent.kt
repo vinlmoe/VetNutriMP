@@ -1242,7 +1242,7 @@ private fun AlimentDetailsContent(aliment: AlimentEv, referenceEv: ReferenceEv? 
 private fun DetailRow(label: String, value: String) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                        text = "$label:",
+                        text = "$label :",
                         style = MaterialTheme.typography.body2,
                         modifier = Modifier.weight(1f)
                 )

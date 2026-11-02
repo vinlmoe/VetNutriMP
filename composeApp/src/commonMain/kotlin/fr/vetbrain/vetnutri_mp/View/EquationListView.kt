@@ -274,7 +274,7 @@ private fun EquationCard(
 
                     // Script de l'équation
                     Text(
-                            text = "Script: ${equation.equationScript}",
+                            text = "Script : ${equation.equationScript}",
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Medium
                     )

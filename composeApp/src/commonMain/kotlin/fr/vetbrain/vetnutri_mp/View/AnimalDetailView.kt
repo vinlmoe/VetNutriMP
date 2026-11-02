@@ -14,6 +14,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.automirrored.filled.EventNote
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Info
@@ -147,7 +150,7 @@ fun AnimalDetailView(
                         MenuOption(
                                 section = AnimalDetailSection.CONSULTATIONS,
                                 title = translate(AnimalDetail.CONSULTATIONS),
-                                icon = Icons.Default.Info
+                                icon = Icons.AutoMirrored.Filled.EventNote
                         ),
                         MenuOption(
                                 section = AnimalDetailSection.RATIONS,
@@ -157,12 +160,12 @@ fun AnimalDetailView(
                         MenuOption(
                                 section = AnimalDetailSection.GRAPHIQUE,
                                 title = translate(AnimalDetail.GRAPH),
-                                icon = AppIcons.Analytics
+                                icon = Icons.AutoMirrored.Filled.ShowChart
                         ),
                         MenuOption(
                                 section = AnimalDetailSection.GRAPHIQUE_ALIMENTS,
                                 title = translate(AnimalDetail.FOOD_GRAPH),
-                                icon = AppIcons.Analytics
+                                icon = Icons.Default.BarChart
                         ),
                         MenuOption(
                                 section = AnimalDetailSection.EXPORT,

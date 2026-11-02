@@ -140,7 +140,10 @@ fun SectionValeursMetaboliques(
                             )
                         }
                     } else {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
                             LigneInfoLocaleCompacte(
                                     label = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
                                     value =
@@ -248,7 +251,10 @@ fun SectionValeursMetaboliques(
                             }
                         }
                     } else {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
                             LigneInfoLocaleCompacte(
                                     label = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
                                     value =
@@ -257,7 +263,6 @@ fun SectionValeursMetaboliques(
                                             }
                                                     ?: translate(LocalizationKeys.General.NOT_SPECIFIED)
                             )
-                            Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
                             LigneInfoLocaleCompacte(
                                     label = libelleSecondPoids,
                                     value =

@@ -53,9 +53,9 @@ fun InfoRow(label: String, value: String) {
                         text = "$label :",
                         style = MaterialTheme.typography.subtitle1,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                        modifier =
-                                Modifier.width(AppSizes.textFieldHeight.times(3.2f))
-                                        .padding(end = AppSizes.paddingSmall)
+                        // Largeur minimale commune pour aligner les valeurs ; une étiquette plus longue
+                        // élargit sa colonne au lieu de toucher la valeur.
+                        modifier = Modifier.widthIn(min = 160.dp).padding(end = AppSizes.paddingMedium)
                 )
                 Text(
                         text = value,

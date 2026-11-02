@@ -302,7 +302,7 @@ private fun DetailRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = "$label:",
+            text = "$label :",
             style = MaterialTheme.typography.body2,
             modifier = Modifier.weight(1f)
         )
