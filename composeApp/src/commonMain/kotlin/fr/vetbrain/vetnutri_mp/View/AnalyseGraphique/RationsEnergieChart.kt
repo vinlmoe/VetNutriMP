@@ -1,10 +1,10 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
@@ -41,7 +41,7 @@ import io.github.koalaplot.core.xygraph.*
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 
-@OptIn(ExperimentalKoalaPlotApi::class)
+@OptIn(ExperimentalKoalaPlotApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun RationsEnergieChart(
         viewModel: AnimalDetailViewModel,
@@ -286,7 +286,7 @@ fun RationsEnergieChart(
                         }
 
                         // Graphique avec numéros superposés
-                        BoxWithConstraints(modifier = Modifier.height(400.dp).clipToBounds()) {
+                        BoxWithConstraints(modifier = Modifier.height(LocalHauteurGraphique.current).clipToBounds()) {
                                 // Graphique principal
                                 XYGraph(
                                         xAxisLabels = { GraphFormattingUtils.formatAxisTick(it, xRange) },
@@ -304,8 +304,7 @@ fun RationsEnergieChart(
                                         modifier = Modifier
                                                 .fillMaxSize()
                                                 .clipToBounds()
-                                                .pointerInput(Unit) {
-                                                        detectTransformGestures { _, pan, zoom, _ ->
+                                                .zoomDeplacementGraphique { pan, zoom, size ->
                                                                 // Limiter le zoom entre 0.5x et 5x
                                                                 val newScaleX = (zoomPanState.scaleX * zoom).coerceIn(0.5f, 5f)
                                                                 val newScaleY = (zoomPanState.scaleY * zoom).coerceIn(0.5f, 5f)
@@ -325,7 +324,6 @@ fun RationsEnergieChart(
                                                                         panY = zoomPanState.panY + panYDelta
                                                                 )
                                                         }
-                                                }
                                 ) {
                                         if (showRationArea) RationPossibilityAreas(
                                                 points, rationsEnergieData.map { it.consultationId to (it.rationId in rationsActuellesIds) },
@@ -528,94 +526,16 @@ fun RationsEnergieChart(
                                 }
                         }
 
-                        // Légende des lignes de référence
+                        // Légende des lignes de référence (passe à la ligne sur écran étroit)
                         Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
-                        Row(
+                        FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium, Alignment.CenterHorizontally),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
-                                // Ligne magenta 80-x
-                                androidx.compose.foundation.Canvas(
-                                        modifier = Modifier.size(20.dp, 2.dp)
-                                ) {
-                                        drawLine(
-                                                color = Color.Magenta.copy(alpha = 0.7f),
-                                                start =
-                                                        androidx.compose.ui.geometry.Offset(
-                                                                0f,
-                                                                size.height / 2
-                                                        ),
-                                                end =
-                                                        androidx.compose.ui.geometry.Offset(
-                                                                size.width,
-                                                                size.height / 2
-                                                        ),
-                                                strokeWidth = 2.dp.toPx()
-                                        )
-                                }
-                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                Text(
-                                        text = translate(LocalizationKeys.Graph.LEGEND_ENA_20),
-                                        style = MaterialTheme.typography.caption,
-                                        color = Color.Magenta.copy(alpha = 0.7f)
-                                )
-
-                                Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
-
-                                // Ligne cyan 60-x
-                                androidx.compose.foundation.Canvas(
-                                        modifier = Modifier.size(20.dp, 2.dp)
-                                ) {
-                                        drawLine(
-                                                color = Color.Cyan.copy(alpha = 0.7f),
-                                                start =
-                                                        androidx.compose.ui.geometry.Offset(
-                                                                0f,
-                                                                size.height / 2
-                                                        ),
-                                                end =
-                                                        androidx.compose.ui.geometry.Offset(
-                                                                size.width,
-                                                                size.height / 2
-                                                        ),
-                                                strokeWidth = 2.dp.toPx()
-                                        )
-                                }
-                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                Text(
-                                        text = translate(LocalizationKeys.Graph.LEGEND_ENA_40),
-                                        style = MaterialTheme.typography.caption,
-                                        color = Color.Cyan.copy(alpha = 0.7f)
-                                )
-
-                                Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
-
-                                // Ligne jaune 40-x
-                                androidx.compose.foundation.Canvas(
-                                        modifier = Modifier.size(20.dp, 2.dp)
-                                ) {
-                                        drawLine(
-                                                color = Color.Yellow.copy(alpha = 0.7f),
-                                                start =
-                                                        androidx.compose.ui.geometry.Offset(
-                                                                0f,
-                                                                size.height / 2
-                                                        ),
-                                                end =
-                                                        androidx.compose.ui.geometry.Offset(
-                                                                size.width,
-                                                                size.height / 2
-                                                        ),
-                                                strokeWidth = 2.dp.toPx()
-                                        )
-                                }
-                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                Text(
-                                        text = translate(LocalizationKeys.Graph.LEGEND_ENA_60),
-                                        style = MaterialTheme.typography.caption,
-                                        color = Color.Yellow.copy(alpha = 0.7f)
-                                )
+                                LegendeLigneReference(Color.Magenta, translate(LocalizationKeys.Graph.LEGEND_ENA_20))
+                                LegendeLigneReference(Color.Cyan, translate(LocalizationKeys.Graph.LEGEND_ENA_40))
+                                LegendeLigneReference(Color.Yellow, translate(LocalizationKeys.Graph.LEGEND_ENA_60))
                         }
 
                         // Légende des rations
@@ -719,7 +639,7 @@ fun RationsEnergieChart(
                                                                 )
                                                                 Text(
                                                                         text =
-                                                                                "${translate(LocalizationKeys.Chart.PROTEIN)}: ${GraphFormattingUtils.formatPercentage(data.proteineEnergyPercentage)} | ${translate(LocalizationKeys.Chart.FAT)}: ${GraphFormattingUtils.formatPercentage(data.lipideEnergyPercentage)}",
+                                                                                "${translate(LocalizationKeys.Chart.PROTEIN)}${deuxPoints()} ${GraphFormattingUtils.formatPercentage(data.proteineEnergyPercentage)} | ${translate(LocalizationKeys.Chart.FAT)}${deuxPoints()} ${GraphFormattingUtils.formatPercentage(data.lipideEnergyPercentage)}",
                                                                         style =
                                                                                 MaterialTheme.typography
                                                                                         .caption,
@@ -761,6 +681,27 @@ private fun RationTypeLegendItem(color: Color, label: String) {
                         text = label,
                         style = MaterialTheme.typography.caption,
                         color = color
+                )
+        }
+}
+
+/** Trait de couleur et libellé d'une ligne de référence (le texte reste sombre pour être lisible). */
+@Composable
+private fun LegendeLigneReference(couleur: Color, libelle: String) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.foundation.Canvas(modifier = Modifier.size(20.dp, 3.dp)) {
+                        drawLine(
+                                color = couleur.copy(alpha = 0.7f),
+                                start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                                end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                                strokeWidth = 3.dp.toPx()
+                        )
+                }
+                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                Text(
+                        text = libelle,
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
                 )
         }
 }

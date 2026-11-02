@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
 import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import androidx.compose.ui.focus.FocusManager
@@ -153,7 +154,7 @@ internal fun ColumnScope.EnTeteRations(
                                 Text(
                                         text =
                                                 "${translate(Consultation.OF_DATE)} " +
-                                                        (selectedConsultation?.date
+                                                        (selectedConsultation?.date?.enTexte()
                                                                 ?: ""),
                                         style =
                                                 MaterialTheme.typography

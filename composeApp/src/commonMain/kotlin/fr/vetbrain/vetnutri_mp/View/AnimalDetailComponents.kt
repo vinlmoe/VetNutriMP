@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -53,9 +55,9 @@ fun InfoRow(label: String, value: String) {
                         text = "$label :",
                         style = MaterialTheme.typography.subtitle1,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                        modifier =
-                                Modifier.width(AppSizes.textFieldHeight.times(3.2f))
-                                        .padding(end = AppSizes.paddingSmall)
+                        // Largeur minimale commune pour aligner les valeurs ; une étiquette plus longue
+                        // élargit sa colonne au lieu de toucher la valeur.
+                        modifier = Modifier.widthIn(min = 180.dp).padding(end = AppSizes.paddingMedium)
                 )
                 Text(
                         text = value,
@@ -113,15 +115,13 @@ fun ConsultationCard(
                                         Color.LightGray.copy(alpha = 0.5f)
                                 )
         ) {
+                // Toute la carte est cliquable : l'effet de survol couvre la carte entière
                 Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
                         horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                         Column(
-                                modifier =
-                                        Modifier.weight(1f)
-                                                .clickable(onClick = onClick)
-                                                .padding(AppSizes.paddingMedium),
+                                modifier = Modifier.weight(1f).padding(AppSizes.paddingMedium),
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 // Date de la consultation
@@ -137,7 +137,7 @@ fun ConsultationCard(
                                                 modifier = Modifier.size(AppSizes.iconSizeSmall)
                                         )
                                         Text(
-                                                text = consultation.date?.toString()
+                                                text = consultation.date?.enTexte()
                                                                 ?: translate(LocalizationKeys.AnimalDetail.UNKNOWN_DATE),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 color = VetNutriColors.Primary
@@ -177,8 +177,8 @@ fun ConsultationCard(
                                         thickness = AppSizes.dividerHeight.times(0.5f)
                                 )
 
-                                // Motif de la consultation
-                                Row(
+                                // Motif de la consultation (rien quand il n'est pas saisi : l'icône seule ne dit rien)
+                                if (consultation.objectConsult.isNotBlank()) Row(
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingSmall),
                                         verticalAlignment = Alignment.Top
@@ -288,7 +288,7 @@ fun ConsultationCard(
                                         contentDescription = translate(LocalizationKeys.Consultation.DELETE_CONSULTATION),
                                         tooltip = translate(LocalizationKeys.Consultation.DELETE_CONSULTATION),
                                         tint =
-                                                if (isDeleteEnabled) Color.Red
+                                                if (isDeleteEnabled) VetNutriColors.Error
                                                 else Color.Gray.copy(alpha = 0.5f),
                                         iconModifier = Modifier.size(AppSizes.iconSizeSmall)
                                 )
@@ -398,7 +398,7 @@ fun RationItem(
                                 contentDescription = translate(LocalizationKeys.General.DELETE),
                                 tooltip = translate(LocalizationKeys.General.DELETE),
                                 tint =
-                                        if (isDeleteEnabled) Color.Red.copy(alpha = 0.8f)
+                                        if (isDeleteEnabled) VetNutriColors.Error
                                         else Color.Gray.copy(alpha = 0.5f)
                         )
                 }
@@ -509,7 +509,7 @@ fun AlimentItem(
                                         imageVector = AppIcons.Close,
                                         contentDescription = translate(LocalizationKeys.General.CANCEL),
                                         tooltip = translate(LocalizationKeys.General.CANCEL),
-                                        tint = Color.Red.copy(alpha = 0.8f)
+                                        tint = VetNutriColors.Error
                                 )
                         }
                 } else {
@@ -536,7 +536,7 @@ fun AlimentItem(
                                         imageVector = AppIcons.Delete,
                                         contentDescription = translate(LocalizationKeys.General.DELETE),
                                         tooltip = translate(LocalizationKeys.General.DELETE),
-                                        tint = Color.Red.copy(alpha = 0.8f)
+                                        tint = VetNutriColors.Error
                                 )
                         }
                 }

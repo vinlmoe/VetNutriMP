@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.border
@@ -12,7 +13,12 @@ import androidx.compose.material.DrawerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.automirrored.filled.EventNote
+import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
@@ -145,7 +151,7 @@ fun AnimalDetailView(
                         MenuOption(
                                 section = AnimalDetailSection.CONSULTATIONS,
                                 title = translate(AnimalDetail.CONSULTATIONS),
-                                icon = Icons.Default.Info
+                                icon = Icons.AutoMirrored.Filled.EventNote
                         ),
                         MenuOption(
                                 section = AnimalDetailSection.RATIONS,
@@ -155,12 +161,12 @@ fun AnimalDetailView(
                         MenuOption(
                                 section = AnimalDetailSection.GRAPHIQUE,
                                 title = translate(AnimalDetail.GRAPH),
-                                icon = AppIcons.Analytics
+                                icon = Icons.AutoMirrored.Filled.ShowChart
                         ),
                         MenuOption(
                                 section = AnimalDetailSection.GRAPHIQUE_ALIMENTS,
                                 title = translate(AnimalDetail.FOOD_GRAPH),
-                                icon = AppIcons.Analytics
+                                icon = Icons.Default.BarChart
                         ),
                         MenuOption(
                                 section = AnimalDetailSection.EXPORT,
@@ -459,7 +465,7 @@ private fun AnimalDetailLayout(
                                 if (isExamMode && !animalDetails.examExerciseId.isNullOrBlank()) {
                                         Text(
                                                 text =
-                                                        "${translate(Animal.EXAM_EXERCISE_ID)}: ${animalDetails.examExerciseId}",
+                                                        "${translate(Animal.EXAM_EXERCISE_ID)}${deuxPoints()} ${animalDetails.examExerciseId}",
                                                 style = MaterialTheme.typography.body2,
                                                 color = VetNutriColors.Primary
                                         )
@@ -730,6 +736,12 @@ private fun AnimalDetailLayout(
                                         val alimentsSelectionnes by
                                                 viewModel.alimentsSelectionnes
                                                         .collectAsState()
+                                        val alimentsGroupeB by
+                                                viewModel.alimentsGroupeB
+                                                        .collectAsState()
+                                        val comparaisonActive by viewModel.comparaisonActive.collectAsState()
+                                        val nomGroupeA by viewModel.nomGroupeA.collectAsState()
+                                        val nomGroupeB by viewModel.nomGroupeB.collectAsState()
                                         val analyseSelectionFilters by
                                                 viewModel.analyseSelectionFilters
                                                         .collectAsState()
@@ -753,51 +765,40 @@ private fun AnimalDetailLayout(
 
                                                 LaunchedEffect(alimentsSelectionnes) {
                                                         isLoadingAlimentsComplets = true
+                                                        // Chargement groupé (quelques requêtes pour toute la
+                                                        // sélection) ; un aliment introuvable garde sa version légère
                                                         val alimentsAvecValeurs =
-                                                                mutableListOf<
-                                                                        fr.vetbrain.vetnutri_mp.Data.AlimentEv>()
-
-                                                        for (aliment in
-                                                                alimentsSelectionnes) {
                                                                 try {
-
-                                                                        // Récupérer
-                                                                        // l'aliment complet
-                                                                        // depuis le
-                                                                        // repository
-                                                                        val alimentComplet =
-                                                                                viewModel.getAlimentComplet(
-                                                                                        aliment.uuid
+                                                                        val complets =
+                                                                                viewModel.getAlimentsComplets(
+                                                                                        alimentsSelectionnes.map { it.uuid }
                                                                                 )
-
-                                                                        if (alimentComplet !=
-                                                                                        null
-                                                                        ) {
-                                                                                alimentsAvecValeurs
-                                                                                        .add(
-                                                                                                alimentComplet
-                                                                                        )
-                                                                        } else {
-
-                                                                                alimentsAvecValeurs
-                                                                                        .add(
-                                                                                                aliment
-                                                                                        ) // Fallback
-                                                                        }
+                                                                        alimentsSelectionnes.map { complets[it.uuid] ?: it }
                                                                 } catch (e: Exception) {
                                                                         e.rethrowIfCancellation()
-
                                                                         AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
-                                                                        alimentsAvecValeurs
-                                                                                .add(
-                                                                                        aliment
-                                                                                ) // Fallback
+                                                                        alimentsSelectionnes
                                                                 }
-                                                        }
 
                                                         alimentsComplets =
                                                                 alimentsAvecValeurs
                                                         isLoadingAlimentsComplets = false
+                                                }
+
+                                                // Groupe B complet (comparaison), chargé de la même façon
+                                                var groupeBComplet by remember {
+                                                        mutableStateOf<List<fr.vetbrain.vetnutri_mp.Data.AlimentEv>>(emptyList())
+                                                }
+                                                LaunchedEffect(alimentsGroupeB) {
+                                                        groupeBComplet =
+                                                                try {
+                                                                        val complets = viewModel.getAlimentsComplets(alimentsGroupeB.map { it.uuid })
+                                                                        alimentsGroupeB.map { complets[it.uuid] ?: it }
+                                                                } catch (e: Exception) {
+                                                                        e.rethrowIfCancellation()
+                                                                        AppLog.e("AnimalDetailView", e.message ?: "Erreur", e)
+                                                                        alimentsGroupeB
+                                                                }
                                                 }
 
                                                 if (isLoadingAlimentsComplets) {
@@ -843,9 +844,11 @@ private fun AnimalDetailLayout(
                                                 } else {
                                                         AnalyseGraphiqueAlimentsView(
                                                                 aliments = alimentsComplets,
+                                                                // Suivre la référence : elle peut être chargée après l'ouverture
                                                                 referenceEv =
                                                                         viewModel
                                                                                 .referenceUtilisee
+                                                                                .collectAsState()
                                                                                 .value,
                                                                 equationRepository =
                                                                         equationRepository,
@@ -855,12 +858,69 @@ private fun AnimalDetailLayout(
                                                                                 .hideAnalyseGraphique()
                                                                 },
                                                                 modifier =
-                                                                        Modifier.fillMaxSize()
+                                                                        Modifier.fillMaxSize(),
+                                                                alimentsComparaison = if (comparaisonActive) groupeBComplet else emptyList(),
+                                                                nomGroupeA = nomGroupeA,
+                                                                nomGroupeB = nomGroupeB
                                                         )
                                                 }
                                         } else {
-                                                // Utiliser la vue de sélection des aliments
-                                                // avec possibilité d'analyse graphique
+                                                // Deux groupes : A (analysé) et B (facultatif, comparé à A par
+                                                // des boîtes à moustaches) ; une vue de sélection par onglet
+                                                var ongletGroupe by remember { mutableStateOf(0) }
+                                                // Sans comparaison, seul le groupe A existe : pas d'onglets ni de noms
+                                                val groupeA = !comparaisonActive || ongletGroupe == 0
+                                                Column(modifier = Modifier.fillMaxSize()) {
+                                                        if (!comparaisonActive) {
+                                                                Row(
+                                                                        modifier = Modifier.fillMaxWidth(),
+                                                                        horizontalArrangement = Arrangement.End
+                                                                ) {
+                                                                        TextButton(onClick = { viewModel.setComparaisonActive(true) }) {
+                                                                                Icon(Icons.Default.Add, contentDescription = null)
+                                                                                Spacer(Modifier.width(AppSizes.paddingSmall))
+                                                                                Text(translate("graph.comparaison.enable"))
+                                                                        }
+                                                                }
+                                                        } else {
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        TabRow(
+                                                                modifier = Modifier.weight(1f),
+                                                                selectedTabIndex = ongletGroupe,
+                                                                backgroundColor = MaterialTheme.colors.surface
+                                                        ) {
+                                                                Tab(
+                                                                        selected = groupeA,
+                                                                        onClick = { ongletGroupe = 0 },
+                                                                        text = { Text(libelleGroupe("A", nomGroupeA, alimentsSelectionnes.size), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+                                                                )
+                                                                Tab(
+                                                                        selected = !groupeA,
+                                                                        onClick = { ongletGroupe = 1 },
+                                                                        text = { Text(libelleGroupe("B", nomGroupeB, alimentsGroupeB.size), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+                                                                )
+                                                        }
+                                                        IconButton(onClick = { viewModel.setComparaisonActive(false) }) {
+                                                                Icon(Icons.Default.Close, contentDescription = translate("graph.comparaison.disable"))
+                                                        }
+                                                        }
+                                                        // Nom du groupe de l'onglet (facultatif), repris dans la comparaison et l'export
+                                                        OutlinedTextField(
+                                                                value = if (groupeA) nomGroupeA else nomGroupeB,
+                                                                onValueChange = { viewModel.setNomGroupe(groupeA, it) },
+                                                                label = { Text(translate("graph.groupe.nameLabel", if (groupeA) "A" else "B")) },
+                                                                singleLine = true,
+                                                                modifier = Modifier.fillMaxWidth().padding(horizontal = AppSizes.paddingSmall)
+                                                        )
+                                                        if (!groupeA) {
+                                                                Text(
+                                                                        translate("graph.groupe.info"),
+                                                                        style = MaterialTheme.typography.caption,
+                                                                        modifier = Modifier.padding(AppSizes.paddingSmall)
+                                                                )
+                                                        }
+                                                        }
+                                                        key(groupeA) {
                                                 AnalyseSelectionAlimentsView(
                                                         aliments = availableFoods,
                                                         onClose = { /* Retour à la section précédente */
@@ -868,22 +928,18 @@ private fun AnimalDetailLayout(
                                                         onAlimentSelected = { /* Gestion de la sélection */
                                                         },
                                                         onPrimaryAction = { aliments ->
-                                                                viewModel
-                                                                        .lancerAnalyseGraphique(
-                                                                                aliments
-                                                                        )
+                                                                // Depuis le groupe B, l'analyse porte toujours sur le groupe A
+                                                                viewModel.lancerAnalyseGraphique(
+                                                                        if (groupeA) aliments else alimentsSelectionnes
+                                                                )
                                                         },
                                                         primaryActionLabel = translate(Chart.VIEW_GRAPHIC_ANALYSIS_ACTION),
                                                         alimentsInitialementSelectionnes =
-                                                                alimentsSelectionnes,
-                                                        onSelectionChanged = {
-                                                                nouvelleSelection ->
-                                                                viewModel
-                                                                        .setAlimentsSelectionnes(
-                                                                                nouvelleSelection
-                                                                        )
-                                                        }, // ✨ Synchroniser avec le
-                                                        // ViewModel
+                                                                if (groupeA) alimentsSelectionnes else alimentsGroupeB,
+                                                        onSelectionChanged = { nouvelleSelection ->
+                                                                if (groupeA) viewModel.setAlimentsSelectionnes(nouvelleSelection)
+                                                                else viewModel.setAlimentsGroupeB(nouvelleSelection)
+                                                        },
                                                         filtersInitial =
                                                                 analyseSelectionFilters,
                                                         onFiltersChange = {
@@ -895,8 +951,10 @@ private fun AnimalDetailLayout(
                                                         onLoadNutrients = { foodUuids, nutrients ->
                                                                 viewModel.loadNutrientsForFoods(foodUuids, nutrients)
                                                         },
-                                                        modifier = Modifier.fillMaxSize()
+                                                        modifier = Modifier.weight(1f).fillMaxWidth()
                                                 )
+                                                        }
+                                                }
                                         }
                                 } else {
                                         Column(

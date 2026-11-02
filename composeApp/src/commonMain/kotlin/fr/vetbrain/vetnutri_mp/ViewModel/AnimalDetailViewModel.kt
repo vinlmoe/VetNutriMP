@@ -288,6 +288,24 @@ class AnimalDetailViewModel(
     private val _alimentsSelectionnes = MutableStateFlow<List<AlimentEv>>(emptyList())
     val alimentsSelectionnes: StateFlow<List<AlimentEv>> = _alimentsSelectionnes.asStateFlow()
 
+    /** Groupe B (facultatif) comparé aux aliments sélectionnés par des boîtes à moustaches. */
+    private val _alimentsGroupeB = MutableStateFlow<List<AlimentEv>>(emptyList())
+    val alimentsGroupeB: StateFlow<List<AlimentEv>> = _alimentsGroupeB.asStateFlow()
+
+    /** Comparaison A/B activée par l'utilisateur (désactivée par défaut, pour alléger la vue). */
+    private val _comparaisonActive = MutableStateFlow(false)
+    val comparaisonActive: StateFlow<Boolean> = _comparaisonActive.asStateFlow()
+
+    fun setComparaisonActive(active: Boolean) {
+        _comparaisonActive.value = active
+    }
+
+    /** Noms donnés aux groupes A et B (vide = « Groupe A », « Groupe B »). */
+    private val _nomGroupeA = MutableStateFlow("")
+    val nomGroupeA: StateFlow<String> = _nomGroupeA.asStateFlow()
+    private val _nomGroupeB = MutableStateFlow("")
+    val nomGroupeB: StateFlow<String> = _nomGroupeB.asStateFlow()
+
     private val _showAnalyseGraphique = MutableStateFlow(false)
     val showAnalyseGraphique: StateFlow<Boolean> = _showAnalyseGraphique.asStateFlow()
 
@@ -1805,6 +1823,10 @@ class AnimalDetailViewModel(
         return foodRepository.getFoodById(uuid)
     }
 
+    /** Aliments complets (valeurs nutritionnelles comprises) en quelques requêtes groupées, par UUID. */
+    suspend fun getAlimentsComplets(uuids: List<String>): Map<String, AlimentEv> =
+        foodRepository.getFoodsByUuids(uuids)
+
     // MARK: - Gestion des poids supplémentaires
 
     /** Active le mode d'ajout de poids */
@@ -1872,6 +1894,16 @@ class AnimalDetailViewModel(
     /** Définit la liste des aliments sélectionnés pour l'analyse graphique */
     fun setAlimentsSelectionnes(aliments: List<AlimentEv>) {
         _alimentsSelectionnes.value = aliments
+    }
+
+    /** Nomme le groupe A ou B ([groupeA] = false pour B) */
+    fun setNomGroupe(groupeA: Boolean, nom: String) {
+        if (groupeA) _nomGroupeA.value = nom else _nomGroupeB.value = nom
+    }
+
+    /** Définit le groupe B de la comparaison */
+    fun setAlimentsGroupeB(aliments: List<AlimentEv>) {
+        _alimentsGroupeB.value = aliments
     }
 
     /** Affiche l'analyse graphique avec les aliments sélectionnés */

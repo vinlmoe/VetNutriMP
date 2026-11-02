@@ -119,3 +119,6 @@ private fun computeNutrientHeuristicKey(className: String, rawLabel: String): St
         else -> null
     }
 }
+
+/** Deux-points après une étiquette : espace avant en français (« Espèce : Chien »), pas en anglais. */
+fun deuxPoints(): String = if (LocalizationManager.currentLocale == "fr") " :" else ":"

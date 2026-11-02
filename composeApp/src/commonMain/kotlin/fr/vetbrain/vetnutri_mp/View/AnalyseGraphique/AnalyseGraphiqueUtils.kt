@@ -447,3 +447,20 @@ fun convertirTexteEnPoids(texte: String): Double? {
         val texteNormalise = normaliserTextePoids(texte)
         return texteNormalise.toDoubleOrNull()
 }
+
+/**
+ * Plage de l'axe vertical d'un graphique en barres : toujours depuis 0, pour que la hauteur des
+ * barres reste proportionnelle aux valeurs (une plage resserrée autour des données fait paraître
+ * énorme un écart de 1 %), avec une marge de 8 % au-dessus de la plus haute.
+ */
+fun plageBarres(values: List<Float>): ClosedFloatingPointRange<Float> {
+        val max = values.filter { it.isFinite() }.maxOrNull() ?: return 0f..1f
+        if (max <= 0f) return 0f..1f
+        return arrondirPlage(0f..(max * 1.08f))
+}
+
+/**
+ * Largeur d'une barre (fraction de sa colonne) : une barre seule ne remplit plus tout le graphique,
+ * de nombreuses barres restent séparées.
+ */
+fun largeurBarres(nombre: Int): Float = (0.15f + 0.15f * nombre).coerceAtMost(0.8f)

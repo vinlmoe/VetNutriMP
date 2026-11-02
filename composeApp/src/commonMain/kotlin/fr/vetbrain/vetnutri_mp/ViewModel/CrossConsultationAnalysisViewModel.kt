@@ -112,14 +112,6 @@ class CrossConsultationAnalysisViewModel(
             val totalRations: Int = 0
     )
 
-    data class NutrientAggregate(
-            val consultationId: String,
-            val animalName: String,
-            val referenceLabel: String?,
-            val nutrientLabel: String,
-            val value: Double
-    )
-
     data class NutrientStat(
             val name: String,
             val mean: Double,
@@ -334,27 +326,6 @@ class CrossConsultationAnalysisViewModel(
             } finally {
                 _isLoading.value = false
             }
-        }
-    }
-
-    /**
-     * Calcule un agrégat simplifié : total d'énergie (kcal) par consultation sélectionnée.
-     * (Phase 2 : exemple minimal, à enrichir avec nutriments/ratios.)
-     */
-    suspend fun computeEnergyAggregates(): List<NutrientAggregate> {
-        val selectedIds = _selectedIds.value
-        val selectedItems = _items.value.filter { it.consultationId in selectedIds }
-        return selectedItems.map { item ->
-            // Énergie simplifiée = somme densité énergétique * quantités (si disponible)
-            val energy =
-                    item.rawDate // unused; placeholder to keep structure
-            NutrientAggregate(
-                    consultationId = item.consultationId,
-                    animalName = item.animalName,
-                    referenceLabel = item.referenceLabel,
-                    nutrientLabel = CrossConsultationAnalysis.ENERGY_PLACEHOLDER.translate(),
-                    value = item.rationCount.toDouble() // placeholder pour démonstration
-            )
         }
     }
 

@@ -13,8 +13,10 @@ import kotlinx.coroutines.withContext
 internal object JsonFileOperationsBridge {
     private var importLauncher: ActivityResultLauncher<Array<String>>? = null
     private var exportLauncher: ActivityResultLauncher<String>? = null
+    private var exportZipLauncher: ActivityResultLauncher<String>? = null
     private var pendingImport: CompletableDeferred<Uri?>? = null
     private var pendingExport: CompletableDeferred<Uri?>? = null
+    private var pendingExportZip: CompletableDeferred<Uri?>? = null
 
     fun register(activity: ComponentActivity) {
         importLauncher = activity.registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -25,12 +27,20 @@ internal object JsonFileOperationsBridge {
             pendingExport?.complete(uri)
             pendingExport = null
         }
+        // Type distinct : avec application/json, le système ajouterait « .json » au nom
+        exportZipLauncher = activity.registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+            pendingExportZip?.complete(uri)
+            pendingExportZip = null
+        }
     }
 
     fun unregister(changingConfigurations: Boolean) {
         importLauncher = null
         exportLauncher = null
+        exportZipLauncher = null
         if (!changingConfigurations) {
+            pendingExportZip?.cancel()
+            pendingExportZip = null
             pendingImport?.cancel()
             pendingExport?.cancel()
             pendingImport = null
@@ -64,6 +74,21 @@ internal object JsonFileOperationsBridge {
         } catch (e: Exception) {
             e.rethrowIfCancellation()
             pendingExport = null
+            throw e
+        }
+        result.await()
+    }
+
+    suspend fun pickExportZip(name: String): Uri? = withContext(Dispatchers.Main) {
+        check(pendingExportZip == null) { "Une sélection de destination est déjà ouverte" }
+        val launcher = checkNotNull(exportZipLauncher) { "Sélecteur de fichier indisponible" }
+        val result = CompletableDeferred<Uri?>()
+        pendingExportZip = result
+        try {
+            launcher.launch(name)
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            pendingExportZip = null
             throw e
         }
         result.await()

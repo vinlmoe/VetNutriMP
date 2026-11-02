@@ -31,6 +31,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
@@ -367,7 +368,7 @@ fun MultiNutrientAdjustmentView(
                                                                         Alignment.CenterVertically
                                                         ) {
                                                                 Text(
-                                                                        text = label,
+                                                                        text = libelleNutriment(label),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -389,7 +390,7 @@ fun MultiNutrientAdjustmentView(
                                                                                         expanded =
                                                                                                 true
                                                                                 }
-                                                                        ) { Text(current.name) }
+                                                                        ) { Text(current.translateEnum()) }
 
                                                                         DropdownMenu(
                                                                                 expanded = expanded,
@@ -422,7 +423,7 @@ fun MultiNutrientAdjustmentView(
                                                                                                         }
                                                                                                 ) {
                                                                                                         Text(
-                                                                                                                refLevel.name
+                                                                                                                refLevel.translateEnum()
                                                                                                         )
                                                                                                 }
                                                                                         }
@@ -933,7 +934,7 @@ private fun AlimentAdjustmentItem(
                         ) {
                                 Text(
                                         text =
-                                                translate(LocalizationKeys.AnalNut.CURRENT_QUANTITY, alimentData.alimentRation.quantite.toString()),
+                                                translate(LocalizationKeys.AnalNut.CURRENT_QUANTITY, TextUtils.formatDecimal(alimentData.alimentRation.quantite, 1)),
                                         style = MaterialTheme.typography.caption,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -945,7 +946,7 @@ private fun AlimentAdjustmentItem(
                                         selectedValue = alimentData.selectedNutrient,
                                         onValueChange = { value -> onNutrientChange(value) },
                                         options = availableNutrients,
-                                        valueToString = { it },
+                                        valueToString = { libelleNutriment(it) },
                                         enabled = !alimentData.isLocked,
                                         modifier = Modifier.fillMaxWidth()
                                 )
@@ -960,3 +961,7 @@ private fun AlimentAdjustmentItem(
                 }
         }
 }
+
+/** Nom traduit d'un nutriment désigné par son libellé interne (« ENERGIE » → « Énergie »). */
+private fun libelleNutriment(label: String): String =
+        NutrientResolver.AllNutrientResolver(label)?.translateEnum() ?: label

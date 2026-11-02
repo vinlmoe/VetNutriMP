@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Utils
 
+import androidx.compose.ui.unit.dp
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 
 /**
@@ -11,13 +12,21 @@ import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
  */
 object KoalaPlotExtensions {
 
+    /** Écart minimal entre deux graduations principales : des graphiques plus grands n'en multiplient pas les lignes. */
+    private val ESPACEMENT_GRADUATIONS = 64.dp
+
+    /** Une graduation secondaire entre deux principales (4 par défaut chargent la grille). */
+    private const val GRADUATIONS_SECONDAIRES = 1
+
     /**
      * Crée un modèle d'axe X avec des paramètres optimisés pour contrôler les ticks
      */
     fun createSmartXAxisModel(range: ClosedFloatingPointRange<Float>): FloatLinearAxisModel {
         return FloatLinearAxisModel(
             range = range,
-            minimumMajorTickIncrement = calculateOptimalTickIncrement(range)
+            minimumMajorTickIncrement = calculateOptimalTickIncrement(range),
+            minimumMajorTickSpacing = ESPACEMENT_GRADUATIONS,
+            minorTickCount = GRADUATIONS_SECONDAIRES
         )
     }
 
@@ -27,7 +36,9 @@ object KoalaPlotExtensions {
     fun createSmartYAxisModel(range: ClosedFloatingPointRange<Float>): FloatLinearAxisModel {
         return FloatLinearAxisModel(
             range = range,
-            minimumMajorTickIncrement = calculateOptimalTickIncrement(range)
+            minimumMajorTickIncrement = calculateOptimalTickIncrement(range),
+            minimumMajorTickSpacing = ESPACEMENT_GRADUATIONS,
+            minorTickCount = GRADUATIONS_SECONDAIRES
         )
     }
 
@@ -50,7 +61,9 @@ object KoalaPlotExtensions {
         
         return FloatLinearAxisModel(
             range = range,
-            minimumMajorTickIncrement = tickIncrement
+            minimumMajorTickIncrement = tickIncrement,
+            minimumMajorTickSpacing = ESPACEMENT_GRADUATIONS,
+            minorTickCount = GRADUATIONS_SECONDAIRES
         )
     }
 
@@ -60,7 +73,9 @@ object KoalaPlotExtensions {
     fun createSmartEnergyAxisModel(range: ClosedFloatingPointRange<Float>): FloatLinearAxisModel {
         return FloatLinearAxisModel(
             range = range,
-            minimumMajorTickIncrement = calculateOptimalTickIncrement(range)
+            minimumMajorTickIncrement = calculateOptimalTickIncrement(range),
+            minimumMajorTickSpacing = ESPACEMENT_GRADUATIONS,
+            minorTickCount = GRADUATIONS_SECONDAIRES
         )
     }
 
@@ -83,7 +98,9 @@ object KoalaPlotExtensions {
         
         return FloatLinearAxisModel(
             range = range,
-            minimumMajorTickIncrement = tickIncrement
+            minimumMajorTickIncrement = tickIncrement,
+            minimumMajorTickSpacing = ESPACEMENT_GRADUATIONS,
+            minorTickCount = GRADUATIONS_SECONDAIRES
         )
     }
 

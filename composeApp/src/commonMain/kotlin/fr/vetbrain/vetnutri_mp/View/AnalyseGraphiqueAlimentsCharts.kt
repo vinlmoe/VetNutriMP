@@ -1,5 +1,10 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.LocalHauteurGraphique
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.zoomDeplacementGraphique
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.plageBarres
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.largeurBarres
+
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.offset
@@ -16,7 +21,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -384,7 +388,7 @@ internal fun GraphiqueNuagePoints(
                             alimentsAnalyses = alimentsAnalyses,
                             alimentSelectionne = alimentSelectionne,
                             useDryMatterPer100g = useDryMatterPer100g,
-                            modifier = Modifier.fillMaxWidth().height(400.dp)
+                            modifier = Modifier.fillMaxWidth().height(LocalHauteurGraphique.current)
                     )
                 } else if (ongletActif == "nutriments_perso") {
                     // ✨ GRAPHIQUE PERSONNALISÉ
@@ -396,7 +400,7 @@ internal fun GraphiqueNuagePoints(
                             useDryMatterPer100g = useDryMatterPer100g,
                             referenceEv = referenceEv,
                             equationRepository = equationRepository,
-                            modifier = Modifier.fillMaxWidth().height(400.dp)
+                            modifier = Modifier.fillMaxWidth().height(LocalHauteurGraphique.current)
                     )
                 } else {
                     // 📈 SCATTER PLOTS (PROTÉINES/LIPIDES et PHOSPHORE/PROTÉINES)
@@ -510,7 +514,7 @@ internal fun GraphiqueNuagePoints(
                     }
 
                     // 🎯 Graphique avec numéros superposés et zoom/pan
-                    BoxWithConstraints(modifier = Modifier.height(400.dp).clipToBounds()) {
+                    BoxWithConstraints(modifier = Modifier.height(LocalHauteurGraphique.current).clipToBounds()) {
                         // Graphique principal avec gestes de zoom/pan
                         XYGraph(
                                 xAxisModel = KoalaPlotExtensions.createSmartXAxisModel(range = xRange),
@@ -532,8 +536,7 @@ internal fun GraphiqueNuagePoints(
                                 modifier = Modifier
                                         .fillMaxSize()
                                         .clipToBounds()
-                                        .pointerInput(Unit) {
-                                            detectTransformGestures { _, pan, zoom, _ ->
+                                        .zoomDeplacementGraphique { pan, zoom, size ->
                                                 // Limiter le zoom entre 0.5x et 5x
                                                 val newScaleX = (zoomPanState.value.scaleX * zoom).coerceIn(0.5f, 5f)
                                                 val newScaleY = (zoomPanState.value.scaleY * zoom).coerceIn(0.5f, 5f)
@@ -553,7 +556,6 @@ internal fun GraphiqueNuagePoints(
                                                         panY = zoomPanState.value.panY + panYDelta
                                                 )
                                             }
-                                        }
                         ) {
                             FoodGraphRationAreas(alimentsAnalyses, points)
                             // Afficher chaque point individuellement avec LinePlot et symbol
@@ -1127,8 +1129,7 @@ private fun GraphiqueNutrimentsPersonnalise(
                     modifier = Modifier
                             .fillMaxSize()
                             .clipToBounds()
-                            .pointerInput(Unit) {
-                                detectTransformGestures { _, pan, zoom, _ ->
+                            .zoomDeplacementGraphique { pan, zoom, size ->
                                     // Limiter le zoom entre 0.5x et 5x
                                     val newScaleX = (zoomPanState.value.scaleX * zoom).coerceIn(0.5f, 5f)
                                     val newScaleY = (zoomPanState.value.scaleY * zoom).coerceIn(0.5f, 5f)
@@ -1148,7 +1149,6 @@ private fun GraphiqueNutrimentsPersonnalise(
                                             panY = zoomPanState.value.panY + panYDelta
                                     )
                                 }
-                            }
             ) {
                 FoodGraphRationAreas(alimentsAnalyses, points)
                 // Afficher chaque point (uniquement ceux dans la plage visible)
@@ -1305,13 +1305,7 @@ private fun GraphiqueNutrimentsPersonnalise(
         // Calculer la plage adaptative basée sur la distribution des données
         // Filtrer les valeurs invalides (NaN, Infinite) avant le calcul
         val valeursValides = valeurs.filter { it.isFinite() && !it.isNaN() }
-        val yRange =
-                if (valeursValides.isNotEmpty()) {
-                    calculateAdaptiveRange(valeursValides, paddingPercent = 0.06f)
-                } else {
-                    // Valeurs par défaut si aucune valeur valide
-                    0f..1f
-                }
+        val yRange = plageBarres(valeursValides)
 
         XYGraph(
                 xAxisModel = remember(categories) { CategoryAxisModel(categories) },
@@ -1324,6 +1318,7 @@ private fun GraphiqueNutrimentsPersonnalise(
         ) {
             VerticalBarPlot(
                     xData = categories,
+                    barWidth = largeurBarres(categories.size),
                     yData = valeurs,
                     bar = { index ->
                         val aliment = alimentsAnalyses[index]
@@ -1386,13 +1381,7 @@ private fun HistogrammeEnergieAliments(
     // Calculer la plage adaptative basée sur la distribution des données
     // Filtrer les valeurs invalides (NaN, Infinite) avant le calcul
     val valeursValides = densiteEnergetique.filter { it.isFinite() && !it.isNaN() }
-    val yRange =
-            if (valeursValides.isNotEmpty()) {
-                calculateAdaptiveRange(valeursValides, paddingPercent = 0.06f)
-            } else {
-                // Valeurs par défaut si aucune valeur valide
-                0f..1f
-            }
+    val yRange = plageBarres(valeursValides)
 
     // Créer le graphique
     XYGraph(
@@ -1409,6 +1398,7 @@ private fun HistogrammeEnergieAliments(
     ) {
         VerticalBarPlot(
                 xData = categories,
+                barWidth = largeurBarres(categories.size),
                 yData = densiteEnergetique,
                 bar = { index ->
                     // Couleur de la barre selon si l'aliment est sélectionné

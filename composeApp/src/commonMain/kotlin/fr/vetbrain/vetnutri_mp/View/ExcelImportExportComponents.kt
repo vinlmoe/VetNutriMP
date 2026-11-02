@@ -101,7 +101,7 @@ fun ExcelImportExportSection(
                                                 )
                                         exportResult =
                                                 if (success)
-                                                        "✅ Export réussi: fichier sauvegardé"
+                                                        "✅ Export réussi : fichier sauvegardé"
                                                 else
                                                         "❌ Erreur lors de la sauvegarde du fichier"
                                 } else {
@@ -113,7 +113,7 @@ fun ExcelImportExportSection(
                                 }
                         } catch (e: Exception) {
                                 e.rethrowIfCancellation()
-                                exportResult = "❌ Erreur d'export: ${e.message}"
+                                exportResult = "❌ Erreur d'export : ${e.message}"
                         } finally {
                                 isExporting = false
                         }
@@ -173,7 +173,7 @@ fun ExcelImportExportSection(
 
                                 if (selectedFoods.isNotEmpty()) {
                                         Text(
-                                                "Sélection actuelle: ${selectedFoods.size} aliments",
+                                                "Sélection actuelle : ${selectedFoods.size} aliments",
                                                 style = MaterialTheme.typography.caption,
                                                 color = Color.Gray,
                                                 modifier = Modifier.padding(bottom = 8.dp)
@@ -198,7 +198,7 @@ fun ExcelImportExportSection(
                                                                         } catch (e: Exception) {
                                                                                 e.rethrowIfCancellation()
                                                                                 selectionLoadError =
-                                                                                        "Erreur de chargement: ${e.message}"
+                                                                                        "Erreur de chargement : ${e.message}"
                                                                         } finally {
                                                                                 isLoadingFoods = false
                                                                         }
@@ -493,14 +493,14 @@ fun ExcelImportExportSection(
                                                 )
                                                 if (result.importedCount > 0 || result.updatedCount > 0) {
                                                         Text(
-                                                                "Importés: ${result.importedCount}, Mis à jour: ${result.updatedCount}",
+                                                                "Importés : ${result.importedCount}, Mis à jour : ${result.updatedCount}",
                                                                 style = MaterialTheme.typography.caption,
                                                                 color = Color.Gray
                                                         )
                                                 }
                                                 if (result.errorCount > 0) {
                                                         Text(
-                                                                "Erreurs: ${result.errorCount}",
+                                                                "Erreurs : ${result.errorCount}",
                                                                 style = MaterialTheme.typography.caption,
                                                                 color = Color(0xFFFF6B35)
                                                         )
@@ -585,7 +585,7 @@ fun ExcelImportExportSection(
                                                         e.rethrowIfCancellation()
                                                         importResult = ExcelFoodService.ExcelImportResult(
                                                                 success = false,
-                                                                message = "Erreur lors de l'import final: ${e.message}"
+                                                                message = "Erreur lors de l'import final : ${e.message}"
                                                         )
                                                 }
                                         }
@@ -678,7 +678,7 @@ fun ExcelImportExportSection(
                                                                         e.rethrowIfCancellation()
                                                                         importResult = ExcelFoodService.ExcelImportResult(
                                                                                 success = false,
-                                                                                message = "Erreur lors de la préparation: ${e.message}"
+                                                                                message = "Erreur lors de la préparation : ${e.message}"
                                                                         )
                                                                 } finally {
                                                                         isImporting = false
@@ -736,14 +736,14 @@ fun ExcelImportDialog(
                                         ) {
                                                 if (result.importedCount > 0) {
                                                         Text(
-                                                                "Importés: ${result.importedCount}",
+                                                                "Importés : ${result.importedCount}",
                                                                 style = MaterialTheme.typography.body2,
                                                                 color = VetNutriColors.Primary
                                                         )
                                                 }
                                                 if (result.updatedCount > 0) {
                                                         Text(
-                                                                "Mis à jour: ${result.updatedCount}",
+                                                                "Mis à jour : ${result.updatedCount}",
                                                                 style = MaterialTheme.typography.body2,
                                                                 color = VetNutriColors.Secondary
                                                         )
@@ -753,7 +753,7 @@ fun ExcelImportDialog(
                                 
                                 if (result.errorCount > 0) {
                                         Text(
-                                                "Erreurs: ${result.errorCount}",
+                                                "Erreurs : ${result.errorCount}",
                                                 style = MaterialTheme.typography.body2,
                                                 color = Color(0xFFFF6B35)
                                         )
@@ -920,16 +920,16 @@ fun ExcelImportPreviewDialog(
                                                                                 horizontalArrangement = Arrangement.SpaceBetween
                                                                         ) {
                                                                                 Text(
-                                                                                        "Marque: ${aliment.brand ?: "N/A"}",
+                                                                                        "Marque : ${aliment.brand ?: "N/A"}",
                                                                                         style = MaterialTheme.typography.caption
                                                                                 )
                                                                                 Text(
-                                                                                        "Prix: ${aliment.price ?: "N/A"}",
+                                                                                        "Prix : ${aliment.price ?: "N/A"}",
                                                                                         style = MaterialTheme.typography.caption
                                                                                 )
                                                                         }
                                                                         Text(
-                                                                                "Nutriments: ${aliment.valMap.size}",
+                                                                                "Nutriments : ${aliment.valMap.size}",
                                                                                 style = MaterialTheme.typography.caption,
                                                                                 color = VetNutriColors.Primary
                                                                         )

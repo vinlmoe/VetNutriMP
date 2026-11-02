@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+import fr.vetbrain.vetnutri_mp.Utils.lireDate
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -52,7 +54,7 @@ fun AnimalEditView(
         var summary by remember { mutableStateOf(animal.summary) }
         var selectedSex by remember { mutableStateOf(animal.getSex()) }
         var selectedEspece by remember { mutableStateOf(animal.getEspece()) }
-        var birthDateText by remember { mutableStateOf(animal.birthdate?.toString() ?: "") }
+        var birthDateText by remember { mutableStateOf(animal.birthdate?.enTexte() ?: "") }
         var isDateValid by remember { mutableStateOf(true) }
         var isDead by remember { mutableStateOf(animal.dead) }
         var isDatePickerVisible by remember { mutableStateOf(false) }
@@ -151,14 +153,7 @@ fun AnimalEditView(
                                 value = birthDateText,
                                 onValueChange = {
                                         birthDateText = it
-                                        isDateValid =
-                                                try {
-                                                        if (it.isNotEmpty()) LocalDate.parse(it)
-                                                        true
-                                                } catch (e: Exception) {
-                                                        e.rethrowIfCancellation()
-                                                        false
-                                                }
+                                        isDateValid = it.isBlank() || lireDate(it) != null
                                 },
                                 label = { Text(Animal.BIRTH_DATE.translate()) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -216,7 +211,7 @@ fun AnimalEditView(
                                                                                 val date = Instant.fromEpochMilliseconds(selected)
                                                                                         .toLocalDateTime(TimeZone.currentSystemDefault())
                                                                                         .date
-                                                                                birthDateText = date.toString()
+                                                                                birthDateText = date.enTexte()
                                                                                 isDateValid = true
                                                                         }
                                                                         isDatePickerVisible = false
@@ -330,17 +325,7 @@ fun AnimalEditView(
 
                                 Button(
                                         onClick = {
-                                                val birthdate =
-                                                        try {
-                                                                if (birthDateText.isNotEmpty())
-                                                                        LocalDate.parse(
-                                                                                birthDateText
-                                                                        )
-                                                                else null
-                                                        } catch (e: Exception) {
-                                                                e.rethrowIfCancellation()
-                                                                null
-                                                        }
+                                                val birthdate = lireDate(birthDateText)
 
                                                 val updatedAnimal =
                                                         animal.copy(

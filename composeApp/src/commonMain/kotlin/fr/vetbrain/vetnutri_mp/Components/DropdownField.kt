@@ -133,7 +133,7 @@ fun <T> DropdownField(
                                                 ) {
                                                         // Label fixe (pas d'animation flottante)
                                                         Text(
-                                                                text = "$label: ",
+                                                                text = "$label : ",
                                                                 fontSize = labelFontSize,
                                                                 color =
                                                                         MaterialTheme.colors
@@ -360,7 +360,7 @@ fun <T> MultiSelectDropdownField(
                                                                 Alignment.CenterVertically
                                                 ) {
                                                         Text(
-                                                                text = "$label: ",
+                                                                text = "$label : ",
                                                                 fontSize = labelFontSize,
                                                                 color =
                                                                         MaterialTheme.colors

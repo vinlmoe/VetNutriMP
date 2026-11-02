@@ -237,7 +237,7 @@ private fun EquationEditTab(
                         },
                 options = EquationType.values().toList(),
                 onValueChange = { viewModel.updateKind(it.toEquationKind()) },
-                valueToString = { it.toString() }
+                valueToString = { it.translateEnum() }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -251,7 +251,7 @@ private fun EquationEditTab(
                 valueToString = { espece ->
                     when (espece) {
                         fr.vetbrain.vetnutri_mp.Enumer.Espece.CH -> "enum.Espece.ALL".translate()
-                        else -> "${espece.translateEnum()} (${espece.name})"
+                        else -> espece.translateEnum()
                     }
                 }
         )
@@ -841,7 +841,7 @@ private fun EquationTestTab(
                                     variablesMap[variable] = doubleValue
                                 } else {
                                     hasError = true
-                                    errorMessage = "Valeur invalide pour $variable: '$value'"
+                                    errorMessage = "Valeur invalide pour $variable : '$value'"
                                 }
                             }
 
@@ -865,7 +865,7 @@ private fun EquationTestTab(
                         } catch (e: Exception) {
                             e.rethrowIfCancellation()
                             testResult = null
-                            testError = "Erreur: ${e.message}"
+                            testError = "Erreur : ${e.message}"
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -949,7 +949,7 @@ private fun EquationTestTab(
                         } catch (e: Exception) {
                             e.rethrowIfCancellation()
                             testResult = null
-                            testError = "Erreur: ${e.message}"
+                            testError = "Erreur : ${e.message}"
                         }
                     },
                     modifier = Modifier.fillMaxWidth()

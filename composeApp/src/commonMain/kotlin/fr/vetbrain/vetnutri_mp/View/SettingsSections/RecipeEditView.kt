@@ -461,42 +461,27 @@ private fun RecipeListItem(
                     fontWeight = FontWeight.Medium
                 )
                 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
-                ) {
-                    IconButton(
-                        onClick = onDuplicate,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.ContentCopy,
-                            contentDescription = translate("ration.duplicateAction"),
-                            tint = VetNutriColors.Secondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    
-                    IconButton(
-                        onClick = onEdit,
-                        modifier = Modifier.size(32.dp)
-                    ) {
+                // Même ordre et même taille que les autres listes : modifier, dupliquer, supprimer
+                Row {
+                    IconButton(onClick = onEdit) {
                         Icon(
                             Icons.Default.Edit,
                             contentDescription = translate("general.edit"),
-                            tint = VetNutriColors.Primary,
-                            modifier = Modifier.size(16.dp)
+                            tint = VetNutriColors.Primary
                         )
                     }
-                    
-                    IconButton(
-                        onClick = onDelete,
-                        modifier = Modifier.size(32.dp)
-                    ) {
+                    IconButton(onClick = onDuplicate) {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = translate("ration.duplicateAction"),
+                            tint = VetNutriColors.Primary
+                        )
+                    }
+                    IconButton(onClick = onDelete) {
                         Icon(
                             Icons.Default.Delete,
                             contentDescription = translate("general.delete"),
-                            tint = MaterialTheme.colors.error,
-                            modifier = Modifier.size(16.dp)
+                            tint = VetNutriColors.Error
                         )
                     }
                 }
@@ -514,7 +499,7 @@ private fun RecipeListItem(
                 val alimentsText = recipe.alimentMutableList
                     .take(3)
                     .joinToString(", ") { 
-                        "${it.aliment?.nom ?: "Inconnu"} (${it.quantite}g)"
+                        "${it.aliment?.nom ?: "Inconnu"} (${it.quantite} g)"
                     }
                 Text(
                     text = alimentsText,

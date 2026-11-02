@@ -324,7 +324,7 @@ fun CrossConsultationResultsView(
                         }
                         if (showBoxplot) {
                             OutlinedButton(onClick = { showPoints = !showPoints }) {
-                                Text(if (showPoints) "Points: on" else "Points: off")
+                                Text(if (showPoints) "Points : on" else "Points : off")
                             }
                         }
                     }
@@ -375,7 +375,7 @@ private fun RationList(items: List<CrossConsultationAnalysisViewModel.RationSumm
                         style = androidx.compose.material.MaterialTheme.typography.body2
                 )
                 Text(
-                        "Réf: ${item.referenceLabel ?: "Aucune"} | Espèce: ${item.speciesLabel} | Quantité: ${item.quantity.roundToInt()} g | Statut: ${if (item.actual) "Actuelle" else "Proposée"}",
+                        "Réf : ${item.referenceLabel ?: "Aucune"} | Espèce : ${item.speciesLabel} | Quantité : ${item.quantity.roundToInt()} g | Statut : ${if (item.actual) "Actuelle" else "Proposée"}",
                         style = androidx.compose.material.MaterialTheme.typography.caption
                 )
                 Divider()

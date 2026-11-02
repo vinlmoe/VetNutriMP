@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -53,9 +55,8 @@ internal fun formaterNombreTroupeau(v: Double?, decimalesImposees: Int? = null):
     val facteur = 10.0.pow(decimales)
     val n = round(abs(v) * facteur).toLong()
     val diviseur = facteur.toLong()
-    // Virgule décimale en français, point dans les autres langues
-    val separateur = if (fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.currentLocale == "fr") "," else "."
-    val texte = if (decimales == 0) "$n" else "${n / diviseur}$separateur" + (n % diviseur).toString().padStart(decimales, '0')
+    // Point décimal, comme le reste de l'interface (la virgule reste acceptée à la saisie)
+    val texte = if (decimales == 0) "$n" else "${n / diviseur}." + (n % diviseur).toString().padStart(decimales, '0')
     return if (v < 0 && n != 0L) "-$texte" else texte
 }
 
@@ -80,7 +81,7 @@ internal fun ChampNombreTroupeau(
     // Saisie : jusqu'à 3 décimales, sans zéros inutiles (la valeur affichée est la valeur utilisée)
     fun formater(v: Double) =
             if (entier) v.toLong().toString()
-            else formaterNombreTroupeau(v, 3).trimEnd('0').trimEnd(',')
+            else formaterNombreTroupeau(v, 3).trimEnd('0').trimEnd('.')
     var texte by remember { mutableStateOf(formater(valeur)) }
     LaunchedEffect(valeur) { if (nombreSaisi(texte) != valeur) texte = formater(valeur) }
     val nombre = nombreSaisi(texte)
@@ -826,7 +827,7 @@ fun DetailConsultationTroupeau(
             IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = translate("troupeau.fermer")) }
         }
         Divider()
-        LigneInfoTroupeau(translate("troupeau.date"), consultation.date?.toString() ?: translate("troupeau.nonPrecisee"))
+        LigneInfoTroupeau(translate("troupeau.date"), consultation.date?.enTexte() ?: translate("troupeau.nonPrecisee"))
         if (consultation.objectConsult.isNotBlank()) LigneInfoTroupeau(translate("troupeau.objectif"), consultation.objectConsult)
         if (consultation.observation.isNotBlank()) LigneInfoTroupeau(translate("troupeau.observations"), consultation.observation)
 

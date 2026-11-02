@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.UserErrors
 import fr.vetbrain.vetnutri_mp.Utils.orUserError
@@ -575,7 +576,7 @@ fun RationsView(
                                         val especeLabel = selectedRation?.espece ?: ""
                                         if (especeLabel.isNotEmpty()) {
                                                 Text(
-                                                        "${translate(Animal.SPECIES)}: $especeLabel",
+                                                        "${translate(Animal.SPECIES)}${deuxPoints()} $especeLabel",
                                                         style = MaterialTheme.typography.body2
                                                 )
                                         }
@@ -595,7 +596,7 @@ fun RationsView(
                                                                 } catch (err: Exception) {
                                                                         err.rethrowIfCancellation()
                                                                         showSnackbar(
-                                                                                "${translate(General.ERROR)}: ${err.message ?: translate(RationKeys.RECIPE_CREATE_ERROR_FALLBACK)}"
+                                                                                "${translate(General.ERROR)}${deuxPoints()} ${err.message ?: translate(RationKeys.RECIPE_CREATE_ERROR_FALLBACK)}"
                                                                         )
                                                                 } finally {
                                                                         showSaveRecipeDialog = false
@@ -678,7 +679,7 @@ fun RationsView(
                                         rationForAddAliment = updatedRation
 
                                         showSnackbar(
-                                                "${translate(RationKeys.ADD_FOOD_TO_RATION)} '${alimentComplet.nom}' (${quantite}g)"
+                                                "${translate(RationKeys.ADD_FOOD_TO_RATION)} '${alimentComplet.nom}' (${quantite} g)"
                                         )
                                         // Ne pas fermer la vue pour permettre l'ajout multiple
                                         // d'aliments
@@ -696,6 +697,7 @@ fun RationsView(
 
                 BoxWithConstraints(Modifier.fillMaxSize()) {
                 val hauteurGrille = maxOf(maxHeight - with(densite) { hauteurEnTete.toDp() }, AppSizes.hauteurMinGrilleRations)
+                val grilleVisible = maxWidth - AppSizes.paddingMedium * 2 >= 600.dp
                 Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                         Column(Modifier.onSizeChanged { hauteurEnTete = it.height }) {
                         EnTeteRations(
@@ -739,8 +741,10 @@ fun RationsView(
 
                         // Contenu principal - grille 2x2 de cartes (colonnes fixes 50/50).
                         // Sans consultation, seules des cartes vides seraient affichées : le
-                        // message de sélection suffit (et la grille serait illisible sur téléphone)
-                        GrilleRations(
+                        // message de sélection suffit (et la grille serait illisible sur téléphone).
+                        // Écran étroit : l'en-tête affiche déjà rations, aliments et apports en une
+                        // colonne (même seuil que EnTeteRations, marges comprises)
+                        if (grilleVisible) GrilleRations(
                                 dialogues = dialogues,
                                 analyseGroupee = analyseGroupee,
                                 analyseTroupeau = analyseTroupeau,
@@ -987,7 +991,7 @@ fun RationsView(
                                                 }
                                         } else {
                                                 showSnackbar(
-                                                        "${translate(General.ERROR)}: ${result.message}"
+                                                        "${translate(General.ERROR)}${deuxPoints()} ${result.message}"
                                                 )
                                         }
                                         showMultiNutrientAdjustmentDialog = false

@@ -262,28 +262,30 @@ suivants, il suffira de cliquer sur \ui{Continuer}.
 L'écran principal est la liste des animaux. Tout part de là.
 
 \captureannotee{05_liste_animaux.png}{La liste des animaux et ses commandes.}{liste}{%
-  \repere{184}{84}{1}
-  \repere{528}{84}{2}
-  \repere{872}{84}{3}
-  \repere{1215}{84}{4}
-  \repere{40}{150}{5}
-  \repere{1000}{150}{6}
-  \repere{1358}{145}{7}
-  \repere{1296}{258}{8}
+  \repere{184}{100}{1}
+  \repere{528}{100}{2}
+  \repere{872}{100}{3}
+  \repere{1215}{100}{4}
+  \repere{40}{166}{5}
+  \repere{1000}{166}{6}
+  \repere{1358}{161}{7}
+  \repere{1296}{276}{8}
   \repere{1356}{815}{9}
-  \repere{1325}{32}{10}}
+  \repere{1368}{72}{10}
+  \repere{1320}{72}{11}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & \ui{Liste des aliments} : consulter et modifier la base d'aliments (section~\ref{sec:aliments}). \\
 \rep{2} & \ui{Données de calcul} : équations, bibliographie, référentiels, conseils (section~\ref{sec:donnees}). \\
 \rep{3} & \ui{Exploration multiration} : calculer des rations en série (section~\ref{sec:multiration}). Ce bouton n'apparaît que si la fonction est activée. \\
-\rep{4} & \ui{Import Rapide} : importer des dossiers d'animaux. \\
+\rep{4} & \ui{Import rapide} : importer des dossiers d'animaux. \\
 \rep{5} & Recherche par identifiant, nom, propriétaire ou race. \\
 \rep{6} & Filtre par espèce. \\
 \rep{7} & Tri et filtres avancés. \\
 \rep{8} & La flèche ouvre la fiche de l'animal ; la corbeille rouge le supprime. \\
 \rep{9} & \ui{+} crée un nouveau dossier. \\
 \rep{10} & Paramètres de l'application (section~\ref{sec:parametres}). \\
+\rep{11} & \ui{Analyses croisées} : comparer les consultations de plusieurs animaux (section~\ref{sec:analyses-croisees}). \\
 \end{tabularx}
 
 % ================================================================== 4
@@ -314,10 +316,10 @@ grâce à l'analyse, puis préparer l'ordonnance.
 \end{enumerate}
 
 \captureannotee{06_creation_individu.png}{Le formulaire de création d'un individu.}{creation-individu}{%
-  \repere{545}{152}{1}
-  \repere{318}{465}{2}
-  \repere{850}{697}{3}
-  \repere{318}{833}{4}
+  \repere{545}{104}{1}
+  \repere{318}{412}{2}
+  \repere{1060}{649}{3}
+  \repere{318}{716}{4}
   \repere{1290}{856}{5}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
@@ -418,9 +420,9 @@ calculer les besoins sur le poids actuel reviendrait à entretenir l'excès de p
 \end{enumerate}
 
 \captureannotee{13_choix_referentiel.png}{Choix du référentiel général.}{referentiel}{%
-  \repere{418}{263}{1}
-  \repere{418}{306}{2}
-  \repere{418}{462}{3}}
+  \repere{428}{284}{1}
+  \repere{428}{328}{2}
+  \repere{428}{483}{3}}
 
 \rep{2} Le nombre de référentiels qui correspondent à la recherche.
 
@@ -438,7 +440,7 @@ Une consultation sans référence générale ne peut pas être enregistrée : l'
 \end{attention}
 
 \begin{verifiez}
-La consultation apparaît dans la liste avec la date, le poids et \ui{Rations: 1}.
+La consultation apparaît dans la liste avec la date, le poids et \ui{Rations : 1}.
 L'application a créé une première ration vide, la \og Ration actuelle\fg.
 \end{verifiez}
 
@@ -463,8 +465,8 @@ L'application a créé une première ration vide, la \og Ration actuelle\fg.
   \repere{270}{212}{2}
   \repere{258}{605}{3}
   \repere{940}{124}{4}
-  \repere{1295}{768}{5}
-  \repere{1295}{848}{6}}
+  \repere{1284}{808}{5}
+  \repere{1355}{808}{6}}
 
 Pour régler la quantité, cliquez sur le crayon de la ligne de l'aliment, saisissez la quantité
 en grammes (ici 380) et validez par \ui{OK}.
@@ -475,14 +477,14 @@ en grammes (ici 380) et validez par \ui{OK}.
 Avec 380~g de l'aliment, l'onglet \ui{Rations} se présente ainsi.
 
 \captureannotee{15_ration_avant_ajustement.png}{Analyse de la ration de 380~g.}{ration-avant}{%
-  \repere{252}{103}{1}
-  \repere{636}{103}{2}
-  \repere{1020}{101}{3}
-  \repere{252}{212}{4}
-  \repere{252}{576}{5}
-  \repere{836}{212}{6}
-  \repere{1180}{185}{7}
-  \repere{836}{248}{8}}
+  \repere{248}{104}{1}
+  \repere{632}{104}{2}
+  \repere{1016}{104}{3}
+  \repere{252}{224}{4}
+  \repere{252}{511}{5}
+  \repere{830}{223}{6}
+  \repere{1180}{195}{7}
+  \repere{836}{260}{8}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & \ui{Valeurs métaboliques} : poids, poids idéal, poids métabolique, besoin énergétique
@@ -520,9 +522,9 @@ multi-nutriments} (la balance, à gauche du livre et du \ui{+}). Les quantités 
 pour couvrir le besoin énergétique.
 
 \captureannotee{17_ration_apres_ajustement.png}{La même ration après ajustement rapide.}{ration-apres}{%
-  \repere{1160}{150}{1}
-  \repere{252}{646}{2}
-  \repere{1000}{406}{3}}
+  \repere{1160}{156}{1}
+  \repere{252}{581}{2}
+  \repere{950}{418}{3}}
 
 \begin{verifiez}
 \rep{1} La couverture passe à 99~\% et le K observé à 0,99. \rep{2} La quantité passe à
@@ -570,10 +572,10 @@ référentiel. \ui{Cliquer pour plus de détails} ouvre le détail d'un nutrimen
 
 \captureannotee{18_analyse_graphique.png}{Analyse de la ration en vue graphique.}{analyse-graphique}{%
   \repere{1380}{240}{1}
-  \repere{862}{256}{2}
-  \repere{1135}{256}{3}
+  \repere{862}{268}{2}
+  \repere{1135}{268}{3}
   \repere{1030}{700}{4}
-  \repere{1190}{595}{5}}
+  \repere{1170}{607}{5}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & L'interrupteur \ui{Cartes} / \ui{Bullet} bascule entre la vue en cartes et cette vue graphique. \\
@@ -758,28 +760,24 @@ L'onglet \ui{Graphique} propose quatre vues : \ui{Évolution du poids}, \ui{Rép
 énergétique}, \ui{Densité énergétique des rations} et \ui{Nutriments des rations}.
 
 \captureannotee{19_graphique_poids.png}{Évolution du poids et courbes de référence.}{graphique-poids}{%
-  \repere{440}{176}{1}
-  \repere{900}{176}{2}
-  \repere{1095}{176}{3}
-  \repere{895}{506}{4}
-  \repere{265}{830}{5}
-  \repere{745}{862}{6}
-  \repere{1245}{857}{7}}
+  \repere{550}{232}{1}
+  \repere{758}{232}{2}
+  \repere{1040}{232}{3}
+  \repere{880}{550}{4}
+  \repere{1222}{56}{5}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & La courbe de référence proposée (sexe et classe de poids) ; un clic en choisit une autre. \\
 \rep{2} & L'agrandissement des courbes de croissance et leur export en PDF. \\
 \rep{3} & Afficher ou masquer les courbes de référence. \\
 \rep{4} & Chaque pesée, placée selon l'âge. \\
-\rep{5} & L'\ui{Historique des poids} de l'animal. \\
-\rep{6} & L'objectif de perte de poids : perte minimale et maximale en \% par semaine, poids visé. \\
-\rep{7} & \ui{+ Poids} ajoute une pesée. \\
+\rep{5} & \ui{Exporter} : les graphiques des rations en images, avec un document Markdown ou LaTeX qui reprend les aliments de chaque ration. \\
 \end{tabularx}
 
 
 La vue du poids place chaque pesée en fonction de l'âge. Sous le graphique, l'\ui{Historique
-des poids} permet d'ajouter une pesée et de fixer un objectif de perte de poids (perte minimale
-et maximale en \% par semaine).
+des poids} liste les pesées de l'animal ; \ui{+ Poids} en ajoute une, et les champs voisins fixent
+l'objectif de perte de poids (perte minimale et maximale en \% par semaine, poids visé).
 
 \begin{pourquoi}
 La courbe de référence proposée par défaut correspond au sexe de l'animal et à sa classe de
@@ -807,11 +805,12 @@ L'onglet \ui{Graphique Aliments} compare des aliments entre eux : ajoutez-les av
 la liste de gauche, puis cliquez sur \ui{Voir l'analyse graphique}.
 
 \captureannotee{20_graphique_aliments.png}{Sélection d'aliments à comparer.}{graphique-aliments}{%
-  \repere{268}{57}{1}
-  \repere{495}{272}{2}
-  \repere{752}{324}{3}
-  \repere{1112}{272}{4}
-  \repere{1125}{860}{5}}
+  \repere{268}{105}{1}
+  \repere{495}{320}{2}
+  \repere{752}{372}{3}
+  \repere{1112}{320}{4}
+  \repere{1125}{860}{5}
+  \repere{1112}{25}{6}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & La recherche et les filtres (type, espèce, base de données, indications). \\
@@ -819,6 +818,8 @@ la liste de gauche, puis cliquez sur \ui{Voir l'analyse graphique}.
 \rep{3} & \ui{Tout ajouter} et \ui{Tout retirer}. \\
 \rep{4} & Les aliments sélectionnés. \\
 \rep{5} & \ui{Voir l'analyse graphique} ouvre les graphiques de comparaison. \\
+\rep{6} & \ui{Comparer avec un groupe B} ajoute une seconde sélection : les deux groupes sont
+          comparés par boîtes à moustaches (densité énergétique, protéines\ldots), avec export. \\
 \end{tabularx}
 
 \subsection{Transmettre un dossier}
@@ -845,11 +846,11 @@ effectif, poids moyen, espèce, race, sexe). Il peut mêler plusieurs espèces ;
 K de chaque groupe se choisissent dans chaque consultation.
 
 \captureannotee{07_creation_troupeau.png}{Création d'un troupeau de douze individus.}{creation-troupeau}{%
-  \repere{545}{152}{1}
-  \repere{345}{441}{2}
-  \repere{1105}{448}{3}
-  \repere{474}{612}{4}
-  \repere{305}{636}{5}
+  \repere{545}{104}{1}
+  \repere{345}{393}{2}
+  \repere{1105}{400}{3}
+  \repere{474}{564}{4}
+  \repere{305}{588}{5}
   \repere{1290}{856}{6}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
@@ -974,30 +975,30 @@ recherche d'aliments d'une ration. Le crayon modifie un aliment, la corbeille le
 \captureannotee{22_liste_aliments.png}{Liste des aliments.}{aliments}{%
   \repere{690}{121}{1}
   \repere{700}{196}{2}
-  \repere{72}{295}{3}
-  \repere{780}{280}{4}
+  \repere{1278}{288}{3}
+  \repere{690}{294}{4}
   \repere{1300}{856}{5}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
 \rep{1} & La recherche par nom, marque ou ingrédient. \\
 \rep{2} & Les filtres : type, indications, espèce, base de données. \\
-\rep{3} & Le crayon modifie l'aliment, la corbeille le supprime. \\
+\rep{3} & À droite de chaque ligne, le crayon modifie l'aliment, la corbeille le supprime. \\
 \rep{4} & Le type d'aliment, les espèces et les indications. \\
 \rep{5} & \ui{+} crée un aliment. \\
 \end{tabularx}
 
 La fiche d'un aliment a trois onglets : \ui{Informations générales} (nom, marque, gamme, base
 de données, prix, conditionnement, type), \ui{Composition nutritionnelle} et
-\ui{Bibliographie}. Enregistrez avec \ui{Sauvegarder}.
+\ui{Bibliographie}. Enregistrez avec le bouton coché en bas à droite.
 
 \captureannotee{23_aliment_edition.png}{Modification d'un aliment.}{aliment-edition}{%
-  \repere{615}{104}{1}
-  \repere{480}{169}{2}
-  \repere{1385}{500}{3}
-  \repere{1385}{880}{4}}
+  \repere{1300}{856}{1}
+  \repere{480}{89}{2}
+  \repere{1385}{420}{3}
+  \repere{1310}{804}{4}}
 
 \begin{tabularx}{\linewidth}{@{}c X@{}}
-\rep{1} & \ui{Sauvegarder} enregistre les modifications. \\
+\rep{1} & Le bouton coché enregistre les modifications. \\
 \rep{2} & Les trois onglets : \ui{Informations générales}, \ui{Composition nutritionnelle}, \ui{Bibliographie}. \\
 \rep{3} & La base de données d'origine de l'aliment. \\
 \rep{4} & Le type d'aliment : complet ou complémentaire (énergie par l'équation des aliments commerciaux), sinon aliment brut (équation d'Atwater), voir section~\ref{sec:calculs}. \\
@@ -1058,7 +1059,7 @@ La roue dentée de l'écran principal ouvre les paramètres, en six onglets.
 \toprule
 \textbf{Onglet} & \textbf{À quoi il sert} \\
 \midrule
-\ui{Interface} & taille de l'interface (50 à 200~\%) ; accès aux \ui{Analyses croisées} \\
+\ui{Interface} & taille de l'interface (50 à 200~\%) \\
 \ui{Préférences} & coordonnées du praticien pour l'ordonnance ; unité d'expression des
 besoins par espèce \\
 \ui{Import/Export} & échanges de données (animaux, aliments, recettes, équations, références,
@@ -1176,8 +1177,9 @@ changement d'ordinateur. Copiez de temps en temps une sauvegarde hors de l'ordin
 \textbf{Quand l'utiliser ?} Pour comparer de nombreuses consultations : travaux dirigés, séries
 de cas, examens.
 
-Filtrez par espèce, mots-clés, identifiant d'examen ou d'exercice, sélectionnez les
-consultations, puis ouvrez l'analyse ou la notation.
+Ouvrez-les avec l'icône \ui{Analyses croisées}, à gauche des paramètres dans la barre de la
+liste des animaux (figure~\ref{fig:liste}). Filtrez par espèce, mots-clés, identifiant d'examen
+ou d'exercice, sélectionnez les consultations, puis ouvrez l'analyse ou la notation.
 
 \capture{36_analyses_croisees.png}{Analyses croisées.}{analyses-croisees}
 

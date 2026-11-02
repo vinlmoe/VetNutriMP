@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.wrapContentSize
@@ -127,7 +129,7 @@ fun calculerVariationsHebdomadaires(
     return Pair(variationMin, variationMax)
 }
 
-@OptIn(ExperimentalKoalaPlotApi::class)
+@OptIn(ExperimentalKoalaPlotApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun EvolutionPoidsChart(
     viewModel: AnimalDetailViewModel,
@@ -270,11 +272,11 @@ fun EvolutionPoidsChart(
                         return
                 }
 
-                // Contrôles: ComboBox (Dropdown) + Checkbox
-                Row(
+                // Contrôles : courbe de référence, zooms, affichage des courbes (passent à la ligne si besoin)
+                FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
                         // Dropdown simple
                         var expanded by remember { mutableStateOf(false) }
@@ -307,8 +309,7 @@ fun EvolutionPoidsChart(
                         if (selectedCurve != null) {
                             Button(
                                 onClick = { showGrowthZoom = true },
-                                colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Secondary),
-                                modifier = Modifier.padding(horizontal = 8.dp)
+                                colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Secondary)
                             ) {
                                 Icon(Icons.Default.ZoomIn, contentDescription = null)
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -319,8 +320,7 @@ fun EvolutionPoidsChart(
                         if (coneState != null) {
                             Button(
                                 onClick = { showZoom = true },
-                                colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Secondary),
-                                modifier = Modifier.padding(horizontal = 8.dp)
+                                colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Secondary)
                             ) {
                                 Icon(Icons.Default.ZoomIn, contentDescription = null)
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -328,7 +328,10 @@ fun EvolutionPoidsChart(
                             }
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                                modifier = Modifier.align(Alignment.CenterVertically),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
                                 Checkbox(
                                         checked = showReferenceCurves,
                                         onCheckedChange = { showReferenceCurves = it }
@@ -468,14 +471,15 @@ fun EvolutionPoidsChart(
                 val maxXVal = if (maxXCone > maxXData) maxXCone else maxXData
                 val maxX = if (maxXVal == Float.MIN_VALUE) 12f else maxXVal
 
-                val xMargin = (maxX - minX).coerceAtLeast(1.0f) * 0.05f
+                // Marges minimales : avec une seule pesée, l'axe garde plusieurs graduations lisibles
+                val xMargin = maxOf((maxX - minX) * 0.05f, 0.5f)
                 val xRange = arrondirPlage((minX - xMargin)..(maxX + xMargin))
 
                 val yCandidates = (if (useReal) donneesPoids else pointsRef0_12).map { it.y } + pointsCone.map { it.y } + (if(targetY != null) listOf(targetY) else emptyList())
                 val minY = yCandidates.minOrNull() ?: 0.0f
                 val maxY = yCandidates.maxOrNull() ?: (minY + 5.0f)
-                val yMargin = (maxY - minY).coerceAtLeast(1.0f) * 0.05f
-                val yRange = arrondirPlage((minY - yMargin)..(maxY + yMargin))
+                val yMargin = maxOf((maxY - minY) * 0.05f, maxY * 0.1f, 1f)
+                val yRange = arrondirPlage(maxOf(0f, minY - yMargin)..(maxY + yMargin))
 
                 // Créer des plages Float pour KoalaPlot (déjà Float)
                 val xRangeFloat = xRange
@@ -514,7 +518,7 @@ fun EvolutionPoidsChart(
                                                 if (useYearsScale) translate(LocalizationKeys.Graph.AXIS_AGE_YEARS)
                                                 else translate(LocalizationKeys.Graph.AXIS_AGE_MONTHS),
                                         yAxisTitle = translate(LocalizationKeys.Graph.AXIS_WEIGHT),
-                                        modifier = Modifier.height(500.dp)
+                                        modifier = Modifier.height(LocalHauteurGraphique.current)
                                 ) {
                                         // Courbes de référence: toutes les percentiles si demandé
                                         if (showReferenceCurves && courbeRef != null) {
@@ -649,6 +653,7 @@ fun EvolutionPoidsChart(
         }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PoidsTableau(
         consultationsWithAge: List<ConsultationAgeData>,
@@ -672,12 +677,14 @@ fun PoidsTableau(
 
         Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationMedium) {
                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
-                        Row(
+                        // Titre, seuils du cône, objectif et ajout : passent à la ligne sur écran étroit
+                        FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
+                                        modifier = Modifier.align(Alignment.CenterVertically).weight(1f),
                                         text = translate(LocalizationKeys.Graph.HISTORY_TITLE),
                                         style = MaterialTheme.typography.subtitle1,
                                         fontWeight = FontWeight.Bold,
@@ -810,7 +817,7 @@ fun PoidsTableau(
                                                 verticalAlignment = Alignment.CenterVertically
                                         ) {
                                                 Text(
-                                                        text = consultationData.date.toString(),
+                                                        text = consultationData.date.enTexte(),
                                                         modifier = Modifier.weight(1f),
                                                         style = MaterialTheme.typography.caption
                                                 )
@@ -871,7 +878,7 @@ fun PoidsTableau(
                                                             imageVector = Icons.Default.Delete,
                                                             contentDescription = translate(LocalizationKeys.Graph.TOOLTIP_DELETE_WEIGHT),
                                                             tooltip = translate(LocalizationKeys.Graph.TOOLTIP_DELETE_WEIGHT),
-                                                            tint = Color.Red,
+                                                            tint = VetNutriColors.Error,
                                                             iconModifier = Modifier.size(20.dp)
                                                         )
                                                     }
@@ -1044,14 +1051,14 @@ fun ConeZoomView(
                                     blocks = listOf(
                                         TextBlock.Paragraph(
                                             id = genUUID(), 
-                                            text = "${translate(LocalizationKeys.Graph.DIET_START)}: ${coneState.startDate} | ${translate(LocalizationKeys.Graph.INITIAL_WEIGHT)}: ${coneState.startWeight}kg${if(coneState.targetWeight != null) " | ${translate(LocalizationKeys.Graph.TARGET)}: ${coneState.targetWeight}kg" else ""}"
+                                            text = "${translate(LocalizationKeys.Graph.DIET_START)}${deuxPoints()} ${coneState.startDate} | ${translate(LocalizationKeys.Graph.INITIAL_WEIGHT)}${deuxPoints()} ${coneState.startWeight}kg${if(coneState.targetWeight != null) " | ${translate(LocalizationKeys.Graph.TARGET)}${deuxPoints()} ${coneState.targetWeight}kg" else ""}"
                                         ),
                                         TextBlock.TableBlock(
                                             id = genUUID(),
                                             headers = listOf(translate(LocalizationKeys.Graph.HEADER_DATE), translate(LocalizationKeys.Graph.WEEK_LABEL), translate(LocalizationKeys.Graph.HEADER_WEIGHT)),
                                             rows = realPoints.map { (date, week, weight) ->
                                                 listOf(
-                                                    date.toString(),
+                                                    date.enTexte(),
                                                     GraphFormattingUtils.formatDecimal(week.toDouble(), 1),
                                                     GraphFormattingUtils.formatDecimal(weight, 2)
                                                 )
@@ -1091,7 +1098,7 @@ fun ConeZoomView(
                 yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(yRange),
                 xAxisTitle = translate(LocalizationKeys.Graph.AXIS_WEEKS),
                 yAxisTitle = translate(LocalizationKeys.Graph.AXIS_WEIGHT),
-                modifier = Modifier.height(400.dp)
+                modifier = Modifier.height(LocalHauteurGraphique.current)
             ) {
                 // Cône
                 LinePlot(
@@ -1138,7 +1145,7 @@ fun ConeZoomView(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(date.toString(), style = MaterialTheme.typography.body2)
+                        Text(date.enTexte(), style = MaterialTheme.typography.body2)
                         Text("${translate(LocalizationKeys.Graph.WEEK_LABEL)} ${GraphFormattingUtils.formatDecimal(week.toDouble(), 1)}", style = MaterialTheme.typography.body2)
                         Text(translate("animalDetail.weightKgFormat", (GraphFormattingUtils.formatDecimal(weight, 2)).toString()), style = MaterialTheme.typography.body2, fontWeight = FontWeight.Bold)
                     }
@@ -1435,7 +1442,7 @@ fun GrowthZoomView(
                                                                                                                                 realPoints
                                                                                                                                         .map {
                                                                                                                                                 listOf(
-                                                                                                                                                        it.date.toString(),
+                                                                                                                                                        it.date.enTexte(),
                                                                                                                                                         GraphFormattingUtils.formatDecimal(it.weeks.toDouble(), 1),
                                                                                                                                                         if (it.isConsultation)
                                                                                                                                                                 translate(LocalizationKeys.Graph.SOURCE_CONSULTATION)
@@ -1486,7 +1493,7 @@ fun GrowthZoomView(
                         ),
                         xAxisTitle = translate(LocalizationKeys.Graph.AXIS_WEEKS_SINCE_BIRTH),
                         yAxisTitle = translate(LocalizationKeys.Graph.AXIS_WEIGHT),
-                        modifier = Modifier.height(400.dp)
+                        modifier = Modifier.height(LocalHauteurGraphique.current)
                 ) {
                         referenceCurves.forEach { (name, points) ->
                                 if (points.isNotEmpty()) {

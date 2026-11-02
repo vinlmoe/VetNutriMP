@@ -89,7 +89,7 @@ fun SectionValeursMetaboliques(
             ) {
                 Text(
                         text = translate(LocalizationKeys.AnalNut.METABOLIC_VALUES_TITLE),
-                        style = MaterialTheme.typography.overline,
+                        style = MaterialTheme.typography.subtitle2,
                         fontWeight = FontWeight.Bold,
                         color = VetNutriColors.Primary
                 )
@@ -136,11 +136,14 @@ fun SectionValeursMetaboliques(
                             Icon(
                                     Icons.Filled.Close,
                                     contentDescription = translate(LocalizationKeys.General.CANCEL),
-                                    tint = Color.Red
+                                    tint = VetNutriColors.Error
                             )
                         }
                     } else {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
                             LigneInfoLocaleCompacte(
                                     label = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
                                     value =
@@ -243,12 +246,15 @@ fun SectionValeursMetaboliques(
                                 Icon(
                                         Icons.Filled.Close,
                                         contentDescription = translate(LocalizationKeys.General.CANCEL),
-                                        tint = Color.Red
+                                        tint = VetNutriColors.Error
                                 )
                             }
                         }
                     } else {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
                             LigneInfoLocaleCompacte(
                                     label = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
                                     value =
@@ -257,7 +263,6 @@ fun SectionValeursMetaboliques(
                                             }
                                                     ?: translate(LocalizationKeys.General.NOT_SPECIFIED)
                             )
-                            Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
                             LigneInfoLocaleCompacte(
                                     label = libelleSecondPoids,
                                     value =
@@ -340,7 +345,7 @@ fun SectionCoefficients(
             ) {
                 Text(
                         text = translate(LocalizationKeys.AnalNut.COEFFICIENTS_TITLE),
-                        style = MaterialTheme.typography.overline,
+                        style = MaterialTheme.typography.subtitle2,
                         fontWeight = FontWeight.Bold,
                         color = VetNutriColors.Primary
                 )
@@ -443,7 +448,7 @@ fun SectionCoefficients(
                             Icon(
                                     Icons.Filled.Close,
                                     contentDescription = translate(LocalizationKeys.General.CANCEL),
-                                    tint = Color.Red
+                                    tint = VetNutriColors.Error
                             )
                         }
                     } else {
@@ -559,7 +564,7 @@ fun SectionCoefficients(
                             Icon(
                                     Icons.Filled.Close,
                                     contentDescription = translate(LocalizationKeys.General.CANCEL),
-                                    tint = Color.Red
+                                    tint = VetNutriColors.Error
                             )
                         }
                     } else {
@@ -618,7 +623,7 @@ fun SectionBilanEnergetique(
             ) {
                 Text(
                         text = translate(LocalizationKeys.AnalNut.ENERGY_BALANCE_TITLE),
-                        style = MaterialTheme.typography.overline,
+                        style = MaterialTheme.typography.subtitle2,
                         fontWeight = FontWeight.Bold,
                         color = VetNutriColors.Primary
                 )
@@ -645,7 +650,7 @@ fun SectionBilanEnergetique(
                         )
                         Text(
                                 text = "${TextUtils.formatDecimal(pourcentageCouverture, 0)}%",
-                                style = MaterialTheme.typography.caption,
+                                style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.Medium,
                                 color =
                                         when {
@@ -669,7 +674,7 @@ fun SectionBilanEnergetique(
                         )
                         Text(
                                 text = TextUtils.formatDecimal(kObserve, 2),
-                                style = MaterialTheme.typography.caption,
+                                style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.Medium,
                                 color =
                                         when {
@@ -694,7 +699,7 @@ fun SectionBilanEnergetique(
                         )
                         Text(
                                 text = TextUtils.formatDecimal(kCalcule, 2),
-                                style = MaterialTheme.typography.caption,
+                                style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.Medium,
                                 color = VetNutriColors.Primary
                         )
@@ -718,7 +723,7 @@ fun SectionBilanEnergetique(
                         )
                         Text(
                                 text = "${TextUtils.formatDecimal(pourcentageCouverture, 0)}%",
-                                style = MaterialTheme.typography.caption,
+                                style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.Medium,
                                 color =
                                         when {
@@ -742,7 +747,7 @@ fun SectionBilanEnergetique(
                         )
                         Text(
                                 text = TextUtils.formatDecimal(kObserve, 2),
-                                style = MaterialTheme.typography.caption,
+                                style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.Medium,
                                 color =
                                         when {
@@ -765,7 +770,7 @@ fun SectionBilanEnergetique(
                         )
                         Text(
                                 text = TextUtils.formatDecimal(kCalcule, 2),
-                                style = MaterialTheme.typography.caption,
+                                style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.Medium,
                                 color = VetNutriColors.Primary
                         )
@@ -788,6 +793,6 @@ private fun LigneInfoLocaleCompacte(label: String, value: String) {
                 style = MaterialTheme.typography.caption,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
         )
-        Text(text = value, style = MaterialTheme.typography.caption, fontWeight = FontWeight.Medium)
+        Text(text = value, style = MaterialTheme.typography.body2, fontWeight = FontWeight.Medium)
     }
 }

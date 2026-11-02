@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -170,7 +172,7 @@ fun NutrientRequirementView(
                                 onClick = { showEspeceDropdown = true },
                                 modifier = Modifier.widthIn(min = 100.dp)
                         ) {
-                            Text(filterEspece?.label ?: "Espèce", maxLines = 1)
+                            Text(filterEspece?.translateEnum() ?: translate("animal.species"), maxLines = 1)
                         }
                         DropdownMenu(
                                 expanded = showEspeceDropdown,
@@ -193,7 +195,7 @@ fun NutrientRequirementView(
                                             showEspeceDropdown = false
                                         }
                                 ) {
-                                    Text(espece.label)
+                                    Text(espece.translateEnum())
                                 }
                             }
                         }
@@ -406,7 +408,7 @@ private fun ReferenceNutrientCard(
                         }
 
                         Text(
-                                text = translate("reference.espece", reference.espece.toString()),
+                                text = translate("reference.espece", reference.espece.translateEnum()),
                                 style = MaterialTheme.typography.body2,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
@@ -428,7 +430,7 @@ private fun ReferenceNutrientCard(
                         if (missingEquationLabels.isNotEmpty()) {
                             Text(
                                     text =
-                                            "${translate(LocalizationKeys.NewReference.NOT_DEFINED)}: ${missingEquationLabels.joinToString()}",
+                                            "${translate(LocalizationKeys.NewReference.NOT_DEFINED)}${deuxPoints()} ${missingEquationLabels.joinToString()}",
                                     style = MaterialTheme.typography.caption,
                                     color = VetNutriColors.Error
                             )

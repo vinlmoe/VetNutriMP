@@ -26,7 +26,7 @@ internal fun LocalInfoRow(label: String, value: String) {
                 Text(
                         text = "$label :",
                         style = MaterialTheme.typography.subtitle1,
-                        modifier = Modifier.width(120.dp)
+                        modifier = Modifier.widthIn(min = 120.dp).padding(end = AppSizes.paddingSmall)
                 )
                 Text(text = value, style = MaterialTheme.typography.body1)
         }

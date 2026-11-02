@@ -57,7 +57,7 @@ fun Badge(
                                 ) {
                                         if (id != null) {
                                                 Text(
-                                                        text = "ID: $id",
+                                                        text = "ID : $id",
                                                         style =
                                                                 MaterialTheme.typography.caption
                                                                         .copy(

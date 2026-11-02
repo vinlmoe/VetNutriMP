@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -181,9 +182,8 @@ fun AnimalListView(
                                                 modifier = Modifier.weight(1f),
                                                 colors =
                                                         ButtonDefaults.buttonColors(
-                                                                backgroundColor =
-                                                                        VetNutriColors.Secondary,
-                                                                contentColor = Color.White
+                                                                backgroundColor = VetNutriColors.Primary,
+                                                                contentColor = VetNutriColors.OnPrimary
                                                         )
                                         ) { Text(translate(AnimalList.QUICK_IMPORT)) }
                                 } else {
@@ -297,13 +297,20 @@ fun AnimalListView(
                                                                 modifier = Modifier.weight(1f)
                                                         )
 
+                                                        // Même hauteur que la liste des espèces ; le libellé dit à quoi sert le bouton
                                                         OutlinedButton(
                                                                 onClick = { showKeywordFilterDialog = true },
-                                                                modifier = Modifier.weight(1f)
+                                                                modifier = Modifier.weight(1f).height(56.dp)
                                                         ) {
                                                                 Icon(
                                                                         Icons.Default.Tune,
-                                                                        contentDescription = translate(AnimalList.SORT_AND_FILTERS)
+                                                                        contentDescription = null
+                                                                )
+                                                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                                                Text(
+                                                                        translate(AnimalList.SORT_AND_FILTERS),
+                                                                        maxLines = 1,
+                                                                        overflow = TextOverflow.Ellipsis
                                                                 )
                                                                 if (hasKeywordFilter || hasSortFilter) {
                                                                         Spacer(
@@ -814,28 +821,28 @@ private fun AnimalCard(
                                                 text =
                                                         // Troupeau : espèces de ses individus
                                                         if (animal.estTroupeau)
-                                                                "${Animal.SPECIES.translate()}: ${animal.especesTroupeau().joinToString(", ") { it.translateEnum() }}"
-                                                        else "${Animal.SPECIES.translate()}: ${animal.getEspece().translateEnum()}",
+                                                                "${Animal.SPECIES.translate()}${deuxPoints()} ${animal.especesTroupeau().joinToString(", ") { it.translateEnum() }}"
+                                                        else "${Animal.SPECIES.translate()}${deuxPoints()} ${animal.getEspece().translateEnum()}",
                                                 style = MaterialTheme.typography.body2
                                         )
                                         if (animal.race.isNotEmpty()) {
                                                 Text(
                                                         text =
-                                                                "${Animal.BREED.translate()}: ${animal.race}",
+                                                                "${Animal.BREED.translate()}${deuxPoints()} ${animal.race}",
                                                         style = MaterialTheme.typography.body2
                                                 )
                                         }
                                         if (animal.ownerName.isNotEmpty()) {
                                                 Text(
                                                         text =
-                                                                "${Animal.OWNER.translate()}: ${animal.ownerName}",
+                                                                "${Animal.OWNER.translate()}${deuxPoints()} ${animal.ownerName}",
                                                         style = MaterialTheme.typography.body2
                                                 )
                                         }
                                         if ((isExamMode || showExamDossiers) && !animal.examExerciseId.isNullOrBlank()) {
                                                 Text(
                                                         text =
-                                                                "${Animal.EXAM_EXERCISE_ID.translate()}: ${animal.examExerciseId}",
+                                                                "${Animal.EXAM_EXERCISE_ID.translate()}${deuxPoints()} ${animal.examExerciseId}",
                                                         style = MaterialTheme.typography.body2,
                                                         color = if (showExamDossiers) VetNutriColors.Secondary else VetNutriColors.Primary
                                                 )
@@ -860,7 +867,7 @@ private fun AnimalCard(
                                                 imageVector = Icons.Default.Delete,
                                                 contentDescription = translate(General.DELETE),
                                                 tooltip = translate(General.DELETE),
-                                                tint = Color.Red
+                                                tint = VetNutriColors.Error
                                         )
                                 }
                         }

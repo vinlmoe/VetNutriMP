@@ -925,65 +925,6 @@ private fun FoodListItem(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
-                        // Actions disponibles (icônes à gauche)
-                        if (config.availableActions.isNotEmpty() && config.onFoodAction != null) {
-                                Column(
-                                        modifier =
-                                                Modifier.padding(
-                                                        start = AppSizes.paddingSmall,
-                                                        top = AppSizes.paddingSmall
-                                                ),
-                                        verticalArrangement =
-                                                Arrangement.spacedBy(AppSizes.paddingXSmall)
-                                ) {
-                                        config.availableActions.forEach { actionKey ->
-                                                val icon =
-                                                        when (actionKey) {
-                                                                LocalizationKeys.General.EDIT -> Icons.Default.Edit
-                                                                LocalizationKeys.General.DELETE -> Icons.Default.Delete
-                                                                LocalizationKeys.General.ANALYSE ->
-                                                                        Icons.Default.Analytics
-                                                                LocalizationKeys.General.COMPARE -> Icons.Default.Compare
-                                                                LocalizationKeys.General.ADD -> Icons.Default.Add
-                                                                else -> Icons.Default.MoreVert
-                                                        }
-
-                                                val iconColor =
-                                                        when (actionKey) {
-                                                                LocalizationKeys.General.EDIT -> VetNutriColors.Primary
-                                                                LocalizationKeys.General.DELETE ->
-                                                                        MaterialTheme.colors.error
-                                                                LocalizationKeys.General.ANALYSE ->
-                                                                        VetNutriColors.Secondary
-                                                                LocalizationKeys.General.COMPARE -> VetNutriColors.Primary
-                                                                LocalizationKeys.General.ADD -> VetNutriColors.Primary
-                                                                else ->
-                                                                        MaterialTheme.colors
-                                                                                .onSurface.copy(
-                                                                                alpha = 0.6f
-                                                                        )
-                                                        }
-
-                                                val tooltipText = fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate(actionKey)
-
-                                                IconButtonWithTooltip(
-                                                        onClick = {
-                                                                config.onFoodAction?.invoke(
-                                                                        aliment,
-                                                                        actionKey
-                                                                )
-                                                        },
-                                                        modifier = Modifier.size(24.dp),
-                                                        imageVector = icon,
-                                                        contentDescription = tooltipText,
-                                                        tooltip = tooltipText,
-                                                        tint = iconColor,
-                                                        iconModifier = Modifier.size(16.dp)
-                                                )
-                                        }
-                                }
-                        }
-
                         // Deux colonnes lorsque la largeur permet de garder les textes lisibles.
                         BoxWithConstraints(modifier = Modifier.weight(1f).padding(AppSizes.paddingSmall)) {
                             val spacing = AppSizes.paddingMedium
@@ -1102,6 +1043,55 @@ private fun FoodListItem(
                               }
                             }
                         }
+                        // Actions à droite, en ligne, comme dans les autres listes
+                        if (config.availableActions.isNotEmpty() && config.onFoodAction != null) {
+                                Row(modifier = Modifier.padding(end = AppSizes.paddingXSmall)) {
+                                        config.availableActions.forEach { actionKey ->
+                                                val icon =
+                                                        when (actionKey) {
+                                                                LocalizationKeys.General.EDIT -> Icons.Default.Edit
+                                                                LocalizationKeys.General.DELETE -> Icons.Default.Delete
+                                                                LocalizationKeys.General.ANALYSE ->
+                                                                        Icons.Default.Analytics
+                                                                LocalizationKeys.General.COMPARE -> Icons.Default.Compare
+                                                                LocalizationKeys.General.ADD -> Icons.Default.Add
+                                                                else -> Icons.Default.MoreVert
+                                                        }
+
+                                                val iconColor =
+                                                        when (actionKey) {
+                                                                LocalizationKeys.General.EDIT -> VetNutriColors.Primary
+                                                                LocalizationKeys.General.DELETE ->
+                                                                        MaterialTheme.colors.error
+                                                                LocalizationKeys.General.ANALYSE ->
+                                                                        VetNutriColors.Secondary
+                                                                LocalizationKeys.General.COMPARE -> VetNutriColors.Primary
+                                                                LocalizationKeys.General.ADD -> VetNutriColors.Primary
+                                                                else ->
+                                                                        MaterialTheme.colors
+                                                                                .onSurface.copy(
+                                                                                alpha = 0.6f
+                                                                        )
+                                                        }
+
+                                                val tooltipText = fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate(actionKey)
+
+                                                IconButtonWithTooltip(
+                                                        onClick = {
+                                                                config.onFoodAction?.invoke(
+                                                                        aliment,
+                                                                        actionKey
+                                                                )
+                                                        },
+                                                        imageVector = icon,
+                                                        contentDescription = tooltipText,
+                                                        tooltip = tooltipText,
+                                                        tint = iconColor
+                                                )
+                                        }
+                                }
+                        }
+
                 }
         }
 }
@@ -1223,7 +1213,7 @@ private fun AlimentDetailsContent(aliment: AlimentEv, referenceEv: ReferenceEv? 
 private fun DetailRow(label: String, value: String) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                        text = "$label:",
+                        text = "$label :",
                         style = MaterialTheme.typography.body2,
                         modifier = Modifier.weight(1f)
                 )

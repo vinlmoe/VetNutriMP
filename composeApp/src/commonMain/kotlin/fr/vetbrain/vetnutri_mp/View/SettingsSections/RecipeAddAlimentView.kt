@@ -60,8 +60,9 @@ fun RecipeAddAlimentView(
                         Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = translate(LocalizationKeys.AnimalDetail.BACK))
                     }
                 },
-                backgroundColor = VetNutriColors.Primary,
-                contentColor = VetNutriColors.OnPrimary
+                backgroundColor = MaterialTheme.colors.surface,
+                contentColor = MaterialTheme.colors.onSurface,
+                elevation = 0.dp
             )
         },
         floatingActionButton = {
@@ -302,7 +303,7 @@ private fun DetailRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = "$label:",
+            text = "$label :",
             style = MaterialTheme.typography.body2,
             modifier = Modifier.weight(1f)
         )

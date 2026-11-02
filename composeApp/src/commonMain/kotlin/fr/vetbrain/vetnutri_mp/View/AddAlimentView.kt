@@ -237,8 +237,13 @@ fun AddAlimentView(
 
                 // Contenu principal et bouton d'action superposés
                 Box(modifier = Modifier.fillMaxSize()) {
+                        // Quand un aliment est choisi, une bande vide en bas reçoit les boutons « + » et
+                        // « +R » : ils ne couvrent plus le détail de l'aliment (graphique, valeurs)
                         Row(
-                                modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
+                                modifier =
+                                        Modifier.fillMaxSize()
+                                                .padding(AppSizes.paddingMedium)
+                                                .padding(bottom = if (selectedFood != null) 72.dp else 0.dp),
                                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                         ) {
                                 // Colonne gauche - Filtres et liste (60% de l'espace)
@@ -266,7 +271,10 @@ fun AddAlimentView(
                         // FoodSearchComponent gère déjà l'affichage des détails via FoodDetailsPanel
                         }
 
-                        if (selectedFood != null) {
+                        if (selectedFood != null) Row(
+                                modifier = Modifier.align(Alignment.BottomEnd).padding(AppSizes.paddingMedium),
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                        ) {
                                 // Bouton + (ajouter à la ration existante)
                                 FloatingActionButton(
                                         onClick = {
@@ -282,8 +290,7 @@ fun AddAlimentView(
                                                 }
                                         },
                                         backgroundColor = VetNutriColors.Primary,
-                                        contentColor = VetNutriColors.OnPrimary,
-                                        modifier = Modifier.align(Alignment.BottomEnd).padding(AppSizes.paddingLarge).offset(y = (-80).dp)
+                                        contentColor = VetNutriColors.OnPrimary
                                 ) {
                                         Icon(
                                                 imageVector = Icons.Default.Add,
@@ -340,8 +347,7 @@ fun AddAlimentView(
                                                 }
                                         },
                                         backgroundColor = VetNutriColors.Secondary,
-                                        contentColor = Color.White,
-                                        modifier = Modifier.align(Alignment.BottomEnd).padding(AppSizes.paddingLarge)
+                                        contentColor = Color.White
                                 ) {
                                         Text(
                                                 text = "+R",

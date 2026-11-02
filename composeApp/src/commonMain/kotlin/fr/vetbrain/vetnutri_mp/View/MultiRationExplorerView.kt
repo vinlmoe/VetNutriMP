@@ -170,9 +170,9 @@ private fun PanneauConfiguration(viewModel: MultiRationViewModel, modifier: Modi
                     }
                 }
             }
-            AdaptiveTabRow(tabCount = 4, selectedTabIndex = onglet, backgroundColor = Color.White) {
+            AdaptiveTabRow(tabCount = 4, selectedTabIndex = onglet, backgroundColor = Color.White, minTabWidth = 130.dp) {
                 listOf(translate("multiration.onglet.animaux"), translate("multiration.onglet.ingredients"), translate("multiration.onglet.options"), translate("multiration.onglet.enregistrees")).forEachIndexed { i, titre ->
-                    Tab(selected = onglet == i, onClick = { onglet = i }, text = { Text(titre, fontSize = 13.sp) })
+                    Tab(selected = onglet == i, onClick = { onglet = i }, text = { Text(titre, fontSize = 13.sp, maxLines = 1, softWrap = false) })
                 }
             }
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {

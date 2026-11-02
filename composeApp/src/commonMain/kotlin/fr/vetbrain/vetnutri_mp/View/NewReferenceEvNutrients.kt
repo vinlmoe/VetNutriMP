@@ -781,7 +781,7 @@ fun NutrientEditDialog(
                                 // En-tête avec info sur les unités
                                 Text(
                                         text =
-                                                "Unités physiques disponibles: ${defaultUnitEnum.getIDFamily()}",
+                                                "Unités physiques disponibles : ${defaultUnitEnum.getIDFamily()}",
                                         style = MaterialTheme.typography.caption,
                                         color = MaterialTheme.colors.primary
                                 )

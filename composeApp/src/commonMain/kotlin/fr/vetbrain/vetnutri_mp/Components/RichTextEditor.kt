@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Components
 
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -508,7 +509,7 @@ private fun EditableBlock(
 
                 // Bouton de suppression
                 IconButton(onClick = onBlockDelete) {
-                    Icon(Icons.Default.Delete, translate(LocalizationKeys.General.DELETE), tint = Color.Red)
+                    Icon(Icons.Default.Delete, translate(LocalizationKeys.General.DELETE), tint = VetNutriColors.Error)
                 }
             }
         }
@@ -614,7 +615,7 @@ private fun ListBlockEditor(block: TextBlock.ListBlock, onBlockChange: (TextBloc
                                 onBlockChange(block.copy(items = items))
                             },
                             modifier = Modifier.size(24.dp)
-                    ) { Icon(Icons.Default.Close, translate(LocalizationKeys.General.DELETE), tint = Color.Red) }
+                    ) { Icon(Icons.Default.Close, translate(LocalizationKeys.General.DELETE), tint = VetNutriColors.Error) }
                 }
             }
         }

@@ -17,6 +17,8 @@ enum class EquationKind(
     fun getNom() = nom
     fun getUuid() = uuid
 
+    fun toEquationType(): EquationType = EquationType.entries.first { it.toEquationKind() == this }
+
     companion object {
         fun getById(i: Int) = values().find { it.uuid == i } ?: ENERGYNEED
     }

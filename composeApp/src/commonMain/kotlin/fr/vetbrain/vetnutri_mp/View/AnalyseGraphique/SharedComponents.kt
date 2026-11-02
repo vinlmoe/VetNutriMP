@@ -1,17 +1,29 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,11 +72,13 @@ fun GraphCard(titre: String, sousTitre: String? = null, content: @Composable () 
 fun GraphiqueHeader(
         selectedChart: ChartType,
         onChartSelected: (ChartType) -> Unit,
-        isCompact: Boolean = false
+        isCompact: Boolean = false,
+        onExport: (() -> Unit)? = null
 ) {
         Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationSmall) {
                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                         Row(
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
@@ -77,92 +91,52 @@ fun GraphiqueHeader(
                                         text = translate(LocalizationKeys.Graph.GRAPHIC_ANALYSIS_TITLE),
                                         style = MaterialTheme.typography.h6,
                                         fontWeight = FontWeight.Bold,
-                                        color = VetNutriColors.Primary
+                                        color = VetNutriColors.Primary,
+                                        modifier = Modifier.weight(1f)
                                 )
+                                if (onExport != null) {
+                                        OutlinedButton(onClick = onExport) {
+                                                Icon(Icons.Default.FileDownload, contentDescription = null)
+                                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                                Text(translate("graph.export.button"))
+                                        }
+                                }
                         }
 
                         Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
 
-                        // Sélecteur de type de graphique avec layout adapté aux écrans étroits
-                        if (isCompact) {
-                                Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement =
-                                                Arrangement.spacedBy(AppSizes.paddingSmall)
-                                ) {
-                                        ChartType.values().forEach { chartType ->
-                                                Button(
-                                                        onClick = { onChartSelected(chartType) },
-                                                        colors =
-                                                                ButtonDefaults.buttonColors(
+                        // Sélecteur : une ligne de quatre boutons, ou une grille 2 × 2 sur écran étroit
+                        val lignes = ChartType.entries.chunked(if (isCompact) 2 else ChartType.entries.size)
+                        Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
+                                lignes.forEach { ligne ->
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                                        ) {
+                                                ligne.forEach { chartType ->
+                                                        val selectionne = selectedChart == chartType
+                                                        Button(
+                                                                onClick = { onChartSelected(chartType) },
+                                                                colors = ButtonDefaults.buttonColors(
                                                                         backgroundColor =
-                                                                                if (selectedChart ==
-                                                                                                chartType
-                                                                                )
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                                else
-                                                                                        MaterialTheme
-                                                                                                .colors
-                                                                                                .surface
+                                                                                if (selectionne) VetNutriColors.Primary
+                                                                                else MaterialTheme.colors.surface
                                                                 ),
-                                                        modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                        Text(
-                                                                text = translate(chartType.displayName),
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .caption,
-                                                                color =
-                                                                        if (selectedChart ==
-                                                                                        chartType
-                                                                        )
-                                                                                Color.White
-                                                                        else
-                                                                                MaterialTheme.colors
-                                                                                        .onSurface
-                                                        )
-                                                }
-                                        }
-                                }
-                        } else {
-                                Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement =
-                                                Arrangement.spacedBy(AppSizes.paddingSmall)
-                                ) {
-                                        ChartType.values().forEach { chartType ->
-                                                Button(
-                                                        onClick = { onChartSelected(chartType) },
-                                                        colors =
-                                                                ButtonDefaults.buttonColors(
-                                                                        backgroundColor =
-                                                                                if (selectedChart ==
-                                                                                                chartType
-                                                                                )
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                                else
-                                                                                        MaterialTheme
-                                                                                                .colors
-                                                                                                .surface
+                                                                contentPadding = PaddingValues(
+                                                                        horizontal = AppSizes.paddingSmall,
+                                                                        vertical = AppSizes.paddingSmall
                                                                 ),
-                                                        modifier = Modifier.weight(1f)
-                                                ) {
-                                                        Text(
-                                                                text = translate(chartType.displayName),
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .caption,
-                                                                color =
-                                                                        if (selectedChart ==
-                                                                                        chartType
-                                                                        )
-                                                                                Color.White
-                                                                        else
-                                                                                MaterialTheme.colors
-                                                                                        .onSurface
-                                                        )
+                                                                modifier = Modifier.weight(1f).fillMaxHeight()
+                                                        ) {
+                                                                Text(
+                                                                        text = translate(chartType.displayName),
+                                                                        style = MaterialTheme.typography.caption,
+                                                                        textAlign = TextAlign.Center,
+                                                                        color =
+                                                                                if (selectionne) Color.White
+                                                                                else MaterialTheme.colors.onSurface
+                                                                )
+                                                        }
                                                 }
                                         }
                                 }
@@ -357,5 +331,41 @@ fun NutrimentSelector(
                                 }
                         }
                 }
+        }
+}
+
+/** Hauteur des zones de tracé, fixée par l'écran qui affiche les graphiques ([hauteurGraphiquePour]). */
+val LocalHauteurGraphique = compositionLocalOf { 400.dp }
+
+/**
+ * Hauteur d'un graphique pour une zone d'affichage donnée : environ 60 % de la hauteur visible
+ * (le titre et les options restent à l'écran), sans dépasser la largeur sur un téléphone en
+ * portrait, entre 280 et 620 dp.
+ */
+fun hauteurGraphiquePour(largeur: Dp, hauteur: Dp): Dp =
+        minOf(hauteur * 0.6f, largeur).coerceIn(280.dp, 620.dp)
+
+/**
+ * Zoom et déplacement d'un graphique : glisser à la souris, pincer ou glisser à deux doigts.
+ * Un seul doigt n'est pas capturé, pour que la page défile sur un écran tactile.
+ */
+fun Modifier.zoomDeplacementGraphique(
+        onTransform: (pan: Offset, zoom: Float, taille: IntSize) -> Unit
+): Modifier = pointerInput(Unit) {
+        awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                do {
+                        val event = awaitPointerEvent()
+                        val souris = event.changes.any { it.type == PointerType.Mouse }
+                        val doigts = event.changes.count { it.pressed }
+                        if (souris || doigts >= 2) {
+                                val zoom = event.calculateZoom()
+                                val pan = event.calculatePan()
+                                if (zoom != 1f || pan != Offset.Zero) {
+                                        onTransform(pan, zoom, size)
+                                        event.changes.forEach { if (it.positionChanged()) it.consume() }
+                                }
+                        }
+                } while (event.changes.any { it.pressed })
         }
 }
