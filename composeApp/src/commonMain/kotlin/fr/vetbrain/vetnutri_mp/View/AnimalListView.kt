@@ -297,13 +297,20 @@ fun AnimalListView(
                                                                 modifier = Modifier.weight(1f)
                                                         )
 
+                                                        // Même hauteur que la liste des espèces ; le libellé dit à quoi sert le bouton
                                                         OutlinedButton(
                                                                 onClick = { showKeywordFilterDialog = true },
-                                                                modifier = Modifier.weight(1f)
+                                                                modifier = Modifier.weight(1f).height(56.dp)
                                                         ) {
                                                                 Icon(
                                                                         Icons.Default.Tune,
-                                                                        contentDescription = translate(AnimalList.SORT_AND_FILTERS)
+                                                                        contentDescription = null
+                                                                )
+                                                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                                                Text(
+                                                                        translate(AnimalList.SORT_AND_FILTERS),
+                                                                        maxLines = 1,
+                                                                        overflow = TextOverflow.Ellipsis
                                                                 )
                                                                 if (hasKeywordFilter || hasSortFilter) {
                                                                         Spacer(

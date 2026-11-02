@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+import fr.vetbrain.vetnutri_mp.Utils.lireDate
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -53,7 +55,7 @@ fun CreateAnimalView(
         val animal = viewModel.animal.collectAsState().value
         val isSaving = viewModel.isSaving.collectAsState().value
         val saveSuccess = viewModel.saveSuccess.collectAsState().value
-        var dateText by remember { mutableStateOf(animal.birthdate?.toString() ?: "") }
+        var dateText by remember { mutableStateOf(animal.birthdate?.enTexte() ?: "") }
         var showDateError by remember { mutableStateOf(false) }
         var isDatePickerVisible by remember { mutableStateOf(false) }
         var availableRaces by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -139,14 +141,6 @@ fun CreateAnimalView(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
-                        Text(
-                                text =
-                                        if (isEditing) AnimalKeys.EDIT_ANIMAL.translate()
-                                        else AnimalKeys.NEW_ANIMAL.translate(),
-                                style = MaterialTheme.typography.h6,
-                                modifier = Modifier.padding(bottom = AppSizes.paddingSmall)
-                        )
-
                         // Individu ou troupeau : le troupeau n'a ni espèce, ni race, ni sexe ; ses
                         // individus sont décrits par groupe
                         SelecteurIndividuTroupeau(
@@ -269,16 +263,9 @@ fun CreateAnimalView(
                                 value = dateText,
                                 onValueChange = { newDate: String ->
                                         dateText = newDate
-                                        try {
-                                                val date = LocalDate.parse(newDate)
-                                                viewModel.updateAnimal(
-                                                        animal.copy(birthdate = date)
-                                                )
-                                                showDateError = false
-                                        } catch (e: Exception) {
-                                                e.rethrowIfCancellation()
-                                                showDateError = true
-                                        }
+                                        val date = lireDate(newDate)
+                                        if (date != null) viewModel.updateAnimal(animal.copy(birthdate = date))
+                                        showDateError = date == null && newDate.isNotBlank()
                                 },
                                 label = { Text(AnimalKeys.BIRTH_DATE.translate()) },
                                 singleLine = true,
@@ -313,7 +300,7 @@ fun CreateAnimalView(
                                                                                 .currentSystemDefault()
                                                                 )
                                                                 .date
-                                                dateText = today.toString()
+                                                dateText = today.enTexte()
                                                 viewModel.updateAnimal(animal.copy(birthdate = today))
                                                 showDateError = false
                                         }
@@ -346,7 +333,7 @@ fun CreateAnimalView(
                                                                                 val date = Instant.fromEpochMilliseconds(selected)
                                                                                         .toLocalDateTime(TimeZone.currentSystemDefault())
                                                                                         .date
-                                                                                dateText = date.toString()
+                                                                                dateText = date.enTexte()
                                                                                 viewModel.updateAnimal(animal.copy(birthdate = date))
                                                                                 showDateError = false
                                                                         }

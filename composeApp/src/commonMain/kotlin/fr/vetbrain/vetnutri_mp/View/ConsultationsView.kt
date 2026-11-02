@@ -139,7 +139,7 @@ private fun ConsultationsMainView(
                             },
                             colors =
                                     ButtonDefaults.buttonColors(
-                                            backgroundColor = Color.Red,
+                                            backgroundColor = VetNutriColors.Error,
                                             contentColor = Color.White
                                     )
                     ) { Text(General.CONFIRM.translate()) }

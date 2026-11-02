@@ -131,7 +131,6 @@ fun SettingsView(
         onBack: () -> Unit,
         onAnimalListRefresh: () -> Unit,
         onFoodListRefresh: () -> Unit,
-        onShowCrossAnalysis: () -> Unit,
         modifier: Modifier = Modifier,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {},
         onBackupClick: () -> Unit = {},
@@ -205,27 +204,6 @@ fun SettingsView(
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingSmall)
                                         ) {
-                                                Button(
-                                                        onClick = onShowCrossAnalysis,
-                                                        colors =
-                                                                ButtonDefaults.buttonColors(
-                                                                        backgroundColor =
-                                                                                VetNutriColors
-                                                                                        .Primary,
-                                                                        contentColor =
-                                                                                VetNutriColors
-                                                                                        .OnPrimary
-                                                                ),
-                                                        modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                        Text(
-                                                                translate(
-                                                                        LocalizationKeys
-                                                                                .AnimalList
-                                                                                .CROSS_ANALYSIS
-                                                                )
-                                                        )
-                                                }
                                                 InterfaceSettings(
                                                         viewModel = viewModel,
                                                         modifier = Modifier.fillMaxWidth()

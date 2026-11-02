@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Components
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+import fr.vetbrain.vetnutri_mp.Utils.lireDate
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.layout.*
@@ -47,17 +49,14 @@ fun AppDatePicker(
         errorMessage: String? = null
 ) {
         var showDatePicker by remember { mutableStateOf(false) }
-        var dateText by remember(selectedDate) { mutableStateOf(selectedDate?.toString() ?: "") }
+        var dateText by remember(selectedDate) { mutableStateOf(selectedDate?.enTexte() ?: "") }
 
         Column(modifier = modifier) {
                 OutlinedTextField(
                         value = dateText,
                         onValueChange = { newValue ->
                                 dateText = newValue
-                                try {
-                                        val date = LocalDate.parse(newValue)
-                                        onDateSelected(date)
-                                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AppDatePicker", "Exception ignorée : ${e.message}") }
+                                lireDate(newValue)?.let(onDateSelected)
                         },
                         label = { Text(label) },
                         trailingIcon = {
@@ -118,7 +117,7 @@ fun AppDatePicker(
                                                                 val date = Instant.fromEpochMilliseconds(selected)
                                                                         .toLocalDateTime(TimeZone.UTC)
                                                                         .date
-                                                                dateText = date.toString()
+                                                                dateText = date.enTexte()
                                                                 onDateSelected(date)
                                                         }
                                                         showDatePicker = false

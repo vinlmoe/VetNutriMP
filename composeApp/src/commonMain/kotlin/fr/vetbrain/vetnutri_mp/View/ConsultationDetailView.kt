@@ -637,7 +637,7 @@ fun AppConsultationDetailView(
                                                                                                         contentDescription =
                                                                                                                 ConsultationEdit.REF_DELETE_TOOLTIP.translate(),
                                                                                                         tint =
-                                                                                                                Color.Red
+                                                                                                                VetNutriColors.Error
                                                                                                 )
                                                                                         }
                                                                                 }

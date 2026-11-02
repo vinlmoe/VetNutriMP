@@ -906,7 +906,7 @@ internal fun CoefficientsDialog(
                                                                                 translate(General.CANCEL),
                                                                         tooltip =
                                                                                 translate(General.CANCEL),
-                                                                        tint = Color.Red
+                                                                        tint = VetNutriColors.Error
                                                                 )
                                                         }
                                                 } else {

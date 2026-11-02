@@ -13,7 +13,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Components.TopBar
+import fr.vetbrain.vetnutri_mp.Theme.AppIcons
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ExamSession
@@ -40,7 +43,22 @@ internal fun AppNavHost(
                 val examInfoTitle = examSession?.let { session ->
                     translate("animalList.titreExamen", session.studentNumber.toString(), session.studentId.toString())
                 } ?: translate("animalList.titre")
-                TopBar(title = examInfoTitle, onSettingsClick = { nav.navigate(Screen.Settings) })
+                TopBar(
+                    title = examInfoTitle,
+                    onSettingsClick = { nav.navigate(Screen.Settings) },
+                    actions = {
+                        // Analyses croisées : outil qui porte sur tous les animaux, à côté des paramètres
+                        if (examSession == null) {
+                            IconButtonWithTooltip(
+                                imageVector = AppIcons.Analytics,
+                                contentDescription = translate("animalList.crossAnalysis"),
+                                tooltip = translate("animalList.crossAnalysis"),
+                                onClick = { nav.navigate(Screen.CrossAnalysis) },
+                                tint = VetNutriColors.Primary
+                            )
+                        }
+                    }
+                )
 
                 AnimalListView(
                     viewModel = models.animalListViewModel,
@@ -351,7 +369,6 @@ internal fun AppNavHost(
                     onBack = { nav.navigate(Screen.List) },
                     onAnimalListRefresh = { models.animalListViewModel.loadAnimals() },
                     onFoodListRefresh = {},
-                    onShowCrossAnalysis = { nav.navigate(Screen.CrossAnalysis) },
                     modifier = Modifier.padding(paddingValues),
                     onSpeciesClick = { species ->
                         nav.selectedSpecies = species

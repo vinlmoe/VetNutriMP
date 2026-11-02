@@ -615,7 +615,7 @@ private fun ListBlockEditor(block: TextBlock.ListBlock, onBlockChange: (TextBloc
                                 onBlockChange(block.copy(items = items))
                             },
                             modifier = Modifier.size(24.dp)
-                    ) { Icon(Icons.Default.Close, translate(LocalizationKeys.General.DELETE), tint = Color.Red) }
+                    ) { Icon(Icons.Default.Close, translate(LocalizationKeys.General.DELETE), tint = VetNutriColors.Error) }
                 }
             }
         }
