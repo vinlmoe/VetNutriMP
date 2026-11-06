@@ -15,6 +15,8 @@ internal object JsonFileOperationsBridge {
     private var exportLauncher: ActivityResultLauncher<String>? = null
     private var exportZipLauncher: ActivityResultLauncher<String>? = null
     private var pendingImport: CompletableDeferred<Uri?>? = null
+    private var importMultipleLauncher: ActivityResultLauncher<Array<String>>? = null
+    private var pendingImportMultiple: CompletableDeferred<List<Uri>>? = null
     private var pendingExport: CompletableDeferred<Uri?>? = null
     private var pendingExportZip: CompletableDeferred<Uri?>? = null
 
@@ -22,6 +24,10 @@ internal object JsonFileOperationsBridge {
         importLauncher = activity.registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             pendingImport?.complete(uri)
             pendingImport = null
+        }
+        importMultipleLauncher = activity.registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+            pendingImportMultiple?.complete(uris)
+            pendingImportMultiple = null
         }
         exportLauncher = activity.registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
             pendingExport?.complete(uri)
@@ -36,12 +42,15 @@ internal object JsonFileOperationsBridge {
 
     fun unregister(changingConfigurations: Boolean) {
         importLauncher = null
+        importMultipleLauncher = null
         exportLauncher = null
         exportZipLauncher = null
         if (!changingConfigurations) {
             pendingExportZip?.cancel()
             pendingExportZip = null
             pendingImport?.cancel()
+            pendingImportMultiple?.cancel()
+            pendingImportMultiple = null
             pendingExport?.cancel()
             pendingImport = null
             pendingExport = null
@@ -59,6 +68,22 @@ internal object JsonFileOperationsBridge {
         } catch (e: Exception) {
             e.rethrowIfCancellation()
             pendingImport = null
+            throw e
+        }
+        result.await()
+    }
+
+    /** Plusieurs fichiers ; liste vide si l'utilisateur annule. */
+    suspend fun pickImportMultiple(): List<Uri> = withContext(Dispatchers.Main) {
+        check(pendingImportMultiple == null) { "Une sélection de fichier est déjà ouverte" }
+        val launcher = checkNotNull(importMultipleLauncher) { "Sélecteur de fichier indisponible" }
+        val result = CompletableDeferred<List<Uri>>()
+        pendingImportMultiple = result
+        try {
+            launcher.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            pendingImportMultiple = null
             throw e
         }
         result.await()

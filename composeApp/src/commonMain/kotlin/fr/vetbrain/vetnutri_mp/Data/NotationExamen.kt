@@ -202,3 +202,85 @@ fun decoderDossierNotation(texte: String): DossierNotation? =
             fr.vetbrain.vetnutri_mp.Utils.AppLog.d("NotationExamen", "Fichier de notation invalide : ${e.message}")
             null
         }
+
+/** Un fichier choisi par l'utilisateur : nom (sans chemin) et contenu texte. */
+data class FichierJson(val nom: String, val contenu: String)
+
+/**
+ * Copie d'un lot de fichiers JSON prête à importer : JSON à passer à l'import, animaux trouvés,
+ * animaux rattachés à l'examen, animaux appartenant à un autre examen, ou erreur de lecture.
+ */
+data class CopiePreparee(
+        val fichier: String,
+        val json: String? = null,
+        val animaux: Int = 0,
+        val rattaches: Int = 0,
+        val autreExamen: Int = 0,
+        val erreur: String? = null
+)
+
+private val jsonCopies = kotlinx.serialization.json.Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = true
+}
+
+/** Contenu d'un enregistrement jsonbin ({"record": …}) ou le JSON tel quel. */
+fun extraireEnregistrementJsonBin(texte: String): String {
+    val brut = texte.trim().removePrefix("﻿")
+    val racine = try {
+        jsonCopies.parseToJsonElement(brut) as? kotlinx.serialization.json.JsonObject
+    } catch (e: kotlinx.serialization.SerializationException) {
+        fr.vetbrain.vetnutri_mp.Utils.AppLog.d("NotationExamen", "JSON illisible : ${e.message}")
+        null
+    } ?: return brut
+    return when (val record = racine["record"]) {
+        null -> brut
+        is kotlinx.serialization.json.JsonPrimitive -> record.content
+        else -> jsonCopies.encodeToString(kotlinx.serialization.json.JsonElement.serializer(), record)
+    }
+}
+
+/**
+ * Prépare une copie JSON (export VetNutri, éventuellement enveloppé par jsonbin) pour l'examen
+ * [examId] / [exerciseId]. Avec [rattacher], un animal sans identifiant d'examen ou d'exercice
+ * reçoit ceux de l'examen et, sans numéro d'étudiant, le nom du fichier (sans extension). Un
+ * animal déjà rattaché à un autre examen n'est pas modifié : il est compté dans autreExamen.
+ */
+fun preparerCopieJson(fichier: FichierJson, examId: String, exerciseId: String, rattacher: Boolean): CopiePreparee {
+    val envelope = try {
+        jsonCopies.decodeFromString(ApiEnvelope.serializer(), extraireEnregistrementJsonBin(fichier.contenu))
+    } catch (e: kotlinx.serialization.SerializationException) {
+        return CopiePreparee(fichier.nom, erreur = e.message ?: "JSON invalide")
+    } catch (e: IllegalArgumentException) {
+        return CopiePreparee(fichier.nom, erreur = e.message ?: "JSON invalide")
+    }
+    if (envelope.animals.isEmpty()) return CopiePreparee(fichier.nom, erreur = "aucun animal")
+    val numeroParDefaut = fichier.nom.substringAfterLast('/').substringAfterLast('\\').substringBeforeLast('.').trim()
+    var rattaches = 0
+    var autreExamen = 0
+    val animaux = envelope.animals.map { a ->
+        val examen = a.examStudentNumber?.trim().orEmpty()
+        val exercice = a.examExerciseId?.trim().orEmpty()
+        val memeExamen = examen.equals(examId.trim(), true) && exercice.equals(exerciseId.trim(), true)
+        when {
+            memeExamen -> a
+            rattacher && (examen.isEmpty() || exercice.isEmpty()) -> {
+                rattaches++
+                a.copy(
+                        exam = true,
+                        examStudentNumber = examen.ifEmpty { examId.trim() },
+                        examExerciseId = exercice.ifEmpty { exerciseId.trim() },
+                        examStudentId = a.examStudentId?.takeIf { it.isNotBlank() } ?: numeroParDefaut.ifEmpty { null }
+                )
+            }
+            else -> { autreExamen++; a }
+        }
+    }
+    return CopiePreparee(
+            fichier = fichier.nom,
+            json = jsonCopies.encodeToString(ApiEnvelope.serializer(), envelope.copy(animals = animaux)),
+            animaux = animaux.size,
+            rattaches = rattaches,
+            autreExamen = autreExamen
+    )
+}

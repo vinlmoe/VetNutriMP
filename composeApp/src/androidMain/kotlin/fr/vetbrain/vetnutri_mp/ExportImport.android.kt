@@ -35,6 +35,34 @@ actual suspend fun exportJsonToFile(content: String, defaultFileName: String): B
 actual suspend fun exportApiEnvelopeToFile(envelope: ApiEnvelope, defaultFileName: String): Boolean =
     saveJson(defaultFileName) { createExportJson().encodeToStream(ApiEnvelope.serializer(), envelope, it) }
 
+actual suspend fun openJsonFilesContent(): List<fr.vetbrain.vetnutri_mp.Data.FichierJson>? {
+    val uris = JsonFileOperationsBridge.pickImportMultiple()
+    if (uris.isEmpty()) return null
+    return uris.map { uri ->
+        val nom = nomAffiche(uri)
+        val contenu = try {
+            readFileContent(uri)
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            fr.vetbrain.vetnutri_mp.Utils.AppLog.w("ExportImport", "Lecture impossible : $nom", e)
+            ""
+        }
+        fr.vetbrain.vetnutri_mp.Data.FichierJson(nom, contenu)
+    }
+}
+
+/** Nom du fichier tel que l'affiche le fournisseur de documents (repli : fin de l'URI). */
+private suspend fun nomAffiche(uri: android.net.Uri): String = withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.IO) {
+    try {
+        AndroidContext.appContext.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+    } catch (e: Exception) {
+        e.rethrowIfCancellation()
+        fr.vetbrain.vetnutri_mp.Utils.AppLog.d("ExportImport", "Nom de fichier indisponible : ${e.message}")
+        null
+    } ?: uri.lastPathSegment?.substringAfterLast('/') ?: "copie.json"
+}
+
 actual suspend fun openJsonFileContent(): String? {
     val uri = JsonFileOperationsBridge.pickImport() ?: return null
     return readFileContent(uri)

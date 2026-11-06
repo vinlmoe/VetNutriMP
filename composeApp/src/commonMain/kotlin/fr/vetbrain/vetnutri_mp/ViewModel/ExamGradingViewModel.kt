@@ -549,6 +549,77 @@ class ExamGradingViewModel(
         }
     }
 
+    /**
+     * Importe un lot de fichiers JSON (une copie, ou plusieurs animaux, par fichier ; enveloppe
+     * jsonbin acceptée). Avec [rattacher], les copies sans identifiant d'examen sont rattachées à
+     * l'examen courant. Le lot est enregistré comme une session d'import (comme le CSV Moodle).
+     */
+    fun importerLotJson(
+            fichiers: List<FichierJson>,
+            examId: String,
+            exerciseId: String,
+            rattacher: Boolean,
+            onCompleted: (() -> Unit)? = null
+    ) {
+        if (examId.isBlank() || exerciseId.isBlank()) {
+            _message.value = translate("notation.message.idsManquants")
+            return
+        }
+        if (fichiers.isEmpty()) return
+        viewModelScope.launch {
+            _isImportingBins.value = true
+            _importProgress.value = 0.0
+            _importLogs.value = emptyList()
+            appendImportLog(translate("notation.log.lotJson", fichiers.size.toString()))
+            val entries = mutableListOf<ExamCopyImportEntry>()
+            var rattaches = 0
+            var autreExamen = 0
+            try {
+                fichiers.forEachIndexed { index, fichier ->
+                    val now = Clock.System.now().toEpochMilliseconds()
+                    val copie = preparerCopieJson(fichier, examId, exerciseId, rattacher)
+                    val erreur = copie.erreur ?: try {
+                        exportImportRepository.importAll(copie.json!!).requireComplete()
+                        null
+                    } catch (e: Exception) {
+                        e.rethrowIfCancellation()
+                        e.message ?: translate("notation.log.erreurInconnue")
+                    }
+                    if (erreur == null) {
+                        rattaches += copie.rattaches
+                        autreExamen += copie.autreExamen
+                        appendImportLog(translate("notation.log.fichierImporte", fichier.nom, copie.animaux.toString()))
+                    } else {
+                        appendImportLog(translate("notation.log.erreurCopie", fichier.nom, erreur))
+                    }
+                    entries += ExamCopyImportEntry(
+                            nom = fichier.nom.substringBeforeLast('.'), binId = fichier.nom,
+                            success = erreur == null, error = erreur.orEmpty(), importedAtEpochMs = now
+                    )
+                    _importProgress.value = ((index + 1).toDouble() / fichiers.size).coerceIn(0.0, 1.0)
+                }
+                val session = ExamCopyImportSession(
+                        sessionId = Clock.System.now().toEpochMilliseconds().toString(),
+                        examId = examId, exerciseId = exerciseId,
+                        sourceFileName = translate("notation.lotJsonSource", fichiers.size.toString()),
+                        importedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
+                        entries = entries
+                )
+                saveImportSession(session)
+                _lastImportSession.value = session
+                loadImportSessionHistory(examId, exerciseId)
+                _message.value = translate("notation.message.lotJsonTermine", session.successCount.toString(), session.errorCount.toString(),
+                        rattaches.toString()) + if (autreExamen > 0) " " + translate("notation.message.lotJsonAutreExamen", autreExamen.toString()) else ""
+                onCompleted?.invoke()
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                _message.value = translate("notation.message.importImpossible", e.message ?: "")
+            } finally {
+                _isImportingBins.value = false
+            }
+        }
+    }
+
     private fun defaultRule(examId: String, exerciseId: String): ExamGradingRuleSet {
         return ExamGradingRuleSet(
             examId = examId,

@@ -371,8 +371,33 @@ private fun EtapeCopies(
     val importSessionHistory by gradingViewModel.importSessionHistory.collectAsState()
     var forceRefreshBins by remember { mutableStateOf(false) }
     var offlineOnly by remember { mutableStateOf(false) }
+    var rattacher by remember { mutableStateOf(true) }
     var journalOuvert by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    CarteNotation(translate("notation.lotJsonTitre"), aide = translate("notation.lotJsonAide")) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { rattacher = !rattacher }) {
+            Checkbox(checked = rattacher, onCheckedChange = { rattacher = it }, colors = CheckboxDefaults.colors(checkedColor = VetNutriColors.Primary))
+            Text(translate("notation.rattacher", examId, exerciseId), fontSize = 13.sp)
+        }
+        Button(
+                onClick = {
+                    scope.launch {
+                        val fichiers = fr.vetbrain.vetnutri_mp.openJsonFilesContent() ?: return@launch
+                        gradingViewModel.importerLotJson(fichiers, examId, exerciseId, rattacher) {
+                            analysisViewModel.loadConsultations()
+                            gradingViewModel.loadGrades(examId, exerciseId)
+                        }
+                    }
+                },
+                enabled = !isImportingBins,
+                colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary, contentColor = VetNutriColors.OnPrimary)
+        ) {
+            Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(translate("notation.lotJsonBouton"))
+        }
+    }
 
     CarteNotation(translate("auto.view.crossconsultationgradingview.import_copies_jsonbin_csv_moodle"), aide = translate("notation.importAide")) {
         FlowRow(mainAxisSpacing = 16.dp, crossAxisSpacing = 4.dp) {
@@ -406,35 +431,41 @@ private fun EtapeCopies(
             Spacer(Modifier.width(6.dp))
             Text(translate("auto.view.crossconsultationgradingview.importer_csv_de_bins"))
         }
-        if (isImportingBins) LinearProgressIndicator(progress = importProgress.toFloat(), color = VetNutriColors.Primary, modifier = Modifier.fillMaxWidth())
-        lastImportSession?.let { session ->
-            Text(
-                    translate("auto.view.crossconsultationgradingview.last_import_summary", session.successCount.toString(), session.total.toString(), session.errorCount.toString()),
-                    fontSize = 13.sp,
-                    color = if (session.errorCount > 0) AmbreNotation else VertNotation
-            )
-            session.entries.filter { !it.success }.take(10).forEach { e ->
-                Text("• ${listOf(e.prenom, e.nom).filter { it.isNotBlank() }.joinToString(" ").ifBlank { e.binId }} : ${e.error}",
-                        fontSize = 12.sp, color = RougeNotation)
+    }
+
+    // Suivi commun aux deux modes d'import (lot JSON et CSV Moodle)
+    if (isImportingBins || lastImportSession != null || importLogs.isNotEmpty() || importSessionHistory.isNotEmpty()) {
+        CarteNotation(translate("notation.suiviImports")) {
+            if (isImportingBins) LinearProgressIndicator(progress = importProgress.toFloat(), color = VetNutriColors.Primary, modifier = Modifier.fillMaxWidth())
+            lastImportSession?.let { session ->
+                Text(
+                        translate("auto.view.crossconsultationgradingview.last_import_summary", session.successCount.toString(), session.total.toString(), session.errorCount.toString()),
+                        fontSize = 13.sp,
+                        color = if (session.errorCount > 0) AmbreNotation else VertNotation
+                )
+                session.entries.filter { !it.success }.take(10).forEach { e ->
+                    Text("• ${listOf(e.prenom, e.nom).filter { it.isNotBlank() }.joinToString(" ").ifBlank { e.binId }} : ${e.error}",
+                            fontSize = 12.sp, color = RougeNotation)
+                }
             }
-        }
-        if (importLogs.isNotEmpty()) {
-            TextButton(onClick = { journalOuvert = !journalOuvert }) {
-                Text(translate("auto.view.crossconsultationgradingview.logs_import_arg", importLogs.size.toString()), fontSize = 12.sp)
-                Icon(if (journalOuvert) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, modifier = Modifier.size(16.dp))
+            if (importLogs.isNotEmpty()) {
+                TextButton(onClick = { journalOuvert = !journalOuvert }) {
+                    Text(translate("auto.view.crossconsultationgradingview.logs_import_arg", importLogs.size.toString()), fontSize = 12.sp)
+                    Icon(if (journalOuvert) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+                if (journalOuvert) Column(Modifier.fillMaxWidth().heightIn(max = 160.dp).verticalScroll(rememberScrollState())) {
+                    importLogs.forEach { Text(it, fontSize = 11.sp, color = discretNotation()) }
+                }
             }
-            if (journalOuvert) Column(Modifier.fillMaxWidth().heightIn(max = 160.dp).verticalScroll(rememberScrollState())) {
-                importLogs.forEach { Text(it, fontSize = 11.sp, color = discretNotation()) }
-            }
-        }
-        if (importSessionHistory.isNotEmpty()) {
-            Text(translate("auto.view.crossconsultationgradingview.imports_precedents"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            importSessionHistory.take(6).forEach { session ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${formatBackupDate(session.importedAtEpochMs)} • ${session.sourceFileName} • ${session.successCount}/${session.total}",
-                            fontSize = 12.sp, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { gradingViewModel.selectImportSession(session.sessionId) }) {
-                        Text(translate("auto.view.crossconsultationgradingview.charger"), fontSize = 12.sp)
+            if (importSessionHistory.isNotEmpty()) {
+                Text(translate("auto.view.crossconsultationgradingview.imports_precedents"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                importSessionHistory.take(6).forEach { session ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${formatBackupDate(session.importedAtEpochMs)} • ${session.sourceFileName} • ${session.successCount}/${session.total}",
+                                fontSize = 12.sp, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { gradingViewModel.selectImportSession(session.sessionId) }) {
+                            Text(translate("auto.view.crossconsultationgradingview.charger"), fontSize = 12.sp)
+                        }
                     }
                 }
             }
