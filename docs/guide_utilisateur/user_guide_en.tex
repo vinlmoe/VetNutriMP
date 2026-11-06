@@ -1196,7 +1196,10 @@ The analysis shows the current, proposed or all rations, and two tabs:
 \textbf{Grading an exam.} \ui{Open grading} offers the exams and exercises found in the papers,
 then four steps, always shown at the top of the screen:
 \begin{description}[style=nextline,leftmargin=0pt,itemsep=4pt]
-  \item[\ui{Papers}] Import the Moodle CSV (jsonbin links); the list flags papers without a
+  \item[\ui{Papers}] Import a batch of JSON files (\ui{Choose the JSON files…}; on a computer, a
+        whole folder) or the Moodle CSV (jsonbin links). For a new grading, enter the exam and the
+        exercise with \ui{Other exam…}, then import: papers without an exam are attached to it,
+        and the file name is used as a missing student number. The list flags papers without a
         student number and duplicated numbers (each paper keeps its own grade).
   \item[\ui{Analysis}] Distribution of each measure over the papers, with the number of papers
         within the chosen bounds; \ui{Add to the marking scheme} turns it into a criterion.

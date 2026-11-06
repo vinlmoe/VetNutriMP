@@ -1211,8 +1211,12 @@ L'analyse affiche les rations actuelles, proposées ou toutes, et deux onglets :
 \textbf{Notation d'un examen.} \ui{Ouvrir la notation} propose les examens et exercices présents
 dans les copies, puis quatre étapes, toujours visibles en haut de l'écran :
 \begin{description}[style=nextline,leftmargin=0pt,itemsep=4pt]
-  \item[\ui{Copies}] Importer le CSV de Moodle (liens jsonbin) ; la liste signale les copies sans
-        numéro d'étudiant et les numéros en double (chaque copie garde sa propre note).
+  \item[\ui{Copies}] Importer un lot de fichiers JSON (\ui{Choisir les fichiers JSON…} ; sur
+        ordinateur, un dossier entier) ou le CSV de Moodle (liens jsonbin). Pour une nouvelle
+        notation, saisir l'examen et l'exercice avec \ui{Autre examen…}, puis importer : les
+        copies sans examen y sont rattachées, et le nom du fichier sert de numéro d'étudiant
+        manquant. La liste signale les copies sans numéro d'étudiant et les numéros en double
+        (chaque copie garde sa propre note).
   \item[\ui{Analyse}] Distribution de chaque mesure sur les copies, avec le nombre de copies
         comprises dans les bornes choisies ; \ui{Ajouter au barème} en fait un critère.
   \item[\ui{Barème}] Sections activables (ingrédients exigés ou interdits, quantité, densité

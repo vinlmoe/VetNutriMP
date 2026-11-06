@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Data
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class NotationExamenTest {
 
@@ -94,5 +95,50 @@ class NotationExamenTest {
         assertNull(decoderDossierNotation("{\"animals\":[]}"))
         assertNull(decoderDossierNotation("pas du json"))
         assertNull(decoderDossierNotation(encoderDossierNotation(dossier.copy(format = "autre"))))
+    }
+
+    private fun envelope(vararg animaux: AnimalApi) = kotlinx.serialization.json.Json { encodeDefaults = true }
+            .encodeToString(ApiEnvelope.serializer(), ApiEnvelope(version = "3", generatedAtEpochMs = 0, animals = animaux.toList()))
+
+    private fun animalApi(uuid: String, examen: String? = null, exercice: String? = null, etudiant: String? = null) = AnimalApi(
+            uuid = uuid, name = uuid, isDead = false, sexId = 0, specieId = "CHIEN", ownerName = "", breed = "", summary = "",
+            exam = examen != null, examStudentNumber = examen, examExerciseId = exercice, examStudentId = etudiant)
+
+    private fun animauxDe(copie: CopiePreparee) = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+            .decodeFromString(ApiEnvelope.serializer(), copie.json!!).animals
+
+    @Test
+    fun preparerCopieJson_rattacheLesCopiesSansExamen() {
+        val copie = preparerCopieJson(FichierJson("22015.json", envelope(animalApi("a"))), "NUT2026", "EX1", rattacher = true)
+        assertEquals(1, copie.rattaches)
+        val a = animauxDe(copie).single()
+        assertEquals("NUT2026", a.examStudentNumber)
+        assertEquals("EX1", a.examExerciseId)
+        assertEquals("22015", a.examStudentId) // numéro tiré du nom du fichier
+        assertEquals(true, a.exam)
+        // Sans rattachement : l'animal est laissé tel quel et signalé
+        val brut = preparerCopieJson(FichierJson("x.json", envelope(animalApi("a"))), "NUT2026", "EX1", rattacher = false)
+        assertEquals(0, brut.rattaches)
+        assertEquals(1, brut.autreExamen)
+    }
+
+    @Test
+    fun preparerCopieJson_respecteLesCopiesDejaRattachees() {
+        val json = envelope(animalApi("a", "NUT2026", "EX1", "22001"), animalApi("b", "AUTRE", "EX9", "7"))
+        // Enveloppe jsonbin { "record": … } acceptée
+        val copie = preparerCopieJson(FichierJson("lot.json", "{\"record\": $json}"), "nut2026", "ex1", rattacher = true)
+        assertNull(copie.erreur)
+        assertEquals(2, copie.animaux)
+        assertEquals(0, copie.rattaches)
+        assertEquals(1, copie.autreExamen)
+        assertEquals(listOf("22001", "7"), animauxDe(copie).map { it.examStudentId })
+        assertEquals("AUTRE", animauxDe(copie)[1].examStudentNumber)
+    }
+
+    @Test
+    fun preparerCopieJson_signaleLesFichiersIllisibles() {
+        assertEquals("aucun animal", preparerCopieJson(FichierJson("vide.json", envelope()), "E", "X", true).erreur)
+        assertTrue(preparerCopieJson(FichierJson("faux.json", "pas du json"), "E", "X", true).erreur != null)
+        assertTrue(preparerCopieJson(FichierJson("autre.json", "{\"a\": 1}"), "E", "X", true).erreur != null)
     }
 }
