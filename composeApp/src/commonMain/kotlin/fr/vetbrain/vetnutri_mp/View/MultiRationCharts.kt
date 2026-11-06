@@ -32,13 +32,9 @@ private data class SerieExploration(
 @Composable
 internal fun CourbesMultiration(resultat: ResultatExploration) {
     if (resultat.scenarios.isEmpty()) return
-    var ouvert by remember { mutableStateOf(false) }
-    Card(Modifier.fillMaxWidth().padding(vertical = 10.dp), elevation = 2.dp) {
-        Column(Modifier.padding(12.dp)) {
-            TextButton(onClick = { ouvert = !ouvert }) {
-                Text(if (ouvert) "Masquer les courbes" else "Afficher les courbes de doses et d’apports")
-            }
-            if (!ouvert) return@Column
+    Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), elevation = 0.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x1F000000))) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val references = resultat.configuration.references
             var referenceId by remember(resultat) { mutableStateOf(references.first().uuid) }
             val reference = references.first { it.uuid == referenceId }
@@ -58,20 +54,23 @@ internal fun CourbesMultiration(resultat: ResultatExploration) {
                     onValueChange = { referenceId = it.uuid }, valueToString = { it.nom },
                     modifier = Modifier.fillMaxWidth())
             DropdownField(label = translate("multiration.courbes.combinaison"), selectedValue = combinaison, options = combinaisons,
-                    onValueChange = { combinaison = it }, valueToString = { "Combinaison $it" },
+                    onValueChange = { combinaison = it }, valueToString = { translate("multiration.courbes.combinaisonN", it.toString()) },
                     modifier = Modifier.fillMaxWidth())
-            Text(scenarios.first().ration.alimentMutableList.joinToString(" + ") { it.aliment?.nom ?: "?" }, fontSize = 12.sp)
-            DropdownField(label = translate("multiration.courbes.poidsFixe"), selectedValue = poidsFixe, options = poids,
-                    onValueChange = { poidsFixe = it }, valueToString = { formaterQuantite(it) },
-                    modifier = Modifier.fillMaxWidth())
-            DropdownField(label = translate("multiration.courbes.kFixe"), selectedValue = kFixe, options = ks,
-                    onValueChange = { kFixe = it }, valueToString = { formaterQuantite(it) },
-                    modifier = Modifier.fillMaxWidth())
+            Text(scenarios.first().ration.alimentMutableList.joinToString(" + ") { it.aliment?.nom ?: "?" }, fontSize = 12.sp,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.62f))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DropdownField(label = translate("multiration.courbes.poidsFixe"), selectedValue = poidsFixe, options = poids,
+                        onValueChange = { poidsFixe = it }, valueToString = { formaterQuantite(it) },
+                        modifier = Modifier.weight(1f))
+                DropdownField(label = translate("multiration.courbes.kFixe"), selectedValue = kFixe, options = ks,
+                        onValueChange = { kFixe = it }, valueToString = { formaterQuantite(it) },
+                        modifier = Modifier.weight(1f))
+            }
             val selonK = scenarios.filter { it.poids == poidsFixe }.sortedBy { it.k }
             val selonPoids = scenarios.filter { it.k == kFixe }.sortedBy { it.poids }
-            Text(translate("multiration.courbes.aide"), fontSize = 12.sp)
-            CourbeDoses(selonK, true, "Doses selon K — poids fixé à ${formaterQuantite(poidsFixe)} kg")
-            CourbeDoses(selonPoids, false, "Doses selon le poids — K fixé à ${formaterQuantite(kFixe)}")
+            Text(translate("multiration.courbes.aide"), fontSize = 11.sp, color = MaterialTheme.colors.onSurface.copy(alpha = 0.62f))
+            CourbeDoses(selonK, true, translate("multiration.courbes.dosesSelonK", formaterQuantite(poidsFixe)))
+            CourbeDoses(selonPoids, false, translate("multiration.courbes.dosesSelonPoids", formaterQuantite(kFixe)))
             val nutriments = remember(resultat, referenceId) {
                 (reference.getRefMapMin().keys + reference.getRefMapOMin().keys +
                         reference.getRefMapMax().keys + reference.getRefMapOMax().keys)
@@ -80,8 +79,12 @@ internal fun CourbesMultiration(resultat: ResultatExploration) {
             var choisis by remember(resultat, referenceId) { mutableStateOf(nutriments.take(4)) }
             Text(translate("multiration.courbes.apportsNormes"), style = MaterialTheme.typography.h6)
             Text(translate("multiration.courbes.nutrimentsAide"), fontSize = 12.sp)
-            choisis.forEach { n ->
-                TextButton(onClick = { choisis = choisis - n }) { Text(translate("multiration.courbes.retirer", nomTraduitNutriment(n))) }
+            fr.vetbrain.vetnutri_mp.Components.FlowRow(mainAxisSpacing = 6.dp, crossAxisSpacing = 6.dp) {
+                choisis.forEach { n ->
+                    OutlinedButton(onClick = { choisis = choisis - n }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)) {
+                        Text(nomTraduitNutriment(n) + "  ✕", fontSize = 12.sp)
+                    }
+                }
             }
             val disponibles = nutriments.filterNot { it in choisis }
             if (choisis.size < 4 && disponibles.isNotEmpty()) {
@@ -90,8 +93,8 @@ internal fun CourbesMultiration(resultat: ResultatExploration) {
                         modifier = Modifier.fillMaxWidth())
             }
             choisis.forEach { n ->
-                CourbeNutriment(selonK, n, true, "Selon K — ${formaterQuantite(poidsFixe)} kg")
-                CourbeNutriment(selonPoids, n, false, "Selon le poids — K ${formaterQuantite(kFixe)}")
+                CourbeNutriment(selonK, n, true, translate("multiration.courbes.selonK", formaterQuantite(poidsFixe)))
+                CourbeNutriment(selonPoids, n, false, translate("multiration.courbes.selonPoids", formaterQuantite(kFixe)))
             }
         }
     }
@@ -109,7 +112,7 @@ private fun CourbeDoses(scenarios: List<ScenarioExploration>, selonK: Boolean, t
                     s.ration.alimentMutableList.filter { it.aliment?.uuid == aliment.uuid }.sumOf { it.quantite } else null },
                 couleursCourbes[i % couleursCourbes.size])
     }
-    GraphiqueExploration(titre, "Dose (g)", scenarios.map { if (selonK) it.k else it.poids }, if (selonK) "K" else "Poids (kg)", series)
+    GraphiqueExploration(titre, translate("multiration.courbes.dose"), scenarios.map { if (selonK) it.k else it.poids }, if (selonK) "K" else translate("multiration.poidsKg"), series)
 }
 
 @Composable
@@ -117,21 +120,21 @@ private fun CourbeNutriment(scenarios: List<ScenarioExploration>, nutriment: Nut
     val unite = scenarios.firstNotNullOfOrNull { it.valeursNutritionnelles[nutriment.label]?.unite }?.displayName ?: ""
     // Une valeur incomplète est un apport partiel connu, pas une absence de valeur. Elle doit
     // donc rester visible, par exemple pour l'oméga-6 lorsqu'un seul ingrédient le renseigne.
-    val series = listOf(SerieExploration("Apport connu (peut être incomplet)", scenarios.map {
+    val series = listOf(SerieExploration(translate("multiration.courbes.apportConnu"), scenarios.map {
         apportCourbeExploration(it, nutriment)
     }, MaterialTheme.colors.onSurface)) +
             listOf(Reflevel.MIN, Reflevel.OPTIMIN, Reflevel.OPTIMAX, Reflevel.MAX).mapIndexedNotNull { i, niveau ->
                 val valeurs = scenarios.map { seuilCourbeExploration(it, nutriment, niveau) }
-                if (valeurs.all { it == null }) null else SerieExploration(niveau.name, valeurs,
+                if (valeurs.all { it == null }) null else SerieExploration(translate("multiration.niveau.${niveau.name}"), valeurs,
                         listOf(Color(0xFF1B7837), Color(0xFF5AAE61), Color(0xFFEF8A62), Color(0xFFB2182B))[i], true)
             }
     GraphiqueExploration("${nomTraduitNutriment(nutriment)} — $titre", unite,
-            scenarios.map { if (selonK) it.k else it.poids }, if (selonK) "K" else "Poids (kg)", series)
+            scenarios.map { if (selonK) it.k else it.poids }, if (selonK) "K" else translate("multiration.poidsKg"), series)
 }
 
 @Composable
 private fun GraphiqueExploration(titre: String, unite: String, xs: List<Double>, axe: String, series: List<SerieExploration>) {
-    Text(titre, style = MaterialTheme.typography.subtitle1, modifier = Modifier.padding(top = 16.dp))
+    Text(titre, style = MaterialTheme.typography.subtitle1, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
     val valeurs = series.flatMap { it.valeurs }.filterNotNull().filter { it.isFinite() }
     if (valeurs.isEmpty()) {
         Text(translate("multiration.courbes.aucuneDonnee"), fontSize = 12.sp)

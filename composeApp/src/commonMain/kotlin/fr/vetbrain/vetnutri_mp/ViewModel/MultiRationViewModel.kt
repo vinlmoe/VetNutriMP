@@ -93,6 +93,18 @@ class MultiRationViewModel(
     private val _caseSelectionnee = MutableStateFlow<CaseEquilibre?>(null)
     val caseSelectionnee: StateFlow<CaseEquilibre?> = _caseSelectionnee.asStateFlow()
 
+    private val _synthese = MutableStateFlow(SyntheseExploration.VIDE)
+    /** Classement des combinaisons et seuils limitants du résultat affiché. */
+    val synthese: StateFlow<SyntheseExploration> = _synthese.asStateFlow()
+
+    private val _combinaisonFiltre = MutableStateFlow<Int?>(null)
+    /** Combinaison dont la carte affiche les zones (null = toutes les combinaisons). */
+    val combinaisonFiltre: StateFlow<Int?> = _combinaisonFiltre.asStateFlow()
+
+    private val _casesAffichees = MutableStateFlow<List<CaseEquilibre>>(emptyList())
+    /** Cases de la carte, limitées à [combinaisonFiltre] s'il est choisi. */
+    val casesAffichees: StateFlow<List<CaseEquilibre>> = _casesAffichees.asStateFlow()
+
     private val _scenarioSelectionne = MutableStateFlow<ScenarioExploration?>(null)
     val scenarioSelectionne: StateFlow<ScenarioExploration?> = _scenarioSelectionne.asStateFlow()
 
@@ -150,6 +162,15 @@ class MultiRationViewModel(
 
     fun basculerReference(id: String) = modifierParametres {
         it.copy(referenceIds = if (id in it.referenceIds) it.referenceIds - id else it.referenceIds + id)
+    }
+
+    /** Coche (ou décoche) tous les référentiels généraux de l'espèce choisie. */
+    fun selectionnerToutesReferences(toutes: Boolean) = modifierParametres { p ->
+        p.copy(referenceIds = if (toutes) referencesEspece(p).map { it.uuid }.toSet() else emptySet())
+    }
+
+    fun viderListe(role: RoleExploration) = modifierParametres { p ->
+        p.copy(listes = p.listes + (role to emptyList()))
     }
 
     fun ajouterListe(): RoleExploration {
@@ -218,10 +239,23 @@ class MultiRationViewModel(
         return intervalle(p.poidsDe, p.poidsA, p.poidsPas) to intervalle(p.kDe, p.kA, p.kPas)
     }
 
+    /** Nombre de combinaisons d'aliments (un aliment par liste active). */
+    fun nombreCombinaisons(p: ParametresExploration = _parametres.value): Long =
+            rolesExplorationActifs(p.listes, p.cibles, p.besoinsIgnores).fold(1L) { acc, role -> acc * p.listes[role].orEmpty().size }
+
     fun nombreScenarios(p: ParametresExploration = _parametres.value): Long {
         val (poids, k) = grille(p)
-        val combinaisons = rolesExplorationActifs(p.listes, p.cibles, p.besoinsIgnores).fold(1L) { acc, role -> acc * p.listes[role].orEmpty().size }
-        return combinaisons * (poids?.size ?: 0) * (k?.size ?: 0) * p.referenceIds.size
+        return nombreCombinaisons(p) * (poids?.size ?: 0) * (k?.size ?: 0) * p.referenceIds.size
+    }
+
+    /** Listes actives encore vides (bloquent le calcul). */
+    fun listesVides(p: ParametresExploration = _parametres.value): List<RoleExploration> =
+            rolesExplorationActifs(p.listes, p.cibles, p.besoinsIgnores).filter { p.listes[it].isNullOrEmpty() }
+
+    /** L'onglet Animaux est incomplet : aucun référentiel ou grille invalide. */
+    fun animauxIncomplets(p: ParametresExploration = _parametres.value): Boolean {
+        val (poids, k) = grille(p)
+        return p.referenceIds.isEmpty() || poids == null || k == null
     }
 
     /** Ce qui empêche de lancer le calcul (vide = prêt). */
@@ -284,9 +318,10 @@ class MultiRationViewModel(
                                     val signature = p.versJson().versJson()
                                     val actives = correctionsDuCalcul.filter { it.configuration == signature }
                                     val alimentsCorriges = foodRepository.getFoodsByUuids(actives.flatMap { it.aliments.map { a -> a.alimentId } }.distinct())
-                                    appliquerCorrectionsExploration(initial, signature, actives, alimentsCorriges, explorateur)
+                                    val r = appliquerCorrectionsExploration(initial, signature, actives, alimentsCorriges, explorateur)
+                                    r to synthetiserExploration(r)
                                 }
-                        _resultat.value = resultat
+                        publierResultat(resultat.first, resultat.second, combinaison = null)
                         _parametresDuResultat.value = p
                         _caseSelectionnee.value = null
                         _scenarioSelectionne.value = null
@@ -296,7 +331,7 @@ class MultiRationViewModel(
                         _erreur.value = e.message
                     } catch (e: Exception) {
                         e.rethrowIfCancellation()
-                        _erreur.value = "Calcul impossible : ${e.message}"
+                        _erreur.value = translate("multiration.erreur.calcul", e.message ?: "")
                     } finally {
                         _progression.value = null
                     }
@@ -312,9 +347,34 @@ class MultiRationViewModel(
         _erreur.value = null
     }
 
+    /**
+     * Sélectionne une case. Le détail montre toujours toutes les combinaisons de la case ; si la
+     * carte est limitée à une combinaison, c'est son scénario qui est présélectionné.
+     */
     fun selectionnerCase(case: CaseEquilibre?) {
-        _caseSelectionnee.value = case
-        _scenarioSelectionne.value = case?.meilleurScenario
+        val complete = case?.let { c ->
+            _resultat.value?.cases?.firstOrNull { it.reference.uuid == c.reference.uuid && it.poids == c.poids && it.k == c.k }
+        } ?: case
+        _caseSelectionnee.value = complete
+        val filtre = _combinaisonFiltre.value
+        _scenarioSelectionne.value =
+                complete?.scenarios?.firstOrNull { filtre != null && it.combinaison == filtre } ?: complete?.meilleurScenario
+    }
+
+    /** Limite la carte à une combinaison d'aliments (null = toutes). */
+    fun filtrerCombinaison(combinaison: Int?) {
+        val r = _resultat.value ?: return
+        _combinaisonFiltre.value = combinaison
+        _casesAffichees.value = casesPourCombinaison(r, combinaison)
+        _caseSelectionnee.value?.let { selectionnerCase(it) }
+    }
+
+    private fun publierResultat(r: ResultatExploration?, synthese: SyntheseExploration, combinaison: Int?) {
+        val filtre = combinaison?.takeIf { c -> r?.scenarios?.any { it.combinaison == c } == true }
+        _resultat.value = r
+        _synthese.value = synthese
+        _combinaisonFiltre.value = filtre
+        _casesAffichees.value = if (r == null) emptyList() else casesPourCombinaison(r, filtre)
     }
 
     fun selectionnerScenario(scenario: ScenarioExploration) {
@@ -344,7 +404,7 @@ class MultiRationViewModel(
         val resultat = _resultat.value ?: return
         val p = _parametresDuResultat.value ?: return
         if (p != _parametres.value) {
-            _erreur.value = "Recalculer l’exploration avec les paramètres actuels avant d’enregistrer les corrections."
+            _erreur.value = translate("multiration.erreur.recalculerAvantCorrections")
             return
         }
         val editions = _rationsOuvertes.value
@@ -361,13 +421,14 @@ class MultiRationViewModel(
         viewModelScope.launch {
             try {
                 val aliments = foodRepository.getFoodsByUuids(nouvelles.flatMap { it.aliments.map { a -> a.alimentId } }.distinct())
-                val actualise = withContext(AppDispatchers.Default) {
-                    appliquerCorrectionsExploration(resultat, signature, nouvelles, aliments, ExplorateurMultiration(equationRepository))
+                val (actualise, synthese) = withContext(AppDispatchers.Default) {
+                    val r = appliquerCorrectionsExploration(resultat, signature, nouvelles, aliments, ExplorateurMultiration(equationRepository))
+                    r to synthetiserExploration(r)
                 }
                 val courante = _explorationCourante.value
                 val exploration = ExplorationEnregistree(
                         uuid = courante?.uuid ?: genUUID(),
-                        nom = courante?.nom ?: "Exploration corrigée — ${instantNow()}",
+                        nom = courante?.nom ?: translate("multiration.explorationCorrigee", instantNow().toString()),
                         espece = p.espece.name,
                         configurationJson = p.versJson().copy(corrections = toutes).versJson(),
                         updatedAt = instantNow().toEpochMilliseconds()
@@ -375,20 +436,20 @@ class MultiRationViewModel(
                 explorationRepository.saveExploration(exploration)
                 corrections = toutes
                 _explorationCourante.value = exploration
-                _resultat.value = actualise
+                publierResultat(actualise, synthese, _combinaisonFiltre.value)
                 val ancienneCase = _caseSelectionnee.value
                 _caseSelectionnee.value = actualise.cases.firstOrNull {
                     ancienneCase != null && it.reference.uuid == ancienneCase.reference.uuid && it.poids == ancienneCase.poids && it.k == ancienneCase.k
                 }
                 _scenarioSelectionne.value = actualise.scenarios.firstOrNull { it.id == _scenarioSelectionne.value?.id }
                 _rationsOuvertes.value = emptyList()
-                _message.value = "Corrections enregistrées ; tableaux, carte et courbes mis à jour."
+                _message.value = translate("multiration.message.correctionsEnregistrees")
                 chargerExplorations()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 e.rethrowIfCancellation()
-                _erreur.value = "Enregistrement des corrections impossible : ${e.message}"
+                _erreur.value = translate("multiration.erreur.corrections", e.message ?: "")
             } finally {
                 _enregistrementCorrections.value = false
             }
@@ -406,7 +467,7 @@ class MultiRationViewModel(
                         explorationRepository.getAllExplorations()
                     } catch (e: Exception) {
                         e.rethrowIfCancellation()
-                        _erreur.value = "Lecture des explorations enregistrées impossible : ${e.message}"
+                        _erreur.value = translate("multiration.erreur.lecture", e.message ?: "")
                         emptyList()
                     }
         }
@@ -420,7 +481,7 @@ class MultiRationViewModel(
     fun enregistrerExploration(nom: String, commeNouvelle: Boolean = false) {
         val nomPropre = nom.trim()
         if (nomPropre.isEmpty()) {
-            _erreur.value = "Donner un nom à l'exploration avant de l'enregistrer."
+            _erreur.value = translate("multiration.erreur.nomManquant")
             return
         }
         val p = _parametres.value
@@ -437,11 +498,11 @@ class MultiRationViewModel(
             try {
                 explorationRepository.saveExploration(exploration)
                 _explorationCourante.value = exploration
-                _message.value = "Exploration « $nomPropre » enregistrée."
+                _message.value = translate("multiration.message.enregistree", nomPropre)
                 _explorations.value = explorationRepository.getAllExplorations()
             } catch (e: Exception) {
                 e.rethrowIfCancellation()
-                _erreur.value = "Enregistrement impossible : ${e.message}"
+                _erreur.value = translate("multiration.erreur.enregistrement", e.message ?: "")
             }
         }
     }
@@ -463,18 +524,18 @@ class MultiRationViewModel(
                 annulerCalcul()
                 corrections = json.corrections
                 _parametres.value = parametres
-                _resultat.value = null
+                publierResultat(null, SyntheseExploration.VIDE, null)
                 _parametresDuResultat.value = null
                 _caseSelectionnee.value = null
                 _scenarioSelectionne.value = null
                 _explorationCourante.value = exploration
                 _message.value =
-                        "Exploration « ${exploration.nom} » chargée." +
-                                if (manquants.isEmpty()) "" else " Introuvables (ignorés) : ${manquants.joinToString()}."
+                        translate("multiration.message.chargee", exploration.nom) +
+                                if (manquants.isEmpty()) "" else " " + translate("multiration.message.introuvables", manquants.joinToString())
                 if (corrections.isNotEmpty() && manquants.isEmpty()) lancerCalcul()
             } catch (e: Exception) {
                 e.rethrowIfCancellation()
-                _erreur.value = "Chargement impossible : ${e.message}"
+                _erreur.value = translate("multiration.erreur.chargement", e.message ?: "")
             }
         }
     }
@@ -487,7 +548,7 @@ class MultiRationViewModel(
                 _explorations.value = explorationRepository.getAllExplorations()
             } catch (e: Exception) {
                 e.rethrowIfCancellation()
-                _erreur.value = "Suppression impossible : ${e.message}"
+                _erreur.value = translate("multiration.erreur.suppression", e.message ?: "")
             }
         }
     }
@@ -498,7 +559,7 @@ class MultiRationViewModel(
         corrections = emptyList()
         fermerRations()
         _parametres.value = ParametresExploration(espece = _parametres.value.espece)
-        _resultat.value = null
+        publierResultat(null, SyntheseExploration.VIDE, null)
         _parametresDuResultat.value = null
         _caseSelectionnee.value = null
         _scenarioSelectionne.value = null

@@ -1,57 +1,55 @@
 package fr.vetbrain.vetnutri_mp.View
 
-import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Divider
-import androidx.compose.material.Icon
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Refresh
-import fr.vetbrain.vetnutri_mp.Components.PuceFiltre
-import fr.vetbrain.vetnutri_mp.Localization.translateEnum
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import fr.vetbrain.vetnutri_mp.Components.FlowRow
+import fr.vetbrain.vetnutri_mp.Components.PuceFiltre
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
-import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.CrossConsultationAnalysis
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal as AnimalKeys
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.CrossConsultationAnalysis
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Startup as StartupKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CrossConsultationAnalysisViewModel
 
+private val bordureCroisee = Color(0x1F000000)
+
+@Composable
+private fun discret(): Color = MaterialTheme.colors.onSurface.copy(alpha = 0.62f)
+
 /**
- * Sélection multi-consultations (Phase 1) : recherche, filtre espèce, sélection, compteur.
+ * Sélection des consultations à analyser ensemble : recherche, filtres (espèce, mots-clés,
+ * examen), liste à cocher et résumé de la sélection avec le bouton d'analyse.
+ *
+ * Grand écran : résumé à droite. Sous [AppSizes.breakpointCompact] : résumé en barre fixe en bas.
  */
 @Composable
 fun CrossConsultationAnalysisView(
@@ -63,243 +61,319 @@ fun CrossConsultationAnalysisView(
 ) {
     val isLoading by viewModel.isLoading.collectAsState()
     val consultations by viewModel.consultations.collectAsState()
+    val toutes by viewModel.allItems.collectAsState()
     val selectedIds by viewModel.selectedIds.collectAsState()
+    val summary by viewModel.summary.collectAsState()
+
+    LaunchedEffect(Unit) { viewModel.loadConsultations() }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        TopBarSimple(title = CrossConsultationAnalysis.TITLE.translate(), onNavigateBack = onNavigateBack) {
+            TextButton(onClick = onOpenGrading) {
+                Icon(Icons.AutoMirrored.Filled.Assignment, contentDescription = null, modifier = Modifier.size(18.dp), tint = VetNutriColors.Primary)
+                Spacer(Modifier.width(6.dp))
+                Text(CrossConsultationAnalysis.OPEN_GRADING.translate(), color = VetNutriColors.PrimaryVariant)
+            }
+        }
+        Divider()
+
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val largeur = maxWidth
+            val compact = largeur < AppSizes.breakpointCompact
+            if (compact) {
+                Column(Modifier.fillMaxSize()) {
+                    Column(Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        Filtres(viewModel)
+                        ListeConsultations(viewModel, isLoading, consultations, toutes.size, selectedIds, Modifier.weight(1f))
+                    }
+                    BarreSelection(summary, onOpenResults, onReset = { viewModel.clearSelection() })
+                }
+            } else {
+                Row(
+                        Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                ) {
+                    Column(Modifier.weight(1f).fillMaxHeight()) {
+                        Filtres(viewModel)
+                        ListeConsultations(viewModel, isLoading, consultations, toutes.size, selectedIds, Modifier.weight(1f))
+                    }
+                    PanneauSelection(
+                            summary = summary,
+                            onOpenResults = onOpenResults,
+                            onReset = { viewModel.clearSelection() },
+                            modifier = Modifier.width(if (largeur < 1000.dp) 260.dp else 300.dp).fillMaxHeight()
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Recherche et filtres (espèce, mots-clés, examen), repliables. */
+@Composable
+private fun Filtres(viewModel: CrossConsultationAnalysisViewModel) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val speciesFilter by viewModel.speciesFilter.collectAsState()
     val keywordFilter by viewModel.keywordFilter.collectAsState()
     val examIdFilter by viewModel.examIdFilter.collectAsState()
     val examExerciseIdFilter by viewModel.examExerciseIdFilter.collectAsState()
     val availableKeywords by viewModel.availableKeywords.collectAsState()
-    val summary by viewModel.summary.collectAsState()
+    // Repliés par défaut : la liste des consultations reste visible ; le bouton indique les filtres actifs
+    var ouverts by remember { mutableStateOf(false) }
+    val actifs = (if (speciesFilter != null) 1 else 0) + keywordFilter.size +
+            (if (examIdFilter.isNotBlank()) 1 else 0) + (if (examExerciseIdFilter.isNotBlank()) 1 else 0)
 
-    LaunchedEffect(Unit) { viewModel.loadConsultations() }
-
-    Column(modifier = modifier.fillMaxSize()) {
-        TopBarSimple(
-                title = CrossConsultationAnalysis.TITLE.translate(),
-                onNavigateBack = onNavigateBack
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
-                OutlinedButton(
-                        onClick = { viewModel.clearSelection() },
-                        enabled = selectedIds.isNotEmpty()
-                ) { Text(CrossConsultationAnalysis.RESET.translate()) }
-                OutlinedButton(
-                        onClick = { viewModel.selectAllVisible(consultations.map { it.consultationId }) },
-                        enabled = consultations.isNotEmpty()
-                ) { Text(CrossConsultationAnalysis.SELECT_ALL.translate()) }
-                OutlinedButton(
-                        onClick = onOpenGrading
-                ) { Text(CrossConsultationAnalysis.OPEN_GRADING.translate()) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.setSearchQuery(it) },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text(CrossConsultationAnalysis.SEARCH_LABEL.translate()) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty())
+                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                                Icon(Icons.Default.Close, contentDescription = translate("crossConsultation.effacer"))
+                            }
+                    },
+                    singleLine = true
+            )
+            Spacer(Modifier.width(6.dp))
+            TextButton(onClick = { ouverts = !ouverts }) {
+                Icon(if (ouverts) Icons.Default.ExpandLess else Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(
+                        if (actifs > 0) translate("crossConsultation.filtresActifs", actifs.toString()) else translate("crossConsultation.filtres"),
+                        fontSize = 13.sp
+                )
             }
         }
+        if (!ouverts) return@Column
 
-        Divider()
-
-        Row(
-                modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
-                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-        ) {
-            // Panneau sélection
-            Column(
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-            ) {
-                OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { viewModel.setSearchQuery(it) },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(CrossConsultationAnalysis.SEARCH_LABEL.translate()) },
-                        leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = null) },
-                        singleLine = true
-                )
-
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+        Card(elevation = 0.dp, border = BorderStroke(1.dp, bordureCroisee), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(CrossConsultationAnalysis.SPECIES_LABEL.translate(), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = discret())
+                FlowRow(mainAxisSpacing = 6.dp, crossAxisSpacing = 6.dp) {
+                    PuceFiltre(CrossConsultationAnalysis.SPECIES_ALL.translate(), selectionnee = speciesFilter == null,
+                            onClick = { viewModel.setSpeciesFilter(null) })
+                    Espece.valuesExcept().forEach { e ->
+                        PuceFiltre(e.translateEnum(), selectionnee = speciesFilter == e, onClick = { viewModel.setSpeciesFilter(e) })
+                    }
+                }
+                Text(CrossConsultationAnalysis.KEYWORDS_LABEL.translate(), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = discret())
+                if (availableKeywords.isEmpty()) {
+                    Text(CrossConsultationAnalysis.KEYWORDS_EMPTY.translate(), style = MaterialTheme.typography.caption, color = discret())
+                } else {
+                    FlowRow(mainAxisSpacing = 6.dp, crossAxisSpacing = 6.dp) {
+                        PuceFiltre(CrossConsultationAnalysis.KEYWORDS_ALL.translate(), selectionnee = keywordFilter.isEmpty(),
+                                onClick = { viewModel.clearKeywordFilter() })
+                        availableKeywords.forEach { keyword ->
+                            PuceFiltre(keyword.label, selectionnee = keywordFilter.contains(keyword.uuid),
+                                    onClick = { viewModel.toggleKeywordFilter(keyword.uuid) })
+                        }
+                    }
+                }
+                Text(translate("crossConsultation.examen"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = discret())
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                             value = examIdFilter,
                             onValueChange = { viewModel.setExamIdFilter(it) },
                             modifier = Modifier.weight(1f),
-                            label = { Text(StartupKeys.EXAM_STUDENT_NUMBER.translate()) },
+                            label = { Text(StartupKeys.EXAM_STUDENT_NUMBER.translate(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             singleLine = true
                     )
                     OutlinedTextField(
                             value = examExerciseIdFilter,
                             onValueChange = { viewModel.setExamExerciseIdFilter(it) },
                             modifier = Modifier.weight(1f),
-                            label = { Text(AnimalKeys.EXAM_EXERCISE_ID.translate()) },
+                            label = { Text(AnimalKeys.EXAM_EXERCISE_ID.translate(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             singleLine = true
                     )
                 }
+            }
+        }
+    }
+}
 
-                // Filtre espèce
-                Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                ) {
-                    PuceFiltre(
-                            CrossConsultationAnalysis.SPECIES_ALL.translate(),
-                            selectionnee = speciesFilter == null,
-                            onClick = { viewModel.setSpeciesFilter(null) }
-                    )
-                    Espece.valuesExcept().forEach { e ->
-                        PuceFiltre(
-                                e.translateEnum(),
-                                selectionnee = speciesFilter == e,
-                                onClick = { viewModel.setSpeciesFilter(e) }
-                        )
-                    }
-                }
+@Composable
+private fun ListeConsultations(
+        viewModel: CrossConsultationAnalysisViewModel,
+        isLoading: Boolean,
+        consultations: List<CrossConsultationAnalysisViewModel.ConsultationItem>,
+        total: Int,
+        selectedIds: Set<String>,
+        modifier: Modifier
+) {
+    val visibles = consultations.map { it.consultationId }
+    val toutesCochees = visibles.isNotEmpty() && visibles.all { it in selectedIds }
 
-                Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(CrossConsultationAnalysis.KEYWORDS_LABEL.translate())
-                    if (availableKeywords.isEmpty()) {
-                        Text(
-                                CrossConsultationAnalysis.KEYWORDS_EMPTY.translate(),
-                                style = androidx.compose.material.MaterialTheme.typography.caption,
-                                color = androidx.compose.ui.graphics.Color.Gray
-                        )
-                    } else {
-                        Row(
-                                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            PuceFiltre(
-                                    CrossConsultationAnalysis.KEYWORDS_ALL.translate(),
-                                    selectionnee = keywordFilter.isEmpty(),
-                                    onClick = { viewModel.clearKeywordFilter() }
-                            )
-                            availableKeywords.forEach { keyword ->
-                                PuceFiltre(
-                                        keyword.label,
-                                        selectionnee = keywordFilter.contains(keyword.uuid),
-                                        onClick = { viewModel.toggleKeywordFilter(keyword.uuid) }
-                                )
-                            }
-                        }
-                    }
-                }
+    Column(modifier) {
+        // En-tête de liste : nombre et case « tout cocher » des consultations visibles
+        Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+                        .background(VetNutriColors.Primary.copy(alpha = 0.06f), RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                        .padding(end = 8.dp)
+        ) {
+            Checkbox(
+                    checked = toutesCochees,
+                    enabled = visibles.isNotEmpty(),
+                    onCheckedChange = { if (toutesCochees) viewModel.deselectAllVisible(visibles) else viewModel.selectAllVisible(visibles) },
+                    colors = CheckboxDefaults.colors(checkedColor = VetNutriColors.Primary)
+            )
+            Text(
+                    if (consultations.size == total) translate("crossConsultation.nbConsultations", total.toString())
+                    else translate("crossConsultation.nbConsultationsFiltrees", consultations.size.toString(), total.toString()),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f)
+            )
+            Text(
+                    translate("crossConsultation.nbCochees", visibles.count { it in selectedIds }.toString()),
+                    fontSize = 12.sp,
+                    color = discret()
+            )
+        }
+        Divider()
 
-                if (isLoading) {
-                    Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                } else if (consultations.isEmpty()) {
-                    Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = null,
-                                    tint = VetNutriColors.Primary
-                            )
-                            Text(CrossConsultationAnalysis.EMPTY.translate())
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                    ) {
-                        items(consultations) { item ->
-                            Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    elevation = 2.dp
-                            ) {
-                                Row(
-                                        modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingSmall),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(item.animalName, style = androidx.compose.material.MaterialTheme.typography.subtitle1)
-                                        Text(
-                                                "${item.dateLabel} • ${item.objective}",
-                                                style = androidx.compose.material.MaterialTheme.typography.body2
-                                        )
-                                        val refLabel =
-                                                item.referenceLabel
-                                                        ?: CrossConsultationAnalysis.REF_NONE.translate()
-                                        Text(
-                                                "${CrossConsultationAnalysis.REF_LABEL.translate()}${deuxPoints()} $refLabel | ${CrossConsultationAnalysis.SPECIES_LABEL.translate()}${deuxPoints()} ${item.speciesLabel} | ${CrossConsultationAnalysis.RATIONS_LABEL.translate()}${deuxPoints()} ${item.rationCount}",
-                                                style = androidx.compose.material.MaterialTheme.typography.caption
-                                        )
-                                    }
-                                    val selected = selectedIds.contains(item.consultationId)
-                                    OutlinedButton(
-                                            onClick = { viewModel.toggleSelection(item.consultationId) }
-                                    ) {
-                                        if (selected) {
-                                            Icon(Icons.Default.CheckCircle, contentDescription = null)
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(CrossConsultationAnalysis.REMOVE.translate())
-                                        } else {
-                                            Text(CrossConsultationAnalysis.SELECT.translate())
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+        when {
+            isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = VetNutriColors.Primary)
+            }
+            consultations.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.SearchOff, contentDescription = null, tint = discret(), modifier = Modifier.size(36.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Text(CrossConsultationAnalysis.EMPTY.translate(), color = discret())
                 }
             }
+            else -> LazyColumn(Modifier.fillMaxSize()) {
+                items(consultations, key = { it.consultationId }) { item ->
+                    LigneConsultation(item, item.consultationId in selectedIds) { viewModel.toggleSelection(item.consultationId) }
+                    Divider(color = bordureCroisee)
+                }
+            }
+        }
+    }
+}
 
-            // Panneau résumé simple
-            Column(
-                    modifier =
-                            Modifier.width(300.dp)
-                                    .fillMaxHeight()
-                                    .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+@Composable
+private fun LigneConsultation(item: CrossConsultationAnalysisViewModel.ConsultationItem, cochee: Boolean, onBasculer: () -> Unit) {
+    Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+                    .background(if (cochee) VetNutriColors.Primary.copy(alpha = 0.08f) else Color.Transparent)
+                    .clickable(onClick = onBasculer)
+                    .padding(end = 10.dp, top = 4.dp, bottom = 4.dp)
+    ) {
+        Checkbox(checked = cochee, onCheckedChange = { onBasculer() }, colors = CheckboxDefaults.colors(checkedColor = VetNutriColors.Primary))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(item.animalName, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false))
+                Spacer(Modifier.width(8.dp))
+                Text(item.dateLabel, fontSize = 12.sp, color = discret())
+            }
+            Text(item.objective, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            FlowRow(mainAxisSpacing = 6.dp, crossAxisSpacing = 4.dp) {
+                Etiquette(item.speciesLabel)
+                Etiquette(item.referenceLabel ?: CrossConsultationAnalysis.REF_NONE.translate())
+                Etiquette(translate("crossConsultation.nbRations", item.rationCount.toString()))
+            }
+        }
+    }
+}
+
+@Composable
+private fun Etiquette(texte: String) {
+    Text(
+            texte,
+            fontSize = 11.sp,
+            color = VetNutriColors.PrimaryVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 260.dp)
+                    .background(VetNutriColors.Primary.copy(alpha = 0.08f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 1.dp)
+    )
+}
+
+/** Résumé de la sélection (grand écran). */
+@Composable
+private fun PanneauSelection(
+        summary: CrossConsultationAnalysisViewModel.SelectionSummary,
+        onOpenResults: () -> Unit,
+        onReset: () -> Unit,
+        modifier: Modifier
+) {
+    Card(modifier, elevation = 0.dp, border = BorderStroke(1.dp, bordureCroisee)) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(translate("crossConsultation.selectionTitre"), style = MaterialTheme.typography.h6)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(summary.selectedCount.toString(), fontSize = 34.sp, fontWeight = FontWeight.Bold, color = VetNutriColors.PrimaryVariant)
+                Spacer(Modifier.width(6.dp))
+                Text(translate("crossConsultation.consultationsCochees"), fontSize = 13.sp, modifier = Modifier.padding(bottom = 7.dp))
+            }
+            Divider()
+            LigneResume(translate("crossConsultation.resume.animaux"), summary.distinctAnimals)
+            LigneResume(translate("crossConsultation.resume.referentiels"), summary.distinctReferences)
+            LigneResume(translate("crossConsultation.resume.rations"), summary.totalRations)
+            Spacer(Modifier.height(4.dp))
+            Button(
+                    onClick = onOpenResults,
+                    enabled = summary.selectedCount > 0,
+                    modifier = Modifier.fillMaxWidth().height(42.dp),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary, contentColor = VetNutriColors.OnPrimary)
             ) {
-                Text(
-                        CrossConsultationAnalysis.SUMMARY_TITLE.translate(),
-                        style = androidx.compose.material.MaterialTheme.typography.h6
-                )
-                Divider()
-                Text(
-                        CrossConsultationAnalysis.VISIBLE_COUNT.translate(
-                                consultations.size.toString()
-                        )
-                )
-                Text(
-                        CrossConsultationAnalysis.SELECTED_COUNT.translate(
-                                summary.selectedCount.toString()
-                        )
-                )
-                Text(
-                        CrossConsultationAnalysis.DISTINCT_ANIMALS.translate(
-                                summary.distinctAnimals.toString()
-                        )
-                )
-                Text(
-                        CrossConsultationAnalysis.DISTINCT_REFERENCES.translate(
-                                summary.distinctReferences.toString()
-                        )
-                )
-                Text(
-                        CrossConsultationAnalysis.TOTAL_RATIONS.translate(
-                                summary.totalRations.toString()
-                        )
-                )
-
-                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                OutlinedButton(
-                        onClick = onOpenResults,
-                        enabled = selectedIds.isNotEmpty()
-                ) { Text(CrossConsultationAnalysis.OPEN_ANALYSIS.translate()) }
+                Icon(Icons.Default.Analytics, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(CrossConsultationAnalysis.OPEN_ANALYSIS.translate())
             }
+            if (summary.selectedCount == 0) {
+                Text(translate("crossConsultation.aideSelection"), fontSize = 12.sp, color = discret())
+            } else {
+                TextButton(onClick = onReset, modifier = Modifier.fillMaxWidth()) {
+                    Text(translate("crossConsultation.viderSelection"), color = discret())
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LigneResume(libelle: String, valeur: Int) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(libelle, fontSize = 13.sp, color = discret(), modifier = Modifier.weight(1f))
+        Text(valeur.toString(), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+/** Résumé de la sélection (téléphone) : barre fixe sous la liste. */
+@Composable
+private fun BarreSelection(
+        summary: CrossConsultationAnalysisViewModel.SelectionSummary,
+        onOpenResults: () -> Unit,
+        onReset: () -> Unit
+) {
+    Surface(elevation = 8.dp, color = MaterialTheme.colors.surface) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(translate("crossConsultation.nbSelectionnees", summary.selectedCount.toString()), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(
+                        translate("crossConsultation.resumeCourt", summary.distinctAnimals.toString(), summary.totalRations.toString()),
+                        fontSize = 12.sp,
+                        color = discret()
+                )
+            }
+            if (summary.selectedCount > 0) {
+                IconButton(onClick = onReset) { Icon(Icons.Default.Close, contentDescription = translate("crossConsultation.viderSelection")) }
+            }
+            Button(
+                    onClick = onOpenResults,
+                    enabled = summary.selectedCount > 0,
+                    colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary, contentColor = VetNutriColors.OnPrimary)
+            ) { Text(translate("crossConsultation.analyser")) }
         }
     }
 }

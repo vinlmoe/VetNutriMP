@@ -311,6 +311,44 @@ class ExplorationMultirationTest {
     }
 
     @Test
+    fun synthese_classeLesCombinaisonsEtFiltreLaCarte() = runTest {
+        val resultat = ExplorateurMultiration(InMemoryEquationRepository()).explorer(configuration())
+        val synthese = synthetiserExploration(resultat)
+
+        // Combinaison 1 (viande) conforme à K = 1 et 3 ; combinaison 2 (viande grasse) seulement à K = 3
+        assertEquals(listOf(1, 2), synthese.combinaisons.map { it.combinaison })
+        val meilleure = synthese.combinaisons.first()
+        assertEquals(2, meilleure.casesConformes)
+        assertEquals(2, meilleure.cases)
+        assertEquals(listOf(16.0), meilleure.poidsConformes)
+        assertEquals(listOf(1.0, 3.0), meilleure.kConformes)
+        assertEquals("viande", meilleure.aliments.first())
+        val grasse = synthese.combinaisons.last()
+        assertEquals(1, grasse.casesConformes)
+        assertEquals(listOf(3.0), grasse.kConformes)
+        assertEquals(3, synthese.scenariosConformes)
+        assertEquals(2, synthese.casesEquilibrables)
+
+        // Carte limitée à la combinaison 2 : K = 1 n'est plus équilibrable (énergie dépassée)
+        val cases2 = casesPourCombinaison(resultat, 2)
+        assertEquals(2, cases2.size)
+        assertEquals(ZoneEquilibre.ENERGIE_DEPASSEE, cases2.first { it.k == 1.0 }.zone)
+        assertEquals(ZoneEquilibre.EQUILIBRABLE, cases2.first { it.k == 3.0 }.zone)
+        assertEquals(resultat.cases, casesPourCombinaison(resultat, null))
+    }
+
+    @Test
+    fun compterSeuils_unSeuilParScenarioDuPlusFrequentAuMoinsFrequent() = runTest {
+        val s = ExplorateurMultiration(InMemoryEquationRepository()).explorer(configuration(listOf(1.0))).scenarios.first()
+        val a = s.copy(seuilsManques = listOf("Ca MIN", "Na MIN", "Ca MIN"))
+        val b = s.copy(seuilsManques = listOf("Na MIN"))
+        assertEquals(
+                listOf(SeuilFrequent("Na MIN", 2), SeuilFrequent("Ca MIN", 1)),
+                compterSeuils(listOf(a, b))
+        )
+    }
+
+    @Test
     fun explorer_cibleAbsente_conserveLeScenario() = runTest {
         val config = configuration(listOf(1.0))
         val sansSodium = config.copy(references = listOf(reference().apply { supprimerNutriment(NutrientMacro.NA, Reflevel.OPTIMIN) }))

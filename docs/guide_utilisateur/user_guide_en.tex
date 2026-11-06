@@ -948,12 +948,24 @@ First enable it in \ui{Settings} > \ui{Administration} > \ui{Enable multi-ration
         of scenarios is shown.
   \item In the \ui{Ingredients} tab, build the lists of foods supplying protein, fibre,
         calcium, omega-6, salt and energy. The adjustment follows this order.
-  \item Click \ui{Calculate all rations}. Clicking a cell of the
-        map shows its rations, which can be opened in the usual analysis to edit and export
-        them.
+  \item Click \ui{Calculate all rations}. The results open on three tabs.
 \end{enumerate}
-The \ui{Saved} tab keeps named configurations; results are recalculated each
-time they are opened.
+
+\begin{description}[style=nextline,leftmargin=0pt,itemsep=4pt]
+  \item[\ui{Map}] A weight $\times$ K grid per reference: green when at least one food
+        combination gives a compliant ration, red otherwise (the number is the minimum number of
+        thresholds missed). Clicking a cell shows its rations next to the map;
+        \ui{Analyse and edit this ration} opens it in the usual analysis. The
+        \ui{Combination shown on the map} list limits the map to a single combination.
+  \item[\ui{Combinations}] The most frequent limiting thresholds (the ones to fix first), then
+        the combinations ranked by the number of cells where they are compliant, with the weight
+        and K ranges covered. \ui{Show on map} displays the map of that combination.
+  \item[\ui{Curves}] The doses and intakes of one combination by weight or by K.
+\end{description}
+
+The setup panel folds away (arrow at the top right) to enlarge the results. On a phone,
+\ui{Setup} and \ui{Results} are two tabs. The \ui{Saved} tab keeps named configurations; results
+are recalculated each time they are opened.
 
 % ================================================================== 8
 \section{Managing data}
@@ -1164,8 +1176,20 @@ From time to time, copy a backup off the computer.
 \textbf{When to use it?} To compare many consultations: tutorials, case series, exams.
 
 Open it with the \ui{Cross analysis} icon, to the left of the settings in the bar of the animal
-list (figure~\ref{fig:liste}). Filter by species, keywords, exam ID or exercise ID, select the
-consultations, then open the analysis or the grading.
+list (figure~\ref{fig:liste}). Filter by species, keywords, exam ID or exercise ID (\ui{Filters}
+button), tick the consultations, then open the analysis or the grading. The summary on the right
+counts every ticked consultation, even those hidden by a filter: those are the ones the analysis
+uses.
+
+The analysis shows the current, proposed or all rations, and two tabs:
+\begin{description}[style=nextline,leftmargin=0pt,itemsep=4pt]
+  \item[\ui{Chart}] One nutrient or ratio (searchable list), as bars per ration (sortable by
+        value) or as current / proposed box plots, with the mean, standard deviation, median,
+        minimum and maximum of the series.
+  \item[\ui{Statistics}] For each nutrient, current and proposed rations side by side and the
+        relative change of the means. Nutrients missing from a ration are left out of its
+        statistics ($n$ is the number of rations kept).
+\end{description}
 
 \capture{36_analyses_croisees.png}{Cross analysis.}{analyses-croisees}
 
