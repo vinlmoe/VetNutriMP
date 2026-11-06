@@ -1,42 +1,22 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.Canvas
-import androidx.compose.material.Divider
-import androidx.compose.material.DropdownMenu
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Tab
-import androidx.compose.material.TabRow
-import androidx.compose.material.Text
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,46 +24,55 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
+import fr.vetbrain.vetnutri_mp.Components.FlowRow
+import fr.vetbrain.vetnutri_mp.Components.PuceFiltre
 import fr.vetbrain.vetnutri_mp.Components.TooltipBubble
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
-import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
-import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Data.nomTraduitNutriment
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.ExcelPlatform.isCsvFileOperationsSupported
 import fr.vetbrain.vetnutri_mp.ExcelPlatform.saveCsvFileForExport
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 import fr.vetbrain.vetnutri_mp.ViewModel.CrossConsultationAnalysisViewModel
-import kotlin.math.roundToInt
-import kotlin.math.floor
-import kotlin.math.ceil
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.layout.heightIn
 import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
+import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.CategoryAxisModel
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.XYGraph
-import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
-import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 private data class MetricOption(
         val key: String,
         val label: String,
         val unit: String,
         val extractor: (CrossConsultationAnalysisViewModel.RationSummary) -> Float,
-        val kind: MetricKind
+        val kind: MetricKind,
+        /** Groupe affiché dans le sélecteur (macronutriments, minéraux…). */
+        val groupe: String
 )
 
 private enum class MetricKind {
@@ -91,85 +80,47 @@ private enum class MetricKind {
         RATIO
 }
 
-private enum class ApportExpression(val label: String) {
-        ABSOLU("Absolu"),
-        PER_MCAL_RATION("/Mcal de ration"),
-        PER_100G_RATION("/100g de ration"),
-        PER_MCAL_REF("/Mcal de besoin énergétique de référence"),
-        PER_KG_ANIMAL("/kg de poids d'animal"),
-        PER_KG_METAB("/kg de poids métabolique d'animal")
+private enum class ApportExpression {
+        ABSOLU,
+        PER_MCAL_RATION,
+        PER_100G_RATION,
+        PER_MCAL_REF,
+        PER_KG_ANIMAL,
+        PER_KG_METAB
 }
 
-private fun buildMetricOptions(): List<MetricOption> {
-    val nutrients =
-            buildList {
-                NutrientMain.entries.forEach { n ->
-                    add(
-                            MetricOption(
-                                    key = "n:${n.label}",
-                                    label = n.nameToString(),
-                                    unit = n.unite,
-                                    extractor = {
-                                        (it.nutrientValues[n.label] ?: 0.0).toFloat().coerceAtLeast(0f)
-                                    },
-                                    kind = MetricKind.NUTRIENT
-                            )
-                    )
-                }
-                NutrientMacro.entries.forEach { n ->
-                    add(
-                            MetricOption(
-                                    key = "n:${n.label}",
-                                    label = n.nameToString(),
-                                    unit = n.unite,
-                                    extractor = {
-                                        (it.nutrientValues[n.label] ?: 0.0).toFloat().coerceAtLeast(0f)
-                                    },
-                                    kind = MetricKind.NUTRIENT
-                            )
-                    )
-                }
-                NutrientMin.entries.forEach { n ->
-                    add(
-                            MetricOption(
-                                    key = "n:${n.label}",
-                                    label = n.nameToString(),
-                                    unit = n.unite,
-                                    extractor = {
-                                        (it.nutrientValues[n.label] ?: 0.0).toFloat().coerceAtLeast(0f)
-                                    },
-                                    kind = MetricKind.NUTRIENT
-                            )
-                    )
-                }
-                NutrientVitam.entries.forEach { n ->
-                    add(
-                            MetricOption(
-                                    key = "n:${n.label}",
-                                    label = n.displayName,
-                                    unit = n.unite,
-                                    extractor = {
-                                        (it.nutrientValues[n.label] ?: 0.0).toFloat().coerceAtLeast(0f)
-                                    },
-                                    kind = MetricKind.NUTRIENT
-                            )
-                    )
-                }
-                NutrientLipid.entries.forEach { n ->
-                    add(
-                            MetricOption(
-                                    key = "n:${n.label}",
-                                    label = n.nameToString(),
-                                    unit = n.unite,
-                                    extractor = {
-                                        (it.nutrientValues[n.label] ?: 0.0).toFloat().coerceAtLeast(0f)
-                                    },
-                                    kind = MetricKind.NUTRIENT
-                            )
-                    )
-                }
-            }
+private fun ApportExpression.libelle(): String = translate("crossConsultation.expression.$name")
 
+/** Rations analysées : actuelles, proposées ou toutes. */
+private enum class FiltreRations(val actualOnly: Boolean?) {
+        ACTUELLES(true),
+        PROPOSEES(false),
+        TOUTES(null)
+}
+
+private val bordureResultats = Color(0x1F000000)
+private val couleurActuelle = VetNutriColors.Primary
+private val couleurProposee = Color(0xFFE07B39)
+
+@Composable
+private fun discretResultats(): Color = MaterialTheme.colors.onSurface.copy(alpha = 0.62f)
+
+private fun buildMetricOptions(): List<MetricOption> {
+    fun nutriment(n: fr.vetbrain.vetnutri_mp.Enumer.Nutrient, groupe: String) =
+            MetricOption(
+                    key = "n:${n.label}",
+                    label = nomTraduitNutriment(n),
+                    unit = n.unite,
+                    extractor = { (it.nutrientValues[n.label] ?: 0.0).toFloat().coerceAtLeast(0f) },
+                    kind = MetricKind.NUTRIENT,
+                    groupe = groupe
+            )
+    val nutrients =
+            NutrientMain.entries.map { nutriment(it, translate("crossConsultation.groupe.principaux")) } +
+                    NutrientMacro.entries.map { nutriment(it, translate("crossConsultation.groupe.macro")) } +
+                    NutrientMin.entries.map { nutriment(it, translate("crossConsultation.groupe.oligo")) } +
+                    NutrientVitam.entries.map { nutriment(it, translate("crossConsultation.groupe.vitamines")) } +
+                    NutrientLipid.entries.map { nutriment(it, translate("crossConsultation.groupe.lipides")) }
     val ratios =
             NutrientAnalysis.entries.map { r ->
                 MetricOption(
@@ -177,17 +128,20 @@ private fun buildMetricOptions(): List<MetricOption> {
                         label = r.displayName,
                         unit = if (r.unite.isBlank()) "ratio" else r.unite,
                         extractor = { (it.ratioValues[r.label] ?: 0.0).toFloat().coerceAtLeast(0f) },
-                        kind = MetricKind.RATIO
+                        kind = MetricKind.RATIO,
+                        groupe = translate("crossConsultation.groupe.rapports")
                 )
             }
-
     return nutrients + ratios
 }
 
 /**
- * Vue résultats (phase 2 initiale) :
- * - Sépare les consultations actuelles sélectionnées des propositions (placeholder).
- * - Prépare l'espace pour les analyses/graphes futurs.
+ * Résultats de l'analyse croisée : rations des consultations sélectionnées, graphique d'un
+ * nutriment ou d'un rapport (barres par ration ou boîtes à moustaches actuelles / proposées) et
+ * statistiques comparées des rations actuelles et proposées.
+ *
+ * Grand écran : liste des rations à gauche, graphique et statistiques à droite. Sous
+ * [AppSizes.breakpointCompact] : trois onglets.
  */
 @Composable
 fun CrossConsultationResultsView(
@@ -197,161 +151,112 @@ fun CrossConsultationResultsView(
 ) {
     val selected by viewModel.selectedIds.collectAsState()
     val metricOptions = remember { buildMetricOptions() }
-    var showActual by remember { mutableStateOf(true) }
-    var metricMenuExpanded by remember { mutableStateOf(false) }
-    var selectedMetricKey by remember { mutableStateOf(metricOptions.first().key) }
-    val selectedMetric =
-            metricOptions.firstOrNull { it.key == selectedMetricKey } ?: metricOptions.first()
+    var selectedMetricKey by remember { mutableStateOf("n:${NutrientMain.PROTEINE.label}") }
+    val selectedMetric = metricOptions.firstOrNull { it.key == selectedMetricKey } ?: metricOptions.first()
     var selectedExpression by remember { mutableStateOf(ApportExpression.ABSOLU) }
+    var filtre by remember { mutableStateOf(FiltreRations.ACTUELLES) }
     var showBoxplot by remember { mutableStateOf(false) }
     var showPoints by remember { mutableStateOf(true) }
-    val displayedRations = viewModel.getSelectedRations(actualOnly = showActual)
-    val actualRations = viewModel.getSelectedRations(actualOnly = true)
-    val proposedRations = viewModel.getSelectedRations(actualOnly = false)
+    var trierParValeur by remember { mutableStateOf(false) }
+    var onglet by remember { mutableStateOf(0) }
+
+    val displayedRations = remember(selected, filtre) { viewModel.getSelectedRations(actualOnly = filtre.actualOnly) }
+    val actualRations = remember(selected) { viewModel.getSelectedRations(actualOnly = true) }
+    val proposedRations = remember(selected) { viewModel.getSelectedRations(actualOnly = false) }
+    val valeur: (CrossConsultationAnalysisViewModel.RationSummary) -> Float = { applyExpression(it, selectedMetric, selectedMetric.extractor(it), selectedExpression) }
 
     Column(modifier = modifier.fillMaxSize()) {
-        TopBarSimple(
-                title = translate("auto.view.crossconsultationresultsview.analyse_des_consultations"),
-                onNavigateBack = onNavigateBack
-        ) {
-            OutlinedButton(onClick = onNavigateBack) {
-                Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = null)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(translate("auto.view.crossconsultationresultsview.retour_selection"))
-            }
-        }
+        TopBarSimple(title = translate("auto.view.crossconsultationresultsview.analyse_des_consultations"), onNavigateBack = onNavigateBack)
         Divider()
 
         if (selected.isEmpty()) {
-            Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-            ) {
-                Text(translate("auto.view.crossconsultationresultsview.aucune_selection_active_revenez_sur_l_ecran_prec"))
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(translate("auto.view.crossconsultationresultsview.aucune_selection_active_revenez_sur_l_ecran_prec"), color = discretResultats())
             }
             return
         }
 
-        Row(
-                modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
-                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-        ) {
-            Column(
-                    modifier = Modifier.weight(0.35f).fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-            ) {
-                Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                ) {
-                    Text(translate("crossConsultation.rationsLabel"), style = androidx.compose.material.MaterialTheme.typography.h6)
-                    OutlinedButton(onClick = { showActual = true }, enabled = !showActual) {
-                        Text(translate("auto.view.crossconsultationresultsview.actuelles"))
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val largeur = maxWidth
+            val compact = largeur < AppSizes.breakpointCompact
+
+            @Composable
+            fun Controles() {
+                FlowRow(mainAxisSpacing = 6.dp, crossAxisSpacing = 6.dp, modifier = Modifier.padding(bottom = 6.dp)) {
+                    FiltreRations.entries.forEach { f ->
+                        val n = when (f) {
+                            FiltreRations.ACTUELLES -> actualRations.size
+                            FiltreRations.PROPOSEES -> proposedRations.size
+                            FiltreRations.TOUTES -> actualRations.size + proposedRations.size
+                        }
+                        PuceFiltre(translate("crossConsultation.filtre.${f.name}", n.toString()), selectionnee = filtre == f, onClick = { filtre = f })
                     }
-                    OutlinedButton(onClick = { showActual = false }, enabled = showActual) {
-                        Text(translate("auto.view.crossconsultationresultsview.proposees"))
-                    }
-                }
-                Divider()
-                if (displayedRations.isEmpty()) {
-                    Text(
-                            if (showActual) "Aucune ration actuelle sélectionnée."
-                            else "Aucune ration proposée sélectionnée."
-                    )
-                } else {
-                    RationList(items = displayedRations)
                 }
             }
 
-            Column(
-                    modifier = Modifier.weight(0.65f).fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-            ) {
-                var rightTabIndex by remember { mutableStateOf(0) }
-                TabRow(
-                        selectedTabIndex = rightTabIndex,
-                        backgroundColor = MaterialTheme.colors.surface,
-                        contentColor = VetNutriColors.Primary
-                ) {
-                    Tab(selected = rightTabIndex == 0, onClick = { rightTabIndex = 0 },
-                            text = { Text(translate("animalDetail.graph")) })
-                    Tab(selected = rightTabIndex == 1, onClick = { rightTabIndex = 1 },
-                            text = { Text(translate("auto.view.crossconsultationresultsview.statistiques")) })
-                }
+            @Composable
+            fun Graphique(modifier: Modifier) {
+                OngletGraphique(
+                        viewModel = viewModel,
+                        metricOptions = metricOptions,
+                        metric = selectedMetric,
+                        onMetric = { selectedMetricKey = it.key },
+                        expression = selectedExpression,
+                        onExpression = { selectedExpression = it },
+                        showBoxplot = showBoxplot,
+                        onBoxplot = { showBoxplot = it },
+                        showPoints = showPoints,
+                        onPoints = { showPoints = it },
+                        trier = trierParValeur,
+                        onTrier = { trierParValeur = it },
+                        displayedRations = displayedRations,
+                        actualRations = actualRations,
+                        proposedRations = proposedRations,
+                        valeur = valeur,
+                        modifier = modifier
+                )
+            }
 
-                if (rightTabIndex == 0) {
-                    // --- Onglet Graphique ---
-                    Row(
-                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                            verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(translate("auto.view.crossconsultationresultsview.nutriment_rapport"))
-                        Box {
-                            OutlinedButton(onClick = { metricMenuExpanded = true }) {
-                                Text("${selectedMetric.label} (${selectedMetric.unit})")
-                            }
-                            DropdownMenu(
-                                    expanded = metricMenuExpanded,
-                                    onDismissRequest = { metricMenuExpanded = false },
-                                    modifier = Modifier.heightIn(max = 360.dp)
-                            ) {
-                                metricOptions.forEach { option ->
-                                    DropdownMenuItem(
-                                            onClick = {
-                                                selectedMetricKey = option.key
-                                                metricMenuExpanded = false
-                                            }
-                                    ) { Text("${option.label} (${option.unit})") }
-                                }
-                            }
+            if (compact) {
+                Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Controles()
+                    TabRow(selectedTabIndex = onglet, backgroundColor = MaterialTheme.colors.surface, contentColor = VetNutriColors.Primary) {
+                        listOf("rations", "graphique", "statistiques").forEachIndexed { i, cle ->
+                            Tab(selected = onglet == i, onClick = { onglet = i }, text = { Text(translate("crossConsultation.onglet.$cle"), fontSize = 12.sp, maxLines = 1) })
                         }
                     }
-                    DropdownField(
-                            label = translate("auto.view.crossconsultationresultsview.expression_des_apports"),
-                            selectedValue = selectedExpression,
-                            options = ApportExpression.entries,
-                            onValueChange = { selectedExpression = it },
-                            valueToString = { it.label },
-                            modifier = Modifier.fillMaxWidth()
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
-                        OutlinedButton(onClick = { showBoxplot = false }, enabled = showBoxplot) {
-                            Text(translate("auto.view.crossconsultationresultsview.barres"))
-                        }
-                        OutlinedButton(onClick = { showBoxplot = true }, enabled = !showBoxplot) {
-                            Text(translate("auto.view.crossconsultationresultsview.boxplots"))
-                        }
-                        if (showBoxplot) {
-                            OutlinedButton(onClick = { showPoints = !showPoints }) {
-                                Text(if (showPoints) "Points : on" else "Points : off")
-                            }
+                    Box(Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp)) {
+                        when (onglet) {
+                            0 -> RationList(displayedRations, selectedMetric, valeur, Modifier.fillMaxSize())
+                            1 -> Graphique(Modifier.fillMaxSize())
+                            else -> NutrientStatsPanel(viewModel, compact = true, modifier = Modifier.fillMaxSize())
                         }
                     }
-                    if (showBoxplot) {
-                        BoxPlotChart(
-                                actualItems = actualRations,
-                                proposedItems = proposedRations,
-                                showPoints = showPoints,
-                                metric = selectedMetric,
-                                expression = selectedExpression,
-                                modifier = Modifier.fillMaxWidth().weight(1f)
-                        )
-                    } else {
-                        ConsultationBarChart(
-                                items = displayedRations,
-                                metric = selectedMetric,
-                                expression = selectedExpression,
-                                modifier = Modifier.fillMaxWidth().weight(1f)
-                        )
+                }
+            } else {
+                Row(
+                        modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                ) {
+                    Column(Modifier.width(if (largeur < 1100.dp) 280.dp else 340.dp).fillMaxHeight()) {
+                        Text(translate("crossConsultation.rationsLabel"), style = MaterialTheme.typography.h6)
+                        Spacer(Modifier.height(6.dp))
+                        Controles()
+                        RationList(displayedRations, selectedMetric, valeur, Modifier.weight(1f))
                     }
-                } else {
-                    // --- Onglet Statistiques ---
-                    NutrientStatsPanel(
-                            viewModel = viewModel,
-                            showActual = showActual,
-                            modifier = Modifier.fillMaxWidth().weight(1f)
-                    )
+                    Column(Modifier.weight(1f).fillMaxHeight()) {
+                        AdaptiveTabRow(tabCount = 2, selectedTabIndex = if (onglet == 2) 1 else 0, backgroundColor = MaterialTheme.colors.surface) {
+                            Tab(selected = onglet != 2, onClick = { onglet = 1 }, selectedContentColor = VetNutriColors.Primary,
+                                    unselectedContentColor = discretResultats(),
+                                    text = { Text(translate("crossConsultation.onglet.graphique")) })
+                            Tab(selected = onglet == 2, onClick = { onglet = 2 }, selectedContentColor = VetNutriColors.Primary,
+                                    unselectedContentColor = discretResultats(),
+                                    text = { Text(translate("crossConsultation.onglet.statistiques")) })
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        if (onglet == 2) NutrientStatsPanel(viewModel, compact = false, modifier = Modifier.fillMaxWidth().weight(1f))
+                        else Graphique(Modifier.fillMaxWidth().weight(1f))
+                    }
                 }
             }
         }
@@ -359,26 +264,188 @@ fun CrossConsultationResultsView(
 }
 
 @Composable
-private fun RationList(items: List<CrossConsultationAnalysisViewModel.RationSummary>) {
-    LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-    ) {
-        items(items) { item ->
-            Column(
-                    modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingSmall),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(item.name, style = androidx.compose.material.MaterialTheme.typography.subtitle1)
+private fun OngletGraphique(
+        viewModel: CrossConsultationAnalysisViewModel,
+        metricOptions: List<MetricOption>,
+        metric: MetricOption,
+        onMetric: (MetricOption) -> Unit,
+        expression: ApportExpression,
+        onExpression: (ApportExpression) -> Unit,
+        showBoxplot: Boolean,
+        onBoxplot: (Boolean) -> Unit,
+        showPoints: Boolean,
+        onPoints: (Boolean) -> Unit,
+        trier: Boolean,
+        onTrier: (Boolean) -> Unit,
+        displayedRations: List<CrossConsultationAnalysisViewModel.RationSummary>,
+        actualRations: List<CrossConsultationAnalysisViewModel.RationSummary>,
+        proposedRations: List<CrossConsultationAnalysisViewModel.RationSummary>,
+        valeur: (CrossConsultationAnalysisViewModel.RationSummary) -> Float,
+        modifier: Modifier
+) {
+    var choixMetrique by remember { mutableStateOf(false) }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
+            // Sélecteur de nutriment : bouton qui ouvre une liste avec recherche
+            Column(Modifier.weight(1f)) {
+                Text(translate("auto.view.crossconsultationresultsview.nutriment_rapport"), fontSize = 10.sp, color = discretResultats())
+                OutlinedButton(onClick = { choixMetrique = true }, modifier = Modifier.fillMaxWidth().height(40.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp)) {
+                    Text("${metric.label} (${metric.unit})", fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colors.onSurface, modifier = Modifier.weight(1f))
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                }
+            }
+            DropdownField(
+                    label = translate("auto.view.crossconsultationresultsview.expression_des_apports"),
+                    selectedValue = expression,
+                    options = ApportExpression.entries,
+                    onValueChange = onExpression,
+                    valueToString = { it.libelle() },
+                    enabled = metric.kind == MetricKind.NUTRIENT,
+                    modifier = Modifier.weight(1f)
+            )
+        }
+        FlowRow(mainAxisSpacing = 6.dp, crossAxisSpacing = 6.dp) {
+            PuceFiltre(translate("auto.view.crossconsultationresultsview.barres"), selectionnee = !showBoxplot, onClick = { onBoxplot(false) })
+            PuceFiltre(translate("crossConsultation.boites"), selectionnee = showBoxplot, onClick = { onBoxplot(true) })
+            if (showBoxplot) {
+                PuceFiltre(translate("crossConsultation.points"), selectionnee = showPoints, onClick = { onPoints(!showPoints) })
+            } else {
+                PuceFiltre(translate("crossConsultation.trierValeur"), selectionnee = trier, onClick = { onTrier(!trier) })
+            }
+        }
+
+        // Résumé chiffré de la série tracée
+        val series = if (showBoxplot) listOf(
+                translate("auto.view.crossconsultationresultsview.actuelles") to actualRations,
+                translate("auto.view.crossconsultationresultsview.proposees") to proposedRations
+        ) else listOf(translate("crossConsultation.rationsAffichees") to displayedRations)
+        Column(
+                Modifier.fillMaxWidth().background(VetNutriColors.Primary.copy(alpha = 0.05f), RoundedCornerShape(6.dp)).padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            series.forEach { (nom, rations) ->
+                val s = viewModel.describe(rations.map { valeur(it).toDouble() })
                 Text(
-                        "${item.animalName} • ${item.consultationDate}",
-                        style = androidx.compose.material.MaterialTheme.typography.body2
+                        if (s == null) translate("crossConsultation.resumeSerieVide", nom)
+                        else translate("crossConsultation.resumeSerie", nom, s.count.toString(), formatStatValue(s.mean), formatStatValue(s.stdDev),
+                                formatStatValue(s.median), formatStatValue(s.min), formatStatValue(s.max)),
+                        fontSize = 12.sp
                 )
-                Text(
-                        "Réf : ${item.referenceLabel ?: "Aucune"} | Espèce : ${item.speciesLabel} | Quantité : ${item.quantity.roundToInt()} g | Statut : ${if (item.actual) "Actuelle" else "Proposée"}",
-                        style = androidx.compose.material.MaterialTheme.typography.caption
+            }
+        }
+
+        if (showBoxplot) {
+            BoxPlotChart(
+                    actualItems = actualRations,
+                    proposedItems = proposedRations,
+                    showPoints = showPoints,
+                    metric = metric,
+                    expression = expression,
+                    modifier = Modifier.fillMaxWidth().weight(1f).heightIn(min = 220.dp)
+            )
+        } else {
+            ConsultationBarChart(
+                    items = if (trier) displayedRations.sortedByDescending { valeur(it) } else displayedRations,
+                    metric = metric,
+                    expression = expression,
+                    modifier = Modifier.fillMaxWidth().weight(1f).heightIn(min = 220.dp)
+            )
+        }
+    }
+    if (choixMetrique) {
+        SelecteurMetrique(metricOptions, metric, onChoix = { onMetric(it); choixMetrique = false }, onDismiss = { choixMetrique = false })
+    }
+}
+
+/** Liste des nutriments et rapports, groupée, avec recherche. */
+@Composable
+private fun SelecteurMetrique(options: List<MetricOption>, actuelle: MetricOption, onChoix: (MetricOption) -> Unit, onDismiss: () -> Unit) {
+    var requete by remember { mutableStateOf("") }
+    val mots = Recherche.mots(requete)
+    val visibles = options.filter { mots.isEmpty() || Recherche.correspond(mots, Recherche.indexer(it.label, it.groupe)) }
+    Dialog(onDismissRequest = onDismiss) {
+        Card(Modifier.fillMaxWidth().heightIn(max = 560.dp), elevation = 8.dp) {
+            Column(Modifier.padding(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(translate("crossConsultation.choisirMetrique"), style = MaterialTheme.typography.h6, modifier = Modifier.weight(1f))
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = translate("crossConsultation.fermer")) }
+                }
+                OutlinedTextField(
+                        value = requete,
+                        onValueChange = { requete = it },
+                        placeholder = { Text(translate("crossConsultation.rechercherNutriment")) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                 )
-                Divider()
+                Spacer(Modifier.height(6.dp))
+                LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false)) {
+                    visibles.groupBy { it.groupe }.forEach { (groupe, liste) ->
+                        item(key = "g:$groupe") {
+                            Text(groupe, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = VetNutriColors.PrimaryVariant,
+                                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp, start = 4.dp))
+                        }
+                        items(liste, key = { it.key }) { option ->
+                            val choisie = option.key == actuelle.key
+                            Row(
+                                    Modifier.fillMaxWidth()
+                                            .background(if (choisie) VetNutriColors.Primary.copy(alpha = 0.12f) else Color.Transparent, RoundedCornerShape(4.dp))
+                                            .clickable { onChoix(option) }
+                                            .padding(horizontal = 8.dp, vertical = 7.dp)
+                            ) {
+                                Text(option.label, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                                Text(option.unit, fontSize = 12.sp, color = discretResultats())
+                            }
+                        }
+                    }
+                    if (visibles.isEmpty()) item { Text(translate("crossConsultation.aucunNutriment"), color = discretResultats(), modifier = Modifier.padding(8.dp)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RationList(
+        items: List<CrossConsultationAnalysisViewModel.RationSummary>,
+        metric: MetricOption,
+        valeur: (CrossConsultationAnalysisViewModel.RationSummary) -> Float,
+        modifier: Modifier
+) {
+    if (items.isEmpty()) {
+        Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Text(translate("crossConsultation.aucuneRation"), color = discretResultats(), textAlign = TextAlign.Center)
+        }
+        return
+    }
+    LazyColumn(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        items(items, key = { it.rationId }) { item ->
+            Card(elevation = 0.dp, border = BorderStroke(1.dp, bordureResultats), modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(10.dp), verticalAlignment = Alignment.Top) {
+                    Box(Modifier.padding(top = 4.dp).size(width = 4.dp, height = 34.dp)
+                            .background(if (item.actual) couleurActuelle else couleurProposee, RoundedCornerShape(2.dp)))
+                    Spacer(Modifier.width(8.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(item.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("${item.animalName} • ${item.consultationDate}", fontSize = 12.sp, color = discretResultats(),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                                listOfNotNull(
+                                        item.referenceLabel,
+                                        item.speciesLabel,
+                                        "${item.quantity.roundToInt()} g",
+                                        if (item.actual) translate("crossConsultation.actuelle") else translate("crossConsultation.proposee")
+                                ).joinToString(" · "),
+                                fontSize = 11.sp, color = discretResultats(), maxLines = 2, overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(formatAxisValue(valeur(item)), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = VetNutriColors.PrimaryVariant)
+                        Text(metric.unit, fontSize = 10.sp, color = discretResultats())
+                    }
+                }
             }
         }
     }
@@ -400,7 +467,8 @@ private fun ConsultationBarChart(
         )
         return
     }
-    val categories = items.mapIndexed { index, item -> "${index + 1}. ${item.name}" }
+    // Le nom de l'animal distingue les rations (souvent toutes nommées « Ration » ou « Croquettes »)
+    val categories = items.mapIndexed { index, item -> "${index + 1}. ${item.animalName}" }
     val values = items.map { item ->
         val raw = metric.extractor(item)
         applyExpression(item, metric, raw, expression)
@@ -421,8 +489,8 @@ private fun ConsultationBarChart(
                     bar = { index ->
                         val ration = items[index]
                         val color =
-                                if (ration.actual) VetNutriColors.Primary
-                                else VetNutriColors.Secondary
+                                if (ration.actual) couleurActuelle
+                                else couleurProposee
                         val tooltip = buildRationTooltip(ration, metric, values[index], expression)
                         Box(
                                 modifier =
@@ -506,7 +574,7 @@ private fun metricTitle(metric: MetricOption, expression: ApportExpression): Str
     if (metric.kind == MetricKind.RATIO || expression == ApportExpression.ABSOLU) {
         return "${metric.label} (${metric.unit})"
     }
-    return "${metric.label} (${metric.unit}) • ${expression.label}"
+    return "${metric.label} (${metric.unit}) • ${expression.libelle()}"
 }
 
 private fun buildRationTooltip(
@@ -531,10 +599,10 @@ private fun buildRationTooltip(
         }
         if (metric.kind == MetricKind.NUTRIENT && expression != ApportExpression.ABSOLU) {
             append(" • ")
-            append(expression.label)
+            append(expression.libelle())
         }
         if (item.ingredients.isNotEmpty()) {
-            append("\nIngrédients:")
+            append("\n" + translate("crossConsultation.ingredients"))
             item.ingredients.forEach { ingredient ->
                 append("\n- ")
                 append(ingredient.name)
@@ -544,7 +612,7 @@ private fun buildRationTooltip(
             }
         }
         append("\n")
-        append(if (item.actual) "Actuelle" else "Proposée")
+        append(if (item.actual) translate("crossConsultation.actuelle") else translate("crossConsultation.proposee"))
     }
 }
 
@@ -586,25 +654,25 @@ private fun BoxPlotChart(
     val groups = listOf(
             BoxPlotGroup(
                     label = translate("auto.view.crossconsultationresultsview.actuelles"),
-                    color = VetNutriColors.Primary,
+                    color = couleurActuelle,
                     stats = actualValues.takeIf { it.isNotEmpty() }?.let { computeBoxPlot(it) },
                     points = actualItems.map { item ->
                         BoxPlotPoint(
                                 item = item,
                                 value = applyExpression(item, metric, metric.extractor(item), expression),
-                                color = VetNutriColors.Primary
+                                color = couleurActuelle
                         )
                     }
             ),
             BoxPlotGroup(
                     label = translate("auto.view.crossconsultationresultsview.proposees"),
-                    color = VetNutriColors.Secondary,
+                    color = couleurProposee,
                     stats = proposedValues.takeIf { it.isNotEmpty() }?.let { computeBoxPlot(it) },
                     points = proposedItems.map { item ->
                         BoxPlotPoint(
                                 item = item,
                                 value = applyExpression(item, metric, metric.extractor(item), expression),
-                                color = VetNutriColors.Secondary
+                                color = couleurProposee
                         )
                     }
             )
@@ -887,89 +955,153 @@ private fun PointWithTooltip(
     }
 }
 
+
+/** Nom traduit et unité d'un nutriment désigné par son label interne. */
+private fun nomEtUnite(label: String): Pair<String, String> {
+    val n = NutrientResolver.AllNutrientResolver(label)
+    return (n?.let { nomTraduitNutriment(it) } ?: label) to (n?.unite ?: "")
+}
+
+/**
+ * Statistiques des nutriments : rations actuelles et proposées côte à côte, écart relatif des
+ * moyennes, recherche, export CSV.
+ */
 @Composable
 private fun NutrientStatsPanel(
         viewModel: CrossConsultationAnalysisViewModel,
-        showActual: Boolean,
+        compact: Boolean,
         modifier: Modifier = Modifier
 ) {
-    val stats = remember(viewModel.selectedIds.collectAsState().value, showActual) {
-        viewModel.computeNutrientStats(actualOnly = showActual)
-    }
+    val selection by viewModel.selectedIds.collectAsState()
+    val comparaisons = remember(selection) { viewModel.compareNutrientStats() }
+    var requete by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+    val lignes = remember(comparaisons) {
+        comparaisons.map { c -> nomEtUnite(c.label).let { (nom, unite) -> Triple(c, nom, unite) } }.sortedBy { it.second.lowercase() }
+    }
+    val mots = Recherche.mots(requete)
+    val visibles = lignes.filter { mots.isEmpty() || Recherche.correspond(mots, Recherche.indexer(it.second, it.first.label)) }
 
-    Column(modifier = modifier) {
-        if (isCsvFileOperationsSupported()) {
-            Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                    horizontalArrangement = Arrangement.End
-            ) {
-                OutlinedButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                val csv = buildStatsCsv(stats)
-                                saveCsvFileForExport(csv, "statistiques_nutriments.csv")
-                            }
-                        },
-                        enabled = stats.isNotEmpty()
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+            OutlinedTextField(
+                    value = requete,
+                    onValueChange = { requete = it },
+                    placeholder = { Text(translate("crossConsultation.rechercherNutriment"), fontSize = 13.sp) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                    modifier = Modifier.weight(1f)
+            )
+            if (isCsvFileOperationsSupported()) {
+                Spacer(Modifier.width(6.dp))
+                TextButton(
+                        onClick = { coroutineScope.launch { saveCsvFileForExport(buildStatsCsv(lignes), "statistiques_nutriments.csv") } },
+                        enabled = comparaisons.isNotEmpty()
                 ) {
+                    Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
                     Text(translate("auto.view.crossconsultationresultsview.exporter_statistiques_csv"), fontSize = 12.sp)
                 }
             }
         }
+        Text(translate("crossConsultation.statsAide"), fontSize = 11.sp, color = discretResultats(), modifier = Modifier.padding(bottom = 6.dp))
 
-        if (stats.isEmpty()) {
+        if (comparaisons.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                        translate("auto.view.crossconsultationresultsview.aucune_donnee_disponible_selectionnez_des_ration"),
-                        color = Color.Gray,
-                        style = MaterialTheme.typography.body2
-                )
+                Text(translate("auto.view.crossconsultationresultsview.aucune_donnee_disponible_selectionnez_des_ration"),
+                        color = discretResultats(), style = MaterialTheme.typography.body2)
             }
             return@Column
         }
 
-        // En-tête
-        Row(
-                modifier = Modifier.fillMaxWidth()
-                        .background(MaterialTheme.colors.surface)
-                        .padding(vertical = 4.dp, horizontal = 8.dp)
-        ) {
-            Text(translate("nutrientComponents.columnNutrient"), fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                    modifier = Modifier.weight(2.5f))
-            Text(translate("auto.view.crossconsultationresultsview.moy_et"), fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                    modifier = Modifier.weight(2f))
-            Text(translate("auto.view.crossconsultationresultsview.mediane"), fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                    modifier = Modifier.weight(1.5f))
-            Text(translate("new_reference.level.min"), fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                    modifier = Modifier.weight(1f))
-            Text(translate("new_reference.level.max"), fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                    modifier = Modifier.weight(1f))
-        }
-        Divider()
-
-        LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            items(stats) { stat ->
-                Row(
-                        modifier = Modifier.fillMaxWidth()
-                                .padding(vertical = 3.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(stat.name, fontSize = 11.sp, modifier = Modifier.weight(2.5f),
-                            maxLines = 2)
-                    Text(
-                            "${formatStatValue(stat.mean)} ± ${formatStatValue(stat.stdDev)}",
-                            fontSize = 11.sp, modifier = Modifier.weight(2f)
-                    )
-                    Text(formatStatValue(stat.median), fontSize = 11.sp,
-                            modifier = Modifier.weight(1.5f))
-                    Text(formatStatValue(stat.min), fontSize = 11.sp,
-                            modifier = Modifier.weight(1f))
-                    Text(formatStatValue(stat.max), fontSize = 11.sp,
-                            modifier = Modifier.weight(1f))
-                }
-                Divider(color = Color.LightGray, thickness = 0.5.dp)
+        if (!compact) {
+            Row(
+                    modifier = Modifier.fillMaxWidth()
+                            .background(VetNutriColors.Primary.copy(alpha = 0.08f), RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                            .padding(vertical = 6.dp, horizontal = 8.dp)
+            ) {
+                EnteteColonne(translate("nutrientComponents.columnNutrient"), 2.4f)
+                EnteteColonne(translate("crossConsultation.colActuelles"), 2.4f, couleurActuelle)
+                EnteteColonne(translate("crossConsultation.colProposees"), 2.4f, couleurProposee)
+                EnteteColonne(translate("crossConsultation.colEcart"), 1f, align = TextAlign.End)
             }
+        }
+        LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            items(visibles, key = { it.first.label }) { (c, nom, unite) ->
+                if (compact) LigneStatCompacte(c, nom, unite) else LigneStat(c, nom, unite)
+                Divider(color = bordureResultats, thickness = 0.5.dp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.EnteteColonne(texte: String, poids: Float, couleur: Color = Color.Unspecified, align: TextAlign = TextAlign.Start) {
+    Text(texte, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = couleur, textAlign = align, modifier = Modifier.weight(poids))
+}
+
+/** « moyenne ± ET (n) » puis « médiane · min–max » sur une seconde ligne. */
+@Composable
+private fun CelluleStat(s: CrossConsultationAnalysisViewModel.NutrientStat?, modifier: Modifier) {
+    Column(modifier) {
+        if (s == null) {
+            Text("—", fontSize = 12.sp, color = discretResultats())
+        } else {
+            Text("${formatStatValue(s.mean)} ± ${formatStatValue(s.stdDev)}  (n=${s.count})", fontSize = 12.sp)
+            Text(
+                    translate("crossConsultation.medianeMinMax", formatStatValue(s.median), formatStatValue(s.min), formatStatValue(s.max)),
+                    fontSize = 10.sp,
+                    color = discretResultats()
+            )
+        }
+    }
+}
+
+@Composable
+private fun TexteEcart(ecart: Double?, modifier: Modifier = Modifier, align: TextAlign = TextAlign.End) {
+    // Neutre : une baisse peut être l'objectif (phosphore d'un insuffisant rénal…). Seuls les écarts
+    // de plus de 10 % sont mis en avant.
+    val couleur = if (ecart != null && kotlin.math.abs(ecart) > 10.0) VetNutriColors.PrimaryVariant else discretResultats()
+    Text(
+            ecart?.let { "${if (it > 0) "+" else ""}${NumberUtils.format(it, 0)} %" } ?: "—",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = couleur,
+            textAlign = align,
+            modifier = modifier
+    )
+}
+
+@Composable
+private fun LigneStat(c: CrossConsultationAnalysisViewModel.NutrientComparison, nom: String, unite: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(2.4f)) {
+            Text(nom, fontSize = 12.sp, maxLines = 2)
+            if (unite.isNotBlank()) Text(unite, fontSize = 10.sp, color = discretResultats())
+        }
+        CelluleStat(c.actual, Modifier.weight(2.4f))
+        CelluleStat(c.proposed, Modifier.weight(2.4f))
+        TexteEcart(c.ecartPourcent, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun LigneStatCompacte(c: CrossConsultationAnalysisViewModel.NutrientComparison, nom: String, unite: String) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(if (unite.isBlank()) nom else "$nom ($unite)", fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            TexteEcart(c.ecartPourcent)
+        }
+        Row {
+            Box(Modifier.padding(top = 4.dp).size(8.dp).background(couleurActuelle, RoundedCornerShape(2.dp)))
+            Spacer(Modifier.width(6.dp))
+            CelluleStat(c.actual, Modifier.weight(1f))
+        }
+        Row {
+            Box(Modifier.padding(top = 4.dp).size(8.dp).background(couleurProposee, RoundedCornerShape(2.dp)))
+            Spacer(Modifier.width(6.dp))
+            CelluleStat(c.proposed, Modifier.weight(1f))
         }
     }
 }
@@ -977,11 +1109,19 @@ private fun NutrientStatsPanel(
 private fun formatStatValue(v: Double): String =
         if (v < 10.0) NumberUtils.format(v, 2) else NumberUtils.format(v, 1)
 
-private fun buildStatsCsv(stats: List<CrossConsultationAnalysisViewModel.NutrientStat>): String {
+private fun buildStatsCsv(lignes: List<Triple<CrossConsultationAnalysisViewModel.NutrientComparison, String, String>>): String {
+    fun champ(v: String) = if (v.any { it == ';' || it == '"' || it == '\n' }) "\"" + v.replace("\"", "\"\"") + "\"" else v
+    fun stats(s: CrossConsultationAnalysisViewModel.NutrientStat?) =
+            if (s == null) List(6) { "" } else listOf(s.count.toString(), s.mean.toString(), s.stdDev.toString(), s.median.toString(), s.min.toString(), s.max.toString())
+    val entete = listOf("nutriment", "unite") +
+            listOf("n", "moyenne", "ecart_type", "mediane", "min", "max").map { "actuelles_$it" } +
+            listOf("n", "moyenne", "ecart_type", "mediane", "min", "max").map { "proposees_$it" } +
+            listOf("ecart_moyennes_pourcent")
     val sb = StringBuilder()
-    sb.appendLine("Nutriment;Moyenne;Écart-type;Médiane;Min;Max")
-    stats.forEach { s ->
-        sb.appendLine("${s.name};${s.mean};${s.stdDev};${s.median};${s.min};${s.max}")
+    sb.appendLine(entete.joinToString(";"))
+    lignes.forEach { (c, nom, unite) ->
+        sb.appendLine((listOf(nom, unite) + stats(c.actual) + stats(c.proposed) + listOf(c.ecartPourcent?.toString() ?: ""))
+                .joinToString(";") { champ(it) })
     }
     return sb.toString()
 }
