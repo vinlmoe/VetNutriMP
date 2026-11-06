@@ -1,6 +1,6 @@
 {
-  "version": "3.3.18",
-  "generatedAtEpochMs": 1790587509533,
+  "version": "3.3.19",
+  "generatedAtEpochMs": 1793950659420,
   "animals": [],
   "foods": [
     {
@@ -93509,33 +93509,6 @@
       "biblioRefIds": [
         "49d2bc6b-73a9-4cfa-bebd-559fd9e17819"
       ]
-    },
-    {
-      "uuid": "4a31113a-46b5-498f-88a8-0ccd761ee2fc",
-      "name": "dazdaz",
-      "group": "ALL",
-      "kind": "COMPLET",
-      "brand": "dazdaz",
-      "price": 0.0,
-      "categoryPrice": "",
-      "ingredients": "",
-      "gamme": "",
-      "presentation": "NO",
-      "presentationQuantity": 0.0,
-      "deprecated": true,
-      "dataB": "2",
-      "consistent": false,
-      "lastUpdateDate": "31/07/2026",
-      "rationId": "",
-      "species": [
-        "CHIEN"
-      ],
-      "indications": [],
-      "nutrients": {
-        "HUMIDITE": 10.0
-      },
-      "energyPerSpecies": {},
-      "biblioRefIds": []
     },
     {
       "uuid": "4a5a7cd5-6a14-4873-b451-a0ce7b197987",
@@ -244259,7 +244232,7 @@
         "CHAT"
       ],
       "indications": [
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 14.3735,
@@ -244330,7 +244303,7 @@
         "CHAT"
       ],
       "indications": [
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 15.7415,
@@ -714680,7 +714653,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS"
+        "URO"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -715098,7 +715071,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS"
+        "URO"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -719005,7 +718978,8 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS"
+        "DIAB",
+        "OBES"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -720775,7 +720749,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS"
+        "GI"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -722626,7 +722600,9 @@
       "lastUpdateDate": "31/07/2026",
       "rationId": "",
       "species": [],
-      "indications": [],
+      "indications": [
+        "HYPO"
+      ],
       "nutrients": {
         "HUMIDITE": 8.0,
         "PROTEINE": 18.0,
@@ -726390,8 +726366,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "ART"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -729118,7 +729093,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS"
+        "DERM"
       ],
       "nutrients": {
         "HUMIDITE": 9.0,
@@ -730740,8 +730715,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "ART"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -730789,8 +730763,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "ART"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -731708,7 +731681,7 @@
         "CHIEN"
       ],
       "indications": [
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -733671,7 +733644,7 @@
         "CHIEN"
       ],
       "indications": [
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -734548,7 +734521,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS"
+        "MRC"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -736140,7 +736113,7 @@
         "CHIEN"
       ],
       "indications": [
-        "ART"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -741248,7 +741221,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 7.0,
@@ -746854,7 +746827,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -747460,7 +747433,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -750480,7 +750453,7 @@
         "CHAT"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 10.0,
@@ -751446,7 +751419,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 10.0,
@@ -753862,8 +753835,7 @@
         "CHIEN"
       ],
       "indications": [
-        "PHYS",
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 10.0,
@@ -754252,7 +754224,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.5,
@@ -754389,7 +754361,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.5,
@@ -754436,7 +754408,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -754739,7 +754711,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS"
+        "OBES"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -756869,7 +756841,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS"
+        "HYPO"
       ],
       "nutrients": {
         "HUMIDITE": 78.0,
@@ -763820,7 +763792,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS"
+        "HYPO"
       ],
       "nutrients": {
         "HUMIDITE": 80.0,
@@ -766631,7 +766603,7 @@
         "CHAT"
       ],
       "indications": [
-        "PHYS"
+        "OBES"
       ],
       "nutrients": {
         "HUMIDITE": 79.0,
@@ -779508,33 +779480,6 @@
       "biblioRefIds": []
     },
     {
-      "uuid": "5c94252e-a0c5-412c-b945-da2ed4810619",
-      "name": "kkk",
-      "group": "ALL",
-      "kind": "COMPLET",
-      "brand": "kkk",
-      "price": 0.0,
-      "categoryPrice": "",
-      "ingredients": "",
-      "gamme": "",
-      "presentation": "NO",
-      "presentationQuantity": 0.0,
-      "deprecated": true,
-      "dataB": "2",
-      "consistent": false,
-      "lastUpdateDate": "31/07/2026",
-      "rationId": "",
-      "species": [
-        "CHIEN"
-      ],
-      "indications": [],
-      "nutrients": {
-        "HUMIDITE": 10.0
-      },
-      "energyPerSpecies": {},
-      "biblioRefIds": []
-    },
-    {
       "uuid": "M21-23",
       "name": "TONIVET LAB INSUFFISANCE RENALE CHRONIQUE",
       "group": "ALL",
@@ -781742,7 +781687,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -782616,7 +782561,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 9.0,
@@ -783658,7 +783603,9 @@
       "lastUpdateDate": "31/07/2026",
       "rationId": "",
       "species": [],
-      "indications": [],
+      "indications": [
+        "MRC"
+      ],
       "nutrients": {
         "HUMIDITE": 5.0,
         "PROTEINE": 24.0,
@@ -784646,7 +784593,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -785492,7 +785439,6 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES",
         "NEUT"
       ],
       "nutrients": {
@@ -788531,7 +788477,7 @@
         "CHAT"
       ],
       "indications": [
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 10.0,
@@ -790996,7 +790942,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -791039,7 +790985,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -791910,33 +791856,6 @@
         "CENDRE": 5.63,
         "FIBRETOT": 7.9,
         "K": 0.1
-      },
-      "energyPerSpecies": {},
-      "biblioRefIds": []
-    },
-    {
-      "uuid": "b3f7927e-d73a-4982-8335-1845c8a9c767",
-      "name": "Test",
-      "group": "ALL",
-      "kind": "COMPLET",
-      "brand": "Test",
-      "price": 0.0,
-      "categoryPrice": "",
-      "ingredients": "",
-      "gamme": "",
-      "presentation": "NO",
-      "presentationQuantity": 0.0,
-      "deprecated": true,
-      "dataB": "2",
-      "consistent": false,
-      "lastUpdateDate": "31/07/2026",
-      "rationId": "",
-      "species": [
-        "CHIEN"
-      ],
-      "indications": [],
-      "nutrients": {
-        "HUMIDITE": 10.0
       },
       "energyPerSpecies": {},
       "biblioRefIds": []
@@ -795374,7 +795293,9 @@
       "species": [
         "CHAT"
       ],
-      "indications": [],
+      "indications": [
+        "URO"
+      ],
       "nutrients": {
         "HUMIDITE": 94.0,
         "PROTEINE": 3.6,
@@ -797406,7 +797327,7 @@
         "CHIEN"
       ],
       "indications": [
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 25.5,
@@ -797476,7 +797397,7 @@
         "CHIEN"
       ],
       "indications": [
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 24.0,
@@ -797546,7 +797467,7 @@
         "CHIEN"
       ],
       "indications": [
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 25.0,
@@ -797616,7 +797537,7 @@
         "CHIEN"
       ],
       "indications": [
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 8.6,
@@ -797686,7 +797607,7 @@
         "CHIEN"
       ],
       "indications": [
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 30.0,
@@ -797736,7 +797657,7 @@
         "CHIEN"
       ],
       "indications": [
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 25.0,
@@ -797786,7 +797707,7 @@
         "CHIEN"
       ],
       "indications": [
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 28.0,
@@ -797836,7 +797757,7 @@
         "CHIEN"
       ],
       "indications": [
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 8.6,
@@ -797906,7 +797827,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 30.0,
@@ -797956,7 +797877,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 8.5,
@@ -798026,7 +797947,7 @@
         "CHIEN"
       ],
       "indications": [
-        "ART"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 26.0,
@@ -798096,7 +798017,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 30.0,
@@ -798146,7 +798067,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 27.0,
@@ -798196,7 +798117,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 27.0,
@@ -798246,7 +798167,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 8.7,
@@ -798756,7 +798677,7 @@
         "CHIEN"
       ],
       "indications": [
-        "URO"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 27.0,
@@ -798805,7 +798726,7 @@
         "CHIEN"
       ],
       "indications": [
-        "URO"
+        "PHYS"
       ],
       "nutrients": {
         "PROTEINE": 8.7,
@@ -803985,7 +803906,7 @@
         "CHIEN"
       ],
       "indications": [
-        "OBES"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 9.5,
@@ -805249,7 +805170,7 @@
         "CHIEN"
       ],
       "indications": [
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 8.0,
@@ -805375,7 +805296,7 @@
         "CHIEN"
       ],
       "indications": [
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 9.5,
@@ -805501,7 +805422,7 @@
         "CHIEN"
       ],
       "indications": [
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 9.5,
@@ -806695,7 +806616,7 @@
         "CHAT"
       ],
       "indications": [
-        "GI"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 5.5,
@@ -806763,7 +806684,7 @@
         "CHAT"
       ],
       "indications": [
-        "DERM"
+        "PHYS"
       ],
       "nutrients": {
         "HUMIDITE": 5.5,

@@ -2,6 +2,18 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## 3.3.19
+
+- Versions applicatives et données initiales passées en **3.3.19 (319)** pour Android, iOS et Desktop,
+  afin que les installations existantes reçoivent le catalogue corrigé.
+- Indications des aliments : 47 fiches non diététiques ne portent plus d'indication de pathologie
+  (Royal Canin animalerie et élevage, Eukanuba, Hill's Science Plan, gammes « Light », poulet cru),
+  13 aliments diététiques reçoivent la leur (Kattovit, Concept for Life, Specific FRD, etc.).
+  Le champ gamme, nom donné par le fabricant, reste inchangé.
+- Fiches de test `Test`, `kkk` et `dazdaz` retirées du catalogue initial.
+- Catalogue initial : aliments humides La Normandise, mots-clés de consultation dédoublonnés,
+  cellulose approchée par la fibre totale.
+
 ## 3.3.18
 
 - Versions applicatives harmonisées en **3.3.18 (318)** pour Android, iOS et Desktop.
