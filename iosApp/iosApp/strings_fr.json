@@ -2082,8 +2082,6 @@
         "graph.consultationActuelleUniquement": "Consultation actuelle uniquement",
         "graph.aireEtSommes": "Aire des possibilités et sommes",
         "graph.aireExplication": "Zones séparées par consultation : orange pour les rations actuelles, bleu pour les proposées. Σ : moyenne pondérée par les coefficients. Pour les nutriments, sélectionnez deux axes pour voir l’aire.",
-        "admin.activerMultiration": "Activer l'analyse multiration",
-        "admin.activerMultirationAide": "Affiche l'accès à l'exploration multiration dans la liste des animaux.",
         "admin.bibliographieEnMasse": "Ajouter une bibliographie en masse",
         "multiration.titre": "Exploration multiration",
         "troupeau.resumeListe": "Troupeau — %1$s animaux, %2$s groupe(s)",

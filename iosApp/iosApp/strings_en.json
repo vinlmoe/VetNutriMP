@@ -2082,8 +2082,6 @@
         "graph.consultationActuelleUniquement": "Current consultation only",
         "graph.aireEtSommes": "Area of possibilities and sums",
         "graph.aireExplication": "One area per consultation: orange for current rations, blue for proposed ones. Σ: mean weighted by the coefficients. For nutrients, select two axes to see the area.",
-        "admin.activerMultiration": "Enable multi-ration analysis",
-        "admin.activerMultirationAide": "Shows the multi-ration exploration button in the animal list.",
         "admin.bibliographieEnMasse": "Add a bibliography in bulk",
         "multiration.titre": "Multi-ration exploration",
         "troupeau.resumeListe": "Herd — %1$s animals, %2$s group(s)",

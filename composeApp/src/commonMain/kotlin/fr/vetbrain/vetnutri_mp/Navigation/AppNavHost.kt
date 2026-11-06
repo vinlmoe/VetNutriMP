@@ -47,8 +47,15 @@ internal fun AppNavHost(
                     title = examInfoTitle,
                     onSettingsClick = { nav.navigate(Screen.Settings) },
                     actions = {
-                        // Analyses croisées : outil qui porte sur tous les animaux, à côté des paramètres
+                        // Outils qui portent sur tous les animaux, à côté des paramètres
                         if (examSession == null) {
+                            IconButtonWithTooltip(
+                                imageVector = AppIcons.GridOn,
+                                contentDescription = translate("multiration.titre"),
+                                tooltip = translate("multiration.titre"),
+                                onClick = { nav.navigate(Screen.MultiRation) },
+                                tint = VetNutriColors.Primary
+                            )
                             IconButtonWithTooltip(
                                 imageVector = AppIcons.Analytics,
                                 contentDescription = translate("animalList.crossAnalysis"),
@@ -82,7 +89,6 @@ internal fun AppNavHost(
                     },
                     onShowFoodList = { nav.navigate(Screen.FoodList) },
                     onShowCalculationTabs = { nav.navigate(Screen.CalculationTabs) },
-                    onShowMultiRation = { nav.navigate(Screen.MultiRation) },
                     examSession = examSession,
                     modifier = Modifier.fillMaxWidth().weight(1f)
                 )

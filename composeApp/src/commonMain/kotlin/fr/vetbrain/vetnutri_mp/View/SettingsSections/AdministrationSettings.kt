@@ -24,8 +24,6 @@ import fr.vetbrain.vetnutri_mp.View.SettingsComponents.WarningSection
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
-import fr.vetbrain.vetnutri_mp.Utils.FeaturePreferences
-import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import kotlinx.coroutines.launch
 
 /**
@@ -46,15 +44,6 @@ fun AdministrationSettings(
         modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val preferencesStorage = remember { createPreferencesStorage() }
-    var isMultiRationEnabled by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        isMultiRationEnabled = preferencesStorage.getString(
-            FeaturePreferences.MULTI_RATION_EXPLORATION_ENABLED,
-            "false"
-        ).toBoolean()
-    }
 
     // États pour les dialogues de confirmation
     var showFoodDeleteDialog by remember { mutableStateOf(false) }
@@ -82,34 +71,6 @@ fun AdministrationSettings(
                             modifier = Modifier.padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(translate("admin.activerMultiration"))
-                                Text(
-                                        translate("admin.activerMultirationAide"),
-                                        style = MaterialTheme.typography.body2,
-                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Switch(
-                                    checked = isMultiRationEnabled,
-                                    onCheckedChange = { enabled ->
-                                        isMultiRationEnabled = enabled
-                                        coroutineScope.launch {
-                                            preferencesStorage.saveString(
-                                                    FeaturePreferences.MULTI_RATION_EXPLORATION_ENABLED,
-                                                    enabled.toString()
-                                            )
-                                        }
-                                    }
-                            )
-                        }
-
                         // Bouton d'import automatique (en première place)
                         Button(
                                 onClick = {

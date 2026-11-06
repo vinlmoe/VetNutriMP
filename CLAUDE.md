@@ -126,7 +126,7 @@ doit figurer dans au moins un champ. Pour une longue liste, pré-calculer `Reche
 `NutrientResolver.AllNutrientResolver(label)` est le point d'entrée unique pour résoudre un label textuel vers un `Nutrient`. Ne pas appeler `getByLabel()` directement sur les enums individuels depuis les couches Repository/Service — passer par `NutrientResolver`.
 
 ### Exploration multiration
-Écran `Screen.MultiRation` (bouton « Exploration multiration » de la liste des animaux) : moteur pur dans
+Écran `Screen.MultiRation` (icône « Exploration multiration » de la barre du haut de la liste des animaux, à côté d'« Analyses croisées ») : moteur pur dans
 `Data/ExplorationMultiration.kt` (ajustement successif protéines → fibres → calcium → oméga-6 → sodium →
 énergie, arrondis `arrondirQuantiteSelonRegles`, conformité `calculerConformite` comme l'analyse de ration),
 BEE et poids métabolique via `Data/CalculMetabolique.kt` (partagé avec `AnimalDetailViewModel`). Une ration
