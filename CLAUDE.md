@@ -12,10 +12,10 @@ Cibles : Android, iOS, Desktop (JVM ; Windows et macOS sont des paquets de la ci
 | UI | Compose Multiplatform | 1.7.0 |
 | Langage | Kotlin | 2.2.20 |
 | Base de données | Room + BundledSQLiteDriver | 2.7.0 |
-| Async | kotlinx.coroutines | 1.10.2 |
+| Async | kotlinx.coroutines | 1.11.0 |
 | State | StateFlow + ViewModel (lifecycle) | 2.8.4 |
-| HTTP | Ktor | 3.0.3 |
-| Sérialisation | Kotlin Serialization JSON | 1.8.0 |
+| HTTP | Ktor | 3.3.3 (3.4+ exige Kotlin 2.3) |
+| Sérialisation | Kotlin Serialization JSON | 1.9.0 |
 | DI | Manuel via `AppContainer` | — |
 
 ---

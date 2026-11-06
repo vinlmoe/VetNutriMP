@@ -37,7 +37,9 @@ fun AnimalIdentificationView(
         animal: AnimalEv,
         onEdit: () -> Unit,
         onDelete: () -> Unit,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        /** Copie consultée en lecture seule : ni modification ni suppression proposées. */
+        lectureSeule: Boolean = false
 ) {
     Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // En-tête avec boutons d'action
@@ -47,7 +49,7 @@ fun AnimalIdentificationView(
                 verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text = translate(Animal.IDENTIFICATION_TITLE), style = MaterialTheme.typography.h6)
-            Row {
+            if (!lectureSeule) Row {
                 IconButton(onClick = onEdit) {
                     Icon(
                             imageVector = Icons.Default.Edit,

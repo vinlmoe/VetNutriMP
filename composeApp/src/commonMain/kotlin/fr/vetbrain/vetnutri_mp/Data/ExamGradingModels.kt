@@ -14,7 +14,9 @@ data class ExamGradingRuleSet(
     val nutrientRules: List<NutrientRule> = emptyList(),
     val referenceRule: ReferenceRule = ReferenceRule(points = 0),
     val adviceRule: AdviceRule = AdviceRule(points = 3),
-    val customCriteria: List<FlexibleCriterionRule> = emptyList()
+    val customCriteria: List<FlexibleCriterionRule> = emptyList(),
+    /** Vrai : note = points obtenus × note maximale / total du barème. Faux : points plafonnés. */
+    val notationProportionnelle: Boolean = false
 )
 
 @Serializable
