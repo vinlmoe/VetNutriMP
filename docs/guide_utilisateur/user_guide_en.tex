@@ -1193,6 +1193,23 @@ The analysis shows the current, proposed or all rations, and two tabs:
 
 \capture{36_analyses_croisees.png}{Cross analysis.}{analyses-croisees}
 
+\textbf{Grading an exam.} \ui{Open grading} offers the exams and exercises found in the papers,
+then four steps, always shown at the top of the screen:
+\begin{description}[style=nextline,leftmargin=0pt,itemsep=4pt]
+  \item[\ui{Papers}] Import the Moodle CSV (jsonbin links); the list flags papers without a
+        student number and duplicated numbers (each paper keeps its own grade).
+  \item[\ui{Analysis}] Distribution of each measure over the papers, with the number of papers
+        within the chosen bounds; \ui{Add to the marking scheme} turns it into a criterion.
+  \item[\ui{Marking scheme}] Sections that can be switched on (required or forbidden
+        ingredients, quantity, energy density in kcal/g, nutrients, reference, advice) and custom
+        criteria. The points total is compared with the maximum grade; \ui{Scale the marking
+        scheme total to the maximum grade} makes the grade proportional to the points earned. An
+        active section without a condition is flagged: it awards no point.
+  \item[\ui{Grades}] Mean, median, grade distribution and success per criterion (a criterion met
+        by almost every paper, or by none, does not separate students), then each paper's detail
+        and optional manual grade.
+\end{description}
+
 % ================================================================== Appendices
 \appendix
 

@@ -83,6 +83,25 @@ class ExamGradingViewModel(
     private val _metricDistributions = MutableStateFlow<List<MetricDistribution>>(emptyList())
     val metricDistributions: StateFlow<List<MetricDistribution>> = _metricDistributions.asStateFlow()
 
+    private val _statistiques = MutableStateFlow<StatistiquesNotes?>(null)
+    /** Statistiques des notes et réussite par critère (null sans note). */
+    val statistiques: StateFlow<StatistiquesNotes?> = _statistiques.asStateFlow()
+
+    private val _pointsBareme = MutableStateFlow(0.0)
+    /** Total des points que le barème peut attribuer (critères actifs et configurés). */
+    val pointsDisponibles: StateFlow<Double> = _pointsBareme.asStateFlow()
+
+    private fun publierRegle(rule: ExamGradingRuleSet?) {
+        _rule.value = rule
+        _pointsBareme.value = rule?.let { pointsBareme(it) } ?: 0.0
+        _statistiques.value = statistiquesNotes(_grades.value, rule)
+    }
+
+    private fun publierNotes(grades: List<ExamGrade>) {
+        _grades.value = grades
+        _statistiques.value = statistiquesNotes(grades, _rule.value)
+    }
+
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -94,7 +113,7 @@ class ExamGradingViewModel(
     fun loadRule(examId: String, exerciseId: String) {
         viewModelScope.launch {
             val existing = repository.getRule(examId, exerciseId)
-            _rule.value = existing ?: defaultRule(examId, exerciseId)
+            publierRegle(existing ?: defaultRule(examId, exerciseId))
             loadSavedImportSession(examId, exerciseId)
             loadImportSessionHistory(examId, exerciseId)
             loadRuleSnapshotHistory(examId, exerciseId)
@@ -102,7 +121,7 @@ class ExamGradingViewModel(
     }
 
     fun updateRule(rule: ExamGradingRuleSet) {
-        _rule.value = rule
+        publierRegle(rule)
     }
 
     fun saveRule() {
@@ -111,46 +130,54 @@ class ExamGradingViewModel(
             repository.saveRule(current)
             saveRuleSnapshot(current)
             loadRuleSnapshotHistory(current.examId, current.exerciseId)
-            _message.value = "✅ Règles sauvegardées"
+            _message.value = translate("notation.message.regleEnregistree")
         }
     }
 
     fun selectImportSession(sessionId: String) {
         val picked = _importSessionHistory.value.firstOrNull { it.sessionId == sessionId } ?: return
         _lastImportSession.value = picked
-        _message.value = "📂 Session d'import chargée (${picked.successCount}/${picked.total})"
+        _message.value = translate("notation.message.sessionChargee", picked.successCount.toString(), picked.total.toString())
     }
 
     fun selectRuleSnapshot(snapshotId: String) {
         val picked = _ruleSnapshotHistory.value.firstOrNull { it.snapshotId == snapshotId } ?: return
-        _rule.value = picked.rule
-        _message.value = "📐 Grille snapshot chargée"
+        publierRegle(picked.rule)
+        _message.value = translate("notation.message.grilleChargee")
     }
 
     fun computeGrades(items: List<CrossConsultationAnalysisViewModel.ConsultationItem>, examId: String, exerciseId: String) {
         val ruleSet = _rule.value ?: defaultRule(examId, exerciseId)
-        _rule.value = ruleSet
+        publierRegle(ruleSet)
         val perAnimal = items.groupBy { it.animalId }
-        val grades = perAnimal.values.mapNotNull { consultations ->
-            val latest = consultations.maxByOrNull { it.rawDate ?: kotlinx.datetime.LocalDate(1900,1,1) } ?: return@mapNotNull null
+        val latestByAnimal = perAnimal.values.mapNotNull { consultations ->
+            consultations.maxByOrNull { it.rawDate ?: kotlinx.datetime.LocalDate(1900, 1, 1) }
+        }
+        // Clé d'enregistrement unique par copie, même sans numéro d'étudiant ou en doublon
+        val identifiants = identifiantsCopies(latestByAnimal.map { it.animalId to it.studentIdentifier })
+        // Notes manuelles déjà saisies conservées au recalcul
+        val manuelles = _grades.value.associate { it.animalId to it.manualScore }
+        val grades = latestByAnimal.map { latest ->
             val detail = evaluate(ruleSet, latest)
-            val maxScore = ruleSet.autoScoreMax.coerceAtLeast(0.0)
-            val autoScore = detailTotal(detail).coerceIn(0.0, maxScore)
+            val autoScore = noteAutomatique(detailTotal(detail), ruleSet)
+            val manuelle = manuelles[latest.animalId]
             ExamGrade(
                 examId = examId,
                 exerciseId = exerciseId,
-                studentId = latest.studentIdentifier.orEmpty(),
+                studentId = identifiants[latest.animalId] ?: latest.animalId,
                 animalId = latest.animalId,
                 animalName = latest.animalName,
                 consultationId = latest.consultationId,
                 autoScore = autoScore,
-                manualScore = null,
-                finalScore = autoScore,
+                manualScore = manuelle,
+                finalScore = manuelle ?: autoScore,
                 detail = detail
             )
-        }
-        _grades.value = grades
+        }.sortedBy { it.animalName.lowercase() }
+        publierNotes(grades)
+        _message.value = translate("notation.message.notesCalculees", grades.size.toString())
     }
+
 
     fun runRmdLikeAnalysis(items: List<CrossConsultationAnalysisViewModel.ConsultationItem>) {
         val perAnimalLatest = items
@@ -161,30 +188,30 @@ class ExamGradingViewModel(
             }
         if (perAnimalLatest.isEmpty()) {
             _metricDistributions.value = emptyList()
-            _message.value = "❌ Aucune consultation à analyser"
+            _message.value = translate("notation.message.aucuneCopie")
             return
         }
 
         val distributions = buildList {
-            addDistribution(perAnimalLatest, ExamAnalysisMetricId.WEIGHT_KG, "Poids utilisé (kg)") { item ->
+            addDistribution(perAnimalLatest, ExamAnalysisMetricId.WEIGHT_KG, translate("auto.viewmodel.examgradingviewmodel.poids_utilise_kg")) { item ->
                 firstProposedOrAny(item)?.animalWeightKg
             }?.let(::add)
-            addDistribution(perAnimalLatest, ExamAnalysisMetricId.BEC_KCAL, "BEC (kcal/j)") { item ->
+            addDistribution(perAnimalLatest, ExamAnalysisMetricId.BEC_KCAL, translate("auto.viewmodel.examgradingviewmodel.bec_kcal_j")) { item ->
                 firstProposedOrAny(item)?.beeKcal
             }?.let(::add)
-            addDistribution(perAnimalLatest, ExamAnalysisMetricId.ENERGY_INTAKE_KCAL, "Apport énergie ration (kcal)") { item ->
+            addDistribution(perAnimalLatest, ExamAnalysisMetricId.ENERGY_INTAKE_KCAL, translate("auto.viewmodel.examgradingviewmodel.apport_energie_ration_kcal")) { item ->
                 firstProposedOrAny(item)?.energyTotalKcal
             }?.let(::add)
-            addDistribution(perAnimalLatest, ExamAnalysisMetricId.ENERGY_DENSITY_KCAL_100, "Densité énergie (kcal/100g)") { item ->
+            addDistribution(perAnimalLatest, ExamAnalysisMetricId.ENERGY_DENSITY_KCAL_100, translate("auto.viewmodel.examgradingviewmodel.densite_energie_kcal_100g")) { item ->
                 firstProposedOrAny(item)?.energyDensity
             }?.let(::add)
-            addDistribution(perAnimalLatest, ExamAnalysisMetricId.PROTEIN_G, "Protéines ration (g)") { item ->
+            addDistribution(perAnimalLatest, ExamAnalysisMetricId.PROTEIN_G, translate("auto.viewmodel.examgradingviewmodel.proteines_ration_g")) { item ->
                 firstProposedOrAny(item)?.proteins
             }?.let(::add)
         }
 
         _metricDistributions.value = distributions
-        _message.value = "📊 Analyse terminée (${perAnimalLatest.size} copies)"
+        _message.value = translate("notation.message.analyseTerminee", perAnimalLatest.size.toString())
     }
 
     fun applyAnalysisMetricAsCriterion(
@@ -208,8 +235,8 @@ class ExamGradingViewModel(
         )
         val updatedCriteria = current.customCriteria
             .filterNot { it.id == criterionId } + nextCriterion
-        _rule.value = current.copy(customCriteria = updatedCriteria)
-        _message.value = "✅ Critère appliqué: ${mapped.label}"
+        publierRegle(current.copy(customCriteria = updatedCriteria))
+        _message.value = translate("notation.message.critereApplique", mapped.label)
     }
 
     fun applyNutrientCriterion(
@@ -235,29 +262,35 @@ class ExamGradingViewModel(
             points = points
         )
         val updatedCriteria = current.customCriteria.filterNot { it.id == criterionId } + criterion
-        _rule.value = current.copy(customCriteria = updatedCriteria)
-        _message.value = "✅ Critère nutriment appliqué: $label"
+        publierRegle(current.copy(customCriteria = updatedCriteria))
+        _message.value = translate("notation.message.critereApplique", label)
     }
 
+    /** [studentId] est unique par copie (voir [identifiantsCopies]). */
     fun updateManualScore(studentId: String, manualScore: Double?) {
-        _grades.value = _grades.value.map { grade ->
+        publierNotes(_grades.value.map { grade ->
             if (grade.studentId == studentId) {
                 val finalScore = manualScore ?: grade.autoScore
                 grade.copy(manualScore = manualScore, finalScore = finalScore)
             } else grade
-        }
+        })
     }
 
     fun saveGrades() {
         viewModelScope.launch {
-            repository.saveGrades(_grades.value)
-            _message.value = "✅ Notes sauvegardées"
+            try {
+                repository.saveGrades(_grades.value)
+                _message.value = translate("notation.message.notesEnregistrees", _grades.value.size.toString())
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                _message.value = translate("notation.message.erreur", e.message ?: "")
+            }
         }
     }
 
     fun loadGrades(examId: String, exerciseId: String) {
         viewModelScope.launch {
-            _grades.value = repository.getGrades(examId, exerciseId)
+            publierNotes(repository.getGrades(examId, exerciseId).sortedBy { it.animalName.lowercase() })
         }
     }
 
@@ -271,22 +304,22 @@ class ExamGradingViewModel(
         onCompleted: (() -> Unit)? = null
     ) {
         if (examId.isBlank() || exerciseId.isBlank()) {
-            _message.value = "❌ Renseigner ID examen et ID exercice"
+            _message.value = translate("notation.message.idsManquants")
             return
         }
         viewModelScope.launch {
             _isImportingBins.value = true
             _importProgress.value = 0.0
             _importLogs.value = emptyList()
-            appendImportLog("📄 Lecture du CSV Moodle…")
+            appendImportLog(translate("notation.log.lecture"))
             try {
                 val rows = parseMoodleCsv(csvContent)
                 if (rows.isEmpty()) {
-                    _message.value = "❌ Aucun bin_id trouvé dans le CSV"
+                    _message.value = translate("notation.message.aucunBin")
                     _isImportingBins.value = false
                     return@launch
                 }
-                appendImportLog("✅ ${rows.size} copie(s) avec bin_id")
+                appendImportLog(translate("notation.log.copiesTrouvees", rows.size.toString()))
 
                 val shareService = createJsonShareService()
                 val entries = mutableListOf<ExamCopyImportEntry>()
@@ -315,12 +348,12 @@ class ExamGradingViewModel(
                         if (cachedText != null) {
                             recordJson = normalizeJsonBinPayload(cachedText)
                             fromCache = true
-                            appendImportLog("📦 Cache: $binId")
+                            appendImportLog(translate("notation.log.cache", binId))
                         } else {
                             if (offlineOnly) {
-                                throw IllegalStateException("Absent du cache (mode hors-ligne)")
+                                throw IllegalStateException(translate("notation.log.absentCache"))
                             }
-                            appendImportLog("🌐 Téléchargement: $binId")
+                            appendImportLog(translate("notation.log.telechargement", binId))
                             val downloaded = shareService.downloadJson(binId).getOrElse { throw it }
                             recordJson = normalizeJsonBinPayload(downloaded)
                             fromCache = false
@@ -346,10 +379,10 @@ class ExamGradingViewModel(
                             binId = row.binId,
                             success = false,
                             fromCache = false,
-                            error = e.message ?: "Erreur inconnue",
+                            error = e.message ?: translate("notation.log.erreurInconnue"),
                             importedAtEpochMs = now
                         )
-                        appendImportLog("❌ ${row.binId}: ${e.message}")
+                        appendImportLog(translate("notation.log.erreurCopie", row.binId, e.message ?: ""))
                     }
                     _importProgress.value = ((index + 1).toDouble() / total.toDouble()).coerceIn(0.0, 1.0)
                 }
@@ -370,13 +403,13 @@ class ExamGradingViewModel(
 
                 val ok = session.successCount
                 val ko = session.errorCount
-                _message.value = "✅ Import terminé: $ok OK, $ko erreur(s)"
-                appendImportLog("✅ Import terminé: $ok OK, $ko erreur(s)")
+                _message.value = translate("notation.message.importTermine", ok.toString(), ko.toString())
+                appendImportLog(translate("notation.message.importTermine", ok.toString(), ko.toString()))
                 onCompleted?.invoke()
             } catch (e: Exception) {
                 e.rethrowIfCancellation()
-                _message.value = "❌ Import CSV impossible: ${e.message}"
-                appendImportLog("❌ Erreur globale: ${e.message}")
+                _message.value = translate("notation.message.importImpossible", e.message ?: "")
+                appendImportLog(translate("notation.message.importImpossible", e.message ?: ""))
             } finally {
                 _isImportingBins.value = false
             }

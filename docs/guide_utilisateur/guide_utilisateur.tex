@@ -1208,6 +1208,23 @@ L'analyse affiche les rations actuelles, proposées ou toutes, et deux onglets :
 
 \capture{36_analyses_croisees.png}{Analyses croisées.}{analyses-croisees}
 
+\textbf{Notation d'un examen.} \ui{Ouvrir la notation} propose les examens et exercices présents
+dans les copies, puis quatre étapes, toujours visibles en haut de l'écran :
+\begin{description}[style=nextline,leftmargin=0pt,itemsep=4pt]
+  \item[\ui{Copies}] Importer le CSV de Moodle (liens jsonbin) ; la liste signale les copies sans
+        numéro d'étudiant et les numéros en double (chaque copie garde sa propre note).
+  \item[\ui{Analyse}] Distribution de chaque mesure sur les copies, avec le nombre de copies
+        comprises dans les bornes choisies ; \ui{Ajouter au barème} en fait un critère.
+  \item[\ui{Barème}] Sections activables (ingrédients exigés ou interdits, quantité, densité
+        énergétique en kcal/g, nutriments, référentiel, conseils) et critères personnalisés. Le
+        total des points est comparé à la note maximale ; \ui{Ramener le total du barème sur la
+        note maximale} rend la note proportionnelle aux points obtenus. Une section active sans
+        condition est signalée : elle ne rapporte aucun point.
+  \item[\ui{Notes}] Moyenne, médiane, répartition des notes et réussite par critère (un critère
+        validé par presque toutes les copies, ou par aucune, ne départage pas les étudiants),
+        puis le détail de chaque copie et sa note manuelle éventuelle.
+\end{description}
+
 % ================================================================== Annexes
 \appendix
 
