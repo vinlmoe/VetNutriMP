@@ -71,7 +71,7 @@ internal fun AppNavHost(
                     onSelectAnimal = { animal: AnimalEv ->
                         nav.selectedAnimal = animal
                         nav.detailReturnScreen = Screen.List
-                        models.animalDetailViewModel.setAnimal(animal)
+                        models.animalDetailViewModel.setAnimal(animal, lectureSeule = false)
                         nav.navigate(Screen.Detail)
                     },
                     onEditAnimal = { animal: AnimalEv ->
@@ -111,7 +111,7 @@ internal fun AppNavHost(
                         nav.isEditing = false
                         nav.selectedAnimal = animal
                         nav.detailReturnScreen = Screen.List
-                        models.animalDetailViewModel.setAnimal(animal)
+                        models.animalDetailViewModel.setAnimal(animal, lectureSeule = false)
                         nav.navigate(Screen.Detail)
                     },
                     isEditing = nav.isEditing,
@@ -434,7 +434,14 @@ internal fun AppNavHost(
             CrossConsultationGradingView(
                 analysisViewModel = models.crossAnalysisViewModel,
                 gradingViewModel = models.examGradingViewModel,
-                onNavigateBack = { nav.navigate(Screen.CrossAnalysis) }
+                onNavigateBack = { nav.navigate(Screen.CrossAnalysis) },
+                // Copie en lecture seule ; le retour de la fiche ramène à la notation, dans l'état laissé
+                onOpenCopie = { animalId, consultationId ->
+                    models.animalDetailViewModel.openAnimalReadOnly(animalId, consultationId) {
+                        nav.detailReturnScreen = Screen.CrossAnalysisGrading
+                        nav.navigate(Screen.Detail)
+                    }
+                }
             )
         }
 

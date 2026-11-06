@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Upload
@@ -89,7 +91,9 @@ private fun pts(v: Double): String =
 fun CrossConsultationGradingView(
         analysisViewModel: CrossConsultationAnalysisViewModel,
         gradingViewModel: ExamGradingViewModel,
-        onNavigateBack: () -> Unit
+        onNavigateBack: () -> Unit,
+        /** Ouvre la copie (fiche de l'animal) en lecture seule ; son retour ramène ici. */
+        onOpenCopie: (animalId: String, consultationId: String?) -> Unit = { _, _ -> }
 ) {
     val allItems by analysisViewModel.allItems.collectAsState()
     val rule by gradingViewModel.rule.collectAsState()
@@ -98,9 +102,13 @@ fun CrossConsultationGradingView(
     val metricDistributions by gradingViewModel.metricDistributions.collectAsState()
     val pointsDisponibles by gradingViewModel.pointsDisponibles.collectAsState()
 
-    var examId by remember { mutableStateOf("") }
-    var exerciseId by remember { mutableStateOf("") }
-    var etape by remember { mutableStateOf(EtapeNotation.COPIES) }
+    // État gardé par le ViewModel : il survit à l'ouverture d'une copie puis au retour
+    val examId by gradingViewModel.examIdCourant.collectAsState()
+    val exerciseId by gradingViewModel.exerciseIdCourant.collectAsState()
+    val etapeIndex by gradingViewModel.etape.collectAsState()
+    val etape = EtapeNotation.entries[etapeIndex.coerceIn(0, EtapeNotation.entries.lastIndex)]
+    val sauvegardeEnCours by gradingViewModel.sauvegardeEnCours.collectAsState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { if (allItems.isEmpty()) analysisViewModel.loadConsultations() }
 
@@ -108,8 +116,7 @@ fun CrossConsultationGradingView(
     // Un seul examen présent : il est choisi d'office
     LaunchedEffect(examens) {
         if (examId.isBlank() && exerciseId.isBlank() && examens.size == 1) {
-            examId = examens.first().examId
-            exerciseId = examens.first().exerciseId
+            gradingViewModel.choisirExamen(examens.first().examId, examens.first().exerciseId)
         }
     }
     val copies = remember(allItems, examId, exerciseId) {
@@ -122,12 +129,9 @@ fun CrossConsultationGradingView(
     }
     val idsValides = examId.isNotBlank() && exerciseId.isNotBlank()
 
-    // Changer d'examen recharge son barème et ses notes enregistrées
+    // Changer d'examen recharge son barème et ses notes ; revenir d'une copie ne recharge rien
     LaunchedEffect(examId.trim(), exerciseId.trim()) {
-        if (idsValides) {
-            gradingViewModel.loadRule(examId.trim(), exerciseId.trim())
-            gradingViewModel.loadGrades(examId.trim(), exerciseId.trim())
-        }
+        gradingViewModel.chargerExamenSiNouveau(examId, exerciseId)
     }
     LaunchedEffect(etape, copies.size) {
         if (etape == EtapeNotation.ANALYSE && copies.isNotEmpty()) gradingViewModel.runRmdLikeAnalysis(copies)
@@ -155,12 +159,26 @@ fun CrossConsultationGradingView(
                     examId = examId,
                     exerciseId = exerciseId,
                     nbCopies = nbCopies,
-                    onChoix = { e, x -> examId = e; exerciseId = x }
+                    onChoix = { e, x -> gradingViewModel.choisirExamen(e, x) },
+                    occupe = sauvegardeEnCours,
+                    onSauvegarder = {
+                        scope.launch {
+                            val json = gradingViewModel.dossierNotationJson(copies.map { it.animalId }.toSet()) ?: return@launch
+                            gradingViewModel.signalerSauvegarde(
+                                    fr.vetbrain.vetnutri_mp.exportJsonToFile(json, "notation_${examId.trim()}_${exerciseId.trim()}.json"))
+                        }
+                    },
+                    onReprendre = {
+                        scope.launch {
+                            val texte = fr.vetbrain.vetnutri_mp.openJsonFileContent() ?: return@launch
+                            gradingViewModel.restaurerDossier(texte) { analysisViewModel.loadConsultations() }
+                        }
+                    }
             )
             message?.takeIf { it.isNotBlank() }?.let { texte ->
                 BandeauNotation(texte, VetNutriColors.PrimaryVariant, Icons.Default.Info) { gradingViewModel.clearMessage() }
             }
-            if (idsValides) BarreEtapes(etape, etapeFaite) { etape = it }
+            if (idsValides) BarreEtapes(etape, etapeFaite) { gradingViewModel.choisirEtape(it.ordinal) }
         }
         Divider()
         if (!idsValides) {
@@ -173,21 +191,21 @@ fun CrossConsultationGradingView(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             when (etape) {
-                EtapeNotation.COPIES -> EtapeCopies(analysisViewModel, gradingViewModel, examId.trim(), exerciseId.trim(), copies, nbCopies)
+                EtapeNotation.COPIES -> EtapeCopies(analysisViewModel, gradingViewModel, examId.trim(), exerciseId.trim(), copies, nbCopies, onOpenCopie)
                 EtapeNotation.ANALYSE -> EtapeAnalyse(gradingViewModel, copies, nbCopies)
                 EtapeNotation.BAREME -> EtapeBareme(gradingViewModel, copies)
-                EtapeNotation.NOTES -> EtapeNotes(gradingViewModel, copies, examId.trim(), exerciseId.trim())
+                EtapeNotation.NOTES -> EtapeNotes(gradingViewModel, copies, examId.trim(), exerciseId.trim(), onOpenCopie)
             }
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 if (etape.ordinal > 0) {
-                    OutlinedButton(onClick = { etape = EtapeNotation.entries[etape.ordinal - 1] }) {
+                    OutlinedButton(onClick = { gradingViewModel.choisirEtape(etape.ordinal - 1) }) {
                         Text(translate("auto.view.crossconsultationgradingview.precedent"))
                     }
                 } else Spacer(Modifier.width(1.dp))
                 if (etape.ordinal < EtapeNotation.entries.lastIndex) {
                     Button(
-                            onClick = { etape = EtapeNotation.entries[etape.ordinal + 1] },
+                            onClick = { gradingViewModel.choisirEtape(etape.ordinal + 1) },
                             colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary, contentColor = VetNutriColors.OnPrimary)
                     ) { Text(translate("notation.suivant", translate("notation.etape.${EtapeNotation.entries[etape.ordinal + 1].name}"))) }
                 }
@@ -205,7 +223,10 @@ private fun SelecteurExamen(
         examId: String,
         exerciseId: String,
         nbCopies: Int,
-        onChoix: (String, String) -> Unit
+        onChoix: (String, String) -> Unit,
+        occupe: Boolean,
+        onSauvegarder: () -> Unit,
+        onReprendre: () -> Unit
 ) {
     // Saisie libre : pour importer les copies d'un examen absent de la base
     var saisieLibre by remember { mutableStateOf(examens.isEmpty()) }
@@ -215,6 +236,17 @@ private fun SelecteurExamen(
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(translate("notation.examen"), fontWeight = FontWeight.Bold, color = VetNutriColors.PrimaryVariant, modifier = Modifier.weight(1f))
+                if (occupe) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = VetNutriColors.Primary)
+                TextButton(onClick = onSauvegarder, enabled = !occupe && examId.isNotBlank() && exerciseId.isNotBlank()) {
+                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(translate("notation.sauvegarder"), fontSize = 12.sp)
+                }
+                TextButton(onClick = onReprendre, enabled = !occupe) {
+                    Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(translate("notation.reprendre"), fontSize = 12.sp)
+                }
                 if (examens.isNotEmpty()) {
                     TextButton(onClick = { saisieLibre = !saisieLibre }) {
                         Text(if (saisieLibre) translate("notation.choisirDansListe") else translate("notation.autreExamen"), fontSize = 12.sp)
@@ -329,7 +361,8 @@ private fun EtapeCopies(
         examId: String,
         exerciseId: String,
         copies: List<CrossConsultationAnalysisViewModel.ConsultationItem>,
-        nbCopies: Int
+        nbCopies: Int,
+        onOpenCopie: (String, String?) -> Unit
 ) {
     val isImportingBins by gradingViewModel.isImportingBins.collectAsState()
     val importProgress by gradingViewModel.importProgress.collectAsState()
@@ -424,6 +457,9 @@ private fun EtapeCopies(
                     Text(c.animalName, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(c.studentIdentifier?.ifBlank { null } ?: "—", fontSize = 12.sp, color = discretNotation(), modifier = Modifier.width(110.dp))
                     Text(translate("crossConsultation.nbRations", c.rationCount.toString()), fontSize = 12.sp, color = discretNotation(), modifier = Modifier.width(80.dp), textAlign = TextAlign.End)
+                    IconButton(onClick = { onOpenCopie(c.animalId, c.consultationId) }, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Visibility, contentDescription = translate("notation.voirCopie"), tint = VetNutriColors.Primary, modifier = Modifier.size(18.dp))
+                    }
                 }
             }
         }
@@ -913,7 +949,8 @@ private fun EtapeNotes(
         gradingViewModel: ExamGradingViewModel,
         copies: List<CrossConsultationAnalysisViewModel.ConsultationItem>,
         examId: String,
-        exerciseId: String
+        exerciseId: String,
+        onOpenCopie: (String, String?) -> Unit
 ) {
     val rule by gradingViewModel.rule.collectAsState()
     val grades by gradingViewModel.grades.collectAsState()
@@ -922,7 +959,7 @@ private fun EtapeNotes(
     val scope = rememberCoroutineScope()
     val csvService = remember { ExamGradingCsvService() }
     var tri by remember { mutableStateOf(TriNotes.NOM) }
-    var ouverte by remember { mutableStateOf<String?>(null) }
+    val ouverte by gradingViewModel.copieOuverte.collectAsState()
     val noteMax = rule?.autoScoreMax ?: 20.0
 
     FlowRow(mainAxisSpacing = 8.dp, crossAxisSpacing = 8.dp) {
@@ -981,8 +1018,8 @@ private fun EtapeNotes(
                 TriNotes.NOTE_ASC -> grades.sortedBy { it.finalScore }
             }
             triees.forEach { grade ->
-                LigneNote(gradingViewModel, grade, rule, noteMax, ouverte == grade.studentId) {
-                    ouverte = if (ouverte == grade.studentId) null else grade.studentId
+                LigneNote(gradingViewModel, grade, rule, noteMax, ouverte == grade.studentId, onOpenCopie) {
+                    gradingViewModel.basculerCopie(grade.studentId)
                 }
             }
         }
@@ -1056,7 +1093,15 @@ private fun LigneReussite(r: ReussiteCritere, rule: ExamGradingRuleSet?) {
 }
 
 @Composable
-private fun LigneNote(gradingViewModel: ExamGradingViewModel, grade: ExamGrade, rule: ExamGradingRuleSet?, noteMax: Double, ouverte: Boolean, onBasculer: () -> Unit) {
+private fun LigneNote(
+        gradingViewModel: ExamGradingViewModel,
+        grade: ExamGrade,
+        rule: ExamGradingRuleSet?,
+        noteMax: Double,
+        ouverte: Boolean,
+        onOpenCopie: (String, String?) -> Unit,
+        onBasculer: () -> Unit
+) {
     Column(Modifier.fillMaxWidth().border(1.dp, bordureNotation, RoundedCornerShape(6.dp))) {
         Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1097,7 +1142,14 @@ private fun LigneNote(gradingViewModel: ExamGradingViewModel, grade: ExamGrade, 
                         label = { Text(translate("auto.view.crossconsultationgradingview.note_manuelle")) },
                         modifier = Modifier.width(160.dp)
                 )
-                Text(translate("notation.noteManuelleAide"), fontSize = 11.sp, color = discretNotation())
+                Text(translate("notation.noteManuelleAide"), fontSize = 11.sp, color = discretNotation(), modifier = Modifier.weight(1f))
+                grade.animalId?.let { animalId ->
+                    OutlinedButton(onClick = { onOpenCopie(animalId, grade.consultationId) }) {
+                        Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(translate("notation.voirCopie"), fontSize = 12.sp)
+                    }
+                }
             }
         }
     }

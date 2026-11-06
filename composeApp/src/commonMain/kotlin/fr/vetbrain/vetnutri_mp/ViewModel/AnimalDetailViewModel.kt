@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.orUserError
+
 import androidx.lifecycle.ViewModel
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
@@ -420,7 +422,39 @@ class AnimalDetailViewModel(
      * @param consultationASelectionner consultation à ouvrir (ex. ration issue de l'exploration
      * multiration) ; par défaut, la plus récente
      */
-    fun setAnimal(animal: AnimalEv, consultationASelectionner: String? = null) {
+    /** Ouvre une copie d'examen en lecture seule, sur sa consultation notée. */
+    fun openAnimalReadOnly(animalId: String, consultationId: String?, onPret: () -> Unit) {
+        // Lecture seule tout de suite : aucune écriture possible pendant le chargement
+        _lectureSeule.value = true
+        viewModelScope.launch {
+            val animal = animalRepository.getAnimalById(animalId)
+                    .orUserError(fr.vetbrain.vetnutri_mp.Localization.translate("lectureSeule.animalIntrouvable")) ?: return@launch
+            setAnimal(animal, consultationASelectionner = consultationId, lectureSeule = true)
+            onPret()
+        }
+    }
+
+    private val _lectureSeule = kotlinx.coroutines.flow.MutableStateFlow(false)
+    /** Fiche ouverte en lecture seule (copie d'examen consultée depuis la notation). */
+    val lectureSeule: kotlinx.coroutines.flow.StateFlow<Boolean> = _lectureSeule
+
+    /**
+     * Garde de toutes les écritures en base. En lecture seule, l'écriture est ignorée sans
+     * message : la fiche enregistre d'elle-même en quittant une édition, et un bandeau permanent
+     * indique déjà que rien n'est enregistré.
+     */
+    private fun ecritureAutorisee(): Boolean {
+        if (!_lectureSeule.value) return true
+        fr.vetbrain.vetnutri_mp.Utils.AppLog.d("AnimalDetailViewModel", "Écriture ignorée : fiche en lecture seule")
+        return false
+    }
+
+    /**
+     * @param lectureSeule true / false : mode imposé ; null (rechargement interne, ex. après un
+     * partage) : le mode courant est gardé pour le même animal.
+     */
+    fun setAnimal(animal: AnimalEv, consultationASelectionner: String? = null, lectureSeule: Boolean? = null) {
+        _lectureSeule.value = lectureSeule ?: (_animal.value?.uuid == animal.uuid && _lectureSeule.value)
         // Rechargement du même animal (ex. après un partage) : garder la consultation et la ration
         // choisies au lieu de revenir à la consultation la plus récente
         val memeAnimal = _animal.value?.uuid == animal.uuid
@@ -753,6 +787,7 @@ class AnimalDetailViewModel(
 
     /** Applique une recette (liste d'aliments) à la ration sélectionnée et recharge l'état */
     fun applyRecipeToRation(recipe: Ration) {
+        if (!ecritureAutorisee()) return
         if (estAnalyseGroupee()) return
 
         val rationActuelle = _selectedRation.value
@@ -819,6 +854,7 @@ class AnimalDetailViewModel(
     }
 
     fun addConsultation(consultation: ConsultationEv) {
+        if (!ecritureAutorisee()) return
         // Troupeau : une nouvelle consultation reprend les référentiels et K de la précédente
         if (consultation.parametresTroupeau.isEmpty()) {
             consultation.parametresTroupeau = _animal.value?.parametresTroupeauNouvelleConsultation() ?: mutableListOf()
@@ -868,6 +904,7 @@ class AnimalDetailViewModel(
     }
 
     fun updateConsultation(consultation: ConsultationEv) {
+        if (!ecritureAutorisee()) return
         // Sélection au moment de la demande : si elle change pendant l'enregistrement (nouvelle
         // modification ou autre consultation), elle ne doit pas être écrasée par cet instantané.
         val selectionAuLancement = _selectedConsultation.value
@@ -997,6 +1034,7 @@ class AnimalDetailViewModel(
     }
 
     fun deleteConsultation(consultation: ConsultationEv) {
+        if (!ecritureAutorisee()) return
         viewModelScope.launch {
             consultationRepository.deleteConsultation(consultation)
 
@@ -1060,6 +1098,7 @@ class AnimalDetailViewModel(
     }
 
     fun updateAnimal(updatedAnimal: AnimalEv) {
+        if (!ecritureAutorisee()) return
         viewModelScope.launch {
 
             // Conserver l'UUID et les consultations de l'animal original, mais préserver le jsonbinId de updatedAnimal
@@ -1114,6 +1153,7 @@ class AnimalDetailViewModel(
      * @return true si la suppression a réussi, false sinon
      */
     fun deleteAnimal(): Boolean {
+        if (!ecritureAutorisee()) return false
         val animalToDelete = _animal.value ?: return false
 
         viewModelScope.launch {
@@ -1238,6 +1278,7 @@ class AnimalDetailViewModel(
      */
     @OptIn(ExperimentalUuidApi::class)
     fun duplicateRation(ration: Ration) {
+        if (!ecritureAutorisee()) return
         viewModelScope.launch {
             // Obtenir la consultation courante
             val currentConsultation = _selectedConsultation.value ?: return@launch
@@ -1399,6 +1440,7 @@ class AnimalDetailViewModel(
 
     /** Sauvegarde depuis la vue plein écran et ferme */
     fun saveFromFullScreen(consultation: ConsultationEv) {
+        if (!ecritureAutorisee()) return
         viewModelScope.launch {
             try {
                 // S'assurer que l'UUID est valide et unique
@@ -1868,6 +1910,7 @@ class AnimalDetailViewModel(
             quitterModeAjout: Boolean,
             transformation: (AnimalEv, List<WeightDate>) -> List<WeightDate>
     ) {
+        if (!ecritureAutorisee()) return
         viewModelScope.launch {
             try {
                 val animalActuel = _animal.value ?: return@launch

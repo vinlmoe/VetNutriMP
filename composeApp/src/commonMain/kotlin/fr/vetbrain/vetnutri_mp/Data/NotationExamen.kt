@@ -156,3 +156,49 @@ fun examensDisponibles(items: List<Triple<String?, String?, String>>): List<Exam
                 .groupBy { it.first!!.trim() to it.second!!.trim() }
                 .map { (cle, liste) -> ExamenDisponible(cle.first, cle.second, liste.map { it.third }.distinct().size) }
                 .sortedWith(compareBy({ it.examId }, { it.exerciseId }))
+
+/** Identifiant de format du fichier de notation (refus de tout autre JSON à la reprise). */
+const val FORMAT_DOSSIER_NOTATION = "vetnutri-notation-examen"
+
+/**
+ * Sauvegarde complète d'une notation, pour la reprendre plus tard ou sur un autre poste : barème
+ * (et ses versions enregistrées), notes (manuelles comprises), dernier import de copies et
+ * copies elles-mêmes (export API des animaux, consultations, aliments et référentiels liés).
+ */
+@kotlinx.serialization.Serializable
+data class DossierNotation(
+        val format: String = FORMAT_DOSSIER_NOTATION,
+        val version: Int = 1,
+        val enregistreLeEpochMs: Long = 0,
+        val examId: String,
+        val exerciseId: String,
+        val bareme: ExamGradingRuleSet? = null,
+        val baremesPrecedents: List<RuleSnapshotEntry> = emptyList(),
+        val notes: List<ExamGrade> = emptyList(),
+        val sessionImport: ExamCopyImportSession? = null,
+        /** Export API des copies (ApiEnvelope en JSON), null si les copies ne sont pas incluses. */
+        val copiesJson: String? = null
+)
+
+private val jsonDossier = kotlinx.serialization.json.Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = true
+    prettyPrint = true
+}
+
+fun encoderDossierNotation(dossier: DossierNotation): String =
+        jsonDossier.encodeToString(DossierNotation.serializer(), dossier)
+
+/** Lit un fichier de notation ; null si ce n'est pas un fichier de notation VetNutri. */
+fun decoderDossierNotation(texte: String): DossierNotation? =
+        try {
+            jsonDossier.decodeFromString(DossierNotation.serializer(), texte).takeIf {
+                it.format == FORMAT_DOSSIER_NOTATION && it.examId.isNotBlank() && it.exerciseId.isNotBlank()
+            }
+        } catch (e: kotlinx.serialization.SerializationException) {
+            fr.vetbrain.vetnutri_mp.Utils.AppLog.d("NotationExamen", "Fichier de notation illisible : ${e.message}")
+            null
+        } catch (e: IllegalArgumentException) {
+            fr.vetbrain.vetnutri_mp.Utils.AppLog.d("NotationExamen", "Fichier de notation invalide : ${e.message}")
+            null
+        }

@@ -80,4 +80,19 @@ class NotationExamenTest {
                 Triple("E1", "X2", "a3"), Triple(null, "X1", "a4"), Triple("E2", " ", "a5")))
         assertEquals(listOf(ExamenDisponible("E1", "X1", 2), ExamenDisponible("E1", "X2", 1)), examens)
     }
+
+    @Test
+    fun dossierNotation_allerRetourEtRefusDesAutresJson() {
+        val dossier = DossierNotation(
+                enregistreLeEpochMs = 42, examId = "E1", exerciseId = "X1",
+                bareme = bareme.copy(notationProportionnelle = true),
+                notes = listOf(note("a", 12.5, true, false).copy(manualScore = 14.0, finalScore = 14.0)),
+                copiesJson = "{\"animals\":[]}"
+        )
+        val relu = decoderDossierNotation(encoderDossierNotation(dossier))
+        assertEquals(dossier, relu)
+        assertNull(decoderDossierNotation("{\"animals\":[]}"))
+        assertNull(decoderDossierNotation("pas du json"))
+        assertNull(decoderDossierNotation(encoderDossierNotation(dossier.copy(format = "autre"))))
+    }
 }

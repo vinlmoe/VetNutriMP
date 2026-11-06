@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -109,6 +110,138 @@ class ExamGradingViewModel(
     }
 
     fun clearMessage() { _message.value = null }
+
+    // --- État de l'écran, gardé quand on ouvre une copie puis qu'on revient -----------------
+
+    private val _examIdCourant = MutableStateFlow("")
+    val examIdCourant: StateFlow<String> = _examIdCourant.asStateFlow()
+    private val _exerciseIdCourant = MutableStateFlow("")
+    val exerciseIdCourant: StateFlow<String> = _exerciseIdCourant.asStateFlow()
+    private val _etape = MutableStateFlow(0)
+    /** Étape affichée (0 = copies … 3 = notes). */
+    val etape: StateFlow<Int> = _etape.asStateFlow()
+    private val _copieOuverte = MutableStateFlow<String?>(null)
+    /** Copie dont le détail est déplié à l'étape Notes. */
+    val copieOuverte: StateFlow<String?> = _copieOuverte.asStateFlow()
+
+    /** Examen dont le barème et les notes sont en mémoire : le recharger effacerait les modifications. */
+    private var examCharge: Pair<String, String>? = null
+
+    fun choisirExamen(examId: String, exerciseId: String) {
+        _examIdCourant.value = examId
+        _exerciseIdCourant.value = exerciseId
+    }
+
+    fun choisirEtape(etape: Int) { _etape.value = etape }
+
+    fun basculerCopie(studentId: String) {
+        _copieOuverte.value = if (_copieOuverte.value == studentId) null else studentId
+    }
+
+    /** Charge le barème et les notes de l'examen, sauf s'il est déjà chargé (retour d'une copie). */
+    fun chargerExamenSiNouveau(examId: String, exerciseId: String) {
+        val cle = examId.trim() to exerciseId.trim()
+        if (cle.first.isEmpty() || cle.second.isEmpty() || cle == examCharge) return
+        examCharge = cle
+        _copieOuverte.value = null
+        _metricDistributions.value = emptyList()
+        loadRule(cle.first, cle.second)
+        loadGrades(cle.first, cle.second)
+    }
+
+    // --- Sauvegarde et reprise d'une notation -------------------------------------------------
+
+    private val _sauvegardeEnCours = MutableStateFlow(false)
+    val sauvegardeEnCours: StateFlow<Boolean> = _sauvegardeEnCours.asStateFlow()
+
+    /**
+     * Fichier de notation de l'examen courant : barème et ses versions, notes, dernier import et
+     * copies (animaux, consultations, aliments et référentiels liés). null en cas d'échec.
+     */
+    suspend fun dossierNotationJson(animalIds: Set<String>): String? {
+        val examId = _examIdCourant.value.trim()
+        val exerciseId = _exerciseIdCourant.value.trim()
+        if (examId.isEmpty() || exerciseId.isEmpty()) {
+            _message.value = translate("notation.message.idsManquants")
+            return null
+        }
+        _sauvegardeEnCours.value = true
+        return try {
+            val copiesJson = if (animalIds.isEmpty()) null else exportImportRepository.exportWithSelection(
+                    ExportImportRepository.ExportSelectionOptions(
+                            includeAnimals = true, includeFoods = false, includeRations = false, includeRecipes = false,
+                            includeEquations = false, includeConseils = false, includeLinkedFromAnimals = true,
+                            animalIds = animalIds
+                    )
+            )
+            encoderDossierNotation(DossierNotation(
+                    enregistreLeEpochMs = Clock.System.now().toEpochMilliseconds(),
+                    examId = examId, exerciseId = exerciseId,
+                    bareme = _rule.value, baremesPrecedents = _ruleSnapshotHistory.value,
+                    notes = _grades.value, sessionImport = _lastImportSession.value, copiesJson = copiesJson
+            ))
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            _message.value = translate("notation.message.sauvegardeImpossible", e.message ?: "")
+            null
+        } finally {
+            _sauvegardeEnCours.value = false
+        }
+    }
+
+    fun signalerSauvegarde(ok: Boolean) {
+        _message.value = if (ok) translate("notation.message.sauvegardeFaite") else translate("notation.message.sauvegardeAnnulee")
+    }
+
+    /**
+     * Reprend une notation sauvegardée : copies importées dans la base, barème et notes
+     * enregistrés, versions du barème et dernier import restaurés, examen sélectionné.
+     */
+    fun restaurerDossier(texte: String, onCopiesImportees: () -> Unit) {
+        val dossier = decoderDossierNotation(texte)
+        if (dossier == null) {
+            _message.value = translate("notation.message.dossierInvalide")
+            return
+        }
+        viewModelScope.launch {
+            _sauvegardeEnCours.value = true
+            try {
+                dossier.copiesJson?.let { exportImportRepository.importAll(it).requireComplete() }
+                dossier.bareme?.let { repository.saveRule(it) }
+                if (dossier.notes.isNotEmpty()) repository.saveGrades(dossier.notes)
+                dossier.baremesPrecedents.forEach { ecrireSnapshot(it) }
+                dossier.sessionImport?.let { saveImportSession(it) }
+                // L'examen restauré devient l'examen courant, rechargé depuis la base
+                examCharge = null
+                choisirExamen(dossier.examId, dossier.exerciseId)
+                chargerExamenSiNouveau(dossier.examId, dossier.exerciseId)
+                _message.value = translate("notation.message.dossierRestaure", dossier.examId, dossier.exerciseId,
+                        dossier.notes.size.toString(), formatDateDossier(dossier.enregistreLeEpochMs))
+                onCopiesImportees()
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                _message.value = translate("notation.message.restaurationImpossible", e.message ?: "")
+            } finally {
+                _sauvegardeEnCours.value = false
+            }
+        }
+    }
+
+    private suspend fun ecrireSnapshot(entry: RuleSnapshotEntry) {
+        val examDir = getExamCacheDirectory(entry.rule.examId, entry.rule.exerciseId)
+        val file = PlatformFile.create("${examDir.absolutePath}/rule_snapshot_${sanitizeFileName(entry.snapshotId)}.json")
+        fileService.writeText(file, json.encodeToString(RuleSnapshotEntry.serializer(), entry))
+    }
+
+    private fun formatDateDossier(epochMs: Long): String =
+            try {
+                val d = kotlinx.datetime.Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+                "${d.dayOfMonth.toString().padStart(2, '0')}/${d.monthNumber.toString().padStart(2, '0')}/${d.year} " +
+                        "${d.hour.toString().padStart(2, '0')}:${d.minute.toString().padStart(2, '0')}"
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                "?"
+            }
 
     fun loadRule(examId: String, exerciseId: String) {
         viewModelScope.launch {
