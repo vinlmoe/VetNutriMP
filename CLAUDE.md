@@ -140,6 +140,21 @@ fréquents, carte limitée à une combinaison) : moteur pur `Data/SyntheseExplor
 ViewModel après chaque calcul. Écran : configuration repliable à gauche, résultats en onglets Carte /
 Combinaisons / Courbes ; sous 600 dp, onglets Configuration / Résultats.
 
+### Notation d'examen (analyses croisées)
+`CrossConsultationGradingView` + `ExamGradingViewModel` : étapes Copies / Analyse / Barème / Notes (en-tête
+fixe). Moteur pur `Data/NotationExamen.kt` : `criteresBareme`/`pointsBareme` (seuls les critères actifs **et**
+configurés comptent), `noteAutomatique` (plafonnée, ou proportionnelle si `notationProportionnelle`),
+`statistiquesNotes` (réussite par critère), `identifiantsCopies` (clé `studentId` unique par copie : la table
+`EXAM_GRADES` a pour clé examen + exercice + studentId). La densité énergétique des copies est en kcal/g.
+Copies : lot de JSON (`openJsonFilesContent`, expect ; le desktop accepte un dossier ; `preparerCopieJson`
+rattache à l'examen les copies sans identifiant ; `importerLotJson`) ou CSV Moodle de liens jsonbin.
+« Voir la copie » : `AnimalDetailViewModel.openAnimalReadOnly` (`lectureSeule` ; toutes les écritures passent
+par `ecritureAutorisee()`, ignorées sans message en lecture seule ; le bouton Retour de la fiche, libellé
+« Retour à la notation », revient via `detailReturnScreen = CrossAnalysisGrading`). L'état de l'écran
+(examen, étape, copie dépliée) est dans `ExamGradingViewModel` pour survivre à l'aller-retour ;
+`chargerExamenSiNouveau` ne recharge pas un examen déjà en mémoire. Sauvegarde / reprise : `DossierNotation`
+(barème et versions, notes, dernier import, copies en export API).
+
 ### Mode troupeau
 Un animal peut être un **troupeau** : à la création (ou modification), choix « Individu / Troupeau » ;
 un troupeau n'a ni espèce, ni race, ni sexe propres : il a des groupes d'individus
