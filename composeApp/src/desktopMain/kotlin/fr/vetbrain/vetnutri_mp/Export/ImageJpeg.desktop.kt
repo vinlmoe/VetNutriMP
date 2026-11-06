@@ -48,7 +48,7 @@ actual suspend fun exporterZip(contenu: ByteArray, nomFichier: String): Boolean 
             }
         }
     }
-    // Le dialogue Swing s'ouvre sur l'EDT
-    if (SwingUtilities.isEventDispatchThread()) dialogue() else SwingUtilities.invokeAndWait(dialogue)
+    // Le dialogue Swing s'ouvre sur l'EDT, jamais depuis la coroutine Compose appelante (runSwingDialog)
+    fr.vetbrain.vetnutri_mp.ExcelPlatform.runSwingDialog(dialogue)
     return resultat
 }
