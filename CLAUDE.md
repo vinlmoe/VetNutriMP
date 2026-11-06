@@ -135,6 +135,10 @@ référentiel, K = `coefficientAjustement`) pour réutiliser analyse, édition e
 espèces : l'espèce choisie filtre les référentiels généraux et les aliments proposés. Les configurations
 nommées sont enregistrées dans `MULTI_RATION_EXPLORATIONS` (JSON d'identifiants, `Data/ExplorationEnregistree.kt`,
 `MultiRationExplorationRepository`) ; les résultats ne sont pas stockés, ils se recalculent.
+Synthèse des résultats (classement des combinaisons par cases conformes, seuils limitants les plus
+fréquents, carte limitée à une combinaison) : moteur pur `Data/SyntheseExploration.kt`, calculé par le
+ViewModel après chaque calcul. Écran : configuration repliable à gauche, résultats en onglets Carte /
+Combinaisons / Courbes ; sous 600 dp, onglets Configuration / Résultats.
 
 ### Mode troupeau
 Un animal peut être un **troupeau** : à la création (ou modification), choix « Individu / Troupeau » ;

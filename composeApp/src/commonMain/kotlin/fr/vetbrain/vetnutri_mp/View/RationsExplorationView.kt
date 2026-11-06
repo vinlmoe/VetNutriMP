@@ -47,20 +47,39 @@ internal fun RationsExplorationView(
         viewModel.modifierRationExploration(scenario.id, aliments)
     }
     Column(modifier.fillMaxSize()) {
-        TopBarSimple(title = translate("explorationRations.titre"), onNavigateBack = { if (!enregistrement) confirmerRetour = true })
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        TopBarSimple(title = translate("explorationRations.titre"), onNavigateBack = { if (!enregistrement) confirmerRetour = true }) {
+            Button(
+                    onClick = { viewModel.enregistrerCorrections() },
+                    enabled = !enregistrement,
+                    colors = ButtonDefaults.buttonColors(
+                            backgroundColor = fr.vetbrain.vetnutri_mp.Theme.VetNutriColors.Primary,
+                            contentColor = fr.vetbrain.vetnutri_mp.Theme.VetNutriColors.OnPrimary
+                    )
+            ) {
+                Text(if (enregistrement) translate("explorationRations.enregistrement") else translate("explorationRations.enregistrer"))
+            }
+        }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(translate("explorationRations.enregistrerAide"))
-            Button(onClick = { viewModel.enregistrerCorrections() }, enabled = !enregistrement) {
-                Text(if (enregistrement) "Enregistrement…" else "Enregistrer les corrections et mettre à jour les résultats")
+            Card(Modifier.fillMaxWidth(), elevation = 0.dp,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0x1F000000))) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (scenarios.size > 1) {
+                        DropdownField(label = translate("explorationRations.ration"), selectedValue = scenario.id, options = scenarios.map { it.id },
+                                onValueChange = { selection = it }, valueToString = { id ->
+                                    val s = scenarios.first { it.id == id }
+                                    "$id — ${s.reference.nom} — ${formaterQuantite(s.poids)} kg — K ${formaterQuantite(s.k)}"
+                                }, modifier = Modifier.fillMaxWidth())
+                    } else {
+                        Text("${scenario.reference.nom} — ${formaterQuantite(scenario.poids)} kg — K ${formaterQuantite(scenario.k)}",
+                                style = MaterialTheme.typography.h6)
+                    }
+                    Text(translate("explorationRations.besoins", scenario.besoinStandard?.let { formaterQuantite(it) } ?: "—", scenario.besoinTotal?.let { formaterQuantite(it) } ?: "—"))
+                    Text(translate("explorationRations.enregistrerAide"), style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.62f))
+                }
             }
             erreur?.let { Text(it, color = MaterialTheme.colors.error) }
-            DropdownField(label = translate("explorationRations.ration"), selectedValue = scenario.id, options = scenarios.map { it.id },
-                    onValueChange = { selection = it }, valueToString = { id ->
-                        val s = scenarios.first { it.id == id }
-                        "$id — ${s.reference.nom} — ${formaterQuantite(s.poids)} kg — K ${formaterQuantite(s.k)}"
-                    }, modifier = Modifier.fillMaxWidth())
-            Text(translate("explorationRations.besoins", scenario.besoinStandard?.let { formaterQuantite(it) } ?: "—", scenario.besoinTotal?.let { formaterQuantite(it) } ?: "—"))
             if (message.isNotEmpty()) Text(message)
             key(selection) {
                 SectionAlimentsRation(
@@ -82,7 +101,8 @@ internal fun RationsExplorationView(
                         onRemoveAliment = { id -> modifierAliments(ration.alimentMutableList.filterNot { it.uuid == id }) }
                 )
             }
-            Text(translate("explorationRations.analyseAide"))
+            Text(translate("explorationRations.analyseAide"), style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.62f))
             AnalyseNutritionnelleCard(
                     ration = ration, referenceUtilisee = scenario.reference,
                     poidsMetabolique = scenario.poidsMetabolique, poidsAnimal = scenario.poids,
@@ -143,7 +163,7 @@ internal fun RationsExplorationView(
                                             scope.launch {
                                                 try {
                                                     val complet = viewModel.alimentComplet(aliment.uuid)
-                                                    if (complet == null) message = "Cet aliment n’est plus disponible."
+                                                    if (complet == null) message = translate("explorationRations.alimentIndisponible")
                                                     else {
                                                         modifierAliments(ration.alimentMutableList + AlimentRation(
                                                                 aliment = complet, quantite = 1.0,
@@ -155,7 +175,7 @@ internal fun RationsExplorationView(
                                                     throw e
                                                 } catch (e: Exception) {
                                                     e.rethrowIfCancellation()
-                                                    message = "Ajout impossible : ${e.message}"
+                                                    message = translate("explorationRations.ajoutImpossible", e.message ?: "")
                                                 } finally {
                                                     enCours = false
                                                 }
