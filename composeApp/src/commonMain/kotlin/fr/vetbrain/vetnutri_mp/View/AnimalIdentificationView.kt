@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.traduireRace
 import fr.vetbrain.vetnutri_mp.Utils.enTexte
 
 import androidx.compose.foundation.layout.*
@@ -83,7 +84,7 @@ fun AnimalIdentificationView(
                     val details =
                             listOfNotNull(
                                     animal.especeDuGroupe(type).translateEnum(),
-                                    type.race.takeIf { it.isNotBlank() },
+                                    type.race.takeIf { it.isNotBlank() }?.let { traduireRace(it, animal.especeDuGroupe(type)) },
                                     type.sexe()?.translateEnum()
                             ).joinToString(", ")
                     InfoRow(
@@ -92,7 +93,7 @@ fun AnimalIdentificationView(
                     )
                 }
             }
-            if (!animal.estTroupeau) InfoRow(label = Animal.BREED.translate(), value = animal.race)
+            if (!animal.estTroupeau) InfoRow(label = Animal.BREED.translate(), value = traduireRace(animal.race, animal.getEspece()))
 
             // Sexe (sans objet pour un troupeau)
             if (!animal.estTroupeau) InfoRow(

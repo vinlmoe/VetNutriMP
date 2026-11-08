@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.traduireRace
 import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.background
@@ -803,7 +804,7 @@ private fun AnimalCard(
                                         if (animal.race.isNotEmpty()) {
                                                 Text(
                                                         text =
-                                                                "${Animal.BREED.translate()}${deuxPoints()} ${animal.race}",
+                                                                "${Animal.BREED.translate()}${deuxPoints()} ${traduireRace(animal.race, animal.getEspece())}",
                                                         style = MaterialTheme.typography.body2
                                                 )
                                         }

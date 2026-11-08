@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.traduireRace
 import fr.vetbrain.vetnutri_mp.Utils.enTexte
 
 import androidx.compose.foundation.BorderStroke
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fr.vetbrain.vetnutri_mp.Components.ChampRace
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Data.TypeAnimalTroupeau
 import fr.vetbrain.vetnutri_mp.Data.apportsTroupeauEntier
@@ -186,17 +188,6 @@ fun EditeurTypesTroupeau(
                                     valueToString = { it.translateEnum() },
                                     modifier = Modifier.weight(1f)
                             )
-                            var race by remember { mutableStateOf(type.race) }
-                            OutlinedTextField(
-                                    value = race,
-                                    onValueChange = {
-                                        race = it
-                                        majGroupe(type.id) { t -> t.copy(race = it) }
-                                    },
-                                    label = { Text(translate("troupeau.race"), fontSize = 11.sp) },
-                                    singleLine = true,
-                                    modifier = Modifier.weight(1f)
-                            )
                             DropdownField(
                                     label = translate("troupeau.sexe"),
                                     selectedValue = type.sexe(),
@@ -206,6 +197,19 @@ fun EditeurTypesTroupeau(
                                     modifier = Modifier.weight(1f)
                             )
                         }
+                        // Race sur sa propre ligne : ses suggestions s'ouvrent sous le champ
+                        // Affichée dans la langue de l'interface ; enregistrée seulement si elle est modifiée
+                        var race by remember { mutableStateOf(traduireRace(type.race, type.especeEnum())) }
+                        ChampRace(
+                                value = race,
+                                onValueChange = {
+                                    race = it
+                                    majGroupe(type.id) { t -> t.copy(race = it) }
+                                },
+                                espece = type.especeEnum(),
+                                label = translate("troupeau.race"),
+                                modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             }
@@ -395,7 +399,7 @@ private fun LigneEtatGroupe(
             val details =
                     listOfNotNull(
                             type.especeEnum()?.translateEnum(),
-                            type.race.takeIf { it.isNotBlank() },
+                            type.race.takeIf { it.isNotBlank() }?.let { traduireRace(it, type.especeEnum()) },
                             type.sexe()?.translateEnum()
                     ).joinToString(", ")
             Text(
@@ -859,7 +863,7 @@ fun DetailConsultationTroupeau(
                 val details =
                         listOfNotNull(
                                 type.especeEnum()?.translateEnum(),
-                                type.race.takeIf { it.isNotBlank() },
+                                type.race.takeIf { it.isNotBlank() }?.let { traduireRace(it, type.especeEnum()) },
                                 type.sexe()?.translateEnum()
                         ).joinToString(", ")
                 if (details.isNotEmpty()) Text(details, fontSize = 12.sp, color = Color.Gray)
