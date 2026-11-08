@@ -5,6 +5,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.CatalogueRaces
 import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
 import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
@@ -243,6 +244,8 @@ class AnimalListViewModel(
                                         animal.examStudentNumber == examSession.studentNumber)
                             }
 
+                    // Race reconnue au catalogue : trouvée par son nom dans chaque langue
+                    val raceCatalogue = CatalogueRaces.trouver(animal.race, animal.getEspece())
                     val matchesQuery =
                             Recherche.correspond(
                                     trimmedQuery,
@@ -250,6 +253,9 @@ class AnimalListViewModel(
                                     animal.nom,
                                     animal.ownerName,
                                     animal.race,
+                                    raceCatalogue?.fr,
+                                    raceCatalogue?.en,
+                                    raceCatalogue?.zh,
                                     animal.examStudentId.takeIf { showExamDossiers }
                             )
 

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.traduireRace
 import fr.vetbrain.vetnutri_mp.Utils.enTexte
 
 import androidx.compose.foundation.BorderStroke
@@ -197,7 +198,8 @@ fun EditeurTypesTroupeau(
                             )
                         }
                         // Race sur sa propre ligne : ses suggestions s'ouvrent sous le champ
-                        var race by remember { mutableStateOf(type.race) }
+                        // Affichée dans la langue de l'interface ; enregistrée seulement si elle est modifiée
+                        var race by remember { mutableStateOf(traduireRace(type.race, type.especeEnum())) }
                         ChampRace(
                                 value = race,
                                 onValueChange = {
@@ -397,7 +399,7 @@ private fun LigneEtatGroupe(
             val details =
                     listOfNotNull(
                             type.especeEnum()?.translateEnum(),
-                            type.race.takeIf { it.isNotBlank() },
+                            type.race.takeIf { it.isNotBlank() }?.let { traduireRace(it, type.especeEnum()) },
                             type.sexe()?.translateEnum()
                     ).joinToString(", ")
             Text(
@@ -861,7 +863,7 @@ fun DetailConsultationTroupeau(
                 val details =
                         listOfNotNull(
                                 type.especeEnum()?.translateEnum(),
-                                type.race.takeIf { it.isNotBlank() },
+                                type.race.takeIf { it.isNotBlank() }?.let { traduireRace(it, type.especeEnum()) },
                                 type.sexe()?.translateEnum()
                         ).joinToString(", ")
                 if (details.isNotEmpty()) Text(details, fontSize = 12.sp, color = Color.Gray)

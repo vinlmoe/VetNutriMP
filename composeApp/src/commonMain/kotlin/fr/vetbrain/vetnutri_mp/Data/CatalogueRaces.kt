@@ -41,6 +41,52 @@ object CatalogueRaces {
     val chiens: List<RaceCatalogue> by lazy { lire(DONNEES_RACES_CHIENS) }
     val chats: List<RaceCatalogue> by lazy { lire(DONNEES_RACES_CHATS) }
 
+    private val indexChiens: Map<String, RaceCatalogue> by lazy { indexNoms(chiens) }
+    private val indexChats: Map<String, RaceCatalogue> by lazy { indexNoms(chats) }
+
+    /**
+     * Race du catalogue désignée par un texte saisi ou importé : un de ses noms (français, anglais,
+     * chinois) ou un synonyme qui n'appartient qu'à elle, sans tenir compte de la casse ni des
+     * accents. Espèce inconnue (null) : cherchée chez le chien et le chat, retenue si elle n'existe
+     * que dans l'un des deux. Null pour une saisie libre hors catalogue.
+     */
+    fun trouver(race: String, espece: Espece?): RaceCatalogue? {
+        val cle = Recherche.normaliser(race.trim())
+        if (cle.isEmpty()) return null
+        return when (espece) {
+            Espece.CHIEN -> indexChiens[cle]
+            Espece.CHAT -> indexChats[cle]
+            null -> {
+                val chien = indexChiens[cle]
+                val chat = indexChats[cle]
+                if (chat == null) chien else if (chien == null) chat else null
+            }
+            else -> null
+        }
+    }
+
+    /**
+     * Race à afficher dans [langue] : le nom du catalogue si [race] y est reconnue (voir [trouver]),
+     * sinon le texte tel qu'il a été saisi. Le texte enregistré n'est jamais modifié.
+     */
+    fun traduire(race: String, espece: Espece?, langue: String): String =
+            trouver(race, espece)?.nom(langue) ?: race
+
+    /** Noms principaux puis synonymes propres à une seule race ; un nom partagé ne traduit rien. */
+    private fun indexNoms(races: List<RaceCatalogue>): Map<String, RaceCatalogue> {
+        fun regrouper(noms: (RaceCatalogue) -> List<String>): Map<String, Set<RaceCatalogue>> {
+            val parNom = HashMap<String, MutableSet<RaceCatalogue>>()
+            races.forEach { race -> noms(race).forEach { parNom.getOrPut(Recherche.normaliser(it)) { LinkedHashSet() }.add(race) } }
+            return parNom
+        }
+        val principaux = regrouper { listOf(it.fr, it.en, it.zh) }
+        val synonymes = regrouper { it.synonymes }
+        val index = HashMap<String, RaceCatalogue>()
+        synonymes.forEach { (nom, liste) -> if (liste.size == 1 && nom !in principaux) index[nom] = liste.first() }
+        principaux.forEach { (nom, liste) -> if (liste.size == 1) index[nom] = liste.first() }
+        return index
+    }
+
     /** Races connues de l'espèce ; vide pour une espèce sans catalogue. */
     fun races(espece: Espece?): List<RaceCatalogue> =
             when (espece) {

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.traduireRace
 import fr.vetbrain.vetnutri_mp.Utils.enTexte
 import fr.vetbrain.vetnutri_mp.Utils.lireDate
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
@@ -249,9 +250,16 @@ fun CreateAnimalView(
                                 itemLabelProvider = { it.translateEnum() }
                         )
 
+                        // Race affichée dans la langue de l'interface au chargement de l'animal, puis
+                        // telle que saisie (pas de traduction pendant la frappe) ; le texte enregistré
+                        // ne change que si l'utilisateur la modifie
+                        var raceSaisie by remember(animal.uuid) {
+                                mutableStateOf(traduireRace(animal.race, animal.getEspece()))
+                        }
                         ChampRace(
-                                value = animal.race,
+                                value = raceSaisie,
                                 onValueChange = { newBreed: String ->
+                                        raceSaisie = newBreed
                                         viewModel.updateAnimal(animal.copy(race = newBreed))
                                 },
                                 espece = animal.getEspece(),

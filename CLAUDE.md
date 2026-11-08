@@ -182,6 +182,11 @@ chiens FCI et chats LOOF) : suggestions du champ race via `Components/ChampRace`
 groupes d'un troupeau), libellées dans la langue de l'interface (anglais pour une autre langue), complétées
 des races déjà saisies dans la base. La recherche porte sur tous les noms et synonymes ; la saisie reste libre.
 Pour ajouter une race : une ligne dans le fichier de données (`CatalogueRacesTest` refuse les doublons).
+Affichage : la race enregistrée reste le texte saisi ; `traduireRace(race, espece)` (`Localization/`) l'affiche
+dans la langue courante si `CatalogueRaces.trouver` la reconnaît (nom dans une des trois langues, ou synonyme
+propre à une seule race), sinon telle quelle. Liste, fiche, troupeau, comptes rendus, valeur initiale des champs
+de modification (le texte enregistré ne change que si l'utilisateur modifie la race) ; la recherche de la liste
+compare aussi les trois noms. Les JSON partagés et les noms issus de `RaceCodeMapper` en profitent sans conversion.
 
 ### Erreurs et journalisation
 - Jamais de `println` ni de `printStackTrace` : passer par `Utils/AppLog` (`d` = debug uniquement, `w`, `e`).

@@ -8,6 +8,10 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
   courantes, quelques races hors FCI) et de 85 races de chats (LOOF et autres registres), dans la
   langue de l'interface (français, anglais, chinois). Une race se trouve par n'importe lequel de ses
   noms ou synonymes ; la saisie reste libre. Création, modification et groupes d'un troupeau.
+- Races traduites à l'affichage : une race reconnue au catalogue s'affiche dans la langue de l'interface
+  (liste, fiche, troupeau, comptes rendus), y compris pour les dossiers partagés en JSON et les anciens
+  imports. Le texte enregistré n'est pas modifié ; la recherche des animaux trouve la race dans les trois
+  langues.
 
 ## 3.3.19
 

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.traduireRace
 import fr.vetbrain.vetnutri_mp.Utils.enTexte
 import fr.vetbrain.vetnutri_mp.Utils.lireDate
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
@@ -50,7 +51,9 @@ fun AnimalEditView(
         modifier: Modifier = Modifier
 ) {
         var nom by remember { mutableStateOf(animal.nom) }
-        var race by remember { mutableStateOf(animal.race) }
+        // Race affichée dans la langue de l'interface ; le texte enregistré ne change que si elle est modifiée
+        val raceAffichee = remember { traduireRace(animal.race, animal.getEspece()) }
+        var race by remember { mutableStateOf(raceAffichee) }
         var ownerName by remember { mutableStateOf(animal.ownerName) }
         var summary by remember { mutableStateOf(animal.summary) }
         var selectedSex by remember { mutableStateOf(animal.getSex()) }
@@ -331,7 +334,7 @@ fun AnimalEditView(
                                                 val updatedAnimal =
                                                         animal.copy(
                                                                 nom = nom,
-                                                                race = race,
+                                                                race = if (race == raceAffichee) animal.race else race,
                                                                 ownerName = ownerName,
                                                                 summary = summary,
                                                                 sexId = selectedSex.id,

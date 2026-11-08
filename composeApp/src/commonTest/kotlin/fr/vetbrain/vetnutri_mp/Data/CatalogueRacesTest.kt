@@ -77,3 +77,54 @@ class CatalogueRacesTest {
         assertTrue(CatalogueRaces.filtrer("Boxer", fr).isEmpty())
     }
 }
+
+class TraductionRacesTest {
+
+    @Test
+    fun raceEnregistreeTraduiteDansLaLangueDeLInterface() {
+        assertEquals("German Shepherd Dog", CatalogueRaces.traduire("Berger allemand", Espece.CHIEN, "en"))
+        assertEquals("德国牧羊犬", CatalogueRaces.traduire("berger allemand", Espece.CHIEN, "zh"))
+        assertEquals("Berger allemand", CatalogueRaces.traduire("German Shepherd Dog", Espece.CHIEN, "fr"))
+        assertEquals("Persan", CatalogueRaces.traduire("波斯猫", Espece.CHAT, "fr"))
+        // Synonyme propre à une race
+        assertEquals("Labrador Retriever", CatalogueRaces.traduire("Labrador", Espece.CHIEN, "en"))
+    }
+
+    @Test
+    fun saisieLibreOuAmbigueGardeeTelleQuelle() {
+        assertEquals("Croisé labrador x husky", CatalogueRaces.traduire("Croisé labrador x husky", Espece.CHIEN, "en"))
+        // « Corgi » désigne deux races : pas de traduction
+        assertEquals("Corgi", CatalogueRaces.traduire("Corgi", Espece.CHIEN, "zh"))
+        // Un nom principal l'emporte sur le synonyme d'une autre race
+        assertEquals("Siberian", CatalogueRaces.traduire("Sibérien", Espece.CHAT, "en"))
+        assertEquals("Akita", CatalogueRaces.traduire("秋田犬", Espece.CHIEN, "en"))
+        // Espèce sans catalogue
+        assertEquals("Bélier nain", CatalogueRaces.traduire("Bélier nain", Espece.LAPIN, "en"))
+        assertEquals("", CatalogueRaces.traduire("", Espece.CHIEN, "en"))
+    }
+
+    @Test
+    fun especeInconnueChercheeChezLeChienEtLeChat() {
+        assertEquals("Maine Coon", CatalogueRaces.traduire("Maine coon", null, "en"))
+        assertEquals("Beagle", CatalogueRaces.traduire("Beagle", null, "en"))
+    }
+
+    @Test
+    fun anciensNomsDImportReconnus() {
+        // Noms produits par RaceCodeMapper à l'import des anciens fichiers
+        assertEquals("Norwegian Forest Cat", CatalogueRaces.traduire("Norvégien ou Skogkatt", Espece.CHAT, "en"))
+        assertEquals("Italian Sighthound", CatalogueRaces.traduire("Levrette italienne", Espece.CHIEN, "en"))
+        assertEquals("Belgian Shepherd Dog", CatalogueRaces.traduire("Berger Belge", Espece.CHIEN, "en"))
+    }
+
+    @Test
+    fun aucunNomPrincipalPartageEntreDeuxRaces() {
+        listOf(Espece.CHIEN, Espece.CHAT).forEach { espece ->
+            CatalogueRaces.races(espece).forEach { race ->
+                listOf(race.fr, race.en, race.zh).forEach { nom ->
+                    assertEquals(race, CatalogueRaces.trouver(nom, espece), nom)
+                }
+            }
+        }
+    }
+}
