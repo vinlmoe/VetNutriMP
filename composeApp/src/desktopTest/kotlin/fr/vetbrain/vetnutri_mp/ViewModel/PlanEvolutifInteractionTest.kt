@@ -170,6 +170,45 @@ class PlanEvolutifInteractionTest {
     private fun assertProche(attendu: Double, obtenu: Double?, msg: String) =
         assertTrue(obtenu != null && kotlin.math.abs(attendu - obtenu) < 1e-6, "$msg : attendu $attendu, obtenu $obtenu")
 
+    /** Attend une condition (au plus 5 s) plutôt qu'un nombre fixe de yield(), fragile sous charge. */
+    private suspend fun attendreQue(condition: () -> Boolean) {
+        withTimeout(5_000) { while (!condition()) delay(10) }
+    }
+
+    @Test
+    fun lectureSeule_aucuneEcritureEnBase() = run {
+        val c = consultationEnBase()
+        attendreQue { vm.selectedConsultation.value?.uuid == "c" }
+        val enregistrementsAvant = dao.saves
+        // Copie d'examen ouverte depuis la notation
+        vm.setAnimal(AnimalEv(uuid = "a", nom = "Rex"), consultationASelectionner = "c", lectureSeule = true); idle()
+        attendreQue { vm.selectedConsultation.value?.uuid == "c" }
+        assertTrue(vm.lectureSeule.value)
+        vm.updateConsultation(consultation().copy(weight = 42.0)); idle()
+        vm.saveFromFullScreen(consultation().copy(weight = 43.0)); idle()
+        vm.duplicateRation(ration("actuelle")); idle()
+        vm.deleteConsultation(consultation()); idle()
+        assertFalse(vm.deleteAnimal())
+        assertEquals(enregistrementsAvant, dao.saves, "aucun enregistrement en lecture seule")
+        assertEquals(5.0, repo.getConsultationById("c")?.weight, "poids inchangé en base")
+        assertEquals(1, repo.getConsultationById("c")?.rations?.size, "aucune ration dupliquée")
+
+        // Un rechargement interne (ex. après partage) garde la lecture seule ; la liste la lève
+        vm.setAnimal(AnimalEv(uuid = "a", nom = "Rex")); idle()
+        attendreQue { vm.selectedConsultation.value != null }
+        assertTrue(vm.lectureSeule.value)
+        vm.setAnimal(AnimalEv(uuid = "a", nom = "Rex"), lectureSeule = false); idle()
+        attendreQue { vm.selectedConsultation.value?.uuid == "c" }
+        assertFalse(vm.lectureSeule.value)
+        vm.updateConsultation(consultation().copy(weight = 6.0)); idle()
+        attendreQue { dao.consultations["c"]?.weight == 6.0 }
+        assertEquals(6.0, repo.getConsultationById("c")?.weight)
+        assertEquals("c", c.uuid)
+        // Laisser finir les tâches du ViewModel (fil principal partagé) : le test suivant attend
+        // par un nombre fixe de yield() et serait retardé par elles
+        delay(500)
+    }
+
     @Test
     fun selectionConsultation_jamaisPerdueApresEditionAnnulationOuRechargement() = run {
         fun c(id: String, mois: Int) = ConsultationEv(

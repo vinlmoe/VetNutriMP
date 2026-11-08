@@ -29,6 +29,11 @@ expect fun importApiFromFile(viewModel: SettingsViewModel)
 expect suspend fun exportJsonToFile(content: String, defaultFileName: String): Boolean
 expect suspend fun exportApiEnvelopeToFile(envelope: ApiEnvelope, defaultFileName: String): Boolean
 expect suspend fun openJsonFileContent(): String?
+/**
+ * Choix de plusieurs fichiers JSON (sur desktop, aussi d'un dossier : tous ses .json). null si
+ * l'utilisateur annule ; un fichier illisible est rendu avec un contenu vide.
+ */
+expect suspend fun openJsonFilesContent(): List<fr.vetbrain.vetnutri_mp.Data.FichierJson>?
 expect fun performDatabaseFactoryReset(): String?
 expect suspend fun exportPdfDocument(
     documentType: DocumentType,

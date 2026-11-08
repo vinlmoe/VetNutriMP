@@ -21,6 +21,10 @@ import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.foundation.background
+import androidx.compose.ui.unit.sp
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -51,7 +55,6 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
-import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.copyToClipboardComposable
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailSection
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
@@ -91,6 +94,7 @@ fun AnimalDetailView(
         val showFullScreenEdit by viewModel.showFullScreenEdit.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
         var showConsultationDetail by remember { mutableStateOf(false) }
+        val lectureSeule by viewModel.lectureSeule.collectAsState()
 
         // État du drawer pour les écrans étroits
         val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -184,6 +188,9 @@ fun AnimalDetailView(
                         val isWideScreen = maxWidth > AppSizes.breakpointWideScreen
 
                         // Écran large : menu en barre latérale ; écran étroit : menu en tiroir
+                        Column(Modifier.fillMaxSize()) {
+                        if (lectureSeule) BandeauLectureSeule()
+                        Box(Modifier.weight(1f)) {
                         AnimalDetailLayout(
                                 isWideScreen = isWideScreen,
                                 drawerState = drawerState,
@@ -195,8 +202,9 @@ fun AnimalDetailView(
                                 viewModel = viewModel,
                                 settingsViewModel = settingsViewModel,
                                 isEditing = isEditing,
-                                onIsEditingChange = { isEditing = it },
-                                onShowDeleteConfirmation = { showDeleteConfirmation = true },
+                                // Lecture seule : ni modification de l'identification, ni suppression
+                                onIsEditingChange = { if (!lectureSeule) isEditing = it },
+                                onShowDeleteConfirmation = { if (!lectureSeule) showDeleteConfirmation = true },
                                 showConsultationDetail = showConsultationDetail,
                                 onShowConsultationDetail = { showConsultationDetail = it },
                                 equationRepository = equationRepository,
@@ -204,6 +212,8 @@ fun AnimalDetailView(
                                 conseilRepository = conseilRepository,
                                 isExamMode = isExamMode
                         )
+                        }
+                        }
 
                         // Boîte de dialogue de confirmation de suppression
                         if (showDeleteConfirmation) {
@@ -245,6 +255,21 @@ fun AnimalDetailView(
                                 )
                         }
                 }
+        }
+}
+
+/** Bandeau d'une fiche ouverte en lecture seule (copie d'examen) ; le bouton Retour du menu ramène à la notation. */
+@Composable
+private fun BandeauLectureSeule() {
+        Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+                        .background(Color(0xFF8A6D1B).copy(alpha = 0.10f))
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+        ) {
+                Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF8A6D1B), modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(translate("lectureSeule.bandeau"), color = Color(0xFF8A6D1B), fontSize = 13.sp, modifier = Modifier.weight(1f))
         }
 }
 
@@ -568,7 +593,9 @@ private fun AnimalDetailLayout(
                                         contentDescription = translate(AnimalDetail.BACK)
                                 )
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                Text(text = translate(AnimalDetail.BACK))
+                                // Copie ouverte depuis la notation : ce même bouton y ramène (pas de second bouton)
+                                Text(text = if (viewModel.lectureSeule.collectAsState().value) translate("lectureSeule.retourNotation")
+                                        else translate(AnimalDetail.BACK))
                         }
 
                         // Ajout de l'option Paramètres en bas du menu
@@ -658,6 +685,7 @@ private fun AnimalDetailLayout(
                                                 animal = animalDetails,
                                                 onEdit = { onIsEditingChange(true) },
                                                 onDelete = onShowDeleteConfirmation,
+                                                lectureSeule = viewModel.lectureSeule.collectAsState().value,
                                                 modifier =
                                                         Modifier.fillMaxSize()
                                                                 .padding(

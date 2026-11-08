@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.traduireRace
 import fr.vetbrain.vetnutri_mp.Utils.enTexte
 
 import androidx.compose.foundation.layout.*
@@ -37,7 +38,9 @@ fun AnimalIdentificationView(
         animal: AnimalEv,
         onEdit: () -> Unit,
         onDelete: () -> Unit,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        /** Copie consultée en lecture seule : ni modification ni suppression proposées. */
+        lectureSeule: Boolean = false
 ) {
     Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // En-tête avec boutons d'action
@@ -47,7 +50,7 @@ fun AnimalIdentificationView(
                 verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text = translate(Animal.IDENTIFICATION_TITLE), style = MaterialTheme.typography.h6)
-            Row {
+            if (!lectureSeule) Row {
                 IconButton(onClick = onEdit) {
                     Icon(
                             imageVector = Icons.Default.Edit,
@@ -81,7 +84,7 @@ fun AnimalIdentificationView(
                     val details =
                             listOfNotNull(
                                     animal.especeDuGroupe(type).translateEnum(),
-                                    type.race.takeIf { it.isNotBlank() },
+                                    type.race.takeIf { it.isNotBlank() }?.let { traduireRace(it, animal.especeDuGroupe(type)) },
                                     type.sexe()?.translateEnum()
                             ).joinToString(", ")
                     InfoRow(
@@ -90,7 +93,7 @@ fun AnimalIdentificationView(
                     )
                 }
             }
-            if (!animal.estTroupeau) InfoRow(label = Animal.BREED.translate(), value = animal.race)
+            if (!animal.estTroupeau) InfoRow(label = Animal.BREED.translate(), value = traduireRace(animal.race, animal.getEspece()))
 
             // Sexe (sans objet pour un troupeau)
             if (!animal.estTroupeau) InfoRow(

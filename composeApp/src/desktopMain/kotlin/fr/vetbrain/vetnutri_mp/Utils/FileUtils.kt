@@ -61,6 +61,27 @@ object FileUtils {
         }
     }
 
+    /**
+     * Choix de plusieurs fichiers JSON, ou d'un dossier (tous ses .json, sans sous-dossiers).
+     * null si l'utilisateur annule.
+     */
+    fun openJsonFilesDialog(): List<File>? {
+        val fileChooser =
+                JFileChooser().apply {
+                    dialogTitle = "Importer des fichiers JSON (ou un dossier)"
+                    fileFilter = FileNameExtensionFilter("Fichiers JSON (*.json)", "json")
+                    isMultiSelectionEnabled = true
+                    fileSelectionMode = JFileChooser.FILES_AND_DIRECTORIES
+                    applyLastDirectory(this)
+                }
+        if (fileChooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) return null
+        val choisis = fileChooser.selectedFiles.takeIf { it.isNotEmpty() } ?: arrayOf(fileChooser.selectedFile)
+        return choisis.filterNotNull().flatMap { f ->
+            if (f.isDirectory) f.listFiles { x -> x.isFile && x.name.endsWith(".json", ignoreCase = true) }?.sortedBy { it.name }.orEmpty()
+            else listOf(f)
+        }
+    }
+
     /** Sauvegarde un contenu binaire via une boîte de dialogue. */
     fun saveBinaryFileDialog(bytes: ByteArray, defaultFileName: String = "document.pdf"): Boolean {
         val fileChooser =

@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.traduireRace
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
 import fr.vetbrain.vetnutri_mp.Utils.enTexte
@@ -172,7 +173,7 @@ internal fun buildCompteRenduText(
                 appendLine("${translate(AnimalDetail.CR_LABEL_OWNER)}${deuxPoints()} ${text(animal?.ownerName)}")
                 appendLine("${translate(AnimalDetail.CR_LABEL_SEX)}${deuxPoints()} ${text(animal?.getSex()?.displayName)}")
                 appendLine("${translate(AnimalDetail.CR_LABEL_SPECIES)}${deuxPoints()} ${text(animal?.getEspece()?.translateEnum())}")
-                appendLine("${translate(AnimalDetail.CR_LABEL_BREED)}${deuxPoints()} ${text(animal?.race)}")
+                appendLine("${translate(AnimalDetail.CR_LABEL_BREED)}${deuxPoints()} ${text(animal?.let { traduireRace(it.race, it.getEspece()) })}")
                 appendLine("${translate(AnimalDetail.CR_LABEL_BIRTHDATE)}${deuxPoints()} ${text(animal?.birthdate?.enTexte())}")
                 appendLine("${translate(AnimalDetail.CR_LABEL_CONSULT_WEIGHT)}${deuxPoints()} ${consultation?.effectiveWeight?.let { translate(AnimalDetail.WEIGHT_KG_FORMAT, ((it * 10.0).roundToInt() / 10.0).toString()) } ?: "-"}")
                 appendLine("${translate(AnimalDetail.CR_LABEL_UUID)}${deuxPoints()} ${text(animal?.uuid)}")
@@ -336,7 +337,7 @@ internal fun buildCompteRenduHtml(
                     <div><b>${translate(AnimalDetail.CR_LABEL_OWNER)}:</b> ${escapeHtml(animal?.ownerName?.ifBlank { "-" } ?: "-")}</div>
                     <div><b>${translate(AnimalDetail.CR_LABEL_SEX)}:</b> ${escapeHtml(animal?.getSex()?.displayName?.ifBlank { "-" } ?: "-")}</div>
                     <div><b>${translate(AnimalDetail.CR_LABEL_SPECIES)}:</b> ${escapeHtml(animal?.getEspece()?.label?.ifBlank { "-" } ?: "-")}</div>
-                    <div><b>${translate(AnimalDetail.CR_LABEL_BREED)}:</b> ${escapeHtml(animal?.race?.ifBlank { "-" } ?: "-")}</div>
+                    <div><b>${translate(AnimalDetail.CR_LABEL_BREED)}:</b> ${escapeHtml(animal?.let { traduireRace(it.race, it.getEspece()) }?.ifBlank { "-" } ?: "-")}</div>
                     <div><b>${translate(AnimalDetail.CR_LABEL_BIRTHDATE)}:</b> ${escapeHtml(animal?.birthdate?.enTexte() ?: "-")}</div>
                     <div><b>${translate(AnimalDetail.CR_LABEL_CONSULT_WEIGHT)}:</b> ${escapeHtml(consultation?.effectiveWeight?.let { translate(AnimalDetail.WEIGHT_KG_FORMAT, ((it * 10.0).roundToInt() / 10.0).toString()) } ?: "-")}</div>
                     <div><b>${translate(AnimalDetail.CR_LABEL_UUID)}:</b> ${escapeHtml(animal?.uuid ?: "-")}</div>

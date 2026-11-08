@@ -12,10 +12,10 @@ Cibles : Android, iOS, Desktop (JVM ; Windows et macOS sont des paquets de la ci
 | UI | Compose Multiplatform | 1.7.0 |
 | Langage | Kotlin | 2.2.20 |
 | Base de données | Room + BundledSQLiteDriver | 2.7.0 |
-| Async | kotlinx.coroutines | 1.10.2 |
+| Async | kotlinx.coroutines | 1.11.0 |
 | State | StateFlow + ViewModel (lifecycle) | 2.8.4 |
-| HTTP | Ktor | 3.0.3 |
-| Sérialisation | Kotlin Serialization JSON | 1.8.0 |
+| HTTP | Ktor | 3.3.3 (3.4+ exige Kotlin 2.3) |
+| Sérialisation | Kotlin Serialization JSON | 1.9.0 |
 | DI | Manuel via `AppContainer` | — |
 
 ---
@@ -126,7 +126,7 @@ doit figurer dans au moins un champ. Pour une longue liste, pré-calculer `Reche
 `NutrientResolver.AllNutrientResolver(label)` est le point d'entrée unique pour résoudre un label textuel vers un `Nutrient`. Ne pas appeler `getByLabel()` directement sur les enums individuels depuis les couches Repository/Service — passer par `NutrientResolver`.
 
 ### Exploration multiration
-Écran `Screen.MultiRation` (bouton « Exploration multiration » de la liste des animaux) : moteur pur dans
+Écran `Screen.MultiRation` (icône « Exploration multiration » de la barre du haut de la liste des animaux, à côté d'« Analyses croisées ») : moteur pur dans
 `Data/ExplorationMultiration.kt` (ajustement successif protéines → fibres → calcium → oméga-6 → sodium →
 énergie, arrondis `arrondirQuantiteSelonRegles`, conformité `calculerConformite` comme l'analyse de ration),
 BEE et poids métabolique via `Data/CalculMetabolique.kt` (partagé avec `AnimalDetailViewModel`). Une ration
@@ -135,6 +135,25 @@ référentiel, K = `coefficientAjustement`) pour réutiliser analyse, édition e
 espèces : l'espèce choisie filtre les référentiels généraux et les aliments proposés. Les configurations
 nommées sont enregistrées dans `MULTI_RATION_EXPLORATIONS` (JSON d'identifiants, `Data/ExplorationEnregistree.kt`,
 `MultiRationExplorationRepository`) ; les résultats ne sont pas stockés, ils se recalculent.
+Synthèse des résultats (classement des combinaisons par cases conformes, seuils limitants les plus
+fréquents, carte limitée à une combinaison) : moteur pur `Data/SyntheseExploration.kt`, calculé par le
+ViewModel après chaque calcul. Écran : configuration repliable à gauche, résultats en onglets Carte /
+Combinaisons / Courbes ; sous 600 dp, onglets Configuration / Résultats.
+
+### Notation d'examen (analyses croisées)
+`CrossConsultationGradingView` + `ExamGradingViewModel` : étapes Copies / Analyse / Barème / Notes (en-tête
+fixe). Moteur pur `Data/NotationExamen.kt` : `criteresBareme`/`pointsBareme` (seuls les critères actifs **et**
+configurés comptent), `noteAutomatique` (plafonnée, ou proportionnelle si `notationProportionnelle`),
+`statistiquesNotes` (réussite par critère), `identifiantsCopies` (clé `studentId` unique par copie : la table
+`EXAM_GRADES` a pour clé examen + exercice + studentId). La densité énergétique des copies est en kcal/g.
+Copies : lot de JSON (`openJsonFilesContent`, expect ; le desktop accepte un dossier ; `preparerCopieJson`
+rattache à l'examen les copies sans identifiant ; `importerLotJson`) ou CSV Moodle de liens jsonbin.
+« Voir la copie » : `AnimalDetailViewModel.openAnimalReadOnly` (`lectureSeule` ; toutes les écritures passent
+par `ecritureAutorisee()`, ignorées sans message en lecture seule ; le bouton Retour de la fiche, libellé
+« Retour à la notation », revient via `detailReturnScreen = CrossAnalysisGrading`). L'état de l'écran
+(examen, étape, copie dépliée) est dans `ExamGradingViewModel` pour survivre à l'aller-retour ;
+`chargerExamenSiNouveau` ne recharge pas un examen déjà en mémoire. Sauvegarde / reprise : `DossierNotation`
+(barème et versions, notes, dernier import, copies en export API).
 
 ### Mode troupeau
 Un animal peut être un **troupeau** : à la création (ou modification), choix « Individu / Troupeau » ;
@@ -156,6 +175,18 @@ ration affichée devient celle d'un individu (quantités × Bᵢ / Σ nⱼBⱼ, 
 virtuelle et en lecture seule) et la consultation d'analyse `consultationAnalysee` (`pourTypeTroupeau` :
 poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existante. Moteur pur dans
 `Data/Troupeau.kt` (`facteursRepartitionTroupeau`, `AnalyseurTroupeau`).
+
+### Races (catalogue hors ligne)
+`Data/CatalogueRaces.kt` + `Data/CatalogueRacesDonnees.kt` (une ligne `fr|en|zh|synonymes;…` par race,
+chiens FCI et chats LOOF) : suggestions du champ race via `Components/ChampRace` (création, modification,
+groupes d'un troupeau), libellées dans la langue de l'interface (anglais pour une autre langue), complétées
+des races déjà saisies dans la base. La recherche porte sur tous les noms et synonymes ; la saisie reste libre.
+Pour ajouter une race : une ligne dans le fichier de données (`CatalogueRacesTest` refuse les doublons).
+Affichage : la race enregistrée reste le texte saisi ; `traduireRace(race, espece)` (`Localization/`) l'affiche
+dans la langue courante si `CatalogueRaces.trouver` la reconnaît (nom dans une des trois langues, ou synonyme
+propre à une seule race), sinon telle quelle. Liste, fiche, troupeau, comptes rendus, valeur initiale des champs
+de modification (le texte enregistré ne change que si l'utilisateur modifie la race) ; la recherche de la liste
+compare aussi les trois noms. Les JSON partagés et les noms issus de `RaceCodeMapper` en profitent sans conversion.
 
 ### Erreurs et journalisation
 - Jamais de `println` ni de `printStackTrace` : passer par `Utils/AppLog` (`d` = debug uniquement, `w`, `e`).

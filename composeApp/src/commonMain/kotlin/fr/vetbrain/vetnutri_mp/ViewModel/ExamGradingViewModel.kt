@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -83,6 +84,25 @@ class ExamGradingViewModel(
     private val _metricDistributions = MutableStateFlow<List<MetricDistribution>>(emptyList())
     val metricDistributions: StateFlow<List<MetricDistribution>> = _metricDistributions.asStateFlow()
 
+    private val _statistiques = MutableStateFlow<StatistiquesNotes?>(null)
+    /** Statistiques des notes et réussite par critère (null sans note). */
+    val statistiques: StateFlow<StatistiquesNotes?> = _statistiques.asStateFlow()
+
+    private val _pointsBareme = MutableStateFlow(0.0)
+    /** Total des points que le barème peut attribuer (critères actifs et configurés). */
+    val pointsDisponibles: StateFlow<Double> = _pointsBareme.asStateFlow()
+
+    private fun publierRegle(rule: ExamGradingRuleSet?) {
+        _rule.value = rule
+        _pointsBareme.value = rule?.let { pointsBareme(it) } ?: 0.0
+        _statistiques.value = statistiquesNotes(_grades.value, rule)
+    }
+
+    private fun publierNotes(grades: List<ExamGrade>) {
+        _grades.value = grades
+        _statistiques.value = statistiquesNotes(grades, _rule.value)
+    }
+
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -91,10 +111,142 @@ class ExamGradingViewModel(
 
     fun clearMessage() { _message.value = null }
 
+    // --- État de l'écran, gardé quand on ouvre une copie puis qu'on revient -----------------
+
+    private val _examIdCourant = MutableStateFlow("")
+    val examIdCourant: StateFlow<String> = _examIdCourant.asStateFlow()
+    private val _exerciseIdCourant = MutableStateFlow("")
+    val exerciseIdCourant: StateFlow<String> = _exerciseIdCourant.asStateFlow()
+    private val _etape = MutableStateFlow(0)
+    /** Étape affichée (0 = copies … 3 = notes). */
+    val etape: StateFlow<Int> = _etape.asStateFlow()
+    private val _copieOuverte = MutableStateFlow<String?>(null)
+    /** Copie dont le détail est déplié à l'étape Notes. */
+    val copieOuverte: StateFlow<String?> = _copieOuverte.asStateFlow()
+
+    /** Examen dont le barème et les notes sont en mémoire : le recharger effacerait les modifications. */
+    private var examCharge: Pair<String, String>? = null
+
+    fun choisirExamen(examId: String, exerciseId: String) {
+        _examIdCourant.value = examId
+        _exerciseIdCourant.value = exerciseId
+    }
+
+    fun choisirEtape(etape: Int) { _etape.value = etape }
+
+    fun basculerCopie(studentId: String) {
+        _copieOuverte.value = if (_copieOuverte.value == studentId) null else studentId
+    }
+
+    /** Charge le barème et les notes de l'examen, sauf s'il est déjà chargé (retour d'une copie). */
+    fun chargerExamenSiNouveau(examId: String, exerciseId: String) {
+        val cle = examId.trim() to exerciseId.trim()
+        if (cle.first.isEmpty() || cle.second.isEmpty() || cle == examCharge) return
+        examCharge = cle
+        _copieOuverte.value = null
+        _metricDistributions.value = emptyList()
+        loadRule(cle.first, cle.second)
+        loadGrades(cle.first, cle.second)
+    }
+
+    // --- Sauvegarde et reprise d'une notation -------------------------------------------------
+
+    private val _sauvegardeEnCours = MutableStateFlow(false)
+    val sauvegardeEnCours: StateFlow<Boolean> = _sauvegardeEnCours.asStateFlow()
+
+    /**
+     * Fichier de notation de l'examen courant : barème et ses versions, notes, dernier import et
+     * copies (animaux, consultations, aliments et référentiels liés). null en cas d'échec.
+     */
+    suspend fun dossierNotationJson(animalIds: Set<String>): String? {
+        val examId = _examIdCourant.value.trim()
+        val exerciseId = _exerciseIdCourant.value.trim()
+        if (examId.isEmpty() || exerciseId.isEmpty()) {
+            _message.value = translate("notation.message.idsManquants")
+            return null
+        }
+        _sauvegardeEnCours.value = true
+        return try {
+            val copiesJson = if (animalIds.isEmpty()) null else exportImportRepository.exportWithSelection(
+                    ExportImportRepository.ExportSelectionOptions(
+                            includeAnimals = true, includeFoods = false, includeRations = false, includeRecipes = false,
+                            includeEquations = false, includeConseils = false, includeLinkedFromAnimals = true,
+                            animalIds = animalIds
+                    )
+            )
+            encoderDossierNotation(DossierNotation(
+                    enregistreLeEpochMs = Clock.System.now().toEpochMilliseconds(),
+                    examId = examId, exerciseId = exerciseId,
+                    bareme = _rule.value, baremesPrecedents = _ruleSnapshotHistory.value,
+                    notes = _grades.value, sessionImport = _lastImportSession.value, copiesJson = copiesJson
+            ))
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            _message.value = translate("notation.message.sauvegardeImpossible", e.message ?: "")
+            null
+        } finally {
+            _sauvegardeEnCours.value = false
+        }
+    }
+
+    fun signalerSauvegarde(ok: Boolean) {
+        _message.value = if (ok) translate("notation.message.sauvegardeFaite") else translate("notation.message.sauvegardeAnnulee")
+    }
+
+    /**
+     * Reprend une notation sauvegardée : copies importées dans la base, barème et notes
+     * enregistrés, versions du barème et dernier import restaurés, examen sélectionné.
+     */
+    fun restaurerDossier(texte: String, onCopiesImportees: () -> Unit) {
+        val dossier = decoderDossierNotation(texte)
+        if (dossier == null) {
+            _message.value = translate("notation.message.dossierInvalide")
+            return
+        }
+        viewModelScope.launch {
+            _sauvegardeEnCours.value = true
+            try {
+                dossier.copiesJson?.let { exportImportRepository.importAll(it).requireComplete() }
+                dossier.bareme?.let { repository.saveRule(it) }
+                if (dossier.notes.isNotEmpty()) repository.saveGrades(dossier.notes)
+                dossier.baremesPrecedents.forEach { ecrireSnapshot(it) }
+                dossier.sessionImport?.let { saveImportSession(it) }
+                // L'examen restauré devient l'examen courant, rechargé depuis la base
+                examCharge = null
+                choisirExamen(dossier.examId, dossier.exerciseId)
+                chargerExamenSiNouveau(dossier.examId, dossier.exerciseId)
+                _message.value = translate("notation.message.dossierRestaure", dossier.examId, dossier.exerciseId,
+                        dossier.notes.size.toString(), formatDateDossier(dossier.enregistreLeEpochMs))
+                onCopiesImportees()
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                _message.value = translate("notation.message.restaurationImpossible", e.message ?: "")
+            } finally {
+                _sauvegardeEnCours.value = false
+            }
+        }
+    }
+
+    private suspend fun ecrireSnapshot(entry: RuleSnapshotEntry) {
+        val examDir = getExamCacheDirectory(entry.rule.examId, entry.rule.exerciseId)
+        val file = PlatformFile.create("${examDir.absolutePath}/rule_snapshot_${sanitizeFileName(entry.snapshotId)}.json")
+        fileService.writeText(file, json.encodeToString(RuleSnapshotEntry.serializer(), entry))
+    }
+
+    private fun formatDateDossier(epochMs: Long): String =
+            try {
+                val d = kotlinx.datetime.Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+                "${d.dayOfMonth.toString().padStart(2, '0')}/${d.monthNumber.toString().padStart(2, '0')}/${d.year} " +
+                        "${d.hour.toString().padStart(2, '0')}:${d.minute.toString().padStart(2, '0')}"
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                "?"
+            }
+
     fun loadRule(examId: String, exerciseId: String) {
         viewModelScope.launch {
             val existing = repository.getRule(examId, exerciseId)
-            _rule.value = existing ?: defaultRule(examId, exerciseId)
+            publierRegle(existing ?: defaultRule(examId, exerciseId))
             loadSavedImportSession(examId, exerciseId)
             loadImportSessionHistory(examId, exerciseId)
             loadRuleSnapshotHistory(examId, exerciseId)
@@ -102,7 +254,7 @@ class ExamGradingViewModel(
     }
 
     fun updateRule(rule: ExamGradingRuleSet) {
-        _rule.value = rule
+        publierRegle(rule)
     }
 
     fun saveRule() {
@@ -111,46 +263,54 @@ class ExamGradingViewModel(
             repository.saveRule(current)
             saveRuleSnapshot(current)
             loadRuleSnapshotHistory(current.examId, current.exerciseId)
-            _message.value = "✅ Règles sauvegardées"
+            _message.value = translate("notation.message.regleEnregistree")
         }
     }
 
     fun selectImportSession(sessionId: String) {
         val picked = _importSessionHistory.value.firstOrNull { it.sessionId == sessionId } ?: return
         _lastImportSession.value = picked
-        _message.value = "📂 Session d'import chargée (${picked.successCount}/${picked.total})"
+        _message.value = translate("notation.message.sessionChargee", picked.successCount.toString(), picked.total.toString())
     }
 
     fun selectRuleSnapshot(snapshotId: String) {
         val picked = _ruleSnapshotHistory.value.firstOrNull { it.snapshotId == snapshotId } ?: return
-        _rule.value = picked.rule
-        _message.value = "📐 Grille snapshot chargée"
+        publierRegle(picked.rule)
+        _message.value = translate("notation.message.grilleChargee")
     }
 
     fun computeGrades(items: List<CrossConsultationAnalysisViewModel.ConsultationItem>, examId: String, exerciseId: String) {
         val ruleSet = _rule.value ?: defaultRule(examId, exerciseId)
-        _rule.value = ruleSet
+        publierRegle(ruleSet)
         val perAnimal = items.groupBy { it.animalId }
-        val grades = perAnimal.values.mapNotNull { consultations ->
-            val latest = consultations.maxByOrNull { it.rawDate ?: kotlinx.datetime.LocalDate(1900,1,1) } ?: return@mapNotNull null
+        val latestByAnimal = perAnimal.values.mapNotNull { consultations ->
+            consultations.maxByOrNull { it.rawDate ?: kotlinx.datetime.LocalDate(1900, 1, 1) }
+        }
+        // Clé d'enregistrement unique par copie, même sans numéro d'étudiant ou en doublon
+        val identifiants = identifiantsCopies(latestByAnimal.map { it.animalId to it.studentIdentifier })
+        // Notes manuelles déjà saisies conservées au recalcul
+        val manuelles = _grades.value.associate { it.animalId to it.manualScore }
+        val grades = latestByAnimal.map { latest ->
             val detail = evaluate(ruleSet, latest)
-            val maxScore = ruleSet.autoScoreMax.coerceAtLeast(0.0)
-            val autoScore = detailTotal(detail).coerceIn(0.0, maxScore)
+            val autoScore = noteAutomatique(detailTotal(detail), ruleSet)
+            val manuelle = manuelles[latest.animalId]
             ExamGrade(
                 examId = examId,
                 exerciseId = exerciseId,
-                studentId = latest.studentIdentifier.orEmpty(),
+                studentId = identifiants[latest.animalId] ?: latest.animalId,
                 animalId = latest.animalId,
                 animalName = latest.animalName,
                 consultationId = latest.consultationId,
                 autoScore = autoScore,
-                manualScore = null,
-                finalScore = autoScore,
+                manualScore = manuelle,
+                finalScore = manuelle ?: autoScore,
                 detail = detail
             )
-        }
-        _grades.value = grades
+        }.sortedBy { it.animalName.lowercase() }
+        publierNotes(grades)
+        _message.value = translate("notation.message.notesCalculees", grades.size.toString())
     }
+
 
     fun runRmdLikeAnalysis(items: List<CrossConsultationAnalysisViewModel.ConsultationItem>) {
         val perAnimalLatest = items
@@ -161,30 +321,30 @@ class ExamGradingViewModel(
             }
         if (perAnimalLatest.isEmpty()) {
             _metricDistributions.value = emptyList()
-            _message.value = "❌ Aucune consultation à analyser"
+            _message.value = translate("notation.message.aucuneCopie")
             return
         }
 
         val distributions = buildList {
-            addDistribution(perAnimalLatest, ExamAnalysisMetricId.WEIGHT_KG, "Poids utilisé (kg)") { item ->
+            addDistribution(perAnimalLatest, ExamAnalysisMetricId.WEIGHT_KG, translate("auto.viewmodel.examgradingviewmodel.poids_utilise_kg")) { item ->
                 firstProposedOrAny(item)?.animalWeightKg
             }?.let(::add)
-            addDistribution(perAnimalLatest, ExamAnalysisMetricId.BEC_KCAL, "BEC (kcal/j)") { item ->
+            addDistribution(perAnimalLatest, ExamAnalysisMetricId.BEC_KCAL, translate("auto.viewmodel.examgradingviewmodel.bec_kcal_j")) { item ->
                 firstProposedOrAny(item)?.beeKcal
             }?.let(::add)
-            addDistribution(perAnimalLatest, ExamAnalysisMetricId.ENERGY_INTAKE_KCAL, "Apport énergie ration (kcal)") { item ->
+            addDistribution(perAnimalLatest, ExamAnalysisMetricId.ENERGY_INTAKE_KCAL, translate("auto.viewmodel.examgradingviewmodel.apport_energie_ration_kcal")) { item ->
                 firstProposedOrAny(item)?.energyTotalKcal
             }?.let(::add)
-            addDistribution(perAnimalLatest, ExamAnalysisMetricId.ENERGY_DENSITY_KCAL_100, "Densité énergie (kcal/100g)") { item ->
+            addDistribution(perAnimalLatest, ExamAnalysisMetricId.ENERGY_DENSITY_KCAL_100, translate("auto.viewmodel.examgradingviewmodel.densite_energie_kcal_100g")) { item ->
                 firstProposedOrAny(item)?.energyDensity
             }?.let(::add)
-            addDistribution(perAnimalLatest, ExamAnalysisMetricId.PROTEIN_G, "Protéines ration (g)") { item ->
+            addDistribution(perAnimalLatest, ExamAnalysisMetricId.PROTEIN_G, translate("auto.viewmodel.examgradingviewmodel.proteines_ration_g")) { item ->
                 firstProposedOrAny(item)?.proteins
             }?.let(::add)
         }
 
         _metricDistributions.value = distributions
-        _message.value = "📊 Analyse terminée (${perAnimalLatest.size} copies)"
+        _message.value = translate("notation.message.analyseTerminee", perAnimalLatest.size.toString())
     }
 
     fun applyAnalysisMetricAsCriterion(
@@ -208,8 +368,8 @@ class ExamGradingViewModel(
         )
         val updatedCriteria = current.customCriteria
             .filterNot { it.id == criterionId } + nextCriterion
-        _rule.value = current.copy(customCriteria = updatedCriteria)
-        _message.value = "✅ Critère appliqué: ${mapped.label}"
+        publierRegle(current.copy(customCriteria = updatedCriteria))
+        _message.value = translate("notation.message.critereApplique", mapped.label)
     }
 
     fun applyNutrientCriterion(
@@ -235,29 +395,35 @@ class ExamGradingViewModel(
             points = points
         )
         val updatedCriteria = current.customCriteria.filterNot { it.id == criterionId } + criterion
-        _rule.value = current.copy(customCriteria = updatedCriteria)
-        _message.value = "✅ Critère nutriment appliqué: $label"
+        publierRegle(current.copy(customCriteria = updatedCriteria))
+        _message.value = translate("notation.message.critereApplique", label)
     }
 
+    /** [studentId] est unique par copie (voir [identifiantsCopies]). */
     fun updateManualScore(studentId: String, manualScore: Double?) {
-        _grades.value = _grades.value.map { grade ->
+        publierNotes(_grades.value.map { grade ->
             if (grade.studentId == studentId) {
                 val finalScore = manualScore ?: grade.autoScore
                 grade.copy(manualScore = manualScore, finalScore = finalScore)
             } else grade
-        }
+        })
     }
 
     fun saveGrades() {
         viewModelScope.launch {
-            repository.saveGrades(_grades.value)
-            _message.value = "✅ Notes sauvegardées"
+            try {
+                repository.saveGrades(_grades.value)
+                _message.value = translate("notation.message.notesEnregistrees", _grades.value.size.toString())
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                _message.value = translate("notation.message.erreur", e.message ?: "")
+            }
         }
     }
 
     fun loadGrades(examId: String, exerciseId: String) {
         viewModelScope.launch {
-            _grades.value = repository.getGrades(examId, exerciseId)
+            publierNotes(repository.getGrades(examId, exerciseId).sortedBy { it.animalName.lowercase() })
         }
     }
 
@@ -271,22 +437,22 @@ class ExamGradingViewModel(
         onCompleted: (() -> Unit)? = null
     ) {
         if (examId.isBlank() || exerciseId.isBlank()) {
-            _message.value = "❌ Renseigner ID examen et ID exercice"
+            _message.value = translate("notation.message.idsManquants")
             return
         }
         viewModelScope.launch {
             _isImportingBins.value = true
             _importProgress.value = 0.0
             _importLogs.value = emptyList()
-            appendImportLog("📄 Lecture du CSV Moodle…")
+            appendImportLog(translate("notation.log.lecture"))
             try {
                 val rows = parseMoodleCsv(csvContent)
                 if (rows.isEmpty()) {
-                    _message.value = "❌ Aucun bin_id trouvé dans le CSV"
+                    _message.value = translate("notation.message.aucunBin")
                     _isImportingBins.value = false
                     return@launch
                 }
-                appendImportLog("✅ ${rows.size} copie(s) avec bin_id")
+                appendImportLog(translate("notation.log.copiesTrouvees", rows.size.toString()))
 
                 val shareService = createJsonShareService()
                 val entries = mutableListOf<ExamCopyImportEntry>()
@@ -315,12 +481,12 @@ class ExamGradingViewModel(
                         if (cachedText != null) {
                             recordJson = normalizeJsonBinPayload(cachedText)
                             fromCache = true
-                            appendImportLog("📦 Cache: $binId")
+                            appendImportLog(translate("notation.log.cache", binId))
                         } else {
                             if (offlineOnly) {
-                                throw IllegalStateException("Absent du cache (mode hors-ligne)")
+                                throw IllegalStateException(translate("notation.log.absentCache"))
                             }
-                            appendImportLog("🌐 Téléchargement: $binId")
+                            appendImportLog(translate("notation.log.telechargement", binId))
                             val downloaded = shareService.downloadJson(binId).getOrElse { throw it }
                             recordJson = normalizeJsonBinPayload(downloaded)
                             fromCache = false
@@ -346,10 +512,10 @@ class ExamGradingViewModel(
                             binId = row.binId,
                             success = false,
                             fromCache = false,
-                            error = e.message ?: "Erreur inconnue",
+                            error = e.message ?: translate("notation.log.erreurInconnue"),
                             importedAtEpochMs = now
                         )
-                        appendImportLog("❌ ${row.binId}: ${e.message}")
+                        appendImportLog(translate("notation.log.erreurCopie", row.binId, e.message ?: ""))
                     }
                     _importProgress.value = ((index + 1).toDouble() / total.toDouble()).coerceIn(0.0, 1.0)
                 }
@@ -370,13 +536,84 @@ class ExamGradingViewModel(
 
                 val ok = session.successCount
                 val ko = session.errorCount
-                _message.value = "✅ Import terminé: $ok OK, $ko erreur(s)"
-                appendImportLog("✅ Import terminé: $ok OK, $ko erreur(s)")
+                _message.value = translate("notation.message.importTermine", ok.toString(), ko.toString())
+                appendImportLog(translate("notation.message.importTermine", ok.toString(), ko.toString()))
                 onCompleted?.invoke()
             } catch (e: Exception) {
                 e.rethrowIfCancellation()
-                _message.value = "❌ Import CSV impossible: ${e.message}"
-                appendImportLog("❌ Erreur globale: ${e.message}")
+                _message.value = translate("notation.message.importImpossible", e.message ?: "")
+                appendImportLog(translate("notation.message.importImpossible", e.message ?: ""))
+            } finally {
+                _isImportingBins.value = false
+            }
+        }
+    }
+
+    /**
+     * Importe un lot de fichiers JSON (une copie, ou plusieurs animaux, par fichier ; enveloppe
+     * jsonbin acceptée). Avec [rattacher], les copies sans identifiant d'examen sont rattachées à
+     * l'examen courant. Le lot est enregistré comme une session d'import (comme le CSV Moodle).
+     */
+    fun importerLotJson(
+            fichiers: List<FichierJson>,
+            examId: String,
+            exerciseId: String,
+            rattacher: Boolean,
+            onCompleted: (() -> Unit)? = null
+    ) {
+        if (examId.isBlank() || exerciseId.isBlank()) {
+            _message.value = translate("notation.message.idsManquants")
+            return
+        }
+        if (fichiers.isEmpty()) return
+        viewModelScope.launch {
+            _isImportingBins.value = true
+            _importProgress.value = 0.0
+            _importLogs.value = emptyList()
+            appendImportLog(translate("notation.log.lotJson", fichiers.size.toString()))
+            val entries = mutableListOf<ExamCopyImportEntry>()
+            var rattaches = 0
+            var autreExamen = 0
+            try {
+                fichiers.forEachIndexed { index, fichier ->
+                    val now = Clock.System.now().toEpochMilliseconds()
+                    val copie = preparerCopieJson(fichier, examId, exerciseId, rattacher)
+                    val erreur = copie.erreur ?: try {
+                        exportImportRepository.importAll(copie.json!!).requireComplete()
+                        null
+                    } catch (e: Exception) {
+                        e.rethrowIfCancellation()
+                        e.message ?: translate("notation.log.erreurInconnue")
+                    }
+                    if (erreur == null) {
+                        rattaches += copie.rattaches
+                        autreExamen += copie.autreExamen
+                        appendImportLog(translate("notation.log.fichierImporte", fichier.nom, copie.animaux.toString()))
+                    } else {
+                        appendImportLog(translate("notation.log.erreurCopie", fichier.nom, erreur))
+                    }
+                    entries += ExamCopyImportEntry(
+                            nom = fichier.nom.substringBeforeLast('.'), binId = fichier.nom,
+                            success = erreur == null, error = erreur.orEmpty(), importedAtEpochMs = now
+                    )
+                    _importProgress.value = ((index + 1).toDouble() / fichiers.size).coerceIn(0.0, 1.0)
+                }
+                val session = ExamCopyImportSession(
+                        sessionId = Clock.System.now().toEpochMilliseconds().toString(),
+                        examId = examId, exerciseId = exerciseId,
+                        sourceFileName = translate("notation.lotJsonSource", fichiers.size.toString()),
+                        importedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
+                        entries = entries
+                )
+                saveImportSession(session)
+                _lastImportSession.value = session
+                loadImportSessionHistory(examId, exerciseId)
+                _message.value = translate("notation.message.lotJsonTermine", session.successCount.toString(), session.errorCount.toString(),
+                        rattaches.toString()) + if (autreExamen > 0) " " + translate("notation.message.lotJsonAutreExamen", autreExamen.toString()) else ""
+                onCompleted?.invoke()
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                _message.value = translate("notation.message.importImpossible", e.message ?: "")
             } finally {
                 _isImportingBins.value = false
             }

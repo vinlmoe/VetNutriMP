@@ -2,6 +2,29 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## Non publié
+
+- Saisie de la race : suggestions hors ligne de 384 races de chiens (nomenclature FCI, variétés
+  courantes, quelques races hors FCI) et de 85 races de chats (LOOF et autres registres), dans la
+  langue de l'interface (français, anglais, chinois). Une race se trouve par n'importe lequel de ses
+  noms ou synonymes ; la saisie reste libre. Création, modification et groupes d'un troupeau.
+- Races traduites à l'affichage : une race reconnue au catalogue s'affiche dans la langue de l'interface
+  (liste, fiche, troupeau, comptes rendus), y compris pour les dossiers partagés en JSON et les anciens
+  imports. Le texte enregistré n'est pas modifié ; la recherche des animaux trouve la race dans les trois
+  langues.
+
+## 3.3.19
+
+- Versions applicatives et données initiales passées en **3.3.19 (319)** pour Android, iOS et Desktop,
+  afin que les installations existantes reçoivent le catalogue corrigé.
+- Indications des aliments : 47 fiches non diététiques ne portent plus d'indication de pathologie
+  (Royal Canin animalerie et élevage, Eukanuba, Hill's Science Plan, gammes « Light », poulet cru),
+  13 aliments diététiques reçoivent la leur (Kattovit, Concept for Life, Specific FRD, etc.).
+  Le champ gamme, nom donné par le fabricant, reste inchangé.
+- Fiches de test `Test`, `kkk` et `dazdaz` retirées du catalogue initial.
+- Catalogue initial : aliments humides La Normandise, mots-clés de consultation dédoublonnés,
+  cellulose approchée par la fibre totale.
+
 ## 3.3.18
 
 - Versions applicatives harmonisées en **3.3.18 (318)** pour Android, iOS et Desktop.

@@ -955,12 +955,25 @@ multiration} ; le bouton \ui{Exploration multiration} apparaît dans la liste de
         scénarios s'affiche.
   \item Dans l'onglet \ui{Ingrédients}, composez les listes d'aliments sources de protéines, de
         fibres, de calcium, d'oméga-6, de sel et d'énergie. L'ajustement suit cet ordre.
-  \item Cliquez sur \ui{Calculer toutes les rations}. Un clic sur une case de la carte affiche
-        ses rations, que l'on peut ouvrir dans l'analyse habituelle pour les modifier et les
-        exporter.
+  \item Cliquez sur \ui{Calculer toutes les rations}. Les résultats s'ouvrent sur trois onglets.
 \end{enumerate}
-L'onglet \ui{Enregistrées} conserve les configurations nommées ; les résultats sont recalculés à
-chaque ouverture.
+
+\begin{description}[style=nextline,leftmargin=0pt,itemsep=4pt]
+  \item[\ui{Carte}] Une grille poids $\times$ K par référentiel : vert si au moins une
+        combinaison d'aliments donne une ration conforme, rouge sinon (le chiffre est le nombre
+        minimal de seuils manqués). Un clic sur une case affiche ses rations à côté de la carte ;
+        \ui{Analyser et éditer cette ration} l'ouvre dans l'analyse habituelle. La liste
+        \ui{Combinaison affichée sur la carte} limite la carte à une seule combinaison.
+  \item[\ui{Combinaisons}] Les seuils limitants les plus fréquents (ceux à corriger en
+        priorité), puis le classement des combinaisons selon le nombre de cases où elles sont
+        conformes, avec les plages de poids et de K couvertes. \ui{Voir sur la carte} affiche
+        la carte de cette combinaison.
+  \item[\ui{Courbes}] Les doses et les apports d'une combinaison selon le poids ou selon K.
+\end{description}
+
+Le panneau de configuration se replie (flèche en haut à droite) pour agrandir les résultats. Sur
+téléphone, \ui{Configuration} et \ui{Résultats} sont deux onglets. L'onglet \ui{Enregistrées}
+conserve les configurations nommées ; les résultats sont recalculés à chaque ouverture.
 
 % ================================================================== 8
 \section{Gérer les données}
@@ -1179,9 +1192,47 @@ de cas, examens.
 
 Ouvrez-les avec l'icône \ui{Analyses croisées}, à gauche des paramètres dans la barre de la
 liste des animaux (figure~\ref{fig:liste}). Filtrez par espèce, mots-clés, identifiant d'examen
-ou d'exercice, sélectionnez les consultations, puis ouvrez l'analyse ou la notation.
+ou d'exercice (bouton \ui{Filtres}), cochez les consultations, puis ouvrez l'analyse ou la
+notation. Le résumé de droite compte toutes les consultations cochées, même celles masquées par
+un filtre : ce sont elles que l'analyse utilise.
+
+L'analyse affiche les rations actuelles, proposées ou toutes, et deux onglets :
+\begin{description}[style=nextline,leftmargin=0pt,itemsep=4pt]
+  \item[\ui{Graphique}] Un nutriment ou un rapport (liste avec recherche), en barres par ration
+        (triables par valeur) ou en boîtes à moustaches actuelles / proposées, avec moyenne,
+        écart-type, médiane, minimum et maximum de la série.
+  \item[\ui{Statistiques}] Pour chaque nutriment, les rations actuelles et proposées côte à
+        côte et l'écart relatif des moyennes. Les nutriments non renseignés d'une ration sont
+        écartés de ses statistiques ($n$ indique le nombre de rations retenues).
+\end{description}
 
 \capture{36_analyses_croisees.png}{Analyses croisées.}{analyses-croisees}
+
+\textbf{Notation d'un examen.} \ui{Ouvrir la notation} propose les examens et exercices présents
+dans les copies, puis quatre étapes, toujours visibles en haut de l'écran :
+\begin{description}[style=nextline,leftmargin=0pt,itemsep=4pt]
+  \item[\ui{Copies}] Importer un lot de fichiers JSON (\ui{Choisir les fichiers JSON…} ; sur
+        ordinateur, un dossier entier) ou le CSV de Moodle (liens jsonbin). Pour une nouvelle
+        notation, saisir l'examen et l'exercice avec \ui{Autre examen…}, puis importer : les
+        copies sans examen y sont rattachées, et le nom du fichier sert de numéro d'étudiant
+        manquant. La liste signale les copies sans numéro d'étudiant et les numéros en double
+        (chaque copie garde sa propre note).
+  \item[\ui{Analyse}] Distribution de chaque mesure sur les copies, avec le nombre de copies
+        comprises dans les bornes choisies ; \ui{Ajouter au barème} en fait un critère.
+  \item[\ui{Barème}] Sections activables (ingrédients exigés ou interdits, quantité, densité
+        énergétique en kcal/g, nutriments, référentiel, conseils) et critères personnalisés. Le
+        total des points est comparé à la note maximale ; \ui{Ramener le total du barème sur la
+        note maximale} rend la note proportionnelle aux points obtenus. Une section active sans
+        condition est signalée : elle ne rapporte aucun point.
+  \item[\ui{Notes}] Moyenne, médiane, répartition des notes et réussite par critère (un critère
+        validé par presque toutes les copies, ou par aucune, ne départage pas les étudiants),
+        puis le détail de chaque copie et sa note manuelle éventuelle.
+\end{description}
+\ui{Voir la copie} (étapes \ui{Copies} et \ui{Notes}) ouvre la fiche de l'animal en lecture seule :
+rien n'y est enregistré, et le bouton \ui{Retour à la notation} ramène à l'étape quittée, sans
+perdre les notes calculées. \ui{Sauvegarder la notation} enregistre dans un seul fichier le
+barème, ses versions, les notes et les copies (animaux, consultations, aliments et référentiels
+utilisés) ; \ui{Reprendre une notation…} restaure ce fichier, y compris sur un autre poste.
 
 % ================================================================== Annexes
 \appendix

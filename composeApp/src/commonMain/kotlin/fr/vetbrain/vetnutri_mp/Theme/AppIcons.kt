@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Menu
@@ -47,6 +48,7 @@ object AppIcons {
     val ViewList: ImageVector = Icons.AutoMirrored.Default.List
     val Warning: ImageVector = Icons.Default.Warning
     val Analytics: ImageVector = Icons.Default.Analytics
+    val GridOn: ImageVector = Icons.Default.GridOn
 
     // Icônes spécifiques à l'application
     val Animal: ImageVector = Icons.Default.Star

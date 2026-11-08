@@ -70,6 +70,57 @@ private suspend fun pickJsonUrl(): NSURL? = withContext(Dispatchers.Main) {
     }
 }
 
+private class JsonMultiPickerDelegate(val complete: (List<NSURL>) -> Unit) : NSObject(), UIDocumentPickerDelegateProtocol {
+    override fun documentPicker(controller: UIDocumentPickerViewController, didPickDocumentsAtURLs: List<*>) {
+        complete(didPickDocumentsAtURLs.mapNotNull { it as? NSURL })
+    }
+    override fun documentPickerWasCancelled(controller: UIDocumentPickerViewController) { complete(emptyList()) }
+}
+
+private var jsonMultiPickerDelegate: JsonMultiPickerDelegate? = null
+
+private suspend fun pickJsonUrls(): List<NSURL> = withContext(Dispatchers.Main) {
+    check(jsonMultiPickerDelegate == null) { "Une sélection de fichier est déjà ouverte" }
+    val presenter = checkNotNull(jsonPresenter()) { "Sélecteur de fichier indisponible" }
+    suspendCancellableCoroutine { continuation ->
+        val picker = UIDocumentPickerViewController(forOpeningContentTypes = listOf(UTTypeJSON, UTTypePlainText))
+        picker.allowsMultipleSelection = true
+        val delegate = JsonMultiPickerDelegate { urls ->
+            jsonMultiPickerDelegate = null
+            if (continuation.isActive) continuation.resume(urls)
+        }
+        jsonMultiPickerDelegate = delegate
+        picker.delegate = delegate
+        continuation.invokeOnCancellation {
+            dispatch_async(dispatch_get_main_queue()) {
+                if (jsonMultiPickerDelegate === delegate) {
+                    picker.dismissViewControllerAnimated(true, null)
+                    jsonMultiPickerDelegate = null
+                }
+            }
+        }
+        presenter.presentViewController(picker, true, null)
+    }
+}
+
+actual suspend fun openJsonFilesContent(): List<fr.vetbrain.vetnutri_mp.Data.FichierJson>? {
+    val urls = pickJsonUrls()
+    if (urls.isEmpty()) return null
+    return withContext(AppDispatchers.IO) {
+        urls.map { url ->
+            val access = url.startAccessingSecurityScopedResource()
+            try {
+                fr.vetbrain.vetnutri_mp.Data.FichierJson(
+                        url.lastPathComponent ?: "copie.json",
+                        NSString.stringWithContentsOfURL(url, NSUTF8StringEncoding, null) ?: ""
+                )
+            } finally {
+                if (access) url.stopAccessingSecurityScopedResource()
+            }
+        }
+    }
+}
+
 actual suspend fun openJsonFileContent(): String? {
     val url = pickJsonUrl() ?: return null
     return withContext(AppDispatchers.IO) {

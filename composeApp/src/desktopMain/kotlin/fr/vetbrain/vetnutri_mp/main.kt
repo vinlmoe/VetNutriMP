@@ -483,6 +483,28 @@ actual suspend fun exportApiEnvelopeToFile(
     return resultat
 }
 
+actual suspend fun openJsonFilesContent(): List<fr.vetbrain.vetnutri_mp.Data.FichierJson>? {
+    var fichiers: List<java.io.File>? = null
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+        fichiers = fr.vetbrain.vetnutri_mp.Utils.FileUtils.openJsonFilesDialog()
+    } else {
+        javax.swing.SwingUtilities.invokeAndWait { fichiers = fr.vetbrain.vetnutri_mp.Utils.FileUtils.openJsonFilesDialog() }
+    }
+    val choisis = fichiers ?: return null
+    return withContext(Dispatchers.IO) {
+        choisis.map { f ->
+            val contenu = try {
+                f.readText()
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                fr.vetbrain.vetnutri_mp.Utils.AppLog.w("main", "Lecture impossible : ${f.name}", e)
+                ""
+            }
+            fr.vetbrain.vetnutri_mp.Data.FichierJson(f.name, contenu)
+        }
+    }
+}
+
 actual suspend fun openJsonFileContent(): String? {
     var contenu: String? = null
     if (javax.swing.SwingUtilities.isEventDispatchThread()) {

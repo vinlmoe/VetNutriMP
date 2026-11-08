@@ -16,6 +16,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.CrossConsultationAnalysis
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
@@ -49,6 +50,39 @@ internal fun energyTotalKcalFromDensity(densiteKcalParGramme: Double, quantiteTo
  * - Recherche texte, filtre espèce, sélection multiple.
  * - Données prêtes à être agrégées/analysées ensuite.
  */
+/**
+ * Statistiques descriptives d'une série (écart-type de population). Les valeurs nulles ou négatives
+ * sont des nutriments non renseignés : elles sont écartées. Null si aucune valeur ne reste.
+ */
+internal fun statistiquesDescriptives(nom: String, valeurs: List<Double>): CrossConsultationAnalysisViewModel.NutrientStat? {
+    val retenues = valeurs.filter { it > 0.0 && it.isFinite() }
+    if (retenues.isEmpty()) return null
+    val moyenne = retenues.average()
+    val ecartType = sqrt(retenues.map { (it - moyenne).pow(2) }.average())
+    val triees = retenues.sorted()
+    val mediane = if (triees.size % 2 == 0) (triees[triees.size / 2 - 1] + triees[triees.size / 2]) / 2.0 else triees[triees.size / 2]
+    return CrossConsultationAnalysisViewModel.NutrientStat(
+            name = nom, mean = moyenne, stdDev = ecartType, median = mediane,
+            min = triees.first(), max = triees.last(), count = retenues.size
+    )
+}
+
+/**
+ * Compare, nutriment par nutriment, les rations actuelles aux rations proposées : statistiques de
+ * chaque groupe et écart relatif des moyennes. Les nutriments absents des deux groupes sont omis.
+ */
+internal fun comparerStatistiques(
+        actuelles: List<CrossConsultationAnalysisViewModel.RationSummary>,
+        proposees: List<CrossConsultationAnalysisViewModel.RationSummary>
+): List<CrossConsultationAnalysisViewModel.NutrientComparison> {
+    val cles = (actuelles + proposees).flatMap { it.nutrientValues.keys }.distinct().sorted()
+    return cles.mapNotNull { cle ->
+        val a = statistiquesDescriptives(cle, actuelles.mapNotNull { it.nutrientValues[cle] })
+        val b = statistiquesDescriptives(cle, proposees.mapNotNull { it.nutrientValues[cle] })
+        if (a == null && b == null) null else CrossConsultationAnalysisViewModel.NutrientComparison(cle, a, b)
+    }
+}
+
 class CrossConsultationAnalysisViewModel(
         private val animalRepository: AnimalRepository,
         private val consultationRepository: ConsultationRepository,
@@ -118,8 +152,25 @@ class CrossConsultationAnalysisViewModel(
             val stdDev: Double,
             val median: Double,
             val min: Double,
-            val max: Double
+            val max: Double,
+            /** Nombre de rations où le nutriment est renseigné. */
+            val count: Int = 0
     )
+
+    /** Un nutriment : rations actuelles et proposées côte à côte. */
+    data class NutrientComparison(
+            val label: String,
+            val actual: NutrientStat?,
+            val proposed: NutrientStat?
+    ) {
+        /** Écart relatif (%) de la moyenne proposée à la moyenne actuelle. */
+        val ecartPourcent: Double?
+            get() {
+                val a = actual?.mean ?: return null
+                val b = proposed?.mean ?: return null
+                return if (a > 0.0) 100.0 * (b - a) / a else null
+            }
+    }
 
     private data class FilterState(
             val items: List<ConsultationItem>,
@@ -217,8 +268,10 @@ class CrossConsultationAnalysisViewModel(
                     .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     val summary: StateFlow<SelectionSummary> =
-            combine(_selectedIds, consultations) { ids, visible ->
-                val selected = visible.filter { ids.contains(it.consultationId) }
+            combine(_selectedIds, _items) { ids, items ->
+                // Toutes les consultations sélectionnées, même masquées par un filtre :
+                // ce sont elles que l'analyse utilise.
+                val selected = items.filter { ids.contains(it.consultationId) }
                 SelectionSummary(
                         selectedCount = selected.size,
                         distinctAnimals = selected.map { it.animalId }.toSet().size,
@@ -270,6 +323,10 @@ class CrossConsultationAnalysisViewModel(
         _selectedIds.value = (_selectedIds.value + ids).toSet()
     }
 
+    fun deselectAllVisible(ids: List<String>) {
+        _selectedIds.value = _selectedIds.value - ids.toSet()
+    }
+
     /**
      * Récupère les rations des consultations sélectionnées.
      *
@@ -289,25 +346,15 @@ class CrossConsultationAnalysisViewModel(
         val rations = getSelectedRations(actualOnly)
         if (rations.isEmpty()) return emptyList()
         val allKeys = rations.flatMap { it.nutrientValues.keys }.distinct().sorted()
-        return allKeys.mapNotNull { key ->
-            val values = rations.mapNotNull { it.nutrientValues[key] }.filter { it > 0.0 }
-            if (values.isEmpty()) return@mapNotNull null
-            val mean = values.average()
-            val stdDev = sqrt(values.map { (it - mean).pow(2) }.average())
-            val sorted = values.sorted()
-            val median = if (sorted.size % 2 == 0)
-                (sorted[sorted.size / 2 - 1] + sorted[sorted.size / 2]) / 2.0
-            else sorted[sorted.size / 2]
-            NutrientStat(
-                    name = key,
-                    mean = mean,
-                    stdDev = stdDev,
-                    median = median,
-                    min = sorted.first(),
-                    max = sorted.last()
-            )
-        }
+        return allKeys.mapNotNull { key -> statistiquesDescriptives(key, rations.mapNotNull { it.nutrientValues[key] }) }
     }
+
+    /** Rations actuelles et proposées de la sélection, comparées nutriment par nutriment. */
+    fun compareNutrientStats(): List<NutrientComparison> =
+            comparerStatistiques(getSelectedRations(actualOnly = true), getSelectedRations(actualOnly = false))
+
+    /** Statistiques d'une série de valeurs déjà exprimées (graphique en cours). */
+    fun describe(values: List<Double>): NutrientStat? = statistiquesDescriptives("", values)
 
     fun loadConsultations() {
         viewModelScope.launch {
@@ -415,7 +462,7 @@ class CrossConsultationAnalysisViewModel(
                             animalName = animal.nom.ifBlank { CrossConsultationAnalysis.ANIMAL_NO_NAME.translate() },
                             consultationDate = dateLabel,
                             referenceLabel = refLabel,
-                            speciesLabel = animal.getEspece().label
+                            speciesLabel = animal.getEspece().translateEnum()
                     )
                 }
         val totalQuantity = rationSummaries.sumOf { it.quantity }
@@ -433,7 +480,7 @@ class CrossConsultationAnalysisViewModel(
                 dateLabel = dateLabel,
                 referenceLabel = refLabel,
                 referenceId = consultation.referenceGeneraleId,
-                speciesLabel = animal.getEspece().label,
+                speciesLabel = animal.getEspece().translateEnum(),
                 rationCount = consultation.rations.size,
                 totalRationQuantity = totalQuantity,
                 rations = rationSummaries,

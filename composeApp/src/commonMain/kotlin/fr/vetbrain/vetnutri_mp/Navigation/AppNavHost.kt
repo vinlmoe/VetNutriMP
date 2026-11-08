@@ -47,8 +47,15 @@ internal fun AppNavHost(
                     title = examInfoTitle,
                     onSettingsClick = { nav.navigate(Screen.Settings) },
                     actions = {
-                        // Analyses croisées : outil qui porte sur tous les animaux, à côté des paramètres
+                        // Outils qui portent sur tous les animaux, à côté des paramètres
                         if (examSession == null) {
+                            IconButtonWithTooltip(
+                                imageVector = AppIcons.GridOn,
+                                contentDescription = translate("multiration.titre"),
+                                tooltip = translate("multiration.titre"),
+                                onClick = { nav.navigate(Screen.MultiRation) },
+                                tint = VetNutriColors.Primary
+                            )
                             IconButtonWithTooltip(
                                 imageVector = AppIcons.Analytics,
                                 contentDescription = translate("animalList.crossAnalysis"),
@@ -71,7 +78,7 @@ internal fun AppNavHost(
                     onSelectAnimal = { animal: AnimalEv ->
                         nav.selectedAnimal = animal
                         nav.detailReturnScreen = Screen.List
-                        models.animalDetailViewModel.setAnimal(animal)
+                        models.animalDetailViewModel.setAnimal(animal, lectureSeule = false)
                         nav.navigate(Screen.Detail)
                     },
                     onEditAnimal = { animal: AnimalEv ->
@@ -82,7 +89,6 @@ internal fun AppNavHost(
                     },
                     onShowFoodList = { nav.navigate(Screen.FoodList) },
                     onShowCalculationTabs = { nav.navigate(Screen.CalculationTabs) },
-                    onShowMultiRation = { nav.navigate(Screen.MultiRation) },
                     examSession = examSession,
                     modifier = Modifier.fillMaxWidth().weight(1f)
                 )
@@ -111,7 +117,7 @@ internal fun AppNavHost(
                         nav.isEditing = false
                         nav.selectedAnimal = animal
                         nav.detailReturnScreen = Screen.List
-                        models.animalDetailViewModel.setAnimal(animal)
+                        models.animalDetailViewModel.setAnimal(animal, lectureSeule = false)
                         nav.navigate(Screen.Detail)
                     },
                     isEditing = nav.isEditing,
@@ -434,7 +440,14 @@ internal fun AppNavHost(
             CrossConsultationGradingView(
                 analysisViewModel = models.crossAnalysisViewModel,
                 gradingViewModel = models.examGradingViewModel,
-                onNavigateBack = { nav.navigate(Screen.CrossAnalysis) }
+                onNavigateBack = { nav.navigate(Screen.CrossAnalysis) },
+                // Copie en lecture seule ; le retour de la fiche ramène à la notation, dans l'état laissé
+                onOpenCopie = { animalId, consultationId ->
+                    models.animalDetailViewModel.openAnimalReadOnly(animalId, consultationId) {
+                        nav.detailReturnScreen = Screen.CrossAnalysisGrading
+                        nav.navigate(Screen.Detail)
+                    }
+                }
             )
         }
 

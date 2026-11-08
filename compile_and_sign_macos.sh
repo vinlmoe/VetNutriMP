@@ -10,7 +10,7 @@ echo "================================================"
 
 # Variables de configuration
 APP_NAME="VetNutriMP"
-PACKAGE_VERSION="3.3.18"
+PACKAGE_VERSION="3.3.19"
 BUNDLE_ID="fr.vetbrain.vetnutri_mp"
 VENDOR="VetBrain"
 

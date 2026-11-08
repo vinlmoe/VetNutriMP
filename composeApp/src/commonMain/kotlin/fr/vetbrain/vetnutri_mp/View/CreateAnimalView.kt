@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.traduireRace
 import fr.vetbrain.vetnutri_mp.Utils.enTexte
 import fr.vetbrain.vetnutri_mp.Utils.lireDate
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
@@ -23,7 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
-import fr.vetbrain.vetnutri_mp.Components.AutocompleteTextField
+import fr.vetbrain.vetnutri_mp.Components.ChampRace
 import fr.vetbrain.vetnutri_mp.Components.ComboBox
 import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
@@ -249,12 +250,20 @@ fun CreateAnimalView(
                                 itemLabelProvider = { it.translateEnum() }
                         )
 
-                        AutocompleteTextField(
-                                value = animal.race,
+                        // Race affichée dans la langue de l'interface au chargement de l'animal, puis
+                        // telle que saisie (pas de traduction pendant la frappe) ; le texte enregistré
+                        // ne change que si l'utilisateur la modifie
+                        var raceSaisie by remember(animal.uuid) {
+                                mutableStateOf(traduireRace(animal.race, animal.getEspece()))
+                        }
+                        ChampRace(
+                                value = raceSaisie,
                                 onValueChange = { newBreed: String ->
+                                        raceSaisie = newBreed
                                         viewModel.updateAnimal(animal.copy(race = newBreed))
                                 },
-                                suggestions = availableRaces,
+                                espece = animal.getEspece(),
+                                racesConnues = availableRaces,
                                 label = AnimalKeys.BREED.translate(),
                                 modifier = Modifier.fillMaxWidth()
                         )

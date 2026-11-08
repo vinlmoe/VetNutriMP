@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.traduireRace
 import fr.vetbrain.vetnutri_mp.Utils.enTexte
 import fr.vetbrain.vetnutri_mp.Utils.lireDate
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import fr.vetbrain.vetnutri_mp.Components.ChampRace
 import fr.vetbrain.vetnutri_mp.Components.ComboBox
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.avecEspeceDuTroupeau
@@ -49,7 +51,9 @@ fun AnimalEditView(
         modifier: Modifier = Modifier
 ) {
         var nom by remember { mutableStateOf(animal.nom) }
-        var race by remember { mutableStateOf(animal.race) }
+        // Race affichée dans la langue de l'interface ; le texte enregistré ne change que si elle est modifiée
+        val raceAffichee = remember { traduireRace(animal.race, animal.getEspece()) }
+        var race by remember { mutableStateOf(raceAffichee) }
         var ownerName by remember { mutableStateOf(animal.ownerName) }
         var summary by remember { mutableStateOf(animal.summary) }
         var selectedSex by remember { mutableStateOf(animal.getSex()) }
@@ -120,12 +124,12 @@ fun AnimalEditView(
 
                         // Race (pour un troupeau : celle de chaque groupe d'individus)
                         if (typesTroupeau == null) {
-                                OutlinedTextField(
+                                ChampRace(
                                         value = race,
                                         onValueChange = { race = it },
-                                        label = { Text(Animal.BREED.translate()) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        singleLine = true
+                                        espece = selectedEspece,
+                                        label = Animal.BREED.translate(),
+                                        modifier = Modifier.fillMaxWidth()
                                 )
                         }
 
@@ -330,7 +334,7 @@ fun AnimalEditView(
                                                 val updatedAnimal =
                                                         animal.copy(
                                                                 nom = nom,
-                                                                race = race,
+                                                                race = if (race == raceAffichee) animal.race else race,
                                                                 ownerName = ownerName,
                                                                 summary = summary,
                                                                 sexId = selectedSex.id,
