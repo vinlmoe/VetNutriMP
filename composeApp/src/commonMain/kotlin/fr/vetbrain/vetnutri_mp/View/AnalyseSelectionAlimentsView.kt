@@ -688,7 +688,7 @@ private fun AlimentItem(
                 modifier = Modifier.weight(1f)
             ) {
                     Text(
-                    text = aliment.nom ?: "Sans nom",
+                    text = aliment.nom ?: translate("graphAliments.noName"),
                         style = MaterialTheme.typography.body2,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,

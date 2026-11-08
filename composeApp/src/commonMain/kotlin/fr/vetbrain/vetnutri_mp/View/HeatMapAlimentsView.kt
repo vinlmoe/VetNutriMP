@@ -42,10 +42,13 @@ fun HeatMapAlimentsView(
         besoinEnergetiqueEntretien: Double?,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
+        /** Réglages tenus par l'appelant : l'export reprend ceux affichés. */
+        utiliserSeulementMin: Boolean,
+        onUtiliserSeulementMinChange: (Boolean) -> Unit,
+        coefficient: Double,
+        onCoefficientChange: (Double) -> Unit,
         modifier: Modifier = Modifier
 ) {
-    // État pour le toggle MIN uniquement
-    var utiliserSeulementMin by remember { mutableStateOf(false) }
 
     var heatMapData by remember(
             alimentsAnalyses,
@@ -142,8 +145,7 @@ fun HeatMapAlimentsView(
         }
         
         // Coefficient multiplicatif et Légende sur la même ligne
-        var coefficientText by remember { mutableStateOf("1.0") }
-        var coefficient by remember { mutableStateOf(1.0) }
+        var coefficientText by remember { mutableStateOf(coefficient.toString()) }
         
         Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -214,7 +216,7 @@ fun HeatMapAlimentsView(
                     )
                     Switch(
                             checked = utiliserSeulementMin,
-                            onCheckedChange = { utiliserSeulementMin = it }
+                            onCheckedChange = onUtiliserSeulementMinChange
                     )
                 }
                 // Coefficient multiplicatif
@@ -235,9 +237,9 @@ fun HeatMapAlimentsView(
                                 val normalizedText = newValue.replace(',', '.')
                                 val value = normalizedText.toDoubleOrNull()
                                 if (value != null && value > 0) {
-                                    coefficient = value
+                                    onCoefficientChange(value)
                                 } else if (normalizedText.isEmpty() || normalizedText == ".") {
-                                    coefficient = 1.0
+                                    onCoefficientChange(1.0)
                                 }
                             },
                             placeholder = "1.0",
@@ -420,6 +422,44 @@ fun HeatMapAlimentsView(
             }
         }
     }
+}
+
+/**
+ * Tableau exporté de la heatmap : une ligne par nutriment du référentiel (niveau et besoin pour
+ * 1000 kcal), une colonne par aliment repéré par son numéro ; valeurs = rapport apport / besoin ×
+ * [coefficient], « - » sans valeur. Null quand la heatmap n'a rien à montrer.
+ */
+internal suspend fun tableauHeatMap(
+        alimentsAnalyses: List<AlimentAnalyseData>,
+        referenceEv: ReferenceEv?,
+        equationRepository: EquationRepository?,
+        besoinEnergetiqueEntretien: Double?,
+        poidsAnimal: Double?,
+        poidsMetabolique: Double?,
+        utiliserSeulementMin: Boolean,
+        coefficient: Double,
+        nombre: (Double) -> String
+): fr.vetbrain.vetnutri_mp.Export.TableauExporte? {
+    val donnees = calculerHeatMapData(
+            alimentsAnalyses, referenceEv, equationRepository,
+            besoinEnergetiqueEntretien, poidsAnimal, poidsMetabolique, utiliserSeulementMin
+    )
+    if (donnees.nutriments.isEmpty() || donnees.aliments.isEmpty()) return null
+    val reperes = alimentsAnalyses.associate { it.aliment.uuid to it.graphLabel }
+    return fr.vetbrain.vetnutri_mp.Export.TableauExporte(
+            titre = translate("graphAliments.export.heatmapTitle"),
+            note = translate("graphAliments.export.heatmapNote", nombre(coefficient)),
+            entetes = listOf(translate("graphAliments.export.nutrient")) +
+                    donnees.aliments.map { reperes[it.aliment.uuid] ?: it.nom },
+            lignes = donnees.nutriments.map { n ->
+                val niveau = if (n.niveau == Reflevel.OPTIMIN) "OPTIMIN" else "MIN"
+                val besoin = if (n.valeurReferenceDisplay.isEmpty()) "" else ", ${n.valeurReferenceDisplay}"
+                listOf("${n.nom} ($niveau$besoin)") + donnees.aliments.map { a ->
+                    val valeur = donnees.valeurs[n.nutriment]?.get(a.aliment.uuid) ?: 0.0
+                    if (valeur > 0) nombre(valeur * coefficient) else "-"
+                }
+            }
+    )
 }
 
 /**

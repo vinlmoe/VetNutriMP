@@ -56,9 +56,7 @@ internal suspend fun rationFoodGraphData(
         phosphorePer1000Kcal = normalized(NutrientMacro.PHOS),
         proteinePer1000Kcal = normalized(NutrientMain.PROTEINE),
         calciumPer1000Kcal = normalized(NutrientMacro.CAL),
-        energiePer1000Kcal = normalized(NutrientMain.ENERGIE),
         lipidePer1000Kcal = normalized(NutrientMain.LIPIDE),
-        glucidePer1000Kcal = normalized(NutrientMain.GLUCIDE),
         rationActual = ration.actual, isRationSum = isSum,
         energyAsFed = energyPer100g
     )

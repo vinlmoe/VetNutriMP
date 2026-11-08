@@ -29,14 +29,7 @@ data class AlimentAnalyseData(
         val phosphorePer1000Kcal: Double = 0.0,
         val proteinePer1000Kcal: Double = 0.0,
         val calciumPer1000Kcal: Double = 0.0,
-        // Tous les nutriments principaux en g/1000kcal
-        val energiePer1000Kcal: Double = 0.0,
         val lipidePer1000Kcal: Double = 0.0,
-        val glucidePer1000Kcal: Double = 0.0,
-        // Autres nutriments macro en g/1000kcal
-        val fibrePer1000Kcal: Double = 0.0,
-        val cendrePer1000Kcal: Double = 0.0,
-        val eauPer1000Kcal: Double = 0.0,
         val rationActual: Boolean? = null,
         val isRationSum: Boolean = false,
         val energyAsFed: Double? = null

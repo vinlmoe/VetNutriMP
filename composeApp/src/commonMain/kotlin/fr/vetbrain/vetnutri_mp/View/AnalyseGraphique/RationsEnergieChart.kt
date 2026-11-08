@@ -110,6 +110,7 @@ fun RationsEnergieChart(
                 rationsEnergieData = resultat
                 isLoading = false
         }
+        SignalerCalculGraphique(isLoading)
 
         // Vérifier si une consultation et une référence sont disponibles
         val hasConsultations = consultations.isNotEmpty()

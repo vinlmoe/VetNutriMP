@@ -34,6 +34,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.KoalaPlotExtensions
 import io.github.koalaplot.core.*
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.SignalerCalculGraphique
 import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
 import io.github.koalaplot.core.line.LinePlot
@@ -127,20 +128,20 @@ internal fun GraphiqueNuagePoints(
             // Titre dynamique selon l'onglet
             val titre =
                     when (ongletActif) {
-                        "protein_lipid" -> "Répartition énergétique : Protéines vs Lipides"
-                        "phosphore_protein" -> if (useDryMatterPer100g) "Phosphore vs Protéines (/100g MS)" else "Phosphore vs Protéines (/1000 kcal)"
-                        "calcium_phosphore" -> if (useDryMatterPer100g) "Calcium vs Phosphore (/100g MS)" else "Calcium vs Phosphore (/1000 kcal)"
+                        "protein_lipid" -> translate("graphAliments.title.proteinFat")
+                        "phosphore_protein" -> translate("graphAliments.title.phosphorusProtein", baseAliments(useDryMatterPer100g))
+                        "calcium_phosphore" -> translate("graphAliments.title.calciumPhosphorus", baseAliments(useDryMatterPer100g))
                         "nutriments_perso" -> {
                             val xOption = NUTRIMENT_OPTIONS.find { it.key == nutrimentX }
                             val yOption = NUTRIMENT_OPTIONS.find { it.key == nutrimentY }
-                            val unit = if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"
+                            val unit = baseAliments(useDryMatterPer100g)
                             if (nutrimentY != null && nutrimentY.isNotEmpty()) {
-                                "${xOption?.displayName ?: "X"} vs ${yOption?.displayName ?: "Y"} ($unit)"
+                                translate("graphAliments.title.xy", xOption?.displayName ?: "X", yOption?.displayName ?: "Y", unit)
                             } else {
                                 translate("graphAliments.distribution", xOption?.displayName ?: "", unit)
                             }
                         }
-                        else -> "Analyse nutritionnelle"
+                        else -> translate("graphAliments.title.default")
                     }
 
             Text(
@@ -151,8 +152,7 @@ internal fun GraphiqueNuagePoints(
             )
 
             Text(
-                    text =
-                            "Chaque point représente un aliment (numéroté de 1 à ${alimentsAnalyses.size})",
+                    text = translate("graphAliments.pointsInfo", alimentsAnalyses.size.toString()),
                     style = MaterialTheme.typography.caption,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
             )
@@ -522,15 +522,15 @@ internal fun GraphiqueNuagePoints(
                                 yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(range = yRange),
                                 yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
                                 xAxisTitle = when (ongletActif) {
-                                    "protein_lipid" -> "Protéines (% énergie)"
-                                    "phosphore_protein" -> if (useDryMatterPer100g) "Phosphore (g/100g MS)" else "Phosphore (g/1000 kcal)"
-                                    "calcium_phosphore" -> if (useDryMatterPer100g) "Phosphore (g/100g MS)" else "Phosphore (g/1000 kcal)"
+                                    "protein_lipid" -> translate("graphAliments.axis.proteinEnergy")
+                                    "phosphore_protein", "calcium_phosphore" ->
+                                        translate("graphAliments.axis.phosphorus", baseAliments(useDryMatterPer100g))
                                     else -> ""
                                 },
                                 yAxisTitle = when (ongletActif) {
-                                    "protein_lipid" -> "Lipides (% énergie)"
-                                    "phosphore_protein" -> if (useDryMatterPer100g) "Protéines (g/100g MS)" else "Protéines (g/1000 kcal)"
-                                    "calcium_phosphore" -> if (useDryMatterPer100g) "Calcium (g/100g MS)" else "Calcium (g/1000 kcal)"
+                                    "protein_lipid" -> translate("graphAliments.axis.fatEnergy")
+                                    "phosphore_protein" -> translate("graphAliments.axis.protein", baseAliments(useDryMatterPer100g))
+                                    "calcium_phosphore" -> translate("graphAliments.axis.calcium", baseAliments(useDryMatterPer100g))
                                     else -> ""
                                 },
                                 modifier = Modifier
@@ -1017,6 +1017,7 @@ private fun GraphiqueNutrimentsPersonnalise(
         }
         isDataLoading = false
     }
+    SignalerCalculGraphique(isDataLoading)
 
     if (isDataLoading) {
         Text(
@@ -1390,10 +1391,10 @@ private fun HistogrammeEnergieAliments(
                 xAxisLabels = { id -> alimentsAnalyses.firstOrNull { it.aliment.uuid == id }?.graphLabel.orEmpty() },
             yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartDensityAxisModel(range = yRange) },
             yAxisLabels = { GraphFormattingUtils.formatAxisTick(it, yRange) },
-            yAxisTitle = if (useDryMatterPer100g) 
-                    "Densité énergétique (kcal/100g MS)"
-                else  
-                    "Densité énergétique (kcal/100g)",
+            yAxisTitle = translate(
+                    "graphAliments.axis.density",
+                    translate(if (useDryMatterPer100g) "graphAliments.unit.kcalPer100gDm" else "graphAliments.unit.kcalPer100g")
+            ),
             modifier = modifier
     ) {
         VerticalBarPlot(
@@ -1420,3 +1421,7 @@ private fun HistogrammeEnergieAliments(
         )
     }
 }
+
+/** Base des valeurs des graphiques des aliments : « /1000 kcal » ou « /100 g MS ». */
+internal fun baseAliments(useDryMatterPer100g: Boolean): String =
+        translate(if (useDryMatterPer100g) "chart.togglePer100gDm" else "chart.togglePer1000Kcal")

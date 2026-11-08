@@ -13,7 +13,6 @@ data class MesureStatistiques(val titre: String, val groupeA: StatistiquesBoite?
 data class GroupeExporte(val nom: String, val aliments: List<Pair<String, String>>)
 
 data class LibellesStatistiques(
-        val graphique: String,
         val statistiques: String,
         val mesure: String,
         val groupe: String,
@@ -29,25 +28,26 @@ data class LibellesStatistiques(
         val langueLatex: String
 )
 
-data class DocumentComparaison(
-        val titre: String,
-        val sousTitre: String,
-        val image: GraphiqueExporte?,
+/** Comparaison de deux groupes d'aliments : statistiques de chaque mesure des boîtes à moustaches. */
+data class ComparaisonExportee(
         val mesures: List<MesureStatistiques>,
         val groupeA: GroupeExporte,
         val groupeB: GroupeExporte
 )
 
-/** Document Markdown ou LaTeX de la comparaison de deux groupes d'aliments. */
+/**
+ * Sections Markdown ou LaTeX de la comparaison de deux groupes d'aliments (tableau des statistiques,
+ * puis les aliments de chaque groupe), insérées dans le document des graphiques des aliments.
+ */
 object DocumentComparaisonGroupes {
 
     private fun colonnes(l: LibellesStatistiques) =
             listOf(l.mesure, l.groupe, "n", l.moyenne, l.ecartType, l.minimum, "Q1", l.mediane, "Q3", l.maximum)
 
     /** Lignes du tableau : une par mesure et par groupe ; « — » quand le groupe n'a pas de valeur. */
-    private fun lignes(doc: DocumentComparaison, l: LibellesStatistiques): List<List<String>> =
-            doc.mesures.flatMap { m ->
-                listOf(doc.groupeA.nom to m.groupeA, doc.groupeB.nom to m.groupeB).map { (groupe, s) ->
+    private fun lignes(c: ComparaisonExportee, l: LibellesStatistiques): List<List<String>> =
+            c.mesures.flatMap { m ->
+                listOf(c.groupeA.nom to m.groupeA, c.groupeB.nom to m.groupeB).map { (groupe, s) ->
                     listOf(m.titre, groupe) +
                             if (s == null) List(8) { "—" }
                             else listOf(
@@ -58,26 +58,14 @@ object DocumentComparaisonGroupes {
                 }
             }
 
-    fun markdown(doc: DocumentComparaison, l: LibellesStatistiques): String = buildString {
-        appendLine("# ${doc.titre}")
-        appendLine()
-        if (doc.sousTitre.isNotBlank()) {
-            appendLine(doc.sousTitre)
-            appendLine()
-        }
-        doc.image?.let { image ->
-            appendLine("## ${l.graphique}")
-            appendLine()
-            appendLine("![${image.titre}](${image.fichier})")
-            appendLine()
-        }
+    fun markdown(c: ComparaisonExportee, l: LibellesStatistiques): String = buildString {
         appendLine("## ${l.statistiques}")
         appendLine()
         appendLine("| " + colonnes(l).joinToString(" | ") + " |")
         appendLine("|---|---|" + "---:|".repeat(8))
-        lignes(doc, l).forEach { ligne -> appendLine("| " + ligne.joinToString(" | ") { md(it) } + " |") }
+        lignes(c, l).forEach { ligne -> appendLine("| " + ligne.joinToString(" | ") { md(it) } + " |") }
         appendLine()
-        listOf(doc.groupeA, doc.groupeB).forEach { g ->
+        listOf(c.groupeA, c.groupeB).forEach { g ->
             appendLine("## ${l.aliments} — ${g.nom}")
             appendLine()
             appendLine("| ${l.aliment} | ${l.marque} |")
@@ -87,30 +75,7 @@ object DocumentComparaisonGroupes {
         }
     }
 
-    fun latex(doc: DocumentComparaison, l: LibellesStatistiques): String = buildString {
-        appendLine("\\documentclass[11pt,a4paper]{article}")
-        appendLine("\\usepackage[utf8]{inputenc}")
-        appendLine("\\usepackage[T1]{fontenc}")
-        appendLine("\\usepackage[${l.langueLatex}]{babel}")
-        appendLine("\\usepackage[margin=1.8cm]{geometry}")
-        appendLine("\\usepackage{graphicx}")
-        appendLine("\\usepackage{booktabs}")
-        appendLine("\\usepackage{longtable}")
-        appendLine()
-        appendLine("\\title{${tex(doc.titre)}}")
-        appendLine("\\author{}")
-        appendLine("\\date{${tex(doc.sousTitre)}}")
-        appendLine()
-        appendLine("\\begin{document}")
-        appendLine("\\maketitle")
-        appendLine()
-        doc.image?.let { image ->
-            appendLine("\\section*{${tex(l.graphique)}}")
-            appendLine("\\begin{center}")
-            appendLine("  \\includegraphics[width=\\linewidth,height=0.8\\textheight,keepaspectratio]{${image.fichier}}")
-            appendLine("\\end{center}")
-            appendLine()
-        }
+    fun latex(c: ComparaisonExportee, l: LibellesStatistiques): String = buildString {
         appendLine("\\section*{${tex(l.statistiques)}}")
         appendLine("{\\small")
         appendLine("\\begin{longtable}{@{}p{0.2\\linewidth}l" + "r".repeat(8) + "@{}}")
@@ -118,12 +83,12 @@ object DocumentComparaisonGroupes {
         appendLine(colonnes(l).joinToString(" & ") { tex(it) } + " \\\\")
         appendLine("\\midrule")
         appendLine("\\endhead")
-        lignes(doc, l).forEach { ligne -> appendLine(ligne.joinToString(" & ") { if (it == "—") "---" else tex(it) } + " \\\\") }
+        lignes(c, l).forEach { ligne -> appendLine(ligne.joinToString(" & ") { if (it == "—") "---" else tex(it) } + " \\\\") }
         appendLine("\\bottomrule")
         appendLine("\\end{longtable}")
         appendLine("}")
         appendLine()
-        listOf(doc.groupeA, doc.groupeB).forEach { g ->
+        listOf(c.groupeA, c.groupeB).forEach { g ->
             appendLine("\\section*{${tex(l.aliments)} --- ${tex(g.nom)}}")
             appendLine("\\begin{longtable}{@{}p{0.6\\linewidth}p{0.35\\linewidth}@{}}")
             appendLine("\\toprule")
@@ -134,7 +99,6 @@ object DocumentComparaisonGroupes {
             appendLine("\\end{longtable}")
             appendLine()
         }
-        appendLine("\\end{document}")
     }
 
     /** Trois chiffres significatifs environ : 1234, 123, 12,3, 1,23. */

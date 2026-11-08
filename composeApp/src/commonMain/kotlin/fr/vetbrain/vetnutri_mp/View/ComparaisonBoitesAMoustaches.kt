@@ -1,53 +1,49 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.layer.drawLayer
-import androidx.compose.ui.graphics.rememberGraphicsLayer
-import fr.vetbrain.vetnutri_mp.Export.ArchiveZip
-import fr.vetbrain.vetnutri_mp.Export.DocumentComparaison
-import fr.vetbrain.vetnutri_mp.Export.DocumentComparaisonGroupes
-import fr.vetbrain.vetnutri_mp.Export.GraphiqueExporte
-import fr.vetbrain.vetnutri_mp.Export.GroupeExporte
-import fr.vetbrain.vetnutri_mp.Export.LibellesStatistiques
-import fr.vetbrain.vetnutri_mp.Export.MesureStatistiques
-import fr.vetbrain.vetnutri_mp.Export.encoderJpeg
-import fr.vetbrain.vetnutri_mp.Export.exporterZip
-import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
-import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
-import fr.vetbrain.vetnutri_mp.Utils.AppLog
-import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
-import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.FormatExport
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.StatistiquesBoite
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Export.ComparaisonExportee
+import fr.vetbrain.vetnutri_mp.Export.GroupeExporte
+import fr.vetbrain.vetnutri_mp.Export.LibellesStatistiques
+import fr.vetbrain.vetnutri_mp.Export.MesureStatistiques
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
+import fr.vetbrain.vetnutri_mp.Repository.EquationsMemorisees
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
+import kotlinx.coroutines.withContext
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
@@ -56,138 +52,168 @@ import kotlin.math.pow
 private val couleurGroupeA = VetNutriColors.Primary
 private val couleurGroupeB = Color(0xFFE65100)
 
-/** Mesure comparée entre les groupes ; null = valeur absente (exclue de la boîte). */
-private class MesureComparee(
+/**
+ * Une carte de boîtes à moustaches : statistiques des groupes A et B (null = aucune valeur).
+ * [cleNutriment] est la clé ([NUTRIMENT_OPTIONS]) d'un nutriment ajouté par l'utilisateur, null
+ * pour les mesures proposées d'office.
+ */
+internal data class MesureBoites(
         val titre: String,
         val unite: String,
-        val valeur: (AlimentAnalyseData) -> Double?
-)
-
-private fun mesuresComparees(useDryMatterPer100g: Boolean): List<MesureComparee> {
-    val base = if (useDryMatterPer100g) "/100 g MS" else "/1000 kcal"
-    // 0 pour la densité, les glucides, P et Ca : composition non renseignée, pas une vraie valeur
-    fun positif(v: Double) = v.takeIf { it > 0 }
-    return listOf(
-            MesureComparee(
-                    translate("graph.comparaison.density"),
-                    if (useDryMatterPer100g) "kcal/100 g MS" else "kcal/100 g"
-            ) { positif(it.densiteEnergetique) },
-            MesureComparee(translate("graph.comparaison.protein"), "g$base") { it.proteinePer1000Kcal },
-            MesureComparee(translate("graph.comparaison.fat"), "g$base") { it.lipidePer1000Kcal },
-            MesureComparee(translate("graph.comparaison.nfe"), "g$base") { positif(it.glucidePer1000Kcal) },
-            MesureComparee(translate("graph.comparaison.phosphorus"), "g$base") { positif(it.phosphorePer1000Kcal) },
-            MesureComparee(translate("graph.comparaison.calcium"), "g$base") { positif(it.calciumPer1000Kcal) },
-            MesureComparee(translate("graph.comparaison.caP"), "") { a ->
-                if (a.phosphorePer1000Kcal > 0 && a.calciumPer1000Kcal > 0) a.calciumPer1000Kcal / a.phosphorePer1000Kcal
-                else null
-            },
-            MesureComparee(translate("graph.comparaison.proteinEnergy"), "%") { positif(it.pourcentageProteines) },
-            MesureComparee(translate("graph.comparaison.fatEnergy"), "%") { positif(it.pourcentageLipides) }
-    )
+        val statsA: StatistiquesBoite?,
+        val statsB: StatistiquesBoite?,
+        val cleNutriment: String? = null
+) {
+    val titreComplet: String get() = if (unite.isEmpty()) titre else "$titre ($unite)"
 }
 
+/** Valeurs d'un nutriment ajouté pour les aliments des groupes A et B (non renseignées exclues). */
+internal data class ValeursGroupes(val groupeA: List<Double>, val groupeB: List<Double>)
+
+/** Nutriments déjà comparés par les mesures proposées d'office : pas proposés à l'ajout. */
+private val clesMesuresDeBase = setOf("proteine", "lipide", "ena", "phosphore", "calcium")
+
+/** Nutriments proposés d'office calculés comme les nutriments ajoutés (absents d'[AlimentAnalyseData]). */
+internal val clesNutrimentsDeBase = listOf("ena")
+
+private fun suffixeBase(useDryMatterPer100g: Boolean) = baseAliments(useDryMatterPer100g)
+
 /**
- * Comparaison du groupe A (aliments analysés) et du groupe B par des boîtes à moustaches, une
- * carte par mesure, sur une échelle commune aux deux groupes. « Exporter » enregistre l'image des
- * boîtes et le tableau des statistiques (Markdown ou LaTeX, archive ZIP).
+ * Mesures comparées : celles proposées d'office (masquées quand aucun aliment n'en a), puis les
+ * nutriments ajoutés, dans l'ordre d'ajout (toujours affichés, pour pouvoir les retirer).
  */
-@Composable
-internal fun ComparaisonBoitesAMoustaches(
+internal fun mesuresBoites(
         groupeA: List<AlimentAnalyseData>,
         groupeB: List<AlimentAnalyseData>,
         useDryMatterPer100g: Boolean,
-        modifier: Modifier = Modifier,
-        nomGroupeA: String = "",
-        nomGroupeB: String = ""
-) {
-    val libelleA = libelleGroupe("A", nomGroupeA, groupeA.size)
-    val libelleB = libelleGroupe("B", nomGroupeB, groupeB.size)
-    val mesures = remember(useDryMatterPer100g) { mesuresComparees(useDryMatterPer100g) }
-    val statistiques = remember(groupeA, groupeB, mesures) {
-        mesures.map { m ->
-            Triple(m, StatistiquesBoite.de(groupeA.mapNotNull(m.valeur)), StatistiquesBoite.de(groupeB.mapNotNull(m.valeur)))
-        }
-                // Mesure renseignée pour aucun aliment des deux groupes (ex. glucides) : masquée
-                .filter { (_, a, b) -> a != null || b != null }
-    }
-    val couche = rememberGraphicsLayer()
-    val scope = rememberCoroutineScope()
-    var dialogue by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf<String?>(null) }
-
-    fun exporter(format: FormatExport) {
-        scope.launch {
-            try {
-                val image = couche.toImageBitmap()
-                val jpeg = withContext(AppDispatchers.Default) { encoderJpeg(image) }
-                val nomA = libelleA
-                val nomB = libelleB
-                val document = DocumentComparaison(
-                        titre = translate("graph.comparaison.title"),
-                        sousTitre = "$nomA / $nomB",
-                        image = GraphiqueExporte("images/comparaison.jpg", translate("graph.comparaison.title")),
-                        mesures = statistiques.map { (m, a, b) ->
-                            MesureStatistiques(if (m.unite.isEmpty()) m.titre else "${m.titre} (${m.unite})", a, b)
-                        },
-                        groupeA = GroupeExporte(nomA, groupeA.map { it.aliment.nom.orEmpty() to it.aliment.brand.orEmpty() }),
-                        groupeB = GroupeExporte(nomB, groupeB.map { it.aliment.nom.orEmpty() to it.aliment.brand.orEmpty() })
-                )
-                val texte = when (format) {
-                    FormatExport.MARKDOWN -> DocumentComparaisonGroupes.markdown(document, libellesStatistiques())
-                    FormatExport.LATEX -> DocumentComparaisonGroupes.latex(document, libellesStatistiques())
-                }
-                val archive = withContext(AppDispatchers.Default) {
-                    ArchiveZip.creer(
-                            listOf(
-                                    "comparaison_groupes.${format.extension}" to texte.encodeToByteArray(),
-                                    "images/comparaison.jpg" to jpeg
-                            )
-                    )
-                }
-                // Le dialogue d'enregistrement de bureau doit être ouvert hors du fil de Compose
-                val enregistre = withContext(AppDispatchers.IO) { exporterZip(archive, "comparaison_groupes.zip") }
-                message =
-                        if (enregistre) translate("graph.export.success", "comparaison_groupes.zip")
-                        else translate("graph.export.cancelled")
-            } catch (e: Exception) {
-                e.rethrowIfCancellation()
-                AppLog.e("ComparaisonBoitesAMoustaches", e.message ?: "Erreur", e)
-                message = translate("graph.export.error", e.message.orEmpty())
+        nutrimentsAjoutes: List<String>,
+        valeursAjoutees: Map<String, ValeursGroupes>
+): List<MesureBoites> {
+    val base = suffixeBase(useDryMatterPer100g)
+    // 0 pour la densité, P et Ca : composition non renseignée, pas une vraie valeur
+    fun positif(v: Double) = v.takeIf { it > 0 }
+    fun mesure(titre: String, unite: String, valeur: (AlimentAnalyseData) -> Double?) =
+            MesureBoites(titre, unite, StatistiquesBoite.de(groupeA.mapNotNull(valeur)), StatistiquesBoite.de(groupeB.mapNotNull(valeur)))
+    val deBase = listOf(
+            mesure(
+                    translate("graph.comparaison.density"),
+                    translate(if (useDryMatterPer100g) "graphAliments.unit.kcalPer100gDm" else "graphAliments.unit.kcalPer100g")
+            ) { positif(it.densiteEnergetique) },
+            mesure(translate("graph.comparaison.protein"), "g$base") { it.proteinePer1000Kcal },
+            mesure(translate("graph.comparaison.fat"), "g$base") { it.lipidePer1000Kcal },
+            MesureBoites(
+                    translate("graph.comparaison.nfe"), "g$base",
+                    valeursAjoutees["ena"]?.groupeA?.let { StatistiquesBoite.de(it) },
+                    valeursAjoutees["ena"]?.groupeB?.let { StatistiquesBoite.de(it) }
+            ),
+            mesure(translate("graph.comparaison.phosphorus"), "g$base") { positif(it.phosphorePer1000Kcal) },
+            mesure(translate("graph.comparaison.calcium"), "g$base") { positif(it.calciumPer1000Kcal) },
+            mesure(translate("graph.comparaison.caP"), "") { a ->
+                if (a.phosphorePer1000Kcal > 0 && a.calciumPer1000Kcal > 0) a.calciumPer1000Kcal / a.phosphorePer1000Kcal
+                else null
             }
+    ).filter { it.statsA != null || it.statsB != null }
+    val ajoutees = nutrimentsAjoutes.mapNotNull { cle ->
+        val option = NUTRIMENT_OPTIONS.find { it.key == cle } ?: return@mapNotNull null
+        val valeurs = valeursAjoutees[cle]
+        MesureBoites(
+                titre = option.displayName,
+                unite = option.unit + base,
+                statsA = valeurs?.groupeA?.let { StatistiquesBoite.de(it) },
+                statsB = valeurs?.groupeB?.let { StatistiquesBoite.de(it) },
+                cleNutriment = cle
+        )
+    }
+    return deBase + ajoutees
+}
+
+/**
+ * Nutriments qu'on peut ajouter aux boîtes : renseignés pour au moins un aliment des deux groupes
+ * (les nutriments principaux, calculables par les équations du référentiel, toujours), hors
+ * mesures proposées d'office.
+ */
+internal fun nutrimentsAjoutables(groupes: List<AlimentAnalyseData>): List<NutrimentOption> =
+        NUTRIMENT_OPTIONS.filter { option ->
+            if (option.key.isEmpty() || option.key in clesMesuresDeBase) return@filter false
+            val nutriment = nutrimentDeCle(option.key) ?: return@filter false
+            nutriment is NutrientMain || groupes.any { (it.aliment.getNutrient(nutriment) ?: 0.0) > 0 }
         }
-    }
 
-    if (dialogue) {
-        DialogueFormatExport(
-                onDismiss = { dialogue = false },
-                onExport = { format ->
-                    dialogue = false
-                    exporter(format)
-                }
-        )
+/**
+ * Valeurs (/1000 kcal ou /100 g MS, comme les mesures de base) des nutriments [cles] pour chaque
+ * aliment des deux groupes, hors du fil de l'interface ; 0 = non renseigné, exclu.
+ */
+internal suspend fun valeursNutrimentsGroupes(
+        cles: List<String>,
+        groupeA: List<AlimentAnalyseData>,
+        groupeB: List<AlimentAnalyseData>,
+        referenceEv: ReferenceEv?,
+        equationRepository: EquationRepository?,
+        useDryMatterPer100g: Boolean
+): Map<String, ValeursGroupes> {
+    if (cles.isEmpty()) return emptyMap()
+    val equations = equationRepository?.let { EquationsMemorisees(it) }
+    return withContext(AppDispatchers.Default) {
+        suspend fun valeurs(groupe: List<AlimentAnalyseData>, cle: String) =
+                groupe.map { it.getNutrimentValue(cle, referenceEv, equations, useDryMatterPer100g) }
+                        .filter { it.isFinite() && it > 0 }
+        cles.associateWith { cle -> ValeursGroupes(valeurs(groupeA, cle), valeurs(groupeB, cle)) }
     }
-    message?.let { texte ->
-        AlertDialog(
-                onDismissRequest = { message = null },
-                text = { Text(texte) },
-                confirmButton = { TextButton(onClick = { message = null }) { Text(translate("general.close")) } }
-        )
-    }
+}
 
+/** Comparaison exportée avec les graphiques des aliments : statistiques et aliments des groupes. */
+internal fun comparaisonPourExport(
+        mesures: List<MesureBoites>,
+        groupeA: List<AlimentAnalyseData>,
+        groupeB: List<AlimentAnalyseData>,
+        libelleA: String,
+        libelleB: String
+): ComparaisonExportee =
+        ComparaisonExportee(
+                mesures = mesures.map { MesureStatistiques(it.titreComplet, it.statsA, it.statsB) },
+                groupeA = GroupeExporte(libelleA, groupeA.map { it.aliment.nom.orEmpty() to it.aliment.brand.orEmpty() }),
+                groupeB = GroupeExporte(libelleB, groupeB.map { it.aliment.nom.orEmpty() to it.aliment.brand.orEmpty() })
+        )
+
+/**
+ * Comparaison du groupe A (aliments analysés) et du groupe B par des boîtes à moustaches, une
+ * carte par mesure, sur une échelle commune aux deux groupes. « Ajouter un nutriment » ajoute une
+ * carte par nutriment choisi, autant qu'il y a de nutriments renseignés ; la croix d'une carte
+ * ajoutée la retire. La zone des boîtes est enregistrée dans [couche] pour l'export commun des
+ * graphiques des aliments.
+ */
+@Composable
+internal fun ComparaisonBoitesAMoustaches(
+        mesures: List<MesureBoites>,
+        libelleA: String,
+        libelleB: String,
+        groupeBVide: Boolean,
+        nutrimentsDisponibles: List<NutrimentOption>,
+        nutrimentsAjoutes: List<String>,
+        onAjouterNutriment: (String) -> Unit,
+        onRetirerNutriment: (String) -> Unit,
+        onRetirerTous: () -> Unit,
+        couche: GraphicsLayer,
+        modifier: Modifier = Modifier
+) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Text(
-                    translate("graph.comparaison.title"),
-                    style = MaterialTheme.typography.h6,
-                    fontWeight = FontWeight.Bold,
-                    color = VetNutriColors.Primary,
-                    modifier = Modifier.weight(1f)
-            )
-            if (groupeB.isNotEmpty()) {
-                OutlinedButton(onClick = { dialogue = true }) {
-                    Icon(Icons.Default.FileDownload, contentDescription = null)
-                    Spacer(Modifier.width(AppSizes.paddingSmall))
-                    Text(translate("graph.export.button"))
+        Text(
+                translate("graph.comparaison.title"),
+                style = MaterialTheme.typography.h6,
+                fontWeight = FontWeight.Bold,
+                color = VetNutriColors.Primary
+        )
+        if (!groupeBVide) {
+            Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+            ) {
+                SelecteurNutrimentAjoute(
+                        options = nutrimentsDisponibles.filter { it.key !in nutrimentsAjoutes },
+                        onChoisi = onAjouterNutriment
+                )
+                if (nutrimentsAjoutes.isNotEmpty()) {
+                    TextButton(onClick = onRetirerTous) { Text(translate("graph.comparaison.removeAll")) }
                 }
             }
         }
@@ -204,7 +230,7 @@ internal fun ComparaisonBoitesAMoustaches(
                 PastilleGroupe(couleurGroupeA, libelleA)
                 PastilleGroupe(couleurGroupeB, libelleB)
             }
-            if (groupeB.isEmpty()) {
+            if (groupeBVide) {
                 Text(
                         translate("graph.comparaison.empty"),
                         style = MaterialTheme.typography.body2,
@@ -215,10 +241,10 @@ internal fun ComparaisonBoitesAMoustaches(
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val colonnes = if (maxWidth >= 900.dp) 2 else 1
                 Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
-                    statistiques.chunked(colonnes).forEach { ligne ->
+                    mesures.chunked(colonnes).forEach { ligne ->
                         Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
-                            ligne.forEach { (mesure, statsA, statsB) ->
-                                CarteMesure(mesure, statsA, statsB, Modifier.weight(1f))
+                            ligne.forEach { mesure ->
+                                CarteMesure(mesure, onRetirerNutriment, Modifier.weight(1f))
                             }
                             // Dernière ligne incomplète : garder la largeur des cartes
                             repeat(colonnes - ligne.size) { Spacer(Modifier.weight(1f)) }
@@ -230,11 +256,29 @@ internal fun ComparaisonBoitesAMoustaches(
     }
 }
 
+/** Bouton « Ajouter un nutriment » et liste des nutriments pas encore comparés. */
+@Composable
+private fun SelecteurNutrimentAjoute(options: List<NutrimentOption>, onChoisi: (String) -> Unit) {
+    var ouvert by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { ouvert = true }, enabled = options.isNotEmpty()) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(Modifier.width(AppSizes.paddingSmall))
+            Text(translate("graph.comparaison.addNutrient"))
+        }
+        MenuNutriments(
+                expanded = ouvert,
+                onDismiss = { ouvert = false },
+                options = options,
+                onChoisi = { onChoisi(it.key) }
+        )
+    }
+}
+
 /** Libellés du tableau des statistiques dans la langue de l'interface. */
-private fun libellesStatistiques(): LibellesStatistiques {
+internal fun libellesStatistiques(): LibellesStatistiques {
     val langue = LocalizationManager.currentLocale
     return LibellesStatistiques(
-            graphique = translate("graph.comparaison.title"),
             statistiques = translate("graph.stats.title"),
             mesure = translate("graph.stats.measure"),
             groupe = translate("graph.stats.group"),
@@ -248,30 +292,6 @@ private fun libellesStatistiques(): LibellesStatistiques {
             marque = translate("graph.export.doc.brand"),
             virguleDecimale = langue == "fr",
             langueLatex = if (langue == "fr") "french" else "english"
-    )
-}
-
-@Composable
-private fun DialogueFormatExport(onDismiss: () -> Unit, onExport: (FormatExport) -> Unit) {
-    var format by remember { mutableStateOf(FormatExport.MARKDOWN) }
-    AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(translate("graph.stats.exportTitle")) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
-                    Text(translate("graph.stats.exportInfo"), style = MaterialTheme.typography.caption)
-                    Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)) {
-                        FormatExport.entries.forEach { f ->
-                            Row(modifier = Modifier.clickable { format = f }, verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(selected = format == f, onClick = { format = f })
-                                Text(f.libelle)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = { Button(onClick = { onExport(format) }) { Text(translate("graph.export.start")) } },
-            dismissButton = { TextButton(onClick = onDismiss) { Text(translate("general.cancel")) } }
     )
 }
 
@@ -294,18 +314,32 @@ private fun PastilleGroupe(couleur: Color, libelle: String) {
 
 @Composable
 private fun CarteMesure(
-        mesure: MesureComparee,
-        statsA: StatistiquesBoite?,
-        statsB: StatistiquesBoite?,
+        mesure: MesureBoites,
+        onRetirer: (String) -> Unit,
         modifier: Modifier
 ) {
+    val statsA = mesure.statsA
+    val statsB = mesure.statsB
     Card(modifier = modifier, elevation = AppSizes.elevationSmall) {
         Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
-            Text(
-                    if (mesure.unite.isEmpty()) mesure.titre else "${mesure.titre} (${mesure.unite})",
-                    style = MaterialTheme.typography.subtitle2,
-                    fontWeight = FontWeight.Bold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                        mesure.titreComplet,
+                        style = MaterialTheme.typography.subtitle2,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                )
+                mesure.cleNutriment?.let { cle ->
+                    IconButtonWithTooltip(
+                            onClick = { onRetirer(cle) },
+                            modifier = Modifier.size(28.dp),
+                            imageVector = Icons.Default.Close,
+                            contentDescription = translate("graph.comparaison.removeNutrient"),
+                            tooltip = translate("graph.comparaison.removeNutrient"),
+                            iconModifier = Modifier.size(18.dp)
+                    )
+                }
+            }
             val bornes = listOfNotNull(statsA, statsB)
             if (bornes.isEmpty()) {
                 Text("—", style = MaterialTheme.typography.body2)

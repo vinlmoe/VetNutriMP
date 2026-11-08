@@ -11,22 +11,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
-import fr.vetbrain.vetnutri_mp.Export.ArchiveZip
 import fr.vetbrain.vetnutri_mp.Export.DocumentGraphiques
 import fr.vetbrain.vetnutri_mp.Export.DocumentGraphiquesRations
-import fr.vetbrain.vetnutri_mp.Export.GraphiqueExporte
-import fr.vetbrain.vetnutri_mp.Export.encoderJpeg
-import fr.vetbrain.vetnutri_mp.Export.exporterZip
-import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -55,6 +47,7 @@ fun AnalyseGraphiqueView(
         // Export : capture de la zone du graphique affiché (le graphique change pendant l'export)
         val scope = rememberCoroutineScope()
         val coucheGraphique = rememberGraphicsLayer()
+        val suiviCalculs = remember { SuiviCalculsGraphiques() }
         var dialogueExport by remember { mutableStateOf(false) }
         var exportEnCours by remember { mutableStateOf(false) }
         var messageExport by remember { mutableStateOf<String?>(null) }
@@ -66,19 +59,12 @@ fun AnalyseGraphiqueView(
                         exportEnCours = true
                         val graphiqueInitial = selectedChart
                         try {
-                                val images = mutableListOf<Pair<GraphiqueExporte, ByteArray>>()
-                                types.forEachIndexed { index, type ->
-                                        selectedChart = type
-                                        // Laisser le graphique calculer ses données et se dessiner
-                                        delay(1500)
-                                        withFrameNanos {}
-                                        val image = coucheGraphique.toImageBitmap()
-                                        val jpeg = withContext(AppDispatchers.Default) { encoderJpeg(image) }
-                                        images += GraphiqueExporte(
-                                                fichier = "images/${index + 1}_${type.name.lowercase()}.jpg",
-                                                titre = translate(type.displayName)
-                                        ) to jpeg
-                                }
+                                val images = capturerGraphiques(
+                                        types, coucheGraphique, suiviCalculs,
+                                        afficher = { selectedChart = it },
+                                        fichier = { index, type -> "images/${index + 1}_${type.name.lowercase()}.jpg" },
+                                        titre = { translate(it.displayName) }
+                                )
                                 selectedChart = graphiqueInitial
                                 val rations = rationsPourExport(
                                         prepareGraphConsultations(
@@ -97,18 +83,9 @@ fun AnalyseGraphiqueView(
                                         FormatExport.MARKDOWN -> DocumentGraphiquesRations.markdown(document, libellesExport())
                                         FormatExport.LATEX -> DocumentGraphiquesRations.latex(document, libellesExport())
                                 }
-                                val base = "graphiques_${nomFichierSur(nom)}"
-                                val archive = withContext(AppDispatchers.Default) {
-                                        ArchiveZip.creer(
-                                                listOf("$base.${format.extension}" to texte.encodeToByteArray()) +
-                                                        images.map { (g, octets) -> g.fichier to octets }
-                                        )
-                                }
-                                // Le dialogue d'enregistrement de bureau doit être ouvert hors du fil de Compose
-                                val enregistre = withContext(AppDispatchers.IO) { exporterZip(archive, "$base.zip") }
-                                messageExport =
-                                        if (enregistre) translate("graph.export.success", "$base.zip")
-                                        else translate("graph.export.cancelled")
+                                messageExport = enregistrerArchiveGraphiques(
+                                        "graphiques_${nomFichierSur(nom)}", format, texte, images
+                                )
                         } catch (e: Exception) {
                                 e.rethrowIfCancellation()
                                 AppLog.e("AnalyseGraphiqueView", e.message ?: "Erreur", e)
@@ -148,6 +125,7 @@ fun AnalyseGraphiqueView(
                 CompositionLocalProvider(
                         LocalHauteurGraphique provides hauteurGraphiquePour(maxWidth, maxHeight)
                 ) {
+                ZoneGraphiquesExportables(suiviCalculs, exportEnCours) {
                 Column(
                         modifier =
                                 Modifier.fillMaxSize()
@@ -270,6 +248,7 @@ fun AnalyseGraphiqueView(
 
                         // Légende et informations
                         GraphiqueLegend(selectedChart)
+                }
                 }
                 }
         }
