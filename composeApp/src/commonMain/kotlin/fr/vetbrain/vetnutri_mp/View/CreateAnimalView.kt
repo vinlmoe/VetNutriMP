@@ -23,7 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
-import fr.vetbrain.vetnutri_mp.Components.AutocompleteTextField
+import fr.vetbrain.vetnutri_mp.Components.ChampRace
 import fr.vetbrain.vetnutri_mp.Components.ComboBox
 import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
@@ -249,12 +249,13 @@ fun CreateAnimalView(
                                 itemLabelProvider = { it.translateEnum() }
                         )
 
-                        AutocompleteTextField(
+                        ChampRace(
                                 value = animal.race,
                                 onValueChange = { newBreed: String ->
                                         viewModel.updateAnimal(animal.copy(race = newBreed))
                                 },
-                                suggestions = availableRaces,
+                                espece = animal.getEspece(),
+                                racesConnues = availableRaces,
                                 label = AnimalKeys.BREED.translate(),
                                 modifier = Modifier.fillMaxWidth()
                         )

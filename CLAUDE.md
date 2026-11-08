@@ -176,6 +176,13 @@ virtuelle et en lecture seule) et la consultation d'analyse `consultationAnalyse
 poids, référentiel, K du groupe), pour réutiliser l'analyse de ration existante. Moteur pur dans
 `Data/Troupeau.kt` (`facteursRepartitionTroupeau`, `AnalyseurTroupeau`).
 
+### Races (catalogue hors ligne)
+`Data/CatalogueRaces.kt` + `Data/CatalogueRacesDonnees.kt` (une ligne `fr|en|zh|synonymes;…` par race,
+chiens FCI et chats LOOF) : suggestions du champ race via `Components/ChampRace` (création, modification,
+groupes d'un troupeau), libellées dans la langue de l'interface (anglais pour une autre langue), complétées
+des races déjà saisies dans la base. La recherche porte sur tous les noms et synonymes ; la saisie reste libre.
+Pour ajouter une race : une ligne dans le fichier de données (`CatalogueRacesTest` refuse les doublons).
+
 ### Erreurs et journalisation
 - Jamais de `println` ni de `printStackTrace` : passer par `Utils/AppLog` (`d` = debug uniquement, `w`, `e`).
 - Tout `catch (e: Exception)` / `catch (e: Throwable)` commence par `e.rethrowIfCancellation()` :

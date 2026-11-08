@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import fr.vetbrain.vetnutri_mp.Components.ChampRace
 import fr.vetbrain.vetnutri_mp.Components.ComboBox
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.avecEspeceDuTroupeau
@@ -120,12 +121,12 @@ fun AnimalEditView(
 
                         // Race (pour un troupeau : celle de chaque groupe d'individus)
                         if (typesTroupeau == null) {
-                                OutlinedTextField(
+                                ChampRace(
                                         value = race,
                                         onValueChange = { race = it },
-                                        label = { Text(Animal.BREED.translate()) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        singleLine = true
+                                        espece = selectedEspece,
+                                        label = Animal.BREED.translate(),
+                                        modifier = Modifier.fillMaxWidth()
                                 )
                         }
 

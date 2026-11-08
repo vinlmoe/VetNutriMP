@@ -2,6 +2,13 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## Non publié
+
+- Saisie de la race : suggestions hors ligne de 384 races de chiens (nomenclature FCI, variétés
+  courantes, quelques races hors FCI) et de 85 races de chats (LOOF et autres registres), dans la
+  langue de l'interface (français, anglais, chinois). Une race se trouve par n'importe lequel de ses
+  noms ou synonymes ; la saisie reste libre. Création, modification et groupes d'un troupeau.
+
 ## 3.3.19
 
 - Versions applicatives et données initiales passées en **3.3.19 (319)** pour Android, iOS et Desktop,
