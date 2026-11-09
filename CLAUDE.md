@@ -231,6 +231,10 @@ Vérifier une mise en page : `GuideScreenshotDriver` avec `VETNUTRI_GUIDE_SIZE=4
 (voir `docs/guide_utilisateur/README.md`).
 
 ### Threads
+- Desktop : toute boîte modale Swing (`JFileChooser`…) passe par `runSwingDialog` (`ExcelPlatform`), qui
+  quitte la coroutine appelante (IO) puis ouvre la boîte sur l'EDT. L'ouvrir directement depuis une
+  coroutine Compose (déjà sur l'EDT) fait réentrer sa boucle modale dans le dispatcher Compose :
+  `CoroutinesInternalError` / `ClassCastException` au retour de la boîte.
 - Pas de `runBlocking` hors des tests. `getRoomDatabase` est `suspend` (sauvegarde `.bak` et
   migrations sur IO) ; Android et iOS l'ouvrent via `AppWithDatabase`, une fois par processus.
 - `AppDispatchers.IO` → opérations DB et réseau

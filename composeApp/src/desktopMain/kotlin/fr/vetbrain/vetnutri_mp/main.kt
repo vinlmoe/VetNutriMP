@@ -426,25 +426,11 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
 }
 
 @Suppress("UNUSED_PARAMETER")
-actual suspend fun exportJsonToFile(content: String, defaultFileName: String): Boolean {
-    var resultat: Boolean = false
-    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
-        resultat =
-                fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveJsonFileDialog(
-                        content = content,
-                        defaultFileName = defaultFileName
-                )
-    } else {
-        javax.swing.SwingUtilities.invokeAndWait {
-            resultat =
-                    fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveJsonFileDialog(
-                            content = content,
-                            defaultFileName = defaultFileName
-                    )
+actual suspend fun exportJsonToFile(content: String, defaultFileName: String): Boolean =
+        // Jamais de boîte modale ouverte directement depuis une coroutine Compose (voir runSwingDialog)
+        runSwingDialog {
+            fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveJsonFileDialog(content = content, defaultFileName = defaultFileName)
         }
-    }
-    return resultat
-}
 
 @Suppress("UNUSED_PARAMETER")
 @OptIn(ExperimentalSerializationApi::class)
@@ -452,45 +438,18 @@ actual suspend fun exportApiEnvelopeToFile(
     envelope: fr.vetbrain.vetnutri_mp.Data.ApiEnvelope,
     defaultFileName: String
 ): Boolean {
-    var resultat: Boolean = false
-    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
-        resultat =
-            fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveJsonFileDialogStream(
-                defaultFileName = defaultFileName
-            ) { stream ->
-                val json = fr.vetbrain.vetnutri_mp.Utils.createExportJson()
-                json.encodeToStream(
-                    fr.vetbrain.vetnutri_mp.Data.ApiEnvelope.serializer(),
-                    envelope,
-                    stream
-                )
-            }
-    } else {
-        javax.swing.SwingUtilities.invokeAndWait {
-            resultat =
-                fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveJsonFileDialogStream(
-                    defaultFileName = defaultFileName
-                ) { stream ->
-                    val json = fr.vetbrain.vetnutri_mp.Utils.createExportJson()
-                    json.encodeToStream(
-                        fr.vetbrain.vetnutri_mp.Data.ApiEnvelope.serializer(),
-                        envelope,
-                        stream
-                    )
-                }
+    return runSwingDialog {
+        fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveJsonFileDialogStream(defaultFileName = defaultFileName) { stream ->
+            val json = fr.vetbrain.vetnutri_mp.Utils.createExportJson()
+            json.encodeToStream(fr.vetbrain.vetnutri_mp.Data.ApiEnvelope.serializer(), envelope, stream)
         }
     }
-    return resultat
 }
 
 actual suspend fun openJsonFilesContent(): List<fr.vetbrain.vetnutri_mp.Data.FichierJson>? {
-    var fichiers: List<java.io.File>? = null
-    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
-        fichiers = fr.vetbrain.vetnutri_mp.Utils.FileUtils.openJsonFilesDialog()
-    } else {
-        javax.swing.SwingUtilities.invokeAndWait { fichiers = fr.vetbrain.vetnutri_mp.Utils.FileUtils.openJsonFilesDialog() }
-    }
-    val choisis = fichiers ?: return null
+    // La boîte modale ne doit pas tourner dans la coroutine Compose appelante : sa boucle
+    // d'événements réentrerait dans le dispatcher Compose en cours (CoroutinesInternalError)
+    val choisis = runSwingDialog { fr.vetbrain.vetnutri_mp.Utils.FileUtils.openJsonFilesDialog() } ?: return null
     return withContext(Dispatchers.IO) {
         choisis.map { f ->
             val contenu = try {
@@ -505,17 +464,8 @@ actual suspend fun openJsonFilesContent(): List<fr.vetbrain.vetnutri_mp.Data.Fic
     }
 }
 
-actual suspend fun openJsonFileContent(): String? {
-    var contenu: String? = null
-    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
-        contenu = fr.vetbrain.vetnutri_mp.Utils.FileUtils.openJsonFileDialog()
-    } else {
-        javax.swing.SwingUtilities.invokeAndWait {
-            contenu = fr.vetbrain.vetnutri_mp.Utils.FileUtils.openJsonFileDialog()
-        }
-    }
-    return contenu
-}
+actual suspend fun openJsonFileContent(): String? =
+        runSwingDialog { fr.vetbrain.vetnutri_mp.Utils.FileUtils.openJsonFileDialog() }
 
 actual suspend fun exportPdfDocument(
     documentType: fr.vetbrain.vetnutri_mp.Export.DocumentType,

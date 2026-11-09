@@ -216,36 +216,46 @@ class PlanEvolutifInteractionTest {
             rations = mutableListOf(Ration(uuid = "r-$id", idConsult = id, name = "Actuelle", actual = true)))
         repo.saveConsultation(c("c1", 1)); repo.saveConsultation(c("c2", 6))
         vm.setAnimal(AnimalEv(uuid = "a", nom = "Rex")); idle()
+        attendreQue { vm.selectedConsultation.value?.uuid == "c2" }
         assertEquals("c2", vm.selectedConsultation.value?.uuid, "la plus récente par défaut")
 
         // Choix de l'utilisateur, puis édition plein écran et enregistrement
         vm.selectConsultation(c("c1", 1)); idle()
+        attendreQue { vm.selectedConsultation.value?.uuid == "c1" }
         vm.editConsultationFullScreen(consultation()); idle()
         vm.saveFromFullScreen(consultation().copy(weight = 7.0)); idle()
+        attendreQue { dao.consultations["c1"]?.weight == 7.0 && vm.selectedRation.value?.uuid == "r-c1" }
         assertEquals("c1", vm.selectedConsultation.value?.uuid, "sélection conservée après enregistrement")
         assertEquals("r-c1", vm.selectedRation.value?.uuid)
 
         // Édition depuis le panneau de détail (updateConsultation puis stopEditingConsultation)
         vm.startEditingConsultation()
         vm.updateConsultation(consultation().copy(weight = 8.0)); vm.stopEditingConsultation(); idle()
+        attendreQue { dao.consultations["c1"]?.weight == 8.0 }
         assertEquals("c1", vm.selectedConsultation.value?.uuid, "sélection conservée après mise à jour")
 
         // Nouveau brouillon annulé : retour sur la consultation d'avant, pas sur le brouillon
         vm.createNewConsultationFullScreen(); idle()
+        attendreQue { vm.selectedConsultation.value?.uuid !in setOf(null, "c1", "c2") }
         val brouillon = vm.selectedConsultation.value?.uuid
         assertTrue(brouillon != null && brouillon !in setOf("c1", "c2"))
         vm.cancelConsultationEditing(); vm.closeFullScreenEdit(); idle()
+        attendreQue { vm.selectedConsultation.value?.uuid == "c1" }
         assertEquals("c1", vm.selectedConsultation.value?.uuid, "brouillon annulé")
 
         // Nouveau brouillon enregistré : il devient la sélection
         vm.createNewConsultationFullScreen(); idle()
+        attendreQue { vm.selectedConsultation.value?.uuid !in setOf(null, "c1", "c2") }
         val nouvelle = consultation()
         vm.saveFromFullScreen(nouvelle); idle()
+        attendreQue { dao.consultations.containsKey(nouvelle.uuid) && vm.selectedConsultation.value?.uuid == nouvelle.uuid }
         assertEquals(nouvelle.uuid, vm.selectedConsultation.value?.uuid, "nouvelle consultation sélectionnée")
 
         // Rechargement du même animal (ex. après partage) : la sélection est conservée
         vm.selectConsultation(c("c1", 1)); idle()
+        attendreQue { vm.selectedConsultation.value?.uuid == "c1" }
         vm.setAnimal(AnimalEv(uuid = "a", nom = "Rex")); idle()
+        attendreQue { vm.selectedConsultation.value != null }
         assertEquals("c1", vm.selectedConsultation.value?.uuid, "sélection conservée au rechargement")
     }
 
