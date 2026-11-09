@@ -33,17 +33,22 @@ TEAM_ID="N8M75AVX29"  # Votre Team ID (visible dans votre compte développeur)
 # Vérifier les certificats disponibles:
 #   security find-identity -v -p codesigning
 
-# Essayer de trouver automatiquement le certificat Developer ID
-DEVELOPER_ID=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+# Essayer de trouver automatiquement le certificat Developer ID.
+# DEVELOPER_ID est l'empreinte SHA-1 du certificat (passée à codesign) : le nom
+# (« Sébastien ») est mal décodé par codesign selon la locale (« no identity found »).
+# DEVELOPER_ID_NAME ne sert qu'à l'affichage.
+IDENTITY_LINE=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1)
 
 # Si pas trouvé, essayer avec Apple Distribution (temporaire, pas idéal)
-if [ -z "$DEVELOPER_ID" ]; then
-    DEVELOPER_ID=$(security find-identity -v -p codesigning | grep "Apple Distribution" | head -1 | sed 's/.*"\(.*\)".*/\1/')
-    if [ -n "$DEVELOPER_ID" ]; then
+if [ -z "$IDENTITY_LINE" ]; then
+    IDENTITY_LINE=$(security find-identity -v -p codesigning | grep "Apple Distribution" | head -1)
+    if [ -n "$IDENTITY_LINE" ]; then
         echo "⚠️  Utilisation de 'Apple Distribution' (pas idéal pour distribution hors App Store)"
         echo "💡 Créez un certificat 'Developer ID Application' sur https://developer.apple.com/account/resources/certificates/"
     fi
 fi
+DEVELOPER_ID=$(echo "$IDENTITY_LINE" | awk '{print $2}')
+DEVELOPER_ID_NAME=$(echo "$IDENTITY_LINE" | sed 's/.*"\(.*\)".*/\1/')
 
 # Configuration de la notarisation (optionnelle mais recommandée)
 # Pour activer la notarisation:
@@ -133,7 +138,7 @@ if [ -z "$DEVELOPER_ID" ]; then
     exit 1
 fi
 
-echo "✅ Certificat de signature trouvé: $DEVELOPER_ID"
+echo "✅ Certificat de signature trouvé: $DEVELOPER_ID_NAME ($DEVELOPER_ID)"
 
 # Étape 3: Signature du DMG
 echo ""
