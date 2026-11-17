@@ -1,0 +1,117 @@
+name: Paquet macOS Intel
+
+# Construit le DMG macOS x86_64 sur un runner Intel de GitHub (jpackage ne
+# sait pas compiler pour une autre architecture que celle du JDK qui le lance),
+# puis le signe et le notarise avec compile_and_sign_macos.sh si les secrets
+# du dépôt sont renseignés. Sans secrets, le DMG est produit non signé.
+#
+# Secrets attendus (Settings → Secrets and variables → Actions) :
+#   MACOS_CERTIFICATE_P12       certificat « Developer ID Application » (.p12) en base64
+#   MACOS_CERTIFICATE_PASSWORD  mot de passe du .p12
+#   NOTARIZATION_APPLE_ID       identifiant Apple du compte développeur
+#   NOTARIZATION_PASSWORD       mot de passe d'application (appleid.apple.com)
+
+on:
+  workflow_dispatch:
+  push:
+    # Runner macOS facturé 10× : uniquement quand ce workflow lui-même change.
+    paths:
+      - '.github/workflows/release-macos.yml'
+
+concurrency:
+  group: release-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JSONBIN_CREATE_KEY: ${{ secrets.JSONBIN_CREATE_KEY || 'ci-placeholder' }}
+  JSONBIN_READ_KEY: ${{ secrets.JSONBIN_READ_KEY || 'ci-placeholder' }}
+  GRADLE_OPTS: -Dorg.gradle.welcome=never
+
+jobs:
+  package-macos-intel:
+    name: DMG macOS Intel (x86_64)
+    runs-on: macos-15-intel
+    timeout-minutes: 90
+    env:
+      # `secrets` n'est pas lisible dans un `if:` d'étape : on passe par l'environnement.
+      HAS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12 != '' }}
+      HAS_NOTARIZATION: ${{ secrets.NOTARIZATION_APPLE_ID != '' && secrets.NOTARIZATION_PASSWORD != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Préparer le build
+        uses: ./.github/actions/setup-build
+
+      - name: Vérifier que le runner et le JDK sont x86_64
+        run: |
+          echo "Machine : $(uname -m)"
+          java -XshowSettings:properties -version 2>&1 | grep 'os.arch'
+          test "$(uname -m)" = "x86_64"
+
+      - name: Importer le certificat de signature
+        if: env.HAS_CERTIFICATE == 'true'
+        env:
+          CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signature.keychain-db"
+          keychain_password="$(openssl rand -hex 24)"
+          certificate="$RUNNER_TEMP/certificat.p12"
+          printf '%s' "$CERTIFICATE_P12" | base64 --decode > "$certificate"
+
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$certificate" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          # Autorise codesign à utiliser la clé sans boîte de dialogue.
+          security set-key-partition-list -S apple-tool:,apple: -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm -f "$certificate"
+
+          security find-identity -v -p codesigning "$keychain"
+
+      - name: Construire, signer et notariser le DMG
+        if: env.HAS_CERTIFICATE == 'true'
+        env:
+          APPLE_ID: ${{ secrets.NOTARIZATION_APPLE_ID }}
+          APP_SPECIFIC_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
+        run: |
+          if [ "$HAS_NOTARIZATION" != "true" ]; then
+            echo "::warning::Secrets de notarisation absents : le DMG sera signé mais non notarisé."
+          fi
+          ./compile_and_sign_macos.sh
+
+      - name: Construire le DMG (non signé)
+        if: env.HAS_CERTIFICATE != 'true'
+        run: |
+          echo "::warning::Secret MACOS_CERTIFICATE_P12 absent : DMG non signé, non notarisé (Gatekeeper le bloquera)."
+          ./gradlew :composeApp:packageDmg --stacktrace
+
+      - name: Vérifier l'architecture de l'application
+        run: |
+          app="composeApp/build/compose/binaries/main/app/VetNutriMP.app"
+          file "$app/Contents/MacOS/VetNutriMP"
+          file "$app/Contents/MacOS/VetNutriMP" | grep -q x86_64
+          ls -lh composeApp/build/compose/binaries/main/dmg/
+
+      - name: Vérifier la notarisation
+        if: env.HAS_CERTIFICATE == 'true' && env.HAS_NOTARIZATION == 'true'
+        run: xcrun stapler validate composeApp/build/compose/binaries/main/dmg/*-signed.dmg
+
+      - name: Archiver le DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: VetNutriMP-macos-intel
+          path: composeApp/build/compose/binaries/main/dmg/*.dmg
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Supprimer le trousseau temporaire
+        if: always() && env.HAS_CERTIFICATE == 'true'
+        run: security delete-keychain "$RUNNER_TEMP/signature.keychain-db" || true
